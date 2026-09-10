@@ -1,0 +1,17 @@
+/* SC02.CD FILE_031 / ov_SC02_031 retail span [80162F60,80162F80).
+ * Offset 0x3AE08 at overlay base 80128158. SHA256(span)=0533d3bb29c05a2b3bef68e76ca75401af6745f4488ad935f26bc206194b52cd.
+ * Re-carve of the registry-verified MAIN member 0012 source
+ * src/overlays/main_0012/80162f60.c (recovery=c, -O2); the span is
+ * byte-identical between member 0012 and SC02_031.
+ * Not MAIN10.
+ */
+/* Decompiled by m2c from main.s, then verified byte-exact
+ * against retail by tools/match_function.py. Types and signatures are
+ * whatever reproduces the bytes; they are not evidence of the
+ * original declaration. */
+
+#include "psx_types.h"
+void func_80147948();
+void func_80162F60(void *a, void *b) {
+    func_80147948(a, b, 0x7F0000);
+}
