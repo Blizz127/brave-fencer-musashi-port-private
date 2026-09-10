@@ -1,3 +1,4 @@
+/* Exact retail word export for [8004357C,8004359C); EXE-verified. */
 #include "psx_types.h"
 
 /* Decompiled by m2c from main.s, then verified byte-exact

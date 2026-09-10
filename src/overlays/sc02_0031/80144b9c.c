@@ -1,0 +1,242 @@
+/* Complete SC02 member31 [80144B9C,801457A4), native export and matched C. */
+/* Full SC02 member 31 initializer [80144B9C,801457A4).
+ * Pinned GCC 2.7.2 -O0 -G0: 770/770 words match the decoded retail blob.
+ * Offset views preserve retail field widths without inventing shared layouts. */
+typedef unsigned char u8;
+typedef unsigned short u16;
+typedef unsigned int u32;
+typedef void (*Callback)(void);
+#define F(p,o) (((struct { u8 pad[o]; Callback value; } *)(p))->value)
+#define B(p,o) (((struct { u8 pad[o]; u8 value; } *)(p))->value)
+#define H(p,o) (((struct { u8 pad[o]; u16 value; } *)(p))->value)
+#define S(p,o) (((struct { u8 pad[o]; short value; } *)(p))->value)
+#define W(p,o) (((struct { u8 pad[o]; u32 value; } *)(p))->value)
+#define P(p,o) (((struct { u8 pad[o]; u8 * value; } *)(p))->value)
+extern int D_800A5E88;
+extern int D_800A5E8C;
+extern int D_800A5E90;
+extern u8 D_800A5E94;
+extern u8 D_800A5E95;
+extern u8 D_800A5E96;
+extern int D_800A5E98;
+extern int D_800A5E9C;
+extern int D_800A5EA0;
+extern u8 D_800A5EA4;
+extern u8 D_800A5EA5;
+extern u8 D_800A5EA6;
+extern int D_800A5EA8;
+extern int D_800A5EAC;
+extern int D_800A5EB0;
+extern u8 D_800A5EB4;
+extern u8 D_800A5EB5;
+extern u8 D_800A5EB6;
+extern u16 D_800B9AAC;
+extern u16 D_800B9B00;
+extern u32 D_800B9AC4;
+extern u32 D_800B9B18;
+extern u32 D_800B9AC8;
+extern u32 D_800B9B1C;
+extern u16 D_800B9AB2;
+extern u16 D_800B9B06;
+extern u16 D_800B9AB6;
+extern u16 D_800B9B0A;
+extern u8 D_800B9ABC;
+extern u8 D_800B9ABD;
+extern u8 D_800B9ABE;
+extern u8 D_800B9B10;
+extern u8 D_800B9B11;
+extern u8 D_800B9B12;
+extern u8 D_800B9ABF;
+extern u8 D_800B9AC0;
+extern u8 D_800B9AC1;
+extern u8 D_800B9B13;
+extern u8 D_800B9B14;
+extern u8 D_800B9B15;
+extern u32 D_80126728;
+extern u32 D_8011DB08;
+extern u32 D_80126AEC;
+extern u32 D_801274C8;
+extern u32 D_801274CC;
+extern u32 D_801274D0;
+extern u32 D_801274D4;
+extern u32 D_801270B8;
+extern u32 D_80127520;
+extern u8 D_80126B58[];
+extern u8 D_80078E78[];
+extern u8 D_800AF630[];
+extern u8 D_800AE6A8[];
+extern u8 D_80126948[];
+extern u8 D_80078E50[];
+extern u8 D_8010F5C8[];
+extern u8 D_80126DB0[];
+extern u8 D_801151F0[];
+extern u32 D_8011DB14;
+extern u32 D_8011DB1C;
+extern u32 D_80128150;
+extern u32 D_801151D8;
+extern u32 D_8011DB28;
+extern u16 D_80126DB6;
+extern u8 * D_801151D4;
+extern int func_80011E84();
+extern int func_80015978();
+extern int func_80018E78();
+extern int func_80019018();
+extern int func_8001C14C();
+extern int func_8002850C();
+extern int func_80028620();
+extern int func_8002AB64();
+extern int func_8002D4C8();
+extern int func_8005C324();
+extern int func_800CF854();
+extern int func_800D02C0();
+extern int func_80129398();
+extern int func_8012944C();
+extern int func_8012A110();
+extern int func_8012A1BC();
+extern int func_801336E8();
+extern int func_8013B568();
+extern int func_8013B83C();
+extern int func_8013D3D4();
+extern u8 * func_801457A4();
+struct EntryCopy { u8 bytes[0x24]; };
+void func_80144B9C(void) {
+    u8 *player = D_80126B58;
+    u8 *config = D_80078E78;
+    register u8 *world = D_800AF630;
+    u8 *scene = D_800AE6A8;
+    u8 *camera = D_80126948;
+    u8 *params;
+    u8 *entry;
+    u8 **entries;
+    short i;
+    void (*callback)(void);
+    int fresh;
+    func_80019018();
+    func_80018E78();
+    if (!W(scene,8)) {
+        params = func_801457A4(S(world,0xa3d8));
+        B(scene,0x16)=0;
+        fresh=1;
+        D_8011DB14=H(config,0x3a);
+        D_8011DB1C=H(config,0x3e);
+        D_80128150=100;
+        func_8002AB64();
+    } else {
+        params = func_801457A4(S(world,0xa3d8));
+        fresh=0;
+    }
+    P(scene,0x1c)=P(params,0xc8);
+    entries=(u8 **)P(params,0xc8);
+    if (B(scene,0x16)==255) entry=D_80078E50;
+    else entry=entries[B(scene,0x16)];
+    W(scene,0xc)=W(entry,8);
+    B(scene,0x14)=0;
+    B(player,0x4d)=0;
+    if(P(entry,0xc)!=D_8010F5C8) P(player,0x198)=P(entry,0xc);
+    if(S(world,0xa3da)==0x1000 && S(world,0xa3dc)==0x1000) {
+        H(player,6)=H(player,136)=H(player,144)=H(scene,32);
+        H(player,10)=H(player,138)=H(player,146)=H(scene,34);
+        H(player,14)=H(player,140)=H(player,148)=H(scene,36);
+        H(P(player,0x20),0x12)=H(scene,0x26);
+        B(scene,0x18)=0;
+    } else {
+        H(player,6)=H(player,136)=H(player,144)=H(entry,16);
+        H(player,10)=H(player,138)=H(player,146)=H(entry,18);
+        H(player,14)=H(player,140)=H(player,148)=H(entry,20);
+        H(P(player,0x20),0x12)=H(entry,0x16);
+    }
+    H(player,340)=H(player,348)=H(player,6);
+    H(player,342)=H(player,350)=H(player,10);
+    H(player,344)=H(player,352)=H(player,14);
+    func_80015978(player+4,D_80126DB0);
+    D_80126DB6=H(P(player,0x20),0x12);
+    if(S(world,0xa3da)==0x1000 && (S(world,0xa3dc)==0x1000 || S(world,0xa3dc)==0x2000) && !fresh) {
+        F(entry,0x18)();
+        func_8012A1BC();
+    } else {
+        if(S(world,0xa3da)==0x1000 && S(world,0xa3dc)==0x3000) B(camera,0xa0)=B(entry,3);
+        else B(camera,0xa0)=0;
+        F(entry,0x18)();
+    }
+    if(S(world,0xa3d8)==0x3069) B(camera,0xa0)=B(entry,3);
+    D_801151D4=camera;
+    func_8002850C(S(params,0),S(params,2),S(params,4));
+    D_800A5E88=S(params,6);
+    D_800A5E8C=S(params,8);
+    D_800A5E90=S(params,10);
+    D_800A5E94=B(params,12);
+    D_800A5E95=B(params,13);
+    D_800A5E96=B(params,14);
+    func_80028620(0,&D_800A5E88);
+    D_800A5E98=S(params,16);
+    D_800A5E9C=S(params,18);
+    D_800A5EA0=S(params,20);
+    D_800A5EA4=B(params,22);
+    D_800A5EA5=B(params,23);
+    D_800A5EA6=B(params,24);
+    func_80028620(1,&D_800A5E98);
+    D_800A5EA8=S(params,26);
+    D_800A5EAC=S(params,28);
+    D_800A5EB0=S(params,30);
+    D_800A5EB4=B(params,32);
+    D_800A5EB5=B(params,33);
+    D_800A5EB6=B(params,34);
+    func_80028620(2,&D_800A5EA8);
+    func_80129398();
+    D_800B9AAC=H(params,36);
+    D_800B9B00=H(params,38);
+    D_800B9AC4=W(params,40);
+    D_800B9B18=W(params,44);
+    D_800B9AC8=W(params,48);
+    D_800B9B1C=W(params,52);
+    D_800B9AB2=H(params,56);
+    D_800B9B06=H(params,58);
+    D_800B9AB6=H(params,60);
+    D_800B9B0A=H(params,62);
+    D_800B9ABC=B(params,64);
+    D_800B9ABD=B(params,65);
+    D_800B9ABE=B(params,66);
+    D_800B9B10=B(params,67);
+    D_800B9B11=B(params,68);
+    D_800B9B12=B(params,69);
+    D_800B9ABF=B(params,70);
+    D_800B9AC0=B(params,71);
+    D_800B9AC1=B(params,72);
+    D_800B9B13=B(params,73);
+    D_800B9B14=B(params,74);
+    D_800B9B15=B(params,75);
+    func_8012944C();
+    W(player,176)=W(params,76);
+    W(player,204)=W(params,80);
+    W(player,488)=W(params,84);
+    W(player,496)=W(params,88);
+    D_80126728=W(params,92);
+    D_8011DB08=W(params,96);
+    D_80126AEC=W(params,100);
+    P(player,0x19c)=params+0x68;
+    func_801336E8(W(params,0x88),W(params,0x8c),W(params,0x90));
+    func_8013B83C(W(params,0x94),W(params,0x98),W(params,0x9c));
+    func_8013B568(W(params,0xa8));
+    func_800D02C0(W(params,0xd4));
+    func_80011E84(W(params,0xd8));
+    for(i=0;i<8;i++) D_801151F0[i]=((u8 *)params)[0xac+i];
+    D_801274C8=W(params,180);
+    D_801274CC=W(params,184);
+    D_801274D0=W(params,188);
+    D_801274D4=W(params,192);
+    D_801270B8=W(params,196);
+    D_80127520=W(params,196);
+    D_801151D8=0;
+    D_8011DB28=0;
+    callback=F(entry,0x20);
+    callback();
+    func_8013D3D4(W(params,0xa0),W(params,0xa4));
+    func_8002D4C8(30,0);
+    if(!W(scene,8)) *(struct EntryCopy *)D_80078E50=*(struct EntryCopy *)entry;
+    P(scene,4)=D_80078E50;
+    W(scene,8)=W(scene,8)&0x7f000000;
+    if(func_800CF854()) {
+        func_8001C14C();
+        func_8012A110();
+    }
+}

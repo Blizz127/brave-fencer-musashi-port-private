@@ -10,3 +10,4 @@ void func_80044B14();                                  /* static */
 void func_800434BC(void) {
     func_80044B14();
 }
+

@@ -1,3 +1,4 @@
+/* Exact retail word export; no new C match claim. */
 #include "psx_types.h"
 
 /* Decompiled by m2c from main.s, then verified byte-exact

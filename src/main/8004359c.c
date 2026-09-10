@@ -14,3 +14,4 @@ s32 func_8004359C(s32 arg0) {
     D_8006CC84 = arg0;
     return temp_v0;
 }
+

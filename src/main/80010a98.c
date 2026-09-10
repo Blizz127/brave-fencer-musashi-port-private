@@ -1,3 +1,4 @@
+/* Exact retail word export for [80010A98,80010AE0); EXE and assembly verified. */
 /* Registers two boot-time callbacks.
  *
  * On the entry chain: func_80010178 (the compiler-generated boot routine

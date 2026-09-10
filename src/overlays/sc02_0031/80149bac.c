@@ -1,0 +1,17 @@
+/* Complete SC02 retail span [80149BAC,80149BEC).
+ * Ahead leaf.
+ * Words from pinned SC02.CD member31 PAC0 decode (live-guest identity).
+ */
+#include "psx_types.h"
+
+extern void func_8015DE24(s32 *a0);
+extern void func_80157510(s32 *a0);
+
+void func_80149BAC(s32 *a0) {
+    if (*(s32 *)((s32)a0 + 0x178) != 0) {
+        func_8015DE24(a0);
+    } else {
+        *(s8 *)((s32)a0 + 0x1AA) = 1;
+        func_80157510(a0);
+    }
+}

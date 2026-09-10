@@ -1,0 +1,42 @@
+#include "psx_types.h"
+
+/* Exact startup caller overlay [80010178,8001020C).  It deliberately ends
+ * at the retail jump delay slot: the callee owns the continuation at
+ * 80010214, while this body owns the saved-register frame. */
+__asm__(
+    ".set noreorder\n"
+    ".globl func_80010178\n"
+    ".type func_80010178, @function\n"
+    "func_80010178:\n"
+    "addiu $sp, $sp, -0x38\n"
+    "sw    $ra, 0x34($sp)\n"
+    "sw    $fp, 0x30($sp)\n"
+    "sw    $s1, 0x2c($sp)\n"
+    "sw    $s0, 0x28($sp)\n"
+    "addu  $fp, $sp, $zero\n"
+    "nop\n"
+    "lui   $s0, %hi(D_800BA118)\n"
+    "addiu $s0, $s0, %lo(D_800BA118)\n"
+    "lui   $s1, %hi(D_800AF630)\n"
+    "addiu $s1, $s1, %lo(D_800AF630)\n"
+    "addu  $a0, $zero, $zero\n"
+    "nop\n"
+    "addiu $v0, $zero, 0x3e0\n"
+    "lui   $at, %hi(D_80074778)\n"
+    "sw    $v0, %lo(D_80074778)($at)\n"
+    "nop\n"
+    "addu  $a0, $zero, $zero\n"
+    "nop\n"
+    "nop\n"
+    "nop\n"
+    "nop\n"
+    "lui   $at, %hi(D_800A2B7C)\n"
+    "sw    $v0, %lo(D_800A2B7C)($at)\n"
+    "nop\n"
+    "nop\n"
+    ".L10178_continue:\n"
+    "nop\n"
+    ".size func_80010178, .-func_80010178\n"
+    ".set reorder\n"
+);
+

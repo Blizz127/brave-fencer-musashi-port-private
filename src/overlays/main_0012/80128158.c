@@ -1,3 +1,4 @@
+/* Exact retail overlay0012 [80128158,80128178), file offset 28000. */
 #include "psx_types.h"
 
 /* Decompiled by m2c from main_0012.s, then verified byte-exact
@@ -10,3 +11,4 @@ void func_80128288();                                  /* static */
 void func_80128158(void) {
     func_80128288();
 }
+

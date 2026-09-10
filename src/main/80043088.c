@@ -1,3 +1,4 @@
+/* Exact retail word export [80043088,800430B8); verified against pinned EXE and asm. */
 #include "psx_types.h"
 
 /* Decompiled by m2c from main.s, then verified byte-exact
@@ -14,3 +15,4 @@ void func_80043088(s32 arg0, s32 arg1) {
     D_800C7F00 = arg1;
     func_8004689C();
 }
+

@@ -1,3 +1,4 @@
+/* Exact retail [800285AC,800285CC). */
 #include "psx_types.h"
 
 /* Decompiled by m2c from main.s, then verified byte-exact
@@ -10,3 +11,4 @@ void func_800538EC();                                 /* static */
 void func_800285AC(void) {
     func_800538EC(0);
 }
+

@@ -1,3 +1,6 @@
+/* Exact retail [8001D150,8001D16C).
+ * Words from pinned SLUS_007.26.
+ */
 #include "psx_types.h"
 
 /* Decompiled by m2c from main.s, then verified byte-exact

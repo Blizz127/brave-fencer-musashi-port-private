@@ -10,3 +10,5 @@ extern s32 D_8006BAFE;
 u16 func_800426D4(void) {
     return D_8006BAFE;
 }
+
+/* Exact four-word export from the corresponding tracked main.s label. */

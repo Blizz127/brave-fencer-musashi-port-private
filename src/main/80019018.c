@@ -1,3 +1,4 @@
+/* Complete native export [80019018,80019028), EXE/assembly verified. */
 #include "psx_types.h"
 
 /* Decompiled by m2c from main.s, then verified byte-exact
