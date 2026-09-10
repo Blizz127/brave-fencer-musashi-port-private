@@ -1,0 +1,18 @@
+/* SC02.CD FILE_031 / ov_SC02_031 retail span [80128998,801289F0).
+ * Offset 0x840 at overlay base 80128158. SHA256(span)=c43215ca04e7d2639c9877e7bed8ce956ddb0b75fc6074f2187737004c7c0477.
+ * Same shape as the registry-verified MAIN member 0012 carve with only the
+ * listed data references retargeted for this member: D_80182D1C->D_801A3234.
+ * Oracle MATCH re-earned on this file; Not MAIN10.
+ */
+#include "psx_types.h"
+void func_8001ABBC();
+typedef struct { s32 a; void *b; } S;
+extern S D_800C7C60;
+extern s32 D_800A2E20;
+extern void *D_801A3234;
+extern s32 D_800AECB0;
+void func_80128998(void) {
+    D_800C7C60.a = 13;
+    D_800C7C60.b = &D_800A2E20;
+    func_8001ABBC(0, 0, &D_800AECB0, D_801A3234, &D_800C7C60);
+}
