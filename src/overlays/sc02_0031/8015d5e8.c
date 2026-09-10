@@ -1,8 +1,8 @@
-/* SC02.CD FILE_031 / ov_SC02_031 retail span [8015D5E8,8015D738).
- * Offset 0x35490 at overlay base 80128158. SHA256(span)=9efe104c238d6205c5e9908a87a7268e2bf5196a76729d15eea74d0a545183f1.
- * Same shape as the registry-verified MAIN member 0012 carve with only the
- * listed data references retargeted for this member: D_80180C60->D_801814E8.
- * Oracle MATCH re-earned on this file; Not MAIN10.
+/* SC02 resident retail span [8015D5E8,8015D738). Offset 0x35490 at base 80128158.
+ * SHA256(span)=4a55b22d4c00758b68562d47d536bb329cea5433d330cc7a83f619e205b4216d.
+ * Words are the guest's loaded image (artifacts/sc02-resident-20260910).
+ * Member-0012 C shape retargeted to this member: D_80180C60->D_80187550.
+ * Oracle MATCH re-earned against the resident image; Not MAIN10.
  */
 #include "psx_types.h"
 s32 func_80161B18();
@@ -12,7 +12,7 @@ s32 func_80161208();
 void func_80154150();
 void func_80146CA0();
 void func_80149374();
-extern s8 D_801814E8[];
+extern s8 D_80187550[];
 typedef struct Inner { u8 pad[0xC]; u16 c, e, ten; } Inner;
 typedef struct {
     u8 pad[6]; s16 u6; u8 pad8[2]; s16 uA; u8 padC[2]; s16 uE;
@@ -50,12 +50,12 @@ void func_8015D5E8(T *p) {
     }
     i = p->u234;
     p->u234 = i + 1;
-    q->u6 = D_801814E8[i] + q->p78->c;
+    q->u6 = D_80187550[i] + q->p78->c;
     i = p->u234;
     p->u234 = i + 1;
-    q->uA = D_801814E8[i] + q->p78->e;
+    q->uA = D_80187550[i] + q->p78->e;
     i = p->u234;
     p->u234 = i + 1;
-    q->uE = D_801814E8[i] + q->p78->ten;
+    q->uE = D_80187550[i] + q->p78->ten;
     func_80149374(p, (u8 *)q + 4);
 }

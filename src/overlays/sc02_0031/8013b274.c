@@ -1,8 +1,8 @@
-/* SC02.CD FILE_031 / ov_SC02_031 retail span [8013B274,8013B568).
- * Offset 0x1311C at overlay base 80128158. SHA256(span)=cca4cdad31a63edc0ffd4b914df84394cebd5ea2776eb590a4f1488774c5b344.
- * Same shape as the registry-verified MAIN member 0012 carve with only the
- * listed data references retargeted for this member: D_8017EAC8->D_8017F350; D_8017EACA->D_8017F352; D_8017EACC->D_8017F354; D_8017EACE->D_8017F356; D_8017EAD0->D_8017F358; D_8017EAD2->D_8017F35A.
- * Oracle MATCH re-earned on this file; Not MAIN10.
+/* SC02 resident retail span [8013B274,8013B568). Offset 0x1311C at base 80128158.
+ * SHA256(span)=cb8f883b28859f782a6bfaeb2ee634903bdddf6342e5031572812a7fc19bb99e.
+ * Words are the guest's loaded image (artifacts/sc02-resident-20260910).
+ * Member-0012 C shape retargeted to this member: D_8017EAC8->D_801853B8; D_8017EACA->D_801853BA; D_8017EACC->D_801853BC; D_8017EACE->D_801853BE; D_8017EAD0->D_801853C0; D_8017EAD2->D_801853C2.
+ * Oracle MATCH re-earned against the resident image; Not MAIN10.
  */
 #include "psx_types.h"
 
@@ -60,42 +60,42 @@ __asm__(
     "nop\n"
     ".L8013B340:\n"
     "mflo $v0\n"
-    "lui $v1,%hi(D_8017F352)\n"
-    "lh $v1,%lo(D_8017F352)($v1)\n"
+    "lui $v1,%hi(D_801853BA)\n"
+    "lh $v1,%lo(D_801853BA)($v1)\n"
     "addu $a1,$v0,$zero\n"
     "sll $v0,$v0,16\n"
     "sra $a0,$v0,16\n"
     "slt $v1,$v1,$a0\n"
     "nop\n"
-    "lui $v0,%hi(D_8017F358)\n"
-    "lh $v0,%lo(D_8017F358)($v0)\n"
+    "lui $v0,%hi(D_801853C0)\n"
+    "lh $v0,%lo(D_801853C0)($v0)\n"
     "nop\n"
     "slt $v0,$a0,$v0\n"
     "nop\n"
-    "lui $v0,%hi(D_8017F354)\n"
-    "lh $v0,%lo(D_8017F354)($v0)\n"
+    "lui $v0,%hi(D_801853BC)\n"
+    "lh $v0,%lo(D_801853BC)($v0)\n"
     "nop\n"
     "addu $v1,$v0,$zero\n"
     "slt $v0,$a0,$v0\n"
     "nop\n"
-    "lui $v0,%hi(D_8017F356)\n"
-    "lh $v0,%lo(D_8017F356)($v0)\n"
+    "lui $v0,%hi(D_801853BE)\n"
+    "lh $v0,%lo(D_801853BE)($v0)\n"
     "nop\n"
     "addu $v1,$v0,$zero\n"
     "slt $v0,$v0,$a0\n"
     "nop\n"
     "sh $a1,0x10($sp)\n"
     ".L8013B3BC:\n"
-    "lui $v0,%hi(D_8017F350)\n"
-    "lh $v0,%lo(D_8017F350)($v0)\n"
+    "lui $v0,%hi(D_801853B8)\n"
+    "lh $v0,%lo(D_801853B8)($v0)\n"
     "nop\n"
     "addu $v1,$v0,$zero\n"
     "slt $v0,$a0,$v0\n"
     "nop\n"
     "sh $a1,0x10($sp)\n"
     ".L8013B3E0:\n"
-    "lui $v0,%hi(D_8017F35A)\n"
-    "lh $v0,%lo(D_8017F35A)($v0)\n"
+    "lui $v0,%hi(D_801853C2)\n"
+    "lh $v0,%lo(D_801853C2)($v0)\n"
     "nop\n"
     "addu $v1,$v0,$zero\n"
     "slt $v0,$v0,$a0\n"

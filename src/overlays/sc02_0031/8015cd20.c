@@ -1,12 +1,12 @@
-/* SC02.CD FILE_031 / ov_SC02_031 retail span [8015CD20,8015CF24).
- * Offset 0x34BC8 at overlay base 80128158. SHA256(span)=398da0737cee3316abeaa039a56bba0642f7c62b555e67827e41ee81c14f9898.
- * Same shape as the registry-verified MAIN member 0012 carve with only the
- * listed data references retargeted for this member: D_801809D0->D_80181258; D_80180A1C->D_801812A4; D_80180BC0->D_80181448; D_80180BD0->D_80181458.
- * Oracle MATCH re-earned on this file; Not MAIN10.
+/* SC02 resident retail span [8015CD20,8015CF24). Offset 0x34BC8 at base 80128158.
+ * SHA256(span)=9d27d56ee5198a1156a140ba6b945c53f758793787370915d17b103c246af654.
+ * Words are the guest's loaded image (artifacts/sc02-resident-20260910).
+ * Member-0012 C shape retargeted to this member: D_801809D0->D_801872C0; D_80180A1C->D_8018730C; D_80180BC0->D_801874B0; D_80180BD0->D_801874C0.
+ * Oracle MATCH re-earned against the resident image; Not MAIN10.
  */
 #include "psx_types.h"
 typedef void (*CB)();
-extern CB D_801812A4[];
+extern CB D_8018730C[];
 void func_80149FB0();
 s32 func_801496D4();
 void func_80149724();
@@ -25,9 +25,9 @@ s32 func_8014E434();
 void func_80147078();
 void func_80159B70();
 void func_801725E0();
-extern s32 D_80181258;
-extern s32 D_80181448;
-extern s32 D_80181458;
+extern s32 D_801872C0;
+extern s32 D_801874B0;
+extern s32 D_801874C0;
 typedef struct Inner { u8 pad[0x12]; u16 u12; } Inner;
 typedef struct {
     u16 idx;
@@ -40,11 +40,11 @@ void func_8015CD20(T *p) {
     Inner *in;
     func_80149FB0(p);
     if (func_801496D4(p)) {
-        D_801812A4[p->idx](p);
+        D_8018730C[p->idx](p);
         p->u1BC = 0xA;
         func_80149724(p);
         if (func_80148AFC(p) & 0xFF) {
-            func_80146DB8(p, &D_80181258);
+            func_80146DB8(p, &D_801872C0);
         } else {
             func_80146D90(p);
         }
@@ -52,7 +52,7 @@ void func_8015CD20(T *p) {
     }
     if (p->u234 == 0) {
         if (func_80148980(p)) {
-            func_80146DB8(p, &D_80181448);
+            func_80146DB8(p, &D_801874B0);
             func_80147A84(p);
             func_801473EC(p);
             func_80154150(p, 0x15);
@@ -60,7 +60,7 @@ void func_8015CD20(T *p) {
             in->u12 = (in->u12 - 0xAA) & 0xFFF;
         } else {
             if (func_8014891C(p)) {
-                func_80146DB8(p, &D_80181458);
+                func_80146DB8(p, &D_801874C0);
                 func_80147A84(p);
                 func_801473EC(p);
                 func_80154150(p, 0x14);
@@ -79,7 +79,7 @@ void func_8015CD20(T *p) {
     }
     func_8014FA04(p);
     if (func_8014E434(p) == 0) {
-        D_801812A4[p->idx](p);
+        D_8018730C[p->idx](p);
         func_80147078(p, 0);
         func_80159B70(p);
     } else {

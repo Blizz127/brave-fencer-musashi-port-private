@@ -1,8 +1,8 @@
-/* SC02.CD FILE_031 / ov_SC02_031 retail span [8013CABC,8013CAE8).
- * Offset 0x14964 at overlay base 80128158. SHA256(span)=f1f374dc930c5bb554f801b8f2caf32a147c77178c36c129afc6854a91c66959.
- * Same shape as the registry-verified MAIN member 0012 carve with only the
- * listed data references retargeted for this member: D_801841B0->D_801A44D8; D_801841B4->D_801A44DC; D_801841BC->D_801A44E4; D_801841C0->D_801A44E8.
- * Oracle MATCH re-earned on this file; Not MAIN10.
+/* SC02 resident retail span [8013CABC,8013CAE8). Offset 0x14964 at base 80128158.
+ * SHA256(span)=a8edc992c30c6cf4a78a0202e7e5193ea62267d348781cd856a52415f68e0736.
+ * Words are the guest's loaded image (artifacts/sc02-resident-20260910).
+ * Member-0012 C shape retargeted to this member: D_801841B0->D_801B6368; D_801841B4->D_801B636C; D_801841BC->D_801B6374; D_801841C0->D_801B6378.
+ * Oracle MATCH re-earned against the resident image; Not MAIN10.
  */
 #include "psx_types.h"
 
@@ -11,15 +11,15 @@
  * whatever reproduces the bytes; they are not evidence of the
  * original declaration. */
 
-extern s32 D_801A44D8;
-extern s32 D_801A44DC;
-extern s32 D_801A44E4;
-extern s32 D_801A44E8;
+extern s32 D_801B6368;
+extern s32 D_801B636C;
+extern s32 D_801B6374;
+extern s32 D_801B6378;
 
 void func_8013CABC(void) {
-    D_801A44E4 = 1;
-    D_801A44D8 = 1;
-    D_801A44DC = 0;
-    D_801A44E8 = 1;
+    D_801B6374 = 1;
+    D_801B6368 = 1;
+    D_801B636C = 0;
+    D_801B6378 = 1;
 }
 

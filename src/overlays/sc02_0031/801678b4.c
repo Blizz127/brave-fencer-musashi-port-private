@@ -1,8 +1,8 @@
-/* SC02.CD FILE_031 / ov_SC02_031 retail span [801678B4,801678F0).
- * Offset 0x3F75C at overlay base 80128158. SHA256(span)=c02a62740822db7cfa93397ac2341a99d7dc0aac0dea0f17444b8612115479e3.
- * Differs from the registry-verified MAIN member 0012 carve in exactly one
- * data reference: D_80181350 here is D_80181BD8 (+0x888 member
- * data-block shift). Oracle MATCH re-earned on this file; Not MAIN10.
+/* SC02 resident retail span [801678B4,801678F0). Offset 0x3F75C at base 80128158.
+ * SHA256(span)=985cb340bb0f64bf71a0666c8eaaf234dd3ab7d1fd86042b9579cc6fec48b34f.
+ * Words are the guest's loaded image (artifacts/sc02-resident-20260910).
+ * Member-0012 C shape retargeted to this member: D_80181350->D_80187C40.
+ * Oracle MATCH re-earned against the resident image; Not MAIN10.
  */
 /* Decompiled by m2c from main.s, then verified byte-exact
  * against retail by tools/match_function.py. Types and signatures are
@@ -11,8 +11,8 @@
 
 #include "psx_types.h"
 typedef void (*CB)();
-extern CB D_80181BD8[];
+extern CB D_80187C40[];
 typedef struct { u8 pad[2]; u16 idx; } T;
 void func_801678B4(T *p) {
-    D_80181BD8[p->idx](p);
+    D_80187C40[p->idx](p);
 }

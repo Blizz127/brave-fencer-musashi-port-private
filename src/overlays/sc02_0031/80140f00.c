@@ -1,8 +1,8 @@
-/* SC02.CD FILE_031 / ov_SC02_031 retail span [80140F00,80141100).
- * Offset 0x18DA8 at overlay base 80128158. SHA256(span)=fc85b30d2e57e849a2a920c037aa8ce724a6cc89e1878071621d9b049ab9a1e5.
- * Same shape as the registry-verified MAIN member 0012 carve with only the
- * listed data references retargeted for this member: D_8017F324->D_8017FBAC; D_8017F344->D_8017FBCC; D_8017F348->D_8017FBD0; D_8017F34C->D_8017FBD4; D_8017F350->D_8017FBD8; D_8017F354->D_8017FBDC.
- * Oracle MATCH re-earned on this file; Not MAIN10.
+/* SC02 resident retail span [80140F00,80141100). Offset 0x18DA8 at base 80128158.
+ * SHA256(span)=33f32e7363865405f2c00a946bda10a7a4ae409f1357918b16cf6e22af753761.
+ * Words are the guest's loaded image (artifacts/sc02-resident-20260910).
+ * Member-0012 C shape retargeted to this member: D_8017F324->D_80185C14; D_8017F344->D_80185C34; D_8017F348->D_80185C38; D_8017F34C->D_80185C3C; D_8017F350->D_80185C40; D_8017F354->D_80185C44.
+ * Oracle MATCH re-earned against the resident image; Not MAIN10.
  */
 #include "psx_types.h"
 
@@ -25,12 +25,12 @@ s32 func_8002AAB4();                                /* extern */
 void func_8005C540(s32, s32);                          /* extern */
 s32 func_800D2CA8(s32, s32);                          /* extern */
 void func_800D2D10(s32, s32, s32, s32);                    /* extern */
-extern s32 D_8017FBAC;
-extern s32 D_8017FBCC;
-extern s32 D_8017FBD0;
-extern s32 D_8017FBD4;
-extern s32 D_8017FBD8;
-extern s32 D_8017FBDC;
+extern s32 D_80185C14;
+extern s32 D_80185C34;
+extern s32 D_80185C38;
+extern s32 D_80185C3C;
+extern s32 D_80185C40;
+extern s32 D_80185C44;
 extern s16 D_80115128;
 
 void func_80140F00(void) {
@@ -42,22 +42,22 @@ void func_80140F00(void) {
     s32 temp_s0_6;
 
     if (D_80115128 == 0) {
-        temp_s0 = D_8017FBAC;
+        temp_s0 = D_80185C14;
         func_800D2D10(func_800D2CA8(func_80029FE4() + 1, 0x18), 2, temp_s0 + 4, 1);
         func_8005C540(temp_s0 + 0xA, func_8002AAB4());
-        temp_s0_2 = D_8017FBCC;
+        temp_s0_2 = D_80185C34;
         func_800D2D10(func_800D2CA8(func_8002A26C() + 1, 0x18), 2, temp_s0_2 + 0x12, 1);
         func_800D2D10(func_800D2CA8(func_8002A2B0(), 0x18), 2, temp_s0_2 + 0x22, -1);
-        temp_s0_3 = D_8017FBD0;
+        temp_s0_3 = D_80185C38;
         func_800D2D10(func_800D2CA8(func_8002A4B8() + 1, 0x18), 2, temp_s0_3 + 0x12, 1);
         func_800D2D10(func_800D2CA8(func_8002A4FC(), 0x18), 2, temp_s0_3 + 0x22, -1);
-        temp_s0_4 = D_8017FBD4;
+        temp_s0_4 = D_80185C3C;
         func_800D2D10(func_800D2CA8(func_8002A998() + 1, 0x18), 2, temp_s0_4 + 0x12, 1);
         func_800D2D10(func_800D2CA8(func_8002A9DC(), 0x18), 2, temp_s0_4 + 0x22, -1);
-        temp_s0_5 = D_8017FBD8;
+        temp_s0_5 = D_80185C40;
         func_800D2D10(func_800D2CA8(func_8002A728() + 1, 0x18), 2, temp_s0_5 + 0x12, 1);
         func_800D2D10(func_800D2CA8(func_8002A76C(), 0x18), 2, temp_s0_5 + 0x22, -1);
-        temp_s0_6 = D_8017FBDC;
+        temp_s0_6 = D_80185C44;
         func_800D2D10(func_800D2CA8(func_80029FD4(), 4), 7, temp_s0_6 + 0x18, -1);
     }
 }

@@ -1,8 +1,8 @@
-/* SC02.CD FILE_031 / ov_SC02_031 retail span [8012FCC4,8012FDA8).
- * Offset 0x7B6C at overlay base 80128158. SHA256(span)=533badf469ab7e113edfc71cc87bb2bd235f1c026ae4c5038d95b82518cf6f19.
- * Differs from the registry-verified MAIN member 0012 carve in exactly one
- * data reference: D_8017E708 here is D_8017EF90 (+0x888 member
- * data-block shift). Oracle MATCH re-earned on this file; Not MAIN10.
+/* SC02 resident retail span [8012FCC4,8012FDA8). Offset 0x7B6C at base 80128158.
+ * SHA256(span)=bce7adfee381af77492c6c6d2c5719721ec4d7d5c1333b331b7e12eb21ae277f.
+ * Words are the guest's loaded image (artifacts/sc02-resident-20260910).
+ * Member-0012 C shape retargeted to this member: D_8017E708->D_80184FF8.
+ * Oracle MATCH re-earned against the resident image; Not MAIN10.
  */
 #include "psx_types.h"
 void func_80131E00();
@@ -10,7 +10,7 @@ void func_80131B14();
 s32 func_80131A34();
 void func_8012B14C();
 void func_80131CA8();
-extern s32 D_8017EF90;
+extern s32 D_80184FF8;
 typedef struct {
     u8 pad[0x1C]; s32 u1C;
     u8 pad20[0x56]; s16 u76;
@@ -45,7 +45,7 @@ void func_8012FCC4(T *p) {
         p->u98 = 0;
         p->uC2 = 1;
     }
-    func_8012B14C(p, &D_8017EF90);
+    func_8012B14C(p, &D_80184FF8);
     p->u1C = 0;
     func_80131CA8(p, 0x1C);
 }
