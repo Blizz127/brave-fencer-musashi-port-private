@@ -1,3 +1,7 @@
+/* Main-exec range [80012FC8,80013028) from the SLUS executable.
+ * SHA256(span)=cf4ddf052e199ef47d268db0d55cf17fd5b86a58a9021af25932350820dfe06b.
+ * Word export only: the native seam executes the retail instruction
+ * stream itself; this is not a C match claim. */
 /* Decompiled by m2c from main.s, then verified byte-exact
  * against retail by tools/match_function.py. Types and signatures are
  * whatever reproduces the bytes; they are not evidence of the
