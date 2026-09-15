@@ -13,7 +13,7 @@
 
 extern s32 D_8006B0E0;
 extern s32 D_8006B548;
-extern s32 D_8006B584;
+extern volatile s32 D_8006B584;
 extern s32 D_8006B588;
 void func_8003B14C();                                 /* static */
 void func_8005CE88(s32);                               /* static */
