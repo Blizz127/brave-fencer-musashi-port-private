@@ -1,3 +1,7 @@
+/* Main-exec range [800429DC,80042B30) from the SLUS executable.
+ * SHA256(span)=c4f2aaefb7fdbbaf4b2a1f16ec122758ce2f73d085a9dcb13314c000a6b77468.
+ * Word export for the native seam; the body below is kept
+ * byte-identical (wrap only, no rewrite). */
 #include "psx_types.h"
 /* Byte-exact callback registration, including the 80042A40 fall-through.
  * One control-flow body; native operations use guest address words.

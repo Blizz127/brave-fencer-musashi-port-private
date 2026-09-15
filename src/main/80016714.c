@@ -1,3 +1,7 @@
+/* Main-exec range [80016714,800167B8) from the SLUS executable.
+ * SHA256(span)=58996412878b336abbb2eb32b4501a76201ed20b3c60b76bdca4c3bc60d419ca.
+ * Word export for the native seam; the body below is kept
+ * byte-identical (wrap only, no rewrite). */
 #include "psx_types.h"
 
 #ifdef MUSASHI_NATIVE_MEMSET_BINDING

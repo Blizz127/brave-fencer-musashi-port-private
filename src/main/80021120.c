@@ -1,3 +1,7 @@
+/* Main-exec range [80021120,80021174) from the SLUS executable.
+ * SHA256(span)=0ace3265e3010f4b4d9f630788d8d2a718878d50d32175b6fe7b96531c402be5.
+ * Word export for the native seam; the C body below keeps its
+ * own oracle match claim. */
 #include "psx_types.h"
 
 /* Decompiled by m2c from main.s, then verified byte-exact

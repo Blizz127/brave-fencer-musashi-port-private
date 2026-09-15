@@ -1,3 +1,7 @@
+/* Main-exec range [8005CDD4,8005CE10) from the SLUS executable.
+ * SHA256(span)=462aefcefbdfb2be0b9b3f695de3a11dc6af6f48163c792ceea2d1ec9334800c.
+ * Word export for the native seam; the body below is kept
+ * byte-identical (wrap only, no rewrite). */
 #include "psx_types.h"
 
 /* Retail saved-context restore: 48-byte PS1 register record.

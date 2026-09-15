@@ -1,3 +1,7 @@
+/* Main-exec range [8005CF58,8005CF64) from the SLUS executable.
+ * SHA256(span)=5679de6d872f74c1cf6e01a3593fcbf41172e1f626c0c21341d455839067f641.
+ * Word export for the native seam; the body below is kept
+ * byte-identical (wrap only, no rewrite). */
 #include "psx_types.h"
 
 /* BIOS vector boundary called by 800429DC for indices zero/four/five/six.

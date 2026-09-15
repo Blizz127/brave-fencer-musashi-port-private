@@ -1,13 +1,36 @@
+/* Exact retail word export for [80045290,80045374); EXE and assembly verified. */
+/* Verified byte-exact against retail by tools/match_function.py
+ * (57/57 words at 0x80045290). Types and signatures are whatever
+ * reproduces the bytes; they are not evidence of the original
+ * declaration. */
 #include "psx_types.h"
 
-/* Exact CD IRQ handler [80045290,80045374), 57 retail words. */
-__asm__(
-    ".set noreorder\n"
-    ".globl func_80045290\n"
-    ".type func_80045290, @function\n"
-    "func_80045290:\n"
-    ".size func_80045290, .-func_80045290\n"
-    ".set reorder\n"
-);
+s32 func_80043B9C(void);
+extern u8 *D_8006CF4C;
+extern u8 D_8006CF64[];
+extern void (*D_8006CC84)(s32, u8 *);
+extern void (*D_8006CC88)(s32, u8 *);
+extern u8 D_800763D8[];
+extern u8 D_800763E0[];
 
+void func_80045290(void) {
+    u8 saved;
+    s32 r;
+    u8 *hi = &D_8006CF64[1];
+    u8 *lo = &D_8006CF64[0];
 
+    saved = *D_8006CF4C & 3;
+    while ((r = func_80043B9C()) != 0) {
+        if (r & 4) {
+            if (D_8006CC88 != 0) {
+                D_8006CC88(*hi, D_800763E0);
+            }
+        }
+        if (r & 2) {
+            if (D_8006CC84 != 0) {
+                D_8006CC84(*lo, D_800763D8);
+            }
+        }
+    }
+    *D_8006CF4C = saved;
+}

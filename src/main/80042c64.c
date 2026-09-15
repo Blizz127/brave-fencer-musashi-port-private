@@ -1,3 +1,7 @@
+/* Main-exec range [80042C64,80042C90) from the SLUS executable.
+ * SHA256(span)=10a6fc24d646f22be8f184959bea92a50dba690615f6db08e6e1513d70c47e79.
+ * Word export for the native seam; the body below is kept
+ * byte-identical (wrap only, no rewrite). */
 #include "psx_types.h"
 
 /* Byte-exact callback-state clear [80042C64,80042C90). Count is words:

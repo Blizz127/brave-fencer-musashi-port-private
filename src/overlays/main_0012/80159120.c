@@ -1,0 +1,81 @@
+/* Overlay range [80159120,801592CC) from MAIN.CD member 0012.
+ * SHA256(span)=b4939548787246a85b100342e884caf80453ba9b38d0600043c30d54f745528d.
+ * Word export for the native seam; the body below is an
+ * UNVERIFIED draft, not an oracle match claim. */
+#include "psx_types.h"
+#include "m2c_macros.h"
+
+/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
+ * promotion requires an oracle MATCH (tools/match_function.py). Types
+ * and signatures are whatever the decompiler guessed; they are not
+ * evidence of the original declaration. */
+
+void func_80029504();                            /* extern */
+void func_800298BC(void *);                   /* extern */
+void func_8002992C();                     /* extern */
+s32 func_80029A94();                         /* extern */
+void func_800CF804();                            /* extern */
+void func_800CF818();                            /* extern */
+s32 func_8013767C(void *);                       /* static */
+void func_80139914(s32);                         /* static */
+s32 func_801399F0(s32);                             /* static */
+void func_801458E0();                            /* static */
+void func_801458E8();                            /* static */
+void func_80145A2C();                            /* static */
+void func_80146C98(void *, s32);             /* static */
+void func_80175454();                            /* static */
+extern s32 *D_80078E50;
+extern s32 D_80078E8C;
+extern s32 *D_80110C3C;
+extern s32 *D_80110D0C;
+
+void func_80159120(void *arg0) {
+    s32 var_a1;
+    s16 temp_v1_2;
+    s32 temp_s0;
+    s32 temp_v0;
+    void *temp_v1;
+
+    func_80029504();
+    temp_v1 = M2C_FIELD(arg0, void **, 0x20);
+    M2C_FIELD(temp_v1, u16 *, 0x12) = (u16) ((M2C_FIELD(temp_v1, u16 *, 0x12) + 0x16) & 0xFFF);
+    temp_v0 = func_801399F0(M2C_FIELD(arg0, s32 *, 0x198));
+    if (temp_v0 != 0) {
+        func_80139914(M2C_FIELD(arg0, s32 *, 0x198));
+        M2C_FIELD(arg0, s32 *, 0x198) = 0;
+        if ((temp_v0 == 1) || (temp_v0 != 2)) {
+            temp_v1_2 = M2C_FIELD(arg0, s16 *, 0x244);
+            if ((temp_v1_2 == 1) || (temp_v1_2 != 2)) {
+                if (func_80029A94(1) != 0) {
+                    func_80175454();
+                    func_801458E0();
+                    temp_s0 = D_80078E8C;
+                    func_800298BC(&D_80078E50);
+                    func_801458E8();
+                    D_80078E8C = temp_s0 / 2;
+                    goto block_11;
+                }
+                M2C_FIELD(arg0, s32 *, 0x198) = func_8013767C(&D_80110D0C);
+                var_a1 = 0xB;
+                goto block_13;
+            }
+            if (func_80029A94(0) == 0) {
+                M2C_FIELD(arg0, s32 *, 0x198) = func_8013767C(&D_80110D0C);
+                var_a1 = 0xB;
+                goto block_13;
+            }
+            func_80175454();
+            func_8002992C(0);
+            func_80145A2C();
+block_11:
+            func_80146C98(arg0, 0xC);
+            func_800CF804();
+            func_800CF818();
+            return;
+        }
+        M2C_FIELD(arg0, s32 *, 0x198) = func_8013767C(&D_80110C3C);
+        var_a1 = 9;
+block_13:
+        func_80146C98(arg0, var_a1);
+    }
+}

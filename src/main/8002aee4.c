@@ -1,3 +1,7 @@
+/* Main-exec range [8002AEE4,8002AEF8) from the SLUS executable.
+ * SHA256(span)=f6b8c020cc182011d0c9df210ead3d05091f5526a3fdcc0af162ef74828a39be.
+ * Word export for the native seam; the body below is kept
+ * byte-identical (wrap only, no rewrite). */
 #include "psx_types.h"
 
 /* Decompiled by m2c from main.s, then verified byte-exact

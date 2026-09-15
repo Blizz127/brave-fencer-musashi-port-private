@@ -1,3 +1,7 @@
+/* Main-exec range [8001C558,8001C5B8) from the SLUS executable.
+ * SHA256(span)=2eac06896c83c48400c9902d0f29ee71e126ae479cf56371ddaa3d49ac7a3b97.
+ * Word export for the native seam; the body below is kept
+ * byte-identical (wrap only, no rewrite). */
 /* Decompiled by m2c from main.s, then verified byte-exact
  * against retail by tools/match_function.py. Types and signatures are
  * whatever reproduces the bytes; they are not evidence of the

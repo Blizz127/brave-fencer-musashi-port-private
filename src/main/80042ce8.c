@@ -1,3 +1,7 @@
+/* Main-exec range [80042CE8,80042D60) from the SLUS executable.
+ * SHA256(span)=d3914404d3789d86214634224413c1cd38ef8ab774c079928e1f9690d5835be5.
+ * Word export for the native seam; the body below is kept
+ * byte-identical (wrap only, no rewrite). */
 /* Shared retail handler; native slot values remain guest address words. */
 #include "psx_types.h"
 #ifdef MUSASHI_NATIVE_CALLBACK_HANDLER

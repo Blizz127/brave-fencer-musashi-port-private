@@ -1,3 +1,7 @@
+/* Main-exec range [8005C1C0,8005C29C) from the SLUS executable.
+ * SHA256(span)=91f0896179fb6e990e4627fd58f183e3dfdfb979fbc1019b72b404dee4eced1c.
+ * Word export for the native seam; the body below is kept
+ * byte-identical (wrap only, no rewrite). */
 #include "psx_types.h"
 
 /* Byte-exact mode-zero device query [8005C1C0,8005C29C). The volatile

@@ -1,3 +1,7 @@
+/* Main-exec range [80059530,800595DC) from the SLUS executable.
+ * SHA256(span)=44c94812460d0b3103a7a86f63b84a70ef54168cc56523d2c80b2ceca8a2974e.
+ * Word export for the native seam; the body below is kept
+ * byte-identical (wrap only, no rewrite). */
 #include "psx_types.h"
 
 typedef struct {

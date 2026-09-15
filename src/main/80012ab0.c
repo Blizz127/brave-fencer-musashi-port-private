@@ -1,3 +1,7 @@
+/* Main-exec range [80012AB0,80012ABC) from the SLUS executable.
+ * SHA256(span)=5593c64c653c74ac86a845518bc03c4a704d295f02b317907fc04bc7faac4ed8.
+ * Word export for the native seam; the body below is kept
+ * byte-identical (wrap only, no rewrite). */
 /* Matched leaf functions from the main executable's first region.
  *
  * The filename is provisional. splat's trailing-nop analysis suggests original

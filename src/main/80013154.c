@@ -1,62 +1,43 @@
-/* Matched leaf functions from the main executable's first region.
- *
- * The filename is provisional and names the address the file starts at; it is
- * renamed once a real translation-unit boundary is identified.
- *
- * Types come from include/psx_types.h, which build_candidate.py places on the
- * search path by default.
- */
-
+/* Main-exec range [80013154,80013200) from the SLUS executable.
+ * SHA256(span)=6a1c53b25aab826244e312e62db9b42ec62c7925775749e713f50a19e4b80ed5.
+ * Word export for the native seam; the body below is kept
+ * byte-identical (wrap only, no rewrite). */
+/* Body below is an UNVERIFIED draft, not an oracle match
+ * claim; promotion requires tools/match_function.py MATCH. */
 #include "psx_types.h"
 
-/* Clamped step from one value toward another, at vram 0x80013154.
- *
- * Returns how far to move from arg0 toward arg1 given step size arg2, never
- * overshooting: when a full step would pass the target, the exact remaining
- * distance is returned instead. The step is negated when the target is below
- * the current value, so the caller passes an unsigned magnitude.
- *
- * The result is computed as a 16-bit quantity and widened on return, which is
- * why the comparisons are made on the truncated intermediate rather than on
- * the full 32-bit sum.
- *
- * Signatures and types here are the loosest that reproduce the bytes; they are
- * not evidence of the original declaration.
- */
-s32 func_80013154(s16 arg0, s16 arg1, s32 arg2) {
-    s32 step;
-    s32 descending;
-    s16 current;
-    s16 next;
-    s16 result;
+/* m2c draft from main.s: NOT verified against retail. C89-gated only;
+ * promotion requires an oracle MATCH (tools/match_function.py). Types
+ * and signatures are whatever the decompiler guessed; they are not
+ * evidence of the original declaration. */
 
-    /* Both the step and the current value are copied before the early exit.
-     * Collapsing either into its argument drops a register move and comes out
-     * short of retail. */
-    step = arg2;
-    current = arg0;
-    if (current == arg1) {
+s32 func_80013154(s16 arg0, s16 arg1, s32 arg2) {
+    s16 var_v0_2;
+    s32 temp_a3;
+    s32 var_t0;
+    s32 var_v0;
+
+    var_t0 = arg2;
+    if (arg0 == arg1) {
         return 0;
     }
-
-    descending = arg1 < current;
-    next = current + step;
-    if (descending != 0) {
-        step = -arg2;
-        next = current + step;
+    temp_a3 = arg1 < arg0;
+    var_v0_2 = arg0 + var_t0;
+    if (temp_a3 != 0) {
+        var_t0 = -arg2;
+        var_v0_2 = arg0 + var_t0;
     }
-
-    if ((next >= arg1) && (descending == 0)) {
-        result = arg1 - current;
+    if ((var_v0_2 >= arg1) && (temp_a3 == 0)) {
+        var_v0 = (arg1 - arg0) << 0x10;
     } else {
-        result = step;
-        if (arg1 >= next) {
-            if (current >= arg1) {
-                result = arg1 - current;
+        var_v0 = var_t0 << 0x10;
+        if (arg1 >= var_v0_2) {
+            if (arg0 >= arg1) {
+                var_v0 = (arg1 - arg0) << 0x10;
             } else {
-                result = step;
+                var_v0 = var_t0 << 0x10;
             }
         }
     }
-    return result;
+    return var_v0 >> 0x10;
 }

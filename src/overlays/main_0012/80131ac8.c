@@ -1,0 +1,25 @@
+/* Overlay range [80131AC8,80131B14) from MAIN.CD member 0012.
+ * SHA256(span)=9a02b0139d62b758bcb5954beadfe0b355a740e07ce4ee012330f26116be131f.
+ * Word export for the native seam; the body below is an
+ * UNVERIFIED draft, not an oracle match claim. */
+#include "psx_types.h"
+#include "m2c_macros.h"
+
+/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
+ * promotion requires an oracle MATCH (tools/match_function.py). Types
+ * and signatures are whatever the decompiler guessed; they are not
+ * evidence of the original declaration. */
+
+void func_8002D4C8(s32, s32);                /* extern */
+s32 func_80131CF4(s32);                             /* static */
+
+s32 func_80131AC8(void *arg0) {
+    s32 temp_s0;
+
+    temp_s0 = func_80131CF4(M2C_FIELD(arg0, s32 *, 0xBC)) & 0xFFFF;
+    if (temp_s0 == 0) {
+        return 0;
+    }
+    func_8002D4C8(temp_s0, 0);
+    return temp_s0;
+}

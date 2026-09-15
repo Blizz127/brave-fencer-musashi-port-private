@@ -1,3 +1,7 @@
+/* Main-exec range [800425B0,800425E0) from the SLUS executable.
+ * SHA256(span)=bbf8602f754b9d7659b34dc66ce96bf1554001c6c154b6d38fc0d290d67340ae.
+ * Word export for the native seam; the body below is kept
+ * byte-identical (wrap only, no rewrite). */
 /* Byte-exact table dispatch, with guest-width views for the native binding. */
 #include "psx_types.h"
 #ifdef MUSASHI_NATIVE_CALLBACK_DISPATCH

@@ -1,3 +1,7 @@
+/* Main-exec range [80014128,80014148) from the SLUS executable.
+ * SHA256(span)=6cc04f7fe3524317e0683572a364308e1a2a221181fd81449a5fd12bcb949bfc.
+ * Word export for the native seam; the body below is kept
+ * byte-identical (wrap only, no rewrite). */
 /* Matched leaf functions from the main executable's first region.
  *
  * The filename is provisional and names the address the file starts at; it is

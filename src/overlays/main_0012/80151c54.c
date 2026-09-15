@@ -1,0 +1,47 @@
+/* Overlay range [80151C54,80151D24) from MAIN.CD member 0012.
+ * SHA256(span)=a24fe564318f19429ab832edda13b2e958c6e73ee9a1111554218a7e143c84b0.
+ * Word export for the native seam; the body below is an
+ * UNVERIFIED draft, not an oracle match claim. */
+#include "psx_types.h"
+#include "m2c_macros.h"
+
+/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
+ * promotion requires an oracle MATCH (tools/match_function.py). Types
+ * and signatures are whatever the decompiler guessed; they are not
+ * evidence of the original declaration. */
+
+void func_801470AC(void *);                      /* static */
+void func_801472B4(void *);                      /* static */
+void func_801477E8(void *, s32);             /* static */
+void func_8014BC44(void *, s16);                 /* static */
+void func_8014BD60(s16);                         /* static */
+void func_80153C18(void *);                      /* static */
+void func_80154A74(void *, s32);             /* static */
+void func_801553C0(void *);                      /* static */
+
+void func_80151C54(void *arg0) {
+    u8 temp_v1;
+
+    temp_v1 = M2C_FIELD(arg0, u8 *, 0xDD);
+    if ((temp_v1 != 1) && (temp_v1 == 0x11)) {
+        func_8014BD60(M2C_FIELD(arg0, s16 *, 0xF2));
+    } else {
+        func_8014BC44(arg0, M2C_FIELD(arg0, s16 *, 0xF2));
+    }
+    M2C_FIELD(arg0, s8 *, 0xA8) = 0x20;
+    func_80154A74(arg0, 0x11);
+    func_801553C0(arg0);
+    func_801470AC(arg0);
+    func_801472B4(arg0);
+    M2C_FIELD(arg0, s16 *, 0x3E) = 0;
+    M2C_FIELD(arg0, s16 *, 0x40) = 0;
+    M2C_FIELD(arg0, s16 *, 0x42) = 0;
+    M2C_FIELD(arg0, u8 *, 0xDD) = 0U;
+    M2C_FIELD(arg0, u16 *, 0x3C) = (u16) (M2C_FIELD(arg0, u16 *, 0x3C) & 0xFFFE);
+    M2C_FIELD(M2C_FIELD(arg0, void **, 0x20), s16 *, 0x10) = 0;
+    M2C_FIELD(arg0, s16 *, 0x60) = 0x1000;
+    M2C_FIELD(arg0, s16 *, 0x62) = 0x1000;
+    M2C_FIELD(arg0, s16 *, 0x64) = 0x1000;
+    func_801477E8(arg0, 0);
+    func_80153C18(arg0);
+}

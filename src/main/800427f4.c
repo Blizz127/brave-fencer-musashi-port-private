@@ -1,3 +1,7 @@
+/* Main-exec range [800427F4,800429DC) from the SLUS executable.
+ * SHA256(span)=e1f304577ce848c1c73e8aaec2233fa0a27d69a69339585ab9778f1c468ff9fe.
+ * Word export for the native seam; the body below is kept
+ * byte-identical (wrap only, no rewrite). */
 #include "psx_types.h"
 /* Byte-exact interrupt dispatcher with shared native dispatch control flow.
  * Empty tied operands preserve retail register allocation and load order.

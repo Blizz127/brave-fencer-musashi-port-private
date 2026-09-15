@@ -1,3 +1,7 @@
+/* Main-exec range [80057E80,80057FFC) from the SLUS executable.
+ * SHA256(span)=8240a0a316a9c70c0e7f143e5ab6e0d75be0f023ca2527c8d0474d80a054c4d7.
+ * Word export for the native seam; the body below is kept
+ * byte-identical (wrap only, no rewrite). */
 #include "psx_types.h"
 
 /* GTE/cop2 mnemonic overlay: ordinary C cannot emit coprocessor ops.

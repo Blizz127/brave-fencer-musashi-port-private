@@ -1,12 +1,13 @@
+/* Exact retail word export for [8005EA34,8005EA54); EXE and assembly verified. */
+/* Verified byte-exact against retail by tools/match_function.py
+ * (8/8 words at 0x8005EA34). Types and signatures are whatever
+ * reproduces the bytes; they are not evidence of the original
+ * declaration. */
 #include "psx_types.h"
 
-/* Exact bounded controller export [8005EA34,8005EA54), 8 retail words. */
-__asm__(
-    ".set noreorder\n"
-    ".globl func_8005EA34\n"
-    ".type func_8005EA34, @function\n"
-    "func_8005EA34:\n"
-    ".size func_8005EA34, .-func_8005EA34\n"
-    ".set reorder\n"
-);
-
+void func_8005EA34(u8 *p, s32 arg) {
+    p[0x36] = 0x43;
+    *(u8 **) (p + 0x2C) = p + 0x24;
+    p[0x24] = arg;
+    p[0x35] = 1;
+}

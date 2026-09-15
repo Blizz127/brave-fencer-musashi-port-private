@@ -1,3 +1,7 @@
+/* Main-exec range [8005CED8,8005CEE4) from the SLUS executable.
+ * SHA256(span)=6403f02e44574f9166b7e8b8d3cb89a7a05b124c57f6427b05647750b30f0d1f.
+ * Word export for the native seam; the body below is kept
+ * byte-identical (wrap only, no rewrite). */
 #include "psx_types.h"
 
 /* Retail B0:17 service thunk. Retail observation shows 800427F4 reaches this

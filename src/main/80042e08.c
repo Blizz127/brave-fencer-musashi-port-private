@@ -1,3 +1,7 @@
+/* Main-exec range [80042E08,80042F8C) from the SLUS executable.
+ * SHA256(span)=5488901836814ec7c85658db64f5d82c91f92e32af5b134b9bb4ce17af75c9a9.
+ * Word export for the native seam; the body below is kept
+ * byte-identical (wrap only, no rewrite). */
 #include "psx_types.h"
 
 /* Byte-exact PS1 handler. Register writes are bus values; ordinary host

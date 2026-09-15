@@ -1,3 +1,7 @@
+/* Main-exec range [8005BD7C,8005BED8) from the SLUS executable.
+ * SHA256(span)=fad24fce39d9d32322c6436d1282cdd6067196c3711afea0e6bd1ae1f5e104d9.
+ * Word export for the native seam; the body below is kept
+ * byte-identical (wrap only, no rewrite). */
 #include "psx_types.h"
 
 /* One reset body for retail and native builds. Only memory/device accesses
