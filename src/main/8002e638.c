@@ -1,16 +1,15 @@
 /* Exact retail word export for [8002E638,8002E700); EXE and assembly verified. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
 #include "psx_types.h"
+#include "m2c_macros.h"
 
 /* m2c draft from main.s: NOT verified against retail. C89-gated only;
  * promotion requires an oracle MATCH (tools/match_function.py). Types
  * and signatures are whatever the decompiler guessed; they are not
  * evidence of the original declaration. */
 
-extern s32 D_8006A99C;
+extern s32 D_8006A99C[];
 extern s32 D_8006AEEC;
-void func_8002E700(s32);                               /* static */
+void func_8002E700(s32);                         /* static */
 s32 func_8003836C(s16);                             /* static */
 extern s32 D_80078F10;
 extern s32 D_800A46B4;

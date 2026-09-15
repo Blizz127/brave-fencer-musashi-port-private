@@ -1,14 +1,13 @@
 /* Exact retail word export [80046BFC,80046C38); verified against pinned EXE and asm. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
 #include "psx_types.h"
+#include "m2c_macros.h"
 
 /* m2c draft from main.s: NOT verified against retail. C89-gated only;
  * promotion requires an oracle MATCH (tools/match_function.py). Types
  * and signatures are whatever the decompiler guessed; they are not
  * evidence of the original declaration. */
 
-extern s32 D_800C7C94;
+extern s32 D_800C7C94[];
 
 void func_80046BFC(s32 arg0, u32 arg1) {
     s32 temp_v0;

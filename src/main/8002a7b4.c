@@ -2,21 +2,20 @@
  * SHA256(span)=590cef177746254b28902f75022efff36ed302c753ee0466c344cebe2e296661.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
 #include "psx_types.h"
+#include "m2c_macros.h"
 
 /* m2c draft from main.s: NOT verified against retail. C89-gated only;
  * promotion requires an oracle MATCH (tools/match_function.py). Types
  * and signatures are whatever the decompiler guessed; they are not
  * evidence of the original declaration. */
 
-void func_8016E918(s32, s16);                            /* extern */
-extern s32 D_80063906;
+void func_8016E918(s32, s16);                /* extern */
+extern s32 D_80063906[];
 s32 func_8002A834();                                /* static */
 s32 func_8002A998();                                /* static */
-void func_8002AAAC();                                  /* static */
-void func_8002D4C8(s32, s32);                              /* static */
+void func_8002AAAC();                            /* static */
+void func_8002D4C8(s32, s32);            /* static */
 
 s32 func_8002A7B4(void) {
     s32 temp_v0;

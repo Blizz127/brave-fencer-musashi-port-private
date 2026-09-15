@@ -2,9 +2,8 @@
  * SHA256(span)=987b57a99c44db5041a78875480632fa97931d199b34a7c086f5b79c3aae54aa.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
 #include "psx_types.h"
+#include "m2c_macros.h"
 
 /* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
  * promotion requires an oracle MATCH (tools/match_function.py). Types
@@ -14,7 +13,7 @@
 u32 func_80029504(s32);                             /* extern */
 extern s32 D_8017F6FA;
 extern s32 D_8017F720;
-void func_8013E83C();                                  /* static */
+void func_8013E83C();                            /* static */
 extern u8 D_80078EC0;
 extern s16 D_800B9A08;
 extern s32 *D_80115110;
@@ -60,8 +59,8 @@ void func_8013E6AC(void) {
                 temp_v1_2 = var_a3_2 + 1;
                 var_a3_2 = temp_v1_2;
                 temp_a1 = var_a1 >> 0xE;
-                temp_v0_2 = (s32) (*(temp_a1 + D_8017F720) * 3) >> 2;
-                (temp_a1 + &D_80115110)->unk58 = temp_v0_2;
+                temp_v0_2 = (s32) (*(s32 *) (temp_a1 + D_8017F720) * 3) >> 2;
+                M2C_FIELD((temp_a1 + &D_80115110), s32 *, 0x58) = temp_v0_2;
                 *(&D_80115188 + temp_a1) = temp_v0_2;
                 var_a1 = var_a3_2 << 0x10;
             } while (temp_v1_2 < 5);

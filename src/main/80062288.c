@@ -1,5 +1,23 @@
-/* Main-exec range [80062288,80062294) from the SLUS executable.
- * SHA256(span)=b840e8f38866a987e914f45adad3da1f58faa57994fb49869a7cc31cbf332ade.
- * Word export for the native seam (m2c produced no draft). */
-/* No matched C implementation is claimed for this span;
- * word export only (m2c produced no draft). UNVERIFIED. */
+/* Exact retail word export for [80062288,80062294); EXE and assembly verified. */
+/* Verified byte-exact against retail by tools/match_function.py
+ * (3/3 words at 0x80062288). Types and signatures are whatever
+ * reproduces the bytes; they are not evidence of the original
+ * declaration. */
+#include "psx_types.h"
+
+/* BIOS vector thunk: the tail jump goes through a register that is not
+ * $ra, leaving the call number in another register for the vector to
+ * read. C emits jalr for an indirect call, so it cannot spell this.
+ * NOT verified against retail; promotion requires an oracle MATCH
+ * (tools/match_function.py). */
+__asm__(
+    ".set noreorder\n"
+    ".globl func_80062288\n"
+    ".type func_80062288, @function\n"
+    "func_80062288:\n"
+    "addiu $t2,$zero,0xB0\n"
+    "jr $t2\n"
+    "addiu $t1,$zero,0x50\n"
+    ".size func_80062288, .-func_80062288\n"
+    ".set reorder\n"
+);

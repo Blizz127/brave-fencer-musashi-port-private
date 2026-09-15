@@ -1,5 +1,9 @@
-/* Overlay range [801320D0,801320D8) from MAIN.CD member 0012.
- * SHA256(span)=6d64edf91449c1b17746c1ef18afa2eb25c70bdf1322ab3df5a2630993b7e2f1.
- * Word export for the native seam (m2c produced no draft). */
-/* No matched C implementation is claimed for this span;
- * word export only (m2c produced no draft). UNVERIFIED. */
+/* Exact retail word export for [801320D0,801320D8); EXE and assembly verified. */
+/* Verified byte-exact against retail by tools/match_function.py
+ * (2/2 words at 0x801320D0). Types and signatures are whatever
+ * reproduces the bytes; they are not evidence of the original
+ * declaration. */
+#include "psx_types.h"
+
+void func_801320D0(void) {
+}
