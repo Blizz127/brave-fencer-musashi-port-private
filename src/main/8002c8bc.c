@@ -1,23 +1,24 @@
 /* Exact retail word export for [8002C8BC,8002C8F4); EXE-verified. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* Decompiled by hand from main.s, then verified byte-exact
+ * against retail by tools/match_function.py. Types and signatures are
+ * whatever reproduces the bytes; they are not evidence of the
+ * original declaration. */
 
-extern s32 *D_800C5328;
-extern s32 *D_800C532A;
+extern u8 D_800C5328[];
+extern u8 D_800C532A[];
 
+/* Dual halfword-table fill: the `-1` lives in `$a0` across the loop
+ * (no call to clobber it) while the unsigned byte index walks in
+ * `$v1`; both base addresses recompute each iteration. */
 void func_8002C8BC(void) {
-    u32 var_v1;
+    s32 v = -1;
+    u32 i = 0;
 
-    var_v1 = 0;
     do {
-        *(&D_800C5328 + var_v1) = -1;
-        *(&D_800C532A + var_v1) = -1;
-        var_v1 += 4;
-    } while (var_v1 < 0x1E4U);
+        *(s16 *)(D_800C5328 + i) = v;
+        *(s16 *)(D_800C532A + i) = v;
+        i += 4;
+    } while (i < 0x1E4);
 }

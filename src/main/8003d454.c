@@ -2,19 +2,18 @@
  * SHA256(span)=494244cab1921cb0ac2a0271bc3d099b56d5a16226ceb0236f1d0674230fc30a.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Verified byte-exact against retail by tools/match_function.py
+ * (49/49 words at 0x8003D454). D_8006B8F5/D_8006B8F6 are bytes (lbu/sb),
+ * consistent with neighboring u8 D_8006B8F4 — m2c's s32 default was
+ * wrong for all four sites. Types and signatures are whatever
+ * reproduces the bytes; they are not evidence of the original
+ * declaration. */
 #include "psx_types.h"
-
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
 
 extern s32 D_8006B8E8;
 extern s32 D_8006B8F0;
-extern s32 D_8006B8F5;
-extern s32 D_8006B8F6;
+extern u8 D_8006B8F5;
+extern u8 D_8006B8F6;
 void func_800425B0(s32, s32);                            /* static */
 void func_80042610();                                 /* static */
 void func_8005CF08();                                  /* static */
