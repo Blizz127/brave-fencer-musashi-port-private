@@ -10,12 +10,17 @@ typedef struct {
     u8 f15;
 } S800D1984;
 
-extern s32 func_800D19DC(S800D1984 *arg0);
+extern s32 func_800D19DC(S800D1984 *);
 
 s32 func_800D1984(S800D1984 *arg0) {
     if (arg0->fn_0c() != 0) {
-        arg0->f14 = arg0->f14 + 1;
-        return func_800D19DC(arg0);
+        register S800D1984 *a0 __asm__("$4") = arg0;
+        u8 val = arg0->f14 + 1;
+        a0->f14 = val;
+        return func_800D19DC(a0);
     }
     return 0;
 }
+
+
+
