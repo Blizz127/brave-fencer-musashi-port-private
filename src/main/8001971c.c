@@ -1,121 +1,134 @@
 /* Exact retail word export for [8001971C,80019930); EXE-verified. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Verified byte-exact against retail by tools/match_function.py
+ * (133/133 words at 0x8001971C). */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+typedef struct {
+    u8 minute;
+    u8 second;
+    u8 sector;
+    u8 track;
+} CdlLOC;
 
-extern s32 D_80062C38;
-extern s32 D_80062C68;
-extern s32 D_80063058;
-extern s32 D_80063074;
+typedef struct {
+    CdlLOC pos;
+    u32 size;
+    char name[16];
+} CdlFILE;
+
+extern void func_80019990(void);
+extern s32 func_80045374(CdlFILE *fp, char *name);
+extern int func_8004239C(int mode);
+extern s32 func_80019A24(int *cdlFile, void *dest, s32 size, s32 mode);
+extern int func_80043B1C(CdlLOC *p);
+extern CdlLOC *func_80043A18(int i, CdlLOC *p);
+
+extern CdlFILE D_80063058;
+extern u8 D_80062C38;
+extern u8 D_80062C68;
 extern s32 D_800747D0;
 extern s32 D_800747D4;
+extern s32 D_80063074;
 extern s32 D_800747D8;
-void func_80019990();                                  /* static */
-s32 func_80019A24(s32 (*)(), s32, s32, s32);                /* static */
-void func_8004239C();                                 /* static */
-void func_80043A18(s32, void *, s32);                  /* static */
-s32 func_80043B1C(void *);                          /* static */
-s32 func_80045374(s32 (*)(), void *);                 /* static */
-extern s32 *D_800AE830;
-extern s32 *D_800AE834;
-extern s32 *D_80180000;
-extern s32 *D_80180004;
+extern u8 D_800AE830[];
+extern u8 D_800AE834;
+
+#define LIST_BUF 0x80180000
 
 void func_8001971C(void) {
-    s32 sp2C;
-    s32 sp28;
-    s32 sp20;
-    s32 (*var_a0)();
-    s32 *var_s1_2;
-    s32 *var_s6;
-    s32 temp_a0;
-    s32 temp_v0;
-    s32 temp_v0_2;
-    s32 temp_v0_3;
-    s32 var_a2;
-    s32 var_fp;
-    s32 var_s0;
-    s32 var_s1;
-    s32 var_s2;
-    s32 var_s3;
-    s32 var_s5;
-    s32 var_s5_3;
-    s32 var_s7;
-    s32 var_v1;
-    u32 var_s5_2;
-    void *var_s4;
+    CdlFILE *res;
+    register int tries __asm__("$21");
+    register u8 *pathBase __asm__("$18");
+    register char *nameBase __asm__("$19");
+    register int pathOff __asm__("$17");
+    int offCopy;
+    int dead[4];
+    register u32 pathN __asm__("$21");
+    int base;
+    int n;
+    int rdy;
+    int fileIdx;
+    int bufIdx;
+    register int j __asm__("$19");
+    register int outer __asm__("$21");
+    int locOff;
+    u8 *tbl;
+    u8 *lbv;
+    int dstOff;
+    int srcOff;
+    s32 *pCount;
+    s32 *pOff;
+    CdlLOC *p;
 
     func_80019990();
-    var_s5 = 0;
-loop_1:
-    temp_v0 = func_80045374(D_80063058, D_80063058 - 0x14);
-    var_s5 += 1;
-    if (temp_v0 == -1) {
-        if (var_s5 < 0x10) {
-            goto loop_1;
+    tries = 0;
+    do {
+        res = (CdlFILE *)func_80045374(&D_80063058, (char *)&D_80063058 - 0x14);
+        tries++;
+        if (res != (CdlFILE *)-1) {
+            break;
         }
-    }
-    var_s5_2 = 0;
-    var_s1 = 0;
-    D_800747D0 = (s32) (temp_v0 != 0);
+    } while (tries < 0x10);
+
+    pathN = 0;
+    pathBase = &D_80062C38;
+    nameBase = (char *)pathBase - 0x14;
+    pathOff = 0;
+    D_800747D0 = (res != (CdlFILE *)0);
     D_800747D4 = 1;
     D_80063074 = 0;
     D_800747D8 = 0;
     do {
-        var_a0 = var_s1 + D_80062C38;
-loop_5:
-        var_a0 = var_s1 + D_80062C38;
-        if ((u32) (func_80045374(var_a0, D_80062C38 - 0x14 + var_s1) + 1) < 2U) {
-            goto loop_5;
-        }
-        var_s5_2 += 1;
-        var_s1 += 0x30;
-    } while (var_s5_2 < 0x15U);
-loop_7:
-    var_fp = 0;
-    if (func_80019A24(D_80062C38, 0x80180000, 0xE40, 0) == 0) {
-        func_8004239C(0);
-        goto loop_7;
-    }
-    var_s7 = 0;
-    var_s5_3 = 0;
-    sp20 = 0;
-    var_s6 = &D_80180000;
+        offCopy = pathOff;
+        do {
+            res = (CdlFILE *)func_80045374((CdlFILE *)(&D_80062C38 + offCopy), nameBase + offCopy);
+        } while ((u32)((int)res + 1) < 2);
+        pathN++;
+        pathOff += 0x30;
+    } while (pathN < 0x15);
+
     do {
-        var_v1 = *var_s6;
-        var_s7 += 1;
-        var_s3 = 0;
-        var_a2 = func_80043B1C(sp20 + D_80062C68);
-        if (var_v1 > 0) {
-            temp_v0_2 = var_fp * 8;
-            var_s4 = temp_v0_2 + &D_800AE830;
-            var_s2 = temp_v0_2;
-            temp_v0_3 = var_s7 * 8;
-            var_s1_2 = temp_v0_3 + &D_80180000;
-            var_s0 = temp_v0_3;
-            do {
-                temp_a0 = *var_s1_2;
-                if (temp_a0 != 0) {
-                    sp28 = var_v1;
-                    sp2C = var_a2;
-                    func_80043A18(temp_a0 + var_a2, var_s4, var_a2);
-                    *(&D_800AE834 + var_s2) = *(var_s0 + &D_80180004);
-                }
-                var_s0 += 8;
-                var_s6 += 8;
-                var_s7 += 1;
-                var_s4 += 8;
-                var_s2 += 8;
-                var_s3 += 1;
-                var_fp += 1;
-            } while (var_s3 < var_v1);
+        rdy = func_80019A24((int *)&D_80062C38, (void *)LIST_BUF, 0xE40, 0);
+        if (rdy != 0) {
+            break;
         }
-        var_s5_3 += 1;
-        sp20 += 0x30;
-    } while (var_s5_3 < 8);
+        func_8004239C(0);
+    } while (1);
+
+    tbl = D_800AE830;
+    lbv = (u8 *)LIST_BUF;
+    fileIdx = 0;
+    bufIdx = 0;
+    outer = 0;
+    locOff = 0;
+    pCount = (s32 *)LIST_BUF;
+    do {
+        base = func_80043B1C((CdlLOC *)(&D_80062C68 + locOff));
+        n = *pCount;
+        pCount += 2;
+        bufIdx++;
+        j = 0;
+        if (n > 0) {
+            p = (CdlLOC *)((u32)(fileIdx * 8) + (u32)tbl);
+            dstOff = fileIdx * 8;
+            pOff = (s32 *)((u32)(bufIdx * 8) + (u32)lbv);
+            srcOff = bufIdx * 8;
+            do {
+                if (*pOff != 0) {
+                    func_80043A18(*pOff + base, p);
+                    *(s32 *)(&D_800AE834 + dstOff) = *(s32 *)(0x80180004 + srcOff);
+                }
+                pOff += 2;
+                srcOff += 8;
+                pCount += 2;
+                bufIdx++;
+                p += 2;
+                dstOff += 8;
+                j++;
+                fileIdx++;
+            } while (j < n);
+        }
+        outer++;
+        locOff += 0x30;
+    } while (outer < 8);
 }
