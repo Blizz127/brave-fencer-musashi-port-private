@@ -697,6 +697,23 @@ static int fill_rect(MusashiGpuController *controller,
     return 1;
 }
 
+static int draw_line(MusashiGpuController *controller,
+                     int x0, int y0, int x1, int y1, uint16_t color) {
+    int dx = x1 >= x0 ? (x1 - x0) : (x0 - x1);
+    int dy = y1 >= y0 ? (y1 - y0) : (y0 - y1);
+    int sx = x0 < x1 ? 1 : -1;
+    int sy = y0 < y1 ? 1 : -1;
+    int err = dx - dy, e2;
+    for (;;) {
+        if (!plot_drawn(controller, x0, y0, color)) return 0;
+        if (x0 == x1 && y0 == y1) break;
+        e2 = 2 * err;
+        if (e2 > -dy) { err -= dy; x0 += sx; }
+        if (e2 < dx) { err += dx; y0 += sy; }
+    }
+    return 1;
+}
+
 static int prim_commit(MusashiGpuController *controller) {
     uint32_t opcode = controller->prim_data[0] >> 24;
     uint16_t color = (uint16_t)(((controller->prim_data[0] >> 3) & 0x1fu) |
@@ -713,6 +730,21 @@ static int prim_commit(MusashiGpuController *controller) {
                 ox,oy,controller->display.x,controller->display.y,
                 controller->display.width,controller->display.height);
     }
+    if (opcode >= 0x40u && opcode <= 0x47u) {
+        int lx0 = (int)(int16_t)(controller->prim_data[1] & 0xffffu) + ox;
+        int ly0 = (int)(int16_t)(controller->prim_data[1] >> 16) + oy;
+        int lx1 = (int)(int16_t)(controller->prim_data[2] & 0xffffu) + ox;
+        int ly1 = (int)(int16_t)(controller->prim_data[2] >> 16) + oy;
+        return draw_line(controller, lx0, ly0, lx1, ly1, color);
+    }
+    if (opcode >= 0x50u && opcode <= 0x57u) {
+        int lx0 = (int)(int16_t)(controller->prim_data[1] & 0xffffu) + ox;
+        int ly0 = (int)(int16_t)(controller->prim_data[1] >> 16) + oy;
+        int lx1 = (int)(int16_t)(controller->prim_data[3] & 0xffffu) + ox;
+        int ly1 = (int)(int16_t)(controller->prim_data[3] >> 16) + oy;
+        return draw_line(controller, lx0, ly0, lx1, ly1, color);
+    }
+
     if (opcode == 0x60u || opcode == 0x62u || opcode == 0x68u || opcode == 0x6au ||
         opcode == 0x70u || opcode == 0x72u || opcode == 0x78u || opcode == 0x7au) {
         int dest_x = (int)(int16_t)(controller->prim_data[1] & 0xffffu) + ox;
@@ -875,6 +907,8 @@ static int prim_word(MusashiGpuController *controller, uint32_t word) {
     opcode = word >> 24;
     if (opcode == 0x28u) controller->prim_needed = 4;
     else if (opcode == 0x2au) controller->prim_needed = 5;
+    else if (opcode >= 0x40u && opcode <= 0x47u) controller->prim_needed = 3;
+    else if (opcode >= 0x50u && opcode <= 0x57u) controller->prim_needed = 4;
     else if (opcode == 0x60u || opcode == 0x62u) controller->prim_needed = 3;
     else if (opcode == 0x68u || opcode == 0x6au || opcode == 0x70u ||
              opcode == 0x72u || opcode == 0x78u || opcode == 0x7au) controller->prim_needed = 2;
@@ -922,8 +956,11 @@ int musashi_gpu_controller_write32(MusashiGpuController *controller,
         if (opcode == 0x28u || opcode == 0x2au ||
             (opcode >= 0x24u && opcode <= 0x27u) ||
             (opcode >= 0x2cu && opcode <= 0x2fu) ||
+            (opcode >= 0x40u && opcode <= 0x47u) ||
+            (opcode >= 0x50u && opcode <= 0x57u) ||
             (opcode >= 0x60u && opcode <= 0x7fu))
             return prim_word(controller, value);
+
         candidate = opcode == 0 || opcode == 1u || (opcode >= 0xe1u && opcode <= 0xe6u);
         if (candidate && controller->accepted_gp0_words == UINT64_MAX)
             return 0;
