@@ -188,8 +188,13 @@ static int scheduler_dispatch(MusashiPsyCrossIrqScheduler *scheduler,
     }
     if (!scheduler->context_provider || !scheduler->before_dispatch ||
         !scheduler->context_provider(scheduler->context_userdata, continuation, &context) ||
-        context.identity != continuation || scheduler->faulted ||
-        !musashi_cpu_status_begin(scheduler->cpu_status, MUSASHI_CPU_EXCEPTION_IRQ,
+        context.identity != continuation || scheduler->faulted) goto fault;
+    if (context.provenance == MUSASHI_CPU_CONTEXT_SOURCE &&
+        ((context.instruction >> 24) & 0xfeu) == 0x4au) {
+        scheduler->pumping = 0;
+        return 1;
+    }
+    if (!musashi_cpu_status_begin(scheduler->cpu_status, MUSASHI_CPU_EXCEPTION_IRQ,
             &context, 0x400u, &scheduler->active_exception)) goto fault;
     scheduler->active_continuation = continuation;
     scheduler->delivering = 1;

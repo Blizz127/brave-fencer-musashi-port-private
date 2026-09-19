@@ -59,7 +59,12 @@ def _expected_words(source, include_name):
 
 def _generate_formatter_includes(output):
     formatter = ROOT / "pc_port/mips_formatter.c"
+    import shutil
     for name in WORD_INCLUDE.findall(formatter.read_text()):
+        cached = ROOT / "build/generated" / name
+        if cached.is_file():
+            shutil.copyfile(cached, output / name)
+            continue
         source = _source_for_include(name)
         expected = _expected_words(source, name)
         assert expected > 0, f"empty audited source for {name}"

@@ -205,17 +205,16 @@ int main(void) {
         assert_banks(data_before, control_before);
         assert(!musashi_gte_owner_write_data(&owner, &context, 12u, 7));
         assert(!musashi_gte_owner_read_data(&owner, &context, 2u, &value));
-        assert(!musashi_gte_owner_read_data(&owner, &context, 7u, &value));
         assert(!musashi_gte_owner_read_data(&owner, &context, 20u, &value));
         assert(musashi_gte_owner_read_data(&owner, &context, 24u, &value));
         assert(!musashi_gte_owner_read_data(&owner, &context, 28u, &value));
-        /* Retail SWC2 sites also store VZ2, RGB, IR0, SXY0/1/2, SZ3 and
-         * ORGB, so those read back even though IRGB (28) and OTZ (7) do not. */
+        /* Retail SWC2 sites also store VZ2, RGB, OTZ, IR0, SXY0/1/2, SZ3 and
+         * ORGB, so those read back even though IRGB (28) does not. */
         {
-            static const unsigned extra[11] = {6u, 8u, 12u, 13u, 14u, 16u, 17u,
+            static const unsigned extra[12] = {6u, 7u, 8u, 12u, 13u, 14u, 16u, 17u,
                                                 18u, 19u, 24u, 29u};
             unsigned k;
-            for (k = 0; k < 11u; ++k) {
+            for (k = 0; k < 12u; ++k) {
                 /* ORGB's read is computed from IR1..IR3, so only acceptance
                  * is asserted here, not a raw-bank equality. PsyCross's MFC2
                  * stores that computed word back, so the bank is re-read

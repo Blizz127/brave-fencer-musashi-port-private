@@ -123,6 +123,11 @@ typedef struct NativeBoot {
     const char *exe_path;
     int opening_overlay_ready;
     int title_scene_reached;
+    int scene1_reached;
+    unsigned in_game_frames;
+    int in_game_paused;
+    unsigned auto_start_phase1_ticks;
+    unsigned auto_start_phase2_ticks;
     unsigned start_preview_frames;
     int start_preview_paused;
     int trace_cd_timing, cd_timing_active;
@@ -588,7 +593,7 @@ static int cd_data_transfer_idle(void *userdata, int *idle) {
     if (!idle || !boot->cd_dma ||
         !musashi_cd_dma3_get_state(boot->cd_dma, &state) ||
         state.fault != MUSASHI_CD_DMA3_OK) return 0;
-    *idle = (state.chcr & 0x01000000u) == 0;
+    *idle = (state.chcr & 0x01000000u) == 0 || state.waiting_for_request;
     return 1;
 }
 
@@ -736,6 +741,27 @@ static int cd_write32(void *userdata, uint32_t address, uint32_t value) {
         boot->spu_dma_bcr=value;
     } else if (address == 0x1f8010c8u) {
         boot->spu_dma_chcr=value;
+        if ((value & 0x01000000u) && (value & 1u)) {
+            uint32_t madr = 0x80000000u | (boot->spu_dma_madr & 0x1ffffcu);
+            uint32_t bcr = boot->spu_dma_bcr;
+            uint32_t blocks = bcr >> 16;
+            uint32_t block_size = bcr & 0xffffu;
+            uint32_t total_words = blocks ? (blocks * block_size) : block_size;
+            uint8_t *src = musashi_boot_ram_span(&boot->memory, madr, total_words * 4u);
+            if (src && boot->spu) {
+                uint32_t w;
+                for (w = 0; w < total_words; ++w) {
+                    uint16_t lo = (uint16_t)(src[w*4] | (src[w*4 + 1] << 8));
+                    uint16_t hi = (uint16_t)(src[w*4 + 2] | (src[w*4 + 3] << 8));
+                    musashi_spu_cd_audio_write16(boot->spu, 0x1f801da8u, lo);
+                    musashi_spu_cd_audio_write16(boot->spu, 0x1f801da8u, hi);
+                }
+                fprintf(stderr, "native_boot: SPU_DMA transferred words=%u madr=%08x\n", total_words, madr);
+            } else {
+                fprintf(stderr, "native_boot: SPU_DMA FAILED src=%p madr=%08x words=%u\n", (void*)src, madr, total_words);
+            }
+            boot->spu_dma_chcr &= ~0x01000000u;
+        }
     } else if (!musashi_cd_dma3_write32(boot->cd_dma,address,value)) {
         MusashiCdDma3State state;
         if (musashi_cd_dma3_get_state(boot->cd_dma,&state))
@@ -822,9 +848,30 @@ static int sample_keyboard_pad(void *userdata, uint16_t *buttons) {
          * for the whole 0007 path lets 800CF3B0 set A3B6. Do not fprintf
          * here: TAP during that log clears 78DD2. */
         const char *auto_start = getenv("MUSASHI_BOOT_AUTO_START");
-        if (auto_start && auto_start[0] == '1' &&
-            boot->opening_overlay_ready && !boot->title_scene_reached)
-            sampled &= (uint16_t)~(1u << 3);
+        if (auto_start && auto_start[0] == '1') {
+            if (!boot->opening_overlay_ready) {
+                /* Hold Start to skip opening FMV until overlay 0004 loads */
+                sampled &= (uint16_t)~(1u << 3);
+            } else {
+                /* Overlay 0004 is active; Start has now been released so edges can register */
+                uint32_t phase = 0;
+                if (musashi_boot_read32(&boot->memory, 0x800ec690u, &phase)) {
+                    if (phase == 1u) {
+                        ++boot->auto_start_phase1_ticks;
+                        if (boot->auto_start_phase1_ticks == 35u)
+                            fprintf(stderr, "native_boot: AUTO_START pressing Start at phase 1 (frame %u)\n", boot->auto_start_phase1_ticks);
+                        if (boot->auto_start_phase1_ticks >= 35u && boot->auto_start_phase1_ticks <= 45u)
+                            sampled &= (uint16_t)~(1u << 3);
+                    } else if (phase == 2u) {
+                        ++boot->auto_start_phase2_ticks;
+                        if (boot->auto_start_phase2_ticks == 20u)
+                            fprintf(stderr, "native_boot: AUTO_START pressing Start at phase 2 (New Game) (frame %u)\n", boot->auto_start_phase2_ticks);
+                        if (boot->auto_start_phase2_ticks >= 20u && boot->auto_start_phase2_ticks <= 30u)
+                            sampled &= (uint16_t)~(1u << 3);
+                    }
+                }
+            }
+        }
     }
     ++boot->keyboard_polls;
     *buttons = sampled;
@@ -1000,13 +1047,35 @@ static int epoch_video_edge(void *userdata, uint64_t sequence, uint64_t cycle) {
      * already refuses when the GPU backend is mid-command. */
     if (boot->gpu_renderer.display_enabled)
         (void)musashi_gpu_psycross_present(&boot->gpu_renderer);
+    if (boot->scene1_reached && boot->gpu.display.width == 320u && boot->gpu.display.height == 240u) {
+        if (boot->gte.write_count > 800u) {
+            const char *pause_in_game = getenv("MUSASHI_PAUSE_IN_GAME");
+            const char *frames_env = getenv("MUSASHI_IN_GAME_FRAMES");
+            unsigned target = 0;
+            if (frames_env) {
+                int val = atoi(frames_env);
+                target = val > 0 ? (unsigned)val : 1u;
+            } else if (pause_in_game && pause_in_game[0] == '1') {
+                target = 5u;
+            }
+            if (target > 0) {
+                ++boot->in_game_frames;
+                if (boot->in_game_frames >= target && !boot->in_game_paused) {
+                    boot->in_game_paused = 1;
+                    fprintf(stderr, "native_boot: IN_GAME_PAUSE paused=1 frames=%u target=%u gte_writes=%llu\n",
+                            boot->in_game_frames, target, (unsigned long long)boot->gte.write_count);
+                    host_stop_signal = SIGTERM;
+                }
+            }
+        }
+    }
     return 1;
 }
 
 static int advance_source_clock(void *userdata, uint32_t cycles) {
     NativeBoot *boot = userdata;
     uint64_t cycle;
-    if (host_stop_signal) return 0;
+    if (host_stop_signal) return 1;
     if (boot->trace_cd_timing) {
         if (boot->irq.cd_frame.busy && !boot->cd_timing_active) {
             boot->cd_timing_active = 1;
@@ -1252,6 +1321,20 @@ static int checkpoint(void *userdata, const void *continuation) {
     NativeBoot *boot = userdata;
     MusashiCpuContext context;
     if (!continuation) return 0;
+    if (host_stop_signal) {
+        uint32_t *raw_cpu = (uint32_t *)(uintptr_t)continuation;
+        raw_cpu[34] = UINT_MAX;
+        raw_cpu[35] = UINT_MAX;
+        return 1;
+    }
+    if (!boot->scene1_reached && boot->title_scene_reached) {
+        if (musashi_boot_cpu_context(continuation, MUSASHI_CPU_CONTEXT_SOURCE, &context)) {
+            if (context.pc >= 0x80128158u && context.pc < 0x801fff00u) {
+                boot->scene1_reached = 1;
+                fprintf(stderr, "native_boot: SCENE1_REACHED pc=%08x\n", context.pc);
+            }
+        }
+    }
     if (boot->continuation && boot->continuation != continuation) {
         /* Nested IRQ source function: keep the interrupted CPU identity and
          * do not dispatch while the owner pump is already delivering. */
@@ -1563,6 +1646,48 @@ static void observe_entry(void *userdata, const MusashiEntryCpuSnapshot *cpu) {
             fprintf(stderr,"native_boot: MENU_PREVIEW paused=1 source_pc=800cf104 frames=%u\n",
                     boot->start_preview_frames);
             host_stop_signal=SIGTERM;
+        }
+        {
+            uint32_t current_phase = 0;
+            static uint32_t last_phase = 0;
+            if (musashi_boot_read32(&boot->memory, 0x800ec690u, &current_phase) && current_phase != last_phase) {
+                fprintf(stderr, "native_boot: TITLE_PHASE transition %u -> %u (frames=%u)\n",
+                        last_phase, current_phase, boot->start_preview_frames);
+                last_phase = current_phase;
+            }
+        }
+    }
+    if (cpu->pc == 0x800cf3a4u) {
+        static int logged_new_game;
+        if (!logged_new_game) {
+            logged_new_game = 1;
+            fprintf(stderr, "native_boot: NEW_GAME_SETUP pc=800cf3a4 ra=%08x\n", cpu->r[31]);
+        }
+    }
+    if (cpu->pc == 0x80128158u) {
+        boot->scene1_reached = 1;
+        static int logged_sc02;
+        if (!logged_sc02) {
+            logged_sc02 = 1;
+            fprintf(stderr, "native_boot: SC02_ENTRY pc=80128158 ra=%08x\n", cpu->r[31]);
+        }
+    }
+    if (cpu->pc == 0x80128420u) {
+        static int logged_8420;
+        if (!logged_8420) {
+            logged_8420 = 1;
+            uint32_t words[8] = {0};
+            for (int k = 0; k < 8; ++k)
+                musashi_boot_read32(&boot->memory, 0x80128420u + k * 4u, &words[k]);
+            fprintf(stderr, "native_boot: SCENE_DISPATCH pc=80128420 ra=%08x words=%08x %08x %08x %08x %08x %08x %08x %08x\n",
+                    cpu->r[31], words[0], words[1], words[2], words[3], words[4], words[5], words[6], words[7]);
+        }
+    }
+    if (cpu->pc == 0x800d0630u) {
+        static int logged_0010;
+        if (!logged_0010) {
+            logged_0010 = 1;
+            fprintf(stderr, "native_boot: OVERLAY_0010_ENTRY pc=800d0630 ra=%08x\n", cpu->r[31]);
         }
     }
     if (cpu->pc == 0x80053218u || cpu->pc == 0x80014690u ||
@@ -2080,6 +2205,24 @@ static void dump_display_vram(NativeBoot *boot) {
     }
     for (i = 0; i < count; ++i)
         if (pixels[i]) ++nonblack;
+    if (nonblack < 50000u && height == 240u) {
+        unsigned alt_y = (y == 0u) ? 240u : 0u;
+        uint16_t *alt_pixels = malloc((size_t)count * sizeof(*alt_pixels));
+        if (alt_pixels) {
+            if (musashi_gpu_psycross_read_vram(&boot->gpu_renderer, x, alt_y, width, height,
+                                                alt_pixels, count)) {
+                uint64_t alt_nonblack = 0;
+                for (i = 0; i < count; ++i)
+                    if (alt_pixels[i]) ++alt_nonblack;
+                if (alt_nonblack > nonblack) {
+                    memcpy(pixels, alt_pixels, (size_t)count * sizeof(*pixels));
+                    nonblack = alt_nonblack;
+                    y = alt_y;
+                }
+            }
+            free(alt_pixels);
+        }
+    }
     out = fopen("native_vram_display.ppm", "wb");
     if (out) {
         fprintf(out, "P6\n%u %u\n255\n", width, height);

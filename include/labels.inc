@@ -1,0 +1,1 @@
+../vendor/bfm-decomp/include/labels.inc

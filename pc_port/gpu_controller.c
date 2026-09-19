@@ -589,6 +589,114 @@ static int fill_triangle(MusashiGpuController *controller,
     return 1;
 }
 
+static int sample_texel(MusashiGpuController *controller,
+                        unsigned fmt, unsigned tx, unsigned ty,
+                        unsigned clut_x, unsigned clut_y,
+                        unsigned u, unsigned v, uint16_t *out) {
+    uint16_t packed = 0;
+    unsigned sx, sy, index;
+    if (!controller->backend.read_vram) return 0;
+    if (fmt == 2u) {
+        sx = tx + (u & 255u);
+        sy = ty + (v & 255u);
+        return controller->backend.read_vram(controller->backend.userdata,
+                (uint16_t)(sx & 1023u), (uint16_t)(sy & 511u), out);
+    } else if (fmt == 1u) {
+        sx = tx + ((u & 255u) >> 1);
+        sy = ty + (v & 255u);
+        if (!controller->backend.read_vram(controller->backend.userdata,
+                (uint16_t)(sx & 1023u), (uint16_t)(sy & 511u), &packed))
+            return 0;
+        index = (u & 1u) ? (packed >> 8) : (packed & 0xffu);
+        return controller->backend.read_vram(controller->backend.userdata,
+                (uint16_t)((clut_x + index) & 1023u),
+                (uint16_t)(clut_y & 511u), out);
+    } else if (fmt == 0u) {
+        sx = tx + ((u & 255u) >> 2);
+        sy = ty + (v & 255u);
+        if (!controller->backend.read_vram(controller->backend.userdata,
+                (uint16_t)(sx & 1023u), (uint16_t)(sy & 511u), &packed))
+            return 0;
+        index = (packed >> ((u & 3u) * 4u)) & 15u;
+        return controller->backend.read_vram(controller->backend.userdata,
+                (uint16_t)((clut_x + index) & 1023u),
+                (uint16_t)(clut_y & 511u), out);
+    }
+    return 0;
+}
+
+static int fill_textured_triangle(MusashiGpuController *controller,
+                                  int x0, int y0, unsigned u0, unsigned v0,
+                                  int x1, int y1, unsigned u1, unsigned v1,
+                                  int x2, int y2, unsigned u2, unsigned v2,
+                                  unsigned fmt, unsigned tx, unsigned ty,
+                                  unsigned clut_x, unsigned clut_y,
+                                  uint32_t rgb, int raw_tex) {
+    int minx = x0, miny = y0, maxx = x0, maxy = y0, x, y;
+    long long area;
+    if (x1 < minx) minx = x1;
+    if (x2 < minx) minx = x2;
+    if (y1 < miny) miny = y1;
+    if (y2 < miny) miny = y2;
+    if (x1 > maxx) maxx = x1;
+    if (x2 > maxx) maxx = x2;
+    if (y1 > maxy) maxy = y1;
+    if (y2 > maxy) maxy = y2;
+    if (!clip_box(controller, &minx, &miny, &maxx, &maxy)) return 1;
+    area = (long long)(x1 - x0) * (y2 - y0) - (long long)(y1 - y0) * (x2 - x0);
+    if (!area) return 1;
+    for (y = miny; y <= maxy; ++y) {
+        for (x = minx; x <= maxx; ++x) {
+            long long w0 = (long long)(x1 - x) * (y2 - y) -
+                           (long long)(y1 - y) * (x2 - x);
+            long long w1 = (long long)(x2 - x) * (y0 - y) -
+                           (long long)(y2 - y) * (x0 - x);
+            long long w2 = (long long)(x0 - x) * (y1 - y) -
+                           (long long)(y0 - y) * (x1 - x);
+            uint16_t texel = 0;
+            long long u_num, v_num;
+            int u, v;
+            if (area > 0) {
+                if (w0 < 0 || w1 < 0 || w2 < 0) continue;
+            } else if (w0 > 0 || w1 > 0 || w2 > 0) continue;
+            u_num = (long long)w0 * (long long)u0 + (long long)w1 * (long long)u1 + (long long)w2 * (long long)u2;
+            v_num = (long long)w0 * (long long)v0 + (long long)w1 * (long long)v1 + (long long)w2 * (long long)v2;
+            u = (int)(u_num / area);
+            v = (int)(v_num / area);
+            if (!sample_texel(controller, fmt, tx, ty, clut_x, clut_y,
+                              (unsigned)u & 255u, (unsigned)v & 255u, &texel))
+                return 0;
+            if (!texel) continue;
+            if (!raw_tex && (rgb & 0xffffffu) != 0x808080u) {
+                uint32_t r = (((texel & 0x1fu) * (rgb & 0xffu)) >> 7);
+                uint32_t g = ((((texel >> 5) & 0x1fu) * ((rgb >> 8) & 0xffu)) >> 7);
+                uint32_t b = ((((texel >> 10) & 0x1fu) * ((rgb >> 16) & 0xffu)) >> 7);
+                if (r > 31u) r = 31u;
+                if (g > 31u) g = 31u;
+                if (b > 31u) b = 31u;
+                texel = (uint16_t)(r | (g << 5) | (b << 10) | (texel & 0x8000u));
+            }
+            if (!plot_drawn(controller, x, y, (uint16_t)(texel & 0x7fffu))) return 0;
+        }
+    }
+    return 1;
+}
+
+static int fill_rect(MusashiGpuController *controller,
+                     int x, int y, unsigned width, unsigned height,
+                     uint16_t color) {
+    int minx = x, miny = y, maxx = x + (int)width - 1, maxy = y + (int)height - 1;
+    int px, py;
+    if (!width || !height) return 1;
+    if (!clip_box(controller, &minx, &miny, &maxx, &maxy)) return 1;
+    for (py = miny; py <= maxy; ++py) {
+        for (px = minx; px <= maxx; ++px) {
+            if (!plot_drawn(controller, px, py, color)) return 0;
+        }
+    }
+    return 1;
+}
+
 static int prim_commit(MusashiGpuController *controller) {
     uint32_t opcode = controller->prim_data[0] >> 24;
     uint16_t color = (uint16_t)(((controller->prim_data[0] >> 3) & 0x1fu) |
@@ -605,7 +713,25 @@ static int prim_commit(MusashiGpuController *controller) {
                 ox,oy,controller->display.x,controller->display.y,
                 controller->display.width,controller->display.height);
     }
-    if (opcode == 0x64u) {
+    if (opcode == 0x60u || opcode == 0x62u || opcode == 0x68u || opcode == 0x6au ||
+        opcode == 0x70u || opcode == 0x72u || opcode == 0x78u || opcode == 0x7au) {
+        int dest_x = (int)(int16_t)(controller->prim_data[1] & 0xffffu) + ox;
+        int dest_y = (int)(int16_t)(controller->prim_data[1] >> 16) + oy;
+        unsigned width, height;
+        if (opcode == 0x60u || opcode == 0x62u) {
+            width = controller->prim_data[2] & 0xffffu;
+            height = controller->prim_data[2] >> 16;
+        } else if (opcode == 0x68u || opcode == 0x6au) {
+            width = 1; height = 1;
+        } else if (opcode == 0x70u || opcode == 0x72u) {
+            width = 8; height = 8;
+        } else {
+            width = 16; height = 16;
+        }
+        return fill_rect(controller, dest_x, dest_y, width, height, color);
+    }
+    if (opcode == 0x64u || opcode == 0x66u || opcode == 0x74u || opcode == 0x76u ||
+        opcode == 0x7cu || opcode == 0x7eu) {
         unsigned tpage = controller->draw_mode & 0x1ffu;
         unsigned fmt = (tpage >> 7) & 3u;
         unsigned tx = (tpage & 15u) * 64u;
@@ -617,44 +743,24 @@ static int prim_commit(MusashiGpuController *controller) {
         int dest_y = (int)(int16_t)(controller->prim_data[1] >> 16) + oy;
         unsigned u0 = controller->prim_data[2] & 0xffu;
         unsigned v0 = (controller->prim_data[2] >> 8) & 0xffu;
-        unsigned width = controller->prim_data[3] & 0xffffu;
-        unsigned height = controller->prim_data[3] >> 16;
+        unsigned width, height;
+        if (opcode == 0x64u || opcode == 0x66u) {
+            width = controller->prim_data[3] & 0xffffu;
+            height = controller->prim_data[3] >> 16;
+        } else if (opcode == 0x74u || opcode == 0x76u) {
+            width = 8; height = 8;
+        } else {
+            width = 16; height = 16;
+        }
         unsigned px, py;
         if (!controller->backend.read_vram || !width || !height ||
             width > 256u || height > 256u) return 0;
         for (py = 0; py < height; ++py) {
             for (px = 0; px < width; ++px) {
-                uint16_t packed = 0, out = 0;
-                unsigned sx, sy, index;
-                if (fmt == 2u) {
-                    sx = tx + ((u0 + px) & 255u);
-                    sy = ty + ((v0 + py) & 255u);
-                    if (!controller->backend.read_vram(controller->backend.userdata,
-                            (uint16_t)(sx & 1023u), (uint16_t)(sy & 511u), &out))
-                        return 0;
-                } else if (fmt == 1u) {
-                    sx = tx + (((u0 + px) & 255u) >> 1);
-                    sy = ty + ((v0 + py) & 255u);
-                    if (!controller->backend.read_vram(controller->backend.userdata,
-                            (uint16_t)(sx & 1023u), (uint16_t)(sy & 511u), &packed))
-                        return 0;
-                    index = ((u0 + px) & 1u) ? (packed >> 8) : (packed & 0xffu);
-                    if (!controller->backend.read_vram(controller->backend.userdata,
-                            (uint16_t)((clut_x + index) & 1023u),
-                            (uint16_t)(clut_y & 511u), &out))
-                        return 0;
-                } else if (fmt == 0u) {
-                    sx = tx + (((u0 + px) & 255u) >> 2);
-                    sy = ty + ((v0 + py) & 255u);
-                    if (!controller->backend.read_vram(controller->backend.userdata,
-                            (uint16_t)(sx & 1023u), (uint16_t)(sy & 511u), &packed))
-                        return 0;
-                    index = (packed >> (((u0 + px) & 3u) * 4u)) & 15u;
-                    if (!controller->backend.read_vram(controller->backend.userdata,
-                            (uint16_t)((clut_x + index) & 1023u),
-                            (uint16_t)(clut_y & 511u), &out))
-                        return 0;
-                } else return 0;
+                uint16_t out = 0;
+                if (!sample_texel(controller, fmt, tx, ty, clut_x, clut_y,
+                                  u0 + px, v0 + py, &out))
+                    return 0;
                 if (!out)
                     continue;
                 if (!plot_drawn(controller, dest_x + (int)px, dest_y + (int)py,
@@ -662,6 +768,80 @@ static int prim_commit(MusashiGpuController *controller) {
                     return 0;
             }
         }
+        return 1;
+    }
+    if (opcode >= 0x24u && opcode <= 0x27u) {
+        int raw_tex = (opcode & 1u) != 0;
+        uint32_t rgb = controller->prim_data[0] & 0xffffffu;
+        unsigned u0 = controller->prim_data[2] & 0xffu;
+        unsigned v0 = (controller->prim_data[2] >> 8) & 0xffu;
+        uint16_t clut = (uint16_t)(controller->prim_data[2] >> 16);
+        unsigned u1 = controller->prim_data[4] & 0xffu;
+        unsigned v1 = (controller->prim_data[4] >> 8) & 0xffu;
+        unsigned tpage = (controller->prim_data[4] >> 16) & 0x1ffu;
+        unsigned u2 = controller->prim_data[6] & 0xffu;
+        unsigned v2 = (controller->prim_data[6] >> 8) & 0xffu;
+        unsigned fmt = (tpage >> 7) & 3u;
+        unsigned tx = (tpage & 15u) * 64u;
+        unsigned ty = ((tpage >> 4) & 1u) * 256u;
+        unsigned clut_x = (unsigned)(clut & 0x3fu) * 16u;
+        unsigned clut_y = (unsigned)(clut >> 6);
+
+        x[0] = (int)(int16_t)(controller->prim_data[1] & 0xffffu) + ox;
+        y[0] = (int)(int16_t)(controller->prim_data[1] >> 16) + oy;
+        x[1] = (int)(int16_t)(controller->prim_data[3] & 0xffffu) + ox;
+        y[1] = (int)(int16_t)(controller->prim_data[3] >> 16) + oy;
+        x[2] = (int)(int16_t)(controller->prim_data[5] & 0xffffu) + ox;
+        y[2] = (int)(int16_t)(controller->prim_data[5] >> 16) + oy;
+
+        if (!fill_textured_triangle(controller,
+                x[0], y[0], u0, v0,
+                x[1], y[1], u1, v1,
+                x[2], y[2], u2, v2,
+                fmt, tx, ty, clut_x, clut_y, rgb, raw_tex))
+            return 0;
+        return 1;
+    }
+    if (opcode >= 0x2cu && opcode <= 0x2fu) {
+        int raw_tex = (opcode & 1u) != 0;
+        uint32_t rgb = controller->prim_data[0] & 0xffffffu;
+        unsigned u0 = controller->prim_data[2] & 0xffu;
+        unsigned v0 = (controller->prim_data[2] >> 8) & 0xffu;
+        uint16_t clut = (uint16_t)(controller->prim_data[2] >> 16);
+        unsigned u1 = controller->prim_data[4] & 0xffu;
+        unsigned v1 = (controller->prim_data[4] >> 8) & 0xffu;
+        unsigned tpage = (controller->prim_data[4] >> 16) & 0x1ffu;
+        unsigned u2 = controller->prim_data[6] & 0xffu;
+        unsigned v2 = (controller->prim_data[6] >> 8) & 0xffu;
+        unsigned u3 = controller->prim_data[8] & 0xffu;
+        unsigned v3 = (controller->prim_data[8] >> 8) & 0xffu;
+        unsigned fmt = (tpage >> 7) & 3u;
+        unsigned tx = (tpage & 15u) * 64u;
+        unsigned ty = ((tpage >> 4) & 1u) * 256u;
+        unsigned clut_x = (unsigned)(clut & 0x3fu) * 16u;
+        unsigned clut_y = (unsigned)(clut >> 6);
+
+        x[0] = (int)(int16_t)(controller->prim_data[1] & 0xffffu) + ox;
+        y[0] = (int)(int16_t)(controller->prim_data[1] >> 16) + oy;
+        x[1] = (int)(int16_t)(controller->prim_data[3] & 0xffffu) + ox;
+        y[1] = (int)(int16_t)(controller->prim_data[3] >> 16) + oy;
+        x[2] = (int)(int16_t)(controller->prim_data[5] & 0xffffu) + ox;
+        y[2] = (int)(int16_t)(controller->prim_data[5] >> 16) + oy;
+        x[3] = (int)(int16_t)(controller->prim_data[7] & 0xffffu) + ox;
+        y[3] = (int)(int16_t)(controller->prim_data[7] >> 16) + oy;
+
+        if (!fill_textured_triangle(controller,
+                x[0], y[0], u0, v0,
+                x[1], y[1], u1, v1,
+                x[2], y[2], u2, v2,
+                fmt, tx, ty, clut_x, clut_y, rgb, raw_tex))
+            return 0;
+        if (!fill_textured_triangle(controller,
+                x[1], y[1], u1, v1,
+                x[3], y[3], u3, v3,
+                x[2], y[2], u2, v2,
+                fmt, tx, ty, clut_x, clut_y, rgb, raw_tex))
+            return 0;
         return 1;
     }
     if (opcode != 0x28u && opcode != 0x2au) return 0;
@@ -695,7 +875,13 @@ static int prim_word(MusashiGpuController *controller, uint32_t word) {
     opcode = word >> 24;
     if (opcode == 0x28u) controller->prim_needed = 4;
     else if (opcode == 0x2au) controller->prim_needed = 5;
-    else if (opcode == 0x64u) controller->prim_needed = 4;
+    else if (opcode == 0x60u || opcode == 0x62u) controller->prim_needed = 3;
+    else if (opcode == 0x68u || opcode == 0x6au || opcode == 0x70u ||
+             opcode == 0x72u || opcode == 0x78u || opcode == 0x7au) controller->prim_needed = 2;
+    else if (opcode == 0x64u || opcode == 0x66u) controller->prim_needed = 4;
+    else if (opcode == 0x74u || opcode == 0x76u || opcode == 0x7cu || opcode == 0x7eu) controller->prim_needed = 3;
+    else if (opcode >= 0x24u && opcode <= 0x27u) controller->prim_needed = 7;
+    else if (opcode >= 0x2cu && opcode <= 0x2fu) controller->prim_needed = 9;
     else return 0;
     controller->prim_data[0] = word;
     controller->prim_got = 1;
@@ -733,7 +919,10 @@ int musashi_gpu_controller_write32(MusashiGpuController *controller,
             return fill_word(controller, value);
         if (opcode == 0xa0u)
             return store_word(controller, value);
-        if (opcode == 0x28u || opcode == 0x2au || opcode == 0x64u)
+        if (opcode == 0x28u || opcode == 0x2au ||
+            (opcode >= 0x24u && opcode <= 0x27u) ||
+            (opcode >= 0x2cu && opcode <= 0x2fu) ||
+            (opcode >= 0x60u && opcode <= 0x7fu))
             return prim_word(controller, value);
         candidate = opcode == 0 || opcode == 1u || (opcode >= 0xe1u && opcode <= 0xe6u);
         if (candidate && controller->accepted_gp0_words == UINT64_MAX)

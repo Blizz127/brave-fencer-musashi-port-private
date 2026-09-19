@@ -2,6 +2,7 @@
 
 #include <limits.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "spu_voice_core.h"
@@ -541,8 +542,14 @@ int musashi_spu_cd_audio_write16(void *userdata,
             unsigned i; uint8_t block[16];
             for(i=0;i<24;++i) if(mask&(1u<<i)) {
                 SpuVoice *v=&audio->voices.voice[i];
-                if(!voice_supported(v) || !read_voice_block(audio,(uint32_t)v->reg[3]*8u,block) ||
-                   (block[0]>>4)!=0 || (block[0]&15u)>12 || (block[1]&0xf8u)) return 0;
+                uint32_t at = (uint32_t)v->reg[3]*8u;
+                int supp = voice_supported(v);
+                int rdb = read_voice_block(audio,at,block);
+                if(!supp || !rdb || (block[0]>>4)!=0 || (block[0]&15u)>12 || (block[1]&0xf8u)) {
+                    fprintf(stderr, "spu_cd_audio: KEY_ON dropped unready voice=%u reg3=%04x at=%08x supp=%d rdb=%d\n",
+                            i, (unsigned)v->reg[3], at, supp, rdb);
+                    mask &= ~(1u << i);
+                }
             }
             audio->voices.key_on|=mask;
         } else audio->voices.key_off|=mask;

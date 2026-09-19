@@ -6,6 +6,8 @@
 /build/
 /out/
 /artifacts/
+/.agents/
+/ORIGINAL_REQUEST.md
 /tmp/
 *.chd
 *.cue

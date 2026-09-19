@@ -37,6 +37,7 @@ _PROBE_SOURCE = r'''
 __attribute__((visibility("default")))
 int overlay_selector_probe(unsigned pc, unsigned overlay, uint32_t *out) {
     g_overlay_sc02_0031_words = overlay == 2031;
+    g_overlay_sc01_0000_words = overlay == 0;
     g_overlay_0004_words = overlay == 4;
     g_overlay_0007_words = overlay == 7;
     g_overlay_0010_words = overlay == 10;

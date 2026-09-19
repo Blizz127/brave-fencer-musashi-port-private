@@ -267,7 +267,7 @@ int musashi_gte_owner_read_data(MusashiGteOwner *owner,
     if (owner_reentry(owner)) return 0;
     if (owner == NULL || value == NULL ||
         (selector != 0u && selector != 4u && selector != 5u &&
-         selector != 6u && selector != 8u && selector != 9u &&
+         selector != 6u && selector != 7u && selector != 8u && selector != 9u &&
          selector != 10u && selector != 11u && selector != 12u &&
          selector != 13u && selector != 14u && selector != 16u &&
          selector != 17u && selector != 18u && selector != 19u &&
@@ -279,7 +279,7 @@ int musashi_gte_owner_read_data(MusashiGteOwner *owner,
     /* IR1..3 reads sign-extend their low half; commands may leave stale
      * upper halves. MFC2 also preserves raw MAC/LZCS/LZCR read semantics.
      * The selector list is the union of the registers retail MFC2/SWC2 sites
-     * actually read: VZ2, RGB, IR0, SXY0/1/2, SZ3, MAC1..3, ORGB, LZCS and
+     * actually read: VZ2, RGB, OTZ, IR0, SXY0/1/2, SZ3, MAC1..3, ORGB, LZCS and
      * LZCR. */
     local = MFC2((int)selector);
     owner->data_read_count++;

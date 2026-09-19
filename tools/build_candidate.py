@@ -77,7 +77,7 @@ def default_toolchain_root(repo: Path) -> Path:
 
 
 SYMBOL_DEFINITION_RE = re.compile(
-    r"^\s*(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?P<value>0[xX][0-9a-fA-F]+|\d+)\s*;?\s*$"
+    r"^\s*(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?P<value>0[xX][0-9a-fA-F]+|\d+)\s*;?(?:\s*//.*|\s*#.*)?$"
 )
 
 
@@ -317,6 +317,8 @@ def maspsx_command(
         "-march=r3000",
         "-mtune=r3000",
         "-no-pad-sections",
+        "-Iinclude",
+        "-Ivendor/bfm-decomp/include",
         "-o",
         str(obj),
         str(assembly),
