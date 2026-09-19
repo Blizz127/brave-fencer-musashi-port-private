@@ -738,7 +738,7 @@ class GpuControllerTests(unittest.TestCase):
 
     def test_unsupported_commands_and_addresses_refuse_without_effects(self):
         before = bytes(self.controller)
-        for value, address in ((0x20000000, GPUREAD),
+        for value, address in ((0x1F000000, GPUREAD),
                                (0x09000000, GPUSTAT)):
             self.assertEqual(self.write(value, address), 0)
             self.assertEqual(bytes(self.controller), before)
@@ -859,6 +859,154 @@ class GpuControllerTests(unittest.TestCase):
         self.assertGreater(len(stored), 0)
         self.assertTrue(all(p == 0x7FFF for _, _, p in stored))
         self.assertEqual(self.controller.drawn_pixels, len(stored))
+
+    def test_gp0_poly_f3_flat_triangle(self):
+        for opcode in (0x20, 0x21, 0x22, 0x23):
+            self.setUp()
+            stored = []
+            self.store_cb = STORE(lambda _, x, y, p: stored.append((x, y, p)) or 1)
+            self.controller.backend.store_vram = self.store_cb
+            self.assertEqual(self.write(0xE3000000), 1)
+            self.assertEqual(self.write(0xE403C13F), 1)  # 319, 240
+            cmd = (opcode << 24) | 0x000000F8  # pure red (r=248 -> 31 -> 0x001F)
+            self.assertEqual(self.write(cmd), 1)
+            self.assertEqual(self.controller.prim_needed, 4)
+            self.assertEqual(self.controller.prim_got, 1)
+            self.assertEqual(self.write(0x00000000), 1)  # v0 (0, 0)
+            self.assertEqual(self.write(0x00000008), 1)  # v1 (8, 0)
+            self.assertEqual(self.write(0x00080000), 1)  # v2 (0, 8)
+            self.assertEqual(self.controller.prim_needed, 0)
+            self.assertGreater(len(stored), 0)
+            self.assertTrue(all(p == 0x001F for _, _, p in stored))
+            self.assertEqual(self.controller.drawn_pixels, len(stored))
+
+    def test_gp0_poly_f4_flat_quad_five_words(self):
+        for opcode in (0x28, 0x29, 0x2A, 0x2B):
+            self.setUp()
+            stored = []
+            self.store_cb = STORE(lambda _, x, y, p: stored.append((x, y, p)) or 1)
+            self.controller.backend.store_vram = self.store_cb
+            self.assertEqual(self.write(0xE3000000), 1)
+            self.assertEqual(self.write(0xE403C13F), 1)  # 319, 240
+            cmd = (opcode << 24) | 0x0000F800  # pure green (g=248 -> 31 -> 0x03E0)
+            self.assertEqual(self.write(cmd), 1)
+            self.assertEqual(self.controller.prim_needed, 5)
+            self.assertEqual(self.controller.prim_got, 1)
+            self.assertEqual(self.write(0x00000000), 1)  # v0 (0, 0)
+            self.assertEqual(self.write(0x00000008), 1)  # v1 (8, 0)
+            self.assertEqual(self.write(0x00080000), 1)  # v2 (0, 8)
+            self.assertEqual(self.write(0x00080008), 1)  # v3 (8, 8)
+            self.assertEqual(self.controller.prim_needed, 0)
+            self.assertGreater(len(stored), 0)
+            self.assertTrue(all(p == 0x03E0 for _, _, p in stored))
+            self.assertEqual(self.controller.drawn_pixels, len(stored))
+
+    def test_gp0_poly_g3_gouraud_triangle(self):
+        for opcode in (0x30, 0x31, 0x32, 0x33):
+            self.setUp()
+            stored = {}
+            self.store_cb = STORE(lambda _, x, y, p: stored.__setitem__((x, y), p) or 1)
+            self.controller.backend.store_vram = self.store_cb
+            self.assertEqual(self.write(0xE3000000), 1)
+            self.assertEqual(self.write(0xE403C13F), 1)  # 319, 240
+            cmd = (opcode << 24) | 0x000000F8  # v0 red (r=248 -> 31)
+            self.assertEqual(self.write(cmd), 1)
+            self.assertEqual(self.controller.prim_needed, 6)
+            self.assertEqual(self.controller.prim_got, 1)
+            self.assertEqual(self.write(0x00000000), 1)  # v0 (0, 0)
+            self.assertEqual(self.write(0x0000F800), 1)  # c1 green (g=248 -> 31)
+            self.assertEqual(self.write(0x00000010), 1)  # v1 (16, 0)
+            self.assertEqual(self.write(0x00F80000), 1)  # c2 blue (b=248 -> 31)
+            self.assertEqual(self.write(0x00100000), 1)  # v2 (0, 16)
+            self.assertEqual(self.controller.prim_needed, 0)
+            self.assertGreater(len(stored), 0)
+            self.assertEqual(stored.get((0, 0)), 0x001F)  # pure red
+            self.assertEqual(stored.get((16, 0)), 0x03E0)  # pure green
+            self.assertEqual(stored.get((0, 16)), 0x7C00)  # pure blue
+            mid = stored.get((8, 0))
+            self.assertIsNotNone(mid)
+            self.assertGreater(mid & 0x1F, 0)
+            self.assertGreater((mid >> 5) & 0x1F, 0)
+            self.assertEqual((mid >> 10) & 0x1F, 0)
+
+    def test_gp0_poly_g4_gouraud_quad(self):
+        for opcode in (0x38, 0x39, 0x3A, 0x3B):
+            self.setUp()
+            stored = {}
+            self.store_cb = STORE(lambda _, x, y, p: stored.__setitem__((x, y), p) or 1)
+            self.controller.backend.store_vram = self.store_cb
+            self.assertEqual(self.write(0xE3000000), 1)
+            self.assertEqual(self.write(0xE403C13F), 1)  # 319, 240
+            cmd = (opcode << 24) | 0x000000F8  # v0 red
+            self.assertEqual(self.write(cmd), 1)
+            self.assertEqual(self.controller.prim_needed, 8)
+            self.assertEqual(self.controller.prim_got, 1)
+            self.assertEqual(self.write(0x00000000), 1)  # v0 (0, 0)
+            self.assertEqual(self.write(0x0000F800), 1)  # c1 green
+            self.assertEqual(self.write(0x00000010), 1)  # v1 (16, 0)
+            self.assertEqual(self.write(0x00F80000), 1)  # c2 blue
+            self.assertEqual(self.write(0x00100000), 1)  # v2 (0, 16)
+            self.assertEqual(self.write(0x00F8F8F8), 1)  # c3 white
+            self.assertEqual(self.write(0x00100010), 1)  # v3 (16, 16)
+            self.assertEqual(self.controller.prim_needed, 0)
+            self.assertGreater(len(stored), 0)
+            self.assertEqual(stored.get((0, 0)), 0x001F)    # red
+            self.assertEqual(stored.get((16, 0)), 0x03E0)   # green
+            self.assertEqual(stored.get((0, 16)), 0x7C00)   # blue
+            self.assertEqual(stored.get((16, 16)), 0x7FFF)  # white
+
+    def test_gp0_poly_gt3_textured_gouraud_triangle(self):
+        for opcode in (0x34, 0x35):
+            self.setUp()
+            stored = []
+            self.store_cb = STORE(lambda _, x, y, p: stored.append((x, y, p)) or 1)
+            self.read_cb = READ(lambda _, x, y, out: out.__setitem__(0, 0x7FFF) or 1)
+            self.controller.backend.store_vram = self.store_cb
+            self.controller.backend.read_vram = self.read_cb
+            self.assertEqual(self.write(0xE3000000), 1)
+            self.assertEqual(self.write(0xE403C13F), 1)
+            tpage = 0x0100
+            cmd = (opcode << 24) | 0x00808080
+            self.assertEqual(self.write(cmd), 1)
+            self.assertEqual(self.controller.prim_needed, 9)
+            self.assertEqual(self.write(0x00000000), 1)  # v0 (0, 0)
+            self.assertEqual(self.write(0x00000000), 1)  # uv0=(0,0), clut=0
+            self.assertEqual(self.write(0x00808080), 1)  # c1
+            self.assertEqual(self.write(0x00000008), 1)  # v1 (8, 0)
+            self.assertEqual(self.write((tpage << 16) | 0x0008), 1)  # uv1=(8,0), tpage
+            self.assertEqual(self.write(0x00808080), 1)  # c2
+            self.assertEqual(self.write(0x00080000), 1)  # v2 (0, 8)
+            self.assertEqual(self.write(0x00000800), 1)  # uv2=(0,8)
+            self.assertEqual(self.controller.prim_needed, 0)
+            self.assertGreater(len(stored), 0)
+
+    def test_gp0_poly_gt4_textured_gouraud_quad(self):
+        for opcode in (0x3C, 0x3D):
+            self.setUp()
+            stored = []
+            self.store_cb = STORE(lambda _, x, y, p: stored.append((x, y, p)) or 1)
+            self.read_cb = READ(lambda _, x, y, out: out.__setitem__(0, 0x7FFF) or 1)
+            self.controller.backend.store_vram = self.store_cb
+            self.controller.backend.read_vram = self.read_cb
+            self.assertEqual(self.write(0xE3000000), 1)
+            self.assertEqual(self.write(0xE403C13F), 1)
+            tpage = 0x0100
+            cmd = (opcode << 24) | 0x00808080
+            self.assertEqual(self.write(cmd), 1)
+            self.assertEqual(self.controller.prim_needed, 12)
+            self.assertEqual(self.write(0x00000000), 1)  # v0 (0, 0)
+            self.assertEqual(self.write(0x00000000), 1)  # uv0=(0,0), clut=0
+            self.assertEqual(self.write(0x00808080), 1)  # c1
+            self.assertEqual(self.write(0x00000008), 1)  # v1 (8, 0)
+            self.assertEqual(self.write((tpage << 16) | 0x0008), 1)  # uv1=(8,0), tpage
+            self.assertEqual(self.write(0x00808080), 1)  # c2
+            self.assertEqual(self.write(0x00080000), 1)  # v2 (0, 8)
+            self.assertEqual(self.write(0x00000800), 1)  # uv2=(0,8)
+            self.assertEqual(self.write(0x00808080), 1)  # c3
+            self.assertEqual(self.write(0x00080008), 1)  # v3 (8, 8)
+            self.assertEqual(self.write(0x00000808), 1)  # uv3=(8,8)
+            self.assertEqual(self.controller.prim_needed, 0)
+            self.assertGreater(len(stored), 0)
 
     def test_gp0_cpu_to_vram_without_backend_refuses(self):
         before = bytes(self.controller)

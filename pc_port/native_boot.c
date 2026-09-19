@@ -128,6 +128,7 @@ typedef struct NativeBoot {
     int in_game_paused;
     unsigned auto_start_phase1_ticks;
     unsigned auto_start_phase2_ticks;
+    unsigned auto_dismiss_ticks;
     unsigned start_preview_frames;
     int start_preview_paused;
     int trace_cd_timing, cd_timing_active;
@@ -852,7 +853,7 @@ static int sample_keyboard_pad(void *userdata, uint16_t *buttons) {
             if (!boot->opening_overlay_ready) {
                 /* Hold Start to skip opening FMV until overlay 0004 loads */
                 sampled &= (uint16_t)~(1u << 3);
-            } else {
+            } else if (!boot->scene1_reached) {
                 /* Overlay 0004 is active; Start has now been released so edges can register */
                 uint32_t phase = 0;
                 if (musashi_boot_read32(&boot->memory, 0x800ec690u, &phase)) {
@@ -869,6 +870,26 @@ static int sample_keyboard_pad(void *userdata, uint16_t *buttons) {
                         if (boot->auto_start_phase2_ticks >= 20u && boot->auto_start_phase2_ticks <= 30u)
                             sampled &= (uint16_t)~(1u << 3);
                     }
+                }
+            }
+        }
+        if (boot->scene1_reached) {
+            const char *auto_dismiss_env = getenv("MUSASHI_AUTO_DISMISS");
+            int auto_dismiss = (auto_start && auto_start[0] == '1') ||
+                               (auto_dismiss_env && auto_dismiss_env[0] == '1');
+            if (auto_dismiss) {
+                ++boot->auto_dismiss_ticks;
+                if (boot->auto_dismiss_ticks == 1u)
+                    fprintf(stderr, "native_boot: AUTO_DISMISS starting dialogue dismissal in Scene 10\n");
+                if ((boot->auto_dismiss_ticks % 12u) < 6u) {
+                    const char *dismiss_key = getenv("MUSASHI_DISMISS_KEY");
+                    if (dismiss_key && strcmp(dismiss_key, "start") == 0)
+                        sampled &= (uint16_t)~(1u << 3); /* Start */
+                    else if (dismiss_key && strcmp(dismiss_key, "both") == 0) {
+                        sampled &= (uint16_t)~(1u << 14); /* Cross */
+                        sampled &= (uint16_t)~(1u << 3);  /* Start */
+                    } else
+                        sampled &= (uint16_t)~(1u << 14); /* Cross */
                 }
             }
         }
@@ -1333,6 +1354,28 @@ static int checkpoint(void *userdata, const void *continuation) {
                 boot->scene1_reached = 1;
                 fprintf(stderr, "native_boot: SCENE1_REACHED pc=%08x\n", context.pc);
             }
+        }
+    }
+    {
+        uint32_t *raw_cpu = (uint32_t *)(uintptr_t)continuation;
+        if (raw_cpu[34] == 0x800d1724u) {
+            musashi_boot_write32(&boot->memory, 0x800ae6b0u, raw_cpu[4]);
+            raw_cpu[34] = raw_cpu[31];
+            raw_cpu[35] = raw_cpu[31] + 4u;
+        } else if (raw_cpu[34] == 0x800d1734u) {
+            musashi_boot_write32(&boot->memory, 0x800ae6a8u, raw_cpu[4]);
+            raw_cpu[34] = raw_cpu[31];
+            raw_cpu[35] = raw_cpu[31] + 4u;
+        } else if (raw_cpu[34] == 0x800d1744u) {
+            musashi_boot_write32(&boot->memory, 0x800ae6acu, raw_cpu[4]);
+            raw_cpu[34] = raw_cpu[31];
+            raw_cpu[35] = raw_cpu[31] + 4u;
+        } else if (raw_cpu[34] == 0x800d1714u) {
+            uint32_t val = 0;
+            musashi_boot_read32(&boot->memory, 0x80078e50u, &val);
+            raw_cpu[2] = val & 0xffffu;
+            raw_cpu[34] = raw_cpu[31];
+            raw_cpu[35] = raw_cpu[31] + 4u;
         }
     }
     if (boot->continuation && boot->continuation != continuation) {
@@ -2183,6 +2226,166 @@ static int load_exe(NativeBoot *boot, const char *path) {
     return accepted;
 }
 
+static uint32_t s_png_crc_table[256];
+static int s_png_crc_table_computed = 0;
+
+static void png_make_crc_table(void) {
+    for (uint32_t n = 0; n < 256; ++n) {
+        uint32_t c = n;
+        for (int k = 0; k < 8; ++k) {
+            if (c & 1u)
+                c = 0xedb88320u ^ (c >> 1);
+            else
+                c = c >> 1;
+        }
+        s_png_crc_table[n] = c;
+    }
+    s_png_crc_table_computed = 1;
+}
+
+static uint32_t png_update_crc(uint32_t crc, const uint8_t *buf, size_t len) {
+    if (!s_png_crc_table_computed)
+        png_make_crc_table();
+    for (size_t i = 0; i < len; ++i) {
+        crc = s_png_crc_table[(crc ^ buf[i]) & 0xffu] ^ (crc >> 8);
+    }
+    return crc;
+}
+
+static int png_write_chunk(FILE *f, const char type[4], const uint8_t *data, uint32_t len) {
+    uint8_t len_bytes[4];
+    uint8_t crc_bytes[4];
+    uint32_t crc;
+
+    len_bytes[0] = (uint8_t)((len >> 24) & 0xffu);
+    len_bytes[1] = (uint8_t)((len >> 16) & 0xffu);
+    len_bytes[2] = (uint8_t)((len >> 8) & 0xffu);
+    len_bytes[3] = (uint8_t)(len & 0xffu);
+    if (fwrite(len_bytes, 1, 4, f) != 4) return 0;
+    if (fwrite(type, 1, 4, f) != 4) return 0;
+    if (len > 0 && fwrite(data, 1, len, f) != len) return 0;
+
+    crc = png_update_crc(0xffffffffu, (const uint8_t *)type, 4);
+    if (len > 0)
+        crc = png_update_crc(crc, data, len);
+    crc ^= 0xffffffffu;
+
+    crc_bytes[0] = (uint8_t)((crc >> 24) & 0xffu);
+    crc_bytes[1] = (uint8_t)((crc >> 16) & 0xffu);
+    crc_bytes[2] = (uint8_t)((crc >> 8) & 0xffu);
+    crc_bytes[3] = (uint8_t)(crc & 0xffu);
+    if (fwrite(crc_bytes, 1, 4, f) != 4) return 0;
+    return 1;
+}
+
+static uint32_t png_calc_adler32(const uint8_t *data, size_t length) {
+    uint32_t s1 = 1u;
+    uint32_t s2 = 0u;
+    for (size_t i = 0; i < length; ++i) {
+        s1 = (s1 + data[i]) % 65521u;
+        s2 = (s2 + s1) % 65521u;
+    }
+    return (s2 << 16) | s1;
+}
+
+static int write_png_rgb555(const char *filename, unsigned width, unsigned height, const uint16_t *pixels) {
+    static const uint8_t png_sig[8] = {0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a};
+    FILE *f;
+    uint8_t ihdr[13];
+    size_t line_bytes = 1u + (size_t)width * 3u;
+    size_t raw_len = line_bytes * (size_t)height;
+    uint8_t *raw;
+    size_t raw_pos = 0;
+    size_t zlib_cap;
+    uint8_t *zlib_data;
+    size_t zpos;
+    size_t remaining;
+    size_t src_pos;
+    uint32_t adler;
+    int ok = 1;
+
+    raw = malloc(raw_len);
+    if (!raw) return 0;
+
+    for (unsigned y = 0; y < height; ++y) {
+        raw[raw_pos++] = 0; /* filter type 0 (None) */
+        for (unsigned x = 0; x < width; ++x) {
+            uint16_t p = pixels[y * width + x];
+            unsigned r = (p & 0x1fu) << 3;
+            unsigned g = ((p >> 5) & 0x1fu) << 3;
+            unsigned b = ((p >> 10) & 0x1fu) << 3;
+            raw[raw_pos++] = (uint8_t)(r | (r >> 5));
+            raw[raw_pos++] = (uint8_t)(g | (g >> 5));
+            raw[raw_pos++] = (uint8_t)(b | (b >> 5));
+        }
+    }
+
+    zlib_cap = 2u + ((raw_len + 32767u) / 32768u) * 5u + raw_len + 4u;
+    zlib_data = malloc(zlib_cap);
+    if (!zlib_data) {
+        free(raw);
+        return 0;
+    }
+
+    /* zlib header: Deflate, 32K window, no preset dict, check bits */
+    zlib_data[0] = 0x78;
+    zlib_data[1] = 0x01;
+    zpos = 2;
+    remaining = raw_len;
+    src_pos = 0;
+    while (remaining > 0) {
+        uint16_t chunk_len = remaining > 32768u ? 32768u : (uint16_t)remaining;
+        int is_final = (chunk_len == remaining);
+        uint16_t nlen = (uint16_t)~chunk_len;
+        zlib_data[zpos++] = is_final ? 0x01u : 0x00u;
+        zlib_data[zpos++] = (uint8_t)(chunk_len & 0xffu);
+        zlib_data[zpos++] = (uint8_t)((chunk_len >> 8) & 0xffu);
+        zlib_data[zpos++] = (uint8_t)(nlen & 0xffu);
+        zlib_data[zpos++] = (uint8_t)((nlen >> 8) & 0xffu);
+        memcpy(&zlib_data[zpos], &raw[src_pos], chunk_len);
+        zpos += chunk_len;
+        src_pos += chunk_len;
+        remaining -= chunk_len;
+    }
+    adler = png_calc_adler32(raw, raw_len);
+    zlib_data[zpos++] = (uint8_t)((adler >> 24) & 0xffu);
+    zlib_data[zpos++] = (uint8_t)((adler >> 16) & 0xffu);
+    zlib_data[zpos++] = (uint8_t)((adler >> 8) & 0xffu);
+    zlib_data[zpos++] = (uint8_t)(adler & 0xffu);
+
+    free(raw);
+
+    f = fopen(filename, "wb");
+    if (!f) {
+        free(zlib_data);
+        return 0;
+    }
+
+    if (fwrite(png_sig, 1, 8, f) != 8) ok = 0;
+
+    ihdr[0] = (uint8_t)((width >> 24) & 0xffu);
+    ihdr[1] = (uint8_t)((width >> 16) & 0xffu);
+    ihdr[2] = (uint8_t)((width >> 8) & 0xffu);
+    ihdr[3] = (uint8_t)(width & 0xffu);
+    ihdr[4] = (uint8_t)((height >> 24) & 0xffu);
+    ihdr[5] = (uint8_t)((height >> 16) & 0xffu);
+    ihdr[6] = (uint8_t)((height >> 8) & 0xffu);
+    ihdr[7] = (uint8_t)(height & 0xffu);
+    ihdr[8] = 8;  /* 8 bits per channel */
+    ihdr[9] = 2;  /* Color type 2: RGB */
+    ihdr[10] = 0; /* Deflate */
+    ihdr[11] = 0; /* Filter method 0 */
+    ihdr[12] = 0; /* No interlace */
+
+    if (ok && !png_write_chunk(f, "IHDR", ihdr, 13)) ok = 0;
+    if (ok && !png_write_chunk(f, "IDAT", zlib_data, (uint32_t)zpos)) ok = 0;
+    if (ok && !png_write_chunk(f, "IEND", NULL, 0)) ok = 0;
+
+    fclose(f);
+    free(zlib_data);
+    return ok;
+}
+
 static void dump_display_vram(NativeBoot *boot) {
     unsigned x = boot->gpu.display.x, y = boot->gpu.display.y;
     unsigned width = boot->gpu.display.width ? boot->gpu.display.width : 320u;
@@ -2239,6 +2442,11 @@ static void dump_display_vram(NativeBoot *boot) {
     fprintf(stderr, "native_boot: VRAM_DUMP path=native_vram_display.ppm "
             "x=%u y=%u %ux%u nonblack=%llu/%u\n",
             x, y, width, height, (unsigned long long)nonblack, count);
+    if (write_png_rgb555("native_vram_display.png", width, height, pixels)) {
+        fprintf(stderr, "native_boot: VRAM_DUMP path=native_vram_display.png "
+                "x=%u y=%u %ux%u nonblack=%llu/%u\n",
+                x, y, width, height, (unsigned long long)nonblack, count);
+    }
     free(pixels);
     {
         uint16_t row[1024];
