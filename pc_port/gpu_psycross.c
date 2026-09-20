@@ -22,9 +22,22 @@ static int valid(const MusashiGpuPsyCross *gpu) {
 
 static void reset_display_state(MusashiGpuPsyCross *gpu);
 
+static int log_sample_psycross(uint64_t *counter, uint32_t initial, uint32_t stride) {
+    uint64_t val = (*counter)++;
+    return (val < initial) || (stride && (val % stride == 0));
+}
+
 static int ready(void *userdata) {
     MusashiGpuPsyCross *gpu = userdata;
-    if (!valid(gpu) || g_vertexIndex < 0 || g_splitIndex < 0) return -1;
+    if (!valid(gpu) || g_vertexIndex < 0 || g_splitIndex < 0) {
+        static uint64_t n;
+        if (log_sample_psycross(&n, 4u, 4096u))
+            fprintf(stderr, "gpu_psycross: ready=-1 valid=%d (ctx=%p curr_ctx=%p win=%p curr_win=%p faulted=%d) vIdx=%d sIdx=%d\n",
+                    valid(gpu), gpu ? gpu->context : NULL, SDL_GL_GetCurrentContext(),
+                    gpu ? gpu->window : NULL, SDL_GL_GetCurrentWindow(),
+                    gpu ? gpu->faulted : -1, g_vertexIndex, g_splitIndex);
+        return -1;
+    }
     return !gpu->command_active && g_vertexIndex == 0 && g_splitIndex == 0;
 }
 
@@ -466,6 +479,8 @@ int musashi_gpu_psycross_present(MusashiGpuPsyCross *gpu) {
     if (scissor) glEnable(GL_SCISSOR_TEST);
     gpu->command_active = 0;
     if (!blit_ok || glGetError() != GL_NO_ERROR) {
+        GLenum err = glGetError();
+        fprintf(stderr, "gpu_psycross: present error blit_ok=%d glError=0x%x\n", blit_ok, err);
         gpu->faulted = 1;
         return 0;
     }

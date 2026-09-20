@@ -1189,19 +1189,26 @@ static int prim_commit(MusashiGpuController *controller) {
         } else {
             width = 16; height = 16;
         }
-        unsigned px, py;
-        if (!controller->backend.read_vram || !width || !height ||
-            width > 256u || height > 256u) return 0;
-        for (py = 0; py < height; ++py) {
-            for (px = 0; px < width; ++px) {
+        int minx, miny, maxx, maxy;
+        int px, py;
+        if (!width || !height) return 1;
+        if (!controller->backend.read_vram || width > 1024u || height > 512u) return 0;
+        minx = dest_x;
+        miny = dest_y;
+        maxx = dest_x + (int)width - 1;
+        maxy = dest_y + (int)height - 1;
+        if (!clip_box(controller, &minx, &miny, &maxx, &maxy)) return 1;
+        for (py = miny; py <= maxy; ++py) {
+            unsigned rel_y = (unsigned)(py - dest_y);
+            for (px = minx; px <= maxx; ++px) {
+                unsigned rel_x = (unsigned)(px - dest_x);
                 uint16_t out = 0;
                 if (!sample_texel(controller, fmt, tx, ty, clut_x, clut_y,
-                                  u0 + px, v0 + py, &out))
+                                  (u0 + rel_x) & 255u, (v0 + rel_y) & 255u, &out))
                     return 0;
                 if (!out)
                     continue;
-                if (!plot_drawn(controller, dest_x + (int)px, dest_y + (int)py,
-                                (uint16_t)(out & 0x7fffu)))
+                if (!plot_drawn(controller, px, py, (uint16_t)(out & 0x7fffu)))
                     return 0;
             }
         }
@@ -1431,6 +1438,10 @@ static int prim_word(MusashiGpuController *controller, uint32_t word) {
         controller->accepted_gp0_words++;
         if (controller->prim_got == controller->prim_needed) {
             int accepted = prim_commit(controller);
+            if (!accepted)
+                fprintf(stderr, "gpu_controller: prim_commit FAILED op=%02x needed=%u got=%u w0=%08x\n",
+                        controller->prim_data[0] >> 24, controller->prim_needed, controller->prim_got,
+                        controller->prim_data[0]);
             discard_prim(controller);
             return accepted && !controller->faulted;
         }
@@ -1503,7 +1514,11 @@ int musashi_gpu_controller_write32(MusashiGpuController *controller,
         if (candidate && controller->accepted_gp0_words == UINT64_MAX)
             return 0;
         if (opcode == 0 || opcode == 1u) {
-            if (!backend_ready(controller, &ready) || !ready) return 0;
+            if (!backend_ready(controller, &ready) || !ready) {
+                fprintf(stderr, "gpu_controller: opcode %u not ready: backend_ready=%d ready=%d faulted=%d\n",
+                        opcode, backend_ready(controller, &ready), ready, controller->faulted);
+                return 0;
+            }
             controller->accepted_gp0_words++;
             return controller->faulted ? 0 : 1;
         }
@@ -1524,7 +1539,10 @@ int musashi_gpu_controller_write32(MusashiGpuController *controller,
             controller->accepted_gp0_words++;
             return controller->faulted ? 0 : 1;
         }
-        if (opcode != 0xe1u) return 0;
+        if (opcode != 0xe1u) {
+            fprintf(stderr, "gpu_controller: UNHANDLED GP0 opcode=%02x value=%08x\n", opcode, value);
+            return 0;
+        }
         if (!backend_ready(controller, &ready) || !ready) return 0;
         if (!backend_draw_mode(controller, value)) return 0;
         controller->draw_mode = value & 0x3fffu;

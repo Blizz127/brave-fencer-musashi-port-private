@@ -1210,6 +1210,10 @@ static int epoch_video_edge(void *userdata, uint64_t sequence, uint64_t cycle) {
             if (ev.type == SDL_QUIT)
                 host_stop_signal = SIGTERM;
         }
+        if (boot->gpu_renderer.window && boot->gpu_renderer.context) {
+            if (SDL_GL_GetCurrentContext() != boot->gpu_renderer.context)
+                SDL_GL_MakeCurrent((SDL_Window *)boot->gpu_renderer.window, boot->gpu_renderer.context);
+        }
         (void)musashi_gpu_psycross_present(&boot->gpu_renderer);
     }
     if (boot->scene1_reached && boot->gpu.display.width == 320u && boot->gpu.display.height == 240u) {
