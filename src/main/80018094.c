@@ -2,6 +2,88 @@
  * SHA256(span)=71f6173fe63ac65906671fe5f0b56ce7c799199153af963059b76599a72d9015.
  * Word export only: the native seam executes the retail instruction
  * stream itself; this is not a C match claim. */
+#if defined(__mips__)
+__asm__(
+    ".set	noreorder
+"
+    ".globl	func_80018094
+"
+    ".ent	func_80018094
+"
+    ".type	func_80018094, @function
+"
+    "func_80018094:
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+    ".end	func_80018094
+"
+    ".size	func_80018094, .-func_80018094
+"
+);
+#else
 /* Body below is an UNVERIFIED draft, not an oracle match
  * claim; promotion requires tools/match_function.py MATCH. */
 #include "psx_types.h"
@@ -36,3 +118,5 @@ void func_80018094(void *arg0, u32 arg1, u32 arg2) {
         func_80058C6C(*(&D_800A651C + (D_800B9A02 * 0x14)) + temp_s2, temp_s0);
     }
 }
+#endif
+

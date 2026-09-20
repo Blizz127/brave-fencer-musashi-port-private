@@ -2214,6 +2214,56 @@
       "optimization": "-O2"
     },
     {
+      "name": "func_80017F14",
+      "vram": 2147581716,
+      "size": 384,
+      "region": "main",
+      "source": "src/main/80017f14.c",
+      "optimization": "-O2",
+      "recovery": "assembly",
+      "extent": "function"
+    },
+    {
+      "name": "func_80018094",
+      "vram": 2147582100,
+      "size": 256,
+      "region": "main",
+      "source": "src/main/80018094.c",
+      "optimization": "-O2",
+      "recovery": "assembly",
+      "extent": "function"
+    },
+    {
+      "name": "func_80018194",
+      "vram": 2147582356,
+      "size": 120,
+      "region": "main",
+      "source": "src/main/80018194.c",
+      "optimization": "-O2",
+      "recovery": "assembly",
+      "extent": "function"
+    },
+    {
+      "name": "func_8001820C",
+      "vram": 2147582476,
+      "size": 376,
+      "region": "main",
+      "source": "src/main/8001820c.c",
+      "optimization": "-O2",
+      "recovery": "assembly",
+      "extent": "function"
+    },
+    {
+      "name": "func_80018384",
+      "vram": 2147582852,
+      "size": 92,
+      "region": "main",
+      "source": "src/main/80018384.c",
+      "optimization": "-O2",
+      "recovery": "assembly",
+      "extent": "function"
+    },
+    {
       "name": "func_800183E0",
       "vram": 2147582944,
       "size": 112,
@@ -2224,12 +2274,42 @@
       "optimization": "-O2"
     },
     {
+      "name": "func_80018450",
+      "vram": 2147583056,
+      "size": 160,
+      "region": "main",
+      "source": "src/main/80018450.c",
+      "optimization": "-O2",
+      "recovery": "assembly",
+      "extent": "function"
+    },
+    {
+      "name": "func_800184F0",
+      "vram": 2147583216,
+      "size": 548,
+      "region": "main",
+      "source": "src/main/800184f0.c",
+      "optimization": "-O2",
+      "recovery": "assembly",
+      "extent": "function"
+    },
+    {
       "name": "func_80018714",
       "vram": 2147583764,
       "size": 28,
       "region": "main",
       "source": "src/main/80018714.c",
       "recovery": "c",
+      "extent": "function"
+    },
+    {
+      "name": "func_80018730",
+      "vram": 2147583792,
+      "size": 488,
+      "region": "main",
+      "source": "src/main/80018730.c",
+      "optimization": "-O2",
+      "recovery": "assembly",
       "extent": "function"
     },
     {
