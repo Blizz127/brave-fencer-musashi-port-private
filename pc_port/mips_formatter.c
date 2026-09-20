@@ -1741,6 +1741,10 @@ static const uint32_t kOverlay0010_800CFBF8Words[] = {
 #include "800cfbf8_overlay0010_words.inc"
 };
 _Static_assert(sizeof(kOverlay0010_800CFBF8Words) / sizeof(uint32_t) == 124, "overlay 0010 800CFBF8 span changed");
+static const uint32_t kOverlay0010_800CFDE8Words[] = {
+#include "800cfde8_overlay0010_words.inc"
+};
+_Static_assert(sizeof(kOverlay0010_800CFDE8Words) / sizeof(uint32_t) == 30, "overlay 0010 800CFDE8 span changed");
 static const uint32_t kOverlay0010_800CFE60Words[] = {
 #include "800cfe60_overlay0010_words.inc"
 };
@@ -12889,6 +12893,7 @@ static const FormatterRange kFormatterRanges5[] = {
     { 0x800cf94cu, 0x800cf990u, kOverlay0010_800CF94CWords },
     { 0x800cfbbcu, 0x800cfbccu, kOverlay0010_800CFBBCWords },
     { 0x800cfbf8u, 0x800cfde8u, kOverlay0010_800CFBF8Words },
+    { 0x800cfde8u, 0x800cfe60u, kOverlay0010_800CFDE8Words },
     { 0x800cfe60u, 0x800d0214u, kOverlay0010_800CFE60Words },
     { 0x800d0488u, 0x800d0588u, kOverlay0010_800D0488Words },
 };
