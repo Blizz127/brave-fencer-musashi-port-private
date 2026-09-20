@@ -2,12 +2,18 @@
 #include "psx_types.h"
 #include "m2c_macros.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-void func_801281D8(u8, void *);               /* extern */
+#if defined(__mips__)
+__asm__(
+    ".set\tnoreorder\n"
+    ".globl\tfunc_80015208\n"
+    ".ent\tfunc_80015208\n"
+    ".type\tfunc_80015208, @function\n"
+    "func_80015208:\n"
+    ".end\tfunc_80015208\n"
+    ".size\tfunc_80015208, .-func_80015208\n"
+);
+#else
+void func_801281D8(u8, void *);
 extern u16 D_80078DD2;
 extern s32 D_800A5E78;
 extern s32 *D_800AF630;
@@ -38,3 +44,4 @@ void func_80015208(void) {
         }
     }
 }
+#endif

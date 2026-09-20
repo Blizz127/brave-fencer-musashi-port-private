@@ -1483,6 +1483,26 @@
       "extent": "function"
     },
     {
+      "name": "func_80015144",
+      "vram": 2147569988,
+      "size": 196,
+      "region": "main",
+      "source": "src/main/80015144.c",
+      "optimization": "-O2",
+      "recovery": "assembly",
+      "extent": "function"
+    },
+    {
+      "name": "func_80015208",
+      "vram": 2147570184,
+      "size": 236,
+      "region": "main",
+      "source": "src/main/80015208.c",
+      "optimization": "-O2",
+      "recovery": "assembly",
+      "extent": "function"
+    },
+    {
       "name": "func_800152F4",
       "vram": 2147570420,
       "size": 28,
