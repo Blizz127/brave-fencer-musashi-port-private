@@ -1,4 +1,71 @@
 /* Exact retail word export for [800167F0,800168B4); EXE and assembly verified. */
+#if defined(__mips__)
+__asm__(
+    ".set	noreorder
+"
+    ".globl	func_800167F0
+"
+    ".ent	func_800167F0
+"
+    ".type	func_800167F0, @function
+"
+    "func_800167F0:
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+    ".end	func_800167F0
+"
+    ".size	func_800167F0, .-func_800167F0
+"
+);
+#else
 #include "psx_types.h"
 #include "m2c_macros.h"
 
@@ -38,3 +105,5 @@ s32 func_800167F0(s32 arg0) {
     func_80016224(var_v0 & 0xFF, 0);
     return (u16) M2C_FIELD(&D_800AF630, u16 *, 0x19E) >= 0xFFU;
 }
+#endif
+

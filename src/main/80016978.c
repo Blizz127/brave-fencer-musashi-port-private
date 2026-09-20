@@ -2,6 +2,73 @@
  * SHA256(span)=f42d53c8dd5f4c86f7c8e039340b5d199dbe9c4e6994fdc7598917856f47f191.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+#if defined(__mips__)
+__asm__(
+    ".set	noreorder
+"
+    ".globl	func_80016978
+"
+    ".ent	func_80016978
+"
+    ".type	func_80016978, @function
+"
+    "func_80016978:
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+    ".end	func_80016978
+"
+    ".size	func_80016978, .-func_80016978
+"
+);
+#else
 #include "psx_types.h"
 #include "m2c_macros.h"
 
@@ -41,3 +108,5 @@ s32 func_80016978(s32 arg0) {
     func_80016450(var_v0 & 0xFF, 0);
     return (u16) M2C_FIELD(&D_800AF630, u16 *, 0x19E) >= 0xFFU;
 }
+#endif
+
