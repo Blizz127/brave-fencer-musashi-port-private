@@ -1,4 +1,48 @@
 /* Exact retail word export for [80018F20,80018F88); EXE and assembly verified. */
+#if defined(__mips__)
+__asm__(
+    ".set	noreorder
+"
+    ".globl	func_80018F20
+"
+    ".ent	func_80018F20
+"
+    ".type	func_80018F20, @function
+"
+    "func_80018F20:
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+    ".end	func_80018F20
+"
+    ".size	func_80018F20, .-func_80018F20
+"
+);
+#else
 #include "psx_types.h"
 #include "m2c_macros.h"
 
@@ -29,3 +73,5 @@ void func_80018F20(s32 arg0) {
         var_a1 = arg0 + var_a2;
     } while (var_a2 < 8U);
 }
+#endif
+

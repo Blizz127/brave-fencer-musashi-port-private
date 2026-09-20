@@ -2,6 +2,83 @@
  * SHA256(span)=b3e105ef1982420a7b1ac9f37048594e8b0ced61670698d614050b323c25b12a.
  * Word export only: the native seam executes the retail instruction
  * stream itself; this is not a C match claim. */
+#if defined(__mips__)
+__asm__(
+    ".set	noreorder
+"
+    ".globl	func_800190AC
+"
+    ".ent	func_800190AC
+"
+    ".type	func_800190AC, @function
+"
+    "func_800190AC:
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+    ".end	func_800190AC
+"
+    ".size	func_800190AC, .-func_800190AC
+"
+);
+#else
 #include "psx_types.h"
 #include "m2c_macros.h"
 
@@ -45,3 +122,5 @@ void func_800190AC(void) {
         }
     }
 }
+#endif
+
