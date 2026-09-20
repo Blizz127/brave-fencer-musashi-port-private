@@ -249,6 +249,22 @@ if(MUSASHI_BUILD_PC_PORT)
     if(NOT MUSASHI_OV10_800CF8B4_WORDS_RESULT EQUAL 0)
         message(FATAL_ERROR "Cannot extract overlay 0010 800cf8b4 words")
     endif()
+    execute_process(
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/extract_asm_words.py
+                ${CMAKE_CURRENT_SOURCE_DIR}/src/overlays/main_0010/800cf8cc.c
+                ${MUSASHI_GENERATED_DIR}/800cf8cc_overlay0010_words.inc --expected-words 6
+        RESULT_VARIABLE MUSASHI_OV10_800CF8CC_WORDS_RESULT)
+    if(NOT MUSASHI_OV10_800CF8CC_WORDS_RESULT EQUAL 0)
+        message(FATAL_ERROR "Cannot extract overlay 0010 800cf8cc words")
+    endif()
+    execute_process(
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/extract_asm_words.py
+                ${CMAKE_CURRENT_SOURCE_DIR}/src/overlays/main_0010/800cf8e4.c
+                ${MUSASHI_GENERATED_DIR}/800cf8e4_overlay0010_words.inc --expected-words 26
+        RESULT_VARIABLE MUSASHI_OV10_800CF8E4_WORDS_RESULT)
+    if(NOT MUSASHI_OV10_800CF8E4_WORDS_RESULT EQUAL 0)
+        message(FATAL_ERROR "Cannot extract overlay 0010 800cf8e4 words")
+    endif()
     if(NOT MUSASHI_OV10_DISPATCH_WORDS_RESULT EQUAL 0)
         message(FATAL_ERROR "Cannot extract overlay 0010 800CEDFC words")
     endif()
@@ -387,6 +403,70 @@ if(MUSASHI_BUILD_PC_PORT)
         RESULT_VARIABLE MUSASHI_OV10_800D19DC_RESULT)
     if(NOT MUSASHI_OV10_800D19DC_RESULT EQUAL 0)
         message(FATAL_ERROR "Cannot extract MAIN10 800d19dc words")
+    endif()
+    execute_process(
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/extract_asm_words.py
+                ${CMAKE_CURRENT_SOURCE_DIR}/src/overlays/main_0010/800d19f0.c
+                ${MUSASHI_GENERATED_DIR}/800d19f0_overlay0010_words.inc --expected-words 72
+        RESULT_VARIABLE MUSASHI_OV10_800D19F0_RESULT)
+    if(NOT MUSASHI_OV10_800D19F0_RESULT EQUAL 0)
+        message(FATAL_ERROR "Cannot extract MAIN10 800d19f0 words")
+    endif()
+    execute_process(
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/extract_asm_words.py
+                ${CMAKE_CURRENT_SOURCE_DIR}/src/overlays/main_0010/800d1b10.c
+                ${MUSASHI_GENERATED_DIR}/800d1b10_overlay0010_words.inc --expected-words 28
+        RESULT_VARIABLE MUSASHI_OV10_800D1B10_RESULT)
+    if(NOT MUSASHI_OV10_800D1B10_RESULT EQUAL 0)
+        message(FATAL_ERROR "Cannot extract MAIN10 800d1b10 words")
+    endif()
+    execute_process(
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/extract_asm_words.py
+                ${CMAKE_CURRENT_SOURCE_DIR}/src/overlays/main_0010/800d1b80.c
+                ${MUSASHI_GENERATED_DIR}/800d1b80_overlay0010_words.inc --expected-words 22
+        RESULT_VARIABLE MUSASHI_OV10_800D1B80_RESULT)
+    if(NOT MUSASHI_OV10_800D1B80_RESULT EQUAL 0)
+        message(FATAL_ERROR "Cannot extract MAIN10 800d1b80 words")
+    endif()
+    execute_process(
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/extract_asm_words.py
+                ${CMAKE_CURRENT_SOURCE_DIR}/src/overlays/main_0010/800d1bd8.c
+                ${MUSASHI_GENERATED_DIR}/800d1bd8_overlay0010_words.inc --expected-words 8
+        RESULT_VARIABLE MUSASHI_OV10_800D1BD8_RESULT)
+    if(NOT MUSASHI_OV10_800D1BD8_RESULT EQUAL 0)
+        message(FATAL_ERROR "Cannot extract MAIN10 800d1bd8 words")
+    endif()
+    execute_process(
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/extract_asm_words.py
+                ${CMAKE_CURRENT_SOURCE_DIR}/src/overlays/main_0010/800d1bf8.c
+                ${MUSASHI_GENERATED_DIR}/800d1bf8_overlay0010_words.inc --expected-words 75
+        RESULT_VARIABLE MUSASHI_OV10_800D1BF8_RESULT)
+    if(NOT MUSASHI_OV10_800D1BF8_RESULT EQUAL 0)
+        message(FATAL_ERROR "Cannot extract MAIN10 800d1bf8 words")
+    endif()
+    execute_process(
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/extract_asm_words.py
+                ${CMAKE_CURRENT_SOURCE_DIR}/src/overlays/main_0010/800d1d24.c
+                ${MUSASHI_GENERATED_DIR}/800d1d24_overlay0010_words.inc --expected-words 28
+        RESULT_VARIABLE MUSASHI_OV10_800D1D24_RESULT)
+    if(NOT MUSASHI_OV10_800D1D24_RESULT EQUAL 0)
+        message(FATAL_ERROR "Cannot extract MAIN10 800d1d24 words")
+    endif()
+    execute_process(
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/extract_asm_words.py
+                ${CMAKE_CURRENT_SOURCE_DIR}/src/overlays/main_0010/800d1d94.c
+                ${MUSASHI_GENERATED_DIR}/800d1d94_overlay0010_words.inc --expected-words 7
+        RESULT_VARIABLE MUSASHI_OV10_800D1D94_RESULT)
+    if(NOT MUSASHI_OV10_800D1D94_RESULT EQUAL 0)
+        message(FATAL_ERROR "Cannot extract MAIN10 800d1d94 words")
+    endif()
+    execute_process(
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/extract_asm_words.py
+                ${CMAKE_CURRENT_SOURCE_DIR}/src/overlays/main_0010/800d1db0.c
+                ${MUSASHI_GENERATED_DIR}/800d1db0_overlay0010_words.inc --expected-words 28
+        RESULT_VARIABLE MUSASHI_OV10_800D1DB0_RESULT)
+    if(NOT MUSASHI_OV10_800D1DB0_RESULT EQUAL 0)
+        message(FATAL_ERROR "Cannot extract MAIN10 800d1db0 words")
     endif()
     execute_process(
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/extract_asm_words.py

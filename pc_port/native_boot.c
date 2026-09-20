@@ -1023,7 +1023,7 @@ static int epoch_wait(void *userdata, uint64_t target_tick) {
         uint64_t now = SDL_GetPerformanceCounter();
         if (now < previous) return 0;
         if (now >= target_tick) return 1;
-        if ((Uint32)(SDL_GetTicks() - started) >= 1000u) return 0;
+        if ((Uint32)(SDL_GetTicks() - started) >= 10000u) return 0;
         if (target_tick - now > boot->epoch.frequency / 500u) SDL_Delay(1);
         else SDL_Delay(0);
         previous = now;
