@@ -1523,6 +1523,16 @@
       "optimization": "-O2"
     },
     {
+      "name": "func_8001534C",
+      "vram": 2147570508,
+      "size": 88,
+      "region": "main",
+      "source": "src/main/8001534c.c",
+      "optimization": "-O2",
+      "recovery": "assembly",
+      "extent": "function"
+    },
+    {
       "name": "func_800153A4",
       "vram": 2147570596,
       "size": 40,
@@ -1531,6 +1541,16 @@
       "recovery": "c",
       "extent": "function",
       "optimization": "-O2"
+    },
+    {
+      "name": "func_800153CC",
+      "vram": 2147570636,
+      "size": 88,
+      "region": "main",
+      "source": "src/main/800153cc.c",
+      "optimization": "-O2",
+      "recovery": "assembly",
+      "extent": "function"
     },
     {
       "name": "func_80015424",
