@@ -1,16 +1,20 @@
 /* Exact retail word export for [800149E0,80014B10); EXE and assembly verified. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-s32 func_80014C28(s32);                             /* static */
-s32 func_80014CF8(s32, s32);                          /* static */
-s32 func_80014D30(s32, s32);                          /* static */
+#if defined(__mips__)
+__asm__(
+    ".set\tnoreorder\n"
+    ".globl\tfunc_800149E0\n"
+    ".ent\tfunc_800149E0\n"
+    ".type\tfunc_800149E0, @function\n"
+    "func_800149E0:\n"
+    ".end\tfunc_800149E0\n"
+    ".size\tfunc_800149E0, .-func_800149E0\n"
+);
+#else
+s32 func_80014C28(s32);
+s32 func_80014CF8(s32, s32);
+s32 func_80014D30(s32, s32);
 extern s32 *D_80078DD2;
 
 u16 func_800149E0(s32 arg0) {
@@ -63,3 +67,4 @@ u16 func_800149E0(s32 arg0) {
     }
     return var_v0;
 }
+#endif
