@@ -3,26 +3,24 @@
  * Word export only: the native seam needs the retail instruction stream so the
  * guest can execute the library routine it calls. No C match claim yet.
  */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+typedef struct {
+    s32 a, b;
+} S8_8001282c;
 
-void func_800128B4(void *);                               /* static */
-void func_80013ED0(s32, void *, void *, void *);                /* static */
-void func_80013F98(s32, void *);                          /* static */
-void func_80013FBC(s32, void *);                          /* static */
-void func_80013FE0(void *);                               /* static */
+void func_800128B4(void *);
+void func_80013ED0(void *, void *, void *, void *);
+void func_80013F98(void *, void *);
+void func_80013FBC(void *, void *);
+void func_80013FE0(void *, void *);
 
-void func_8001282C(s32 arg0) {
-    s32 sp20;
-    s32 sp18;
-    s32 sp10;
-    func_80013FE0(&sp20);
+void func_8001282C(void *arg0) {
+    S8_8001282c sp10;
+    S8_8001282c sp18;
+    S8_8001282c sp20;
+
+    func_80013FE0(arg0, &sp20);
     func_800128B4(&sp20);
     func_80013FBC(arg0, &sp18);
     func_800128B4(&sp18);

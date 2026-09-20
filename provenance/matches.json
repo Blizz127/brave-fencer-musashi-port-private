@@ -600,6 +600,16 @@
       "extent": "function"
     },
     {
+      "name": "func_8001282C",
+      "vram": 2147559468,
+      "size": 136,
+      "region": "main",
+      "source": "src/main/8001282c.c",
+      "optimization": "-O2",
+      "recovery": "c",
+      "extent": "function"
+    },
+    {
       "name": "func_800128B4",
       "vram": 2147559604,
       "size": 56,
