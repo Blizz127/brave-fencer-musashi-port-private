@@ -2,15 +2,22 @@
  * SHA256(span)=4f333c8fc41b9063a42c85d18b5b1eca22b56a3d956ecbda8ee5ce4e09dce466.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-void func_8001094C(void) {
-
-}
+__asm__(
+    ".set\tnoreorder\n"
+    ".globl\tfunc_8001094C\n"
+    ".ent\tfunc_8001094C\n"
+    ".type\tfunc_8001094C, @function\n"
+    "func_8001094C:\n"
+    "move\t$sp, $fp\n"
+    "lw\t$ra, 52($sp)\n"
+    "lw\t$fp, 48($sp)\n"
+    "lw\t$s1, 44($sp)\n"
+    "lw\t$s0, 40($sp)\n"
+    "addiu\t$sp, $sp, 56\n"
+    "jr\t$ra\n"
+    "nop\n"
+    ".end\tfunc_8001094C\n"
+    ".size\tfunc_8001094C, .-func_8001094C\n"
+);
