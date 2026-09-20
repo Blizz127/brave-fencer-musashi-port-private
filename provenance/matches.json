@@ -739,6 +739,16 @@
       "optimization": "-O2"
     },
     {
+      "name": "func_80012E6C",
+      "vram": 2147561068,
+      "size": 264,
+      "region": "main",
+      "source": "src/main/80012e6c.c",
+      "optimization": "-O2",
+      "recovery": "assembly",
+      "extent": "function"
+    },
+    {
       "name": "func_80012F74",
       "vram": 2147561332,
       "size": 84,
