@@ -809,10 +809,14 @@ static int sample_keyboard_pad(void *userdata, uint16_t *buttons) {
         {SDL_SCANCODE_SPACE,0}, {SDL_SCANCODE_RETURN,3},
         {SDL_SCANCODE_UP,4}, {SDL_SCANCODE_RIGHT,5},
         {SDL_SCANCODE_DOWN,6}, {SDL_SCANCODE_LEFT,7},
+        {SDL_SCANCODE_W,4}, {SDL_SCANCODE_D,5},
+        {SDL_SCANCODE_S,6}, {SDL_SCANCODE_A,7},
         {SDL_SCANCODE_LCTRL,8}, {SDL_SCANCODE_RCTRL,9},
         {SDL_SCANCODE_LSHIFT,10}, {SDL_SCANCODE_RSHIFT,11},
         {SDL_SCANCODE_Z,12}, {SDL_SCANCODE_V,13},
-        {SDL_SCANCODE_C,14}, {SDL_SCANCODE_X,15}
+        {SDL_SCANCODE_C,14}, {SDL_SCANCODE_X,15},
+        {SDL_SCANCODE_U,12}, {SDL_SCANCODE_I,13},
+        {SDL_SCANCODE_K,14}, {SDL_SCANCODE_J,15}
     };
     if (!buttons) return 0;
     /* SIO write8 treats a failed sampler as a hardware fault and latches
@@ -833,6 +837,61 @@ static int sample_keyboard_pad(void *userdata, uint16_t *buttons) {
     }
     if ((SDL_GetModState() & KMOD_RSHIFT) != 0)
         sampled &= (uint16_t)~(1u << 11);
+
+    /* Gamepad / GameController support */
+    {
+        static SDL_GameController *s_gamepad = NULL;
+        static int s_gamepad_searched = 0;
+        if (!s_gamepad_searched) {
+            s_gamepad_searched = 1;
+            if (!SDL_WasInit(SDL_INIT_GAMECONTROLLER))
+                SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER);
+            for (int c = 0; c < SDL_NumJoysticks(); ++c) {
+                if (SDL_IsGameController(c)) {
+                    s_gamepad = SDL_GameControllerOpen(c);
+                    if (s_gamepad) {
+                        fprintf(stderr, "native_boot: GameController attached: %s\n",
+                                SDL_GameControllerName(s_gamepad));
+                        break;
+                    }
+                }
+            }
+        }
+        if (s_gamepad && SDL_GameControllerGetAttached(s_gamepad)) {
+            if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_DPAD_UP))
+                sampled &= (uint16_t)~(1u << 4);
+            if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_DPAD_RIGHT))
+                sampled &= (uint16_t)~(1u << 5);
+            if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_DPAD_DOWN))
+                sampled &= (uint16_t)~(1u << 6);
+            if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_DPAD_LEFT))
+                sampled &= (uint16_t)~(1u << 7);
+            if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_A))
+                sampled &= (uint16_t)~(1u << 14); /* Cross / Jump */
+            if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_X))
+                sampled &= (uint16_t)~(1u << 15); /* Square / Attack */
+            if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_B))
+                sampled &= (uint16_t)~(1u << 13); /* Circle / Secondary */
+            if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_Y))
+                sampled &= (uint16_t)~(1u << 12); /* Triangle */
+            if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_START))
+                sampled &= (uint16_t)~(1u << 3);
+            if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_BACK))
+                sampled &= (uint16_t)~(1u << 0);
+            if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_LEFTSHOULDER))
+                sampled &= (uint16_t)~(1u << 10); /* L1 */
+            if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_RIGHTSHOULDER))
+                sampled &= (uint16_t)~(1u << 11); /* R1 */
+
+            int16_t axis_x = SDL_GameControllerGetAxis(s_gamepad, SDL_CONTROLLER_AXIS_LEFTX);
+            int16_t axis_y = SDL_GameControllerGetAxis(s_gamepad, SDL_CONTROLLER_AXIS_LEFTY);
+            if (axis_x < -10000) sampled &= (uint16_t)~(1u << 7); /* Left */
+            if (axis_x > 10000) sampled &= (uint16_t)~(1u << 5);  /* Right */
+            if (axis_y < -10000) sampled &= (uint16_t)~(1u << 4); /* Up */
+            if (axis_y > 10000) sampled &= (uint16_t)~(1u << 6);  /* Down */
+        }
+    }
+
     /* Host hold: xdotool/Xwayland often never reaches SDL_GetKeyboardState.
      * 80018C64 stores inverted buttons byte-swapped, so Start (bit 3) lands
      * as 0x0800 at +0x2A; analog 80018CE8 writes the EDGE into +0x3A (78DD2).
@@ -890,6 +949,29 @@ static int sample_keyboard_pad(void *userdata, uint16_t *buttons) {
                         sampled &= (uint16_t)~(1u << 3);  /* Start */
                     } else
                         sampled &= (uint16_t)~(1u << 14); /* Cross */
+                }
+            }
+            /* Scripted gameplay actions for automated in-game validation */
+            const char *gameplay_action = getenv("MUSASHI_GAMEPLAY_ACTION");
+            if (gameplay_action && boot->in_game_frames >= 5u) {
+                if (strcmp(gameplay_action, "walk") == 0) {
+                    sampled &= (uint16_t)~(1u << 4); /* Up: walk forward */
+                } else if (strcmp(gameplay_action, "jump") == 0) {
+                    sampled &= (uint16_t)~(1u << 14); /* Cross: jump */
+                } else if (strcmp(gameplay_action, "slash") == 0) {
+                    sampled &= (uint16_t)~(1u << 15); /* Square: attack */
+                } else if (strcmp(gameplay_action, "patrol") == 0) {
+                    uint32_t cycle = boot->in_game_frames % 60u;
+                    if (cycle < 25u)
+                        sampled &= (uint16_t)~(1u << 4); /* Up */
+                    else if (cycle < 35u) {
+                        sampled &= (uint16_t)~(1u << 4); /* Up */
+                        sampled &= (uint16_t)~(1u << 14); /* Jump */
+                    } else if (cycle < 45u) {
+                        sampled &= (uint16_t)~(1u << 15); /* Slash */
+                    } else {
+                        sampled &= (uint16_t)~(1u << 5); /* Right */
+                    }
                 }
             }
         }
@@ -3166,6 +3248,25 @@ int main(int argc, char **argv) {
             int readable=musashi_boot_read32(&boot.memory,camera_addresses[c],&value);
             fprintf(stderr,"native_boot: CAMERA_RAM address=%08x valid=%d value=%08x\n",
                     camera_addresses[c],readable,value);
+        }
+        {
+            uint32_t player_ptr = 0;
+            if (musashi_boot_read32(&boot.memory, 0x80126b78u, &player_ptr) && player_ptr != 0) {
+                uint32_t px = 0, py = 0, pz = 0;
+                uint32_t lx = 0, ly = 0, lz = 0;
+                uint32_t action = 0, anim = 0;
+                musashi_boot_read32(&boot.memory, player_ptr + 0x68u, &px);
+                musashi_boot_read32(&boot.memory, player_ptr + 0x6cu, &py);
+                musashi_boot_read32(&boot.memory, player_ptr + 0x70u, &pz);
+                musashi_boot_read32(&boot.memory, player_ptr + 0x48u, &lx);
+                musashi_boot_read32(&boot.memory, player_ptr + 0x4cu, &ly);
+                musashi_boot_read32(&boot.memory, player_ptr + 0x50u, &lz);
+                musashi_boot_read32(&boot.memory, player_ptr + 0x00u, &action);
+                musashi_boot_read32(&boot.memory, player_ptr + 0x34u, &anim);
+                fprintf(stderr, "native_boot: PLAYER_STATE ptr=%08x action=%08x anim=%08x "
+                                "world_pos=[%d,%d,%d] local_pos=[%d,%d,%d]\n",
+                        player_ptr, action, anim, (int)px, (int)py, (int)pz, (int)lx, (int)ly, (int)lz);
+            }
         }
         static const uint32_t env_addresses[4]={0x800af668u,0x800af6c4u,0x800af77cu,0x800af790u};
         for (unsigned e=0;e<4;++e) {
