@@ -127,10 +127,15 @@ int musashi_cd_dma3_write32(void *userdata, uint32_t address, uint32_t value) {
     size_t bytes;
     if (!enter(d, 0)) return 0;
     /* CDROM_DELAY is a memory-control register, not DMA channel state.
-     * Retail80046EAC can update it while a chopped transfer is paused/resuming.
-     * Preserve channel-write guards and validate the delay value below. */
-    if ((d->state.chcr & DMA3_BUSY) && address != CDROM_DELAY)
+     * Retail 80046EAC can update it while a chopped transfer is paused/resuming.
+     * Retail 80045090 reconfigures MADR/BCR/CHCR to start block reads while a chopped
+     * background stream was active. Abort active chopped transfer on new channel setup. */
+    if ((d->state.chcr & DMA3_BUSY) && !(d->state.chcr & 0x100u) && address != CDROM_DELAY)
         return leave(d, fault(d, MUSASHI_CD_DMA3_ACCESS));
+    if ((d->state.chcr & 0x100u) && address != CDROM_DELAY) {
+        d->state.chcr = 0;
+        d->state.waiting_for_request = 0;
+    }
     switch (address) {
     case CDROM_DELAY:
         /* Retail stream restores20843 between20943 DMA submissions. */
