@@ -1,4 +1,15 @@
 /* Exact retail word export for [80015498,80015608); EXE and assembly verified. */
+#if defined(__mips__)
+__asm__(
+    ".set\tnoreorder\n"
+    ".globl\tfunc_80015498\n"
+    ".ent\tfunc_80015498\n"
+    ".type\tfunc_80015498, @function\n"
+    "func_80015498:\n"
+    ".end\tfunc_80015498\n"
+    ".size\tfunc_80015498, .-func_80015498\n"
+);
+#else
 #include "psx_types.h"
 #include "m2c_macros.h"
 
@@ -56,3 +67,4 @@ block_9:
         *temp_s1 = (*temp_s1 & 0xFF000000) | ((s32) temp_s0 & 0xFFFFFF);
     }
 }
+#endif

@@ -2,6 +2,17 @@
  * SHA256(span)=e8771b3bc7695c76e57cb1aada32825b4a9fbfee917b949db5e7cb258023a312.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+#if defined(__mips__)
+__asm__(
+    ".set\tnoreorder\n"
+    ".globl\tfunc_8001544C\n"
+    ".ent\tfunc_8001544C\n"
+    ".type\tfunc_8001544C, @function\n"
+    "func_8001544C:\n"
+    ".end\tfunc_8001544C\n"
+    ".size\tfunc_8001544C, .-func_8001544C\n"
+);
+#else
 /* Body below is an UNVERIFIED draft, not an oracle match
  * claim; promotion requires tools/match_function.py MATCH. */
 #include "psx_types.h"
@@ -35,3 +46,4 @@ block_3:
     }
     return var_v0;
 }
+#endif

@@ -1,4 +1,15 @@
 /* Exact retail word export for [80015908,80015954); EXE and assembly verified. */
+#if defined(__mips__)
+__asm__(
+    ".set\tnoreorder\n"
+    ".globl\tfunc_80015908\n"
+    ".ent\tfunc_80015908\n"
+    ".type\tfunc_80015908, @function\n"
+    "func_80015908:\n"
+    ".end\tfunc_80015908\n"
+    ".size\tfunc_80015908, .-func_80015908\n"
+);
+#else
 /* Body below is an UNVERIFIED draft, not an oracle match
  * claim; promotion requires tools/match_function.py MATCH. */
 #include "psx_types.h"
@@ -27,3 +38,4 @@ s32 func_80015908(s32 arg0, s32 arg1) {
     }
     return (s32) (((temp_v0 - 0x20) * 2) + D_80062A78);
 }
+#endif

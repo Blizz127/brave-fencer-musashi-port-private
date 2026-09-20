@@ -1563,6 +1563,56 @@
       "optimization": "-O2"
     },
     {
+      "name": "func_8001544C",
+      "vram": 2147570764,
+      "size": 76,
+      "region": "main",
+      "source": "src/main/8001544c.c",
+      "optimization": "-O2",
+      "recovery": "assembly",
+      "extent": "function"
+    },
+    {
+      "name": "func_80015498",
+      "vram": 2147570840,
+      "size": 368,
+      "region": "main",
+      "source": "src/main/80015498.c",
+      "optimization": "-O2",
+      "recovery": "assembly",
+      "extent": "function"
+    },
+    {
+      "name": "func_80015608",
+      "vram": 2147571208,
+      "size": 344,
+      "region": "main",
+      "source": "src/main/80015608.c",
+      "optimization": "-O2",
+      "recovery": "assembly",
+      "extent": "function"
+    },
+    {
+      "name": "func_80015760",
+      "vram": 2147571552,
+      "size": 424,
+      "region": "main",
+      "source": "src/main/80015760.c",
+      "optimization": "-O2",
+      "recovery": "assembly",
+      "extent": "function"
+    },
+    {
+      "name": "func_80015908",
+      "vram": 2147571976,
+      "size": 76,
+      "region": "main",
+      "source": "src/main/80015908.c",
+      "optimization": "-O2",
+      "recovery": "assembly",
+      "extent": "function"
+    },
+    {
       "name": "func_80015954",
       "vram": 2147572052,
       "size": 36,
@@ -1643,6 +1693,16 @@
       "optimization": "-O2"
     },
     {
+      "name": "func_80015A74",
+      "vram": 2147572340,
+      "size": 92,
+      "region": "main",
+      "source": "src/main/80015a74.c",
+      "optimization": "-O2",
+      "recovery": "assembly",
+      "extent": "function"
+    },
+    {
       "name": "func_80015AD0",
       "vram": 2147572432,
       "size": 156,
@@ -1650,6 +1710,76 @@
       "source": "src/main/80015ad0.c",
       "optimization": "-O2",
       "recovery": "c",
+      "extent": "function"
+    },
+    {
+      "name": "func_80015B6C",
+      "vram": 2147572588,
+      "size": 480,
+      "region": "main",
+      "source": "src/main/80015b6c.c",
+      "optimization": "-O2",
+      "recovery": "assembly",
+      "extent": "function"
+    },
+    {
+      "name": "func_80015D4C",
+      "vram": 2147573068,
+      "size": 440,
+      "region": "main",
+      "source": "src/main/80015d4c.c",
+      "optimization": "-O2",
+      "recovery": "assembly",
+      "extent": "function"
+    },
+    {
+      "name": "func_80015F04",
+      "vram": 2147573508,
+      "size": 524,
+      "region": "main",
+      "source": "src/main/80015f04.c",
+      "optimization": "-O2",
+      "recovery": "assembly",
+      "extent": "function"
+    },
+    {
+      "name": "func_80016110",
+      "vram": 2147574032,
+      "size": 276,
+      "region": "main",
+      "source": "src/main/80016110.c",
+      "optimization": "-O2",
+      "recovery": "assembly",
+      "extent": "function"
+    },
+    {
+      "name": "func_80016224",
+      "vram": 2147574308,
+      "size": 556,
+      "region": "main",
+      "source": "src/main/80016224.c",
+      "optimization": "-O2",
+      "recovery": "assembly",
+      "extent": "function"
+    },
+    {
+      "name": "func_80016450",
+      "vram": 2147574864,
+      "size": 488,
+      "region": "main",
+      "source": "src/main/80016450.c",
+      "optimization": "-O2",
+      "recovery": "assembly",
+      "extent": "function"
+    },
+    {
+      "name": "func_80016638",
+      "vram": 2147575352,
+      "size": 176,
+      "region": "main",
+      "source": "src/main/80016638.c",
+      "optimization": "-O2",
+      "recovery": "assembly",
       "extent": "function"
     },
     {

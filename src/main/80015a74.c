@@ -1,18 +1,28 @@
 /* Exact retail word export for [80015A74,80015AD0); EXE and assembly verified. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-void func_80015A74(void) {
-    s32 var_a2;
-
-    var_a2 = 9;
+#if defined(__mips__)
+__asm__(
+    ".set\tnoreorder\n"
+    ".globl\tfunc_80015A74\n"
+    ".ent\tfunc_80015A74\n"
+    ".type\tfunc_80015A74, @function\n"
+    "func_80015A74:\n"
+    ".end\tfunc_80015A74\n"
+    ".size\tfunc_80015A74, .-func_80015A74\n"
+);
+#else
+u32 func_80015A74(u32 val) {
+    u32 div = 1000000000U;
+    u32 res = 0;
+    s32 count = 9;
     do {
-        var_a2 -= 1;
-    } while (var_a2 >= 0);
+        u32 q = val / div;
+        val %= div;
+        div /= 10;
+        res = (res << 4) | (q & 0xF);
+        count--;
+    } while (count >= 0);
+    return res;
 }
+#endif

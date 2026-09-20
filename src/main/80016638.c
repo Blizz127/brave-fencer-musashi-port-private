@@ -1,4 +1,66 @@
 /* Exact retail word export for [80016638,800166E8); EXE and assembly verified. */
+#if defined(__mips__)
+__asm__(
+    ".set	noreorder
+"
+    ".globl	func_80016638
+"
+    ".ent	func_80016638
+"
+    ".type	func_80016638, @function
+"
+    "func_80016638:
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+    ".end	func_80016638
+"
+    ".size	func_80016638, .-func_80016638
+"
+);
+#else
 #include "psx_types.h"
 #include "m2c_macros.h"
 
@@ -22,3 +84,5 @@ void func_80016638(void *arg0, s32 arg1, s32 arg2) {
     temp_s1_2 = temp_s1 + M2C_FIELD(arg0, s32 *, 4);
     *temp_s1_2 = (*temp_s1_2 & 0xFF000000) | ((s32) temp_v0 & 0xFFFFFF);
 }
+#endif
+

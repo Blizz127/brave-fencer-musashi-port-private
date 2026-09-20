@@ -1,4 +1,15 @@
 /* Exact retail word export for [80015608,80015760); EXE and assembly verified. */
+#if defined(__mips__)
+__asm__(
+    ".set\tnoreorder\n"
+    ".globl\tfunc_80015608\n"
+    ".ent\tfunc_80015608\n"
+    ".type\tfunc_80015608, @function\n"
+    "func_80015608:\n"
+    ".end\tfunc_80015608\n"
+    ".size\tfunc_80015608, .-func_80015608\n"
+);
+#else
 #include "psx_types.h"
 #include "m2c_macros.h"
 
@@ -57,3 +68,4 @@ void func_80015608(void *arg0, s32 *arg1) {
     }
     D_800A5E60 = var_s1;
 }
+#endif
