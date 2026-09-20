@@ -610,6 +610,16 @@
       "optimization": "-O2"
     },
     {
+      "name": "func_800128EC",
+      "vram": 2147559660,
+      "size": 224,
+      "region": "main",
+      "source": "src/main/800128ec.c",
+      "optimization": "-O2",
+      "recovery": "c",
+      "extent": "function"
+    },
+    {
       "name": "func_800129CC",
       "vram": 2147559884,
       "size": 148,
