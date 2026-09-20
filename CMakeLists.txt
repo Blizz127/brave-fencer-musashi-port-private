@@ -26,6 +26,9 @@ if(MUSASHI_BUILD_PC_PORT AND MUSASHI_WITH_PSYCROSS)
             "./tools/fetch_toolchains.sh, or configure with -DMUSASHI_WITH_PSYCROSS=OFF")
     endif()
 
+    if(EXISTS "/home/linuxbrew/.linuxbrew/opt/sdl2/include/SDL2/SDL_main.h")
+        include_directories(BEFORE SYSTEM "/home/linuxbrew/.linuxbrew/opt/sdl2/include/SDL2" "/home/linuxbrew/.linuxbrew/opt/sdl2/include")
+    endif()
     find_package(SDL2 REQUIRED)
     find_package(OpenAL REQUIRED)
     # GLAD loads GL entry points at runtime, but the library must still link.
@@ -76,6 +79,7 @@ if(MUSASHI_BUILD_PC_PORT AND MUSASHI_WITH_PSYCROSS)
         PUBLIC
             "${MUSASHI_PSYCROSS_DIR}/include"
             "${MUSASHI_PSYCROSS_DIR}/include/psx"
+            ${SDL2_INCLUDE_DIRS}
     )
     target_compile_features(psycross_static PUBLIC cxx_std_11)
     # The primitive-tag pointer macros (setaddr, getaddr, nextPrim, isendprim)
