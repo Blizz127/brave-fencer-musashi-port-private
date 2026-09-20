@@ -17634,6 +17634,15 @@
       "extent": "function"
     },
     {
+      "name": "func_8014F1F4",
+      "vram": 2148856308,
+      "size": 88,
+      "region": "main_0012",
+      "source": "src/overlays/main_0012/8014f1f4.c",
+      "recovery": "assembly",
+      "extent": "function"
+    },
+    {
       "name": "func_8014F24C",
       "vram": 2148856396,
       "size": 148,
@@ -17664,6 +17673,24 @@
       "optimization": "-O2"
     },
     {
+      "name": "func_8014F468",
+      "vram": 2148856936,
+      "size": 88,
+      "region": "main_0012",
+      "source": "src/overlays/main_0012/8014f468.c",
+      "recovery": "assembly",
+      "extent": "function"
+    },
+    {
+      "name": "func_8014F6F4",
+      "vram": 2148857588,
+      "size": 88,
+      "region": "main_0012",
+      "source": "src/overlays/main_0012/8014f6f4.c",
+      "recovery": "assembly",
+      "extent": "function"
+    },
+    {
       "name": "func_8014FA70",
       "vram": 2148858480,
       "size": 336,
@@ -17674,6 +17701,15 @@
       "extent": "function"
     },
     {
+      "name": "func_8014FBC0",
+      "vram": 2148858816,
+      "size": 88,
+      "region": "main_0012",
+      "source": "src/overlays/main_0012/8014fbc0.c",
+      "recovery": "assembly",
+      "extent": "function"
+    },
+    {
       "name": "func_8014FC18",
       "vram": 2148858904,
       "size": 228,
@@ -17681,6 +17717,15 @@
       "source": "src/overlays/main_0012/8014fc18.c",
       "optimization": "-O2",
       "recovery": "c",
+      "extent": "function"
+    },
+    {
+      "name": "func_8014FCFC",
+      "vram": 2148859132,
+      "size": 88,
+      "region": "main_0012",
+      "source": "src/overlays/main_0012/8014fcfc.c",
+      "recovery": "assembly",
       "extent": "function"
     },
     {
@@ -17742,6 +17787,15 @@
       "recovery": "c",
       "extent": "function",
       "optimization": "-O2"
+    },
+    {
+      "name": "func_80150480",
+      "vram": 2148861056,
+      "size": 88,
+      "region": "main_0012",
+      "source": "src/overlays/main_0012/80150480.c",
+      "recovery": "assembly",
+      "extent": "function"
     },
     {
       "name": "func_80150528",
