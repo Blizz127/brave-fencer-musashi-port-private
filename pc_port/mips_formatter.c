@@ -1799,6 +1799,131 @@ static const uint32_t kOverlay0010_800CF854Words[] = {
 static const uint32_t kOverlay0010_800D1E20Words[] = {
 #include "800d1e20_overlay0010_words.inc"
 };
+static const uint32_t kOverlay0010_800D0C48Words[] = {
+#include "800d0c48_overlay0010_words.inc"
+};
+_Static_assert(sizeof(kOverlay0010_800D0C48Words) / sizeof(uint32_t) == 11,
+               "overlay 0010 800D0C48 source span changed");
+static const uint32_t kOverlay0010_800D0C74Words[] = {
+#include "800d0c74_overlay0010_words.inc"
+};
+_Static_assert(sizeof(kOverlay0010_800D0C74Words) / sizeof(uint32_t) == 11,
+               "overlay 0010 800D0C74 source span changed");
+static const uint32_t kOverlay0010_800D0CA0Words[] = {
+#include "800d0ca0_overlay0010_words.inc"
+};
+_Static_assert(sizeof(kOverlay0010_800D0CA0Words) / sizeof(uint32_t) == 16,
+               "overlay 0010 800D0CA0 source span changed");
+static const uint32_t kOverlay0010_800D0CE0Words[] = {
+#include "800d0ce0_overlay0010_words.inc"
+};
+_Static_assert(sizeof(kOverlay0010_800D0CE0Words) / sizeof(uint32_t) == 39,
+               "overlay 0010 800D0CE0 source span changed");
+static const uint32_t kOverlay0010_800D0D7CWords[] = {
+#include "800d0d7c_overlay0010_words.inc"
+};
+_Static_assert(sizeof(kOverlay0010_800D0D7CWords) / sizeof(uint32_t) == 45,
+               "overlay 0010 800D0D7C source span changed");
+static const uint32_t kOverlay0010_800D0E30Words[] = {
+#include "800d0e30_overlay0010_words.inc"
+};
+_Static_assert(sizeof(kOverlay0010_800D0E30Words) / sizeof(uint32_t) == 37,
+               "overlay 0010 800D0E30 source span changed");
+static const uint32_t kOverlay0010_800D0EC4Words[] = {
+#include "800d0ec4_overlay0010_words.inc"
+};
+_Static_assert(sizeof(kOverlay0010_800D0EC4Words) / sizeof(uint32_t) == 18,
+               "overlay 0010 800D0EC4 source span changed");
+static const uint32_t kOverlay0010_800D0F0CWords[] = {
+#include "800d0f0c_overlay0010_words.inc"
+};
+_Static_assert(sizeof(kOverlay0010_800D0F0CWords) / sizeof(uint32_t) == 16,
+               "overlay 0010 800D0F0C source span changed");
+static const uint32_t kOverlay0010_800D0F4CWords[] = {
+#include "800d0f4c_overlay0010_words.inc"
+};
+_Static_assert(sizeof(kOverlay0010_800D0F4CWords) / sizeof(uint32_t) == 16,
+               "overlay 0010 800D0F4C source span changed");
+static const uint32_t kOverlay0010_800D0F8CWords[] = {
+#include "800d0f8c_overlay0010_words.inc"
+};
+_Static_assert(sizeof(kOverlay0010_800D0F8CWords) / sizeof(uint32_t) == 21,
+               "overlay 0010 800D0F8C source span changed");
+static const uint32_t kOverlay0010_800D0FE0Words[] = {
+#include "800d0fe0_overlay0010_words.inc"
+};
+_Static_assert(sizeof(kOverlay0010_800D0FE0Words) / sizeof(uint32_t) == 8,
+               "overlay 0010 800D0FE0 source span changed");
+static const uint32_t kOverlay0010_800D1000Words[] = {
+#include "800d1000_overlay0010_words.inc"
+};
+_Static_assert(sizeof(kOverlay0010_800D1000Words) / sizeof(uint32_t) == 10,
+               "overlay 0010 800D1000 source span changed");
+static const uint32_t kOverlay0010_800D1028Words[] = {
+#include "800d1028_overlay0010_words.inc"
+};
+_Static_assert(sizeof(kOverlay0010_800D1028Words) / sizeof(uint32_t) == 11,
+               "overlay 0010 800D1028 source span changed");
+static const uint32_t kOverlay0010_800D1054Words[] = {
+#include "800d1054_overlay0010_words.inc"
+};
+_Static_assert(sizeof(kOverlay0010_800D1054Words) / sizeof(uint32_t) == 9,
+               "overlay 0010 800D1054 source span changed");
+static const uint32_t kOverlay0010_800D1078Words[] = {
+#include "800d1078_overlay0010_words.inc"
+};
+_Static_assert(sizeof(kOverlay0010_800D1078Words) / sizeof(uint32_t) == 9,
+               "overlay 0010 800D1078 source span changed");
+static const uint32_t kOverlay0010_800D109CWords[] = {
+#include "800d109c_overlay0010_words.inc"
+};
+_Static_assert(sizeof(kOverlay0010_800D109CWords) / sizeof(uint32_t) == 11,
+               "overlay 0010 800D109C source span changed");
+static const uint32_t kOverlay0010_800D10C8Words[] = {
+#include "800d10c8_overlay0010_words.inc"
+};
+_Static_assert(sizeof(kOverlay0010_800D10C8Words) / sizeof(uint32_t) == 9,
+               "overlay 0010 800D10C8 source span changed");
+static const uint32_t kOverlay0010_800D10ECWords[] = {
+#include "800d10ec_overlay0010_words.inc"
+};
+_Static_assert(sizeof(kOverlay0010_800D10ECWords) / sizeof(uint32_t) == 65,
+               "overlay 0010 800D10EC source span changed");
+static const uint32_t kOverlay0010_800D11F0Words[] = {
+#include "800d11f0_overlay0010_words.inc"
+};
+_Static_assert(sizeof(kOverlay0010_800D11F0Words) / sizeof(uint32_t) == 39,
+               "overlay 0010 800D11F0 source span changed");
+static const uint32_t kOverlay0010_800D128CWords[] = {
+#include "800d128c_overlay0010_words.inc"
+};
+_Static_assert(sizeof(kOverlay0010_800D128CWords) / sizeof(uint32_t) == 243,
+               "overlay 0010 800D128C source span changed");
+static const uint32_t kOverlay0010_800D1658Words[] = {
+#include "800d1658_overlay0010_words.inc"
+};
+_Static_assert(sizeof(kOverlay0010_800D1658Words) / sizeof(uint32_t) == 47,
+               "overlay 0010 800D1658 source span changed");
+static const uint32_t kOverlay0010_800D1714Words[] = {
+#include "800d1714_overlay0010_words.inc"
+};
+_Static_assert(sizeof(kOverlay0010_800D1714Words) / sizeof(uint32_t) == 4,
+               "overlay 0010 800D1714 source span changed");
+static const uint32_t kOverlay0010_800D1724Words[] = {
+#include "800d1724_overlay0010_words.inc"
+};
+_Static_assert(sizeof(kOverlay0010_800D1724Words) / sizeof(uint32_t) == 4,
+               "overlay 0010 800D1724 source span changed");
+static const uint32_t kOverlay0010_800D1734Words[] = {
+#include "800d1734_overlay0010_words.inc"
+};
+_Static_assert(sizeof(kOverlay0010_800D1734Words) / sizeof(uint32_t) == 4,
+               "overlay 0010 800D1734 source span changed");
+static const uint32_t kOverlay0010_800D1744Words[] = {
+#include "800d1744_overlay0010_words.inc"
+};
+_Static_assert(sizeof(kOverlay0010_800D1744Words) / sizeof(uint32_t) == 4,
+               "overlay 0010 800D1744 source span changed");
 static const uint32_t kOverlay0010_800D1754Words[] = {
 #include "800d1754_overlay0010_words.inc"
 };
@@ -12918,6 +13043,31 @@ static const FormatterRange kFormatterRanges7[] = {
     { 0x800d0630u, 0x800d065cu, kOverlay0010_800D0630Words },
     { 0x800d065cu, 0x800d0694u, kOverlay0010_800D065CWords },
     { 0x800d06e8u, 0x800d0c48u, kOverlay0010_800D06E8Words },
+    { 0x800d0c48u, 0x800d0c74u, kOverlay0010_800D0C48Words },
+    { 0x800d0c74u, 0x800d0ca0u, kOverlay0010_800D0C74Words },
+    { 0x800d0ca0u, 0x800d0ce0u, kOverlay0010_800D0CA0Words },
+    { 0x800d0ce0u, 0x800d0d7cu, kOverlay0010_800D0CE0Words },
+    { 0x800d0d7cu, 0x800d0e30u, kOverlay0010_800D0D7CWords },
+    { 0x800d0e30u, 0x800d0ec4u, kOverlay0010_800D0E30Words },
+    { 0x800d0ec4u, 0x800d0f0cu, kOverlay0010_800D0EC4Words },
+    { 0x800d0f0cu, 0x800d0f4cu, kOverlay0010_800D0F0CWords },
+    { 0x800d0f4cu, 0x800d0f8cu, kOverlay0010_800D0F4CWords },
+    { 0x800d0f8cu, 0x800d0fe0u, kOverlay0010_800D0F8CWords },
+    { 0x800d0fe0u, 0x800d1000u, kOverlay0010_800D0FE0Words },
+    { 0x800d1000u, 0x800d1028u, kOverlay0010_800D1000Words },
+    { 0x800d1028u, 0x800d1054u, kOverlay0010_800D1028Words },
+    { 0x800d1054u, 0x800d1078u, kOverlay0010_800D1054Words },
+    { 0x800d1078u, 0x800d109cu, kOverlay0010_800D1078Words },
+    { 0x800d109cu, 0x800d10c8u, kOverlay0010_800D109CWords },
+    { 0x800d10c8u, 0x800d10ecu, kOverlay0010_800D10C8Words },
+    { 0x800d10ecu, 0x800d11f0u, kOverlay0010_800D10ECWords },
+    { 0x800d11f0u, 0x800d128cu, kOverlay0010_800D11F0Words },
+    { 0x800d128cu, 0x800d1658u, kOverlay0010_800D128CWords },
+    { 0x800d1658u, 0x800d1714u, kOverlay0010_800D1658Words },
+    { 0x800d1714u, 0x800d1724u, kOverlay0010_800D1714Words },
+    { 0x800d1724u, 0x800d1734u, kOverlay0010_800D1724Words },
+    { 0x800d1734u, 0x800d1744u, kOverlay0010_800D1734Words },
+    { 0x800d1744u, 0x800d1754u, kOverlay0010_800D1744Words },
     { 0x800d1754u, 0x800d17b8u, kOverlay0010_800D1754Words },
     { 0x800d17b8u, 0x800d185cu, kOverlay0010_800D17B8Words },
     { 0x800d185cu, 0x800d18dcu, kOverlay0010_800D185CWords },

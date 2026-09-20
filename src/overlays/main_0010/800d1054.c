@@ -1,0 +1,4 @@
+/* MAIN10 resident retail span [800D1054,800D1078), offset 0x2225C at base 800AEDF8. */
+#include "psx_types.h"
+
+void func_{s:08X}(void) {{}}
