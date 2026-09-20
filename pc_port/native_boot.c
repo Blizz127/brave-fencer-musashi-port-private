@@ -777,24 +777,36 @@ static int cd_write32(void *userdata, uint32_t address, uint32_t value) {
                     state.waiting_for_request,(unsigned)state.fault);
         return 0;
     }
-    fprintf(stderr,"native_boot: CD_WORD_WRITE address=%08x value=%08x cycle=%llu\n",
-            address,value,(unsigned long long)boot->epoch.cycle);
+    {
+        static uint64_t n;
+        if (log_sample(&n, 16u, 4096u))
+            fprintf(stderr,"native_boot: CD_WORD_WRITE address=%08x value=%08x cycle=%llu\n",
+                    address,value,(unsigned long long)boot->epoch.cycle);
+    }
     return 1;
 }
 
 static int spu_read16(void *userdata, uint32_t address, uint16_t *value) {
     NativeBoot *boot = userdata;
     if (!musashi_spu_cd_audio_read16(boot->spu, address, value)) return 0;
-    fprintf(stderr, "native_boot: SPU_READ address=%08x value=%04x cycle=%llu\n",
-            address, (unsigned)*value, (unsigned long long)boot->epoch.cycle);
+    {
+        static uint64_t n;
+        if (log_sample(&n, 16u, 4096u))
+            fprintf(stderr, "native_boot: SPU_READ address=%08x value=%04x cycle=%llu\n",
+                    address, (unsigned)*value, (unsigned long long)boot->epoch.cycle);
+    }
     return 1;
 }
 
 static int spu_write16(void *userdata, uint32_t address, uint16_t value) {
     NativeBoot *boot = userdata;
     if (!musashi_spu_cd_audio_write16(boot->spu, address, value)) return 0;
-    fprintf(stderr, "native_boot: SPU_WRITE address=%08x value=%04x cycle=%llu\n",
-            address, (unsigned)value, (unsigned long long)boot->epoch.cycle);
+    {
+        static uint64_t n;
+        if (log_sample(&n, 16u, 4096u))
+            fprintf(stderr, "native_boot: SPU_WRITE address=%08x value=%04x cycle=%llu\n",
+                    address, (unsigned)value, (unsigned long long)boot->epoch.cycle);
+    }
     return 1;
 }
 
@@ -1192,8 +1204,14 @@ static int epoch_video_edge(void *userdata, uint64_t sequence, uint64_t cycle) {
         return 0;
     /* Host scanout only. Failure here must not fault the epoch; present
      * already refuses when the GPU backend is mid-command. */
-    if (boot->gpu_renderer.display_enabled)
+    if (boot->gpu_renderer.display_enabled) {
+        SDL_Event ev;
+        while (SDL_PollEvent(&ev)) {
+            if (ev.type == SDL_QUIT)
+                host_stop_signal = SIGTERM;
+        }
         (void)musashi_gpu_psycross_present(&boot->gpu_renderer);
+    }
     if (boot->scene1_reached && boot->gpu.display.width == 320u && boot->gpu.display.height == 240u) {
         if (boot->gte.write_count > 800u) {
             const char *pause_in_game = getenv("MUSASHI_PAUSE_IN_GAME");
@@ -1376,36 +1394,56 @@ static int cpu_write_status(void *userdata,const MusashiCpuContext *context,uint
 static int cpu_write_control(void *userdata,const MusashiCpuContext *context,uint32_t selector,uint32_t value) {
     NativeBoot *boot=userdata;
     int accepted=musashi_gte_owner_write_control(&boot->gte,context,selector,value);
-    if (accepted) fprintf(stderr,"native_boot: GTE_CONTROL pc=%08x selector=%u value=%08x writes=%llu\n",
-        context->pc,selector,value,(unsigned long long)boot->gte.write_count);
+    if (accepted) {
+        static uint64_t n;
+        if (log_sample(&n, 8u, 16384u))
+            fprintf(stderr,"native_boot: GTE_CONTROL pc=%08x selector=%u value=%08x writes=%llu\n",
+                context->pc,selector,value,(unsigned long long)boot->gte.write_count);
+    }
     return accepted;
 }
 static int cpu_write_gte_data(void *userdata,const MusashiCpuContext *context,uint32_t selector,uint32_t value) {
     NativeBoot *boot=userdata;
     int accepted=musashi_gte_owner_write_data(&boot->gte,context,selector,value);
-    if (accepted) fprintf(stderr,"native_boot: GTE_DATA_WRITE pc=%08x selector=%u value=%08x writes=%llu\n",
-        context->pc,selector,value,(unsigned long long)boot->gte.data_write_count);
+    if (accepted) {
+        static uint64_t n;
+        if (log_sample(&n, 8u, 16384u))
+            fprintf(stderr,"native_boot: GTE_DATA_WRITE pc=%08x selector=%u value=%08x writes=%llu\n",
+                context->pc,selector,value,(unsigned long long)boot->gte.data_write_count);
+    }
     return accepted;
 }
 static int cpu_read_gte_data(void *userdata,const MusashiCpuContext *context,uint32_t selector,uint32_t *value) {
     NativeBoot *boot=userdata;
     int accepted=musashi_gte_owner_read_data(&boot->gte,context,selector,value);
-    if (accepted) fprintf(stderr,"native_boot: GTE_DATA_READ pc=%08x selector=%u value=%08x reads=%llu\n",
-        context->pc,selector,*value,(unsigned long long)boot->gte.data_read_count);
+    if (accepted) {
+        static uint64_t n;
+        if (log_sample(&n, 8u, 16384u))
+            fprintf(stderr,"native_boot: GTE_DATA_READ pc=%08x selector=%u value=%08x reads=%llu\n",
+                context->pc,selector,*value,(unsigned long long)boot->gte.data_read_count);
+    }
     return accepted;
 }
 static int cpu_read_control(void *userdata,const MusashiCpuContext *context,uint32_t selector,uint32_t *value) {
     NativeBoot *boot=userdata;
     int accepted=musashi_gte_owner_read_control(&boot->gte,context,selector,value);
-    if (accepted) fprintf(stderr,"native_boot: GTE_CONTROL_READ pc=%08x selector=%u value=%08x\n",
-        context->pc,selector,*value);
+    if (accepted) {
+        static uint64_t n;
+        if (log_sample(&n, 8u, 16384u))
+            fprintf(stderr,"native_boot: GTE_CONTROL_READ pc=%08x selector=%u value=%08x\n",
+                context->pc,selector,*value);
+    }
     return accepted;
 }
 static int cpu_gte_command(void *userdata,const MusashiCpuContext *context,uint32_t word) {
     NativeBoot *boot=userdata;
     int accepted=musashi_gte_owner_command(&boot->gte,context,word);
-    if (accepted) fprintf(stderr,"native_boot: GTE_COMMAND pc=%08x word=%08x commands=%llu\n",
-        context->pc,word,(unsigned long long)boot->gte.command_count);
+    if (accepted) {
+        static uint64_t n;
+        if (log_sample(&n, 8u, 16384u))
+            fprintf(stderr,"native_boot: GTE_COMMAND pc=%08x word=%08x commands=%llu\n",
+                context->pc,word,(unsigned long long)boot->gte.command_count);
+    }
     return accepted;
 }
 static int image_read(void *userdata,uint32_t address,uint32_t *value) {
@@ -2021,17 +2059,20 @@ static void observe_entry(void *userdata, const MusashiEntryCpuSnapshot *cpu) {
                 (unsigned long long)boot->gpu_reset_sequence);
     }
     if (cpu->pc == 0x80059df4u) {
-        uint32_t tag=0, word=0;
-        unsigned n;
-        int valid=musashi_boot_read32(&boot->memory,cpu->r[5],&tag);
-        unsigned words=valid ? (tag>>24)+1u : 0;
-        fprintf(stderr,"native_boot: DRAW_PACKET address=%08x tag=%08x words=%u valid=%d data=",
-                cpu->r[5],tag,words,valid);
-        if (words<=17u) for (n=0;n<words;++n) {
-            if (!musashi_boot_read32(&boot->memory,cpu->r[5]+4u*n,&word)) break;
-            fprintf(stderr,"%s%08x",n ? "," : "",word);
+        static uint64_t n;
+        if (log_sample(&n, 8u, 4096u)) {
+            uint32_t tag=0, word=0;
+            unsigned nwords;
+            int valid=musashi_boot_read32(&boot->memory,cpu->r[5],&tag);
+            unsigned words=valid ? (tag>>24)+1u : 0;
+            fprintf(stderr,"native_boot: DRAW_PACKET address=%08x tag=%08x words=%u valid=%d data=",
+                    cpu->r[5],tag,words,valid);
+            if (words<=17u) for (nwords=0;nwords<words;++nwords) {
+                if (!musashi_boot_read32(&boot->memory,cpu->r[5]+4u*nwords,&word)) break;
+                fprintf(stderr,"%s%08x",nwords ? "," : "",word);
+            }
+            fputc('\n',stderr);
         }
-        fputc('\n',stderr);
     }
     if (cpu->pc == 0x8005b870u || cpu->pc == 0x8005b720u || cpu->pc == 0x8005b730u) {
         static uint64_t n;
@@ -2041,10 +2082,13 @@ static void observe_entry(void *userdata, const MusashiEntryCpuSnapshot *cpu) {
                     cpu->r[3],cpu->r[29],cpu->r[31]);
     }
     if (cpu->pc == 0x80059dfcu) {
-        fprintf(stderr,"native_boot: DRAW_QUEUE_RETURN pc=%08x v0=%08x sp=%08x "
-                "ra=%08x I_MASK=%04x\n",cpu->pc,cpu->r[2],cpu->r[29],cpu->r[31],
-                boot->irq.controller.mask);
-        observe_gpu_dma(boot,"SOURCE_QUEUE_RETURN");
+        static uint64_t n;
+        if (log_sample(&n, 8u, 4096u)) {
+            fprintf(stderr,"native_boot: DRAW_QUEUE_RETURN pc=%08x v0=%08x sp=%08x "
+                    "ra=%08x I_MASK=%04x\n",cpu->pc,cpu->r[2],cpu->r[29],cpu->r[31],
+                    boot->irq.controller.mask);
+            observe_gpu_dma(boot,"SOURCE_QUEUE_RETURN");
+        }
     }
     if (cpu->pc == 0x8005b690u) {
         static uint64_t gp1_logs;
