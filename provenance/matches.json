@@ -1241,6 +1241,16 @@
       "optimization": "-O2"
     },
     {
+      "name": "func_800145EC",
+      "vram": 2147567084,
+      "size": 196,
+      "region": "main",
+      "source": "src/main/800145ec.c",
+      "optimization": "-O2",
+      "recovery": "assembly",
+      "extent": "function"
+    },
+    {
       "name": "func_800146B0",
       "vram": 2147567280,
       "size": 196,

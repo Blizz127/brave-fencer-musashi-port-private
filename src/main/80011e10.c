@@ -4,6 +4,7 @@
  * UNVERIFIED draft, not an oracle match claim. */
 #include "psx_types.h"
 
+#if defined(__mips__)
 __asm__(
     ".set\tnoreorder\n"
     ".globl\tfunc_80011E10\n"
@@ -18,3 +19,7 @@ __asm__(
     ".end\tfunc_80011E10\n"
     ".size\tfunc_80011E10, .-func_80011E10\n"
 );
+#else
+void func_80011E10(void) {
+}
+#endif

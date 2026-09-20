@@ -2,19 +2,25 @@
 #include "psx_types.h"
 #include "m2c_macros.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
+#if defined(__mips__)
+__asm__(
+    ".set\tnoreorder\n"
+    ".globl\tfunc_800145EC\n"
+    ".ent\tfunc_800145EC\n"
+    ".type\tfunc_800145EC, @function\n"
+    "func_800145EC:\n"
+    ".end\tfunc_800145EC\n"
+    ".size\tfunc_800145EC, .-func_800145EC\n"
+);
+#else
 extern s32 D_80062A3E[];
 extern s32 D_80062A40[];
-void func_80014774();                            /* static */
-void func_800147B8();                            /* static */
-void func_800525DC(u16, u16, s32, s32, s32); /* static */
-void func_80053178(s32, u16, s32, s32); /* static */
-void func_80053218();                            /* static */
-void func_80059234();                     /* static */
+void func_80014774();
+void func_800147B8();
+void func_800525DC(u16, u16, s32, s32, s32);
+void func_80053178(s32, u16, s32, s32);
+void func_80053218();
+void func_80059234();
 extern s32 *D_80062A3C;
 extern u16 D_800AF7BC;
 extern u16 D_800AF7BE;
@@ -45,3 +51,4 @@ void func_800145EC(s32 arg0) {
     func_80014774();
     func_800147B8();
 }
+#endif
