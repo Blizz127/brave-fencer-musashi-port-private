@@ -1,4 +1,55 @@
 /* Exact retail word export for [80018C64,80018CE8); EXE and assembly verified. */
+#if defined(__mips__)
+__asm__(
+    ".set	noreorder
+"
+    ".globl	func_80018C64
+"
+    ".ent	func_80018C64
+"
+    ".type	func_80018C64, @function
+"
+    "func_80018C64:
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+    ".end	func_80018C64
+"
+    ".size	func_80018C64, .-func_80018C64
+"
+);
+#else
 #include "psx_types.h"
 #include "m2c_macros.h"
 
@@ -37,3 +88,5 @@ void func_80018C64(void *arg0) {
         var_v0 = arg0 + var_a1_2;
     } while (var_a1_2 < 6);
 }
+#endif
+

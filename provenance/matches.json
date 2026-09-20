@@ -2332,6 +2332,36 @@
       "optimization": "-O2"
     },
     {
+      "name": "func_80018A20",
+      "vram": 2147584544,
+      "size": 580,
+      "region": "main",
+      "source": "src/main/80018a20.c",
+      "optimization": "-O2",
+      "recovery": "assembly",
+      "extent": "function"
+    },
+    {
+      "name": "func_80018C64",
+      "vram": 2147585124,
+      "size": 132,
+      "region": "main",
+      "source": "src/main/80018c64.c",
+      "optimization": "-O2",
+      "recovery": "assembly",
+      "extent": "function"
+    },
+    {
+      "name": "func_80018CE8",
+      "vram": 2147585256,
+      "size": 400,
+      "region": "main",
+      "source": "src/main/80018ce8.c",
+      "optimization": "-O2",
+      "recovery": "assembly",
+      "extent": "function"
+    },
+    {
       "name": "func_80018E78",
       "vram": 2147585656,
       "size": 36,
