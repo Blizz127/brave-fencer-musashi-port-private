@@ -6,6 +6,7 @@
 
 #include <dlfcn.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 typedef void Display;
@@ -31,6 +32,16 @@ static void *lib_sym(const char *lib, const char *name)
     return h ? real_dlsym(h, name) : 0;
 }
 
+static int is_interactive(void)
+{
+    static int cached = -1;
+    if (cached < 0) {
+        const char *env = getenv("MUSASHI_INTERACTIVE");
+        cached = (env && (env[0] == '1' || strcmp(env, "true") == 0 || strcmp(env, "yes") == 0)) ? 1 : 0;
+    }
+    return cached;
+}
+
 static int our_window(unsigned long w)
 {
     return g_our_window != 0 && w == g_our_window;
@@ -41,8 +52,8 @@ int XSetInputFocus(Display *dpy, Window w, int revert_to, Time time)
     static int (*real)(Display *, Window, int, Time);
     if (!real)
         real = (int (*)(Display *, Window, int, Time))lib_sym("libX11.so.6", "XSetInputFocus");
-    /* Never take focus onto the scanout. PointerRoot/None (release) is allowed. */
-    if (our_window((unsigned long)w))
+    /* Never take focus onto the scanout in spectator mode. PointerRoot/None (release) is allowed. */
+    if (!is_interactive() && our_window((unsigned long)w))
         return 1;
     return real ? real(dpy, w, revert_to, time) : 1;
 }
@@ -118,7 +129,7 @@ unsigned int xcb_set_input_focus(void *c, unsigned char revert_to,
     if (!real)
         real = (unsigned int (*)(void *, unsigned char, unsigned int, unsigned int))
             lib_sym("libxcb.so.1", "xcb_set_input_focus");
-    if (our_window(focus))
+    if (!is_interactive() && our_window(focus))
         return 0;
     return real ? real(c, revert_to, focus, time) : 0;
 }
@@ -130,7 +141,7 @@ unsigned int xcb_set_input_focus_checked(void *c, unsigned char revert_to,
     if (!real)
         real = (unsigned int (*)(void *, unsigned char, unsigned int, unsigned int))
             lib_sym("libxcb.so.1", "xcb_set_input_focus_checked");
-    if (our_window(focus))
+    if (!is_interactive() && our_window(focus))
         return 0;
     return real ? real(c, revert_to, focus, time) : 0;
 }
@@ -294,10 +305,26 @@ void musashi_x11_spectator(void *display, unsigned long window)
 
     get_hints = (XWMHints *(*)(Display *, Window))lib_sym("libX11.so.6", "XGetWMHints");
     set_hints = (int (*)(Display *, Window, XWMHints *))lib_sym("libX11.so.6", "XSetWMHints");
+    xfree = (int (*)(void *))lib_sym("libX11.so.6", "XFree");
+
+    if (is_interactive()) {
+        memset(&fresh, 0, sizeof(fresh));
+        hints = get_hints ? get_hints(dpy, w) : 0;
+        if (hints) {
+            fresh = *hints;
+            if (xfree)
+                xfree(hints);
+        }
+        fresh.flags |= 1L; /* InputHint */
+        fresh.input = 1;   /* Accept keyboard input */
+        if (set_hints)
+            set_hints(dpy, w, &fresh);
+        return;
+    }
+
     get_protocols = (int (*)(Display *, Window, Atom **, int *))lib_sym("libX11.so.6", "XGetWMProtocols");
     set_protocols = (int (*)(Display *, Window, Atom *, int))lib_sym("libX11.so.6", "XSetWMProtocols");
     intern = (Atom (*)(Display *, const char *, int))lib_sym("libX11.so.6", "XInternAtom");
-    xfree = (int (*)(void *))lib_sym("libX11.so.6", "XFree");
     real_focus = (int (*)(Display *, Window, int, Time))lib_sym("libX11.so.6", "XSetInputFocus");
 
     memset(&fresh, 0, sizeof(fresh));
@@ -348,6 +375,15 @@ void musashi_x11_spectator_focused(void)
     if (!dpy)
         return;
     xgetfocus(dpy, &focused, &revert);
+    if (is_interactive()) {
+        fprintf(stderr, "native_boot: HOST_WINDOW interactive xid=%lu focus=1 grab=0\n",
+                (unsigned long)focused);
+        if (xflush)
+            xflush(dpy);
+        if (xclose)
+            xclose(dpy);
+        return;
+    }
     if (focused > 1)
         musashi_x11_spectator(dpy, (unsigned long)focused);
     fprintf(stderr, "native_boot: HOST_WINDOW spectator xid=%lu focus=0 grab=0\n",

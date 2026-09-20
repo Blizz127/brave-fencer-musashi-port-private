@@ -9209,6 +9209,15 @@
       "optimization": "-O2"
     },
     {
+      "name": "func_80062388",
+      "vram": 2147885960,
+      "size": 12,
+      "region": "main",
+      "source": "src/main/80062388.c",
+      "recovery": "assembly",
+      "extent": "function"
+    },
+    {
       "name": "func_80062394",
       "vram": 2147885972,
       "size": 16,
@@ -14109,6 +14118,24 @@
       "optimization": "-O2"
     },
     {
+      "name": "func_801458C4",
+      "vram": 2148817092,
+      "size": 8,
+      "region": "main_0012",
+      "source": "src/overlays/main_0012/801458c4.c",
+      "recovery": "assembly",
+      "extent": "function"
+    },
+    {
+      "name": "func_801458CC",
+      "vram": 2148817100,
+      "size": 20,
+      "region": "main_0012",
+      "source": "src/overlays/main_0012/801458cc.c",
+      "recovery": "assembly",
+      "extent": "function"
+    },
+    {
       "name": "func_801458E0",
       "vram": 2148817120,
       "size": 8,
@@ -17326,6 +17353,15 @@
       "optimization": "-O2"
     },
     {
+      "name": "func_8014CCB4",
+      "vram": 2148846772,
+      "size": 88,
+      "region": "main_0012",
+      "source": "src/overlays/main_0012/8014ccb4.c",
+      "recovery": "assembly",
+      "extent": "function"
+    },
+    {
       "name": "func_8014CD0C",
       "vram": 2148846860,
       "size": 116,
@@ -17353,6 +17389,15 @@
       "source": "src/overlays/main_0012/8014cf04.c",
       "optimization": "-O2",
       "recovery": "c",
+      "extent": "function"
+    },
+    {
+      "name": "func_8014D04C",
+      "vram": 2148847692,
+      "size": 88,
+      "region": "main_0012",
+      "source": "src/overlays/main_0012/8014d04c.c",
+      "recovery": "assembly",
       "extent": "function"
     },
     {
@@ -17386,6 +17431,15 @@
       "extent": "function"
     },
     {
+      "name": "func_8014D3E0",
+      "vram": 2148848608,
+      "size": 88,
+      "region": "main_0012",
+      "source": "src/overlays/main_0012/8014d3e0.c",
+      "recovery": "assembly",
+      "extent": "function"
+    },
+    {
       "name": "func_8014D438",
       "vram": 2148848696,
       "size": 136,
@@ -17416,6 +17470,15 @@
       "extent": "function"
     },
     {
+      "name": "func_8014D738",
+      "vram": 2148849464,
+      "size": 88,
+      "region": "main_0012",
+      "source": "src/overlays/main_0012/8014d738.c",
+      "recovery": "assembly",
+      "extent": "function"
+    },
+    {
       "name": "func_8014D790",
       "vram": 2148849552,
       "size": 144,
@@ -17426,6 +17489,15 @@
       "optimization": "-O2"
     },
     {
+      "name": "func_8014DF3C",
+      "vram": 2148851516,
+      "size": 88,
+      "region": "main_0012",
+      "source": "src/overlays/main_0012/8014df3c.c",
+      "recovery": "assembly",
+      "extent": "function"
+    },
+    {
       "name": "func_8014DF94",
       "vram": 2148851604,
       "size": 180,
@@ -17433,6 +17505,15 @@
       "source": "src/overlays/main_0012/8014df94.c",
       "optimization": "-O2",
       "recovery": "c",
+      "extent": "function"
+    },
+    {
+      "name": "func_8014E434",
+      "vram": 2148852788,
+      "size": 88,
+      "region": "main_0012",
+      "source": "src/overlays/main_0012/8014e434.c",
+      "recovery": "assembly",
       "extent": "function"
     },
     {
@@ -17454,6 +17535,15 @@
       "recovery": "c",
       "extent": "function",
       "optimization": "-O2"
+    },
+    {
+      "name": "func_8014E6A0",
+      "vram": 2148853408,
+      "size": 88,
+      "region": "main_0012",
+      "source": "src/overlays/main_0012/8014e6a0.c",
+      "recovery": "assembly",
+      "extent": "function"
     },
     {
       "name": "func_8014E6F8",
@@ -17486,6 +17576,15 @@
       "extent": "function"
     },
     {
+      "name": "func_8014E934",
+      "vram": 2148854068,
+      "size": 88,
+      "region": "main_0012",
+      "source": "src/overlays/main_0012/8014e934.c",
+      "recovery": "assembly",
+      "extent": "function"
+    },
+    {
       "name": "func_8014E98C",
       "vram": 2148854156,
       "size": 192,
@@ -17503,6 +17602,15 @@
       "source": "src/overlays/main_0012/8014ea4c.c",
       "optimization": "-O2",
       "recovery": "c",
+      "extent": "function"
+    },
+    {
+      "name": "func_8014ED28",
+      "vram": 2148855080,
+      "size": 88,
+      "region": "main_0012",
+      "source": "src/overlays/main_0012/8014ed28.c",
+      "recovery": "assembly",
       "extent": "function"
     },
     {

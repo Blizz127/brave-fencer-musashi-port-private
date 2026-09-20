@@ -135,6 +135,7 @@ typedef struct NativeBoot {
     int start_preview_paused;
     int trace_cd_timing, cd_timing_active;
     uint64_t cd_host_start, cd_epoch_start;
+    uint16_t last_musashi_action;
 } NativeBoot;
 
 static int select_opening_overlay(NativeBoot *boot) {
@@ -1010,7 +1011,66 @@ static int sample_keyboard_pad(void *userdata, uint16_t *buttons) {
                 } else if (strcmp(gameplay_action, "jump") == 0) {
                     sampled &= (uint16_t)~(1u << 14); /* Cross: jump */
                 } else if (strcmp(gameplay_action, "slash") == 0) {
-                    sampled &= (uint16_t)~(1u << 15); /* Square: attack */
+                    /* Pulse Square (PS1 pad bit 15 active-low) for 2 frames, release for 10 frames */
+                    if (boot->in_game_frames >= 25u) {
+                        uint32_t cycle = (boot->in_game_frames - 25u) % 12u;
+                        if (cycle < 2u)
+                            sampled &= (uint16_t)~(1u << 15);
+                    }
+                } else if (strcmp(gameplay_action, "combo") == 0) {
+                    /* Pulse Square at frames 25, 38, 52 to chain Musashi's 3-hit Fusion slash combo */
+                    if ((boot->in_game_frames >= 25u && boot->in_game_frames <= 26u) ||
+                        (boot->in_game_frames >= 38u && boot->in_game_frames <= 39u) ||
+                        (boot->in_game_frames >= 52u && boot->in_game_frames <= 53u)) {
+                        sampled &= (uint16_t)~(1u << 15);
+                    }
+                } else if (strcmp(gameplay_action, "lumina") == 0) {
+                    /* Pulse Triangle (PS1 pad bit 12 active-low) to trigger Action 0x06 */
+                    if (boot->in_game_frames >= 25u) {
+                        uint32_t cycle = (boot->in_game_frames - 25u) % 16u;
+                        if (cycle < 2u)
+                            sampled &= (uint16_t)~(1u << 12);
+                    }
+                } else if (strcmp(gameplay_action, "jump_attack") == 0) {
+                    /* Pulse Cross at frame 25 to initiate Jump (Action 0x02), then pulse Square at frame 32 midair to trigger Jump Attack (Action 0x07) */
+                    if (boot->in_game_frames >= 25u && boot->in_game_frames <= 26u) {
+                        sampled &= (uint16_t)~(1u << 14); /* Cross: Jump */
+                    } else if (boot->in_game_frames >= 32u && boot->in_game_frames <= 33u) {
+                        sampled &= (uint16_t)~(1u << 15); /* Square: Jump Attack */
+                        sampled &= (uint16_t)~(1u << 12); /* Triangle also for safety */
+                    }
+                } else if (strcmp(gameplay_action, "combat") == 0 || strcmp(gameplay_action, "combat_patrol") == 0) {
+                    /* Move forward towards Level 1 enemy actors (D_8011F9D0), execute slash combos */
+                    if (boot->in_game_frames >= 25u) {
+                        uint32_t f = boot->in_game_frames - 25u;
+                        sampled &= (uint16_t)~(1u << 4); /* Walk forward */
+                        if ((f % 14u) < 2u) {
+                            sampled &= (uint16_t)~(1u << 15); /* Slash combo pulse */
+                        }
+                    }
+                } else if (strcmp(gameplay_action, "spiral_climb") == 0 || strcmp(gameplay_action, "climb") == 0) {
+                    /* Steer Musashi along the ascending spiral path around tower center (X approx -100, Z approx -350) */
+                    if (boot->in_game_frames >= 21u) {
+                        int16_t cur_x = 0, cur_z = 0;
+                        (void)musashi_boot_read16(&boot->memory, 0x80126B58u + 0x06u, (uint16_t *)&cur_x);
+                        (void)musashi_boot_read16(&boot->memory, 0x80126B58u + 0x0Eu, (uint16_t *)&cur_z);
+
+                        /* Always maintain forward progression up the spiral ramp */
+                        sampled &= (uint16_t)~(1u << 4); /* Up */
+                        stick_ly = 0x00u; /* Forward */
+
+                        /* Dynamic steering around tower center (X approx -100, Z approx -350) */
+                        int dx = (int)cur_x - (-100);
+                        if (dx < -160) {
+                            stick_lx = 0xc0u; /* Steer right towards ramp center */
+                            sampled &= (uint16_t)~(1u << 5); /* Right */
+                        } else if (dx > 80) {
+                            stick_lx = 0x40u; /* Steer left towards ramp center */
+                            sampled &= (uint16_t)~(1u << 7); /* Left */
+                        } else {
+                            stick_lx = 0x80u; /* Center */
+                        }
+                    }
                 } else if (strcmp(gameplay_action, "patrol") == 0) {
                     uint32_t cycle = boot->in_game_frames % 60u;
                     if (cycle < 25u)
@@ -1228,6 +1288,77 @@ static int epoch_video_edge(void *userdata, uint64_t sequence, uint64_t cycle) {
                 target = 5u;
             }
             ++boot->in_game_frames;
+            /* Telemetry: Musashi Action transitions, elevation, and enemy tracking */
+            {
+                uint16_t curr_act = 0;
+                uint16_t prev_act = 0;
+                int16_t pos_x = 0, pos_y = 0, pos_z = 0;
+                int32_t vy_fixed = 0;
+                uint32_t t_ptr = 0;
+                uint32_t b4_ptr = 0;
+                uint16_t hp = 150;
+                int anim = 0;
+
+                (void)musashi_boot_read16(&boot->memory, 0x80126B58u + 0x00u, &curr_act);
+                (void)musashi_boot_read16(&boot->memory, 0x80126B58u + 0x02u, &prev_act);
+                (void)musashi_boot_read16(&boot->memory, 0x80126B58u + 0x06u, (uint16_t *)&pos_x);
+                (void)musashi_boot_read16(&boot->memory, 0x80126B58u + 0x0Au, (uint16_t *)&pos_y);
+                (void)musashi_boot_read16(&boot->memory, 0x80126B58u + 0x0Eu, (uint16_t *)&pos_z);
+                (void)musashi_boot_read32(&boot->memory, 0x80126B58u + 0x14u, (uint32_t *)&vy_fixed);
+                (void)musashi_boot_read32(&boot->memory, 0x80126B58u + 0xB0u, &t_ptr);
+                (void)musashi_boot_read32(&boot->memory, 0x80126B58u + 0xB4u, &b4_ptr);
+                (void)musashi_boot_read16(&boot->memory, 0x80078EB2u, &hp);
+
+                if (t_ptr >= 0x80000000u && b4_ptr != 0) {
+                    for (int k = 0; k < 64; ++k) {
+                        uint32_t entry = 0;
+                        if (musashi_boot_read32(&boot->memory, t_ptr + (uint32_t)(k * 4), &entry)) {
+                            if (entry == b4_ptr) {
+                                anim = k;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (curr_act != boot->last_musashi_action) {
+                    fprintf(stderr, "native_boot: MUSASHI_ACTION prev=%d curr=%d anim=%d hp=%d\n",
+                            (int)prev_act, (int)curr_act, anim, (int)hp);
+                    boot->last_musashi_action = curr_act;
+                }
+
+                const char *act_env = getenv("MUSASHI_GAMEPLAY_ACTION");
+                if (act_env && (strcmp(act_env, "spiral_climb") == 0 ||
+                                strcmp(act_env, "climb") == 0)) {
+                    int vy = (int)(vy_fixed >> 16);
+                    fprintf(stderr, "native_boot: TERRAIN_CLIMB frame=%u pos=(%d,%d,%d) vy=%d\n",
+                            boot->in_game_frames, (int)pos_x, (int)pos_y, (int)pos_z, vy);
+                }
+
+                static uint16_t last_enemy_states[30];
+                static int16_t last_enemy_hps[30];
+                static int enemy_states_init = 0;
+                if (!enemy_states_init) {
+                    memset(last_enemy_states, 0, sizeof(last_enemy_states));
+                    memset(last_enemy_hps, 0, sizeof(last_enemy_hps));
+                    enemy_states_init = 1;
+                }
+                for (unsigned slot = 0; slot < 30u; ++slot) {
+                    uint32_t slot_addr = 0x8011F9D0u + slot * 0x68u;
+                    uint16_t actor_id = 0, state = 0;
+                    int16_t enemy_hp = 0;
+                    if (musashi_boot_read16(&boot->memory, slot_addr, &actor_id) && actor_id != 0) {
+                        (void)musashi_boot_read16(&boot->memory, slot_addr + 0x02u, &state);
+                        (void)musashi_boot_read16(&boot->memory, slot_addr + 0x18u, (uint16_t *)&enemy_hp);
+                        if (state != last_enemy_states[slot] || enemy_hp != last_enemy_hps[slot]) {
+                            last_enemy_states[slot] = state;
+                            last_enemy_hps[slot] = enemy_hp;
+                            fprintf(stderr, "native_boot: ENEMY_REACTION slot=%u id=%u state=%u hp=%d\n",
+                                    slot, (unsigned)actor_id, (unsigned)state, (int)enemy_hp);
+                        }
+                    }
+                }
+            }
             if (target > 0 && boot->in_game_frames >= target && !boot->in_game_paused) {
                 boot->in_game_paused = 1;
                 fprintf(stderr, "native_boot: IN_GAME_PAUSE paused=1 frames=%u target=%u gte_writes=%llu\n",
@@ -2646,9 +2777,12 @@ static void host_window_inspect(SDL_Window *window) {
     unsigned (*get_props)(SDL_Window *);
     void *(*get_ptr)(unsigned, const char *, void *);
     long long (*get_num)(unsigned, const char *, long long);
+    const char *interactive_env = getenv("MUSASHI_INTERACTIVE");
+    int interactive = interactive_env && (interactive_env[0] == '1' || strcmp(interactive_env, "true") == 0 || strcmp(interactive_env, "yes") == 0);
     if (!window) return;
     /* Spectator scanout only. Never grab, never stay-on-top, never re-raise:
-     * Xwayland + SDL_PumpEvents was forcing X input focus back every TAP. */
+     * Xwayland + SDL_PumpEvents was forcing X input focus back every TAP.
+     * When MUSASHI_INTERACTIVE=1 is set, allow focus for playable interaction. */
     SDL_GetWindowSize(window, &width, &height);
     if (width != 1280 || height != 960)
         SDL_SetWindowSize(window, 1280, 960);
@@ -2660,10 +2794,11 @@ static void host_window_inspect(SDL_Window *window) {
     SDL_CaptureMouse(SDL_FALSE);
     SDL_ShowCursor(SDL_ENABLE);
     SDL_SetWindowTitle(window,
-                       "Brave Fencer Musashi - native VRAM");
+                       interactive ? "Brave Fencer Musashi - native PC (Interactive)"
+                                   : "Brave Fencer Musashi - native VRAM");
     set_focusable = (int (*)(SDL_Window *, int))dlsym(RTLD_DEFAULT, "SDL_SetWindowFocusable");
     if (set_focusable)
-        set_focusable(window, 0);
+        set_focusable(window, interactive ? 1 : 0);
     get_props = (unsigned (*)(SDL_Window *))dlsym(RTLD_DEFAULT, "SDL_GetWindowProperties");
     get_ptr = (void *(*)(unsigned, const char *, void *))dlsym(RTLD_DEFAULT, "SDL_GetPointerProperty");
     get_num = (long long (*)(unsigned, const char *, long long))dlsym(RTLD_DEFAULT, "SDL_GetNumberProperty");
@@ -2675,6 +2810,8 @@ static void host_window_inspect(SDL_Window *window) {
             musashi_x11_spectator(dpy, xid);
     }
     musashi_x11_spectator_focused();
+    if (interactive)
+        SDL_RaiseWindow(window);
 }
 
 static void hold_window(NativeBoot *boot) {
@@ -2714,6 +2851,7 @@ int main(int argc, char **argv) {
         return 2;
     }
     boot.exe_path = argv[1];
+    boot.last_musashi_action = 0xffffu;
     if (!load_exe(&boot, argv[1])) {
         fputs("native_boot: pinned retail EXE rejected before startup\n", stderr);
         return 2;
