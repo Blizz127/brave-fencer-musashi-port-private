@@ -1,4 +1,48 @@
 /* Exact retail word export [800191D4,8001923C); verified against pinned EXE and asm. */
+#if defined(__mips__)
+__asm__(
+    ".set	noreorder
+"
+    ".globl	func_800191D4
+"
+    ".ent	func_800191D4
+"
+    ".type	func_800191D4, @function
+"
+    "func_800191D4:
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+"
+    ".end	func_800191D4
+"
+    ".size	func_800191D4, .-func_800191D4
+"
+);
+#else
 /* Body below is an UNVERIFIED draft, not an oracle match
  * claim; promotion requires tools/match_function.py MATCH. */
 #include "psx_types.h"
@@ -17,3 +61,5 @@ s32 func_800191D4(s32 arg0) {
     }
     return D_80078E30 != arg0;
 }
+#endif
+
