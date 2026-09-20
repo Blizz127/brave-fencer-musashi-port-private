@@ -49,6 +49,111 @@ static void discard_prim(MusashiGpuController *controller) {
     for (i = 0; i < 12u; ++i) controller->prim_data[i] = 0;
 }
 
+#define MAX_STORE_IMAGE_INSTANCES 16
+
+typedef struct MusashiGpuStoreImage {
+    const MusashiGpuController *controller;
+    uint32_t command;
+    uint32_t xy;
+    uint32_t wh;
+    uint16_t x;
+    uint16_t y;
+    uint16_t width;
+    uint16_t height;
+    uint32_t total_halfwords;
+    uint32_t total_words;
+    uint32_t words_read;
+    uint8_t phase;
+    int active;
+    uint32_t *buffer;
+    size_t capacity;
+} MusashiGpuStoreImage;
+
+static MusashiGpuStoreImage s_store_images[MAX_STORE_IMAGE_INSTANCES];
+
+static MusashiGpuStoreImage *get_store_image(const MusashiGpuController *controller, int create) {
+    int empty_idx = -1;
+    int i;
+    if (!controller) return NULL;
+    for (i = 0; i < MAX_STORE_IMAGE_INSTANCES; ++i) {
+        if (s_store_images[i].controller == controller) {
+            return &s_store_images[i];
+        }
+        if (empty_idx < 0 && s_store_images[i].controller == NULL) {
+            empty_idx = i;
+        }
+    }
+    if (!create) return NULL;
+    if (empty_idx < 0) {
+        for (i = 0; i < MAX_STORE_IMAGE_INSTANCES; ++i) {
+            if (!s_store_images[i].active && s_store_images[i].phase == 0) {
+                empty_idx = i;
+                break;
+            }
+        }
+        if (empty_idx < 0) empty_idx = 0;
+    }
+    s_store_images[empty_idx].controller = controller;
+    s_store_images[empty_idx].command = 0;
+    s_store_images[empty_idx].xy = 0;
+    s_store_images[empty_idx].wh = 0;
+    s_store_images[empty_idx].x = 0;
+    s_store_images[empty_idx].y = 0;
+    s_store_images[empty_idx].width = 0;
+    s_store_images[empty_idx].height = 0;
+    s_store_images[empty_idx].total_halfwords = 0;
+    s_store_images[empty_idx].total_words = 0;
+    s_store_images[empty_idx].words_read = 0;
+    s_store_images[empty_idx].phase = 0;
+    s_store_images[empty_idx].active = 0;
+    return &s_store_images[empty_idx];
+}
+
+static void discard_store_image(const MusashiGpuController *controller) {
+    int i;
+    for (i = 0; i < MAX_STORE_IMAGE_INSTANCES; ++i) {
+        if (s_store_images[i].controller == controller) {
+            s_store_images[i].command = 0;
+            s_store_images[i].xy = 0;
+            s_store_images[i].wh = 0;
+            s_store_images[i].x = 0;
+            s_store_images[i].y = 0;
+            s_store_images[i].width = 0;
+            s_store_images[i].height = 0;
+            s_store_images[i].total_halfwords = 0;
+            s_store_images[i].total_words = 0;
+            s_store_images[i].words_read = 0;
+            s_store_images[i].phase = 0;
+            s_store_images[i].active = 0;
+            return;
+        }
+    }
+}
+
+static int store_image_in_header(const MusashiGpuController *controller) {
+    MusashiGpuStoreImage *si;
+    if (!controller) return 0;
+    si = get_store_image(controller, 0);
+    return si && (si->phase == 1 || si->phase == 2);
+}
+
+static int store_image_has_data(const MusashiGpuController *controller) {
+    MusashiGpuStoreImage *si;
+    if (!controller) return 0;
+    si = get_store_image(controller, 0);
+    return si && si->active && si->words_read < si->total_words;
+}
+
+int musashi_gpu_controller_get_store_image(const MusashiGpuController *controller,
+                                           uint16_t *x, uint16_t *y,
+                                           uint16_t *width, uint16_t *height,
+                                           uint32_t *total_halfwords);
+int musashi_gpu_controller_store_image_phase(const MusashiGpuController *controller);
+uint32_t musashi_gpu_controller_store_image_remaining_words(const MusashiGpuController *controller);
+int musashi_gpu_controller_read_store_image_buffer(MusashiGpuController *controller,
+                                                  uint32_t *out_words, uint32_t max_words,
+                                                  uint32_t *actual_words);
+
 static int backend_bound(const MusashiGpuController *controller) {
     return controller && controller->backend.reset &&
            controller->backend.draw_mode &&
@@ -101,6 +206,7 @@ static void reset_state(MusashiGpuController *controller) {
     discard_store(controller);
     discard_copy(controller);
     discard_prim(controller);
+    discard_store_image(controller);
 }
 
 static int backend_reset(MusashiGpuController *controller) {
@@ -268,6 +374,7 @@ int musashi_gpu_controller_init(MusashiGpuController *controller,
     controller->accepted_gp0_words = 0;
     controller->stored_pixels = 0;
     discard_store(controller);
+    discard_store_image(controller);
     return 1;
 }
 
@@ -290,13 +397,18 @@ static uint32_t status_word(const MusashiGpuController *controller, int ready) {
     if (!controller->executing && ready) {
         status |= GPU_STATUS_READY_DMA;
         if (!controller->fill_words && !controller->store_phase &&
-            !controller->prim_needed && !controller->copy_words)
+            !controller->prim_needed && !controller->copy_words &&
+            !store_image_in_header(controller))
             status |= GPU_STATUS_READY_COMMAND;
     }
     if (controller->dma_direction == 1u)
         dma_request = (uint32_t)ready;
     else if (controller->dma_direction == 2u)
         dma_request = (!controller->executing && ready) ? 1u : 0u;
+    else if (controller->dma_direction == 3u)
+        dma_request = (store_image_has_data(controller) && ready) ? 1u : 0u;
+    if (store_image_has_data(controller))
+        status |= (1u << 27);
     if (dma_request) status |= GPU_STATUS_DMA_REQUEST;
     if (controller->vblank_parity) status |= GPU_STATUS_VBLANK_PARITY;
     return status;
@@ -328,6 +440,17 @@ int musashi_gpu_controller_read32(MusashiGpuController *controller,
     }
     if (!backend_bound(controller) || controller->faulted) return 0;
     if (address == MUSASHI_GPU_GPUREAD) {
+        MusashiGpuStoreImage *si = get_store_image(controller, 0);
+        if (si && si->active && si->words_read < si->total_words) {
+            uint32_t word = si->buffer[si->words_read++];
+            controller->read_latch = word;
+            if (si->words_read >= si->total_words) {
+                si->active = 0;
+                si->phase = 0;
+            }
+            *value = word;
+            return 1;
+        }
         *value = controller->read_latch;
         return 1;
     }
@@ -436,6 +559,157 @@ static int store_word(MusashiGpuController *controller, uint32_t word) {
     controller->accepted_gp0_words++;
     if (!controller->store_remaining) discard_store(controller);
     return controller->faulted ? 0 : 1;
+}
+
+static int store_image_word(MusashiGpuController *controller, uint32_t word) {
+    int ready;
+    MusashiGpuStoreImage *si;
+    uint32_t opcode;
+
+    if (!controller->backend.read_vram ||
+        controller->accepted_gp0_words == UINT64_MAX) return 0;
+
+    si = get_store_image(controller, 1);
+    if (!si) return 0;
+
+    if (si->phase == 0 || si->phase == 3) {
+        opcode = word >> 24;
+        if ((opcode & 0xe0u) != 0xc0u) return 0;
+        si->command = word;
+        si->phase = 1;
+        si->active = 0;
+        si->words_read = 0;
+        controller->accepted_gp0_words++;
+        return controller->faulted ? 0 : 1;
+    }
+
+    if (si->phase == 1) {
+        si->xy = word;
+        si->phase = 2;
+        controller->accepted_gp0_words++;
+        return controller->faulted ? 0 : 1;
+    }
+
+    if (si->phase == 2) {
+        uint32_t width = word & 0xffffu;
+        uint32_t height = (word >> 16) & 0xffffu;
+        uint32_t halfword_idx = 0;
+        uint32_t row, col;
+
+        if (!width) width = 1024u;
+        if (!height) height = 512u;
+        if (width > 1024u || height > 512u) return 0;
+
+        if (!backend_ready(controller, &ready) || !ready) return 0;
+
+        si->wh = word;
+        si->x = (uint16_t)(si->xy & 0xffffu);
+        si->y = (uint16_t)((si->xy >> 16) & 0xffffu);
+        si->width = (uint16_t)width;
+        si->height = (uint16_t)height;
+        si->total_halfwords = width * height;
+        si->total_words = (si->total_halfwords + 1u) / 2u;
+        si->words_read = 0;
+
+        if (si->total_words > si->capacity) {
+            size_t new_cap = si->total_words < 1024u ? 1024u : (size_t)si->total_words;
+            uint32_t *new_buf = (uint32_t *)realloc(si->buffer, new_cap * sizeof(uint32_t));
+            if (!new_buf) return 0;
+            si->buffer = new_buf;
+            si->capacity = new_cap;
+        }
+
+        for (row = 0; row < height; ++row) {
+            for (col = 0; col < width; ++col) {
+                uint16_t pixel = 0;
+                uint32_t vx = (uint32_t)si->x + col;
+                uint32_t vy = (uint32_t)si->y + row;
+                uint32_t word_idx;
+                int accepted;
+
+                if (vx < 1024u && vy < 512u) {
+                    if (!enter_callback(controller)) return 0;
+                    accepted = controller->backend.read_vram(
+                        controller->backend.userdata, (uint16_t)vx, (uint16_t)vy, &pixel);
+                    if (!finish_callback(controller, accepted > 0) || controller->faulted)
+                        return 0;
+                }
+
+                word_idx = halfword_idx / 2u;
+                if ((halfword_idx & 1u) == 0) {
+                    si->buffer[word_idx] = (uint32_t)pixel;
+                } else {
+                    si->buffer[word_idx] |= ((uint32_t)pixel << 16);
+                }
+                halfword_idx++;
+            }
+        }
+
+        si->phase = 3;
+        si->active = (si->total_words > 0) ? 1 : 0;
+        if (si->total_words > 0) {
+            controller->read_latch = si->buffer[0];
+        }
+        controller->accepted_gp0_words++;
+        return controller->faulted ? 0 : 1;
+    }
+
+    return 0;
+}
+
+int musashi_gpu_controller_get_store_image(const MusashiGpuController *controller,
+                                           uint16_t *x, uint16_t *y,
+                                           uint16_t *width, uint16_t *height,
+                                           uint32_t *total_halfwords) {
+    MusashiGpuStoreImage *si;
+    if (!controller) return 0;
+    si = get_store_image(controller, 0);
+    if (!si || si->phase < 3) return 0;
+    if (x) *x = si->x;
+    if (y) *y = si->y;
+    if (width) *width = si->width;
+    if (height) *height = si->height;
+    if (total_halfwords) *total_halfwords = si->total_halfwords;
+    return 1;
+}
+
+int musashi_gpu_controller_store_image_phase(const MusashiGpuController *controller) {
+    MusashiGpuStoreImage *si;
+    if (!controller) return 0;
+    si = get_store_image(controller, 0);
+    return si ? (int)si->phase : 0;
+}
+
+uint32_t musashi_gpu_controller_store_image_remaining_words(const MusashiGpuController *controller) {
+    MusashiGpuStoreImage *si;
+    if (!controller) return 0;
+    si = get_store_image(controller, 0);
+    if (!si || !si->active || si->words_read >= si->total_words) return 0;
+    return si->total_words - si->words_read;
+}
+
+int musashi_gpu_controller_read_store_image_buffer(MusashiGpuController *controller,
+                                                  uint32_t *out_words, uint32_t max_words,
+                                                  uint32_t *actual_words) {
+    MusashiGpuStoreImage *si;
+    uint32_t remaining, count, i;
+    if (!controller || !out_words) return 0;
+    si = get_store_image(controller, 0);
+    if (!si || !si->active) return 0;
+    remaining = si->total_words - si->words_read;
+    count = remaining < max_words ? remaining : max_words;
+    for (i = 0; i < count; ++i) {
+        out_words[i] = si->buffer[si->words_read++];
+    }
+    if (count > 0) {
+        controller->read_latch = out_words[count - 1];
+    }
+    if (si->words_read >= si->total_words) {
+        si->active = 0;
+        si->phase = 0;
+    }
+    if (actual_words) *actual_words = count;
+    return 1;
 }
 
 /* Ordering follows DuckStation gpu_sw_rasterizer.inl CopyVRAMImpl:
@@ -1209,12 +1483,16 @@ int musashi_gpu_controller_write32(MusashiGpuController *controller,
             return store_word(controller, value);
         if (controller->prim_needed)
             return prim_word(controller, value);
+        if (store_image_in_header(controller))
+            return store_image_word(controller, value);
         if ((opcode & 0xe0u) == 0x80u)
             return copy_word(controller, value);
         if (opcode == 2u)
             return fill_word(controller, value);
         if (opcode == 0xa0u)
             return store_word(controller, value);
+        if ((opcode & 0xe0u) == 0xc0u)
+            return store_image_word(controller, value);
         if ((opcode >= 0x20u && opcode <= 0x3fu) ||
             (opcode >= 0x40u && opcode <= 0x47u) ||
             (opcode >= 0x50u && opcode <= 0x57u) ||
@@ -1266,6 +1544,7 @@ int musashi_gpu_controller_write32(MusashiGpuController *controller,
         discard_store(controller);
         discard_copy(controller);
         discard_prim(controller);
+        discard_store_image(controller);
         return controller->faulted ? 0 : 1;
     case 0x02u:
         return 1;

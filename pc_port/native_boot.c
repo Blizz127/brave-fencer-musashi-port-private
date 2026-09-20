@@ -129,6 +129,8 @@ typedef struct NativeBoot {
     unsigned auto_start_phase1_ticks;
     unsigned auto_start_phase2_ticks;
     unsigned auto_dismiss_ticks;
+    int dialogue_active;
+    int dialogue_dismissed;
     unsigned start_preview_frames;
     int start_preview_paused;
     int trace_cd_timing, cd_timing_active;
@@ -796,12 +798,20 @@ static int spu_write16(void *userdata, uint32_t address, uint16_t value) {
     return 1;
 }
 
+void musashi_sio_controller_set_analog_axes(const MusashiSioController *sio,
+                                            uint8_t rx, uint8_t ry,
+                                            uint8_t lx, uint8_t ly);
+
 static int sample_keyboard_pad(void *userdata, uint16_t *buttons) {
     NativeBoot *boot = userdata;
     const Uint8 *keys;
     int count;
     unsigned i;
     uint16_t sampled = 0xffffu;
+    uint8_t stick_rx = 0x80u;
+    uint8_t stick_ry = 0x80u;
+    uint8_t stick_lx = 0x80u;
+    uint8_t stick_ly = 0x80u;
     /* Native keyboard policy follows the pinned PsyCross default mapping.
      * Digital L3/R3 remain high. Sample real key state once at PAD byte01;
      * neither a missing SDL context nor a failed provider means neutral input. */
@@ -885,10 +895,21 @@ static int sample_keyboard_pad(void *userdata, uint16_t *buttons) {
 
             int16_t axis_x = SDL_GameControllerGetAxis(s_gamepad, SDL_CONTROLLER_AXIS_LEFTX);
             int16_t axis_y = SDL_GameControllerGetAxis(s_gamepad, SDL_CONTROLLER_AXIS_LEFTY);
+            int16_t axis_rx = SDL_GameControllerGetAxis(s_gamepad, SDL_CONTROLLER_AXIS_RIGHTX);
+            int16_t axis_ry = SDL_GameControllerGetAxis(s_gamepad, SDL_CONTROLLER_AXIS_RIGHTY);
             if (axis_x < -10000) sampled &= (uint16_t)~(1u << 7); /* Left */
             if (axis_x > 10000) sampled &= (uint16_t)~(1u << 5);  /* Right */
             if (axis_y < -10000) sampled &= (uint16_t)~(1u << 4); /* Up */
             if (axis_y > 10000) sampled &= (uint16_t)~(1u << 6);  /* Down */
+
+            if (axis_x < -3000 || axis_x > 3000)
+                stick_lx = (uint8_t)(((axis_x >> 8) + 128) & 0xff);
+            if (axis_y < -3000 || axis_y > 3000)
+                stick_ly = (uint8_t)(((axis_y >> 8) + 128) & 0xff);
+            if (axis_rx < -3000 || axis_rx > 3000)
+                stick_rx = (uint8_t)(((axis_rx >> 8) + 128) & 0xff);
+            if (axis_ry < -3000 || axis_ry > 3000)
+                stick_ry = (uint8_t)(((axis_ry >> 8) + 128) & 0xff);
         }
     }
 
@@ -936,19 +957,37 @@ static int sample_keyboard_pad(void *userdata, uint16_t *buttons) {
             const char *auto_dismiss_env = getenv("MUSASHI_AUTO_DISMISS");
             int auto_dismiss = (auto_start && auto_start[0] == '1') ||
                                (auto_dismiss_env && auto_dismiss_env[0] == '1');
-            if (auto_dismiss) {
-                ++boot->auto_dismiss_ticks;
-                if (boot->auto_dismiss_ticks == 1u)
-                    fprintf(stderr, "native_boot: AUTO_DISMISS starting dialogue dismissal in Scene 10\n");
-                if ((boot->auto_dismiss_ticks % 12u) < 6u) {
-                    const char *dismiss_key = getenv("MUSASHI_DISMISS_KEY");
-                    if (dismiss_key && strcmp(dismiss_key, "start") == 0)
-                        sampled &= (uint16_t)~(1u << 3); /* Start */
-                    else if (dismiss_key && strcmp(dismiss_key, "both") == 0) {
-                        sampled &= (uint16_t)~(1u << 14); /* Cross */
-                        sampled &= (uint16_t)~(1u << 3);  /* Start */
-                    } else
-                        sampled &= (uint16_t)~(1u << 14); /* Cross */
+            if (auto_dismiss && !boot->dialogue_dismissed) {
+                uint32_t player_flags = 0;
+                uint16_t unk4e_word = 0;
+                (void)musashi_boot_read32(&boot->memory, 0x80126B58u + 0x44u, &player_flags);
+                (void)musashi_boot_read16(&boot->memory, 0x80126B58u + 0x4Eu, &unk4e_word);
+                uint8_t unk4e = (uint8_t)(unk4e_word & 0xffu);
+
+                if (unk4e != 0 || (player_flags & 0x04000000u) != 0) {
+                    boot->dialogue_active = 1;
+                }
+
+                if ((boot->dialogue_active || boot->auto_dismiss_ticks > 20u) &&
+                    unk4e == 0 && (player_flags & 0x04000000u) == 0) {
+                    boot->dialogue_dismissed = 1;
+                    boot->dialogue_active = 0;
+                    fprintf(stderr, "native_boot: AUTO_DISMISS dialogue dismissed, player controls unlocked (frame %u)\n",
+                            boot->auto_dismiss_ticks);
+                } else {
+                    ++boot->auto_dismiss_ticks;
+                    if (boot->auto_dismiss_ticks == 1u)
+                        fprintf(stderr, "native_boot: AUTO_DISMISS starting dialogue dismissal in Scene 10\n");
+                    if ((boot->auto_dismiss_ticks % 12u) < 6u) {
+                        const char *dismiss_key = getenv("MUSASHI_DISMISS_KEY");
+                        if (dismiss_key && strcmp(dismiss_key, "start") == 0)
+                            sampled &= (uint16_t)~(1u << 3); /* Start */
+                        else if (dismiss_key && strcmp(dismiss_key, "both") == 0) {
+                            sampled &= (uint16_t)~(1u << 14); /* Cross */
+                            sampled &= (uint16_t)~(1u << 3);  /* Start */
+                        } else
+                            sampled &= (uint16_t)~(1u << 14); /* Cross */
+                    }
                 }
             }
             /* Scripted gameplay actions for automated in-game validation */
@@ -975,7 +1014,12 @@ static int sample_keyboard_pad(void *userdata, uint16_t *buttons) {
                 }
             }
         }
+        if (!(sampled & (1u << 7)) && stick_lx == 0x80u) stick_lx = 0x00u; /* Left */
+        if (!(sampled & (1u << 5)) && stick_lx == 0x80u) stick_lx = 0xffu; /* Right */
+        if (!(sampled & (1u << 4)) && stick_ly == 0x80u) stick_ly = 0x00u; /* Up */
+        if (!(sampled & (1u << 6)) && stick_ly == 0x80u) stick_ly = 0xffu; /* Down */
     }
+    musashi_sio_controller_set_analog_axes(&boot->sio, stick_rx, stick_ry, stick_lx, stick_ly);
     ++boot->keyboard_polls;
     *buttons = sampled;
     return 1;
@@ -1161,14 +1205,12 @@ static int epoch_video_edge(void *userdata, uint64_t sequence, uint64_t cycle) {
             } else if (pause_in_game && pause_in_game[0] == '1') {
                 target = 5u;
             }
-            if (target > 0) {
-                ++boot->in_game_frames;
-                if (boot->in_game_frames >= target && !boot->in_game_paused) {
-                    boot->in_game_paused = 1;
-                    fprintf(stderr, "native_boot: IN_GAME_PAUSE paused=1 frames=%u target=%u gte_writes=%llu\n",
-                            boot->in_game_frames, target, (unsigned long long)boot->gte.write_count);
-                    host_stop_signal = SIGTERM;
-                }
+            ++boot->in_game_frames;
+            if (target > 0 && boot->in_game_frames >= target && !boot->in_game_paused) {
+                boot->in_game_paused = 1;
+                fprintf(stderr, "native_boot: IN_GAME_PAUSE paused=1 frames=%u target=%u gte_writes=%llu\n",
+                        boot->in_game_frames, target, (unsigned long long)boot->gte.write_count);
+                host_stop_signal = SIGTERM;
             }
         }
     }

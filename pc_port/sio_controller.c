@@ -18,6 +18,48 @@
 #define CONTROL_RESET_ERROR 0x0010u
 #define ACK_DELAY_CYCLES (0x88u * 8u)
 
+typedef struct MusashiSioAnalogState {
+    const MusashiSioController *sio;
+    uint8_t axes[4]; /* 0: Right X, 1: Right Y, 2: Left X, 3: Left Y */
+} MusashiSioAnalogState;
+
+static MusashiSioAnalogState s_sio_analog_table[4];
+
+void musashi_sio_controller_set_analog_axes(const MusashiSioController *sio,
+                                            uint8_t rx, uint8_t ry,
+                                            uint8_t lx, uint8_t ly) {
+    int empty_slot = -1;
+    for (int i = 0; i < 4; ++i) {
+        if (s_sio_analog_table[i].sio == sio) {
+            s_sio_analog_table[i].axes[0] = rx;
+            s_sio_analog_table[i].axes[1] = ry;
+            s_sio_analog_table[i].axes[2] = lx;
+            s_sio_analog_table[i].axes[3] = ly;
+            return;
+        }
+        if (empty_slot < 0 && s_sio_analog_table[i].sio == NULL) {
+            empty_slot = i;
+        }
+    }
+    if (empty_slot >= 0) {
+        s_sio_analog_table[empty_slot].sio = sio;
+        s_sio_analog_table[empty_slot].axes[0] = rx;
+        s_sio_analog_table[empty_slot].axes[1] = ry;
+        s_sio_analog_table[empty_slot].axes[2] = lx;
+        s_sio_analog_table[empty_slot].axes[3] = ly;
+    }
+}
+
+static uint8_t get_analog_axis(const MusashiSioController *sio, unsigned axis_index) {
+    if (axis_index >= 4u) return 0x80u;
+    for (int i = 0; i < 4; ++i) {
+        if (s_sio_analog_table[i].sio == sio) {
+            return s_sio_analog_table[i].axes[axis_index];
+        }
+    }
+    return 0x80u;
+}
+
 static int owner_ok(const MusashiSioController *sio) {
     uint64_t token;
     if (!sio || sio->faulted) return 0;
@@ -147,6 +189,15 @@ void musashi_sio_controller_init(MusashiSioController *sio) {
     sio->selected_port = -1;
     sio->status = 5; /* TX data empty and TX finished; empty receive FIFO. */
     sio->pad_state = MUSASHI_SIO_PAD_IDLE;
+    for (int i = 0; i < 4; ++i) {
+        if (s_sio_analog_table[i].sio == sio) {
+            s_sio_analog_table[i].sio = NULL;
+            s_sio_analog_table[i].axes[0] = 0x80u;
+            s_sio_analog_table[i].axes[1] = 0x80u;
+            s_sio_analog_table[i].axes[2] = 0x80u;
+            s_sio_analog_table[i].axes[3] = 0x80u;
+        }
+    }
 }
 
 void musashi_sio_controller_init_disconnected(MusashiSioController *sio) {
@@ -329,7 +380,7 @@ int musashi_sio_controller_write8(void *userdata, uint32_t address,
                 response = (uint8_t)(sio->sampled_buttons >> 8);
             else if (sio->analog_mode >= 3 && sio->pad_cursor >= 3 &&
                      sio->pad_cursor <= 6)
-                response = 0x80u; /* Centered DualShock axes. */
+                response = get_analog_axis(sio, sio->pad_cursor - 3u);
             else
                 response = 0;
             sio->pad_cursor++;

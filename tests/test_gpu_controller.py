@@ -94,6 +94,24 @@ class GpuControllerTests(unittest.TestCase):
             C.POINTER(Controller), UINT32, UINT32]
         cls.lib.musashi_gpu_controller_vblank.argtypes = [
             C.POINTER(Controller)]
+        cls.lib.musashi_gpu_controller_get_store_image.argtypes = [
+            C.POINTER(Controller),
+            C.POINTER(C.c_uint16), C.POINTER(C.c_uint16),
+            C.POINTER(C.c_uint16), C.POINTER(C.c_uint16),
+            C.POINTER(UINT32),
+        ]
+        cls.lib.musashi_gpu_controller_get_store_image.restype = C.c_int
+        cls.lib.musashi_gpu_controller_store_image_phase.argtypes = [
+            C.POINTER(Controller)]
+        cls.lib.musashi_gpu_controller_store_image_phase.restype = C.c_int
+        cls.lib.musashi_gpu_controller_store_image_remaining_words.argtypes = [
+            C.POINTER(Controller)]
+        cls.lib.musashi_gpu_controller_store_image_remaining_words.restype = UINT32
+        cls.lib.musashi_gpu_controller_read_store_image_buffer.argtypes = [
+            C.POINTER(Controller),
+            C.POINTER(UINT32), UINT32, C.POINTER(UINT32),
+        ]
+        cls.lib.musashi_gpu_controller_read_store_image_buffer.restype = C.c_int
 
     def setUp(self):
         self.controller = Controller()
@@ -233,6 +251,25 @@ class GpuControllerTests(unittest.TestCase):
     def vblank(self, controller=None):
         target = self.controller if controller is None else controller
         return self.lib.musashi_gpu_controller_vblank(C.byref(target))
+
+    def get_store_image(self, controller=None):
+        target = self.controller if controller is None else controller
+        x = C.c_uint16()
+        y = C.c_uint16()
+        w = C.c_uint16()
+        h = C.c_uint16()
+        total = UINT32()
+        ok = self.lib.musashi_gpu_controller_get_store_image(
+            C.byref(target), C.byref(x), C.byref(y), C.byref(w), C.byref(h), C.byref(total))
+        return ok, x.value, y.value, w.value, h.value, total.value
+
+    def store_image_phase(self, controller=None):
+        target = self.controller if controller is None else controller
+        return self.lib.musashi_gpu_controller_store_image_phase(C.byref(target))
+
+    def store_image_remaining_words(self, controller=None):
+        target = self.controller if controller is None else controller
+        return self.lib.musashi_gpu_controller_store_image_remaining_words(C.byref(target))
 
     def test_init_requires_reset_acceptance_and_starts_guest_reset_state(self):
         self.assertEqual(self.controller.read_latch, 0x400)
@@ -1012,6 +1049,293 @@ class GpuControllerTests(unittest.TestCase):
         before = bytes(self.controller)
         self.assertEqual(self.write(0xA0000000), 0)
         self.assertEqual(bytes(self.controller), before)
+
+    def test_gp0_store_image_packet_parsing_and_header_length(self):
+        self.read_cb = READ(lambda _, x, y, out: out.__setitem__(0, 0x1234) or 1)
+        self.controller.backend.read_vram = self.read_cb
+        self.assertEqual(self.store_image_phase(), 0)
+
+        # Word 0: Command 0xC0000000
+        self.assertEqual(self.write(0xC0000000), 1)
+        self.assertEqual(self.controller.faulted, 0)
+        self.assertEqual(self.store_image_phase(), 1)
+        self.assertEqual(self.controller.accepted_gp0_words, 1)
+        self.assertEqual(self.read()[1] & (1 << 26), 0)
+        self.assertEqual(self.read()[1] & (1 << 27), 0)
+
+        # Word 1: VRAM X=16, Y=2
+        self.assertEqual(self.write(0x00020010), 1)
+        self.assertEqual(self.controller.faulted, 0)
+        self.assertEqual(self.store_image_phase(), 2)
+        self.assertEqual(self.controller.accepted_gp0_words, 2)
+        self.assertEqual(self.read()[1] & (1 << 26), 0)
+
+        # Word 2: Width=2, Height=2 (total 4 halfwords = 2 32-bit words)
+        self.assertEqual(self.write(0x00020002), 1)
+        self.assertEqual(self.controller.faulted, 0)
+        self.assertEqual(self.store_image_phase(), 3)
+        self.assertEqual(self.controller.accepted_gp0_words, 3)
+        self.assertNotEqual(self.read()[1] & (1 << 26), 0)
+        self.assertNotEqual(self.read()[1] & (1 << 27), 0)
+
+        # Verify next word is treated as a new command (NOP)
+        self.assertEqual(self.write(0x00000000), 1)
+        self.assertEqual(self.controller.accepted_gp0_words, 4)
+        self.assertEqual(self.controller.faulted, 0)
+
+    def test_gp0_store_image_transfer_parameters(self):
+        self.read_cb = READ(lambda _, x, y, out: out.__setitem__(0, 0x5555) or 1)
+        self.controller.backend.read_vram = self.read_cb
+
+        # Test parameter extraction for (x=100, y=50, w=16, h=8)
+        self.assertEqual(self.write(0xC0000000), 1)
+        self.assertEqual(self.write((50 << 16) | 100), 1)
+        self.assertEqual(self.write((8 << 16) | 16), 1)
+        self.assertEqual(self.controller.faulted, 0)
+
+        ok, x, y, w, h, total = self.get_store_image()
+        self.assertEqual(ok, 1)
+        self.assertEqual(x, 100)
+        self.assertEqual(y, 50)
+        self.assertEqual(w, 16)
+        self.assertEqual(h, 8)
+        self.assertEqual(total, 128)
+        self.assertEqual(self.store_image_remaining_words(), 64)
+
+        # Test odd halfword count (w=3, h=3 -> 9 halfwords -> 5 32-bit words)
+        self.assertEqual(self.write(0xC0000000), 1)
+        self.assertEqual(self.write((20 << 16) | 10), 1)
+        self.assertEqual(self.write((3 << 16) | 3), 1)
+        self.assertEqual(self.controller.faulted, 0)
+
+        ok, x, y, w, h, total = self.get_store_image()
+        self.assertEqual(ok, 1)
+        self.assertEqual(x, 10)
+        self.assertEqual(y, 20)
+        self.assertEqual(w, 3)
+        self.assertEqual(h, 3)
+        self.assertEqual(total, 9)
+        self.assertEqual(self.store_image_remaining_words(), 5)
+
+        # Test opcodes in range 0xC0..0xDF
+        for op in (0xC0, 0xC1, 0xC8, 0xD0, 0xDF):
+            self.assertEqual(self.write((op << 24) | 0x123456), 1)
+            self.assertEqual(self.write(0x00010002), 1)
+            self.assertEqual(self.write(0x00010002), 1)
+            self.assertEqual(self.controller.faulted, 0)
+            ok, x, y, w, h, total = self.get_store_image()
+            self.assertEqual(ok, 1)
+            self.assertEqual(w, 2)
+            self.assertEqual(h, 1)
+            self.assertEqual(total, 2)
+
+    def test_gp0_store_image_roundtrip_with_load_image(self):
+        vram = {}
+
+        def mock_store(_, x, y, pixel):
+            vram[(x, y)] = pixel
+            return 1
+
+        def mock_read(_, x, y, out):
+            out[0] = vram.get((x, y), 0)
+            return 1
+
+        self.store_cb = STORE(mock_store)
+        self.read_cb = READ(mock_read)
+        self.controller.backend.store_vram = self.store_cb
+        self.controller.backend.read_vram = self.read_cb
+
+        # 1. Load a 4x4 image at (32, 48) with unique colors
+        test_pixels = [0x1000 + i * 0x111 for i in range(16)]
+        self.assertEqual(self.write(0xA0000000), 1)
+        self.assertEqual(self.write((48 << 16) | 32), 1)
+        self.assertEqual(self.write((4 << 16) | 4), 1)
+        for i in range(0, 16, 2):
+            word = test_pixels[i] | (test_pixels[i + 1] << 16)
+            self.assertEqual(self.write(word), 1)
+        self.assertEqual(self.controller.faulted, 0)
+        self.assertEqual(len(vram), 16)
+
+        # 2. StoreImage at (32, 48) with size 4x4
+        self.assertEqual(self.write(0xC0000000), 1)
+        self.assertEqual(self.write((48 << 16) | 32), 1)
+        self.assertEqual(self.write((4 << 16) | 4), 1)
+        self.assertEqual(self.controller.faulted, 0)
+        self.assertEqual(self.store_image_remaining_words(), 8)
+
+        # 3. Read back 8 words from GPUREAD and verify round-trip pixels
+        read_pixels = []
+        for _ in range(8):
+            ok, val = self.read(GPUREAD)
+            self.assertEqual(ok, 1)
+            read_pixels.append(val & 0xFFFF)
+            read_pixels.append((val >> 16) & 0xFFFF)
+        self.assertEqual(read_pixels, test_pixels)
+        self.assertEqual(self.controller.faulted, 0)
+        self.assertEqual(self.store_image_remaining_words(), 0)
+
+        # 4. Reading past end returns latched last word
+        expected_last_word = test_pixels[14] | (test_pixels[15] << 16)
+        ok, val = self.read(GPUREAD)
+        self.assertEqual(ok, 1)
+        self.assertEqual(val, expected_last_word)
+
+    def test_gp0_store_image_roundtrip_with_fill(self):
+        vram = {}
+
+        def mock_fill(_, f):
+            candidate = f.contents
+            for r in range(candidate.height):
+                for c in range(candidate.width):
+                    vram[(candidate.x + c, candidate.y + r)] = candidate.color
+            return 1
+
+        def mock_read(_, x, y, out):
+            out[0] = vram.get((x, y), 0)
+            return 1
+
+        self.fill_cb = FILL(mock_fill)
+        self.read_cb = READ(mock_read)
+        self.controller.backend.fill_vram = self.fill_cb
+        self.controller.backend.read_vram = self.read_cb
+
+        # Fill 16x16 with color
+        self.assertEqual(self.write(0x02ff0000), 1)
+        self.assertEqual(self.write(0x00000000), 1)
+        self.assertEqual(self.write((16 << 16) | 16), 1)
+        self.assertEqual(self.controller.faulted, 0)
+
+        # StoreImage over filled area
+        self.assertEqual(self.write(0xC0000000), 1)
+        self.assertEqual(self.write(0x00000000), 1)
+        self.assertEqual(self.write((16 << 16) | 16), 1)
+        self.assertEqual(self.controller.faulted, 0)
+
+        # Read back 128 words (256 halfwords)
+        for _ in range(128):
+            ok, val = self.read(GPUREAD)
+            self.assertEqual(ok, 1)
+            p0 = val & 0xFFFF
+            p1 = (val >> 16) & 0xFFFF
+            self.assertEqual(p0, 0x7C00)
+            self.assertEqual(p1, 0x7C00)
+        self.assertEqual(self.controller.faulted, 0)
+
+    def test_gp0_store_image_boundary_handling(self):
+        vram = {}
+        for cy in range(508, 512):
+            for cx in range(1020, 1024):
+                vram[(cx, cy)] = 0x1234
+
+        accessed = []
+
+        def mock_read(_, x, y, out):
+            accessed.append((x, y))
+            out[0] = vram.get((x, y), 0)
+            return 1
+
+        self.read_cb = READ(mock_read)
+        self.controller.backend.read_vram = self.read_cb
+
+        # StoreImage spanning past bottom-right: x=1020, y=510, w=8, h=4
+        self.assertEqual(self.write(0xC0000000), 1)
+        self.assertEqual(self.write((510 << 16) | 1020), 1)
+        self.assertEqual(self.write((4 << 16) | 8), 1)
+        self.assertEqual(self.controller.faulted, 0)
+
+        for ax, ay in accessed:
+            self.assertLess(ax, 1024)
+            self.assertLess(ay, 512)
+
+        pixels = []
+        for _ in range(16):
+            ok, val = self.read(GPUREAD)
+            self.assertEqual(ok, 1)
+            pixels.append(val & 0xFFFF)
+            pixels.append((val >> 16) & 0xFFFF)
+
+        for r in range(4):
+            for c in range(8):
+                idx = r * 8 + c
+                if r < 2 and c < 4:
+                    self.assertEqual(pixels[idx], 0x1234)
+                else:
+                    self.assertEqual(pixels[idx], 0)
+        self.assertEqual(self.controller.faulted, 0)
+
+    def test_gp0_store_image_backend_refusal_and_missing_callback(self):
+        before = bytes(self.controller)
+        self.assertEqual(self.write(0xC0000000), 0)
+        self.assertEqual(bytes(self.controller), before)
+
+        self.read_cb = READ(lambda *_: 0)
+        self.controller.backend.read_vram = self.read_cb
+        self.assertEqual(self.write(0xC0000000), 1)
+        self.assertEqual(self.write(0x00000000), 1)
+        self.assertEqual(self.write(0x00010001), 0)
+        self.assertEqual(self.controller.faulted, 1)
+
+        self.setUp()
+        self.read_cb = READ(lambda _, x, y, out: out.__setitem__(0, 1) or 1)
+        self.controller.backend.read_vram = self.read_cb
+        self.assertEqual(self.write(0xC0000000), 1)
+        self.assertEqual(self.write(0x00000000), 1)
+        self.ready_value = 0
+        self.assertEqual(self.write(0x00010001), 0)
+        self.assertEqual(self.controller.faulted, 0)
+
+    def test_gp0_store_image_gp1_reset_and_clear_fifo(self):
+        self.read_cb = READ(lambda _, x, y, out: out.__setitem__(0, 0xABCD) or 1)
+        self.controller.backend.read_vram = self.read_cb
+
+        self.assertEqual(self.write(0xC0000000), 1)
+        self.assertEqual(self.write(0x00000000), 1)
+        self.assertEqual(self.write(0x00020002), 1)
+        self.assertEqual(self.store_image_remaining_words(), 2)
+
+        self.assertEqual(self.write(0x00000000, GPUSTAT), 1)
+        self.assertEqual(self.store_image_phase(), 0)
+        self.assertEqual(self.store_image_remaining_words(), 0)
+        self.assertEqual(self.controller.read_latch, 0x400)
+
+        self.assertEqual(self.write(0xC0000000), 1)
+        self.assertEqual(self.store_image_phase(), 1)
+        self.assertEqual(self.write(0x01000000, GPUSTAT), 1)
+        self.assertEqual(self.store_image_phase(), 0)
+
+    def test_gp0_store_image_dimension_limits(self):
+        self.read_cb = READ(lambda _, x, y, out: out.__setitem__(0, 1) or 1)
+        self.controller.backend.read_vram = self.read_cb
+
+        self.assertEqual(self.write(0xC0000000), 1)
+        self.assertEqual(self.write(0x00000000), 1)
+        self.assertEqual(self.write((1 << 16) | 1025), 0)
+        self.assertEqual(self.controller.faulted, 0)
+
+        self.assertEqual(self.write((513 << 16) | 1), 0)
+        self.assertEqual(self.controller.faulted, 0)
+
+    def test_gp0_store_image_dma_direction_status(self):
+        self.read_cb = READ(lambda _, x, y, out: out.__setitem__(0, 0x42) or 1)
+        self.controller.backend.read_vram = self.read_cb
+
+        self.assertEqual(self.write(0x04000003, GPUSTAT), 1)
+        self.assertEqual(self.read()[1] & (1 << 25), 0)
+
+        self.assertEqual(self.write(0xC0000000), 1)
+        self.assertEqual(self.write(0x00000000), 1)
+        self.assertEqual(self.write(0x00010004), 1)
+
+        status = self.read()[1]
+        self.assertNotEqual(status & (1 << 25), 0)
+        self.assertNotEqual(status & (1 << 27), 0)
+
+        self.read(GPUREAD)
+        self.read(GPUREAD)
+
+        status = self.read()[1]
+        self.assertEqual(status & (1 << 25), 0)
+        self.assertEqual(status & (1 << 27), 0)
 
 
 if __name__ == "__main__":
