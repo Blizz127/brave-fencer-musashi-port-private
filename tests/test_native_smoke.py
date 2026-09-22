@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import tempfile
@@ -8,6 +9,21 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def _cmake_prefix() -> Path | None:
+    """Mirror tools/run_tests.sh: SDL2 and OpenAL come from Homebrew when present.
+
+    Without this prefix, FindOpenAL does not search the Homebrew tree and the
+    configure step fails with "Could NOT find OpenAL" even though the keg is
+    installed. MUSASHI_CMAKE_PREFIX overrides; an unset variable with no
+    Homebrew tree leaves CMake on the system search path alone.
+    """
+    override = os.environ.get("MUSASHI_CMAKE_PREFIX")
+    if override:
+        return Path(override)
+    brew = Path("/home/linuxbrew/.linuxbrew")
+    return brew if brew.is_dir() else None
 
 
 def _versioned_sdl2_dir() -> Path | None:
@@ -33,6 +49,13 @@ class NativeSmokeTests(unittest.TestCase):
             cmake_args = [
                 "cmake", "-S", str(ROOT), "-B", str(build), "-DMUSASHI_BUILD_PC_PORT=ON",
             ]
+            prefix = _cmake_prefix()
+            if prefix is not None:
+                cmake_args.append(f"-DCMAKE_PREFIX_PATH={prefix}")
+            # A CMAKE_PREFIX_PATH search would otherwise resolve SDL2's include
+            # directory to Homebrew's incomplete unversioned tree, so the
+            # versioned config follows it as a cache entry that cannot be
+            # replaced. tools/run_tests.sh orders these the same way.
             sdl2_dir = _versioned_sdl2_dir()
             if sdl2_dir is not None:
                 cmake_args.append(f"-DSDL2_DIR={sdl2_dir}")

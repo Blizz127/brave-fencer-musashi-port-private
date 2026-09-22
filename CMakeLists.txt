@@ -808,6 +808,21 @@ if(MUSASHI_BUILD_PC_PORT)
     if(NOT MUSASHI_SC01_80128158_RESULT EQUAL 0)
         message(FATAL_ERROR "Cannot extract SC01 title 80128158 words")
     endif()
+    # kOverlaySc01_CodeWords is the whole resident SC01 image the formatter
+    # compares guest RAM against, so its input is the pinned disc archive
+    # rather than a transcribed decomp source. Without this rule the include
+    # only ever existed as an untracked artifact in one developer's build tree
+    # and a clean configure produced a build that could not compile.
+    set(MUSASHI_SC01_ARCHIVE ${CMAKE_CURRENT_SOURCE_DIR}/extracted/disc/files/SC01.CD)
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${MUSASHI_SC01_ARCHIVE}")
+    execute_process(
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/extract_pac_words.py
+                ${MUSASHI_SC01_ARCHIVE}
+                ${MUSASHI_GENERATED_DIR}/sc01_pac0_words.inc --expected-words 128483
+        RESULT_VARIABLE MUSASHI_SC01_PAC0_RESULT)
+    if(NOT MUSASHI_SC01_PAC0_RESULT EQUAL 0)
+        message(FATAL_ERROR "Cannot extract SC01 member 0 PAC code words")
+    endif()
     execute_process(
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/extract_asm_words.py
                 ${CMAKE_CURRENT_SOURCE_DIR}/src/overlays/sc02_0031/80128420.c
@@ -17705,4 +17720,18 @@ execute_process(
                 "tools/extract_tmd.py --offset 0xA97000")
         endif()
     endif()
+
+    # Every CTest probe states its expectations as assert(). CMake puts -DNDEBUG
+    # in the Release/RelWithDebInfo/MinSizeRel flags, which compiles all of them
+    # out: the probe then runs to completion and exits 0 having checked nothing,
+    # so a whole passing CTest run means only that the binaries did not crash.
+    # A probe built that way is not evidence, so assertions are forced back on
+    # for the probes alone. The port library and its executables keep the
+    # build type's own flags, because their asserts are product behaviour.
+    get_property(MUSASHI_DIRECTORY_TARGETS DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
+    foreach(MUSASHI_TARGET IN LISTS MUSASHI_DIRECTORY_TARGETS)
+        if(MUSASHI_TARGET MATCHES "_probe$" OR MUSASHI_TARGET STREQUAL "musashi_pc_smoke")
+            target_compile_options(${MUSASHI_TARGET} PRIVATE -UNDEBUG)
+        endif()
+    endforeach()
 endif()
