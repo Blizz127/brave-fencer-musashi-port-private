@@ -800,6 +800,20 @@ if(MUSASHI_BUILD_PC_PORT)
     if(NOT MUSASHI_OV10_CFBBC_WORDS_RESULT EQUAL 0)
         message(FATAL_ERROR "Cannot extract overlay 0010 800CFBBC words")
     endif()
+    foreach(MUSASHI_OV10_LEAF "800cfbcc:7" "800cfbe8:4")
+        string(REPLACE ":" ";" MUSASHI_OV10_LEAF_PARTS "${MUSASHI_OV10_LEAF}")
+        list(GET MUSASHI_OV10_LEAF_PARTS 0 MUSASHI_OV10_LEAF_NAME)
+        list(GET MUSASHI_OV10_LEAF_PARTS 1 MUSASHI_OV10_LEAF_COUNT)
+        execute_process(
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/extract_asm_words.py
+                    ${CMAKE_CURRENT_SOURCE_DIR}/src/overlays/main_0010/${MUSASHI_OV10_LEAF_NAME}.c
+                    ${MUSASHI_GENERATED_DIR}/${MUSASHI_OV10_LEAF_NAME}_overlay0010_words.inc
+                    --expected-words ${MUSASHI_OV10_LEAF_COUNT}
+            RESULT_VARIABLE MUSASHI_OV10_LEAF_RESULT)
+        if(NOT MUSASHI_OV10_LEAF_RESULT EQUAL 0)
+            message(FATAL_ERROR "Cannot extract overlay 0010 ${MUSASHI_OV10_LEAF_NAME} words")
+        endif()
+    endforeach()
     execute_process(
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/extract_asm_words.py
                 ${CMAKE_CURRENT_SOURCE_DIR}/src/overlays/sc01_0000/80128158.c

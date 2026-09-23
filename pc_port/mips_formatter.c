@@ -1713,6 +1713,17 @@ static const uint32_t kOverlay0010_800CF8E4Words[] = {
 _Static_assert(sizeof(kOverlay0010_800CF8E4Words) / sizeof(uint32_t) == 26,
                "overlay 0010 800CF8E4 span changed");
 _Static_assert(sizeof(kOverlay0010_800CFBBCWords) / sizeof(uint32_t) == 4, "overlay 0010 CFBBC span changed");
+/* func_800CFBCC sets the D_80114E70 flag and D_80114E74 argument that
+ * func_800CFBE8 reads back; the room transition out of the opening cutscene
+ * is the first caller. */
+static const uint32_t kOverlay0010_800CFBCCWords[] = {
+#include "800cfbcc_overlay0010_words.inc"
+};
+_Static_assert(sizeof(kOverlay0010_800CFBCCWords) / sizeof(uint32_t) == 7, "overlay 0010 CFBCC span changed");
+static const uint32_t kOverlay0010_800CFBE8Words[] = {
+#include "800cfbe8_overlay0010_words.inc"
+};
+_Static_assert(sizeof(kOverlay0010_800CFBE8Words) / sizeof(uint32_t) == 4, "overlay 0010 CFBE8 span changed");
 static const uint32_t kOverlay0010_800D0488Words[] = {
 #include "800d0488_overlay0010_words.inc"
 };
@@ -13017,6 +13028,8 @@ static const FormatterRange kFormatterRanges5[] = {
     { 0x800cf8e4u, 0x800cf94cu, kOverlay0010_800CF8E4Words },
     { 0x800cf94cu, 0x800cf990u, kOverlay0010_800CF94CWords },
     { 0x800cfbbcu, 0x800cfbccu, kOverlay0010_800CFBBCWords },
+    { 0x800cfbccu, 0x800cfbe8u, kOverlay0010_800CFBCCWords },
+    { 0x800cfbe8u, 0x800cfbf8u, kOverlay0010_800CFBE8Words },
     { 0x800cfbf8u, 0x800cfde8u, kOverlay0010_800CFBF8Words },
     { 0x800cfde8u, 0x800cfe60u, kOverlay0010_800CFDE8Words },
     { 0x800cfe60u, 0x800d0214u, kOverlay0010_800CFE60Words },

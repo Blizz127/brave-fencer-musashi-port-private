@@ -30480,6 +30480,26 @@
       "optimization": "-O2"
     },
     {
+      "name": "func_800CFBCC",
+      "vram": 2148334540,
+      "size": 28,
+      "region": "main_0010",
+      "source": "src/overlays/main_0010/800cfbcc.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2"
+    },
+    {
+      "name": "func_800CFBE8",
+      "vram": 2148334568,
+      "size": 16,
+      "region": "main_0010",
+      "source": "src/overlays/main_0010/800cfbe8.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2"
+    },
+    {
       "name": "func_800D02C0",
       "vram": 2148336320,
       "size": 16,

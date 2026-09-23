@@ -723,6 +723,22 @@ def test_overlay_0010_800cfbbc_live_stop_matches_member():
     assert 'kOverlay0010_800CFBBCWords' in fmt
 
 
+def test_overlay_0010_800cfbcc_800cfbe8_live_stop_matches_member():
+    # Refused at 800CFBE8 on the room transition out of the New Game opening
+    # cutscene; the resident guest RAM there equals this member.
+    overlay = (ROOT / 'extracted/overlays/main/0010.bin').read_bytes()
+    fmt = (ROOT / 'pc_port/mips_formatter.c').read_text()
+    for start, end, name in ((0x800CFBCC, 0x800CFBE8, '800CFBCC'),
+                             (0x800CFBE8, 0x800CFBF8, '800CFBE8')):
+        source = (ROOT / f'src/overlays/main_0010/{name.lower()}.c').read_text()
+        words = [int(w, 16) for w in WORD_RE.findall(source)]
+        assert len(words) == (end - start) // 4
+        offset = 0x20000 + start - 0x800CEDF8
+        assert struct.pack(f'<{len(words)}I', *words) == overlay[offset:offset + end - start]
+        assert _range_in_fmt(fmt, start, end)
+        assert f'kOverlay0010_{name}Words' in fmt
+
+
 def test_overlay_0010_800d0488_live_stop_matches_member():
     overlay = (ROOT / 'extracted/overlays/main/0010.bin').read_bytes()
     source = (ROOT / 'src/overlays/main_0010/800d0488.c').read_text()
