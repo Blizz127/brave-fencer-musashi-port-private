@@ -138,6 +138,10 @@ typedef struct NativeBoot {
     int trace_cd_timing, cd_timing_active;
     uint64_t cd_host_start, cd_epoch_start;
     uint16_t last_musashi_action;
+    /* Guest-cycle clock (see epoch_collect). */
+    int guest_clock, guest_unthrottled;
+    uint64_t guest_tick, guest_next_vblank, guest_sequence, guest_host_origin;
+    uint32_t guest_pending_cycles;
 } NativeBoot;
 
 static int select_opening_overlay(NativeBoot *boot) {
@@ -448,8 +452,12 @@ static int input_read16(void *userdata, uint32_t address, uint16_t *value) {
 }
 
 static uint64_t epoch_owner(void *userdata) {
+    /* Ownership is checked on every clock charge; the thread id cannot
+     * change for a thread, so resolve it once per thread. */
+    static _Thread_local uint64_t id;
     (void)userdata;
-    return (uint64_t)SDL_ThreadID();
+    if (!id) id = (uint64_t)SDL_ThreadID();
+    return id;
 }
 
 static int init_heap(void *userdata, uint32_t base, uint32_t size) {
@@ -817,6 +825,68 @@ void musashi_sio_controller_set_analog_axes(const MusashiSioController *sio,
                                             uint8_t rx, uint8_t ry,
                                             uint8_t lx, uint8_t ly);
 
+/* Eight pad headings, starting at Up+Right. That heading walks the opening
+ * stair. If Musashi's XZ barely moves for 100 frames he is against a wall,
+ * so the next heading is tried. Step pauses on that stair are shorter than
+ * this window and do not turn. */
+static void spiral_climb_input(NativeBoot *boot, uint16_t *sio_clear, uint16_t *pad_bits,
+                               uint8_t *stick_lx, uint8_t *stick_ly) {
+    static const uint16_t sio_bits[8] = {
+        (1u << 4),                 /* Up */
+        (1u << 4) | (1u << 5),     /* Up + Right */
+        (1u << 5),                 /* Right */
+        (1u << 5) | (1u << 6),     /* Down + Right */
+        (1u << 6),                 /* Down */
+        (1u << 6) | (1u << 7),     /* Down + Left */
+        (1u << 7),                 /* Left */
+        (1u << 4) | (1u << 7)      /* Up + Left */
+    };
+    static const uint16_t pad_word[8] = {
+        0x1000u, 0x3000u, 0x2000u, 0x6000u, 0x4000u, 0xc000u, 0x8000u, 0x9000u
+    };
+    static const uint8_t stick_x[8] = { 0x80u, 0xffu, 0xffu, 0xffu, 0x80u, 0x00u, 0x00u, 0x00u };
+    static const uint8_t stick_y[8] = { 0x00u, 0x00u, 0x80u, 0xffu, 0xffu, 0xffu, 0x80u, 0x00u };
+    /* Up is -X, Right is +Z, from the opening-stair trace. */
+    static const int dir_x[8] = { -1, -1, 0, 1, 1, 1, 0, -1 };
+    static const int dir_z[8] = { 0, 1, 1, 1, 0, -1, -1, -1 };
+    static int heading = 1;
+    static int anchored = 0;
+    static unsigned anchor_frame;
+    static int16_t anchor_x, anchor_z;
+    int16_t cur_x = 0, cur_z = 0;
+    unsigned frame = boot->in_game_frames;
+    (void)musashi_boot_read16(&boot->memory, 0x80126B58u + 0x06u, (uint16_t *)&cur_x);
+    (void)musashi_boot_read16(&boot->memory, 0x80126B58u + 0x0Eu, (uint16_t *)&cur_z);
+    if (!anchored) {
+        anchored = 1;
+        anchor_frame = frame;
+        anchor_x = cur_x;
+        anchor_z = cur_z;
+    } else if (frame >= anchor_frame + 100u) {
+        int dx = (int)cur_x - (int)anchor_x;
+        int dz = (int)cur_z - (int)anchor_z;
+        int blocked_x = dir_x[heading] != 0 && (dx > -4 && dx < 4);
+        int blocked_z = dir_z[heading] != 0 && (dz > -4 && dz < 4);
+        int next = heading;
+        /* One blocked axis is enough: Up+Right into a wall keeps sliding on
+         * the free axis, and the next heading drops the blocked one. */
+        if (blocked_x || blocked_z)
+            next = (heading + 1) & 7;
+        if (next != heading) {
+            heading = next;
+            fprintf(stderr, "native_boot: CLIMB_TURN frame=%u heading=%d pos=(%d,%d)\n",
+                    frame, heading, (int)cur_x, (int)cur_z);
+        }
+        anchor_frame = frame;
+        anchor_x = cur_x;
+        anchor_z = cur_z;
+    }
+    if (sio_clear) *sio_clear = sio_bits[heading];
+    if (pad_bits) *pad_bits = pad_word[heading];
+    if (stick_lx) *stick_lx = stick_x[heading];
+    if (stick_ly) *stick_ly = stick_y[heading];
+}
+
 static int sample_keyboard_pad(void *userdata, uint16_t *buttons) {
     NativeBoot *boot = userdata;
     const Uint8 *keys;
@@ -988,7 +1058,7 @@ static int sample_keyboard_pad(void *userdata, uint16_t *buttons) {
                     boot->dialogue_dismissed = 1;
                     boot->dialogue_active = 0;
                     uint8_t *p4d = musashi_boot_ram_span(&boot->memory, 0x80126B58u + 0x4Du, 1);
-                    if (p4d && *p4d == 2) {
+                    if (p4d && *p4d == 2 && !getenv("MUSASHI_NO_FORCE")) {
                         *p4d = 1;
                         fprintf(stderr, "native_boot: CONTROL_UNLOCK player unk4D transitioned 2 -> 1 (frame %u)\n",
                                 boot->auto_dismiss_ticks);
@@ -1066,12 +1136,10 @@ static int sample_keyboard_pad(void *userdata, uint16_t *buttons) {
                             sampled &= (uint16_t)~(1u << 15); /* Slash combo pulse */
                     }
                 } else if (strcmp(gameplay_action, "spiral_climb") == 0 || strcmp(gameplay_action, "climb") == 0) {
-                    /* Steer Musashi along the ascending spiral path heading (-X, +Z) into cell (12, 10) */
                     if (boot->in_game_frames >= 8u) {
-                        /* Camera-relative Up (forward, -X) + Right (+Z) */
-                        sampled &= (uint16_t)~((1u << 4) | (1u << 5)); /* Up + Right */
-                        stick_ly = 0x00u; /* Forward */
-                        stick_lx = 0xffu; /* Right */
+                        uint16_t clear = 0;
+                        spiral_climb_input(boot, &clear, NULL, &stick_lx, &stick_ly);
+                        sampled = (uint16_t)(sampled & (uint16_t)~clear);
                     }
                 } else if (strcmp(gameplay_action, "patrol") == 0) {
                     uint32_t cycle = boot->in_game_frames % 60u;
@@ -1120,8 +1188,67 @@ static int input_write8(void *userdata, uint32_t address, uint8_t value) {
     return 1;
 }
 
+/* One NTSC field at the scanline timer's own rate (PACED_RATE per line,
+ * 263 lines), so Timer1 and the VBlank edge agree on where a frame ends. */
+#define MUSASHI_GUEST_FRAME_CYCLES ((33868800u / (60u * 263u)) * 263u)
+
+/* Guest-cycle clock. Device time is exactly the cycles charged to guest
+ * execution, and a VBlank edge lands every MUSASHI_GUEST_FRAME_CYCLES of it.
+ * Retail frame pacing therefore does not depend on how fast the host runs
+ * the interpreter: with the host-tick source, a host slower than a PS1 saw
+ * VBlanks keep arriving at 60 Hz of wall time while the guest had done a
+ * fraction of a frame's work, so each game loop spanned ~5 VBlanks instead of
+ * retail's and every timed sequence ran slow. Host time is used only to hold
+ * the guest back to real speed (epoch_wait), never to push it forward. */
+static int guest_clock_collect(NativeBoot *boot, MusashiIrqSourceBatch *batch) {
+    static unsigned drain_countdown;
+    /* PsyCross still publishes host-time VBlanks; drain them so its queue
+     * (64 entries, ~1 s of host time) cannot overflow. They carry no guest
+     * time. Collecting takes its mutex, so do it at guest frame boundaries
+     * and periodically, not on every 2-cycle instruction charge. */
+    if (boot->irq.scheduler.installed &&
+        (boot->guest_next_vblank <= boot->guest_tick || drain_countdown-- == 0)) {
+        MusashiIrqSourceBatch host;
+        drain_countdown = 4096u;
+        if (!musashi_psycross_irq_scheduler_collect_source(&boot->irq.scheduler, &host))
+            return 0;
+    }
+    batch->count = 0;
+    batch->frequency = MUSASHI_DEVICE_CLOCK_HZ;
+    batch->cut_tick = boot->guest_tick;
+    while (boot->guest_next_vblank <= boot->guest_tick) {
+        /* Before the source handler is installed the host path published no
+         * edges either; keep the frame grid, deliver nothing. */
+        if (boot->irq.scheduler.installed) {
+            if (batch->count >= MUSASHI_IRQ_SOURCE_CAPACITY) return 0;
+            batch->edges[batch->count++] =
+                (MusashiIrqSourceEdge){++boot->guest_sequence, boot->guest_next_vblank};
+        }
+        boot->guest_next_vblank += MUSASHI_GUEST_FRAME_CYCLES;
+    }
+    return 1;
+}
+
+static int guest_clock_wait(NativeBoot *boot, uint64_t target_cycle) {
+    if (target_cycle < boot->guest_tick) return 0;
+    boot->guest_tick = target_cycle;
+    if (!boot->guest_unthrottled) {
+        uint64_t freq = SDL_GetPerformanceFrequency();
+        uint64_t due = boot->guest_host_origin +
+            (uint64_t)((double)target_cycle * (double)freq / (double)MUSASHI_DEVICE_CLOCK_HZ);
+        uint64_t now = SDL_GetPerformanceCounter();
+        /* Sleep only when the guest is a whole millisecond ahead. */
+        while (now + freq / 1000u < due) {
+            SDL_Delay(1);
+            now = SDL_GetPerformanceCounter();
+        }
+    }
+    return 1;
+}
+
 static int epoch_collect(void *userdata, MusashiIrqSourceBatch *batch) {
     NativeBoot *boot = userdata;
+    if (boot->guest_clock) return guest_clock_collect(boot, batch);
     if (boot->irq.scheduler.installed)
         return musashi_psycross_irq_scheduler_collect_source(&boot->irq.scheduler, batch);
     /* Before source installation there are no owned callbacks to collect.
@@ -1135,6 +1262,7 @@ static int epoch_collect(void *userdata, MusashiIrqSourceBatch *batch) {
 
 static int epoch_wait(void *userdata, uint64_t target_tick) {
     NativeBoot *boot = userdata;
+    if (boot->guest_clock) return guest_clock_wait(boot, target_tick);
     uint64_t previous = SDL_GetPerformanceCounter();
     Uint32 started = SDL_GetTicks();
     for (;;) {
@@ -1290,6 +1418,16 @@ static int epoch_video_edge(void *userdata, uint64_t sequence, uint64_t cycle) {
                 target = 5u;
             }
             ++boot->in_game_frames;
+            if (getenv("MUSASHI_TRACE_L1")) {
+                uint16_t scene = 0, a3b4 = 0, mode = 0, act = 0;
+                uint8_t *p4d = musashi_boot_ram_span(&boot->memory, 0x80126B58u + 0x4Du, 1);
+                (void)musashi_boot_read16(&boot->memory, 0x800B99DEu, &scene);
+                (void)musashi_boot_read16(&boot->memory, 0x800B99E4u, &a3b4);
+                (void)musashi_boot_read16(&boot->memory, 0x800B99F0u, &mode);
+                (void)musashi_boot_read16(&boot->memory, 0x80126B58u, &act);
+                fprintf(stderr, "native_boot: L1 frame=%u scene=%04x a3b4=%04x mode=%04x p_act=%04x p_4d=%02x\n",
+                        boot->in_game_frames, scene, a3b4, mode, act, p4d ? *p4d : 0);
+            }
             if (boot->in_game_frames == 1u) {
                 for (int a = 0; a < 10; ++a) {
                     uint32_t fn = 0;
@@ -1299,7 +1437,7 @@ static int epoch_video_edge(void *userdata, uint64_t sequence, uint64_t cycle) {
             }
             /* Control unlock: Transition p->unk4D from 2 to 1 so func_80159A20 executes */
             uint8_t *p_unk4d = musashi_boot_ram_span(&boot->memory, 0x80126B58u + 0x4Du, 1);
-            if (p_unk4d && *p_unk4d == 2) {
+            if (p_unk4d && *p_unk4d == 2 && !getenv("MUSASHI_NO_FORCE")) {
                 uint16_t fade = 0;
                 (void)musashi_boot_read16(&boot->memory, 0x800af7ceu, &fade);
                 if (fade >= 256u || boot->dialogue_dismissed || boot->in_game_frames >= 2u) {
@@ -1309,12 +1447,8 @@ static int epoch_video_edge(void *userdata, uint64_t sequence, uint64_t cycle) {
                             (unsigned)fade, boot->in_game_frames);
                 }
             }
-            if (p_unk4d && *p_unk4d == 1) {
-                musashi_boot_write16(&boot->memory, 0x800B99F0u, 9u); /* Maintain gameplay mode */
-            }
-
             /* Controller mode and control unlock in gameplay */
-            if (p_unk4d && *p_unk4d == 1) {
+            if (p_unk4d && *p_unk4d == 1 && !getenv("MUSASHI_NO_FORCE")) {
                 uint8_t *p_act = musashi_boot_ram_span(&boot->memory, 0x80126B58u, 0x200);
                 if (p_act) {
                     *(uint8_t *)(p_act + 0xA9) = 0x41u; /* Digital Pad controller mode */
@@ -1334,12 +1468,14 @@ static int epoch_video_edge(void *userdata, uint64_t sequence, uint64_t cycle) {
                         *(uint8_t *)(p_act + 0x4D) = 1u;
                         musashi_boot_write16(&boot->memory, 0x800B99F0u, 9u);
 
-                        /* Steer Musashi using Up + Right digital pad bits and analog stick LX=0xFF, LY=0x00 along the spiral ramp heading (-X, +Z) into cell (12, 10) */
-                        *(uint16_t *)(p_act + 0xAA) = 0x3000u;
-                        *(uint16_t *)(p_act + 0xAC) = 0x3000u;
-                        *(uint16_t *)(p_act + 0xAE) = 0x00FFu; /* Analog stick: LY=0x00 (forward), LX=0xFF (right) */
-                        musashi_boot_write16(&boot->memory, 0x80078DCAu, 0x3000u);
-                        musashi_boot_write16(&boot->memory, 0x80078DD2u, 0x3000u);
+                        uint16_t bits = 0;
+                        uint8_t lx = 0x80u, ly = 0x00u;
+                        spiral_climb_input(boot, NULL, &bits, &lx, &ly);
+                        *(uint16_t *)(p_act + 0xAA) = bits;
+                        *(uint16_t *)(p_act + 0xAC) = bits;
+                        *(uint16_t *)(p_act + 0xAE) = (uint16_t)((uint16_t)lx | ((uint16_t)ly << 8));
+                        musashi_boot_write16(&boot->memory, 0x80078DCAu, bits);
+                        musashi_boot_write16(&boot->memory, 0x80078DD2u, bits);
                     }
                 }
             }
@@ -1557,6 +1693,28 @@ static int epoch_video_edge(void *userdata, uint64_t sequence, uint64_t cycle) {
     return 1;
 }
 
+/* Guest-clock cycle quantum. Committing every device on each 2-cycle
+ * instruction charge was most of the host's time; batching 16 cycles keeps
+ * device state within 14 cycles of guest time (under half a microsecond,
+ * against a 1088-cycle SIO ACK and ~225k-cycle CD sectors) and stays
+ * deterministic. Any remainder is flushed before every epoch sync. */
+#define MUSASHI_GUEST_CLOCK_QUANTUM 16u
+
+static int guest_clock_flush(NativeBoot *boot) {
+    uint32_t pending = boot->guest_pending_cycles;
+    if (!pending) return 1;
+    boot->guest_pending_cycles = 0;
+    if (!musashi_device_epoch_advance_cost(&boot->epoch, pending)) {
+        boot->source_clock.faulted = 1;
+        return 0;
+    }
+    return 1;
+}
+
+static int epoch_sync_flushed(NativeBoot *boot) {
+    return guest_clock_flush(boot) && musashi_device_epoch_sync(&boot->epoch);
+}
+
 static int advance_source_clock(void *userdata, uint32_t cycles) {
     NativeBoot *boot = userdata;
     uint64_t cycle;
@@ -1595,6 +1753,15 @@ static int advance_source_clock(void *userdata, uint32_t cycles) {
         boot->cd_irq_production_limit = cd.cycle + cycles;
     }
     if (!musashi_source_clock_advance(&boot->source_clock, cycles)) return 0;
+    if (boot->guest_clock && !boot->irq.cd_frame.busy) {
+        /* The CD IRQ frame bounds its production by exact cycles above, so
+         * it keeps per-charge commits. */
+        if (boot->guest_pending_cycles > UINT32_MAX - cycles) return 0;
+        boot->guest_pending_cycles += cycles;
+        if (boot->guest_pending_cycles < MUSASHI_GUEST_CLOCK_QUANTUM) return 1;
+        return guest_clock_flush(boot);
+    }
+    if (!guest_clock_flush(boot)) return 0;
     if (!musashi_device_epoch_advance_cost(&boot->epoch, cycles)) {
         boot->source_clock.faulted = 1;
         return 0;
@@ -1803,6 +1970,10 @@ static int vsync_wait_raise_tick(NativeBoot *boot, const void *continuation) {
         return 0;
     if (tick >= context.gpr[4])
         return 1;
+    /* Under the guest clock the VBlank arrives when the polling loop has
+     * spent a frame's cycles, as on hardware; nothing is fabricated. */
+    if (boot->guest_clock)
+        return 1;
     /* Retail 800424E4 polls 8006CBB8; 80042CE8 is the handler that increments
      * it. Latch I_STAT VBlank so the existing dispatcher runs that handler. */
     fprintf(stderr, "native_boot: VSYNC_WAIT_VBLANK tick=%u target=%u pc=%08x\n",
@@ -1828,11 +1999,14 @@ static void apply_scripted_action(NativeBoot *boot, uint8_t *p_act) {
     if (!act || boot->in_game_frames < 8u) return;
 
     if (strcmp(act, "spiral_climb") == 0 || strcmp(act, "climb") == 0) {
-        *(uint16_t *)(p_act + 0xAA) = 0x3000u;
-        *(uint16_t *)(p_act + 0xAC) = 0x3000u;
-        *(uint16_t *)(p_act + 0xAE) = 0x00FFu;
-        musashi_boot_write16(&boot->memory, 0x80078DCAu, 0x3000u);
-        musashi_boot_write16(&boot->memory, 0x80078DD2u, 0x3000u);
+        uint16_t bits = 0;
+        uint8_t lx = 0x80u, ly = 0x00u;
+        spiral_climb_input(boot, NULL, &bits, &lx, &ly);
+        *(uint16_t *)(p_act + 0xAA) = bits;
+        *(uint16_t *)(p_act + 0xAC) = bits;
+        *(uint16_t *)(p_act + 0xAE) = (uint16_t)((uint16_t)lx | ((uint16_t)ly << 8));
+        musashi_boot_write16(&boot->memory, 0x80078DCAu, bits);
+        musashi_boot_write16(&boot->memory, 0x80078DD2u, bits);
         return;
     }
 
@@ -1918,142 +2092,26 @@ static int checkpoint(void *userdata, const void *continuation) {
             fprintf(stderr, "native_boot: CALL_80146360 ba4=%u handler=%08x frame=%u\n",
                     ba4, handler, boot->in_game_frames);
         }
-        if (raw_cpu[34] == 0x801612b8u) {
-            uint8_t *p_act = musashi_boot_ram_span(&boot->memory, 0x80126B58u, 0x200);
-            if (p_act) {
-                int16_t pos_y = *(int16_t *)(p_act + 0x0Au);
-                int16_t floor_y = *(int16_t *)(p_act + 0x8Au);
-                int32_t vy = *(int32_t *)(p_act + 0x14u);
-                if (pos_y <= -900 && pos_y == floor_y && (vy >> 16) == 0) {
-                    raw_cpu[2] = 0x2000u;
-                    raw_cpu[34] = raw_cpu[31];
-                    raw_cpu[35] = raw_cpu[31] + 4u;
-                }
-            }
-        }
-        if (raw_cpu[34] == 0x8016130cu) {
-            uint8_t *p_act = musashi_boot_ram_span(&boot->memory, 0x80126B58u, 0x200);
-            if (p_act) {
-                int16_t pos_y = *(int16_t *)(p_act + 0x0Au);
-                int16_t floor_y = *(int16_t *)(p_act + 0x8Au);
-                int32_t vy = *(int32_t *)(p_act + 0x14u);
-                if (pos_y <= -900 && pos_y == floor_y && (vy >> 16) == 0) {
-                    if (raw_cpu[5] == 0) {
-                        raw_cpu[5] = 0x2000u; /* Grounded walkable floor */
-                    }
-                }
-            }
-            fprintf(stderr, "native_boot: CALL_8016130C a1=%08x ra=%08x frame=%u\n",
-                    raw_cpu[5], raw_cpu[31], boot->in_game_frames);
-        }
+        /* func_801612B8 / func_8016130C are the retail ground sweep. Skipping
+         * them and forcing 0x2000 reports a flat walkable floor, so the ramp
+         * step never resolves and Musashi walks off the tower. */
         if (raw_cpu[34] == 0x8015bdd0u) {
             fprintf(stderr, "native_boot: CALL_8015BDD0 ra=%08x frame=%u\n",
                     raw_cpu[31], boot->in_game_frames);
         }
 
-        if (raw_cpu[34] == 0x800d1724u) {
-            musashi_boot_write32(&boot->memory, 0x800ae6b0u, raw_cpu[4]);
-            raw_cpu[34] = raw_cpu[31];
-            raw_cpu[35] = raw_cpu[31] + 4u;
-        } else if (raw_cpu[34] == 0x800d1734u) {
-            musashi_boot_write32(&boot->memory, 0x800ae6a8u, raw_cpu[4]);
-            raw_cpu[34] = raw_cpu[31];
-            raw_cpu[35] = raw_cpu[31] + 4u;
-        } else if (raw_cpu[34] == 0x800d1744u) {
-            musashi_boot_write32(&boot->memory, 0x800ae6acu, raw_cpu[4]);
-            raw_cpu[34] = raw_cpu[31];
-            raw_cpu[35] = raw_cpu[31] + 4u;
-        } else if (raw_cpu[34] == 0x800d1714u) {
-            uint32_t val = 0;
-            musashi_boot_read32(&boot->memory, 0x80078e50u, &val);
-            raw_cpu[2] = val & 0xffffu;
-            raw_cpu[34] = raw_cpu[31];
-            raw_cpu[35] = raw_cpu[31] + 4u;
-        } else if (raw_cpu[34] == 0x80021174u) {
-            raw_cpu[2] = 1;
-            raw_cpu[34] = raw_cpu[31];
-            raw_cpu[35] = raw_cpu[31] + 4u;
-        } else if (raw_cpu[34] == 0x80020248u || raw_cpu[34] == 0x80020a28u) {
-            raw_cpu[2] = 0;
-            raw_cpu[34] = raw_cpu[31];
-            raw_cpu[35] = raw_cpu[31] + 4u;
-        } else if (raw_cpu[34] == 0x8004914Cu || raw_cpu[34] == 0x8004917Cu || raw_cpu[34] == 0x800491ACu) {
-            uint32_t base_sel = (raw_cpu[34] == 0x8004914Cu) ? 0u : (raw_cpu[34] == 0x8004917Cu) ? 8u : 16u;
-            uint32_t src_addr = raw_cpu[4];
-            MusashiCpuContext ctx;
-            if (musashi_boot_cpu_context(continuation, MUSASHI_CPU_CONTEXT_SOURCE, &ctx)) {
-                for (uint32_t i = 0; i < 5u; ++i) {
-                    uint32_t val = 0;
-                    musashi_boot_read32(&boot->memory, src_addr + i * 4u, &val);
-                    musashi_gte_owner_write_control(&boot->gte, &ctx, base_sel + i, val);
-                }
-            }
-            raw_cpu[34] = raw_cpu[31];
-            raw_cpu[35] = raw_cpu[31] + 4u;
-        } else if (raw_cpu[34] == 0x800491CCu) {
-            uint32_t c24 = 0, c25 = 0;
-            MusashiCpuContext ctx;
-            if (musashi_boot_cpu_context(continuation, MUSASHI_CPU_CONTEXT_SOURCE, &ctx)) {
-                musashi_gte_owner_read_control(&boot->gte, &ctx, 24, &c24);
-                musashi_gte_owner_read_control(&boot->gte, &ctx, 25, &c25);
-            }
-            int32_t s24 = (int32_t)c24 >> 16;
-            int32_t s25 = (int32_t)c25 >> 16;
-            musashi_boot_write32(&boot->memory, raw_cpu[4], (uint32_t)s24);
-            musashi_boot_write32(&boot->memory, raw_cpu[5], (uint32_t)s25);
-            raw_cpu[34] = raw_cpu[31];
-            raw_cpu[35] = raw_cpu[31] + 4u;
-        } else if (raw_cpu[34] == 0x800491ECu) {
-            uint32_t h = 0;
-            MusashiCpuContext ctx;
-            if (musashi_boot_cpu_context(continuation, MUSASHI_CPU_CONTEXT_SOURCE, &ctx)) {
-                musashi_gte_owner_read_control(&boot->gte, &ctx, 26, &h);
-            }
-            raw_cpu[2] = h;
-            raw_cpu[34] = raw_cpu[31];
-            raw_cpu[35] = raw_cpu[31] + 4u;
-        } else if (raw_cpu[34] == 0x800491FCu) {
-            MusashiCpuContext ctx;
-            if (musashi_boot_cpu_context(continuation, MUSASHI_CPU_CONTEXT_SOURCE, &ctx)) {
-                musashi_gte_owner_write_control(&boot->gte, &ctx, 13, raw_cpu[4] << 4);
-                musashi_gte_owner_write_control(&boot->gte, &ctx, 14, raw_cpu[5] << 4);
-                musashi_gte_owner_write_control(&boot->gte, &ctx, 15, raw_cpu[6] << 4);
-            }
-            raw_cpu[34] = raw_cpu[31];
-            raw_cpu[35] = raw_cpu[31] + 4u;
-        } else if (raw_cpu[34] == 0x8004921Cu) {
-            MusashiCpuContext ctx;
-            if (musashi_boot_cpu_context(continuation, MUSASHI_CPU_CONTEXT_SOURCE, &ctx)) {
-                musashi_gte_owner_write_control(&boot->gte, &ctx, 24, raw_cpu[4] << 16);
-                musashi_gte_owner_write_control(&boot->gte, &ctx, 25, raw_cpu[5] << 16);
-            }
-            raw_cpu[34] = raw_cpu[31];
-            raw_cpu[35] = raw_cpu[31] + 4u;
-        } else if (raw_cpu[34] == 0x800243ECu || raw_cpu[34] == 0x80024448u || raw_cpu[34] == 0x80026D64u) {
-            raw_cpu[34] = raw_cpu[31];
-            raw_cpu[35] = raw_cpu[31] + 4u;
-        } else if (raw_cpu[34] == 0x8001382Cu) {
-            int16_t angle = (int16_t)raw_cpu[4];
-            uint32_t in_addr = raw_cpu[5];
-            uint32_t out_addr = raw_cpu[6];
-            int32_t vx = 0, vy = 0, vz = 0;
-            musashi_boot_read32(&boot->memory, in_addr + 0u, (uint32_t *)&vx);
-            musashi_boot_read32(&boot->memory, in_addr + 4u, (uint32_t *)&vy);
-            musashi_boot_read32(&boot->memory, in_addr + 8u, (uint32_t *)&vz);
-
-            double rad = (double)angle * (2.0 * 3.14159265358979323846 / 4096.0);
-            int64_t s = (int64_t)round(sin(rad) * 4096.0);
-            int64_t c = (int64_t)round(cos(rad) * 4096.0);
-
-            int32_t out_x = (int32_t)(((int64_t)vx * c + (int64_t)vz * s) / 4096);
-            int32_t out_y = vy;
-            int32_t out_z = (int32_t)((-(int64_t)vx * s + (int64_t)vz * c) / 4096);
-
-            musashi_boot_write32(&boot->memory, out_addr + 0u, (uint32_t)out_x);
-            musashi_boot_write32(&boot->memory, out_addr + 4u, (uint32_t)out_y);
-            musashi_boot_write32(&boot->memory, out_addr + 8u, (uint32_t)out_z);
-            raw_cpu[34] = raw_cpu[31];
-            raw_cpu[35] = raw_cpu[31] + 4u;
+        /* func_800D1714/24/34/44, func_80021174, func_8001382C and the GTE
+         * setters 8004914C-8004921C used to be replaced here by host code:
+         * fixed returns, direct global writes and a double-precision sin/cos
+         * rotation. All of them are wired to their retail words with admitted
+         * COP2 sites, so the retail code now runs instead; the host versions
+         * disagreed with it (func_80021174 always reported "visible"). */
+        if (raw_cpu[34] == 0x800243ECu || raw_cpu[34] == 0x80024448u || raw_cpu[34] == 0x80026D64u) {
+            static unsigned render_calls;
+            if (render_calls < 8u || (render_calls % 500u) == 0u)
+                fprintf(stderr, "native_boot: RENDER_ENTER pc=%08x frame=%u n=%u\n",
+                        raw_cpu[34], boot->in_game_frames, render_calls);
+            render_calls++;
         }
     }
     if (boot->continuation && boot->continuation != continuation) {
@@ -2061,7 +2119,7 @@ static int checkpoint(void *userdata, const void *continuation) {
          * do not dispatch while the owner pump is already delivering. */
         if (!(boot->irq.scheduler.pumping || boot->irq.scheduler.delivering))
             return checkpoint_refuse(continuation, "nested-identity");
-        return musashi_device_epoch_sync(&boot->epoch);
+        return epoch_sync_flushed(boot);
     }
     boot->continuation = continuation;
     if (!boot->gte.initialized) {
@@ -2069,7 +2127,7 @@ static int checkpoint(void *userdata, const void *continuation) {
             !musashi_gte_owner_init(&boot->gte,boot->irq.cpu_status,epoch_owner,boot,context.identity))
             return checkpoint_refuse(continuation, "gte-init");
     }
-    if (!musashi_device_epoch_sync(&boot->epoch)) return checkpoint_refuse(continuation, "epoch-sync");
+    if (!epoch_sync_flushed(boot)) return checkpoint_refuse(continuation, "epoch-sync");
     if (!boot->irq.scheduler.installed) return 1;
     if (boot->irq.scheduler.pumping || boot->irq.scheduler.delivering) return 1;
     if (!vsync_wait_raise_tick(boot, continuation)) return checkpoint_refuse(continuation, "vsync-wait");
@@ -2105,14 +2163,19 @@ static int run_backup_unit(void *userdata, int32_t *guest_result) {
         /* The actual suspended game CPU survives the BIOS wait. Only a
          * real source edge and owner-thread IRQ handler can finish a card
          * request. Wall time limits observation; it never completes I/O. */
-        if (boot->continuation != continuation || !musashi_device_epoch_sync(&boot->epoch) ||
+        /* Under the guest clock the suspended CPU is spinning in the BIOS
+         * card wait, so each poll spends guest cycles; nothing else would
+         * move device time forward. */
+        if (boot->continuation != continuation ||
+            !(boot->guest_clock ? musashi_device_epoch_advance_cost(&boot->epoch, 1024u)
+                                : musashi_device_epoch_sync(&boot->epoch)) ||
             !musashi_psycross_irq_scheduler_dispatch_pending(&boot->irq.scheduler, continuation))
             return 0;
         if ((Uint32)(SDL_GetTicks() - started) >= 10000u) {
             fputs("native_boot: backup-unit wait observation timed out\n", stderr);
             return 0;
         }
-        SDL_Delay(1);
+        if (!boot->guest_clock) SDL_Delay(1);
     }
 }
 
@@ -3135,12 +3198,17 @@ static void dump_display_vram(NativeBoot *boot) {
     {
         uint16_t row[1024];
         uint64_t full_nonblack = 0, full_checked = 0;
+        /* Opt-in whole-VRAM image: shows every page the guest drew into,
+         * not only the one the GP1 display origin selects. */
+        const char *full_path = getenv("MUSASHI_DUMP_VRAM_FULL");
+        uint16_t *full = full_path ? malloc(1024u * 512u * sizeof(*full)) : NULL;
         int ok = 1;
         unsigned yy, xx;
         for (yy = 0; yy < 512u && ok; ++yy) {
             ok = musashi_gpu_psycross_read_vram(&boot->gpu_renderer, 0, yy, 1024, 1,
                                                 row, 1024);
             if (!ok) break;
+            if (full) memcpy(full + yy * 1024u, row, sizeof(row));
             for (xx = 0; xx < 1024u; ++xx) {
                 ++full_checked;
                 if (row[xx]) ++full_nonblack;
@@ -3149,6 +3217,9 @@ static void dump_display_vram(NativeBoot *boot) {
         fprintf(stderr, "native_boot: VRAM_FULL readable=%d nonblack=%llu/%llu\n",
                 ok, (unsigned long long)full_nonblack,
                 (unsigned long long)full_checked);
+        if (full && ok && write_png_rgb555(full_path, 1024u, 512u, full))
+            fprintf(stderr, "native_boot: VRAM_FULL path=%s\n", full_path);
+        free(full);
     }
 }
 
@@ -3561,6 +3632,10 @@ int main(int argc, char **argv) {
         return 2;
     }
     {
+        boot.guest_clock = getenv("MUSASHI_GUEST_CLOCK") && getenv("MUSASHI_GUEST_CLOCK")[0] == '1';
+        boot.guest_unthrottled = getenv("MUSASHI_UNTHROTTLED") && getenv("MUSASHI_UNTHROTTLED")[0] == '1';
+        boot.guest_next_vblank = MUSASHI_GUEST_FRAME_CYCLES;
+        boot.guest_host_origin = SDL_GetPerformanceCounter();
         const MusashiDeviceEpochAdapter adapter = {&boot, epoch_owner, epoch_collect,
             epoch_wait, epoch_advance_devices, epoch_video_edge};
         if (!musashi_device_epoch_init(&boot.epoch, &adapter)) {

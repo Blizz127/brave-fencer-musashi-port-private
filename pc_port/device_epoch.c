@@ -59,14 +59,26 @@ int musashi_device_epoch_init(MusashiDeviceEpoch *epoch,
 /* Commit devices before a same-time video edge. This is an explicit native
  * tie policy; no reference tie-order or whole-cycle parity is implied. */
 static int collect_and_commit(MusashiDeviceEpoch *epoch) {
-    MusashiIrqSourceBatch batch = {0};
+    MusashiIrqSourceBatch batch;
     uint64_t target, edge_cycle, sequence, edge_tick;
     uint32_t i;
+    /* Only the header and the first count edges carry meaning. This runs on
+     * every instruction charge, so zeroing and copying the whole 1 KiB edge
+     * array each time was measurable host overhead. */
+    batch.frequency = 0;
+    batch.cut_tick = 0;
+    batch.count = 0;
     if (epoch->cuts == UINT64_MAX ||
         !epoch->adapter.collect_source(epoch->adapter.userdata, &batch)) return 0;
     /* Keep transferred metadata inspectable even if validation or a later
      * backend operation refuses. A faulted epoch is never replayed. */
-    epoch->pending = batch;
+    epoch->pending.frequency = batch.frequency;
+    epoch->pending.cut_tick = batch.cut_tick;
+    epoch->pending.count = batch.count;
+    if (batch.count)
+        memcpy(epoch->pending.edges, batch.edges,
+               (batch.count < MUSASHI_IRQ_SOURCE_CAPACITY ? batch.count : MUSASHI_IRQ_SOURCE_CAPACITY) *
+               sizeof(batch.edges[0]));
     epoch->pending_next = 0;
     if (batch.frequency != epoch->frequency || batch.cut_tick < epoch->last_cut_tick ||
         batch.count > MUSASHI_IRQ_SOURCE_CAPACITY || !to_cycle(epoch, batch.cut_tick, &target) ||

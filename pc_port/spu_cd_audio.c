@@ -356,6 +356,19 @@ int musashi_spu_cd_audio_advance(MusashiSpuCdAudio *audio,
                                  uint64_t absolute_cycles) {
     uint64_t target_sample;
     uint64_t due;
+    /* Fast path: no sample is due before the next MUSASHI_SPU_CD_AUDIO_SAMPLE_CYCLES
+     * boundary, and the clock advances every instruction. owner_thread_ok
+     * asks the host backend whether it is still playing (a locked SDL call);
+     * doing that per instruction dominated native CPU time. The full check
+     * still runs whenever a sample is due. */
+    if (audio && audio->initialized && !audio->faulted && absolute_cycles >= audio->cycle &&
+        absolute_cycles >= audio->epoch &&
+        (absolute_cycles - audio->epoch) / MUSASHI_SPU_CD_AUDIO_SAMPLE_CYCLES == audio->sample_index &&
+        audio->backend.thread_token &&
+        audio->backend.thread_token(audio->backend.userdata) == audio->owner_thread) {
+        audio->cycle = absolute_cycles;
+        return 1;
+    }
     if (!owner_thread_ok(audio) || absolute_cycles < audio->cycle) {
         if (audio && audio->initialized && absolute_cycles < audio->cycle)
             audio->faulted = 1;
@@ -377,6 +390,13 @@ int musashi_spu_cd_audio_advance(MusashiSpuCdAudio *audio,
         }
         discard_pending_before(audio, target_sample);
         audio->sample_index = target_sample;
+        audio->cycle = absolute_cycles;
+        return 1;
+    }
+    /* A sample is due only every MUSASHI_SPU_CD_AUDIO_SAMPLE_CYCLES, but the
+     * clock advances every instruction. Querying the host backend (a locked
+     * SDL call) when nothing is due dominated native CPU time. */
+    if (due == 0) {
         audio->cycle = absolute_cycles;
         return 1;
     }
