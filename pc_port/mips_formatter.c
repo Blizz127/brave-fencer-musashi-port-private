@@ -7922,6 +7922,16 @@ static const uint32_t kOverlaySc01_80128158Words[] = {
 static const uint32_t kOverlaySc01_CodeWords[] = {
 #include "sc01_pac0_words.inc"
 };
+/* SC01.CD member 1: the Allucaneet castle interior the New Game opening
+ * (member 0) fades into. Both load at 80128158. */
+static const uint32_t kOverlaySc01Member1CodeWords[] = {
+#include "sc01_pac1_words.inc"
+};
+/* The SC01 lane (g_overlay_sc01_0000_words) executes whichever member image
+ * sc01_entry_matches found resident; every fetched word is still compared
+ * with guest RAM before it runs. */
+static const uint32_t *g_sc01_code = kOverlaySc01_CodeWords;
+static uint32_t g_sc01_code_bytes = sizeof(kOverlaySc01_CodeWords);
 static const uint32_t kOverlay0004_800CEEC8Words[] = {
 #include "800ceec8_overlay0004_words.inc"
 };
@@ -15957,7 +15967,15 @@ MUSASHI_FORMATTER_NOINLINE static int merge_retire_site(uint32_t pc, uint32_t wo
 }
 
 static int merge_kind_for(uint32_t pc, uint32_t instruction) {
-    if (g_overlay_sc01_0000_words && pc >= 0x80128158u && pc < (0x80128158u + sizeof(kOverlaySc01_CodeWords))) {
+    /* Every site below is an LWL/LWR/SWL/SWR word (opcodes 34/38/42/46) whose
+     * kind is its opcode, so any other instruction cannot match. This runs
+     * on every step; skipping the 583-entry scan for ordinary instructions
+     * removes the formatter's largest per-instruction host cost. */
+    {
+        uint32_t op = instruction >> 26;
+        if (op != 34u && op != 38u && op != 42u && op != 46u) return MERGE_NONE;
+    }
+    if (g_overlay_sc01_0000_words && pc >= 0x80128158u && pc < (0x80128158u + g_sc01_code_bytes)) {
         uint32_t op = instruction >> 26;
         if (op == 34u) return MERGE_LWL;
         if (op == 38u) return MERGE_LWR;
@@ -16579,7 +16597,7 @@ static int merge_pending_matches(const FormatterCpu *cpu, uint32_t instruction) 
         return 0;
     }
     if (g_overlay_sc01_0000_words && cpu->pc >= 0x80128158u &&
-        cpu->pc < (0x80128158u + sizeof(kOverlaySc01_CodeWords))) {
+        cpu->pc < (0x80128158u + g_sc01_code_bytes)) {
         uint32_t op = instruction >> 26;
         uint32_t rs = (instruction >> 21) & 0x1fu;
         uint32_t rt = (instruction >> 16) & 0x1fu;
@@ -16879,8 +16897,8 @@ static int formatter_fetch(const FormatterCpu *cpu, uint32_t *out) {
     }
     else if (g_overlay_sc01_0000_words &&
              cpu->pc >= 0x80128158u &&
-             cpu->pc < (0x80128158u + sizeof(kOverlaySc01_CodeWords))) {
-        instruction = kOverlaySc01_CodeWords[(cpu->pc - 0x80128158u) / 4u];
+             cpu->pc < (0x80128158u + g_sc01_code_bytes)) {
+        instruction = g_sc01_code[(cpu->pc - 0x80128158u) / 4u];
     }
     else if (g_overlay_sc02_0031_words &&
              formatter_range_word(kFormatterRanges6,
@@ -17355,9 +17373,20 @@ int musashi_boot_continuation_host_context(const void *continuation,
  * 80048D9C back-to-back MFC2 runs (into t3..t1), and the two 800484EC MAC
  * runs (into t3..t5 and t0..t2); consecutive MFC2s each publish in turn so
  * no value is lost. */
+/* Code whose words the formatter can only have fetched from verified retail
+ * images: main-EXE text (exact exports, [80010000,80074800)) and the resident
+ * SC01 member image (checked against guest RAM on every fetch). COP2 moves,
+ * LWC2/SWC2 and MFC2 load-delay successors there are admitted by decoding
+ * the instruction, not by per-PC or per-caller lists; the decode rules still
+ * refuse a real load-delay hazard. The lists refused every new caller. */
+static int gte_decode_lane(uint32_t pc) {
+    return (g_overlay_sc01_0000_words && pc >= 0x80128158u &&
+            pc < (0x80128158u + g_sc01_code_bytes)) ||
+           (pc >= 0x80010000u && pc < 0x80074800u);
+}
+
 static int gte_load_successor(uint8_t reg, uint32_t pc, uint32_t word) {
-    if ((g_overlay_sc01_0000_words && pc >= 0x80128158u && pc < (0x80128158u + sizeof(kOverlaySc01_CodeWords))) ||
-        (pc >= 0x8001d000u && pc < 0x80020000u)) {
+    if (gte_decode_lane(pc)) {
         uint32_t op = word >> 26;
         uint32_t rs = (word >> 21) & 0x1fu;
         uint32_t rt = (word >> 16) & 0x1fu;
@@ -17961,8 +17990,13 @@ static int gte_4864c_caller(uint32_t ra) {
  * Slots: 0 = control write (CTC2), 1 = data read (MFC2), 3 = data write
  * (MTC2), 4 = command, 5 = control read (CFC2). */
 static int gte_bank_site(uint32_t pc, uint32_t word, unsigned *slot) {
-    if ((g_overlay_sc01_0000_words && pc >= 0x80128158u && pc < (0x80128158u + sizeof(kOverlaySc01_CodeWords))) ||
-        (pc >= 0x8001d000u && pc < 0x80020000u)) {
+    /* A COP2 register move's transfer slot is fixed by its encoding (rs), so
+     * any word the formatter could fetch here -- retail main-EXE text from its
+     * exact exports, or a resident SC01 member image checked against guest
+     * RAM -- is admitted by decode. Per-site and per-caller lists refused every
+     * new caller: func_8002028C's CTC2 at 80020334 stopped the first castle
+     * room because its return address was not on a list. */
+    if (gte_decode_lane(pc)) {
         if ((word >> 26) == 18u) {
             uint32_t rs = (word >> 21) & 0x1fu;
             if (rs == 6u) *slot = 0u;
@@ -18325,8 +18359,7 @@ static int gte_bank_site(uint32_t pc, uint32_t word, unsigned *slot) {
  * (PsyCross: "sets cop2 data register value. LWC2 is the same kind" of MTC2),
  * so each site requires the write_data transfer. */
 static int lwc2_site(uint32_t pc, uint32_t word) {
-    if ((g_overlay_sc01_0000_words && pc >= 0x80128158u && pc < (0x80128158u + sizeof(kOverlaySc01_CodeWords))) ||
-        (pc >= 0x8001d000u && pc < 0x80020000u)) {
+    if (gte_decode_lane(pc)) {
         if ((word >> 26) == 50u) return 1;
     }
     static const struct { uint32_t pc, word; } sites[] = {
@@ -18431,8 +18464,7 @@ static int swc2_control_site(uint32_t pc, uint32_t word) {
 /* SWC2 stores inside exported ranges: hardware SWC2 reads the GTE data bank,
  * so each site transfers through read_data. */
 static int swc2_site(uint32_t pc, uint32_t word) {
-    if ((g_overlay_sc01_0000_words && pc >= 0x80128158u && pc < (0x80128158u + sizeof(kOverlaySc01_CodeWords))) ||
-        (pc >= 0x8001d000u && pc < 0x80020000u)) {
+    if (gte_decode_lane(pc)) {
         if ((word >> 26) == 58u) return 1;
     }
     static const struct { uint32_t pc, word; } sites[] = {
@@ -18639,8 +18671,7 @@ static int gte_484ec_site(uint32_t pc, uint32_t word, unsigned *slot) {
  * iterations when the loop has reached an admitted delay-slot successor;
  * the word itself is rechecked inside the step. */
 static int gte_load_successor_pc(uint32_t pc) {
-    if ((g_overlay_sc01_0000_words && pc >= 0x80128158u && pc < (0x80128158u + sizeof(kOverlaySc01_CodeWords))) ||
-        (pc >= 0x8001d000u && pc < 0x80020000u))
+    if (gte_decode_lane(pc))
         return 1;
     static const uint32_t pcs[] = {
         0x80049470u, 0x80049474u, 0x80049484u,
@@ -18790,11 +18821,22 @@ static int sc02_entry_matches(MusashiBootMemory *memory) {
 static int sc01_entry_matches(MusashiBootMemory *memory) {
     unsigned i;
     uint32_t loaded;
+    int member0 = 1, member1 = 1;
+    /* Both members open with the same prologue and first diverge at word 85
+     * (801282AC), so the whole 178-word entry span identifies the image. */
     for (i = 0; i < sizeof(kOverlaySc01_80128158Words) / sizeof(uint32_t); ++i) {
-        if (!musashi_boot_read32(memory, 0x80128158u + 4u*i, &loaded) ||
-            loaded != kOverlaySc01_80128158Words[i]) return 0;
+        if (!musashi_boot_read32(memory, 0x80128158u + 4u*i, &loaded)) return 0;
+        if (loaded != kOverlaySc01_80128158Words[i]) member0 = 0;
+        if (loaded != kOverlaySc01Member1CodeWords[i]) member1 = 0;
     }
-    return 1;
+    if (member0) {
+        g_sc01_code = kOverlaySc01_CodeWords;
+        g_sc01_code_bytes = sizeof(kOverlaySc01_CodeWords);
+    } else if (member1) {
+        g_sc01_code = kOverlaySc01Member1CodeWords;
+        g_sc01_code_bytes = sizeof(kOverlaySc01Member1CodeWords);
+    }
+    return member0 || member1;
 }
 
 /* A DIV is only admitted when the retail image carries GCC's canonical
@@ -19051,19 +19093,14 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
             table_target != targets[state] || cpu->r[2] != table_target)
             return formatter_refuse0(__LINE__, cpu->pc);
     }
-    /* Audited directory and palette-copy signed-byte loads. Preflight RAM
-     * before advancing time. Their successors do not consume the loaded
-     * register until after the retail load-delay slot. */
-    if (opcode == 32u) {
-        int admitted = (cpu->pc == 0x80045b54u && instruction == 0x80633a1au) ||
-            (g_overlay_sc02_0031_words &&
-             ((cpu->pc == 0x8013d62cu && instruction == 0x802555a8u) ||
-              (cpu->pc == 0x8013d674u && instruction == 0x80a20008u))) ||
-            (g_overlay_sc01_0000_words && cpu->pc >= 0x80128158u &&
-             cpu->pc < (0x80128158u + sizeof(kOverlaySc01_CodeWords)));
-        if (!admitted || !cpu_ram_span(memory, cpu,
-                cpu->r[rs] + (uint32_t)(int32_t)signed_immediate, 1)) return formatter_refuse0(__LINE__, cpu->pc);
-    }
+    /* LB executes like LBU/LH/LW (immediate write; Psy-Q's assembler keeps
+     * compiled code free of load-delay hazards) and is no longer limited to
+     * three audited sites: func_8004FD30's LB at 8004FDA0 is ordinary retail
+     * code. The RAM preflight keeps the rule that it cannot fault after time
+     * has advanced. */
+    if (opcode == 32u &&
+        !cpu_ram_span(memory, cpu, cpu->r[rs] + (uint32_t)(int32_t)signed_immediate, 1))
+        return formatter_refuse0(__LINE__, cpu->pc);
     if (cpu->pc == 0x8004d180u &&
         (instruction != 0x0140f809u || cpu->r[10] != 0xb0u)) return formatter_refuse0(__LINE__, cpu->pc);
     if (cpu->pc == 0x8004d190u &&

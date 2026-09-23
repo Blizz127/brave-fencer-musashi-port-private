@@ -829,14 +829,27 @@ if(MUSASHI_BUILD_PC_PORT)
     # and a clean configure produced a build that could not compile.
     set(MUSASHI_SC01_ARCHIVE ${CMAKE_CURRENT_SOURCE_DIR}/extracted/disc/files/SC01.CD)
     set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${MUSASHI_SC01_ARCHIVE}")
-    execute_process(
-        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/extract_pac_words.py
-                ${MUSASHI_SC01_ARCHIVE}
-                ${MUSASHI_GENERATED_DIR}/sc01_pac0_words.inc --expected-words 128483
-        RESULT_VARIABLE MUSASHI_SC01_PAC0_RESULT)
-    if(NOT MUSASHI_SC01_PAC0_RESULT EQUAL 0)
-        message(FATAL_ERROR "Cannot extract SC01 member 0 PAC code words")
-    endif()
+    # Member 0 is the New Game opening; member 1 the castle interior it fades
+    # into. Each decoded stream is pinned by its own SHA-256.
+    foreach(MUSASHI_SC01_MEMBER
+            "0:128483:66a047a6242db0d212e27087b7576b19dbc12e399ae0d4f64f370e70bea35069"
+            "1:207899:cc18c89264c5a8f99041a0e88aad8491936f9c2a98a17b86e0dafe8a3b54ea09")
+        string(REPLACE ":" ";" MUSASHI_SC01_MEMBER_PARTS "${MUSASHI_SC01_MEMBER}")
+        list(GET MUSASHI_SC01_MEMBER_PARTS 0 MUSASHI_SC01_MEMBER_INDEX)
+        list(GET MUSASHI_SC01_MEMBER_PARTS 1 MUSASHI_SC01_MEMBER_WORDS)
+        list(GET MUSASHI_SC01_MEMBER_PARTS 2 MUSASHI_SC01_MEMBER_SHA256)
+        execute_process(
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/extract_pac_words.py
+                    ${MUSASHI_SC01_ARCHIVE}
+                    ${MUSASHI_GENERATED_DIR}/sc01_pac${MUSASHI_SC01_MEMBER_INDEX}_words.inc
+                    --member ${MUSASHI_SC01_MEMBER_INDEX}
+                    --expected-words ${MUSASHI_SC01_MEMBER_WORDS}
+                    --expected-sha256 ${MUSASHI_SC01_MEMBER_SHA256}
+            RESULT_VARIABLE MUSASHI_SC01_PAC_RESULT)
+        if(NOT MUSASHI_SC01_PAC_RESULT EQUAL 0)
+            message(FATAL_ERROR "Cannot extract SC01 member ${MUSASHI_SC01_MEMBER_INDEX} PAC code words")
+        endif()
+    endforeach()
     execute_process(
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/extract_asm_words.py
                 ${CMAKE_CURRENT_SOURCE_DIR}/src/overlays/sc02_0031/80128420.c
