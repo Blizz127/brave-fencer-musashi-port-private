@@ -1,0 +1,25 @@
+/* Main-exec range [80058F70,80058FD0) from the SLUS executable.
+ * SHA256(span)=3474a66b73ddc15d17f0710385bdf88f4cc816b55faf685d836ec49030dc1c22.
+ * Word export for the native seam (m2c produced no draft). */
+#include "psx_types.h"
+#include "m2c_macros.h"
+
+/* m2c draft from main.s: NOT verified against retail. C89-gated only;
+ * promotion requires an oracle MATCH (tools/match_function.py). Types
+ * and signatures are whatever the decompiler guessed; they are not
+ * evidence of the original declaration. */
+
+void func_80058F70(void *arg0, void *arg1, s32 arg2, s32 arg3) {
+    s8 var_a0;
+
+    var_a0 = 5;
+    if ((M2C_FIELD(arg1, s16 *, 4) == 0) || (M2C_FIELD(arg1, s16 *, 6) == 0)) {
+        var_a0 = 0;
+    }
+    M2C_FIELD(arg0, s32 *, 4) = 0x01000000;
+    M2C_FIELD(arg0, s32 *, 8) = 0x80000000;
+    M2C_FIELD(arg0, s8 *, 3) = var_a0;
+    M2C_FIELD(arg0, s32 *, 0x10) = (s32) ((arg3 << 0x10) | (arg2 & 0xFFFF));
+    M2C_FIELD(arg0, s32 *, 0xC) = (s32) M2C_FIELD(arg1, s32 *, 0);
+    M2C_FIELD(arg0, s32 *, 0x14) = (s32) M2C_FIELD(arg1, s16 *, 4);
+}

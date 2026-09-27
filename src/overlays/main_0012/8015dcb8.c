@@ -1,0 +1,33 @@
+/* Overlay range [8015DCB8,8015DD74) from MAIN.CD member 0012.
+ * SHA256(span)=5027069527435db92edda4eec6fa476aba941b5ff9051c72898984fd38d40869.
+ * Word export for the native seam; the body below is an
+ * UNVERIFIED draft, not an oracle match claim. */
+#include "psx_types.h"
+#include "m2c_macros.h"
+
+/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
+ * promotion requires an oracle MATCH (tools/match_function.py). Types
+ * and signatures are whatever the decompiler guessed; they are not
+ * evidence of the original declaration. */
+
+extern s32 D_80180C9C[];
+void func_80149374(void *);                      /* static */
+
+void func_8015DCB8(void *arg0) {
+    s32 temp_v1;
+    s32 temp_v1_2;
+    s32 temp_v1_3;
+    void *temp_a1;
+
+    temp_v1 = M2C_FIELD(arg0, s32 *, 0x234);
+    temp_a1 = M2C_FIELD(arg0, void **, 0x178);
+    M2C_FIELD(arg0, s32 *, 0x234) = (s32) (temp_v1 + 1);
+    M2C_FIELD(temp_a1, s16 *, 6) = (s16) ((s8) *(D_80180C9C + temp_v1) + M2C_FIELD(M2C_FIELD(temp_a1, void **, 0x78), u16 *, 0xC));
+    temp_v1_2 = M2C_FIELD(arg0, s32 *, 0x234);
+    M2C_FIELD(arg0, s32 *, 0x234) = (s32) (temp_v1_2 + 1);
+    M2C_FIELD(temp_a1, s16 *, 0xA) = (s16) ((s8) *(D_80180C9C + temp_v1_2) + M2C_FIELD(M2C_FIELD(temp_a1, void **, 0x78), u16 *, 0xE));
+    temp_v1_3 = M2C_FIELD(arg0, s32 *, 0x234);
+    M2C_FIELD(arg0, s32 *, 0x234) = (s32) (temp_v1_3 + 1);
+    M2C_FIELD(temp_a1, s16 *, 0xE) = (s16) ((s8) *(D_80180C9C + temp_v1_3) + M2C_FIELD(M2C_FIELD(temp_a1, void **, 0x78), u16 *, 0x10));
+    func_80149374(temp_a1 + 4);
+}

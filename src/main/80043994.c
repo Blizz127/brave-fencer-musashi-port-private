@@ -1,0 +1,13 @@
+/* Exact retail word export for [80043994,800439B4); EXE-verified. */
+#include "psx_types.h"
+
+/* Decompiled by m2c from main.s, then verified byte-exact
+ * against retail by tools/match_function.py. Types and signatures are
+ * whatever reproduces the bytes; they are not evidence of the
+ * original declaration. */
+
+s32 func_80045090();                                /* static */
+
+s32 func_80043994(void) {
+    return func_80045090() == 0;
+}

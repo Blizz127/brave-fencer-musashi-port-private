@@ -1,0 +1,50 @@
+/* Overlay range [8016C374,8016C49C) from MAIN.CD member 0012.
+ * SHA256(span)=47d5df870e93bcd4f78333cc1cecde9e2bf6224ca2a1922de966c1d7e1327826.
+ * Word export for the native seam; the C body below is kept
+ * byte-identical (wrap only, no rewrite): the cleaned Druthulu/BFM-decomp
+ * form (vendor/bfm-decomp, same SLUS-00726 build), re-verified against
+ * retail at the recorded optimization by tools/match_function.py. */
+#include "psx_types.h"
+#include "m2c_macros.h"
+
+/* func_8016C374 - 74 words. Promoted from vendor/bfm-decomp
+ * (Druthulu, same SLUS-00726 build), split to an address-named file.
+ * Values and locals are the loosest that reproduce the bytes; they
+ * are not evidence of the original declaration. */
+
+
+s32 func_8016C374(s32 a0, s32 a1, s32 a2, s32 a3) {
+    s32 v;
+    *(u16 *)(a1 + 0x0) = *(u16 *)(a1 + 0x0) - 0xA;
+    if ((s16)*(u16 *)(a1 + 0x0) < 0) {
+        *(u16 *)(a1 + 0x0) = 0;
+    }
+    *(u16 *)(a1 + 0x2) = *(u16 *)(a1 + 0x2) - 0xA;
+    if ((s16)*(u16 *)(a1 + 0x2) < 0) {
+        *(u16 *)(a1 + 0x2) = 0;
+    }
+    *(u16 *)(a1 + 0x4) = *(u16 *)(a1 + 0x4) - 0xA;
+    if ((s16)*(u16 *)(a1 + 0x4) < 0) {
+        *(u16 *)(a1 + 0x4) = 0;
+    }
+    *(u16 *)(a2 + 0x0) = *(u16 *)(a2 + 0x0) - 0xA;
+    if ((s16)*(u16 *)(a2 + 0x0) < 0) {
+        *(u16 *)(a2 + 0x0) = 0;
+    }
+    *(u16 *)(a2 + 0x2) = *(u16 *)(a2 + 0x2) - 0xA;
+    if ((s16)*(u16 *)(a2 + 0x2) < 0) {
+        *(u16 *)(a2 + 0x2) = 0;
+    }
+    *(u16 *)(a2 + 0x4) = *(u16 *)(a2 + 0x4) - 0xA;
+    if ((s16)*(u16 *)(a2 + 0x4) < 0) {
+        *(u16 *)(a2 + 0x4) = 0;
+    }
+    *(u8 *)(a3 + 0x0) = *(u16 *)(a1 + 0x0);
+    *(u8 *)(a3 + 0x1) = *(u16 *)(a1 + 0x2);
+    *(u8 *)(a3 + 0x2) = *(u16 *)(a1 + 0x4);
+    *(u8 *)(a3 + 0x4) = *(u16 *)(a2 + 0x0);
+    *(u8 *)(a3 + 0x5) = *(u16 *)(a2 + 0x2);
+    *(u8 *)(a3 + 0x6) = *(u16 *)(a2 + 0x4);
+    v = *(u16 *)(a2 + 0x4) | (*(u16 *)(a2 + 0x0) | *(u16 *)(a2 + 0x2));
+    return (s16)v;
+}

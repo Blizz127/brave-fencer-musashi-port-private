@@ -1,0 +1,42 @@
+/* SC02 resident retail span [8015D01C,8015D104). Offset 0x34EC4 at base 80128158.
+ * SHA256(span)=28c0c1161b4b5c4800206626b9ed146c673c18332cc0556c8cc9e27c82936a8c.
+ * Words are the guest's loaded image (artifacts/sc02-resident-20260910).
+ * Member-0012 C shape retargeted to this member: D_80180BE0->D_801874D0.
+ * Oracle MATCH re-earned against the resident image; Not MAIN10.
+ */
+#include "psx_types.h"
+void func_80154274();
+s32 func_80012A60();
+void func_801725F4();
+void func_80146CA0();
+extern s32 D_800D550C;
+extern s32 D_801874D0;
+typedef struct Inner { u8 pad[0x10]; s16 u10; u16 u12; } Inner;
+typedef struct Q { u8 pad[0x20]; Inner *inner; } Q;
+typedef struct {
+    u8 pad[0x20]; Inner *inner;
+    u8 pad24[0x14]; s32 u38;
+    u8 pad3C[0x144]; Q *u180;
+} T;
+void func_8015D01C(T *p) {
+    s16 a;
+    s16 b;
+    s16 c;
+    s16 d;
+    s16 e;
+    func_80154274(p, &D_800D550C);
+    p->inner->u10 = 0;
+    a = p->inner->u12;
+    b = p->u180->inner->u12;
+    c = (b + 0x800) & 0xFFF;
+    d = func_80012A60(a, b);
+    e = func_80012A60(a, c);
+    if ((s16)d < (s16)e) {
+        p->inner->u12 = b;
+    } else {
+        p->inner->u12 = c;
+    }
+    p->u38 = (s32)&D_801874D0 | 0x40000000;
+    func_801725F4(p);
+    func_80146CA0(p);
+}

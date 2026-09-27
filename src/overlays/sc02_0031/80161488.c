@@ -1,0 +1,19 @@
+/* SC02.CD FILE_031 / ov_SC02_031 retail span [80161488,801614E4).
+ * Offset 0x39330 at overlay base 80128158. SHA256(span)=4f210483d38dbcb322e5c52f5403fcc42cb74e8fae2e56702332f548664ad007.
+ * Re-carve of the registry-verified MAIN member 0012 source
+ * src/overlays/main_0012/80161488.c (recovery=c, -O2); the span is
+ * byte-identical between member 0012 and SC02_031.
+ * Not MAIN10.
+ */
+#include "psx_types.h"
+s32 func_801615C4();
+s32 func_80161774();
+s32 func_8016197C();
+typedef struct { u8 pad[0x1C6]; u8 u1C6; } T;
+s32 func_80161488(T *p) {
+    s32 v = func_801615C4(p, 0);
+    if (p->u1C6) {
+        return func_8016197C(p, v) & ~7;
+    }
+    return func_80161774(p, v);
+}

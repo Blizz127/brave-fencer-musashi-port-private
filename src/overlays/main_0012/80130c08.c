@@ -1,0 +1,53 @@
+/* Overlay range [80130C08,80130D0C) from MAIN.CD member 0012.
+ * SHA256(span)=91c91577383acc43fb7184f4b31bb4c05bc8533949e8029da2af238c13588f4c.
+ * Word export for the native seam; the C body below is kept
+ * byte-identical (wrap only, no rewrite): the cleaned Druthulu/BFM-decomp
+ * form (vendor/bfm-decomp, same SLUS-00726 build), re-verified against
+ * retail at the recorded optimization by tools/match_function.py. */
+#include "psx_types.h"
+#include "m2c_macros.h"
+
+/* func_80130C08 - 65 words. Promoted from vendor/bfm-decomp
+ * (Druthulu, same SLUS-00726 build), split to an address-named file.
+ * Values and locals are the loosest that reproduce the bytes; they
+ * are not evidence of the original declaration. */
+extern void func_8012CBCC(s32);
+extern void func_80131E00(struct S80131E00*, s32);
+extern s32 func_8012BEE8(s32 a0);
+extern void func_80131C78(s32 a0);
+extern void func_80131CA8(int a0, int a1);
+
+void func_80130C08(s32 arg0) {
+    s32 flag;
+    u32 cond;
+    flag = 0;
+    if (!(*(u32 *)(arg0 + 0xC4) & 2)) {
+        if (*(u32 *)(arg0 + 0xB4) & 0x20000) {
+            if (*(u32 *)(arg0 + 0xB4) & 1) {
+                if ((u8)((s32 (*)(s32))func_8012CBCC)(arg0) == 2) {
+                    ((void (*)(void *, s32))func_80131E00)((void *)arg0, 0x12);
+                    return;
+                }
+                if (*(u8 *)(arg0 + 0xC2) != 0) {
+                    cond = func_8012BEE8(arg0);
+                } else {
+                    cond = *(u16 *)(arg0 + 0x72) & 0x4000;
+                }
+                if (cond != 0) {
+                    flag = 1;
+                }
+                if (flag != 0) {
+                    func_80131C78(arg0);
+                }
+            }
+            func_80131CA8(arg0, 5);
+        }
+        if (!(*(u32 *)(arg0 + 0xC4) & 2)) {
+            goto mode_38;
+        }
+    }
+    func_80131CA8(arg0, 5);
+    return;
+mode_38:
+    func_80131CA8(arg0, 0x38);
+}

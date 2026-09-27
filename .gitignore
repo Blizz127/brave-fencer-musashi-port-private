@@ -1,0 +1,105 @@
+# Licensed retail inputs are supplied out-of-band and must never be committed.
+/retail/
+/disc/
+/extracted/
+/payload/
+/build/
+/out/
+/artifacts/
+/.agents/
+/ORIGINAL_REQUEST.md
+/tmp/
+*.chd
+*.cue
+*.bin
+*.img
+*.iso
+*.ecm
+*.CHD
+*.CUE
+*.BIN
+*.IMG
+*.ISO
+SCUS_*
+SLPS_*
+SLES_*
+SCES_*
+SLUS_*
+
+# Vendored third-party tool checkouts. Pinned by commit in docs/MILESTONE-1.md
+# and rebuilt locally; never redistributed from here.
+/tools/third_party/
+
+# Candidate compilers, fetched by tools/fetch_toolchains.sh. These are GPL
+# rebuilds of old GCC from decompals/old-gcc, not Sony binaries, but they are
+# large and reproducible so they are fetched rather than tracked.
+/tools/psyq/
+
+# maspsx assembler shim and the m2c decompiler, cloned at pinned commits by
+# the same script.
+/tools/maspsx/
+/tools/m2c/
+
+# Disassembly generated from the contributor's own retail executable. It is a
+# derivative of retail bytes, so it is regenerated locally rather than shared.
+/asm/functions/*
+!/asm/functions/.gitkeep
+/asm/data/*
+!/asm/data/.gitkeep
+/asm/labels/*
+!/asm/labels/.gitkeep
+/asm/main/
+*.s
+# splat regenerates linker scripts on every split.
+config/*.ld
+
+# splat regenerates these address lists from the retail executable on every
+# split, and they currently carry first-pass false positives. Curated symbol
+# knowledge belongs in config/symbol_addrs.txt, which is tracked.
+config/*.auto.txt
+
+# Generated decompilation and compiler output.
+*.o
+*.a
+*.elf
+*.exe
+*.EXE
+*.map
+*.sym
+*.lst
+*.d
+*.gcda
+*.gcno
+compile_commands.json
+
+# Local provenance captures and logs.
+/provenance/local/
+/provenance/captures/
+*.log
+
+# Editor and Python cache files.
+.pytest_cache/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.DS_Store
+# Local-only staging: unverified m2c/Sanitizer outputs awaiting an oracle
+# promotion sweep. Regenerable via tools/batch_match.py; never committed.
+/staging/
+
+# Vendored upstream trees (fetch/rsync locally; do not publish as a mirror)
+vendor/
+
+# Local reference clones outside normal workflow
+# (sibling path is outside this repo; listed for clarity if ever nested)
+
+# Regenerable parser output and in-source test/build droppings
+/Testing/
+/parser.out
+/yacctab.py
+/native_vram_display.png
+/native_vram_display.ppm
+
+# Local agent session transcripts: keep local, never publish
+/codex-session-*.md

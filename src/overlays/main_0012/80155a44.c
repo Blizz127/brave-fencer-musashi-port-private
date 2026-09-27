@@ -1,0 +1,41 @@
+/* Overlay range [80155A44,80155B20) from MAIN.CD member 0012.
+ * SHA256(span)=f6563cd9958450829a3cf17b90e8091c08fc9396a8fc277ed77d3a1681c29c84.
+ * Word export for the native seam; the C body below is kept
+ * byte-identical (wrap only, no rewrite): the cleaned Druthulu/BFM-decomp
+ * form (vendor/bfm-decomp, same SLUS-00726 build), re-verified against
+ * retail at the recorded optimization by tools/match_function.py. */
+#include "psx_types.h"
+#include "m2c_macros.h"
+
+/* func_80155A44 - 55 words. Promoted from vendor/bfm-decomp
+ * (Druthulu, same SLUS-00726 build), split to an address-named file.
+ * Values and locals are the loosest that reproduce the bytes; they
+ * are not evidence of the original declaration. */
+extern s32 func_80029178(s32 arg);
+extern u8 func_8014BEF8(void);
+extern u16 func_80148800(s32 *a0);
+extern void func_80149CB4(void);
+
+int func_80155A44(int param_1)
+{
+    int x = *(unsigned char *)(param_1 + 0x1AA);
+    switch (x) {
+    case 0:
+    case 1:
+        if ((((unsigned char (*)(int))func_80029178)(0x85) & 0xFF) &&
+            ((int (*)(int))func_8014BEF8)(param_1) &&
+            *(unsigned char *)(param_1 + 0x1C0) &&
+            (((int (*)(int))func_80148800)(param_1) & 0x10)) {
+            ((void (*)(int, int))func_80149CB4)(param_1, 2);
+            return 1;
+        }
+        break;
+    case 2:
+        if ((((unsigned char (*)(int))func_80029178)(0x86) & 0xFF) &&
+            (((int (*)(int))func_80148800)(param_1) & 0x10)) {
+            ((void (*)(int, int))func_80149CB4)(param_1, 3);
+            return 1;
+        }
+        break;
+    }
+}

@@ -1,0 +1,67 @@
+/* SC02 resident retail span [8015CA28,8015CB94). Offset 0x348D0 at base 80128158.
+ * SHA256(span)=6d26dd7c02c5e7ae7fa6aae5b7e18b6ec0591112c4f7b13519587cfebc862cce.
+ * Words are the guest's loaded image (artifacts/sc02-resident-20260910).
+ * Member-0012 C shape retargeted to this member: D_801809C0->D_801872B0; D_80180A1C->D_8018730C.
+ * Oracle MATCH re-earned against the resident image; Not MAIN10.
+ */
+#include "psx_types.h"
+typedef void (*CB)();
+extern CB D_8018730C[];
+void func_80149FB0();
+s32 func_80161B18();
+s32 func_80161B84();
+s32 func_801496D4();
+void func_80149704();
+s32 func_801487F4();
+s32 func_801488A8();
+s32 func_80148AAC();
+void func_80147AD4();
+void func_801473EC();
+s32 func_8014D738();
+void func_80146DB8();
+void func_80146E90();
+void func_80146C98();
+void func_80147078();
+void func_80159B70();
+void func_80161240();
+extern s32 D_801872B0;
+typedef struct {
+    u16 idx;
+    u8 pad2[0x16E]; s32 u170;
+} T;
+void func_8015CA28(T *p) {
+    func_80149FB0(p);
+    if (func_80161B18(p)) {
+        return;
+    }
+    if (func_80161B84(p)) {
+        return;
+    }
+    if (func_801496D4(p)) {
+        D_8018730C[p->idx](p);
+        func_80149704(p);
+        return;
+    }
+    if ((func_801487F4(p) & 0x80) == 0 && func_801488A8(p) == 0) {
+        D_8018730C[p->idx](p);
+        func_80147078(p, 0);
+        func_80159B70(p);
+        return;
+    }
+    if (func_80148AAC(p) & 0xFF) {
+        func_80147AD4(p, 0, 0, 0);
+        func_801473EC(p);
+    }
+    if (func_8014D738(p)) {
+        func_80146DB8(p, &D_801872B0);
+        func_80146E90(p, 0x14);
+        func_80146C98(p, 2);
+    }
+    if (p->u170 == 0) {
+        D_8018730C[p->idx](p);
+        func_80147078(p, 0);
+        func_80159B70(p);
+    } else {
+        func_80161240(p);
+    }
+}

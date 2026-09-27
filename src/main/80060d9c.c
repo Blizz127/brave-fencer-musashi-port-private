@@ -1,0 +1,129 @@
+/* Main-exec range [80060D9C,80061010) from the SLUS executable.
+ * SHA256(span)=2c0d4f9ea1fda51d9bd6c8c93342874c1807102ac7c360a8ce1993b0e8e86f49.
+ * Word export for the native seam; the body below is an
+ * UNVERIFIED draft, not an oracle match claim. */
+#include "psx_types.h"
+#include "m2c_macros.h"
+
+/* m2c draft from main.s: NOT verified against retail. C89-gated only;
+ * promotion requires an oracle MATCH (tools/match_function.py). Types
+ * and signatures are whatever the decompiler guessed; they are not
+ * evidence of the original declaration. */
+
+extern s32 D_80060030;
+extern s32 D_800744C0;
+extern s32 D_80074610;
+void func_8005C604(s32 (*)());               /* static */
+s32 func_80061010(s32);                             /* static */
+void func_80061024(s32, s32, s32 *);     /* static */
+void func_80061770(s32, void *);              /* static */
+void func_80061E90(void *, s32);          /* static */
+s32 func_80061F88(void *);                       /* static */
+s32 func_80061FA8(void *, void *);            /* static */
+void func_8006289C(void *);                   /* static */
+extern s32 D_80078C7C;
+extern s32 D_80078C80;
+extern s32 D_80078C84;
+extern s32 D_80078C88;
+extern s32 D_80078C8C;
+extern s32 D_80078CD0;
+
+s32 func_80060D9C(s32 arg0, s32 arg1, s32 arg2, s32 *arg3, s32 arg4, s32 arg5) {
+    void *sp68;
+    s32 *sp60;
+    s32 sp58;
+    s32 sp50;
+    s32 sp30;
+    s32 sp10;
+    void *var_a2;
+    s32 temp_v0;
+    s32 var_s1;
+    s32 var_s2;
+    s32 var_s3;
+    s32 var_s4;
+    s32 var_v0;
+    void *var_a3;
+
+    sp60 = arg3;
+    if (D_80078C80 != 0) {
+        func_8005C604(D_80074610);
+        return -1;
+    }
+    func_80061770(arg0, &sp10);
+    func_80061E90(&sp10, arg1);
+    var_s2 = 0;
+    var_s1 = 0;
+    sp58 = 0;
+    D_80078C7C |= 1 << D_80078C8C;
+    var_s4 = 0;
+    if ((arg4 + arg5) > 0) {
+        sp68 = &sp50;
+        var_s3 = 0;
+loop_4:
+        if (var_s1 == 0) {
+loop_5:
+            temp_v0 = func_80061FA8(&sp10, &sp30);
+            var_v0 = var_s1 < arg4;
+            if (temp_v0 == 0) {
+                D_80078CD0 = func_80061010(0);
+                if (D_80078C80 != 0) {
+                    func_8005C604(D_800744C0);
+                } else {
+                    D_80078C80 = 2;
+                    D_80078C84 = 0;
+                    D_80078C88 = 0;
+                    D_80078C8C = arg0;
+                    func_8006289C(&D_80060030);
+                }
+                func_80061024(0, 0, &sp58);
+                func_80061010(D_80078CD0);
+                if (sp58 != 0) {
+                    var_s2 += 1;
+                    if (var_s2 >= 0x10) {
+                        return sp58;
+                    }
+                    goto loop_5;
+                }
+                var_v0 = var_s1 < arg4;
+                if (temp_v0 != 0) {
+                    goto block_15;
+                }
+                goto block_21;
+            }
+            goto block_15;
+        }
+        var_v0 = var_s1 < arg4;
+        if (func_80061F88(&sp30) != 0) {
+block_15:
+            if (var_v0 == 0) {
+                var_a3 = var_s3 + arg2;
+                if (arg2 != 0) {
+                    var_a2 = &sp30;
+                    do {
+                        M2C_FIELD(var_a3, s32 *, 0) = (s32) M2C_FIELD(var_a2, s32 *, 0);
+                        M2C_FIELD(var_a3, s32 *, 4) = (s32) M2C_FIELD(var_a2, s32 *, 4);
+                        M2C_FIELD(var_a3, s32 *, 8) = (s32) M2C_FIELD(var_a2, s32 *, 8);
+                        M2C_FIELD(var_a3, s32 *, 0xC) = (s32) M2C_FIELD(var_a2, s32 *, 0xC);
+                        var_a2 += 0x10;
+                        var_a3 += 0x10;
+                    } while (var_a2 != sp68);
+                    M2C_FIELD(var_a3, s32 *, 0) = (s32) M2C_FIELD(var_a2, s32 *, 0);
+                    M2C_FIELD(var_a3, s32 *, 4) = (s32) M2C_FIELD(var_a2, s32 *, 4);
+                    var_s3 += 0x28;
+                    var_s4 += 1;
+                }
+            }
+            var_s1 += 1;
+            if (var_s1 >= (arg4 + arg5)) {
+                goto block_21;
+            }
+            goto loop_4;
+        }
+        goto block_21;
+    }
+block_21:
+    if (sp60 != 0) {
+        *sp60 = var_s4;
+    }
+    return 0;
+}

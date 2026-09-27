@@ -1,0 +1,14 @@
+/* Main-exec range [80012DBC,80012E0C) from the SLUS executable.
+ * SHA256(span)=2b46a3070c55a2e42c3ca0d9263eaf00f76666ccdab49b90b8f7ab585f2647e8.
+ * Word export for the native seam; the body below is kept
+ * byte-identical (wrap only, no rewrite). */
+/* Decompiled by m2c from main.s, then verified byte-exact
+ * against retail by tools/match_function.py. Types and signatures are
+ * whatever reproduces the bytes; they are not evidence of the
+ * original declaration. */
+
+#include "psx_types.h"
+s32 func_80012E0C();
+s32 func_80012DBC(s32 a0, s32 a1, s32 a2, s32 a3) {
+    return (a0 + func_80012E0C((s16)a0, (s16)a1, (s16)a2, (s16)a3)) & 0xFFF;
+}

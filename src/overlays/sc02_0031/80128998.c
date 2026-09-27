@@ -1,0 +1,18 @@
+/* SC02 resident retail span [80128998,801289F0). Offset 0x840 at base 80128158.
+ * SHA256(span)=7dbc6dd2c87a3277a01f82199af4b090e83757a96125f577dfd322ea693a769f.
+ * Words are the guest's loaded image (artifacts/sc02-resident-20260910).
+ * Member-0012 C shape retargeted to this member: D_80182D1C->D_801B5128.
+ * Oracle MATCH re-earned against the resident image; Not MAIN10.
+ */
+#include "psx_types.h"
+void func_8001ABBC();
+typedef struct { s32 a; void *b; } S;
+extern S D_800C7C60;
+extern s32 D_800A2E20;
+extern void *D_801B5128;
+extern s32 D_800AECB0;
+void func_80128998(void) {
+    D_800C7C60.a = 13;
+    D_800C7C60.b = &D_800A2E20;
+    func_8001ABBC(0, 0, &D_800AECB0, D_801B5128, &D_800C7C60);
+}

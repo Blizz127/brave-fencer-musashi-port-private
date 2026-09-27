@@ -1,0 +1,46 @@
+/* Overlay range [801416D4,80141788) from MAIN.CD member 0012.
+ * SHA256(span)=28cbd8a32d2ba355ac7d6718bef12b2e82b6571ef0f23dc08b6a3683b82c36ea.
+ * Word export for the native seam; the C body below is kept
+ * byte-identical (wrap only, no rewrite): the cleaned Druthulu/BFM-decomp
+ * form (vendor/bfm-decomp, same SLUS-00726 build), re-verified against
+ * retail at the recorded optimization by tools/match_function.py. */
+#include "psx_types.h"
+#include "m2c_macros.h"
+
+/* func_801416D4 - 45 words. Promoted from vendor/bfm-decomp
+ * (Druthulu, same SLUS-00726 build), split to an address-named file.
+ * Values and locals are the loosest that reproduce the bytes; they
+ * are not evidence of the original declaration. */
+extern s16 D_8011514C;
+extern u8 D_8011514D;
+extern u8 D_8011515C;
+extern s32 func_800D11F0(s32 a0);
+extern s32 func_800D1658(s32 a0);
+extern void func_80141C0C(s32);
+
+s32 func_801416D4(s16 param_1) {
+    s32 cVar2;
+    register s32 iVar1 __asm__("$3");
+    register s32 two __asm__("$6");
+    two = 2;
+    iVar1 = 0;
+    cVar2 = *(u8 *)&D_8011514C + D_8011514D * D_8011515C;
+    if (param_1 == 1) goto c1;
+    if (param_1 < 2) {
+        if (param_1 == 0) goto c0;
+        goto ret;
+    }
+    if (param_1 == two) goto c2;
+    goto ret;
+c0:
+    iVar1 = func_800D11F0(cVar2 & 0xFF);
+    goto ret;
+c1:
+    iVar1 = func_800D1658(cVar2 & 0xFF);
+    goto ret;
+c2:
+    func_80141C0C(6);
+    iVar1 = 1;
+ret:
+    return (iVar1 << 0x10) >> 0x10;
+}

@@ -1,0 +1,18 @@
+/* SC02 resident retail span [8015CC74,8015CCB0). Offset 0x34B1C at base 80128158.
+ * SHA256(span)=f52ac737d558e60b591d639f5d833ef9d59ac58ba67d322879e97695f5ab3467.
+ * Words are the guest's loaded image (artifacts/sc02-resident-20260910).
+ * Member-0012 C shape retargeted to this member: D_80180BB8->D_801874A8.
+ * Oracle MATCH re-earned against the resident image; Not MAIN10.
+ */
+/* Decompiled by m2c from main.s, then verified byte-exact
+ * against retail by tools/match_function.py. Types and signatures are
+ * whatever reproduces the bytes; they are not evidence of the
+ * original declaration. */
+
+#include "psx_types.h"
+typedef void (*CB)();
+extern CB D_801874A8[];
+typedef struct { u8 pad[2]; u16 idx; } T;
+void func_8015CC74(T *p) {
+    D_801874A8[p->idx](p);
+}
