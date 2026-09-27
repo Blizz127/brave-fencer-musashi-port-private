@@ -51,12 +51,14 @@ static int owner_context_matches(const MusashiGteOwner *owner,
 }
 
 static int gte_control_in_write_profile(uint32_t selector) {
-    /* CTC2 reaches every control register on hardware; PsyCross's CTC2
-     * applies each one's sign extension/masking (H, DQA, ZSF3, ZSF4, FLAG).
-     * The narrower profile (rotation, translation, background, light colour,
-     * screen/depth) only held while host code replaced the retail light
-     * matrix setter func_8004917C, whose CTC2s write controls 8..12. */
-    return selector < MUSASHI_GTE_CONTROL_COUNT;
+    /* Rotation 0..4 and translation 5..7 used by SetTransMatrix. */
+    return selector <= 7u ||
+           (selector >= MUSASHI_GTE_CONTROL_BACKGROUND_FIRST &&
+            selector <= MUSASHI_GTE_CONTROL_BACKGROUND_LAST) ||
+           (selector >= MUSASHI_GTE_CONTROL_LIGHTCOLOR_FIRST &&
+            selector <= MUSASHI_GTE_CONTROL_LIGHTCOLOR_LAST) ||
+           (selector >= MUSASHI_GTE_CONTROL_FIRST &&
+            selector <= MUSASHI_GTE_CONTROL_LAST);
 }
 
 int musashi_gte_owner_init(MusashiGteOwner *owner,
@@ -200,33 +202,23 @@ int musashi_gte_owner_write_data(MusashiGteOwner *owner,
     uint32_t normalized;
     uint32_t count = 0;
     if (owner_reentry(owner)) return 0;
-    /* MTC2/LWC2 reach all 32 data registers on hardware. The narrower list
-     * was the union of sites observed while host code stood in for retail GTE
-     * routines; SWC2/LWC2 of the colour and screen FIFOs (e.g. 80057A58 in
-     * func_80057928) are ordinary retail code. */
-    if (owner == NULL || selector >= MUSASHI_GTE_DATA_COUNT ||
+    if (owner == NULL ||
+        (selector != 0u && selector != 1u && selector != 2u && selector != 3u &&
+         selector != 4u && selector != 5u && selector != 6u && selector != 8u &&
+         selector != 9u && selector != 10u && selector != 11u &&
+         selector != 19u && selector != 28u && selector != 30u &&
+         selector != 31u) ||
         owner->data_write_count == UINT64_MAX) return 0;
     if (!owner_begin_data(owner, context)) return 0;
-    /* SXYP pushes the screen XY FIFO (SXY0 <- SXY1 <- SXY2 <- value). */
-    if (selector == 15u) {
-        MTC2(value, 15);
-        owner->data_write_count++;
-        owner->executing = 0;
-        return 1;
-    }
-    /* ORGB is read-only; reads recompute it from IR1..IR3. */
-    if (selector == 29u) {
-        owner->data_write_count++;
-        owner->executing = 0;
-        return 1;
-    }
     /* Plain 32-bit MTC2 moves: vectors V0/V1, the 80047F48 write of the
      * func_80047EC8 interpolation factor into IR0 (the GPF at 80047F60
      * scales IR1..IR3 by it), plus the 800484EC sign and magnitude loads
      * into IR1/IR2/IR3. Retail MVMVA with v=3 then reads those IR halves as
      * its vector. IR0's own reads are the low signed halfword of the
      * register, so a full-width store is the hardware behaviour. */
-    if (selector != 28u && selector != 30u && selector != 31u) {
+    if (selector == 0u || selector == 1u || selector == 2u || selector == 3u ||
+        selector == 4u || selector == 5u || selector == 6u || selector == 8u ||
+        selector == 9u || selector == 10u || selector == 11u) {
         gteRegs.CP2D.p[selector].d = value;
         owner->data_write_count++;
         owner->executing = 0;
@@ -273,13 +265,22 @@ int musashi_gte_owner_read_data(MusashiGteOwner *owner,
                                uint32_t selector, uint32_t *value) {
     uint32_t local;
     if (owner_reentry(owner)) return 0;
-    if (owner == NULL || value == NULL || selector >= MUSASHI_GTE_DATA_COUNT ||
+    if (owner == NULL || value == NULL ||
+        (selector != 0u && selector != 4u && selector != 5u &&
+         selector != 6u && selector != 7u && selector != 8u && selector != 9u &&
+         selector != 10u && selector != 11u && selector != 12u &&
+         selector != 13u && selector != 14u && selector != 16u &&
+         selector != 17u && selector != 18u && selector != 19u &&
+         selector != 24u && selector != 25u && selector != 26u &&
+         selector != 27u && selector != 29u && selector != 30u &&
+         selector != 31u) ||
         owner->data_read_count == UINT64_MAX) return 0;
     if (!owner_begin_data(owner, context)) return 0;
     /* IR1..3 reads sign-extend their low half; commands may leave stale
      * upper halves. MFC2 also preserves raw MAC/LZCS/LZCR read semantics.
-     * PsyCross MFC2 applies each register's read rule: signed VZ/IR halves,
-     * unsigned OTZ/SZ, SXYP as SXY2 and IRGB/ORGB rebuilt from IR1..IR3. */
+     * The selector list is the union of the registers retail MFC2/SWC2 sites
+     * actually read: VZ2, RGB, OTZ, IR0, SXY0/1/2, SZ3, MAC1..3, ORGB, LZCS and
+     * LZCR. */
     local = MFC2((int)selector);
     owner->data_read_count++;
     *value = local;

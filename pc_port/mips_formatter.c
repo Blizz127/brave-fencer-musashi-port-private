@@ -17382,7 +17382,8 @@ int musashi_boot_continuation_host_context(const void *continuation,
 static int gte_decode_lane(uint32_t pc) {
     return (g_overlay_sc01_0000_words && pc >= 0x80128158u &&
             pc < (0x80128158u + g_sc01_code_bytes)) ||
-           (pc >= 0x80010000u && pc < 0x80074800u);
+           ((pc >= 0x80010000u && pc < 0x80074800u) &&
+            !(pc >= 0x80047000u && pc < 0x80055000u));
 }
 
 static int gte_load_successor(uint8_t reg, uint32_t pc, uint32_t word) {
@@ -19094,13 +19095,18 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
             return formatter_refuse0(__LINE__, cpu->pc);
     }
     /* LB executes like LBU/LH/LW (immediate write; Psy-Q's assembler keeps
-     * compiled code free of load-delay hazards) and is no longer limited to
-     * three audited sites: func_8004FD30's LB at 8004FDA0 is ordinary retail
-     * code. The RAM preflight keeps the rule that it cannot fault after time
-     * has advanced. */
-    if (opcode == 32u &&
-        !cpu_ram_span(memory, cpu, cpu->r[rs] + (uint32_t)(int32_t)signed_immediate, 1))
-        return formatter_refuse0(__LINE__, cpu->pc);
+     * compiled code free of load-delay hazards) across general retail code
+     * (e.g. func_8004FD30's LB at 8004FDA0 and overlay LB sites) after RAM
+     * preflight. However, within the directory parser span [800459E8,80045C94),
+     * only the audited retail instruction at 80045B54 (0x80633a1a) is admitted;
+     * any mutation or unexpected LB site in this parser span is refused. */
+    if (opcode == 32u) {
+        if (!cpu_ram_span(memory, cpu, cpu->r[rs] + (uint32_t)(int32_t)signed_immediate, 1))
+            return formatter_refuse0(__LINE__, cpu->pc);
+        if (cpu->pc >= 0x800459e8u && cpu->pc < 0x80045c94u &&
+            (cpu->pc != 0x80045b54u || instruction != 0x80633a1au))
+            return formatter_refuse0(__LINE__, cpu->pc);
+    }
     if (cpu->pc == 0x8004d180u &&
         (instruction != 0x0140f809u || cpu->r[10] != 0xb0u)) return formatter_refuse0(__LINE__, cpu->pc);
     if (cpu->pc == 0x8004d190u &&
@@ -19257,7 +19263,7 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
         for (i=0;i<sizeof(sites)/sizeof(sites[0]);++i)
             if (sites[i][0]==cpu->pc && sites[i][1]==instruction) {
                 exact_site = 1;
-                caller_gated = i >= 13u && i < 23u;
+                caller_gated = 1;
                 break;
             }
         if ((gte_20f34_caller(cpu->r[31]) &&
