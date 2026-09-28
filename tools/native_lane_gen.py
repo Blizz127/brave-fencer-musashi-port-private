@@ -52,6 +52,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 RAM_LO, RAM_HI = 0x80010000, 0x80200000
 HOST_TARGET = "x86_64-unknown-linux-gnu"
+def host_long(text):
+    """PS1 `long` is 32-bit: rewrite lone `long` / `long int` to `int` for the
+    LP64 host, keeping `long long` (64-bit on both)."""
+    text = re.sub(r"\blong\s+long\b", "\0LL\0", text)
+    text = re.sub(r"\blong(\s+int)?\b", "int", text)
+    return text.replace("\0LL\0", "long long")
+
+
 def split_operands(text):
     """'"=r"(a), "=r"(b)' -> [('=r', 'a'), ('=r', 'b')]"""
     out = []
@@ -686,13 +694,14 @@ def build_one(entry, out, symbols, hooks, clang):
                 raise Reject("hooks", f"port references {pc:08x}")
         text = strip_comments(src.read_text(errors="replace"))
         body = text.split("#else", 1)[1] if "#else" in text else text
-        for token in ("long", "sizeof"):
-            if re.search(r"\b" + token + r"\b", body):
-                raise Reject("source", f"uses '{token}'")
+        # `long long` is 64-bit on the PS1 and the host; a lone `long` is
+        # 32-bit on the PS1 and becomes `int` in the host copy (host_long).
+        if re.search(r"\bsizeof\b", body):
+            raise Reject("source", "uses 'sizeof'")
         o0 = work / f"{tag}.O0.ll"
         compile_src = src
         raw = src.read_text(errors="replace")
-        host = REGISTER_PIN.sub(r"\1", raw)
+        host = host_long(REGISTER_PIN.sub(r"\1", raw))
         # `register T x __asm__("$5")` pins a local to a MIPS register for the
         # byte match only; it has no meaning on the host. Empty asm statements
         # that are identities go too; any other inline asm is still refused
