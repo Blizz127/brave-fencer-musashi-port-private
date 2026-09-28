@@ -75,7 +75,12 @@ class Controller(C.Structure):
                 ("tap", C.c_void_p), ("tap_userdata", C.c_void_p),
                 ("raster_disabled", C.c_int), ("drawn_pixels", C.c_uint64),
                 ("semi", C.c_uint8), ("semi_mode", C.c_uint8),
-                ("semi_textured", C.c_uint8)]
+                ("semi_textured", C.c_uint8),
+                ("poly_active", C.c_uint8), ("poly_gouraud", C.c_uint8),
+                ("poly_words", UINT32), ("poly_vertices", UINT32),
+                ("poly_command", UINT32), ("poly_color", UINT32),
+                ("poly_prev_color", UINT32),
+                ("poly_x", C.c_int32), ("poly_y", C.c_int32)]
 
 
 class GpuControllerTests(unittest.TestCase):
@@ -935,6 +940,43 @@ class GpuControllerTests(unittest.TestCase):
             self.assertEqual(self.controller.drawn_pixels, len(stored))
 
             self.assertEqual(bool(back_reads), bool(opcode & 2))
+    def _polyline(self, words):
+        stored = []
+        self.store_cb = STORE(lambda _, x, y, p: stored.append((x, y, p)) or 1)
+        self.controller.backend.store_vram = self.store_cb
+        self.assertEqual(self.write(0xE3000000), 1)
+        self.assertEqual(self.write(0xE403C13F), 1)
+        for w in words:
+            self.assertEqual(self.write(w), 1, hex(w))
+        return stored
+
+    def test_gp0_flat_polyline_until_terminator(self):
+        # 0x48: colour, then vertices until a 0x5xxx5xxx word.
+        stored = self._polyline([0x480000F8, 0x00000000, 0x00000008,
+                                 0x00080008, 0x55555555])
+        self.assertFalse(self.controller.poly_active)
+        pts = {(x, y) for x, y, _ in stored}
+        self.assertIn((0, 0), pts); self.assertIn((8, 0), pts); self.assertIn((8, 8), pts)
+        self.assertTrue(all(p == 0x001F for _, _, p in stored))
+        # The next word is a command again, not a vertex.
+        self.assertEqual(self.write(0xE1000000), 1)
+        self.assertEqual(self.controller.draw_mode, 0)
+
+    def test_gp0_gouraud_polyline_terminator_in_colour_slot(self):
+        # 0x58: c0|cmd, v0, c1, v1, c2, v2, terminator (colour position).
+        # A vertex that looks like a terminator is still a vertex.
+        stored = self._polyline([0x580000F8, 0x00000000, 0x0000F800, 0x50005000,
+                                 0x00F80000, 0x00100010, 0x50005000])
+        self.assertFalse(self.controller.poly_active)
+        self.assertGreater(len(stored), 0)
+        self.assertEqual(self.write(0xE1000000), 1)
+
+    def test_gp0_polyline_reset_by_gp1(self):
+        self._polyline([0x480000F8, 0x00000000])
+        self.assertTrue(self.controller.poly_active)
+        self.assertEqual(self.write(0x01000000, GPUSTAT), 1)
+        self.assertFalse(self.controller.poly_active)
+
     def test_gp0_poly_f4_flat_quad_five_words(self):
         for opcode in (0x28, 0x29, 0x2A, 0x2B):
             self.setUp()

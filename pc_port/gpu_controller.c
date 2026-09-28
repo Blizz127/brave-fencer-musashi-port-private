@@ -49,6 +49,13 @@ static void discard_prim(MusashiGpuController *controller) {
     for (i = 0; i < 12u; ++i) controller->prim_data[i] = 0;
 }
 
+static void discard_poly(MusashiGpuController *controller) {
+    controller->poly_active = controller->poly_gouraud = 0;
+    controller->poly_words = controller->poly_vertices = 0;
+    controller->poly_command = controller->poly_color = controller->poly_prev_color = 0;
+    controller->poly_x = controller->poly_y = 0;
+}
+
 #define MAX_STORE_IMAGE_INSTANCES 16
 
 typedef struct MusashiGpuStoreImage {
@@ -206,6 +213,7 @@ static void reset_state(MusashiGpuController *controller) {
     discard_store(controller);
     discard_copy(controller);
     discard_prim(controller);
+    discard_poly(controller);
     discard_store_image(controller);
 }
 
@@ -1483,6 +1491,61 @@ static int prim_commit(MusashiGpuController *controller) {
     return 0;
 }
 
+static uint16_t color15(uint32_t word) {
+    return (uint16_t)(((word >> 3) & 0x1fu) | ((word >> 6) & 0x3e0u) | ((word >> 9) & 0x7c00u));
+}
+
+/* One polyline word. Segments are drawn as each vertex arrives, with the
+ * start vertex's colour like the two-point lines (no gouraud shading yet). */
+static int poly_word(MusashiGpuController *controller, uint32_t word) {
+    const uint32_t index = controller->poly_words + 1u;  /* position in the packet */
+    const int is_color = controller->poly_gouraud && (index & 1u) == 0u;
+    const int vertex_slot = controller->poly_gouraud ? (index & 1u) : 1;
+    if (controller->accepted_gp0_words == UINT64_MAX || controller->poly_words == UINT32_MAX)
+        return 0;
+    if (controller->poly_vertices >= 2u && (word & 0xf000f000u) == 0x50005000u &&
+        (controller->poly_gouraud ? is_color : 1)) {
+        discard_poly(controller);
+        controller->accepted_gp0_words++;
+        return controller->faulted ? 0 : 1;
+    }
+    controller->poly_words++;
+    controller->accepted_gp0_words++;
+    if (is_color) {
+        controller->poly_color = word;
+        return controller->faulted ? 0 : 1;
+    }
+    if (vertex_slot) {
+        int x = (int)(int16_t)(word & 0xffffu) + offset11(controller->drawing_offset, 0);
+        int y = (int)(int16_t)(word >> 16) + offset11(controller->drawing_offset, 11);
+        if (controller->poly_vertices && !controller->raster_disabled) {
+            const uint32_t opcode = controller->poly_command >> 24;
+            controller->semi = (opcode & 2u) ? 1u : 0u;
+            controller->semi_textured = 0;
+            controller->semi_mode = (uint8_t)((controller->draw_mode >> 5) & 3u);
+            if (!draw_line(controller, controller->poly_x, controller->poly_y, x, y,
+                           color15(controller->poly_prev_color)))
+                return 0;
+        }
+        controller->poly_x = x;
+        controller->poly_y = y;
+        controller->poly_prev_color = controller->poly_color;
+        if (controller->poly_vertices != UINT32_MAX) controller->poly_vertices++;
+    }
+    return controller->faulted ? 0 : 1;
+}
+
+static int poly_start(MusashiGpuController *controller, uint32_t word) {
+    if (controller->accepted_gp0_words == UINT64_MAX) return 0;
+    discard_poly(controller);
+    controller->poly_active = 1;
+    controller->poly_gouraud = (uint8_t)(((word >> 24) & 0x10u) != 0);
+    controller->poly_command = word;
+    controller->poly_color = word;
+    controller->accepted_gp0_words++;
+    return controller->faulted ? 0 : 1;
+}
+
 static int prim_word(MusashiGpuController *controller, uint32_t word) {
     uint32_t opcode;
     if (controller->accepted_gp0_words == UINT64_MAX) return 0;
@@ -1551,6 +1614,8 @@ int musashi_gpu_controller_write32(MusashiGpuController *controller,
             return store_word(controller, value);
         if (controller->prim_needed)
             return prim_word(controller, value);
+        if (controller->poly_active)
+            return poly_word(controller, value);
         if (store_image_in_header(controller))
             return store_image_word(controller, value);
         if ((opcode & 0xe0u) == 0x80u)
@@ -1561,6 +1626,8 @@ int musashi_gpu_controller_write32(MusashiGpuController *controller,
             return store_word(controller, value);
         if ((opcode & 0xe0u) == 0xc0u)
             return store_image_word(controller, value);
+        if ((opcode >= 0x48u && opcode <= 0x4fu) || (opcode >= 0x58u && opcode <= 0x5fu))
+            return poly_start(controller, value);
         if ((opcode >= 0x20u && opcode <= 0x3fu) ||
             (opcode >= 0x40u && opcode <= 0x47u) ||
             (opcode >= 0x50u && opcode <= 0x57u) ||
@@ -1619,6 +1686,7 @@ int musashi_gpu_controller_write32(MusashiGpuController *controller,
         discard_store(controller);
         discard_copy(controller);
         discard_prim(controller);
+        discard_poly(controller);
         discard_store_image(controller);
         return controller->faulted ? 0 : 1;
     case 0x02u:

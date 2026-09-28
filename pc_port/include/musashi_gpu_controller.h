@@ -109,6 +109,13 @@ typedef struct MusashiGpuController {
      * semi = command bit 1; semi_mode = abr 0..3; semi_textured = blend only
      * texels whose bit 15 (STP) is set. */
     uint8_t semi, semi_mode, semi_textured;
+    /* Open polyline (GP0 0x48-0x4F flat, 0x58-0x5F gouraud): words after the
+     * command, the previous vertex and the colour of the next vertex. The
+     * packet ends at a 0x5xxx5xxx word in a vertex (flat) or colour
+     * (gouraud) position after at least two vertices. */
+    uint8_t poly_active, poly_gouraud;
+    uint32_t poly_words, poly_vertices, poly_command, poly_color, poly_prev_color;
+    int32_t poly_x, poly_y;
 } MusashiGpuController;
 
 /* Derive and validate a checked descriptor in place. The helper masks no
