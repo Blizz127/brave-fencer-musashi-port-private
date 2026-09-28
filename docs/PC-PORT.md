@@ -654,6 +654,7 @@ Routed through `bfm_plat_*` (opt-in; the defaults keep native_boot's own paths):
 |---|---|
 | `MUSASHI_GPU=bfm_plat` | GP0/GP1 are teed into port-plat's GPU bridge and drawn by `MUSASHI_RENDERER` (default `psycross`); the controller keeps FIFO/DMA/GPUSTAT with its rasteriser off. The controller's backend is the bridge (VRAM/env/display applied there, reads via `bfm_gpu_bridge_read_vram`); present follows the bridge's GP1 03 state. The splash fades in correctly headless. |
 | `MUSASHI_INPUT=bfm_plat` | the SIO digital pad samples `bfm_plat_input_pad(0)` from the backend `MUSASHI_INPUT_BACKEND` (default `sdl`, bindings from `[input]`; `null` is the scripted pad mods drive). Polled once per VBlank, where native_boot already pumps SDL events. `MUSASHI_HOLD_*`/scripted test overrides still apply on top. |
+| `MUSASHI_TIMING=bfm_plat` | with `MUSASHI_GUEST_CLOCK=1` only: each guest VBlank calls `bfm_plat_timing_vsync(1)` (NTSC field pacing, fast-forward, `BFM_EVENT_VSYNC` for mods) in place of `guest_clock_wait`'s throttle; `MUSASHI_UNTHROTTLED` runs uncapped and still emits the events. Refused under host-paced time, which host time already paces. |
 
 ## Native lane: running matched decomp C on the host (2026-09-28)
 

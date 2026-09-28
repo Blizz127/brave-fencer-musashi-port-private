@@ -64,6 +64,7 @@ static int log_sample(uint64_t *counter, uint64_t first, uint64_t stride) {
 #ifdef MUSASHI_WITH_BFM_PLAT
 #include "bfm_plat_gpu_bridge.h"
 #include "bfm_plat_input.h"
+#include "bfm_plat_timing.h"
 /* MUSASHI_GPU=bfm_plat: GP0/GP1 are teed into the bfm_plat GPU bridge and
  * drawn by the bfm_plat renderer (MUSASHI_RENDERER, default psycross); the
  * controller keeps the port protocol with its rasteriser off. Default cpu. */
@@ -73,6 +74,10 @@ static int g_gpu_bridge_on;
  * native keyboard/GameController sampler below). */
 static int g_plat_input_on;
 static int g_plat_started;
+/* MUSASHI_TIMING=bfm_plat (guest clock only): guest VBlanks are paced by
+ * bfm_plat_timing_vsync (NTSC field rate, fast-forward, VSYNC mod events)
+ * instead of guest_clock_wait's own throttle. */
+static int g_plat_timing_on;
 #endif
 
 typedef struct NativeBoot {
@@ -1301,6 +1306,9 @@ static int guest_clock_collect(NativeBoot *boot, MusashiIrqSourceBatch *batch) {
 static int guest_clock_wait(NativeBoot *boot, uint64_t target_cycle) {
     if (target_cycle < boot->guest_tick) return 0;
     boot->guest_tick = target_cycle;
+#ifdef MUSASHI_WITH_BFM_PLAT
+    if (g_plat_timing_on) return 1;   /* paced once per guest VBlank instead */
+#endif
     if (!boot->guest_unthrottled) {
         uint64_t freq = SDL_GetPerformanceFrequency();
         uint64_t due = boot->guest_host_origin +
@@ -1461,6 +1469,9 @@ static int epoch_video_edge(void *userdata, uint64_t sequence, uint64_t cycle) {
     if (!musashi_scanline_timer_vblank_at(&boot->timer1, cycle) ||
         !musashi_gpu_controller_vblank(&boot->gpu) || !raise_vblank(boot))
         return 0;
+#ifdef MUSASHI_WITH_BFM_PLAT
+    if (g_plat_timing_on) (void)bfm_plat_timing_vsync(1);
+#endif
     /* Host scanout only. Failure here must not fault the epoch; present
      * already refuses when the GPU backend is mid-command. */
     if (display_on(boot)) {
@@ -3655,6 +3666,27 @@ static void plat_input_attach(void) {
     g_plat_input_on = 1;
     fprintf(stderr, "native_boot: INPUT bfm_plat backend=%s\n", selected);
 }
+
+/* MUSASHI_TIMING=bfm_plat: pace guest-clock VBlanks with bfm_plat_timing.
+ * Under host-paced time the host clock already paces the guest, so it is
+ * refused there. MUSASHI_UNTHROTTLED keeps running uncapped (fast-forward at
+ * speed 0), still emitting the VSYNC events. */
+static void plat_timing_attach(int guest_clock, int unthrottled) {
+    const char *want = getenv("MUSASHI_TIMING");
+    if (!want || strcmp(want, "bfm_plat") != 0) return;
+    if (!g_plat_started || !guest_clock) {
+        fprintf(stderr, "native_boot: TIMING bfm_plat refused: %s; native\n",
+                !g_plat_started ? "platform layer off" : "needs MUSASHI_GUEST_CLOCK=1");
+        return;
+    }
+    bfm_plat_timing_init();
+    if (unthrottled) {
+        bfm_plat_timing_set_fast_forward_speed(0.0);
+        bfm_plat_timing_set_fast_forward(1);
+    }
+    g_plat_timing_on = 1;
+    fprintf(stderr, "native_boot: TIMING bfm_plat pacing=%s\n", unthrottled ? "uncapped" : "ntsc");
+}
 #endif
 
 int main(int argc, char **argv) {
@@ -4024,6 +4056,9 @@ int main(int argc, char **argv) {
         boot.guest_unthrottled = getenv("MUSASHI_UNTHROTTLED") && getenv("MUSASHI_UNTHROTTLED")[0] == '1';
         boot.guest_next_vblank = MUSASHI_GUEST_FRAME_CYCLES;
         boot.guest_host_origin = SDL_GetPerformanceCounter();
+#ifdef MUSASHI_WITH_BFM_PLAT
+        plat_timing_attach(boot.guest_clock, boot.guest_unthrottled);
+#endif
         const MusashiDeviceEpochAdapter adapter = {&boot, epoch_owner, epoch_collect,
             epoch_wait, epoch_advance_devices, epoch_video_edge};
         if (!musashi_device_epoch_init(&boot.epoch, &adapter)) {
