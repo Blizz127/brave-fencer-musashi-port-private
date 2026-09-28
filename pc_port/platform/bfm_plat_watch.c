@@ -145,6 +145,7 @@ int bfm_plat_watch_poll(void) {
         w->fn(w->user, w->addr | 0x80000000u, w->len, before, now);
         fired++;
     }
+    bfm_plat_events_clear_code_marks();
     return fired;
 }
 
@@ -189,6 +190,7 @@ static void on_gauge(void *user, uint32_t a, uint32_t len, const uint8_t *o,
     e.previous = s16le(o);
     e.value = s16le(n);
     if (e.value >= e.previous) return;          /* only drops */
+    if (bfm_plat_events_take_code_mark(g->event)) return;   /* code site reported it */
     e.max = read_u16(g->max_addr);
     e.flags = BFM_EVENT_FLAG_DERIVED;
     bfm_plat_mods_emit(g->event, &e);
@@ -203,6 +205,23 @@ static void on_money(void *user, uint32_t a, uint32_t len, const uint8_t *o,
     e.max = 99999;
     e.flags = BFM_EVENT_FLAG_DERIVED;
     bfm_plat_mods_emit(BFM_EVENT_MONEY, &e);
+}
+
+static void on_inventory(void *user, uint32_t a, uint32_t len, const uint8_t *o,
+                         const uint8_t *n) {
+    uint32_t i;
+    int code = bfm_plat_events_take_code_mark(BFM_EVENT_ITEM_GET);
+    (void)user; (void)a;
+    for (i = 0; i < len; i++) {
+        if (o[i] == 0 && n[i] != 0 && !code) {
+            BfmEventItem e;
+            e.item = n[i];
+            e.count = 1;
+            e.kind = BFM_ITEM_KIND_INVENTORY;
+            e.flags = BFM_EVENT_FLAG_DERIVED;
+            bfm_plat_mods_emit(BFM_EVENT_ITEM_GET, &e);
+        }
+    }
 }
 
 static void on_figures(void *user, uint32_t a, uint32_t len, const uint8_t *o,
@@ -228,5 +247,7 @@ int bfm_plat_derived_events_enable(void) {
     n += bfm_plat_watch_add(BFM_GUEST_MONEY, 4, on_money, NULL) > 0;
     n += bfm_plat_watch_add(BFM_GUEST_SCRIPT_VARS + BFM_GUEST_FIGURE_VAR0,
                             BFM_GUEST_FIGURE_COUNT, on_figures, NULL) > 0;
+    n += bfm_plat_watch_add(BFM_GUEST_SCRIPT_VARS + BFM_GUEST_INV_VAR0,
+                            BFM_GUEST_INV_SLOTS, on_inventory, NULL) > 0;
     return n;
 }

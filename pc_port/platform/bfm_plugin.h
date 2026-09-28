@@ -51,6 +51,7 @@ typedef enum BfmEvent {
     BFM_EVENT_DAMAGE = 16,        /* [BfmEventStat] derived: HP went down */
     BFM_EVENT_BP_USE = 17,        /* [BfmEventStat] derived: BP went down */
     BFM_EVENT_MONEY = 18,         /* [BfmEventStat] derived: money changed */
+    BFM_EVENT_ITEM_USE = 19,      /* [BfmEventItem] an inventory item was used */
     BFM_EVENT_COUNT
 } BfmEvent;
 
@@ -75,6 +76,7 @@ typedef struct BfmEventBattle {
 
 #define BFM_ITEM_KIND_UNKNOWN 0u
 #define BFM_ITEM_KIND_FIGURE 1u       /* toy-shop action figure, item = index */
+#define BFM_ITEM_KIND_INVENTORY 2u    /* inventory item, item = item id (1..119) */
 
 typedef struct BfmEventItem {
     uint32_t item;

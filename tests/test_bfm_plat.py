@@ -240,6 +240,10 @@ def read_png_rgb(path):
 KNOWN_SITES = {
     ("8004923c", "-", "projection"): ("func_8004923C", "high"),
     ("8004921c", "-", "projection"): ("func_8004921C", "high"),
+    ("8014bc80", "list", "damage"): ("func_8014BC80", "high"),
+    ("8014bd60", "list", "bp_use"): ("func_8014BD60", "high"),
+    ("800d0f0c", "-", "item_get"): ("func_800D0F0C", "high"),
+    ("800d128c", "-", "item_use"): ("func_800D128C", "high"),
     ("800189a8", "-", "frame_begin"): ("func_800189A8", "high"),
     ("800184f0", "-", "frame_end"): ("func_800184F0", "high"),
     ("80128158", "SC*", "room_enter"): ("func_80128158", "medium"),
@@ -247,7 +251,7 @@ KNOWN_SITES = {
     ("8002b0b4", "-", "save"): ("func_8002B0B4", "medium"),
     ("8002b0b4", "-", "load"): ("func_8002B0B4", "medium"),
 }
-UNSITED = ["battle_start", "battle_end", "item_get"]
+UNSITED = ["battle_start", "battle_end"]
 
 # (vendor/bfm-decomp path, line, text that line must contain): each is
 # cited in the sites' evidence strings.
@@ -271,6 +275,15 @@ VENDOR_EVIDENCE = [
     ("src/800_b.c", 488, "func_80060404(D_80075CC0, idx * 0x300 + 0x480, 0x300);"),
     ("src/800.c", 1787, "func_8004923C(0x3E8);"),
     ("src/shared/ov/func_8017C530.h", 14, "func_8004921C(ofx, ofy);"),
+    # inventory (resident)
+    ("src/resident/resident_jr_800D00E4.c", 950, "s32 func_800D0EC4(void)"),
+    ("src/resident/resident_jr_800D00E4.c", 953, "for (i = 0x2F; (u32)i < 0x3B; i++)"),
+    ("src/resident/resident_jr_800D00E4.c", 965, "void func_800D0F0C(s32 arg0, s32 arg1)"),
+    ("src/resident/resident_jr_800D00E4.c", 1197, "func_800D128C(s0, (s16)((u16)D_80078EAC - v0));"),
+    ("src/resident/resident_jr_800D128C.c", 242, "s32 func_800D128C(s32 arg0, s32 arg1)"),
+    ("src/ov_SC03_124/ov_SC03_124_jr_80188544.c", 3526, "func_800D0F0C(slot, w10);"),
+    ("src/shared/ov/func_8014BC80.h", None, "D_800B9A17 = 0;"),
+    ("config/dedup.us.yaml", 8867, "vram: 0x8014BC80"),
     # live game state (bfm_plat_events.h BFM_GUEST_*)
     ("src/800.c", 21115, "void func_800295D4(void)"),
     ("src/800.c", 21116, "D_80078EB4 = 0xFA;"),
@@ -300,7 +313,7 @@ VENDOR_EVIDENCE = [
 ]
 
 
-SITE_EVIDENCE_COUNT = 19   # the entries above "live game state" are cited by hook sites
+SITE_EVIDENCE_COUNT = 19   # (inventory pins follow; they are checked by the vendor test)   # the entries above "live game state" are cited by hook sites
 
 
 def vendor_root():
@@ -763,6 +776,21 @@ bfm.on("frame_end", function() if seen.late == nil then
         out = self.run_probe("cheat_pack", d)
         for name in ("infinite_hp", "infinite_bp", "max_money", "max_hp_gauge"):
             self.assertIn(f"[on]  {name}", out)
+
+    def test_gauge_site_overlay_list_matches_dedup(self):
+        import re
+        src = (PLAT / "bfm_plat_hook_sites.c").read_text()
+        m = re.search(r"gauge_overlays\[\] =\s*((?:\s*\"[^\"]*\")+);", src)
+        listed = set("".join(re.findall(r'"([^"]*)"', m.group(1))).split(","))
+        self.assertEqual(len(listed), 141)
+        v = vendor_root()
+        if v is None:
+            self.skipTest("vendor/bfm-decomp not present")
+        text = (v / "config/dedup.us.yaml").read_text()
+        for fn in ("func_8014BC80", "func_8014BD60"):
+            mm = re.search(rf"func: {fn}\n\s+vram: 0x[0-9A-F]+\n\s+binaries: \[([^\]]*)\]", text)
+            members = {x.strip()[3:] for x in mm.group(1).split(",")}
+            self.assertEqual(members, listed, fn)
 
     def test_live_state_constants_match_documented_addresses(self):
         header = (PLAT / "bfm_plat_events.h").read_text()

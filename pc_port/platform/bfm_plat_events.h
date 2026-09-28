@@ -36,6 +36,7 @@ const char *bfm_plat_event_name(BfmEvent event);
 BfmEvent bfm_plat_event_from_name(const char *name);
 
 typedef union BfmPlatEventPayload {
+    BfmEventStat stat;
     BfmEventRoom room;
     BfmEventBattle battle;
     BfmEventItem item;
@@ -83,7 +84,17 @@ void bfm_plat_hooks_reset(void);
  * or NULL for none). Overlay-qualified sites only fire while it matches. */
 void bfm_plat_hooks_set_overlay(const char *name);
 const char *bfm_plat_hooks_overlay(void);
+/* Patterns: NULL = any; "SC*" prefix; "SC02_031" exact; a comma-separated
+ * list of those. Exact names compare by prefix and numbers, so "SC02_031",
+ * "sc02_0031" and "ov_SC02_031" are the same overlay. */
 int bfm_plat_overlay_matches(const char *pattern, const char *name);
+
+/* A derived watch event is suppressed when a code site already reported
+ * the same change (bfm_plat_hook_sites.c marks it; bfm_plat_watch clears
+ * the marks after each poll). */
+void bfm_plat_events_mark_code_site(BfmEvent event);
+int bfm_plat_events_take_code_mark(BfmEvent event);
+void bfm_plat_events_clear_code_marks(void);
 
 /* ---- Known retail hook sites (SLUS-00726) ------------------------------
  * Evidence-backed guest sites for the hook points, with their payload
@@ -111,6 +122,10 @@ int bfm_plat_overlay_matches(const char *pattern, const char *name);
 #define BFM_GUEST_FIGURE_OWNED  0x40u        /* var bit: bought */
 #define BFM_GUEST_FIGURE_UNLOCK 0x80u        /* var bit: in the shop */
 #define BFM_GUEST_FIGURE_PRICES 0x800A6588u  /* u16[64]; figure n at [n] */
+#define BFM_GUEST_INV_VAR0      0x2Fu        /* var index of inventory slot 0 */
+#define BFM_GUEST_INV_SLOTS     12u          /* vars 0x2F..0x3A: item id, 0 = empty */
+#define BFM_GUEST_INV_TIME_VAR0 0x14u        /* halfword vars 0x14 + 2*slot: acquired at */
+#define BFM_GUEST_CLOCK         0x80078EACu  /* u16 game clock stamped into slots */
 
 #define BFM_GUEST_REG_A0 4u
 #define BFM_GUEST_REG_A1 5u

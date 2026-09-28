@@ -74,7 +74,7 @@ static const char *const event_names[BFM_EVENT_COUNT] = {
     "boot", "shutdown", "frame_begin", "frame_end", "vsync", "input",
     "before_present", "after_present", "room_enter", "room_exit",
     "battle_start", "battle_end", "item_get", "save", "load", "projection",
-    "damage", "bp_use", "money"
+    "damage", "bp_use", "money", "item_use"
 };
 
 static LuaMod *self_of(lua_State *L) {
@@ -157,6 +157,7 @@ static void push_payload(lua_State *L, BfmEvent e, void *p) {
         set_int(L, "result", ((BfmEventBattle *)p)->result);
         break;
     case BFM_EVENT_ITEM_GET:
+    case BFM_EVENT_ITEM_USE:
         set_int(L, "item", ((BfmEventItem *)p)->item);
         set_int(L, "count", ((BfmEventItem *)p)->count);
         set_int(L, "kind", ((BfmEventItem *)p)->kind);

@@ -134,6 +134,84 @@ static int fill_geom_offset(void *u, BfmEvent e, BfmPlatEventPayload *p) {
     return 0;
 }
 
+/* Location overlays (plus MAIN_012) that carry the shared player-stat
+ * helpers at the same address: config/dedup.us.yaml entries
+ * E_func_8014BC80 and E_func_8014BD60 (identical member lists). */
+static const char gauge_overlays[] =
+    "MAIN_012,SC01_000,SC01_001,SC01_004,SC01_005,SC01_006,SC01_008,"
+    "SC01_009,SC01_074,SC01_077,SC01_080,SC01_084,SC02_000,SC02_003,"
+    "SC02_004,SC02_005,SC02_011,SC02_015,SC02_016,SC02_017,SC02_021,"
+    "SC02_026,SC02_027,SC02_028,SC02_031,SC02_035,SC02_037,SC02_039,"
+    "SC02_041,SC03_001,SC03_002,SC03_003,SC03_006,SC03_007,SC03_010,"
+    "SC03_011,SC03_012,SC03_013,SC03_014,SC03_015,SC03_023,SC03_024,"
+    "SC03_028,SC03_029,SC03_030,SC03_031,SC03_089,SC03_090,SC03_091,"
+    "SC03_092,SC03_093,SC03_094,SC03_095,SC03_096,SC03_097,SC03_098,"
+    "SC03_099,SC03_100,SC03_101,SC03_102,SC03_103,SC03_104,SC03_105,"
+    "SC03_107,SC03_108,SC03_109,SC03_110,SC03_111,SC03_112,SC03_113,"
+    "SC03_114,SC03_115,SC03_116,SC03_117,SC03_118,SC03_119,SC03_121,"
+    "SC03_124,SC03_125,SC03_126,SC04_000,SC04_002,SC04_003,SC04_004,"
+    "SC04_005,SC04_006,SC04_007,SC04_008,SC04_009,SC04_010,SC04_011,"
+    "SC04_012,SC04_015,SC04_016,SC04_018,SC04_019,SC04_020,SC04_021,"
+    "SC05_000,SC05_001,SC05_002,SC05_003,SC05_004,SC05_005,SC05_006,"
+    "SC05_007,SC05_008,SC05_009,SC05_010,SC05_011,SC05_017,SC05_018,"
+    "SC05_019,SC06_000,SC06_006,SC06_008,SC06_010,SC06_011,SC06_013,"
+    "SC06_014,SC06_015,SC06_016,SC06_018,SC06_020,SC06_022,SC06_024,"
+    "SC06_025,SC06_027,SC06_029,SC06_030,SC06_032,SC06_033,SC07_000,"
+    "SC07_001,SC07_002,SC07_006,SC07_007,SC07_008,SC07_009,SC07_010,"
+    "SC07_011";
+
+static int read_s16(uint32_t a, int32_t *out) {
+    uint32_t v;
+    int r = read_u16(a, &v);
+    if (r == BFM_PLAT_OK) *out = (int16_t)(uint16_t)v;
+    return r;
+}
+
+/* func_8014BC80(obj, amount): HP -= amount, or HP = 0 when amount > HP. */
+static int fill_damage(void *u, BfmEvent e, BfmPlatEventPayload *p) {
+    uint32_t a1, max;
+    int32_t hp;
+    (void)u;
+    if (bfm_plat_guest_reg(BFM_GUEST_REG_A1, &a1) != BFM_PLAT_OK ||
+        read_s16(e == BFM_EVENT_DAMAGE ? BFM_GUEST_HP : BFM_GUEST_BP, &hp) != BFM_PLAT_OK)
+        return 1;
+    read_u16(e == BFM_EVENT_DAMAGE ? BFM_GUEST_HP_MAX : BFM_GUEST_BP_MAX, &max);
+    p->stat.previous = (uint16_t)hp;
+    p->stat.value = (int32_t)a1 > (uint16_t)hp ? 0 : (uint16_t)hp - (int32_t)a1;
+    p->stat.max = (int32_t)max;
+    p->stat.flags = 0;
+    bfm_plat_events_mark_code_site(e);
+    return 0;
+}
+
+/* func_800D0F0C(slot_var, item): stores the item id in the slot. */
+static int fill_item_add(void *u, BfmEvent e, BfmPlatEventPayload *p) {
+    uint32_t a0, a1;
+    (void)u; (void)e;
+    if (bfm_plat_guest_reg(BFM_GUEST_REG_A0, &a0) != BFM_PLAT_OK ||
+        bfm_plat_guest_reg(BFM_GUEST_REG_A1, &a1) != BFM_PLAT_OK)
+        return 1;
+    if ((a1 & 0xFFu) == 0) return 1;             /* clearing a slot */
+    p->item.item = a1 & 0xFFu;
+    p->item.count = 1;
+    p->item.kind = BFM_ITEM_KIND_INVENTORY;
+    p->item.flags = 0;
+    bfm_plat_events_mark_code_site(BFM_EVENT_ITEM_GET);
+    return 0;
+}
+
+/* func_800D128C(item, age): the item's effect. */
+static int fill_item_use(void *u, BfmEvent e, BfmPlatEventPayload *p) {
+    uint32_t a0;
+    (void)u; (void)e;
+    if (bfm_plat_guest_reg(BFM_GUEST_REG_A0, &a0) != BFM_PLAT_OK) return 1;
+    p->item.item = a0 & 0xFFu;
+    p->item.count = 1;
+    p->item.kind = BFM_ITEM_KIND_INVENTORY;
+    p->item.flags = 0;
+    return 0;
+}
+
 static const BfmPlatKnownSite known[] = {
     {0x800189A8u, NULL, BFM_EVENT_FRAME_BEGIN, "func_800189A8",
      "src/boot.c:310 first call in main's per-frame inner loop (main @ src/boot.c:277); "
@@ -178,10 +256,34 @@ static const BfmPlatKnownSite known[] = {
      "called per draw buffer by the libgs offset routine func_80052BEC (repo src/main/80052bec.c) "
      "and by the overlays' camera code (src/shared/ov/func_8017C530.h:14)",
      "high: instruction shape is exactly SetGeomOffset", fill_geom_offset},
+    {0x8014BC80u, gauge_overlays, BFM_EVENT_DAMAGE, "func_8014BC80",
+     "shared player-HP subtract: HP -= amount, or HP = 0 and D_800B9A17 = 0 when amount > HP "
+     "(src/shared/ov/func_8014BC80.h); func_8014BC44 routes instant kills through it with "
+     "amount = max HP; present at this address in the 141 overlays of "
+     "config/dedup.us.yaml E_func_8014BC80",
+     "high: the lethal player-damage helper; non-lethal func_8014BCC0 (clamps at 1) is not "
+     "hooked, so its drops arrive only as derived damage", fill_damage},
+    {0x8014BD60u, gauge_overlays, BFM_EVENT_BP_USE, "func_8014BD60",
+     "shared BP subtract with clamp at 0 (src/shared/ov/func_8014BD60.h), same 141 overlays "
+     "(config/dedup.us.yaml E_func_8014BD60)",
+     "high", fill_damage},
+    {0x800D0F0Cu, NULL, BFM_EVENT_ITEM_GET, "func_800D0F0C",
+     "resident inventory add: var[slot] = item, time var = D_80078EAC "
+     "(src/resident/resident_jr_800D00E4.c:965); slots are vars 0x2F..0x3A "
+     "(free-slot scan func_800D0EC4, :950); called by the shops after payment "
+     "(src/ov_SC03_124/ov_SC03_124_jr_80188544.c:3526)",
+     "high for shop and pickup adds that use it; items placed by other paths "
+     "arrive as derived item_get from the slot watch", fill_item_add},
+    {0x800D128Cu, NULL, BFM_EVENT_ITEM_USE, "func_800D128C",
+     "resident item-effect handler: switch on item id 1..119, heals via func_8014BB24, BP "
+     "via func_8014BD24 (src/resident/resident_jr_800D128C.c:242); called by the inventory "
+     "use path func_800D11F0 (src/resident/resident_jr_800D00E4.c:1197), which then empties "
+     "the slot, and by shops for buy-and-use",
+     "high", fill_item_use},
 };
 
 static const BfmEvent unsited[] = {
-    BFM_EVENT_BATTLE_START, BFM_EVENT_BATTLE_END, BFM_EVENT_ITEM_GET
+    BFM_EVENT_BATTLE_START, BFM_EVENT_BATTLE_END
 };
 
 size_t bfm_plat_known_sites(const BfmPlatKnownSite **out) {

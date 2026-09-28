@@ -837,7 +837,7 @@ static int group_sites(void) {
     size_t n = bfm_plat_known_sites(&k), i, m = bfm_plat_unsited_events(&u);
     for (i = 0; i < n; i++)
         printf("site %08x %s %s %s %.*s\n", (unsigned)k[i].guest_pc,
-               k[i].overlay ? k[i].overlay : "-", bfm_plat_event_name(k[i].event),
+               !k[i].overlay ? "-" : strchr(k[i].overlay, ',') ? "list" : k[i].overlay, bfm_plat_event_name(k[i].event),
                k[i].symbol, (int)strcspn(k[i].confidence, ":"), k[i].confidence);
     for (i = 0; i < m; i++) printf("unsited %s\n", bfm_plat_event_name(u[i]));
     for (i = 0; i < n; i++) printf("evidence %08x %s\n", (unsigned)k[i].guest_pc, k[i].evidence);
@@ -849,6 +849,16 @@ static void unpause_later(void *u, BfmEvent e, void *p) {
     BfmEventInput *in = (BfmEventInput *)p;
     (void)u; (void)e;
     if (polls_until_unpause && --polls_until_unpause == 0) *in->hotkeys |= BFM_HOTKEY_PAUSE;
+}
+
+static void stat_rec(void *u, BfmEvent e, void *p);
+static BfmEventStat last_stat[BFM_EVENT_COUNT];
+static BfmEventItem last_item;
+static unsigned stat_n[BFM_EVENT_COUNT], item_n;
+static uint32_t item_use_seen;
+static void ev_item_use(void *u, BfmEvent e, void *p) {
+    (void)u; (void)e;
+    item_use_seen = ((BfmEventItem *)p)->item;
 }
 
 static int group_hook_fills(void) {
@@ -867,6 +877,11 @@ static int group_hook_fills(void) {
     CHECK(bfm_plat_overlay_matches("SC*", "sc02_031") && !bfm_plat_overlay_matches("SC*", "MAIN_012"));
     CHECK(bfm_plat_overlay_matches("SC02_031", "sc02_031") && !bfm_plat_overlay_matches("SC02", "SC02_031"));
     CHECK(!bfm_plat_overlay_matches("SC*", NULL) && bfm_plat_overlay_matches(NULL, NULL));
+    CHECK(bfm_plat_overlay_matches("SC02_031", "sc02_0031") && bfm_plat_overlay_matches("ov_SC02_031", "SC02_031"));
+    CHECK(!bfm_plat_overlay_matches("SC02_031", "SC02_013") && !bfm_plat_overlay_matches("SC02_031", "SC20_031"));
+    CHECK(bfm_plat_overlay_matches("SC01_000,SC02_031,MAIN_012", "sc02_0031"));
+    CHECK(bfm_plat_overlay_matches("SC01_000,SC02_031,MAIN_012", "MAIN_0012"));
+    CHECK(!bfm_plat_overlay_matches("SC01_000,SC02_031", "SC03_053"));
 
     bfm_plat_config_defaults(&c);
     c.mods_enabled = 0;
@@ -938,6 +953,45 @@ static int group_hook_fills(void) {
     CHECK(st.frames == 3);        /* three paused frames presented */
     CHECK(bfm_plat_mods_event_count(BFM_EVENT_FRAME_END) == 1);
     CHECK(bfm_plat_mods_event_count(BFM_EVENT_FRAME_BEGIN) == 2);
+
+    /* damage code site: overlay membership, payload, derived suppression */
+    bfm_plat_mods_subscribe(BFM_EVENT_DAMAGE, stat_rec, NULL);
+    bfm_plat_mods_subscribe(BFM_EVENT_ITEM_GET, stat_rec, NULL);
+    bfm_plat_mods_subscribe(BFM_EVENT_ITEM_USE, ev_item_use, NULL);
+    put16(BFM_GUEST_HP_MAX, 250); put16(BFM_GUEST_HP, 100);
+    bfm_plat_watch_resync();
+    regs[5] = 30;
+    bfm_plat_hooks_set_overlay("SC03_053");               /* not a member */
+    CHECK(bfm_plat_hooks_at(0x8014BC80) == 0);
+    bfm_plat_hooks_set_overlay("sc02_0031");
+    CHECK(bfm_plat_hooks_at(0x8014BC80) == 1);
+    CHECK(stat_n[BFM_EVENT_DAMAGE] == 1 && last_stat[BFM_EVENT_DAMAGE].previous == 100 &&
+          last_stat[BFM_EVENT_DAMAGE].value == 70 && last_stat[BFM_EVENT_DAMAGE].max == 250 &&
+          last_stat[BFM_EVENT_DAMAGE].flags == 0);
+    put16(BFM_GUEST_HP, 70);                              /* the helper's store */
+    bfm_plat_frame_hook_end();                            /* poll: derived suppressed */
+    CHECK(stat_n[BFM_EVENT_DAMAGE] == 1);
+    put16(BFM_GUEST_HP, 60);                              /* a drop with no code site */
+    bfm_plat_frame_hook_end();
+    CHECK(stat_n[BFM_EVENT_DAMAGE] == 2 && last_stat[BFM_EVENT_DAMAGE].flags == BFM_EVENT_FLAG_DERIVED);
+    regs[5] = 500;                                        /* lethal: clamps at 0 */
+    CHECK(bfm_plat_hooks_at(0x8014BC80) == 1 && last_stat[BFM_EVENT_DAMAGE].value == 0);
+    bfm_plat_frame_hook_end();
+
+    /* inventory: code-site add, derived add, use */
+    regs[4] = BFM_GUEST_INV_VAR0 + 3; regs[5] = 106;
+    CHECK(bfm_plat_hooks_at(0x800D0F0C) == 1);
+    CHECK(item_n == 1 && last_item.item == 106 && last_item.kind == BFM_ITEM_KIND_INVENTORY && last_item.flags == 0);
+    ram[(BFM_GUEST_SCRIPT_VARS & 0x1FFFFF) + BFM_GUEST_INV_VAR0 + 3] = 106;
+    bfm_plat_frame_hook_end();
+    CHECK(item_n == 1);                                   /* suppressed duplicate */
+    ram[(BFM_GUEST_SCRIPT_VARS & 0x1FFFFF) + BFM_GUEST_INV_VAR0 + 7] = 12;
+    bfm_plat_frame_hook_end();
+    CHECK(item_n == 2 && last_item.item == 12 && last_item.flags == BFM_EVENT_FLAG_DERIVED);
+    regs[5] = 0;
+    CHECK(bfm_plat_hooks_at(0x800D0F0C) == 0);            /* clearing a slot is not a get */
+    regs[4] = 119;
+    CHECK(bfm_plat_hooks_at(0x800D128C) == 1 && item_use_seen == 119);
     return 0;
 }
 
@@ -1152,9 +1206,6 @@ static void w_rec(void *u, uint32_t a, uint32_t len, const uint8_t *o, const uin
     memcpy(w_old, o, len);
     memcpy(w_new, n, len);
 }
-static BfmEventStat last_stat[BFM_EVENT_COUNT];
-static BfmEventItem last_item;
-static unsigned stat_n[BFM_EVENT_COUNT], item_n;
 static void stat_rec(void *u, BfmEvent e, void *p) {
     (void)u;
     if (e == BFM_EVENT_ITEM_GET) { item_n++; last_item = *(BfmEventItem *)p; return; }
@@ -1213,7 +1264,7 @@ static int group_watch(int argc, char **argv) {
     CHECK(bfm_plat_init(&c) == BFM_PLAT_OK);
     fake.now_ns = probe_now; fake.sleep_ns = probe_sleep; fake.user = NULL;
     bfm_plat_timing_set_clock(&fake);
-    CHECK(bfm_plat_watch_count() == 5);                 /* 4 derived + the plugin's */
+    CHECK(bfm_plat_watch_count() == 6);                 /* 5 derived + the plugin's */
     bfm_plat_mods_subscribe(BFM_EVENT_DAMAGE, stat_rec, NULL);
     bfm_plat_mods_subscribe(BFM_EVENT_BP_USE, stat_rec, NULL);
     bfm_plat_mods_subscribe(BFM_EVENT_MONEY, stat_rec, NULL);
@@ -1255,7 +1306,7 @@ static int group_watch(int argc, char **argv) {
     CHECK(stat_n[BFM_EVENT_MONEY] == 2);
     /* the plugin's watch is dropped with the mods, the derived ones stay */
     bfm_plat_mods_shutdown();
-    CHECK(bfm_plat_watch_count() == 4);
+    CHECK(bfm_plat_watch_count() == 5);
     bfm_plat_shutdown();
     CHECK(bfm_plat_watch_count() == 0);
     /* derived_events = 0 */
