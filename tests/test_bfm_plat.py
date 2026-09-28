@@ -10,6 +10,7 @@ import struct
 import subprocess
 import tempfile
 import unittest
+import zlib
 
 ROOT = Path(__file__).resolve().parents[1]
 PLAT = ROOT / "pc_port/platform"
@@ -91,6 +92,103 @@ def iso_to_raw(iso: bytes) -> bytes:
     return bytes(out)
 
 
+# --------------------------------------------------------------- PNG writer
+
+def _paeth(a, b, c):
+    p = a + b - c
+    pa, pb, pc = abs(p - a), abs(p - b), abs(p - c)
+    if pa <= pb and pa <= pc:
+        return a
+    return b if pb <= pc else c
+
+
+def _filter_row(ftype, row, prev, bpp):
+    out = bytearray()
+    for i, x in enumerate(row):
+        a = row[i - bpp] if i >= bpp else 0
+        b = prev[i] if prev else 0
+        c = prev[i - bpp] if prev and i >= bpp else 0
+        pred = [0, a, b, (a + b) >> 1, _paeth(a, b, c)][ftype]
+        out.append((x - pred) & 0xFF)
+    return bytes([ftype]) + bytes(out)
+
+
+def _chunk(t, body):
+    return (struct.pack(">I", len(body)) + t + body +
+            struct.pack(">I", zlib.crc32(t + body) & 0xFFFFFFFF))
+
+
+def make_png(w, h, ctype, depth, rows, plte=None, trns=None, interlace=0):
+    """rows: list of raw (unfiltered) scanline bytes."""
+    channels = {0: 1, 2: 3, 3: 1, 4: 2, 6: 4}[ctype]
+    bpp = max(1, channels * depth // 8)
+    data, prev = b"", None
+    for y, row in enumerate(rows):
+        data += _filter_row(y % 5, row, prev, bpp)
+        prev = row
+    out = b"\x89PNG\r\n\x1a\n"
+    out += _chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, depth, ctype, 0, 0, interlace))
+    if plte:
+        out += _chunk(b"PLTE", plte)
+    if trns:
+        out += _chunk(b"tRNS", trns)
+    out += _chunk(b"tEXt", b"Comment\0ancillary chunks are skipped")
+    z = zlib.compress(data)
+    out += _chunk(b"IDAT", z[:5]) + _chunk(b"IDAT", z[5:])   # split IDAT
+    out += _chunk(b"IEND", b"")
+    return out
+
+
+def _pack_bits(indices, depth):
+    out, acc, n = bytearray(), 0, 0
+    for i in indices:
+        acc = (acc << depth) | i
+        n += depth
+        if n == 8:
+            out.append(acc)
+            acc, n = 0, 0
+    if n:
+        out.append(acc << (8 - n))
+    return bytes(out)
+
+
+def png_cases():
+    """(name, png bytes, width, height, expected RGBA bytes)."""
+    cases = []
+    w, h = 5, 6
+    rgba = [[((x * 50) & 255, (y * 40) & 255, (x * y * 7) & 255, (x * 30 + y * 5) & 255)
+             for x in range(w)] for y in range(h)]
+    flat = lambda px: b"".join(bytes(p) for row in px for p in row)
+    cases.append(("rgba8", make_png(w, h, 6, 8, [b"".join(bytes(p) for p in r) for r in rgba]),
+                  w, h, flat(rgba)))
+    rgb = [[p[:3] for p in r] for r in rgba]
+    key = rgb[2][3]
+    exp = [[p + ((0,) if p == key else (255,)) for p in r] for r in rgb]
+    cases.append(("rgb8_trns", make_png(w, h, 2, 8, [b"".join(bytes(p) for p in r) for r in rgb],
+                                        trns=struct.pack(">HHH", *key)), w, h, flat(exp)))
+    rows16 = [b"".join(struct.pack(">HHH", p[0] * 257 + 1, p[1] * 257, p[2] * 257) for p in r)
+              for r in rgb]
+    exp16 = [[p + (255,) for p in r] for r in rgb]
+    cases.append(("rgb16", make_png(w, h, 2, 16, rows16), w, h, flat(exp16)))
+    grey = [[(x * 60 + y) & 255 for x in range(w)] for y in range(h)]
+    cases.append(("grey8", make_png(w, h, 0, 8, [bytes(r) for r in grey]), w, h,
+                  flat([[(g, g, g, 255) for g in r] for r in grey])))
+    ga = [[((x * 60) & 255, (y * 50) & 255) for x in range(w)] for y in range(h)]
+    cases.append(("greyalpha8", make_png(w, h, 4, 8, [b"".join(bytes(p) for p in r) for r in ga]),
+                  w, h, flat([[(g, g, g, a) for g, a in r] for r in ga])))
+    for depth in (1, 2, 4, 8):
+        n = 1 << depth if depth < 8 else 7
+        pal = [((i * 37) & 255, (i * 91) & 255, (i * 13) & 255) for i in range(n)]
+        idx = [[(x + y * 3) % n for x in range(w)] for y in range(h)]
+        alpha = bytes([0] + [200] * (n - 2))     # shorter than palette: rest opaque
+        exp = [[pal[i] + ((alpha[i],) if i < len(alpha) else (255,)) for i in r] for r in idx]
+        cases.append((f"palette{depth}", make_png(w, h, 3, depth,
+                                                  [_pack_bits(r, depth) for r in idx],
+                                                  plte=b"".join(bytes(p) for p in pal),
+                                                  trns=alpha), w, h, flat(exp)))
+    return cases
+
+
 class BfmPlatTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -103,14 +201,20 @@ class BfmPlatTests(unittest.TestCase):
                         str(ROOT / "tests/bfm_plat_probe.c"), "-o",
                         str(cls.probe), "-ldl"],
                        check=True, stdin=subprocess.DEVNULL, timeout=120)
+        cls.png_probe = cls.tmp / "bfm_plat_png_probe"
+        subprocess.run(["cc", *CFLAGS, "-DBFM_PLAT_WITH_PNG", "-I", str(PLAT),
+                        *sources, str(PLAT / "backends/texture_png.c"),
+                        str(ROOT / "tests/bfm_plat_probe.c"), "-o",
+                        str(cls.png_probe), "-ldl", "-lz"],
+                       check=True, stdin=subprocess.DEVNULL, timeout=120)
         cls.plugin = cls.tmp / "hello_plugin.so"
         subprocess.run(["cc", *CFLAGS, "-shared", "-fPIC", "-I", str(PLAT),
                         str(ROOT / "pc_port/mods/examples/hello/hello_plugin.c"),
                         "-o", str(cls.plugin)],
                        check=True, stdin=subprocess.DEVNULL, timeout=60)
 
-    def run_probe(self, *args, env=None):
-        proc = subprocess.run([str(self.probe), *map(str, args)],
+    def run_probe(self, *args, env=None, probe=None):
+        proc = subprocess.run([str(probe or self.probe), *map(str, args)],
                               capture_output=True, text=True, timeout=60,
                               env=env, stdin=subprocess.DEVNULL)
         self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
@@ -256,6 +360,55 @@ class BfmPlatTests(unittest.TestCase):
         self.assertIn("hello-reply howdy: 0 frames, 0 rooms", out)
         self.assertIn("ok-shutdown", out)
 
+    def test_input_bindings_from_config(self):
+        self.run_probe("bindings")
+
+    def test_console_text_front_end(self):
+        self.run_probe("console_ui")
+
+    def test_game_event_catalog_and_hook_sites(self):
+        self.run_probe("hooks")
+
+    def test_png_decoder_all_color_types_depths_and_filters(self):
+        d = self.fresh("png")
+        for name, data, w, h, expected in png_cases():
+            path = d / f"{name}.png"
+            path.write_bytes(data)
+            out = self.run_probe("png", path, probe=self.png_probe)
+            self.assertIn(f"png {w} {h} {expected.hex()}", out, name)
+
+    def test_png_decoder_refuses_bad_files(self):
+        d = self.fresh("pngbad")
+        good = png_cases()[0][1]
+        bad_crc = bytearray(good)
+        bad_crc[30] ^= 0xFF                       # inside IHDR body
+        interlaced = make_png(1, 1, 6, 8, [bytes(4)], interlace=1)
+        cases = {
+            "crc": (bytes(bad_crc), -3),
+            "truncated": (good[:-20], -3),
+            "signature": (b"NOTAPNG!" + good[8:], -3),
+            "interlaced": (interlaced, -2),
+            "no_palette": (make_png(1, 1, 3, 8, [b"\0"]), -3),
+        }
+        for name, (data, code) in cases.items():
+            (d / f"{name}.png").write_bytes(data)
+            out = self.run_probe("png", d / f"{name}.png", probe=self.png_probe)
+            self.assertIn(f"png error {code}", out, name)
+
+    def test_png_texture_replacement_through_mods(self):
+        d = self.fresh("pngtex")
+        h = texture_hash(2, 2, [0x1234, 0x0001, 0x7FFF, 0x0000])
+        tex = d / "mods/pngmod/assets/textures"
+        tex.mkdir(parents=True)
+        (d / "mods/pngmod/mod.ini").write_text("[mod]\nname = pngmod\n")
+        rows = [bytes([255, 0, 0, 255, 0, 0, 0, 255]), bytes([255, 255, 255, 255, 0, 0, 0, 0])]
+        (tex / f"{h}.png").write_bytes(make_png(2, 2, 6, 8, rows))
+        out = self.run_probe("texture_png", d / "mods", probe=self.png_probe)
+        self.assertIn("vram 001f 8000 7fff 0000 replaced 1", out)
+        # Without the PNG decoder registered, .png replacements are ignored.
+        out = self.run_probe("texture", d / "mods")
+        self.assertIn("replaced 0", out)
+
     def test_platform_sources_include_no_host_or_psyq_headers(self):
         # Core interfaces stay dependency-free; only backends/ may include
         # PsyCross or device-owner headers.
@@ -268,6 +421,15 @@ class BfmPlatTests(unittest.TestCase):
 
     def test_backends_compile_against_their_dependencies(self):
         backends = PLAT / "backends"
+        sdl_inc = Path("/home/blizz/opt/host-port-deps/usr/include")
+        for inc in (sdl_inc / "SDL2", Path("/usr/include/SDL2")):
+            if (inc / "SDL.h").is_file():
+                subprocess.run(["cc", *CFLAGS, "-fsyntax-only", "-D_REENTRANT",
+                                "-I", str(inc), "-I", str(inc.parent), "-I",
+                                str(inc.parent / "x86_64-linux-gnu"),
+                                str(backends / "input_sdl.c")],
+                               check=True, stdin=subprocess.DEVNULL, timeout=60)
+                break
         for name in ("audio_sdl.c", "disc_pinned.c"):
             subprocess.run(["cc", *CFLAGS, "-fsyntax-only", "-I",
                             str(ROOT / "pc_port/include"), str(backends / name)],

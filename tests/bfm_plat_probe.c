@@ -19,6 +19,8 @@ static void reset_all(void) {
     bfm_plat_input_reset();
     bfm_plat_storage_reset();
     bfm_plat_timing_set_clock(NULL);
+    bfm_plat_hooks_reset();
+    bfm_plat_console_ui_reset();
 }
 
 /* ------------------------------------------------------------ guest RAM */
@@ -154,7 +156,7 @@ static int group_renderer(void) {
 }
 
 /* Upload a known texture; the mods dir holds a replacement for it. */
-static int group_texture(int argc, char **argv) {
+static int group_texture_keep(int argc, char **argv) {
     BfmPlatModsOptions mo;
     BfmPlatOutput o;
     BfmPlatRect r = {0, 0, 2, 2};
@@ -162,7 +164,6 @@ static int group_texture(int argc, char **argv) {
     BfmPlatRendererStats st;
     char hex[17];
     CHECK(argc >= 1);
-    reset_all();
     bfm_plat_hash_hex(bfm_plat_texture_hash(&r, px), hex);
     printf("hash %s\n", hex);
     memset(&mo, 0, sizeof mo);
@@ -177,6 +178,11 @@ static int group_texture(int argc, char **argv) {
     printf("vram %04x %04x %04x %04x replaced %u\n", back[0], back[1], back[2],
            back[3], (unsigned)st.replaced_uploads);
     return 0;
+}
+
+static int group_texture(int argc, char **argv) {
+    reset_all();
+    return group_texture_keep(argc, argv);
 }
 
 /* -------------------------------------------------------------- input */
@@ -568,6 +574,264 @@ static int group_hash(void) {
     return 0;
 }
 
+
+/* ----------------------------------------------------------- bindings */
+static int32_t fake_resolve(void *u, const char *dev, const char *name) {
+    (void)u;
+    if (strcmp(dev, "key") == 0 && strlen(name) == 1) return 0x100 + name[0];
+    if (strcmp(dev, "key") == 0 && strcmp(name, "tab") == 0) return 9;
+    if (strcmp(dev, "pad") == 0 && strcmp(name, "a") == 0) return 0x10000;
+    return -1;
+}
+
+static int group_bindings(void) {
+    BfmPlatConfig c;
+    BfmPlatBinding b[128];
+    size_t n = 0, bad = 0, i, targets;
+    const BfmPlatBindingTarget *t;
+    int found_cross = 0, found_ff = 0, found_p2 = 0;
+    targets = bfm_plat_input_binding_targets(&t);
+    CHECK(targets == 38);
+    bfm_plat_config_defaults(&c);
+    CHECK(bfm_plat_input_bindings_from_config(&c, fake_resolve, NULL, b, 128, &n, &bad) == BFM_PLAT_OK);
+    /* p1 single-letter keys + tab + pad:a twice (p1, p2) resolve */
+    for (i = 0; i < n; i++) {
+        if (!b[i].is_hotkey && b[i].port == 0 && b[i].mask == BFM_PAD_CROSS && b[i].host_code == 0x100 + 'z') found_cross = 1;
+        if (b[i].is_hotkey && b[i].mask == BFM_HOTKEY_FAST_FORWARD && b[i].host_code == 9) found_ff = 1;
+        if (b[i].port == 1 && b[i].mask == BFM_PAD_CROSS && b[i].host_code == 0x10000) found_p2 = 1;
+    }
+    CHECK(found_cross && found_ff && found_p2);
+    CHECK(bad > 0);
+    bfm_plat_config_load_string(&c,
+        "[input]\np1.cross = key:k, pad:a, bogus\np1.start =\nhotkey.console = key:c\n");
+    CHECK(bfm_plat_input_bindings_from_config(&c, fake_resolve, NULL, b, 128, &n, &bad) == BFM_PLAT_OK);
+    found_cross = 0;
+    for (i = 0; i < n; i++) {
+        CHECK(!(b[i].port == 0 && !b[i].is_hotkey && b[i].mask == BFM_PAD_START));
+        if (!b[i].is_hotkey && b[i].port == 0 && b[i].mask == BFM_PAD_CROSS)
+            found_cross += b[i].host_code == 0x100 + 'k' ? 1 : b[i].host_code == 0x10000 ? 2 : 100;
+        if (b[i].is_hotkey && b[i].mask == BFM_HOTKEY_CONSOLE) CHECK(b[i].host_code == 0x100 + 'c');
+    }
+    CHECK(found_cross == 3);
+    CHECK(bfm_plat_input_bindings_from_config(&c, fake_resolve, NULL, b, 2, &n, NULL) == BFM_PLAT_NO_SPACE);
+    CHECK(n == 2);
+    CHECK(bfm_plat_input_bindings_from_config(&c, NULL, NULL, b, 2, &n, NULL) == BFM_PLAT_INVALID);
+    return 0;
+}
+
+/* --------------------------------------------------------- console UI */
+static char overlay[32][160];
+static int overlay_n;
+static int cap_overlay(void *self, int x, int y, const char *text) {
+    (void)self; (void)x; (void)y;
+    if (overlay_n < 32) snprintf(overlay[overlay_n++], sizeof overlay[0], "%s", text);
+    return BFM_PLAT_OK;
+}
+static int cap_ok(void *self) { (void)self; return BFM_PLAT_OK; }
+static const BfmPlatRendererBackend capture_backend = {
+    "capture", NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+    cap_ok, cap_overlay, NULL
+};
+
+static void type_text(const char *s) {
+    char one[2] = {0, 0};
+    for (; *s; s++) { one[0] = *s; bfm_plat_input_push_text(one); }
+}
+
+static int group_console_ui(void) {
+    BfmPlatConfig c;
+    BfmPlatPad pad, got;
+    BfmPlatClock fake;
+    int i;
+    reset_all();
+    CHECK(bfm_plat_renderer_register(&capture_backend) == BFM_PLAT_OK);
+    bfm_plat_config_defaults(&c);
+    c.mods_enabled = 0;
+    strcpy(c.renderer, "capture");
+    CHECK(bfm_plat_init(&c) == BFM_PLAT_OK);
+    fake.now_ns = probe_now; fake.sleep_ns = probe_sleep; fake.user = NULL;
+    bfm_plat_timing_set_clock(&fake);
+    memset(&pad, 0, sizeof pad);
+    pad.connected = 1;
+    pad.buttons = BFM_PAD_CROSS;
+    bfm_plat_input_scripted_set(0, &pad);
+
+    /* Console hotkey opens it; text typed before opening is dropped. */
+    type_text("junk");
+    bfm_plat_input_scripted_hotkeys(BFM_HOTKEY_CONSOLE);
+    CHECK(bfm_plat_frame_begin() == BFM_PLAT_OK);
+    CHECK(bfm_plat_console_ui_is_open());
+    CHECK(bfm_plat_input_pad(0, &got) == BFM_PLAT_OK && got.buttons == 0);
+    bfm_plat_input_scripted_hotkeys(0);
+
+    type_text("`get video.frame_rat");
+    bfm_plat_input_push_key(BFM_KEY_BACKSPACE);
+    type_text("te");
+    bfm_plat_input_push_key(BFM_KEY_ENTER);
+    CHECK(bfm_plat_frame_begin() == BFM_PLAT_OK);
+    CHECK(strcmp(bfm_plat_console_ui_line(1), "> get video.frame_rate") == 0);
+    CHECK(strcmp(bfm_plat_console_ui_line(0), "video.frame_rate = (unset)") == 0);
+
+    /* history, cursor editing, completion */
+    bfm_plat_input_push_key(BFM_KEY_UP);
+    CHECK(bfm_plat_frame_begin() == BFM_PLAT_OK);
+    CHECK(strcmp(bfm_plat_console_ui_input(), "get video.frame_rate") == 0);
+    bfm_plat_input_push_key(BFM_KEY_DOWN);
+    type_text("hel");
+    bfm_plat_input_push_key(BFM_KEY_TAB);
+    CHECK(bfm_plat_frame_begin() == BFM_PLAT_OK);
+    CHECK(strcmp(bfm_plat_console_ui_input(), "help ") == 0);
+    bfm_plat_input_push_key(BFM_KEY_LEFT);
+    bfm_plat_input_push_key(BFM_KEY_LEFT);
+    type_text("X");
+    CHECK(bfm_plat_frame_begin() == BFM_PLAT_OK);
+    CHECK(strcmp(bfm_plat_console_ui_input(), "helXp ") == 0 && bfm_plat_console_ui_cursor() == 4);
+    bfm_plat_input_push_key(BFM_KEY_RIGHT);
+    bfm_plat_input_push_key(BFM_KEY_RIGHT);
+    bfm_plat_input_push_key(BFM_KEY_RIGHT);   /* already at end: no-op */
+    for (i = 0; i < 6; i++) bfm_plat_input_push_key(BFM_KEY_BACKSPACE);
+    type_text("events");
+    bfm_plat_input_push_key(BFM_KEY_ENTER);
+    CHECK(bfm_plat_frame_begin() == BFM_PLAT_OK);
+    CHECK(bfm_plat_console_ui_line_count() > 10);
+
+    /* draw goes through overlay_text: scrollback then prompt */
+    overlay_n = 0;
+    CHECK(bfm_plat_frame_end(1) == BFM_PLAT_OK);
+    CHECK(overlay_n == BFM_CONSOLE_UI_VISIBLE + 1);
+    CHECK(strcmp(overlay[overlay_n - 1], "> _") == 0);
+
+    /* long output wraps; Esc closes and releases the pads */
+    {
+        char longline[300];
+        memset(longline, 'a', 250);
+        longline[250] = '\0';
+        i = (int)bfm_plat_console_ui_line_count();
+        bfm_plat_console_ui_print(longline);
+        CHECK(strlen(bfm_plat_console_ui_line(0)) == 250 - 2 * BFM_CONSOLE_UI_COLS);
+    }
+    bfm_plat_input_push_key(BFM_KEY_ESCAPE);
+    CHECK(bfm_plat_frame_begin() == BFM_PLAT_OK);
+    CHECK(!bfm_plat_console_ui_is_open());
+    CHECK(bfm_plat_input_pad(0, &got) == BFM_PLAT_OK && got.buttons == BFM_PAD_CROSS);
+    overlay_n = 0;
+    bfm_plat_frame_end(1);
+    CHECK(overlay_n == 0);
+
+    /* [debug] console = 0 disables the hotkey */
+    bfm_plat_config()->console = 0;
+    bfm_plat_input_scripted_hotkeys(0);
+    bfm_plat_frame_begin();
+    bfm_plat_input_scripted_hotkeys(BFM_HOTKEY_CONSOLE);
+    bfm_plat_frame_begin();
+    CHECK(!bfm_plat_console_ui_is_open());
+    return 0;
+}
+
+/* -------------------------------------------------------------- hooks */
+static unsigned room_hits, item_hits;
+static uint32_t last_room;
+static void on_room_hook(void *u, BfmEvent e, void *p) {
+    (void)u; (void)e;
+    room_hits++;
+    last_room = ((BfmEventRoom *)p)->room;
+}
+static void on_item_hook(void *u, BfmEvent e, void *p) {
+    (void)u; (void)e;
+    item_hits++;
+    CHECK(((BfmEventItem *)p)->item == 0);
+}
+static int fill_room(void *u, BfmEvent e, BfmPlatEventPayload *p) {
+    uint8_t v = 0;
+    (void)u; (void)e;
+    if (bfm_plat_guest_read(0x80002000, &v, 1) != BFM_PLAT_OK) return 1;
+    if (v == 0xFF) return 1;       /* not a real room change */
+    p->room.area = 2;
+    p->room.room = v;
+    return 0;
+}
+
+static int group_hooks(void) {
+    BfmPlatHookSite s[3];
+    char out[4096];
+    reset_all();
+    bind_ram();
+    CHECK(strcmp(bfm_plat_event_name(BFM_EVENT_ROOM_ENTER), "room_enter") == 0);
+    CHECK(bfm_plat_event_from_name("battle_end") == BFM_EVENT_BATTLE_END);
+    CHECK(bfm_plat_event_from_name("nope") == BFM_EVENT_COUNT);
+    {
+        unsigned i;
+        for (i = 0; i < BFM_EVENT_COUNT; i++)
+            CHECK(bfm_plat_event_info((BfmEvent)i)->event == (BfmEvent)i);
+        CHECK(bfm_plat_event_info(BFM_EVENT_COUNT) == NULL);
+    }
+    memset(s, 0, sizeof s);
+    s[0].guest_pc = 0x80030000; s[0].event = BFM_EVENT_ITEM_GET; s[0].label = "item";
+    s[1].guest_pc = 0x80010000; s[1].event = BFM_EVENT_ROOM_ENTER; s[1].label = "room"; s[1].fill = fill_room;
+    s[2].guest_pc = 0x80030000; s[2].event = BFM_EVENT_ROOM_EXIT; s[2].label = "exit";
+    CHECK(bfm_plat_hooks_register(s, 3) == BFM_PLAT_OK);
+    {
+        BfmPlatHookSite bad = s[0];
+        bad.guest_pc = 0x80030002;
+        CHECK(bfm_plat_hooks_register(&bad, 1) == BFM_PLAT_INVALID);
+        bad.guest_pc = 0x80030004;
+        bad.event = BFM_EVENT_COUNT;
+        CHECK(bfm_plat_hooks_register(&bad, 1) == BFM_PLAT_INVALID);
+    }
+    CHECK(bfm_plat_hooks_count() == 3);
+    bfm_plat_mods_subscribe(BFM_EVENT_ROOM_ENTER, on_room_hook, NULL);
+    bfm_plat_mods_subscribe(BFM_EVENT_ITEM_GET, on_item_hook, NULL);
+    CHECK(bfm_plat_hooks_has(0x80010000) && bfm_plat_hooks_has(0x80030000));
+    CHECK(!bfm_plat_hooks_has(0x80020000));
+    CHECK(bfm_plat_hooks_at(0x80020000) == 0);
+    ram[0x2000] = 9;
+    CHECK(bfm_plat_hooks_at(0x80010000) == 1 && room_hits == 1 && last_room == 9);
+    ram[0x2000] = 0xFF;
+    CHECK(bfm_plat_hooks_at(0x80010000) == 0 && room_hits == 1);
+    CHECK(bfm_plat_hooks_at(0x80030000) == 2 && item_hits == 1);
+    CHECK(bfm_plat_mods_event_count(BFM_EVENT_ROOM_EXIT) == 1);
+    bfm_plat_console_init(NULL);
+    bfm_plat_events_register_console();
+    CHECK(bfm_plat_console_exec("events", out, sizeof out) == 0);
+    CHECK(strstr(out, "room_enter") && strstr(out, "site 80010000 room_enter room hits=1"));
+    CHECK(strstr(out, "site 80030000"));
+    /* direct emitters used by hand-ported code */
+    bfm_plat_event_room_enter(1, 4);
+    CHECK(room_hits == 2 && last_room == 4);
+    bfm_plat_event_save(0, 1);
+    bfm_plat_event_save(1, 1);
+    CHECK(bfm_plat_mods_event_count(BFM_EVENT_SAVE) == 1 && bfm_plat_mods_event_count(BFM_EVENT_LOAD) == 1);
+    return 0;
+}
+
+#ifdef BFM_PLAT_WITH_PNG
+int bfm_plat_texture_png_decode_memory(const uint8_t *, size_t, uint32_t *,
+                                       uint32_t *, uint8_t **);
+int bfm_plat_texture_png_register(void);
+/* png FILE: prints "png W H <rgba hex>" or "png error N". */
+static int group_png(int argc, char **argv) {
+    FILE *f;
+    static uint8_t buf[1 << 20];
+    size_t n;
+    uint32_t w, h, i;
+    uint8_t *rgba;
+    int r;
+    CHECK(argc >= 1 && (f = fopen(argv[0], "rb")) != NULL);
+    n = fread(buf, 1, sizeof buf, f);
+    fclose(f);
+    r = bfm_plat_texture_png_decode_memory(buf, n, &w, &h, &rgba);
+    if (r != BFM_PLAT_OK) {
+        printf("png error %d\n", r);
+        return 0;
+    }
+    printf("png %u %u ", w, h);
+    for (i = 0; i < w * h * 4u; i++) printf("%02x", rgba[i]);
+    printf("\n");
+    free(rgba);
+    return 0;
+}
+#endif
+
 int main(int argc, char **argv) {
     const char *g;
     int r;
@@ -586,6 +850,17 @@ int main(int argc, char **argv) {
     else if (strcmp(g, "file_replace") == 0) r = group_file_replace(argc - 2, argv + 2);
     else if (strcmp(g, "mods") == 0) r = group_mods(argc - 2, argv + 2);
     else if (strcmp(g, "hash") == 0) r = group_hash();
+    else if (strcmp(g, "bindings") == 0) r = group_bindings();
+    else if (strcmp(g, "console_ui") == 0) r = group_console_ui();
+    else if (strcmp(g, "hooks") == 0) r = group_hooks();
+#ifdef BFM_PLAT_WITH_PNG
+    else if (strcmp(g, "png") == 0) r = group_png(argc - 2, argv + 2);
+    else if (strcmp(g, "texture_png") == 0) {
+        reset_all();
+        bfm_plat_texture_png_register();
+        r = group_texture_keep(argc - 2, argv + 2);
+    }
+#endif
     else { printf("unknown group %s\n", g); return 2; }
     reset_all();
     if (r == 0) printf("ok %s\n", g);
