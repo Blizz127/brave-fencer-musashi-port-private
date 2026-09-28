@@ -165,5 +165,26 @@ class MemberMap(unittest.TestCase):
         self.assertIsNone(reg.find(0x800D0100 - 0x1000))
 
 
+class Residency(unittest.TestCase):
+    def test_digest_names_the_member_exactly(self):
+        sys.path.insert(0, str(ROOT / "tools"))
+        import port_matched_ratio as pmr
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / "config").mkdir()
+            (root / "extracted").mkdir()
+            for name, fill in (("main_0003", 0x11), ("main_0010", 0x22)):
+                (root / "config" / f"overlay_{name}.yaml").write_text(
+                    f"  target_path: extracted/{name}.bin\nsegments:\n  - name: {name}\n    type: code\n"
+                    "    start: 0x0\n    vram: 0x800D0000\n    subsegments:\n      - [0x0, asm, x]\n  - [0x400]\n")
+                (root / "extracted" / f"{name}.bin").write_bytes(bytes([fill]) * 0x400)
+            members = pmr.load_members(root / "config")
+            digest = pmr.fnv1a64(bytes([0x22]) * 32)
+            (root / "res").write_text("# h\n800d0100 %016x 7\n800d0200 %016x 1\n" % (digest, 12345))
+            res, unmatched = pmr.resolve_resident(root / "res", members, root)
+        self.assertEqual(dict(res[0x800D0100]), {"main_0010": 7})
+        self.assertEqual(unmatched, 1)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -114,7 +114,68 @@ def load_members(config_dir):
                 starts |= {int(m.group(2), 16) for m in SYM_FUNC_RE.finditer(f.read_text(errors="replace"))}
         if ranges:
             members[name] = (ranges, sorted(starts))
+            tp = re.search(r"target_path:\s*(\S+)", text)
+            if tp:
+                MEMBER_FILES[name] = (tp.group(1), vram, start)
     return members
+
+
+# Sony SDK code linked into overlay members (not game code). The PsyQ
+# manifest covers the main EXE only. Port rule: platform code, proven
+# faithful by differential; never decompiled PsyQ.
+SDK_OVERLAY_RANGES = [
+    # libpress DecDCTvlcSize / DecDCTvlc: handwritten SDK assembly (trapping
+    # add/addi, bgez $zero), the intro movie player's VLC decoder.
+    ("main_0003", 0x800D3204, 0x800D3574, "libpress"),
+]
+
+
+def sdk_overlay(region, pc):
+    for r, lo, hi, lib in SDK_OVERLAY_RANGES:
+        if r == region and lo <= pc < hi:
+            return lib
+    return None
+
+
+MEMBER_FILES = {}  # region -> (target_path relative to the repo root, vram, start)
+
+
+def fnv1a64(data):
+    h = 0xCBF29CE484222325
+    for b in data:
+        h = ((h ^ b) * 0x100000001B3) & 0xFFFFFFFFFFFFFFFF
+    return h
+
+
+def resolve_resident(path, members, root):
+    """MUSASHI_TRACE_RESIDENT rows (target, digest of 32 bytes, count) ->
+    {target: Counter(member -> entries)}, by hashing each candidate member's
+    own bytes at the target (local extracted files). Exact, not inferred;
+    several members matching means their bytes there are identical."""
+    cache, out, unmatched = {}, collections.defaultdict(collections.Counter), 0
+    for line in Path(path).read_text().splitlines():
+        if not line or line.startswith("#"):
+            continue
+        t, d, n = line.split()
+        t, d, n = int(t, 16), int(d, 16), int(n)
+        hit = []
+        for region, (ranges, _) in members.items():
+            if not any(lo <= t < hi for lo, hi in ranges) or region not in MEMBER_FILES:
+                continue
+            rel, vram, start = MEMBER_FILES[region]
+            f = Path(root) / rel
+            if f not in cache:
+                cache[f] = f.read_bytes() if f.exists() else None
+            data = cache[f]
+            off = t - vram + start
+            if data is not None and 0 <= off and off + 32 <= len(data) and fnv1a64(data[off:off + 32]) == d:
+                hit.append(region)
+        if hit:
+            for region in hit:
+                out[t][region] += n
+        else:
+            unmatched += n
+    return out, unmatched
 
 
 class Registry:
@@ -128,7 +189,8 @@ class Registry:
     Registry gaps inside the main EXE are filled from the formatter's code
     ranges (reported as unregistered); overlay addresses never are."""
 
-    def __init__(self, matches, traced_targets, ranges=(), members=None):
+    def __init__(self, matches, traced_targets, ranges=(), members=None, resident=None):
+        self.resident = resident or {}
         main = [m for m in matches if m["region"] == "main"]
         lo_main = min(m["vram"] for m in main) if main else 0
         hi_main = max(m["vram"] + max(m.get("size") or 4, 4) for m in main) if main else 0
@@ -185,6 +247,7 @@ class Registry:
             self.regions[region] = (ms, [m["vram"] for m in ms])
         self.used = collections.Counter()
         self.last_by_hits = False
+        self.last_exact = False
 
     def find(self, pc):
         i = bisect.bisect_right(self.main_starts, pc) - 1
@@ -197,15 +260,19 @@ class Registry:
             k = bisect.bisect_right(starts, pc) - 1
             if k < 0 or pc >= ms[k]["vram"] + max(ms[k].get("size") or 4, 4):
                 continue
-            sc = (ms[k]["vram"] in self.traced, self.hits[region])
-            entered += sc[0]
+            ev = self.resident.get(ms[k]["vram"])
+            sc = ((ev or {}).get(region, 0) if ev else -1,  # exact residency evidence first
+                  ms[k]["vram"] in self.traced, self.hits[region])
+            entered += sc[1]
             if score is None or sc > score:
                 best, score, tie = ms[k], sc, False
             elif sc == score:
                 tie = True  # first member by name keeps it; counted below
         if best is not None and tie:
             self.ambiguous[best["region"]] += 1
-        self.last_by_hits = entered > 1  # several members entered here: global hits decided
+        ev = self.resident.get(best["vram"]) if best is not None else None
+        self.last_exact = bool(ev and ev.get(best["region"]))
+        self.last_by_hits = not self.last_exact and entered > 1
         return best
 
 
@@ -225,6 +292,10 @@ def main(argv=None):
     ap.add_argument("--config-dir", default=str(ROOT / "config"),
                     help="splat overlay configs + symbol_addrs (.auto) files for member code maps "
                          "(the .auto files are local, ignored analysis inputs)")
+    ap.add_argument("--trace-resident", help="<run>/trace.resident (MUSASHI_TRACE_RESIDENT, "
+                    "tools/patches/trace-resident.patch): exact resident member per overlay entry")
+    ap.add_argument("--extracted-root", default=str(ROOT),
+                    help="checkout holding extracted/overlays (the members' own bytes, local)")
     ap.add_argument("--idle", default="800424e4",
                     help="comma-separated function PCs that are idle waits (VSync polling); "
                          "shares are also given without them")
@@ -256,7 +327,11 @@ def main(argv=None):
     traced = {r["pc"]: r for r in counts}
     fr = Path(a.formatter)
     members = load_members(a.config_dir) if Path(a.config_dir).is_dir() else {}
-    reg = Registry(matches, set(traced), load_formatter_ranges(fr) if fr.exists() else (), members)
+    resident, resident_unmatched = ({}, 0)
+    if a.trace_resident:
+        resident, resident_unmatched = resolve_resident(a.trace_resident, members, a.extracted_root)
+    reg = Registry(matches, set(traced), load_formatter_ranges(fr) if fr.exists() else (), members,
+                   resident)
 
     # Functions: every traced entry, plus any registry function that stepped
     # without a traced entry (reached by a jump or fall-through).
@@ -268,6 +343,7 @@ def main(argv=None):
                           "lane_column": r["lane"]}
     unattributed_steps = 0
     by_hits = collections.Counter()
+    exact_resident = collections.Counter()
     if steps is not None:
         for pc, n in steps.items():
             m = reg.find(pc)
@@ -276,6 +352,8 @@ def main(argv=None):
                 reg.used[m["region"]] += n
                 if reg.last_by_hits:
                     by_hits[m["region"]] += n
+                if reg.last_exact:
+                    exact_resident[m["region"]] += n
             if key is None:
                 unattributed_steps += n
                 continue
@@ -312,6 +390,8 @@ def main(argv=None):
                     why = "matched_c_unused: not a lane candidate"
             elif rec in ("assembly", "mixed"):
                 why = "retail_asm: registry " + rec
+            elif m is not None and sdk_overlay(m["region"], pc):
+                why = "unregistered: interpreted retail, unmatched (SDK %s)" % sdk_overlay(m["region"], pc)
             elif m is not None and m.get("unregistered"):
                 why = "unregistered: no registry entry"
             elif m is not None:
@@ -321,7 +401,8 @@ def main(argv=None):
         f["class"], f["why"] = cls, why
         if is_bios(pc) or (pc >> 28) != 8:
             f["domain"] = "bios"
-        elif pc in psyq or (psyq_ranges is not None and psyq_manifest.psyq_segment(pc, psyq_ranges)):
+        elif pc in psyq or (psyq_ranges is not None and psyq_manifest.psyq_segment(pc, psyq_ranges)) \
+                or (m is not None and sdk_overlay(m["region"], pc)):
             f["domain"] = "psyq"
         else:
             f["domain"] = "game"
@@ -419,8 +500,12 @@ def main(argv=None):
         "classes": classes,
         "by_domain": domains,
         "overlay_attribution": {
-            "method": "INFERRED per PC: the member whose containing function's entry was traced, "
-                      "then the member with most traced entries (the trace does not record residency)",
+            "method": ("EXACT where trace.resident covers the containing function's entry (member bytes "
+                       "hashed against the resident digest), else " if a.trace_resident else "") +
+                      "INFERRED per PC: the member whose containing function's entry was traced, "
+                      "then the member with most traced entries",
+            "instructions_exact_by_member": dict(exact_resident.most_common()),
+            "resident_entries_unmatched": resident_unmatched,
             "entry_hits": dict(sorted(reg.hits.items(), key=lambda kv: -kv[1])),
             "instructions_by_member": dict(reg.used.most_common()),
             "ambiguous_lookups_by_member": dict(reg.ambiguous.most_common()),
