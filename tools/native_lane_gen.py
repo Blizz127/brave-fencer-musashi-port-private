@@ -52,6 +52,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 RAM_LO, RAM_HI = 0x80010000, 0x80200000
 HOST_TARGET = "x86_64-unknown-linux-gnu"
+# Local register pinning in matched C: `register ... name __asm__("$N")`.
+REGISTER_PIN = re.compile(r'(\bregister\b[^;(){}]*?)\s*__asm__\s*\(\s*"\$\d+"\s*\)')
+
 CFLAGS = [
     f"--target={HOST_TARGET}", "-std=gnu89", "-fPIE", "-fwrapv",
     "-fno-strict-aliasing", "-fno-builtin", "-ffreestanding",
@@ -602,8 +605,16 @@ def build_one(entry, out, symbols, hooks, clang):
             if re.search(r"\b" + token + r"\b", body):
                 raise Reject("source", f"uses '{token}'")
         o0 = work / f"{tag}.O0.ll"
+        compile_src = src
+        raw = src.read_text(errors="replace")
+        if REGISTER_PIN.search(raw):
+            # `register T x __asm__("$5")` pins a local to a MIPS register for
+            # the byte match only; it has no meaning on the host. Functions that
+            # also use real inline asm are still refused (rule "calls").
+            compile_src = work / f"{tag}.host.c"
+            compile_src.write_text(REGISTER_PIN.sub(r"\1", raw))
         r = run([clang, *CFLAGS, "-O0", "-Xclang", "-disable-O0-optnone", "-S", "-emit-llvm",
-                 "-I", str(ROOT / "include"), str(src), "-o", str(o0)])
+                 "-I", str(ROOT / "include"), "-I", str(src.parent), str(compile_src), "-o", str(o0)])
         if r.returncode:
             raise Reject("compile", (r.stderr.strip().splitlines() or ["?"])[0][:160])
         ir = o0.read_text()

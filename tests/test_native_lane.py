@@ -20,6 +20,8 @@ EXPECT = {
     0x80019064: (True, None),        # guest globals, absolute addresses
     0x8001C044: (True, None),        # calls a bespoke-binding callee (thunk)
     0x8001903C: (False, "hooks"),    # STARTUP_RECORD_CLEAR: host-sequenced (enum-named PC)
+    0x80015498: (True, None),        # register-pinned locals (`__asm__("$N")`), no asm
+    0x80015208: (False, "calls"),    # register-pinned and real inline asm
     0x80015310: (False, "memory"),   # volatile device access
     0x8002A088: (False, "abi"),      # passes 0 of 1 arguments to func_8002A108
     0x8001CFDC: (False, "irq"),      # loop with no store or call
