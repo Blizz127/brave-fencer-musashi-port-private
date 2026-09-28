@@ -662,6 +662,14 @@ Build it with `-DMUSASHI_NATIVE_LANE=ON` (needs clang). The option stays
 **OFF** until the live boot (`native_startup_boundary`, needs xvfb) has
 been run with it on.
 
+Gate on this branch (2026-09-28): `tools/run_tests.sh` with the user-local
+dependency prefix (`CMAKE_PREFIX_PATH=~/opt/host-port-deps/usr:...`):
+**561 tests OK (2 skipped)**, 22/22 CTests (8 display-dependent skips),
+port symbol check and smoke clean, exit 0. Without that prefix the only
+error is the known `test_native_smoke` configure failure (no system
+SDL2/OpenAL/GL). With `MUSASHI_NATIVE_LANE=ON`, 23/23 CTests including
+`native_lane_differential`.
+
 ## Building
 
 Native builds also require OpenSSL development headers and `libcrypto` for
