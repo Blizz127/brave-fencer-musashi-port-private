@@ -573,8 +573,17 @@ if(MUSASHI_BUILD_PC_PORT)
         find_program(MUSASHI_CLANG NAMES clang REQUIRED)
         find_package(Python3 COMPONENTS Interpreter REQUIRED)
         set(MUSASHI_LANE_DIR ${MUSASHI_GENERATED_DIR}/native_lane)
+        # Overlay members compiled into the lane (digest-verified per call).
+        set(MUSASHI_LANE_OVERLAY_MEMBERS "main_0003" CACHE STRING
+            "comma-separated overlay members for the native lane")
+        string(REPLACE "," ";" MUSASHI_LANE_OVERLAY_LIST "${MUSASHI_LANE_OVERLAY_MEMBERS}")
+        set(MUSASHI_LANE_OVERLAY_GLOBS)
+        foreach(member IN LISTS MUSASHI_LANE_OVERLAY_LIST)
+            list(APPEND MUSASHI_LANE_OVERLAY_GLOBS
+                ${CMAKE_CURRENT_SOURCE_DIR}/src/overlays/${member}/*.c)
+        endforeach()
         file(GLOB MUSASHI_LANE_SOURCES CONFIGURE_DEPENDS
-            ${CMAKE_CURRENT_SOURCE_DIR}/src/main/*.c)
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/main/*.c ${MUSASHI_LANE_OVERLAY_GLOBS})
         # hooked_pcs() reads the port's sources; psyq_hooked() the compat table.
         file(GLOB MUSASHI_LANE_HOOK_SOURCES CONFIGURE_DEPENDS
             ${CMAKE_CURRENT_SOURCE_DIR}/pc_port/*.c)
@@ -583,6 +592,7 @@ if(MUSASHI_BUILD_PC_PORT)
                    ${MUSASHI_LANE_DIR}/libmusashi_native_lane.a
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/native_lane_gen.py
                     --out ${MUSASHI_LANE_DIR} --clang ${MUSASHI_CLANG} --ar ${CMAKE_AR} --jobs 4
+                    --overlay-members "${MUSASHI_LANE_OVERLAY_MEMBERS}"
             DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/tools/native_lane_gen.py
                     ${CMAKE_CURRENT_SOURCE_DIR}/provenance/matches.json
                     ${MUSASHI_LANE_SOURCES}
@@ -605,6 +615,9 @@ if(MUSASHI_BUILD_PC_PORT)
         target_include_directories(musashi_native_lane PRIVATE
             ${CMAKE_CURRENT_SOURCE_DIR}/pc_port/include)
 
+        add_executable(musashi_native_lane_overlay_probe tests/native_lane_overlay_probe.c)
+        target_compile_features(musashi_native_lane_overlay_probe PRIVATE c_std_99)
+        target_link_libraries(musashi_native_lane_overlay_probe PRIVATE musashi_native_lane)
         add_executable(musashi_native_lane_probe tests/native_lane_probe.c)
         target_compile_features(musashi_native_lane_probe PRIVATE c_std_99)
         target_link_libraries(musashi_native_lane_probe PRIVATE musashi_native_lane)

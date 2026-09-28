@@ -167,14 +167,66 @@ class Reject(Exception):
         self.rule, self.detail = rule, detail
 
 
+# Overlay members (MAIN.CD main_NNNN, scene scNN_NNNN) share load addresses,
+# so their lane symbols carry the member: lane_main_0003__func_800D27A0.
+QFUNC = r"(?:[a-z]+\d*_\d{4}__)?func_[0-9A-Fa-f]{8}"
+
+
+def qualify(member, name):
+    return f"{member}__{name}" if member else name
+
+
+def fnv1a64(data):
+    h = 0xCBF29CE484222325
+    for b in data:
+        h = ((h ^ b) * 0x100000001B3) & 0xFFFFFFFFFFFFFFFF
+    return h
+
+
+def member_info(member):
+    """From config/overlay_<member>.yaml: the member file (the user's local
+    extract), its vram/start mapping, and code ranges (asm/c subsegments).
+    None when the config or the file is missing."""
+    cfg = ROOT / "config" / f"overlay_{member}.yaml"
+    if not cfg.exists():
+        return None
+    text = cfg.read_text(errors="replace")
+    seg = re.search(r"-\s*name:\s*(\w+)\s*\n\s*type:\s*code\s*\n\s*start:\s*(0x[0-9A-Fa-f]+)"
+                    r"\s*\n\s*vram:\s*(0x[0-9A-Fa-f]+)", text)
+    tp = re.search(r"target_path:\s*(\S+)", text)
+    if not seg or not tp:
+        return None
+    start, vram = int(seg.group(2), 16), int(seg.group(3), 16)
+    subs = [(int(m.group(1), 16), m.group(2)) for m in
+            re.finditer(r"^\s*-\s*\[\s*(0x[0-9A-Fa-f]+)\s*(?:,\s*(\w+))?", text, flags=re.M)]
+    code = [(vram + o - start, vram + n[0] - start) for (o, k), n in zip(subs, subs[1:])
+            if k in ("asm", "c", "hasm")]
+    path = ROOT / tp.group(1)
+    if not path.exists() or not code:
+        return None
+    return dict(member=member, path=path, vram=vram, start=start, code=code, data=path.read_bytes())
+
+
+def member_digest(info, pc, size):
+    off = pc - info["vram"] + info["start"]
+    if off < 0 or off + size > len(info["data"]):
+        return None
+    return fnv1a64(info["data"][off:off + size])
+
+
 def run(cmd, **kw):
     return subprocess.run(cmd, capture_output=True, text=True, **kw)
 
 
-def load_symbol_addrs():
-    """name -> address from tracked config/*syms*.txt / symbol_addrs*.txt."""
+def load_symbol_addrs(member=None):
+    """name -> address from tracked config/*syms*.txt / symbol_addrs*.txt.
+    With a member, that member's own symbol files come first."""
     table = {}
-    for path in sorted((ROOT / "config").glob("*.txt")):
+    paths = sorted((ROOT / "config").glob("*.txt"))
+    if member:
+        own = [p for p in paths if f".{member}." in p.name]
+        paths = own + [p for p in paths if p not in own]
+    for path in paths:
         if "sym" not in path.name:
             continue
         for line in path.read_text(errors="replace").splitlines():
@@ -344,7 +396,7 @@ MEMORY_FNS = ("memset", "memcpy", "memmove")
 LANE_HELPERS = ("lane_sdiv32", "lane_srem32", "lane_udiv32", "lane_urem32")
 
 
-def rewrite_symbols(ir, symbols):
+def rewrite_symbols(ir, symbols, member=None, member_code=()):
     """Replace guest data symbols with absolute guest addresses. Functions
     this TU defines become lane_func_*; calls to guest functions it only
     declares become lane_call_func_* (resolved per signature later); any
@@ -391,7 +443,10 @@ def rewrite_symbols(ir, symbols):
                 is_def_or_decl = line.startswith(("define ", "declare "))
                 is_call_target = after == "(" and re.search(r"\bcall\b", line[:mm.start()]) is not None
                 if is_def_or_decl or is_call_target:
-                    return ("@lane_" if name in defined else "@lane_call_") + name
+                    addr = guest_address(name, symbols)
+                    local = member and any(lo <= addr < hi for lo, hi in member_code)
+                    q = qualify(member, name) if (name in defined or local) else name
+                    return ("@lane_" if name in defined else "@lane_call_") + q
                 # Address taken: the guest sees its guest code address.
                 return f"inttoptr (i64 {guest_address(name, symbols)} to ptr)"
             return mm.group(0)
@@ -592,7 +647,8 @@ def check_optimized(ir, module_internal):
                     continue
                 if name in module_internal:
                     continue
-                if not name.startswith(("lane_func_", "lane_call_func_", "lane_icall__")):
+                if not (re.fullmatch(r"lane_(?:call_)?" + QFUNC + r"(?:__\w+)?", name) or
+                        name.startswith("lane_icall__")):
                     raise Reject("calls", f"call to {name}")
                 if refs_host(args):
                     raise Reject("escape", f"host address passed to {name}")
@@ -705,7 +761,7 @@ def check_polling_loops(ir):
 
 
 def lane_names(ir):
-    return set(re.findall(r"^define [^@]*@(lane_func_[0-9A-Fa-f]{8})\(", ir, flags=re.M))
+    return set(re.findall(r"^define [^@]*@(lane_" + QFUNC + r")\(", ir, flags=re.M))
 
 
 def sig_code(sig):
@@ -721,7 +777,7 @@ def resolve_calls(optir):
     called with at most argc register-width arguments."""
     stubs, renames = {}, {}
     for decl in [l for l in optir.splitlines() if l.startswith("declare ")]:
-        m = re.search(r"@(lane_call_(func_[0-9A-Fa-f]{8}))\(", decl)
+        m = re.search(r"@(lane_call_(" + QFUNC + r"))\(", decl)
         if not m:
             continue
         sym, callee = m.group(1), m.group(2)
@@ -804,10 +860,11 @@ DENY = {
 }
 
 
-def build_one(entry, out, symbols, hooks, clang):
+def build_one(entry, out, symbols, hooks, clang, info=None):
     vram, size, src = entry["vram"], entry["size"], ROOT / entry["source"]
     name = entry["name"]
-    tag = f"{vram:08x}"
+    member = info["member"] if info else None
+    tag = f"{member}_{vram:08x}" if member else f"{vram:08x}"
     work = out / "ir"
     try:
         if vram in DENY:
@@ -842,7 +899,8 @@ def build_one(entry, out, symbols, hooks, clang):
             raise Reject("compile", (r.stderr.strip().splitlines() or ["?"])[0][:160])
         ir = o0.read_text()
         check_layout(ir)
-        rewritten = lower_arith(narrow_pointer_cells(rewrite_symbols(ir, symbols)))
+        rewritten = lower_arith(narrow_pointer_cells(rewrite_symbols(
+            ir, symbols, member, info["code"] if info else ())))
         sub = work / f"{tag}.sub.ll"
         sub.write_text(rewritten)
         opt = work / f"{tag}.opt.ll"
@@ -858,7 +916,7 @@ def build_one(entry, out, symbols, hooks, clang):
         check_optimized(optir, internal)
         check_polling_loops(optir)
         defs = lane_names(optir)
-        own = f"lane_{name}"
+        own = f"lane_{qualify(member, name)}"
         if own not in defs:
             raise Reject("symbols", f"{name} not defined by {entry['source']}")
         sigs = {}
@@ -874,14 +932,19 @@ def build_one(entry, out, symbols, hooks, clang):
             raise Reject("compile", "object: " + (r.stderr.strip().splitlines() or ["?"])[0][:160])
         undefined = run(["nm", "-u", str(obj)]).stdout.split()
         for u in undefined:
-            if u != "U" and not u.startswith(("lane_call_func_", "lane_func_", "lane_icall__")) \
+            if u != "U" and not re.fullmatch(r"lane_(?:call_)?" + QFUNC + r"(?:__\w+)?", u) \
+                    and not u.startswith("lane_icall__") \
                     and u not in MEMORY_FNS and u not in LANE_HELPERS:
                 raise Reject("symbols", f"object still references {u}")
-        return dict(name=name, vram=vram, size=size, source=entry["source"], admitted=True,
-                    obj=str(obj), defs=sigs, stubs=stubs, icalls=icalls)
+        digest = member_digest(info, vram, size) if info else None
+        if info and digest is None:
+            raise Reject("overlay", "extent outside the member file")
+        return dict(name=name, qname=qualify(member, name), member=member, vram=vram, size=size,
+                    source=entry["source"], admitted=True, obj=str(obj), defs=sigs, stubs=stubs,
+                    icalls=icalls, digest=digest)
     except Reject as e:
-        return dict(name=name, vram=vram, size=size, source=entry["source"], admitted=False,
-                    rule=e.rule, detail=e.detail)
+        return dict(name=name, qname=qualify(member, name), member=member, vram=vram, size=size,
+                    source=entry["source"], admitted=False, rule=e.rule, detail=e.detail)
 
 
 def psyq_hooked(hooks):
@@ -957,8 +1020,9 @@ def emit_table(admitted, out):
               " * disagree exactly as they can on the PS1. An admitted callee is called",
               " * directly; any other runs on the interpreter (same CPU, same loop). */"]
     direct = thunk = 0
+    ovl = {"lane_" + a["qname"]: a for a in admitted if a.get("member")}
     for sym, (callee, sig, argc, va_ret) in sorted(stubs.items()):
-        addr = callee[len("func_"):]
+        addr = callee.split("func_")[-1]
         if sig is None:
             ret, rext = va_ret
             params = [("i32", (False, False))] * argc
@@ -969,6 +1033,24 @@ def emit_table(admitted, out):
         regs = [to_guest(f"a{i}", t, e) for i, (t, e) in enumerate(params)]
         lines.append(f"{rtype} {sym}({plist}) {{")
         target = "lane_" + callee
+        guard = None
+        if target in ovl:
+            # Another function of the same member: native only while its own
+            # bytes are resident too (checked per call), else the interpreter.
+            o = ovl[target]
+            guard = (f"musashi_native_lane_overlay_resident(0x{o['vram']:08x}u, {o['size']}u, "
+                     f"0x{o['digest']:016x}ull)")
+        if target in defs and guard:
+            lines.append(f"    if (!{guard}) {{")
+            if params:
+                lines.append(f"        const uint32_t args[{len(params)}] = {{{', '.join(regs)}}};")
+                tcall = f"musashi_native_guest_call(0x{addr}u, {len(params)}u, args, NULL)"
+            else:
+                tcall = f"musashi_native_guest_call(0x{addr}u, 0u, NULL, NULL)"
+            lines.append(f"        {'(void)' + tcall if ret == 'void' else 'return ' + from_guest(tcall, ret, rext)};")
+            if ret == "void":
+                lines.append("        return;")
+            lines.append("    }")
         if target in defs:
             direct += 1
             cret, crext, cparams = defs[target]
@@ -1018,13 +1100,14 @@ def emit_table(admitted, out):
             lines.append(f"    return {from_guest(call, ret, rext)};")
         lines.append("}")
     lines.append("")
-    entries = []
-    for a in sorted(admitted, key=lambda a: a["vram"]):
-        d = "lane_" + a["name"]
+    entries, ovl_entries = [], []
+    for a in sorted(admitted, key=lambda a: (a["vram"], a.get("member") or "")):
+        d = "lane_" + a["qname"]
+        wrap = f"wrap_{a['member']}_{a['vram']:08x}" if a.get("member") else f"wrap_{a['vram']:08x}"
         ret, rext, params = a["defs"][d]
         args = ", ".join(from_guest(f"musashi_native_lane_arg(call, {i}u)", t, e)
                          for i, (t, e) in enumerate(params))
-        lines.append(f"static int wrap_{a['vram']:08x}(MusashiNativeLaneCall *call) {{")
+        lines.append(f"static int {wrap}(MusashiNativeLaneCall *call) {{")
         if not params and ret == "void":
             lines.append("    (void)call;")
         if ret == "void":
@@ -1034,13 +1117,24 @@ def emit_table(admitted, out):
         lines.append("    return 1;")
         lines.append("}")
         cost = 2 * (a["size"] // 4)
-        entries.append(f"    {{0x{a['vram']:08x}u, {cost}u, wrap_{a['vram']:08x}, \"{a['name']}\", "
-                       f"{len(params)}u, {0 if ret == 'void' else 1}u}},")
+        row = (f"{{0x{a['vram']:08x}u, {cost}u, {wrap}, \"{a['qname']}\", "
+               f"{len(params)}u, {0 if ret == 'void' else 1}u}}")
+        if a.get("member"):
+            ovl_entries.append(f"    {{{row}, {a['size']}u, 0x{a['digest']:016x}ull, \"{a['member']}\"}},")
+        else:
+            entries.append(f"    {row},")
     lines.append("")
     lines.append("const MusashiNativeLaneEntry musashi_native_lane_generated[] = {")
     lines.extend(entries or ["    {0u, 0u, NULL, NULL, 0u, 0u},"])
     lines.append("};")
     lines.append(f"const size_t musashi_native_lane_generated_count = {len(entries)}u;")
+    lines.append("")
+    lines.append("/* Overlay members: run only while guest RAM over the extent hashes to the")
+    lines.append(" * member's digest (FNV-1a 64 of the user's own extracted member file). */")
+    lines.append("const MusashiNativeLaneOverlayEntry musashi_native_lane_overlay[] = {")
+    lines.extend(ovl_entries or ["    {{0u, 0u, NULL, NULL, 0u, 0u}, 0u, 0u, NULL},"])
+    lines.append("};")
+    lines.append(f"const size_t musashi_native_lane_overlay_count = {len(ovl_entries)}u;")
     (out / "native_lane_table.c").write_text("\n".join(lines) + "\n")
     return direct, thunk
 
@@ -1074,6 +1168,12 @@ def candidates(only=None, excluded=None):
     return picked
 
 
+def overlay_candidates(members, only=None):
+    registry = json.loads((ROOT / "provenance/matches.json").read_text())["matches"]
+    return [m for m in registry if m["region"] in members and m.get("recovery") == "c"
+            and (ROOT / m["source"]).exists() and (not only or m["vram"] in only)]
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--out", required=True, type=Path)
@@ -1082,6 +1182,9 @@ def main():
     ap.add_argument("--jobs", type=int, default=4)
     ap.add_argument("--only", help="file of guest PCs (hex, one per line) to consider, e.g. a trace")
     ap.add_argument("--exclude", help="file of guest PCs (hex) never to admit")
+    ap.add_argument("--overlay-members", default="",
+                    help="comma-separated overlay members to compile (e.g. main_0003); each needs "
+                         "config/overlay_<m>.yaml and its extracted member file for the digests")
     args = ap.parse_args()
     out = args.out
     (out / "ir").mkdir(parents=True, exist_ok=True)
@@ -1094,25 +1197,36 @@ def main():
     hooks = hooked_pcs()
     psyq_excluded = []
     todo = [m for m in candidates(only, psyq_excluded) if m["vram"] not in exclude]
+    infos, missing = {}, []
+    for mem in [m for m in args.overlay_members.split(",") if m]:
+        info = member_info(mem)
+        if info is None:
+            missing.append(mem)  # no config or no local member file: stays interpreted
+        else:
+            infos[mem] = info
+    ovl_todo = [m for m in overlay_candidates(set(infos), only) if m["vram"] not in exclude]
+    msyms = {mem: load_symbol_addrs(mem) for mem in infos}
     with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, args.jobs)) as pool:
         results = list(pool.map(lambda m: build_one(m, out, symbols, hooks, args.clang), todo))
+        results += list(pool.map(lambda m: build_one(m, out, msyms[m["region"]], hooks, args.clang,
+                                                     infos[m["region"]]), ovl_todo))
     admitted = [r for r in results if r["admitted"]]
     # A direct native call cannot reproduce a MIPS caller that passes fewer
     # arguments than the callee reads: the callee sees whatever the caller
     # left in a1-a3. Refuse such callers (to a fixpoint, since a refused
     # caller becomes an interpreted callee for others).
     while True:
-        arity = {"lane_" + a["name"]: len(a["defs"]["lane_" + a["name"]][2]) for a in admitted}
+        arity = {"lane_" + a["qname"]: len(a["defs"]["lane_" + a["qname"]][2]) for a in admitted}
         drop = set()
         for a in admitted:
             for sym, (callee, sig, argc, _) in a["stubs"].items():
                 if "lane_" + callee in arity and argc < arity["lane_" + callee]:
-                    drop.add(a["name"])
+                    drop.add(a["qname"])
                     a.update(admitted=False, rule="abi",
                              detail=f"passes {argc} of {arity['lane_' + callee]} arguments to {callee}")
         if not drop:
             break
-        admitted = [a for a in admitted if a["name"] not in drop]
+        admitted = [a for a in admitted if a["qname"] not in drop]
     # A native caller of an admitted callee links to it directly; otherwise
     # the thunk runs the guest words. Duplicate definitions cannot occur:
     # each TU defines only its own registry function under lane_func_*.
@@ -1146,8 +1260,12 @@ def main():
                   psyq_excluded=len(psyq_excluded),
                   psyq_hooked=[f"{pc:08x}" for pc in blocked],
                   call_stubs=dict(direct=direct, interpreter_thunk=thunk),
-                  functions=[{k: v for k, v in r.items() if k not in ("obj", "defs", "stubs")}
-                             for r in sorted(results, key=lambda r: r["vram"])])
+                  overlay=dict(members=sorted(infos), missing=missing,
+                               candidates=len(ovl_todo),
+                               admitted=sum(1 for a in admitted if a.get("member"))),
+                  functions=[{k: (f"{v:016x}" if k == "digest" and v is not None else v)
+                              for k, v in r.items() if k not in ("obj", "defs", "stubs")}
+                             for r in sorted(results, key=lambda r: (r["vram"], r.get("member") or ""))])
     (out / "report.json").write_text(json.dumps(report, indent=1) + "\n")
     print(f"native lane: {len(admitted)}/{len(results)} game functions admitted "
           f"({len(psyq_excluded)} PsyQ-range candidates excluded); rejected {rules}; "

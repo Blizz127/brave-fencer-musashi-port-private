@@ -3505,6 +3505,15 @@ static void hold_window(NativeBoot *boot) {
 #endif
 extern const MusashiNativeLaneEntry musashi_native_lane_generated[];
 extern const size_t musashi_native_lane_generated_count;
+extern const MusashiNativeLaneOverlayEntry musashi_native_lane_overlay[];
+extern const size_t musashi_native_lane_overlay_count;
+
+static void lane_overlay_report(void) {
+    uint64_t verified = 0, refused = 0;
+    musashi_native_lane_overlay_stats(&verified, &refused);
+    fprintf(stderr, "native_boot: NATIVE_LANE overlay verified=%llu refused=%llu\n",
+            (unsigned long long)verified, (unsigned long long)refused);
+}
 _Static_assert(offsetof(NativeBoot, memory) == 0, "guest RAM leads the boot owner");
 
 /* Natively compiled decomp C dereferences 32-bit guest addresses directly,
@@ -3574,6 +3583,13 @@ static NativeBoot *native_boot_owner(NativeBoot *fallback) {
         if (musashi_native_lane_install(table, count) < 0) {
             fprintf(stderr, "native_boot: NATIVE_LANE table rejected; interpreter only\n");
             return window;
+        }
+        {
+            int ovl = musashi_native_lane_install_overlay(musashi_native_lane_overlay,
+                                                          musashi_native_lane_overlay_count);
+            fprintf(stderr, "native_boot: NATIVE_LANE overlay entries=%d (resident bytes digest-checked per call)\n",
+                    ovl);
+            if (ovl > 0) atexit(lane_overlay_report);
         }
         musashi_native_lane_psyq_bind(&((NativeBoot *)window)->memory, &((NativeBoot *)window)->gte);
         fprintf(stderr, "native_boot: NATIVE_LANE entries=%u psyq=%u classes=%s\n",
@@ -4229,6 +4245,9 @@ int main(int argc, char **argv) {
         if (!cpu_valid || !gte_valid) cleanup_ok=0;
     }
     stop = entry_stop.boundary;
+#ifdef MUSASHI_NATIVE_LANE_TABLE
+    lane_overlay_report();
+#endif
     fprintf(stderr,"native_boot: EXECUTION_BOUNDARY reason=%s\n",
             host_stop_signal ? "HOST_STOP" :
             status==MUSASHI_RESETGRAPH_PREFIX_STEP_LIMIT ? "STEP_LIMIT" :

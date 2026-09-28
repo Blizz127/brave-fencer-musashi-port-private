@@ -44,6 +44,34 @@ typedef struct MusashiNativeLaneEntry {
     uint8_t returns; /* 1 when it produces v0, 0 for void */
 } MusashiNativeLaneEntry;
 
+/* Overlay functions (MAIN.CD / scene members) share load addresses, so an
+ * overlay entry runs natively only when the bytes resident in guest RAM at
+ * [guest_pc, guest_pc + size) hash to the member's own digest (FNV-1a 64,
+ * computed at build time from the user's extracted member file). Checked on
+ * every call, never inferred; on a mismatch the interpreter runs the words
+ * that are actually there. Several entries may share a guest_pc (one per
+ * member). */
+typedef struct MusashiNativeLaneOverlayEntry {
+    MusashiNativeLaneEntry entry;
+    uint32_t size;   /* bytes hashed: the function's registry extent */
+    uint64_t digest; /* FNV-1a 64 of the member's bytes over that extent */
+    const char *member; /* e.g. "main_0003" */
+} MusashiNativeLaneOverlayEntry;
+
+/* Install the overlay table (copied and sorted; replaces any previous one).
+ * Returns the number of entries, or -1 on an unaligned PC or a
+ * (guest_pc, digest) duplicate. */
+int musashi_native_lane_install_overlay(const MusashiNativeLaneOverlayEntry *entries,
+                                        size_t count);
+
+/* 1 when guest RAM at [pc, pc + size) hashes to digest (used by generated
+ * stubs before a direct native call to another overlay function). */
+int musashi_native_lane_overlay_resident(uint32_t pc, uint32_t size, uint64_t digest);
+
+/* Overlay entries run natively (digest matched) and refused (a candidate PC
+ * whose resident bytes matched no member), since process start. */
+void musashi_native_lane_overlay_stats(uint64_t *verified, uint64_t *refused);
+
 /* Argument n (0-based) under the o32 register ABI. */
 uint32_t musashi_native_lane_arg(const MusashiNativeLaneCall *call, unsigned n);
 

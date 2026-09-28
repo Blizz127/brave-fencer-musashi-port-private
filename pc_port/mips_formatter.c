@@ -12385,6 +12385,103 @@ static const MusashiNativeLaneEntry *lane_find(uint32_t pc) {
     return NULL;
 }
 
+/* Overlay entries (MusashiNativeLaneOverlayEntry): sorted by guest_pc, then
+ * digest. An entry runs only when guest RAM over its extent hashes to its
+ * member's digest at the moment of the call. */
+static MusashiNativeLaneOverlayEntry *g_lane_ovl;
+static size_t g_lane_ovl_count;
+static uint32_t g_lane_ovl_min = UINT32_MAX, g_lane_ovl_max;
+static uint64_t g_lane_ovl_verified, g_lane_ovl_refused;
+
+static int lane_ovl_cmp(const void *a, const void *b) {
+    const MusashiNativeLaneOverlayEntry *x = a, *y = b;
+    if (x->entry.guest_pc != y->entry.guest_pc) return x->entry.guest_pc < y->entry.guest_pc ? -1 : 1;
+    return x->digest < y->digest ? -1 : x->digest > y->digest;
+}
+
+int musashi_native_lane_install_overlay(const MusashiNativeLaneOverlayEntry *entries, size_t count) {
+    MusashiNativeLaneOverlayEntry *copy = NULL;
+    size_t i;
+    if (count && !entries) return -1;
+    if (count) {
+        copy = malloc(sizeof(*copy) * count);
+        if (!copy) return -1;
+        memcpy(copy, entries, sizeof(*copy) * count);
+        qsort(copy, count, sizeof(*copy), lane_ovl_cmp);
+        for (i = 0; i < count; ++i)
+            if ((copy[i].entry.guest_pc & 3u) || !copy[i].entry.fn || !copy[i].size ||
+                (i && copy[i].entry.guest_pc == copy[i - 1].entry.guest_pc &&
+                 copy[i].digest == copy[i - 1].digest)) {
+                free(copy);
+                return -1;
+            }
+    }
+    free(g_lane_ovl);
+    g_lane_ovl = copy;
+    g_lane_ovl_count = count;
+    g_lane_ovl_min = count ? copy[0].entry.guest_pc : UINT32_MAX;
+    g_lane_ovl_max = count ? copy[count - 1].entry.guest_pc : 0u;
+    return (int)count;
+}
+
+static int lane_ram_digest(MusashiBootMemory *memory, uint32_t pc, uint32_t size, uint64_t *out) {
+    const uint8_t *bytes = memory ? musashi_boot_ram_span(memory, pc, size) : NULL;
+    uint64_t h = 0xcbf29ce484222325ull;
+    uint32_t i;
+    if (!bytes) return 0;
+    for (i = 0; i < size; ++i) {
+        h ^= bytes[i];
+        h *= 0x100000001b3ull;
+    }
+    *out = h;
+    return 1;
+}
+
+static size_t lane_ovl_first(uint32_t pc) {
+    size_t lo = 0, hi = g_lane_ovl_count;
+    if (pc < g_lane_ovl_min || pc > g_lane_ovl_max) return g_lane_ovl_count;
+    while (lo < hi) {
+        size_t mid = lo + (hi - lo) / 2u;
+        if (g_lane_ovl[mid].entry.guest_pc < pc) lo = mid + 1u; else hi = mid;
+    }
+    return lo < g_lane_ovl_count && g_lane_ovl[lo].entry.guest_pc == pc ? lo : g_lane_ovl_count;
+}
+
+/* The candidate whose member's bytes are resident right now, or NULL. */
+static const MusashiNativeLaneEntry *lane_find_overlay(MusashiBootMemory *memory, uint32_t pc) {
+    size_t i = lane_ovl_first(pc);
+    uint32_t hashed_size = 0;
+    uint64_t digest = 0;
+    if (i == g_lane_ovl_count) return NULL;
+    for (; i < g_lane_ovl_count && g_lane_ovl[i].entry.guest_pc == pc; ++i) {
+        const MusashiNativeLaneOverlayEntry *e = &g_lane_ovl[i];
+        if (e->size != hashed_size) {
+            if (!lane_ram_digest(memory, pc, e->size, &digest)) continue;
+            hashed_size = e->size;
+        }
+        if (digest == e->digest) {
+            ++g_lane_ovl_verified;
+            return &e->entry;
+        }
+    }
+    ++g_lane_ovl_refused;
+    return NULL;
+}
+
+int musashi_native_lane_overlay_resident(uint32_t pc, uint32_t size, uint64_t digest) {
+    uint64_t h;
+    MusashiBootMemory *memory = g_lane_active ? g_lane_active->memory : NULL;
+    if (!lane_ram_digest(memory, pc, size, &h)) return 0;
+    if (h == digest) { ++g_lane_ovl_verified; return 1; }
+    ++g_lane_ovl_refused;
+    return 0;
+}
+
+void musashi_native_lane_overlay_stats(uint64_t *verified, uint64_t *refused) {
+    if (verified) *verified = g_lane_ovl_verified;
+    if (refused) *refused = g_lane_ovl_refused;
+}
+
 static int g_lane_suspended;
 
 void musashi_native_lane_suspend(int suspend) {
@@ -12474,10 +12571,13 @@ static int lane_try(MusashiBootMemory *memory, FormatterCpu *cpu) {
     MusashiNativeLaneCall call;
     uint32_t ra, sp;
     volatile int outcome;
-    if (!g_lane_count || !(entry = lane_find(cpu->pc))) return 0;
+    entry = g_lane_count ? lane_find(cpu->pc) : NULL;
+    if (!entry && lane_ovl_first(cpu->pc) == g_lane_ovl_count) return 0;
     if (cpu->merge_pending || cpu->gte_load_pending || cpu->delay_slot ||
         cpu->npc != cpu->pc + 4u || !musashi_native_lane_usable(memory))
         return 0;
+    /* Overlay PCs: only the member whose bytes are resident, checked now. */
+    if (!entry && !(entry = lane_find_overlay(memory, cpu->pc))) return 0;
     ra = cpu->r[31];
     sp = cpu->r[29];
     active.guest_pc = entry->guest_pc;
@@ -12529,7 +12629,7 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
         g_entry_pending = 1u;
         g_entry_hook(g_entry_hook_user, cpu->pc, cpu->r);
     }
-    if (g_lane_count) {
+    if (g_lane_count || g_lane_ovl_count) {
         int lane = lane_try(memory, cpu);
         if (lane > 0) return 1;
         if (lane < 0) return formatter_refuse0(__LINE__, cpu->pc);
