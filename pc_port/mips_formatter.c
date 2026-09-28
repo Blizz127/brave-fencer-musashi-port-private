@@ -15515,8 +15515,11 @@ static int cpu_read32(MusashiBootMemory *memory, const FormatterCpu *cpu,
         address == 0x1f8010b4u || address == 0x1f8010b8u ||
         address == 0x1f8010c0u || address == 0x1f8010c4u || address == 0x1f8010c8u ||
         (address == 0x1f8010f0u && cpu->cd_register_device && cpu->cd_register_device->read32)) {
-        if (!cpu->cd_register_device || !cpu->cd_register_device->read32 ||
-            !cpu->cd_register_device->read32(cpu->cd_register_device->userdata, address, &accepted)) return 0;
+        if (!cpu->cd_register_device || !cpu->cd_register_device->read32) {
+            *value = 0;
+            return 1;
+        }
+        if (!cpu->cd_register_device->read32(cpu->cd_register_device->userdata, address, &accepted)) return 0;
         *value = accepted;
         return 1;
     }
@@ -15567,9 +15570,11 @@ static int cpu_write32(MusashiBootMemory *memory, const FormatterCpu *cpu,
         address == 0x1f8010b4u || address == 0x1f8010b8u ||
         address == 0x1f8010c0u || address == 0x1f8010c4u || address == 0x1f8010c8u ||
         ((address == 0x1f801020u || address == 0x1f8010f0u) &&
-         cpu->cd_register_device && cpu->cd_register_device->write32))
-        return cpu->cd_register_device && cpu->cd_register_device->write32 &&
-            cpu->cd_register_device->write32(cpu->cd_register_device->userdata, address, value);
+         cpu->cd_register_device && cpu->cd_register_device->write32)) {
+        if (!cpu->cd_register_device || !cpu->cd_register_device->write32)
+            return 1;
+        return cpu->cd_register_device->write32(cpu->cd_register_device->userdata, address, value);
+    }
     if (cpu->input_device && cpu->input_device->write32 &&
         (address == 0x1f801070u || address == 0x1f801074u))
         return cpu->input_device->write32(cpu->input_device->userdata, address, value);
@@ -15782,6 +15787,8 @@ static int spu_source_guard(MusashiBootMemory *memory, const FormatterCpu *cpu) 
         return cpu->r[3] < 8u &&
             cpu->r[2] == targets[cpu->pc == 0x8003c6b4u][cpu->r[3]];
     }
+    case 0x8003c0a0u:
+        return 0; /* SPU DMA helper has no bound native executor. */
     case 0x8003fc2cu:
     case 0x8003fc58u:
         return 0; /* Active voice callbacks have no bound native executor. */

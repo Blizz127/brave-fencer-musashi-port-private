@@ -1,6 +1,7 @@
 import os
 import re
 import subprocess
+import threading
 import time
 from pathlib import Path
 import pytest
@@ -18,16 +19,22 @@ def test_spiral_climb_continuous_frame_pacing():
         "--action", "spiral_climb"
     ]
 
+    env = os.environ.copy()
+    env["MUSASHI_GUEST_CLOCK"] = "1"
+    env["MUSASHI_UNTHROTTLED"] = "1"
+
     frame_timestamps = {}
     actions = []
     refusals = []
     terrain_positions = {}
+    all_stderr_lines = []
 
     start_wall = time.perf_counter()
     proc = subprocess.Popen(
         cmd,
         cwd=str(ROOT),
-        stdout=subprocess.PIPE,
+        env=env,
+        stdout=subprocess.DEVNULL,
         stderr=subprocess.PIPE,
         text=True,
         bufsize=1
@@ -37,28 +44,48 @@ def test_spiral_climb_continuous_frame_pacing():
     pattern_action = re.compile(r"native_boot:\s+MUSASHI_ACTION\s+prev=(\d+)\s+curr=(\d+)\s+anim=(\d+)\s+hp=(\d+)\s+frame=(\d+)")
     pattern_refusal = re.compile(r"STEP_REFUSED|ACCESS_REFUSED|OVERLAY_WORD_MISMATCH")
 
-    # Read stderr in real-time
-    for line in proc.stderr:
-        t = time.perf_counter()
-        if pattern_refusal.search(line):
-            refusals.append(line.strip())
-        
-        m_climb = pattern_climb.search(line)
-        if m_climb:
-            f_num = int(m_climb.group(1))
-            x, y, z = int(m_climb.group(2)), int(m_climb.group(3)), int(m_climb.group(4))
-            vy = int(m_climb.group(5))
-            frame_timestamps[f_num] = t
-            terrain_positions[f_num] = (x, y, z, vy)
+    def read_stderr():
+        for line in proc.stderr:
+            t = time.perf_counter()
+            all_stderr_lines.append(line)
+            if pattern_refusal.search(line):
+                refusals.append(line.strip())
 
-        m_act = pattern_action.search(line)
-        if m_act:
-            actions.append((int(m_act.group(5)), int(m_act.group(1)), int(m_act.group(2))))
+            m_climb = pattern_climb.search(line)
+            if m_climb:
+                f_num = int(m_climb.group(1))
+                x, y, z = int(m_climb.group(2)), int(m_climb.group(3)), int(m_climb.group(4))
+                vy = int(m_climb.group(5))
+                frame_timestamps[f_num] = t
+                terrain_positions[f_num] = (x, y, z, vy)
 
-    proc.wait(timeout=120)
+            m_act = pattern_action.search(line)
+            if m_act:
+                actions.append((int(m_act.group(5)), int(m_act.group(1)), int(m_act.group(2))))
+
+    reader_thread = threading.Thread(target=read_stderr, daemon=True)
+    reader_thread.start()
+
+    timeout_seconds = 30
+    try:
+        proc.wait(timeout=timeout_seconds)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait()
+        reader_thread.join(timeout=2.0)
+        pytest.fail(
+            f"musashi_native_boot timed out after {timeout_seconds}s. "
+            f"Captured frames: {len(frame_timestamps)}/120. "
+            f"Last 10 stderr lines:\n" + "".join(all_stderr_lines[-10:])
+        )
+
+    reader_thread.join(timeout=5.0)
     total_duration = time.perf_counter() - start_wall
 
     # Verify exit status
+    # 77 indicates PsyCross display unavailable in headless test environment
+    if proc.returncode == 77:
+        pytest.skip("PsyCross display unavailable; startup not observed (exit 77)")
     # 143 is 128 + SIGTERM (clean termination on reaching target frames)
     assert proc.returncode in (0, 143), f"Unexpected returncode {proc.returncode}"
 

@@ -43,6 +43,7 @@
 #include "musashi_x11_nograb.h"
 #include "PsyX/PsyX_public.h"
 #include "psx/libetc.h"
+#include <limits.h>
 
 extern SDL_mutex *g_intrMutex;
 
@@ -1016,8 +1017,10 @@ static int sample_keyboard_pad(void *userdata, uint16_t *buttons) {
         const char *auto_start = getenv("MUSASHI_BOOT_AUTO_START");
         if (auto_start && auto_start[0] == '1') {
             if (!boot->opening_overlay_ready) {
-                /* Hold Start to skip opening FMV until overlay 0004 loads */
-                sampled &= (uint16_t)~(1u << 3);
+                /* Pulse Start during FMV to create authentic edge transitions
+                 * in 80018CE8 / D_80078DD2, allowing 800CEF94 to skip the FMV immediately. */
+                if ((boot->keyboard_polls % 10u) < 5u)
+                    sampled &= (uint16_t)~(1u << 3);
             } else if (!boot->scene1_reached) {
                 /* Overlay 0004 is active; Start has now been released so edges can register */
                 uint32_t phase = 0;
@@ -3308,6 +3311,8 @@ int main(int argc, char **argv) {
             setenv("MUSASHI_AUTO_DISMISS", "1", 1);
             setenv("MUSASHI_TRACE_REFUSAL", "1", 1);
             setenv("MUSASHI_HOLD_WINDOW_MS", "0", 1);
+            setenv("MUSASHI_GUEST_CLOCK", "1", 0);
+            setenv("MUSASHI_UNTHROTTLED", "1", 0);
         } else if (strcmp(argv[i], "--frames") == 0 && i + 1 < argc) {
             setenv("MUSASHI_IN_GAME_FRAMES", argv[++i], 1);
             setenv("MUSASHI_BOOT_AUTO_START", "1", 1);

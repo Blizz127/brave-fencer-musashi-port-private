@@ -13,6 +13,10 @@ ASM_LABELS = {
     "80044670_full_words.inc": "func_80044670",
     "80043b9c_words.inc": "func_80043B9C",
 }
+PAC_INCLUDES = {
+    "sc01_pac0_words.inc": (0, 128483, "66a047a6242db0d212e27087b7576b19dbc12e399ae0d4f64f370e70bea35069"),
+    "sc01_pac1_words.inc": (1, 207899, "cc18c89264c5a8f99041a0e88aad8491936f9c2a98a17b86e0dafe8a3b54ea09"),
+}
 
 
 def _source_for_include(name):
@@ -64,6 +68,22 @@ def _generate_formatter_includes(output):
         cached = ROOT / "build/generated" / name
         if cached.is_file():
             shutil.copyfile(cached, output / name)
+            continue
+        if name in PAC_INCLUDES:
+            member, words, sha = PAC_INCLUDES[name]
+            archive = ROOT / "extracted/disc/files/SC01.CD"
+            assert archive.is_file(), f"missing archive {archive} for {name}"
+            subprocess.run([
+                sys.executable,
+                str(ROOT / "tools/extract_pac_words.py"),
+                str(archive),
+                str(output / name),
+                "--member", str(member),
+                "--expected-words", str(words),
+                "--expected-sha256", str(sha),
+            ], check=True, timeout=30)
+            if (ROOT / "build/generated").is_dir():
+                shutil.copyfile(output / name, cached)
             continue
         source = _source_for_include(name)
         expected = _expected_words(source, name)

@@ -11,6 +11,7 @@ Verifies:
 import os
 import re
 import subprocess
+import threading
 import time
 from pathlib import Path
 import pytest
@@ -157,7 +158,7 @@ def run_live_desktop_verification(interactive: bool = True, action: str = "spira
         cmd,
         cwd=str(ROOT),
         env=env,
-        stdout=subprocess.PIPE,
+        stdout=subprocess.DEVNULL,
         stderr=subprocess.PIPE,
         text=True,
         bufsize=1
@@ -165,45 +166,64 @@ def run_live_desktop_verification(interactive: bool = True, action: str = "spira
 
     all_stderr_lines = []
 
-    for line in proc.stderr:
-        t = time.perf_counter()
-        all_stderr_lines.append(line)
-        line_clean = line.strip()
+    def read_stderr():
+        for line in proc.stderr:
+            t = time.perf_counter()
+            all_stderr_lines.append(line)
+            line_clean = line.strip()
 
-        if pattern_refusal.search(line):
-            refusals.append(line_clean)
+            if pattern_refusal.search(line):
+                refusals.append(line_clean)
 
-        m_climb = pattern_climb.search(line)
-        if m_climb:
-            f_num = int(m_climb.group(1))
-            x, y, z = int(m_climb.group(2)), int(m_climb.group(3)), int(m_climb.group(4))
-            vy = int(m_climb.group(5))
-            frame_timestamps[f_num] = t
-            terrain_positions[f_num] = (x, y, z, vy)
+            m_climb = pattern_climb.search(line)
+            if m_climb:
+                f_num = int(m_climb.group(1))
+                x, y, z = int(m_climb.group(2)), int(m_climb.group(3)), int(m_climb.group(4))
+                vy = int(m_climb.group(5))
+                frame_timestamps[f_num] = t
+                terrain_positions[f_num] = (x, y, z, vy)
 
-        m_act = pattern_action.search(line)
-        if m_act:
-            actions.append((int(m_act.group(5)), int(m_act.group(1)), int(m_act.group(2))))
+            m_act = pattern_action.search(line)
+            if m_act:
+                actions.append((int(m_act.group(5)), int(m_act.group(1)), int(m_act.group(2))))
 
-        m_vram = pattern_vram.search(line)
-        if m_vram:
-            vram_dump_logs.append(m_vram.group(1))
+            m_vram = pattern_vram.search(line)
+            if m_vram:
+                vram_dump_logs.append(m_vram.group(1))
 
-        m_unlock = pattern_unlock.search(line)
-        if m_unlock:
-            control_unlock_logs.append(m_unlock.group(1))
+            m_unlock = pattern_unlock.search(line)
+            if m_unlock:
+                control_unlock_logs.append(m_unlock.group(1))
 
-        m_disp = pattern_display.search(line)
-        if m_disp:
-            display_mode_logs.append((int(m_disp.group(1)), int(m_disp.group(2))))
+            m_disp = pattern_display.search(line)
+            if m_disp:
+                display_mode_logs.append((int(m_disp.group(1)), int(m_disp.group(2))))
 
-    proc.wait(timeout=45)
+    reader_thread = threading.Thread(target=read_stderr, daemon=True)
+    reader_thread.start()
+
+    timeout_seconds = 45
+    try:
+        proc.wait(timeout=timeout_seconds)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait()
+        reader_thread.join(timeout=2.0)
+        pytest.fail(
+            f"musashi_native_boot timed out after {timeout_seconds}s. "
+            f"Captured frames: {len(frame_timestamps)}/{frames}. "
+            f"Last 10 stderr lines:\n" + "".join(all_stderr_lines[-10:])
+        )
+
+    reader_thread.join(timeout=5.0)
     total_duration = time.perf_counter() - start_wall
 
     print(f"Session finished with returncode: {proc.returncode}")
     print(f"Total duration: {total_duration:.3f} s")
 
     # 1. Verify clean exit
+    if proc.returncode == 77:
+        pytest.skip("PsyCross display unavailable; startup not observed (exit 77)")
     assert proc.returncode in (0, 143), f"Unexpected returncode {proc.returncode}"
 
     # 2. Confirm zero refusals
