@@ -1,5 +1,12 @@
 # Brave Fencer Musashi decompilation
 
+> **History rewritten on 2026-09-28.** Every branch and tag was rewritten to
+> remove retail game content (word exports, `.word` asm tiles and word-table
+> includes) from all past commits. Old clones and forks do not share history
+> with this repository: delete them and re-clone. Do not push branches made
+> from the old history. `tools/scan_history_retail.py` checks a clone's full
+> history against your own local disc extracts.
+
 This repository is the source-faithful starting point for a byte-for-byte
 decompilation of the North American PlayStation release of *Brave Fencer
 Musashi*. The decompilation is the authority for the eventual Linux and

@@ -34,7 +34,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 WINDOW_WORDS = 8
-HEX_RE = re.compile(rb"(?<![0-9A-Za-z_])(?:0[xX])?([0-9A-Fa-f]{8})(?![0-9A-Za-z_])")
+HEX_RE = re.compile(rb"(?<![0-9A-Za-z_./])(?:0[xX])?([0-9A-Fa-f]{8})(?![0-9A-Za-z_./])")
 SKIP_SUFFIXES = (b".json",)  # registries and manifests hold addresses, not code
 
 
@@ -59,6 +59,8 @@ def build_index(images: list[Path]) -> set[int]:
             words = [chunk[k:k + 4] for k in range(0, span, 4)]
             if len(set(words)) < 4 or words.count(b"\0\0\0\0") > 4:
                 continue  # low-information windows (padding, mostly-zero data) match by chance
+            if all(0x80000000 <= int.from_bytes(w, "little") < 0x80200000 for w in words):
+                continue  # pure RAM-address runs are layout metadata (source lists), not code
             index.add(key(chunk))
     return index
 
