@@ -35,9 +35,17 @@ on top of that and never replaces it. The rules:
    guest state or injects input is a divergence (D-001, D-002), even when
    it only gets a test through. It must be opt-in, or the retail path must
    be made to work.
-5. **Toward matched C.** Hand-written port C that shadows a registered,
-   byte-matched function is replaced by that function. Each swap is proven
-   by an identical-frame or differential probe and noted in the commit.
+5. **Toward matched C, for game code.** Hand-written port C that shadows
+   a registered, byte-matched *game* function is replaced by that
+   function. Each swap is proven by the lane differential probe (0
+   different) plus a headless boot, and noted in the commit.
+6. **PsyQ stays platform code.** No decompiled Sony PsyQ code goes into
+   the port, even when the registry has matched C for it; the PsyQ layer
+   is PsyCross or the port's own code. Instead, each shim is proven
+   faithful to the retail library code it replaces, using
+   `tests/psyq_shim_probe.c`: the same inputs must give the same guest RAM,
+   VRAM and return value. Any that differ are listed in
+   KNOWN-DIVERGENCES.md.
 
 The game itself (code, data, audio, video) comes from the user's own disc
 at run time. The repository holds no retail bytes (see the retail guard,
