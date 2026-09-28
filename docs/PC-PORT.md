@@ -586,7 +586,8 @@ Replacement status (each entry: what now provides it):
 | 8005CCC8 | libc2 memchr | port HLE `musashi_hle_find_byte` |
 | 80043060 | libetc word exchange | port HLE `musashi_hle_exchange_word` |
 | 8005C388 / 8005CD48 | libc2 TTY putchar / puts | port HLE `musashi_hle_console_putc/puts` |
-| 800425B0 800425E0 800426FC 800427F4 800429DC 80042CE8 80042E08 80042F8C | libetc IRQ/callback/DMA chain | pending: port HLE on the emulated IRQ/DMA controllers (PsyCross's libetc drives host SDL timing, not a guest interrupt chain) |
+| 800425B0 / 800425E0 | libetc InterruptCallback / DMACallback veneers | port HLE `pc_port/libetc_irq_veneer.c`, `libetc_dma_veneer.c` |
+| 800426FC 800427F4 800429DC 80042CE8 80042E08 80042F8C | libetc IRQ/callback/DMA chain | pending: port HLE on the emulated IRQ/DMA controllers (PsyCross's libetc drives host SDL timing, not a guest interrupt chain) |
 | 8005BD7C 8005C1C0 | libgpu device ops | pending: port HLE on the GPU device / PsyCross GPU backend |
 | 800616D0 8006291C 80062988 | libmcrd VBlank | pending: port HLE |
 

@@ -229,8 +229,8 @@ if(MUSASHI_BUILD_PC_PORT)
         src/main/800426fc.c
         src/main/800429dc.c
         src/main/80042f8c.c
-        src/main/800425b0.c
-        src/main/800425e0.c
+        pc_port/libetc_irq_veneer.c
+        pc_port/libetc_dma_veneer.c
         src/main/8001096c.c
         src/main/80042ce8.c
         src/main/80042e08.c
@@ -254,8 +254,6 @@ if(MUSASHI_BUILD_PC_PORT)
         COMPILE_DEFINITIONS MUSASHI_NATIVE_CALLBACK_REGISTRATION=1)
     set_source_files_properties(src/main/80042f8c.c PROPERTIES
         COMPILE_DEFINITIONS MUSASHI_NATIVE_DMA_REGISTRATION=1)
-    set_source_files_properties(src/main/800425b0.c src/main/800425e0.c PROPERTIES
-        COMPILE_DEFINITIONS MUSASHI_NATIVE_CALLBACK_DISPATCH=1)
     set_source_files_properties(src/main/80042ce8.c src/main/8001096c.c PROPERTIES
         COMPILE_DEFINITIONS MUSASHI_NATIVE_CALLBACK_HANDLER=1)
     set_source_files_properties(src/main/80042e08.c PROPERTIES

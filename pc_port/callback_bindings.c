@@ -33,3 +33,4 @@ int musashi_boot_call_8005b684(MusashiBootMemory *memory,
     *status = (uint8_t)command;
     return 1;
 }
+
