@@ -2,50 +2,47 @@
  * SHA256(span)=0a4b6d79b7147a7f722e19a8efddb178c13f9d784ae9562b9afbdcb6ddce3428.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-#include "psx_types.h"
-#include "m2c_macros.h"
+/* Source: PsyQ library C derived from xenogears-decomp-ai-archerfish (src/slus_006.64/psyq/libapi.c), same PsyQ object; symbols renamed to this build's addresses. Matching build only. */
+/* func_8005CF68 - byte-exact against retail at -O3 (tools/register_match.py). */
+typedef signed short       s16;
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+typedef signed int         s32;
 
-extern s32 D_80072938;
+typedef unsigned short     u16;
 
-s32 func_8005CF68(s32 arg0, s16 arg1, s32 arg2) {
-    s16 var_a3;
-    s32 temp_t0;
-    s32 var_v0;
-    void *temp_v1;
+typedef struct {
+    u16 rootCounter;
+    s16 unk2;
+    s16 mode;
+    s16 : 16;
+    s16 target;
+    s32 : 32;
+} Counter;
 
-    temp_t0 = arg0 & 0xFFFF;
-    var_a3 = 0x48;
-    if (temp_t0 >= 3) {
+extern volatile Counter* D_80072938;
+
+long func_8005CF68(long spec, short target, long mode) {
+    int i = spec & 0xFFFF;
+    int final_mode = 0x48;
+
+    if (i >= 3)
         return 0;
+
+    D_80072938[i].mode = 0;
+    D_80072938[i].target = target;
+
+    if (i < 2U) {
+        if (mode & 0x0010 ) final_mode = 0x49;
+        if (!(mode & 0x0001 )) final_mode |= 0x100;
+    } else if (i == 2U) {
+        if (!(mode & 0x0001 )) final_mode = 0x248;
     }
-    temp_v1 = (temp_t0 * 0x10) + D_80072938;
-    M2C_FIELD(temp_v1, s16 *, 4) = 0;
-    M2C_FIELD(temp_v1, s16 *, 8) = arg1;
-    if ((u32) temp_t0 < 2U) {
-        if (arg2 & 0x10) {
-            var_a3 = 0x49;
-        }
-        var_v0 = arg2 & 0x1000;
-        if (!(arg2 & 1)) {
-            var_a3 |= 0x100;
-        }
-    } else {
-        var_v0 = arg2 & 0x1000;
-        if (temp_t0 == 2) {
-            var_v0 = arg2 & 0x1000;
-            if (!(arg2 & 1)) {
-                var_a3 = 0x248;
-            }
-        }
-    }
-    if (var_v0 != 0) {
-        var_a3 |= 0x10;
-    }
-    M2C_FIELD(((temp_t0 * 0x10) + D_80072938), s16 *, 4) = var_a3;
+
+    if ((mode & 0x1000 ) != 0)
+        final_mode |= 0x10;
+
+    D_80072938[i].mode = final_mode;
     return 1;
 }
+
+long GetRCnt(long spec);

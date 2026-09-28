@@ -1,6 +1,7 @@
 /* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 /* func_800D3020 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+extern const char D_800CEE48[];  /* string at its retail address */
 typedef float f32;
 typedef unsigned long long u64;
 typedef long long s64;
@@ -17,7 +18,7 @@ u32 func_800D3020(void)
     volatile int count = 0x100000;
     while (*(*(u32 * *)&D_800DB650) & 0x1000000) {
         if (--count == -1) {
-            func_800D30D0("MDEC_out_sync");
+            func_800D30D0(D_800CEE48);
             return -1;
         }
     }

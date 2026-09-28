@@ -11,7 +11,7 @@ typedef double f64;
 
 extern u8 D_800AF630[];
 extern u8 D_80078E78[];
-const char D_800CEE30[] = "(DISELECT)";
+extern const char D_800CEE30[];  /* data at its retail address */
 
 void func_800CFDB4(void) {
     typedef struct { s32 m; } S70;

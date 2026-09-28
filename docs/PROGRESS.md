@@ -13,8 +13,10 @@ functions (`extent` `function`) recovered as reviewed `c` or `assembly`,
 counted once per region, against the identified split-code denominator
 (the per-region code sizes in `IDENTIFIED_REGION_BYTES` in `tools/progress.py`:
 SLUS_007.26 `t_size`, the identified code ranges of the MAIN.CD members that
-have a splat disassembly, and the SC scene modules set up so far; the tool
-prints the current total). The 30% bar is 30% of that total.
+have a splat disassembly, and the SC md scene modules set up so far; the
+tool prints the current total). The SC ov scene overlays (about 350 KB each,
+mostly engine code shared between scenes) are reported on a separate line
+against `SCENE_OVERLAY_REGION_BYTES`, never folded into the headline. The 30% bar is 30% of that total.
 `partial`/`unclassified`/`mixed` rows and non-function extents are excluded
 from that numerator, and so are rows in regions that are not yet part of the
 denominator: a region's matches count only once its code size is added.

@@ -1,0 +1,51 @@
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_801EAA7C - byte-exact against retail at -O2 (tools/register_match.py). */
+#include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+
+s32 func_801EAA7C(void) {
+    extern s32 func_80029504(void);
+    extern s32 func_80029178(s32);
+    extern u8 D_801EBD50[];
+    extern u8 D_801EBD90[];
+    extern s32 D_801E7AAC;
+    s32 x;
+    s32 t;
+    s32 p;
+    s32 v;
+
+    x = func_80029504();
+    if ((u32)(x - 200) < 100) {
+        t = 0;
+        goto join;
+    }
+    __asm__("");
+    if (x < 300) {
+        t = 1;
+        goto join;
+    }
+    __asm__("");
+    if (func_80029178(250) & 0xFF) {
+        t = 0;
+        goto join;
+    }
+    __asm__("");
+    t = 1;
+join:
+    if (t != 0) {
+        p = D_801E7AAC;
+        v = (s32)&D_801EBD50;
+    } else {
+        p = D_801E7AAC;
+        v = (s32)&D_801EBD90;
+    }
+    *(s32 *)(p + 4) = v;
+    return v;
+}

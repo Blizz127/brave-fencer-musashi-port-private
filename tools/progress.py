@@ -80,8 +80,25 @@ IDENTIFIED_REGION_BYTES = {
     "main_0045": 2888,
     "main_0046": 5360,
     "main_0047": 2984,
-    # SC04/SC05/SC07 md scene modules (uncompressed): code ranges from each
+    # SC03/SC04/SC05/SC07 md scene modules (uncompressed): code ranges from each
     # config/overlay_<region>.yaml.
+    "sc03_0053": 1440,
+    "sc03_0054": 3056,
+    "sc03_0056": 200,
+    "sc03_0073": 2580,
+    "sc03_0074": 2748,
+    "sc03_0075": 3972,
+    "sc03_0076": 13104,
+    "sc03_0077": 3068,
+    "sc03_0078": 2404,
+    "sc03_0079": 2680,
+    "sc03_0132": 2556,
+    "sc03_0133": 2724,
+    "sc03_0134": 3948,
+    "sc03_0135": 13080,
+    "sc03_0136": 3012,
+    "sc03_0137": 2380,
+    "sc03_0138": 3316,
     "sc04_0024": 2596,
     "sc04_0025": 2764,
     "sc04_0026": 3940,
@@ -100,6 +117,20 @@ IDENTIFIED_REGION_BYTES = {
     "sc07_0004": 63552,
 }
 IDENTIFIED_CODE_BYTES = sum(IDENTIFIED_REGION_BYTES.values())
+
+# The SC scene overlays (LZSS code images decoded by
+# tools/decode_sc_overlays.py, loaded at 0x80128158) are reported on their
+# own line, not in the headline: each is ~350 KB, most of it engine code
+# shared across scenes, so folding them in would swamp the headline. Code
+# ranges come from each config/overlay_<region>.yaml, and a region is added
+# here when work on it starts.
+SCENE_OVERLAY_REGION_BYTES = {
+    "sc01_0000": 354916,
+    "sc05_0011": 351060,
+    "sc07_0008": 348508,
+    "sc07_0009": 351232,
+    "sc02_0004": 351032,
+}
 # ceil(30% of 806272) = 241882 unique qualifying bytes.
 COVERAGE_THRESHOLD_BYTES = (IDENTIFIED_CODE_BYTES * 3 + 9) // 10
 
@@ -221,6 +252,7 @@ def _qualifies(match: dict[str, Any], recoveries: frozenset = QUALIFYING_RECOVER
 def unique_qualifying_bytes(
     matches: list[dict[str, Any]],
     recoveries: frozenset = QUALIFYING_RECOVERIES,
+    regions: dict[str, int] | None = None,
 ) -> int:
     """Union overlapping vram spans per region; overlapping ranges count once."""
 
@@ -228,7 +260,7 @@ def unique_qualifying_bytes(
     for match in matches:
         if not _qualifies(match, recoveries):
             continue
-        if match["region"] not in IDENTIFIED_REGION_BYTES:
+        if match["region"] not in (IDENTIFIED_REGION_BYTES if regions is None else regions):
             continue
         start = match["vram"]
         end = start + match["size"]
@@ -407,6 +439,15 @@ def main(argv: list[str] | None = None) -> int:
         print(
             f"  {portable:,} / {identified:,} bytes "
             f"({c_percent:.2f}%)"
+        )
+        scene_total = sum(SCENE_OVERLAY_REGION_BYTES.values())
+        scene_c = unique_qualifying_bytes(matches, PORTABLE_RECOVERIES, SCENE_OVERLAY_REGION_BYTES)
+        print(
+            f"Scene overlays, reported separately ({len(SCENE_OVERLAY_REGION_BYTES)} SC ov regions started):"
+        )
+        print(
+            f"  C: {scene_c:,} / {scene_total:,} bytes "
+            f"({(100.0 * scene_c / scene_total) if scene_total else 0.0:.2f}%)"
         )
         print(
             f"  30% threshold: {COVERAGE_THRESHOLD_BYTES:,} bytes"

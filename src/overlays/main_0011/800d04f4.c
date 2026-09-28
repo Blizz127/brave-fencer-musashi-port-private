@@ -9,12 +9,12 @@ typedef double f64;
 #define NULL ((void *)0)
 #endif
 
-const char D_800CEE3C[] = "ON ";
-const char D_800CEE40[] = "OFF";
-const char D_800CEE44[] = "PLAYER DMG";
-const char D_800CEE50[] = "ON";
-const char D_800CEE54[] = "GET IN SEL";
-const u32 D_800CEE60[] = { 0x59414C50, 0x48205245, 0x45482050, 0x414E4152, 0x01000049 };
+extern const char D_800CEE3C[];  /* data at its retail address */
+extern const char D_800CEE40[];  /* data at its retail address */
+extern const char D_800CEE44[];  /* data at its retail address */
+extern const char D_800CEE50[];  /* data at its retail address */
+extern const char D_800CEE54[];  /* data at its retail address */
+extern const u32 D_800CEE60[];  /* data at its retail address */
 
 void func_800D04F4(void) {
     typedef struct { s16 unk00; s16 unk02; s16 unk04; } S6;
