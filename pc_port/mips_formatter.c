@@ -19099,12 +19099,14 @@ static const MusashiNativeLaneEntry *lane_find(uint32_t pc) {
     return NULL;
 }
 
+static int g_lane_suspended;
+
 int musashi_native_lane_usable(const MusashiBootMemory *memory) {
     if (g_lane_env < 0) {
         const char *value = getenv("MUSASHI_NATIVE_LANE");
         g_lane_env = !(value && value[0] == '0');
     }
-    return g_lane_env && memory &&
+    return g_lane_env && !g_lane_suspended && memory &&
         (uintptr_t)memory->bytes == (uintptr_t)MUSASHI_NATIVE_LANE_GUEST_BASE;
 }
 
@@ -22024,6 +22026,39 @@ MusashiResetGraphPrefixStatus musashi_boot_run_entry(
     const MusashiStartupPrefixDevice devices = {.callback=device, .cd=cd};
     return musashi_boot_run_entry_with_devices(memory, incoming_ra, &devices,
         sink, sink_userdata, observer, observer_userdata, stop);
+}
+
+static void lane_reference_sink(void *userdata, const uint8_t *bytes, int32_t size) {
+    (void)userdata; (void)bytes; (void)size;
+}
+
+int musashi_native_lane_reference_call(MusashiBootMemory *memory, uint32_t target,
+                                       const uint32_t *args, unsigned argc,
+                                       uint32_t sp, int use_lane,
+                                       uint32_t *v0, uint32_t *v1) {
+    static const MusashiCallbackDevice no_devices;
+    FormatterCpu cpu = {0};
+    MusashiResetGraphPrefixStop stop = {0};
+    MusashiResetGraphPrefixStatus status;
+    int32_t result = 0;
+    unsigned i;
+    if (!memory || (target & 3u) || (sp & 7u) || argc > 16u || (argc && !args)) return 0;
+    for (i = 4; i < argc; ++i)
+        if (!musashi_boot_write32(memory, sp + 0x10u + (i - 4u) * 4u, args[i])) return 0;
+    for (i = 0; i < argc && i < 4u; ++i) cpu.r[4u + i] = args[i];
+    cpu.callback_device = &no_devices;
+    cpu.pc = target;
+    cpu.npc = target + 4u;
+    cpu.r[28] = 0x80074750u;
+    cpu.r[29] = cpu.r[30] = sp;
+    cpu.r[31] = UINT_MAX;
+    g_lane_suspended += !use_lane;
+    status = run_startup_cpu(memory, &cpu, lane_reference_sink, NULL, &result, &stop,
+                             NULL, NULL, NULL);
+    g_lane_suspended -= !use_lane;
+    if (v0) *v0 = cpu.r[2];
+    if (v1) *v1 = cpu.r[3];
+    return status == MUSASHI_RESETGRAPH_PREFIX_COMPLETE && cpu.npc != UINT_MAX;
 }
 
 MusashiResetGraphPrefixStatus musashi_boot_execute_source_function(

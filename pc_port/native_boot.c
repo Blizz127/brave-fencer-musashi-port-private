@@ -3290,8 +3290,50 @@ static void hold_window(NativeBoot *boot) {
     }
 }
 
+#ifdef MUSASHI_NATIVE_LANE_TABLE
+#include <stddef.h>
+#include <sys/mman.h>
+#include "musashi_native_lane.h"
+#ifndef MAP_FIXED_NOREPLACE
+#define MAP_FIXED_NOREPLACE 0x100000
+#endif
+extern const MusashiNativeLaneEntry musashi_native_lane_generated[];
+extern const size_t musashi_native_lane_generated_count;
+_Static_assert(offsetof(NativeBoot, memory) == 0, "guest RAM leads the boot owner");
+
+/* Natively compiled decomp C dereferences 32-bit guest addresses directly,
+ * so the boot owner, whose first member is guest RAM, is placed at host
+ * 0x80000000. Without that window the lane stays off and the interpreter
+ * runs every word, exactly as without MUSASHI_NATIVE_LANE. */
+static NativeBoot *native_boot_owner(NativeBoot *fallback) {
+    const char *value = getenv("MUSASHI_NATIVE_LANE");
+    void *window;
+    if (value && value[0] == '0') return fallback;
+    window = mmap((void *)(uintptr_t)MUSASHI_NATIVE_LANE_GUEST_BASE, sizeof(NativeBoot),
+                  PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE,
+                  -1, 0);
+    if (window == MAP_FAILED || (uintptr_t)window != MUSASHI_NATIVE_LANE_GUEST_BASE) {
+        if (window != MAP_FAILED) munmap(window, sizeof(NativeBoot));
+        fprintf(stderr, "native_boot: NATIVE_LANE window unavailable; interpreter only\n");
+        return fallback;
+    }
+    if (musashi_native_lane_install(musashi_native_lane_generated,
+                                    musashi_native_lane_generated_count) < 0) {
+        fprintf(stderr, "native_boot: NATIVE_LANE table rejected; interpreter only\n");
+        return window;
+    }
+    fprintf(stderr, "native_boot: NATIVE_LANE entries=%u\n",
+            (unsigned)musashi_native_lane_generated_count);
+    return window;
+}
+#else
+static NativeBoot *native_boot_owner(NativeBoot *fallback) { return fallback; }
+#endif
+
 int main(int argc, char **argv) {
-    static NativeBoot boot; /* One stable, zero-initialized owner. */
+    static NativeBoot boot_storage; /* One stable, zero-initialized owner. */
+    NativeBoot *const boot_owner = native_boot_owner(&boot_storage);
+#define boot (*boot_owner)
     MusashiEntryRunStop entry_stop = {0};
     MusashiResetGraphPrefixStop stop = {0};
     MusashiResetGraphPrefixStatus status;
@@ -4126,3 +4168,4 @@ int main(int argc, char **argv) {
           " visual_check=REQUIRED\n", stderr);
     return host_stop_signal ? 128 + host_stop_signal : 2;
 }
+#undef boot

@@ -5,6 +5,10 @@ project(brave_fencer_musashi_decomp LANGUAGES C CXX)
 
 option(MUSASHI_BUILD_PC_PORT "Build the platform-neutral PC port smoke target" ON)
 option(MUSASHI_WITH_PSYCROSS "Link the PC port against the PsyCross Psy-Q reimplementation" ON)
+# Native lane (docs/PC-PORT.md, "Native lane"): compile admitted byte-matched
+# decomp C for the host and run it in place of the interpreted words. Needs
+# clang; off until the live native boot has been checked with it on.
+option(MUSASHI_NATIVE_LANE "Run checker-admitted decomp C natively in the PC port" OFF)
 option(MUSASHI_USE_VENDOR_BFM
     "Prefer cleaned house-style matched leaves reconciled with vendor/bfm-decomp (Druthulu)"
     OFF)
@@ -17749,6 +17753,48 @@ execute_process(
             message(STATUS
                 "render_tmd disabled: extract the model first with "
                 "tools/extract_tmd.py --offset 0xA97000")
+        endif()
+    endif()
+
+    if(MUSASHI_NATIVE_LANE)
+        find_program(MUSASHI_CLANG NAMES clang REQUIRED)
+        find_package(Python3 COMPONENTS Interpreter REQUIRED)
+        set(MUSASHI_LANE_DIR ${MUSASHI_GENERATED_DIR}/native_lane)
+        file(GLOB MUSASHI_LANE_SOURCES CONFIGURE_DEPENDS
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/main/*.c)
+        add_custom_command(
+            OUTPUT ${MUSASHI_LANE_DIR}/native_lane_table.c
+                   ${MUSASHI_LANE_DIR}/libmusashi_native_lane.a
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/native_lane_gen.py
+                    --out ${MUSASHI_LANE_DIR} --clang ${MUSASHI_CLANG} --ar ${CMAKE_AR} --jobs 4
+            DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/tools/native_lane_gen.py
+                    ${CMAKE_CURRENT_SOURCE_DIR}/provenance/matches.json
+                    ${MUSASHI_LANE_SOURCES}
+            COMMENT "Checking and compiling native-lane decomp C"
+            VERBATIM)
+        add_custom_target(musashi_native_lane_gen
+            DEPENDS ${MUSASHI_LANE_DIR}/native_lane_table.c
+                    ${MUSASHI_LANE_DIR}/libmusashi_native_lane.a)
+        add_library(musashi_native_lane_funcs STATIC IMPORTED)
+        set_target_properties(musashi_native_lane_funcs PROPERTIES
+            IMPORTED_LOCATION ${MUSASHI_LANE_DIR}/libmusashi_native_lane.a)
+        add_dependencies(musashi_native_lane_funcs musashi_native_lane_gen)
+        add_library(musashi_native_lane STATIC ${MUSASHI_LANE_DIR}/native_lane_table.c)
+        target_link_libraries(musashi_native_lane PUBLIC musashi_pc_port musashi_native_lane_funcs)
+        target_include_directories(musashi_native_lane PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/pc_port/include)
+
+        add_executable(musashi_native_lane_probe tests/native_lane_probe.c)
+        target_compile_features(musashi_native_lane_probe PRIVATE c_std_99)
+        target_link_libraries(musashi_native_lane_probe PRIVATE musashi_native_lane)
+        add_test(NAME native_lane_differential
+            COMMAND musashi_native_lane_probe
+                    ${CMAKE_CURRENT_SOURCE_DIR}/extracted/disc/files/SLUS_007.26)
+        set_tests_properties(native_lane_differential PROPERTIES SKIP_RETURN_CODE 77)
+
+        if(TARGET musashi_native_boot)
+            target_compile_definitions(musashi_native_boot PRIVATE MUSASHI_NATIVE_LANE_TABLE=1)
+            target_link_libraries(musashi_native_boot PRIVATE musashi_native_lane)
         endif()
     endif()
 

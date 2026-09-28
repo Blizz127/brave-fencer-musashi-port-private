@@ -1,0 +1,90 @@
+"""Native lane: checker decisions and generated-table shape.
+
+Only tracked decomp sources are needed (no retail data); skipped without
+clang. The differential check against the interpreter is the CTest
+native_lane_differential (MUSASHI_NATIVE_LANE=ON)."""
+from pathlib import Path
+import json
+import shutil
+import subprocess
+import sys
+import tempfile
+
+import unittest
+
+ROOT = Path(__file__).resolve().parents[1]
+GEN = ROOT / "tools/native_lane_gen.py"
+
+# Each decision is pinned to the rule that must make it.
+EXPECT = {
+    0x8001903C: (True, None),        # leaf call into an unported callee (thunk)
+    0x80046CFC: (True, None),        # three stores to guest globals
+    0x8003B08C: (False, "memory"),   # volatile MMIO pointer cell D_8006B560
+    0x80046ABC: (False, "abi"),      # passes 1 of 3 arguments to func_80046CFC
+    0x8005CCC8: (False, "irq"),      # loop with no store or call
+}
+
+
+
+class NativeLaneGeneratorTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.clang = shutil.which("clang")
+        if not cls.clang:
+            raise unittest.SkipTest("clang unavailable")
+        cls._tmp = tempfile.TemporaryDirectory(prefix="musashi-lane-")
+        cls.out = Path(cls._tmp.name)
+        only = cls.out / "only.txt"
+        only.write_text("".join(f"{pc:08x}\n" for pc in EXPECT))
+        subprocess.run([sys.executable, str(GEN), "--out", str(cls.out), "--clang", cls.clang,
+                        "--jobs", "2", "--only", str(only)], check=True, timeout=300,
+                       capture_output=True)
+        cls.report = json.loads((cls.out / "report.json").read_text())
+        cls.table = (cls.out / "native_lane_table.c").read_text()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls._tmp.cleanup()
+
+    def test_decisions(self):
+        got = {f["vram"]: f for f in self.report["functions"]}
+        for pc, (admitted, rule) in EXPECT.items():
+            entry = got[pc]
+            self.assertEqual(entry["admitted"], admitted, (hex(pc), entry))
+            if not admitted:
+                self.assertEqual(entry["rule"], rule, (hex(pc), entry))
+
+    def test_table_shape(self):
+        # Admitted entry, marshalled through the register ABI.
+        self.assertIn('{0x8001903cu, 20u, wrap_8001903c, "func_8001903C", 0u, 0u},', self.table)
+        # func_80016714 has a bespoke binding, so natively compiled callers
+        # reach its guest words through the interpreter thunk.
+        self.assertIn("musashi_native_guest_call(0x80016714u, 2u, args, NULL)", self.table)
+        # Guest symbols are absolute guest addresses, never host relocations.
+        lane_ir = (self.out / "ir" / "8001903c.lane.ll").read_text()
+        self.assertIn("inttoptr (i64 2147960768 to ptr)", lane_ir)  # D_800747C0
+        self.assertNotIn("@D_800747C0", lane_ir)
+
+    def test_table_compiles(self):
+        cc = shutil.which("cc")
+        if not cc:
+            self.skipTest("cc unavailable")
+        subprocess.run([cc, "-std=c99", "-Wall", "-Wextra", "-Werror",
+                        "-I", str(ROOT / "pc_port/include"), "-c",
+                        str(self.out / "native_lane_table.c"), "-o", str(self.out / "table.o")],
+                       check=True, timeout=60)
+
+
+class NativeLaneSourceTest(unittest.TestCase):
+    def test_formatter_consults_lane_before_fetch(self):
+        source = (ROOT / "pc_port/mips_formatter.c").read_text()
+        step = source[source.index(
+            "static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {"):]
+        self.assertLess(step.index("lane_try(memory, cpu)"),
+                        step.index("formatter_fetch(cpu, &instruction)"))
+        # Tracing is opt-in and only observes.
+        self.assertIn('getenv("MUSASHI_TRACE_FUNCS")', source)
+
+
+if __name__ == "__main__":
+    unittest.main()

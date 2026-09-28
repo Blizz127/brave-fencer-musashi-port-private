@@ -40,6 +40,8 @@ typedef struct MusashiNativeLaneEntry {
     uint32_t cost_cycles; /* charged once to the execution clock per call */
     MusashiNativeLaneFn fn;
     const char *name;
+    uint8_t argc;    /* o32 argument words the host function consumes */
+    uint8_t returns; /* 1 when it produces v0, 0 for void */
 } MusashiNativeLaneEntry;
 
 /* Argument n (0-based) under the o32 register ABI. */
@@ -63,10 +65,14 @@ int musashi_native_lane_usable(const MusashiBootMemory *memory);
 uint32_t musashi_native_guest_call(uint32_t target, unsigned argc,
                                    const uint32_t *args, uint32_t *v1);
 
-/* Map a zeroed region of size bytes at exactly host address
- * MUSASHI_NATIVE_LANE_GUEST_BASE (64-bit Linux: MAP_FIXED_NOREPLACE).
- * Returns NULL when the address is unavailable or the host is unsupported. */
-void *musashi_native_lane_map_guest_window(size_t size);
+/* Reference execution for differential checks: run guest function target
+ * with argc argument words on a fresh device-less CPU (gp=0x80074750,
+ * ra=sentinel, stack args at sp+0x10) until it returns. use_lane=0 forces
+ * the interpreter for every PC. Returns 1 on a normal return. */
+int musashi_native_lane_reference_call(MusashiBootMemory *memory, uint32_t target,
+                                       const uint32_t *args, unsigned argc,
+                                       uint32_t sp, int use_lane,
+                                       uint32_t *v0, uint32_t *v1);
 
 /* Executed-path tracer (MUSASHI_TRACE_FUNCS=path). Called by the formatter
  * for jal/jalr targets and CPU dispatch entries; exposed for host routers
