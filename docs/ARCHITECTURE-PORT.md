@@ -5,6 +5,70 @@ This follows the owner's port standard of 2026-09-28, as written up in
 this dev box share one pattern. The goal is a port people can customize,
 with better graphics, mods and cheats.
 
+## Purpose: preservation
+
+The port exists to preserve *Brave Fencer Musashi* as released: its
+gameplay, logic, visuals and audio are exactly retail. Customization sits
+on top of that and never replaces it. The rules:
+
+1. **Retail by default.** With default settings, everything the game
+   computes, shows and plays is what the North American PlayStation
+   release does. There are two kinds of allowed difference:
+   - the platform layer, which reproduces PS1 hardware (CPU, GTE, GPU,
+     SPU, CD, pads, cards, timers) as faithfully as it can;
+   - opt-in mods, cheats and enhancements (widescreen, HD, the gl
+     renderer, fast-forward), all off by default.
+2. **No fibs.** Nothing is described as "matches retail" or "1:1" without
+   objective evidence, linked where the claim is made:
+   - a byte-matched C path (a `provenance/matches.json` entry the build
+     runs);
+   - an emulator or video differential with identical output (frames,
+     VRAM, audio samples, RAM at a checkpoint);
+   - measured numbers (for example `tools/port_matched_ratio.py`).
+   Without that, the word is **untested**.
+3. **Every known gap is public.** Anything that is not yet 1:1 has an
+   entry in [KNOWN-DIVERGENCES.md](KNOWN-DIVERGENCES.md) with its reason
+   and status, until evidence closes it. That includes hand-written
+   PsyQ-compat code, host workarounds that write guest RAM or inject input,
+   and timing approximations.
+4. **Host code doesn't steer the game.** A host workaround that writes
+   guest state or injects input is a divergence (D-001, D-002), even when
+   it only gets a test through. It must be opt-in, or the retail path must
+   be made to work.
+5. **Toward matched C.** Hand-written port C that shadows a registered,
+   byte-matched function is replaced by that function. Each swap is proven
+   by an identical-frame or differential probe and noted in the commit.
+
+The game itself (code, data, audio, video) comes from the user's own disc
+at run time. The repository holds no retail bytes (see the retail guard,
+`tools/check_port_retail.py`).
+
+### Measuring it
+
+`tools/port_matched_ratio.py` classifies every guest function a run
+executes into three classes:
+- byte-matched C (the native lane runs a registry entry);
+- hand-written port code (PsyQ HLE/PsyCross shims, BIOS HLE, and guest
+  functions the host skips);
+- interpreted retail instructions from the disc, split by whether matched
+  C exists but isn't run yet.
+
+It reports the share by distinct functions, calls and instructions. It
+also lists the shims that shadow a registered matched-C function.
+
+```sh
+# lane-ON build; the trace runs with the lane off so it records every
+# call and instruction (tools/patches/trace-insns.patch adds
+# MUSASHI_TRACE_INSNS for exact per-PC instruction counts)
+MUSASHI_NATIVE_LANE=0 MUSASHI_PAUSE_AT_START_SCREEN=1 MUSASHI_TRACE_INSNS=run/trace.insns \
+    tools/run_headless_boot.sh ... --out run      # (see "Headless live boot")
+tools/port_matched_ratio.py --trace-counts run/trace.counts --trace-insns run/trace.insns \
+    --lane-report BUILD/generated/native_lane/report.json --json ratio.json
+```
+
+Without `--trace-insns`, the instruction share is an estimate (calls ×
+function size) and says so.
+
 ## Layers
 
 ```

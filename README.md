@@ -18,6 +18,21 @@ registration record stores only the expected media identity (size and SHA-256)
 and extraction status. Until the disc is extracted and the `SYSTEM.CNF` boot
 path and `PS-X EXE` are observed, executable metadata remains unresolved.
 
+## The PC port: preservation first
+
+The Linux/Windows port (`pc_port/`, [docs/ARCHITECTURE-PORT.md](docs/ARCHITECTURE-PORT.md))
+aims to be 1:1 with retail. By default, gameplay, logic, visuals and audio
+are the North American release's. The only allowed differences are a
+platform layer that reproduces PS1 hardware, and mods, cheats and
+enhancements that are opt-in and off by default.
+
+"Matches retail" is claimed only with objective evidence: a byte-matched C
+path, an emulator or video differential, or measured numbers. Anything else
+is "untested". What is not yet 1:1 is listed, with reasons and status, in
+[docs/KNOWN-DIVERGENCES.md](docs/KNOWN-DIVERGENCES.md).
+`tools/port_matched_ratio.py` measures how much executed code is
+byte-matched C.
+
 ## Current state
 
 The retail disc has been registered, extracted, and its boot executable

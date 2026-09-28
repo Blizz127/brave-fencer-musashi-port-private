@@ -1,0 +1,74 @@
+# Known divergences from retail
+
+This is the public list of every known place where the PC port is not yet
+1:1 with the retail North American PlayStation release. The standard is in
+[ARCHITECTURE-PORT.md, "Purpose: preservation"](ARCHITECTURE-PORT.md#purpose-preservation).
+
+Rules for this file:
+- An entry stays until objective evidence closes it: a byte-matched C path,
+  an emulator or video differential with identical output, or measured
+  numbers. Evidence gets linked in the entry, and a closed entry moves to
+  "Closed" with that link.
+- Anything nobody has compared is **untested**, not "matches".
+- Opt-in mods, cheats and debug switches that are off by default are
+  listed under "Opt-in (off by default)". Everything else is a defect to fix.
+
+Status values: **open** (differs, or is known to differ), **untested** (no
+comparison yet), **opt-in** (off by default).
+
+Seeded 2026-09-28 by reading the code on `port/platform-layer` (merged
+`port/native-lane` 24d270872 and `main` f0299da37). Run the measurement
+with `tools/port_matched_ratio.py`.
+
+## Game logic and state
+
+| ID | Divergence | Where | Why | Status |
+|----|------------|-------|-----|--------|
+| D-001 | **Guest RAM is forced by default once the game is in play.** When scene 1 is reached (320x240 display, more than 800 GTE writes), the host writes the player object at 0x80126B58: `unk4D` goes 2 → 1 and the mode word 0x800B99F0 becomes 9 (gameplay). After that, every frame writes `+0xA9 = 0x41` (digital pad mode) and `+0x4D = 1`. Retail sets these itself. | `pc_port/native_boot.c`, "Control unlock", about lines 1606-1625 | It was a workaround to reach player control while the boot path was incomplete. It runs unless `MUSASHI_NO_FORCE` is set, so it is on by default. | open, and it must become opt-in or be removed |
+| D-002 | The auto-start and auto-dismiss paths (`MUSASHI_BOOT_AUTO_START`, `MUSASHI_AUTO_DISMISS`, which `--headless` and `--frames` both set) inject pad presses at chosen phases and also force `unk4D` (the same write as D-001). | `native_boot.c` about lines 1164-1235, 3796-3810 | For headless tests. | opt-in, but `--headless` turns it on; the `unk4D` write is a RAM change, not input |
+| D-003 | Host code shadows guest functions: at 0x8005F704 (the pad-record getter) the interpreter returns `0x80088A48 + (a0 & 0xF0)` or the live `D_80072990` record without running the retail instructions. | `pc_port/mips_formatter.c`, formatter_step | A boot-path workaround. | open; no differential |
+| D-004 | Memory cards are always disconnected. Saving and loading are unavailable, and the game takes its no-card path. | `pc_port/sio_controller.c` (`disconnected_cards = 1`) | No card image backend yet. | open |
+
+## Timing
+
+| ID | Divergence | Where | Why | Status |
+|----|------------|-------|-----|--------|
+| D-010 | On the default host clock, if the game waits in `VSync` (0x800424E4 polling 0x8006CBB8) and the tick hasn't advanced, the host latches VBlank in I_STAT. The VBlank then follows host pacing, not guest CPU cycles. `MUSASHI_GUEST_CLOCK=1` (the default for `--headless`) paces VBlank by guest cycles instead. | `native_boot.c` `vsync_wait_raise_tick` | Interactive runs are host-paced. | open (host clock); untested (guest clock vs hardware cycle counts) |
+| D-011 | The guest clock charges the interpreter's per-instruction cost and does not model the R3000A's cache, load delays or memory wait states. A native-lane call charges its entry's fixed `cost_cycles` (PsyQ entries: 16), not the retail instruction count. | `native_boot.c` guest-clock quantum; `mips_formatter.c` `lane_try` | Not modelled. | open; frame-timing differential not done |
+| D-012 | Retail runs at 30 fps game logic. `[video] frame_rate = 60` is accepted by the config but has no effect. | `bfm_plat_config.c` | Design note only. | opt-in (no effect) |
+
+## PsyQ library code (hand-written, not byte-matched)
+
+| ID | Divergence | Where | Why | Status |
+|----|------------|-------|-----|--------|
+| D-020 | PsyQ compat entries run hand-written C instead of the retail library instructions at their PCs. By default (`MUSASHI_PSYQ_LANE=pure`) that means every non-stub entry except the device entries and those whose body holds a port-sequenced PC. Seven were found wrong by the lane probe and fixed (7935600a2). The GTE functions RotMatrix, RotMatrixYXZ/X/Y/Z and ratan2 were made exact against retail semantics over the game's own tables (193b41e86). The rest have no per-entry differential. | `pc_port/platform/psyq/bfm_psyq_compat.def` (HLE/PsyCross entries), `pc_port/native_lane_psyq.c` | Speed and portability; the retail bodies were not yet matched. | open; `tools/port_matched_ratio.py` lists them as `shadowed_*` |
+| D-021 | Entries with the `PSYCROSS` status call PsyCross (MIT, a PsyQ reimplementation), whose GTE and libgpu semantics are not retail. | `pc_port/platform/psyq/psyq_psycross.c` | Same as D-020. | untested |
+
+## Video
+
+| ID | Divergence | Where | Why | Status |
+|----|------------|-------|-----|--------|
+| D-030 | The default CPU rasteriser (`gpu_controller.c`) is an approximation. Line clipping and edge rules are not proven against hardware, and Gouraud lines use the start colour for the whole line. | `pc_port/gpu_controller.c` | Not yet hardware-accurate. | open (lines); untested (polygon edge and fill rules) |
+| D-031 | Semi-transparency, mask bit and STP were fixed against an 8-case repro (`tools/headless/gpu_semi_repro.c`, 056abd331). That repro is a unit comparison, not a hardware capture. | `gpu_controller.c` | | untested against hardware |
+| D-032 | `video.gpu = bfm_plat` (the GPU bridge to the bfm_plat renderer) is verified only through the splash and fade-in at 125 s. The title and gameplay haven't been compared. | `pc_port/platform/bfm_plat_gpu_bridge.c` | New path. | opt-in; untested beyond the splash |
+| D-033 | The `gl` renderer blends in 8-bit float: modes 0 (B/2+F/2) and 3 (B+F/4) can differ by ±1 in a 5-bit channel. Dithering is off above 1x resolution. | `pc_port/platform/backends/gl/` | GPU precision. | opt-in (`renderer = gl`) |
+| D-034 | The `psycross` renderer draws through PsyCross's GL path with PGXP; its fidelity to the PS1 GPU hasn't been compared. | `backends/renderer_psycross.c` | | opt-in; untested |
+| D-035 | Widescreen (hor+ / anamorphic), HD texture replacement and texture restyle change the picture. | `bfm_plat_widescreen.c`, gl renderer, mods | Enhancements. | opt-in (off by default) |
+
+## Audio
+
+| ID | Divergence | Where | Why | Status |
+|----|------------|-------|-----|--------|
+| D-040 | SPU and XA/CD-DA output come from the port's own SPU core. Neither sample accuracy nor timing has been compared with hardware or an emulator. Headless runs use `MUSASHI_AUDIO=null`, which produces no sound. | `pc_port/spu_*`, `native_boot.c` | | untested |
+
+## Opt-in (off by default)
+
+These change retail behaviour only when a user asks for them:
+- Cheats (`pc_port/mods/examples/cheat_pack`) and mods (docs/MODDING.md).
+- `MUSASHI_GAMEPLAY_ACTION` (scripted RAM writes and input for tests).
+- `MUSASHI_HOLD_R1`, `MUSASHI_DISMISS_KEY`, `MUSASHI_PAUSE_*`, and the trace and dump switches. The trace and dump switches only observe.
+- Widescreen, the gl renderer, HD textures, fast-forward.
+
+## Closed
+
+(none yet)
