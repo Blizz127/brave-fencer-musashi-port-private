@@ -84,7 +84,7 @@ try:
     @pytest.fixture(autouse=True)
     def _pristine_code_image():
         """A mutation test's code image never leaks into the next test."""
-        saved = {k: os.environ.get(k) for k in ("MUSASHI_CODE_IMAGE", "MUSASHI_CODE_IMAGE_MUTANT")}
+        saved = {k: os.environ.get(k) for k in ("MUSASHI_CODE_IMAGE", "MUSASHI_CODE_IMAGE_MUTANT", "MUSASHI_OVERLAY_DIR")}
         yield
         for key, value in saved.items():
             if value is None:

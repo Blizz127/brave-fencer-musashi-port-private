@@ -1,4 +1,10 @@
 #include "../pc_port/mips_formatter.c"
+/* Former compiled word tables: words now come from the local extract. */
+#include "probe_code_words.h"
+#define kFile80045660Words PROBE_WORDS(0x80045660u, "MAIN", kFile80045660Words)
+#define kOverlay0004_800D24D0Words PROBE_WORDS(0x800d24d0u, "MAIN_0004", kOverlay0004_800D24D0Words)
+#define kOverlaySc02_8012A094Words PROBE_WORDS(0x8012a094u, "SC02_031", kOverlaySc02_8012A094Words)
+#define kOverlaySc02_8013D53CWords PROBE_WORDS(0x8013d53cu, "SC02_031", kOverlaySc02_8013D53CWords)
 
 #include <assert.h>
 #include <stdint.h>

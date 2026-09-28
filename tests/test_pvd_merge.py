@@ -5,7 +5,7 @@ import sys
 import tempfile
 
 sys.path.insert(0, str(Path(__file__).parent))
-from test_bios_event_callbacks import _generate_formatter_includes, _sync_code_image
+from test_bios_event_callbacks import _generate_formatter_includes, _materialize_overlays, _sync_code_image
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -34,6 +34,7 @@ def test_pvd_merge_source_pairs_and_checked_memory():
         generated = Path(temp) / "generated"
         generated.mkdir()
         _generate_formatter_includes(generated)
+        _materialize_overlays(generated)
         _compile_probe(Path(temp), generated, ROOT / "tests/pvd_merge_probe.c")
         _sync_code_image(generated)
         subprocess.run([str(probe)], check=True, timeout=10)
@@ -60,11 +61,14 @@ def test_pvd_merge_mutants_are_rejected_by_independent_oracle():
             generated = root / "generated"
             generated.mkdir()
             _generate_formatter_includes(generated)
+            _materialize_overlays(generated)
             (root / "pc_port").mkdir()
             (root / "tests").mkdir()
             (root / "pc_port/mips_formatter.c").write_text(
                 formatter.replace(needle, replacement)
             )
+            (root / "tests/probe_code_words.h").write_text(
+                (ROOT / "tests/probe_code_words.h").read_text())
             probe_source = root / "tests/pvd_merge_probe.c"
             probe_source.write_text(
                 (ROOT / "tests/pvd_merge_probe.c").read_text()

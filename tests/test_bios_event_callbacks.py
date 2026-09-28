@@ -128,6 +128,40 @@ def _generate_formatter_includes(output, pac=False):
                         str(words), "--expected-sha256", str(sha)], check=True, timeout=60)
 
 
+OVERLAY_MEMBERS = {
+    # name: (source, guest base)
+    "MAIN_0004": ("extracted/overlays/main/0004.bin", 0x800CE5F8),  # file carries a 0x800 header
+    "MAIN_0007": ("extracted/overlays/main/0007.bin", 0x800CEDF8),
+    "MAIN_0010": ("extracted/overlays/main/0010.bin", 0x800AEDF8),
+    "MAIN_0012": ("extracted/overlays/main/0012.bin", 0x80100158),
+}
+
+
+def _materialize_overlays(output):
+    """Decode the overlay members probes need from the local disc extract
+    into output/<name>.bin + <name>.base and point MUSASHI_OVERLAY_DIR there
+    (tests/probe_code_words.h). SC02 member 31 is decoded from SC02.CD."""
+    import os
+    import struct
+    for name, (source, base) in OVERLAY_MEMBERS.items():
+        path = ROOT / source
+        if path.is_file():
+            (output / f"{name}.bin").write_bytes(path.read_bytes())
+            (output / f"{name}.base").write_text(f"{base:08x}\n")
+    archive = ROOT / "extracted/disc/files/SC02.CD"
+    if archive.is_file():
+        sys.path.insert(0, str(ROOT))
+        from tools.decode_title_pac import decode
+        data = archive.read_bytes()
+        sector, size = struct.unpack_from("<II", data, 8 + 31 * 8)
+        member = data[sector * 2048:sector * 2048 + size]
+        code, _ = decode(member[0x800:struct.unpack_from("<4I", member)[3]])
+        (output / "SC02_031.bin").write_bytes(code)
+        (output / "SC02_031.base").write_text("80128158\n")
+    os.environ["MUSASHI_OVERLAY_DIR"] = str(output)
+    return output
+
+
 def _sync_code_image(output):
     """Apply every <stem>_words.inc in output to a copy of the EXE and point
     the probes at it (MUSASHI_CODE_IMAGE, test-only MUSASHI_CODE_IMAGE_MUTANT).
