@@ -33,9 +33,18 @@ if(MUSASHI_BUILD_PC_PORT AND MUSASHI_WITH_PSYCROSS)
     if(EXISTS "/home/linuxbrew/.linuxbrew/opt/sdl2/include/SDL2/SDL_main.h")
         include_directories(BEFORE SYSTEM "/home/linuxbrew/.linuxbrew/opt/sdl2/include/SDL2" "/home/linuxbrew/.linuxbrew/opt/sdl2/include")
     endif()
-    if(EXISTS "/home/blizz/opt/host-port-deps/usr/lib/x86_64-linux-gnu")
-        link_directories("/home/blizz/opt/host-port-deps/usr/lib/x86_64-linux-gnu")
-        add_link_options("-Wl,--disable-new-dtags" "-Wl,-rpath,/home/blizz/opt/host-port-deps/usr/lib/x86_64-linux-gnu")
+    # Optional private dependency prefix (e.g. ~/opt/host-port-deps/usr):
+    # off by default, so a plain configure links and runs against the
+    # system SDL2/OpenAL/GL. When set, binaries carry an RPATH to it.
+    set(MUSASHI_HOST_DEPS_PREFIX "" CACHE PATH
+        "Private dependency prefix whose lib/x86_64-linux-gnu is linked and RPATHed (empty: system libraries)")
+    if(MUSASHI_HOST_DEPS_PREFIX)
+        set(MUSASHI_HOST_DEPS_LIB "${MUSASHI_HOST_DEPS_PREFIX}/lib/x86_64-linux-gnu")
+        if(NOT EXISTS "${MUSASHI_HOST_DEPS_LIB}")
+            message(FATAL_ERROR "MUSASHI_HOST_DEPS_PREFIX: ${MUSASHI_HOST_DEPS_LIB} does not exist")
+        endif()
+        link_directories("${MUSASHI_HOST_DEPS_LIB}")
+        add_link_options("-Wl,--disable-new-dtags" "-Wl,-rpath,${MUSASHI_HOST_DEPS_LIB}")
     endif()
     find_package(SDL2 REQUIRED)
     find_package(OpenAL REQUIRED)
