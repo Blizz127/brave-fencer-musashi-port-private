@@ -2,152 +2,99 @@
  * SHA256(span)=0d486fe6da9de5693a57713cc791fbe6ca038cc244a7095002e0ebc9db8674c7.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80167DBC - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+extern s32 func_80017758(void *a0, void *a1);
+extern s32 func_80029178(s32 arg);
 
-void func_80017758(s16 *, void *);            /* extern */
-s32 func_80029178();                         /* extern */
-extern s32 D_801812BC;
-extern s32 D_801812D0;
-void func_80168070(void *);                   /* static */
-extern u16 D_800B99DA;
 
-void func_80167DBC(void) {
-    s32 sp60;
-    u8 sp5E;
-    u8 sp5D;
-    u8 sp5C;
-    s8 sp5A;
-    s8 sp59;
-    s8 sp58;
-    u8 sp56;
-    u8 sp55;
-    u8 sp54;
-    u8 sp52;
-    u8 sp51;
-    u8 sp50;
-    s16 sp4C;
-    s16 sp4A;
-    s16 sp48;
-    s16 sp44;
-    s16 sp42;
-    s16 sp40;
-    s16 sp3C;
-    s16 sp3A;
-    s16 sp38;
-    s16 sp34;
-    s16 sp32;
-    s16 sp30;
-    s32 sp10;
-    s32 (*var_s0)();
-    s32 (*var_s0_2)();
-    s16 temp_v0_2;
-    s16 temp_v0_3;
-    s16 var_s1;
-    s16 var_s1_2;
-    u32 temp_v0;
-    u8 temp_v1;
-    u8 var_v0;
-    void *temp_s0;
-    void *temp_s0_2;
-    void *temp_s0_3;
-    void *temp_s0_4;
-    void *temp_s0_5;
-    void *temp_s0_6;
-    void *temp_s0_7;
-    void *temp_s0_8;
+// @class: schedule
+// @stuck: none — MATCH. The between-loops f1/f2 store-swap (0x55/0x56) is fixed by writing f2's assign first, then the chained `buf[0x44] = buf[0x45] = buf[0x45] << 1;` — the chain keeps f1's read first (read order fixed by -0x12 in $v0) while emitting f2's store (0x56) ahead of the f1/f0 pair (0x55,0x54). 173/173.
 
-    func_80168070(&sp10);
-    sp4C = 0;
-    sp44 = 0;
-    sp34 = 0;
-    sp3C = 0;
-    sp3A = 0;
-    sp38 = 0;
+extern void func_80168070(s32 a0, s16 *a1, s16 *a2, void *a3);
+
+s32 func_80167DBC(s32 arg0, s32 arg1, s32 arg2) {
+
+    extern u16  D_800B99DA;
+    extern u8   D_801812BC[];
+    extern u8   D_801812D0[];
+    u8 buf[0x54];
+    u8 *p;
+    s16 i;
+
+    func_80168070(arg0, ((s16 *)arg1), ((s16 *)arg2), buf);
+
+    *(s16 *)(buf + 0x3C) = 0;
+    *(s16 *)(buf + 0x34) = 0;
+    *(s16 *)(buf + 0x24) = 0;
+    *(s16 *)(buf + 0x2C) = 0;
+    *(s16 *)(buf + 0x2A) = 0;
+    *(s16 *)(buf + 0x28) = 0;
     if (D_800B99DA & 1) {
-        var_v0 = 0x58;
+        buf[0x46] = 0x58;
     } else {
-        var_v0 = 0x48;
+        buf[0x46] = 0x48;
     }
-    sp56 = var_v0;
-    temp_v0 = var_v0 >> 2;
-    sp55 = (u8) temp_v0;
-    sp54 = (u8) temp_v0;
-    if (func_80029178(0x81) & 0xFF) {
-        sp55 *= 4;
-        sp56 = (u8) (sp56 >> 1);
+    buf[0x45] = buf[0x46] >> 2;
+    buf[0x44] = buf[0x45];
+    if (((u8 (*)(s32))func_80029178)(0x81) != 0) {
+        buf[0x45] = buf[0x45] << 2;
+        buf[0x46] = buf[0x46] >> 1;
     }
-    var_s0 = D_801812BC;
-    var_s1 = 0;
-    sp52 = 0;
-    sp51 = 0;
-    sp50 = 0;
-    sp5A = 0;
-    sp59 = 0;
-    sp58 = 0;
-    sp5E = 0;
-    sp5D = 0;
-    sp5C = 0;
-    sp60 = 0x50000000;
-    do {
-        temp_s0 = var_s0 + 1;
-        sp30 = (s16) (s8) M2C_FIELD(var_s0, u8 *, 0);
-        temp_s0_2 = temp_s0 + 1;
-        sp32 = (s16) (s8) M2C_FIELD(var_s0, u8 *, 1);
-        temp_s0_3 = temp_s0_2 + 1;
-        sp40 = (s16) (s8) M2C_FIELD(temp_s0, u8 *, 1);
-        temp_s0_4 = temp_s0_3 + 1;
-        sp42 = (s16) (s8) M2C_FIELD(temp_s0_2, u8 *, 1);
-        sp48 = (s16) (s8) M2C_FIELD(temp_s0_3, u8 *, 1);
-        var_s0 = (temp_s0_4 + 1) - 1;
-        sp4A = (s16) (s8) M2C_FIELD(temp_s0_4, u8 *, 1);
-        func_80017758(&sp30, &sp10);
-        temp_v0_2 = var_s1 + 1;
-        var_s1 = temp_v0_2;
-    } while (temp_v0_2 < 4);
-    var_s0_2 = D_801812D0;
-    sp3C = -0x12;
-    var_s1_2 = 0;
-    sp4A = 0;
-    sp42 = 0;
-    sp32 = 0;
-    sp3A = 0;
-    sp38 = 0;
-    temp_v1 = sp55 * 2;
-    sp56 *= 2;
-    sp55 = temp_v1;
-    sp54 = temp_v1;
-    do {
-        temp_s0_5 = var_s0_2 + 1;
-        sp30 = (s16) (s8) M2C_FIELD(var_s0_2, u8 *, 0);
-        temp_s0_6 = temp_s0_5 + 1;
-        sp34 = (s16) (s8) M2C_FIELD(var_s0_2, u8 *, 1);
-        temp_s0_7 = temp_s0_6 + 1;
-        sp40 = (s16) (s8) M2C_FIELD(temp_s0_5, u8 *, 1);
-        temp_s0_8 = temp_s0_7 + 1;
-        sp44 = (s16) (s8) M2C_FIELD(temp_s0_6, u8 *, 1);
-        sp48 = (s16) (s8) M2C_FIELD(temp_s0_7, u8 *, 1);
-        sp4C = (s16) (s8) M2C_FIELD(temp_s0_8, u8 *, 1);
-        var_s0_2 = (temp_s0_8 + 1) - 1;
-        if (var_s1_2 == 2) {
-            sp5E = sp56;
-            sp5D = sp54;
-            sp5C = sp54;
-        } else if (var_s1_2 == 3) {
-            sp5E = 0;
-            sp5D = 0;
-            sp5C = 0;
-            sp52 = sp56;
-            sp51 = sp54;
-            sp50 = sp54;
+
+    p = D_801812BC;
+    buf[0x42] = 0;
+    buf[0x41] = 0;
+    buf[0x40] = 0;
+    buf[0x4A] = 0;
+    buf[0x49] = 0;
+    buf[0x48] = 0;
+    buf[0x4E] = 0;
+    buf[0x4D] = 0;
+    buf[0x4C] = 0;
+    *(s32 *)(buf + 0x50) = 0x50000000;
+
+    for (i = 0; i < 4; i++) {
+        *(s16 *)(buf + 0x20) = (s8)*p++;
+        *(s16 *)(buf + 0x22) = (s8)*p++;
+        *(s16 *)(buf + 0x30) = (s8)*p++;
+        *(s16 *)(buf + 0x32) = (s8)*p++;
+        *(s16 *)(buf + 0x38) = (s8)*p++;
+        *(s16 *)(buf + 0x3A) = (s8)*p--;
+        func_80017758(buf + 0x20, buf);
+    }
+
+    p = D_801812D0;
+    *(s16 *)(buf + 0x2C) = -0x12;
+    *(s16 *)(buf + 0x3A) = 0;
+    *(s16 *)(buf + 0x32) = 0;
+    *(s16 *)(buf + 0x22) = 0;
+    *(s16 *)(buf + 0x2A) = 0;
+    *(s16 *)(buf + 0x28) = 0;
+    buf[0x46] = buf[0x46] << 1;
+    buf[0x44] = buf[0x45] = buf[0x45] << 1;
+
+    for (i = 0; i < 4; i++) {
+        *(s16 *)(buf + 0x20) = (s8)*p++;
+        *(s16 *)(buf + 0x24) = (s8)*p++;
+        *(s16 *)(buf + 0x30) = (s8)*p++;
+        *(s16 *)(buf + 0x34) = (s8)*p++;
+        *(s16 *)(buf + 0x38) = (s8)*p++;
+        *(s16 *)(buf + 0x3C) = (s8)*p--;
+        if (i == 2) {
+            buf[0x4E] = buf[0x46];
+            buf[0x4D] = buf[0x44];
+            buf[0x4C] = buf[0x4D];
+        } else if (i == 3) {
+            buf[0x4E] = 0;
+            buf[0x4D] = 0;
+            buf[0x4C] = buf[0x4D];
+            buf[0x42] = buf[0x46];
+            buf[0x41] = buf[0x44];
+            buf[0x40] = buf[0x44];
         }
-        func_80017758(&sp30, &sp10);
-        temp_v0_3 = var_s1_2 + 1;
-        var_s1_2 = temp_v0_3;
-    } while (temp_v0_3 < 4);
+        func_80017758(buf + 0x20, buf);
+    }
 }

@@ -2,86 +2,99 @@
  * SHA256(span)=e5434bd4b699497011d41603ea6ea784ddb5da58c68dab3966a08b08d1eb6543.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80129CF8 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* Vendor names mapped to address-named symbols for the link-by-address harness. */
+#define GsSetRefView2L func_80054DCC
 
-s16 func_80012F74(s16, s16, s32, s32);                  /* extern */
-void func_80053308(s32);                               /* extern */
-void func_80054DCC(void *, s32);                       /* extern */
-void func_8012A328();                                  /* static */
-extern s32 D_800AE688;
-extern s32 D_800AF630;
-extern u8 D_801150D6;
-extern void *D_801151D4;
-extern s32 *D_80126948;
-extern s32 D_80126DB8;
-extern s32 *D_80126E60;
-extern s32 *D_80126F04;
-extern s32 *D_80126FA8;
+/* File-scope declarations from the vendor translation unit. */
+struct BigCopy { s32 words[41]; };
+typedef struct { s32 vpx, vpy, vpz, vrx, vry, vrz, rz, super; } RView;
+
+/* func_80129CF8 — shared body (overlay slot 0x80128158, h_exact 3602e5f8). ONE source: instantiated by #include at each
+ * member's site in address order; the members are recorded in config/dedup.us.yaml (Phase 35). */
+extern void func_8012A328(void);
+extern void func_80053308(s32);
+extern s32 func_80012F74(s32, s32, s32, s32);  /* canonical s32 (engine_core); (s16)-cast the return for the sll/sra */
+extern void GsSetRefView2L(void *);
+extern s8 D_801150D6;            /* canonical (engine_core macro): s8 — access via *(u8*)& for lbu */
 extern u8 D_80127504;
-
-void func_80129CF8(void) {
-    s32 (*temp_v0)();
-    void *var_s0;
-    s32 temp_a1;
-
+extern s32 D_80126E60[];
+extern s32 D_80126F04[];
+extern u8 D_80126948[];          /* canonical (sibling): u8[] — cast (s32*) at use */
+extern s32 D_80126FA8[];
+extern struct BigCopy D_80126DB8;/* canonical (engine_core macro): struct BigCopy — (s32*)& at use */
+extern u8 D_800AF630[];          /* canonical (sibling): u8[] — cast (s32*) at use */
+extern s32 D_800AE688[];
+extern s32 D_801151D4;           /* canonical (10 siblings): scalar s32 — store (s32)ptr */
+void func_80129CF8(void)
+{
+    RView view; /* unused: reserves the extra 0x20 frame bytes the target has */
+    s32 *cam;
+    s32 *p1;
+    s32 *p2;
+    s32 a;
+    s32 b;
+    s32 iVar2;
     func_8012A328();
-    if (D_801150D6 == 1) {
-        var_s0 = &D_80126E60;
-    } else if (D_801150D6 == 2) {
-        var_s0 = &D_80126F04;
+    p2 = (s32 *)D_800AF630;
+    p1 = (s32 *)&D_80126DB8;
+    if (*(u8 *)&D_801150D6 == 1) {
+        cam = D_80126E60;
+    } else if (*(u8 *)&D_801150D6 == 2) {
+        cam = D_80126F04;
     } else {
-        var_s0 = &D_80126948;
-        if (D_801150D6 == 3) {
-            var_s0 = &D_80126FA8;
+        cam = (s32 *)D_80126948;
+        if (*(u8 *)&D_801150D6 == 3) {
+            cam = D_80126FA8;
         }
     }
-    temp_v0 = var_s0->unk0;
-    if (temp_v0 != 0) {
-        temp_v0(var_s0);
+    if (cam[0] != 0) {
+        (*(void (*)(s32 *))cam[0])(cam);
     }
-    func_80053308(var_s0->unk8);
+    func_80053308(cam[2]);
     if (D_80127504 != 0) {
-        D_80126DB8.unk3C = (s32) func_80012F74(D_80126DB8.unk3C, var_s0->unk3C, 2, 1);
-        D_80126DB8.unk40 = (s32) func_80012F74(D_80126DB8.unk40, var_s0->unk40, 2, 1);
-        D_80126DB8.unk44 = (s32) func_80012F74(D_80126DB8.unk44, var_s0->unk44, 2, 1);
-        D_80126DB8.unk48 = (s32) func_80012F74(D_80126DB8.unk48, var_s0->unk48, 2, 1);
-        D_80126DB8.unk4C = (s32) func_80012F74(D_80126DB8.unk4C, var_s0->unk4C, 2, 1);
-        D_80126DB8.unk50 = (s32) func_80012F74(D_80126DB8.unk50, var_s0->unk50, 2, 1);
-        D_80126DB8.unk54 = (s32) func_80012F74(D_80126DB8.unk54, var_s0->unk54, 2, 1);
-        D_80127504 -= 1;
+        p1[0xf] = (s16)func_80012F74((s16)p1[0xf], (s16)cam[0xf], 2, 1);
+        p1[0x10] = (s16)func_80012F74((s16)p1[0x10], (s16)cam[0x10], 2, 1);
+        p1[0x11] = (s16)func_80012F74((s16)p1[0x11], (s16)cam[0x11], 2, 1);
+        p1[0x12] = (s16)func_80012F74((s16)p1[0x12], (s16)cam[0x12], 2, 1);
+        p1[0x13] = (s16)func_80012F74((s16)p1[0x13], (s16)cam[0x13], 2, 1);
+        p1[0x14] = (s16)func_80012F74((s16)p1[0x14], (s16)cam[0x14], 2, 1);
+        p1[0x15] = (s16)func_80012F74((s16)p1[0x15], (s16)cam[0x15], 2, 1);
+        D_80127504 = D_80127504 - 1;
     } else {
-        D_80126DB8.unk3C = (s32) var_s0->unk3C;
-        D_80126DB8.unk40 = (s32) var_s0->unk40;
-        D_80126DB8.unk44 = (s32) var_s0->unk44;
-        D_80126DB8.unk48 = (s32) var_s0->unk48;
-        D_80126DB8.unk4C = (s32) var_s0->unk4C;
-        D_80126DB8.unk50 = (s32) var_s0->unk50;
-        D_80126DB8.unk54 = (s32) var_s0->unk54;
+        p1[0xf] = cam[0xf];
+        p1[0x10] = cam[0x10];
+        p1[0x11] = cam[0x11];
+        p1[0x12] = cam[0x12];
+        p1[0x13] = cam[0x13];
+        p1[0x14] = cam[0x14];
+        p1[0x15] = cam[0x15];
     }
-    var_s0->unk5C = (s32) ((s32) D_80126DB8.unk3C + var_s0->unk7C);
-    var_s0->unk60 = (s32) ((s32) D_80126DB8.unk40 + var_s0->unk80);
-    var_s0->unk64 = (s32) ((s32) D_80126DB8.unk44 + var_s0->unk84);
-    var_s0->unk68 = (s32) ((s32) D_80126DB8.unk48 + var_s0->unk88);
-    var_s0->unk6C = (s32) ((s32) D_80126DB8.unk4C + var_s0->unk8C);
-    temp_a1 = var_s0->unk94;
-    var_s0->unk70 = (s32) ((s32) D_80126DB8.unk50 + var_s0->unk90);
-    var_s0->unk78 = (s32) var_s0->unk58;
-    var_s0->unk74 = (s32) ((s32) D_80126DB8.unk54 + temp_a1);
-    func_80054DCC(var_s0 + 0x5C, temp_a1);
-    D_800AF630.unk18 = (s32) D_800AE688.unk0;
-    D_800AF630.unk1C = (s32) D_800AE688.unk4;
-    D_800AF630.unk20 = (s32) D_800AE688.unk8;
-    D_800AF630.unk24 = (s32) D_800AE688.unkC;
-    D_800AF630.unk28 = (s32) D_800AE688.unk10;
-    D_800AF630.unk2C = (s32) D_800AE688.unk14;
-    D_800AF630.unk30 = (s32) D_800AE688.unk18;
-    D_800AF630.unk34 = (s32) D_800AE688.unk1C;
-    D_801151D4 = var_s0;
+    a = p1[0xf];
+    b = cam[0x1f];
+    cam[0x17] = a + b;
+    a = p1[0x10];
+    b = cam[0x20];
+    cam[0x18] = a + b;
+    a = p1[0x11];
+    b = cam[0x21];
+    cam[0x19] = a + b;
+    a = p1[0x12];
+    b = cam[0x22];
+    cam[0x1a] = a + b;
+    a = p1[0x13];
+    b = cam[0x23];
+    cam[0x1b] = a + b;
+    a = p1[0x14];
+    b = cam[0x24];
+    cam[0x1c] = a + b;
+    iVar2 = p1[0x15] + cam[0x25];
+    cam[0x1e] = cam[0x16];
+    cam[0x1d] = iVar2;
+    GsSetRefView2L(&cam[0x17]);
+    *(RView *)(p2 + 6) = *(RView *)D_800AE688;
+    D_801151D4 = (s32)cam;
 }

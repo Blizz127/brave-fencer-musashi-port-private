@@ -2,124 +2,82 @@
  * SHA256(span)=cf151674d774dd1c077ac1ebf306094a8274a2a6ea36b8e6d5e09c543f54b038.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8016B234 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* Vendor names mapped to address-named symbols for the link-by-address harness. */
+#define RotTransPers func_8004955C
 
-void func_80016ED4(u16 *);                             /* extern */
-void func_8004914C(void *);                               /* extern */
-void func_800491AC(void *);                               /* extern */
-void func_8004955C(u16 *, s32 *, void *, s32 *);          /* extern */
-extern s32 D_801814E4;
-extern s32 *D_800AF648;
+/* File-scope declarations from the vendor translation unit. */
+typedef void (*code)(unsigned short *);
+typedef struct { s16 ax, ay, a04, a06, bx, by, b0c, b0e, cx, cy, c14, c16, dx, dy, d1c, d1e, u0, v0, u1, v1, u2, v2, u3, v3; u8 r, g, b, pad33; s32 tag; u8 code, pad39, pad3a, pad3b; s32 pad3c; } Prim_B234;
 
-void func_8016B234(void *arg0) {
-    s32 sp60;
-    s32 sp5C;
-    s32 sp58;
-    u8 sp50;
-    s32 sp4C;
-    u8 sp4A;
-    u8 sp49;
-    u8 sp48;
-    s16 sp46;
-    s16 sp44;
-    s16 sp42;
-    s16 sp40;
-    s16 sp3E;
-    s16 sp3C;
-    s16 sp3A;
-    s16 sp38;
-    s16 sp32;
-    u16 sp30;
-    s16 sp2A;
-    u16 sp28;
-    s16 sp22;
-    u16 sp20;
-    s16 sp1C;
-    s16 sp1A;
-    u16 sp18;
-    u16 sp14;
-    u16 sp12;
-    u16 sp10;
-    s16 temp_v0_2;
-    s16 temp_v0_5;
-    s16 temp_v1_2;
-    s16 temp_v1_3;
-    s16 temp_v1_4;
-    s16 var_s2;
-    s32 temp_v0_4;
-    s32 var_v0;
-    u16 temp_a0;
-    u16 temp_v0;
-    u16 temp_v0_6;
-    u16 temp_v1;
-    u16 var_s0;
-    u8 temp_v0_3;
+extern void func_8004914C(void *a0);
+extern void func_800491AC(void *a0);
+extern s32 RotTransPers(s32 a0, s32 a1, s32 *a2, s32 *a3);
+extern void func_80016ED4(void *a0);
 
-    func_8004914C(&D_800AF648);
-    func_800491AC(&D_800AF648);
-    sp10 = arg0->unk6;
-    sp12 = arg0->unkA;
-    sp14 = arg0->unkE;
-    func_8004955C(&sp10, &sp58, &sp5C, &sp60);
-    if (!(sp60 & ~0x1000)) {
-        sp1C = 0x10;
-        temp_v0 = arg0->unk2A + sp58;
-        temp_v1 = temp_v0 + 8;
-        sp28 = temp_v0;
-        sp18 = temp_v0;
-        sp30 = temp_v1;
-        sp20 = temp_v1;
-        temp_v0_2 = unksp5A - arg0->unk26;
-        sp22 = temp_v0_2;
-        sp1A = temp_v0_2;
-        sp3E = 0x1D0;
-        sp3A = 0x1D0;
-        sp46 = 0x1D8;
-        sp42 = 0x1D8;
-        temp_v1_2 = unksp5A + arg0->unk26;
-        sp32 = temp_v1_2;
-        sp2A = temp_v1_2;
-        temp_v0_3 = arg0->unk24;
-        sp4A = temp_v0_3;
-        sp49 = temp_v0_3;
-        sp48 = temp_v0_3;
-        sp50 = *(D_801814E4 + arg0->unk2C);
-        if ((s16) arg0->unk26 < 5) {
-            sp4C = 0;
+
+void func_8016B234(s32 param_1) {
+
+    extern u8 D_800AF648;
+    extern u8 D_801814E4;
+    short input[3];
+    Prim_B234 prim;
+    struct { s16 xy[2]; s32 sp1c; s32 flag; } out;
+    void *dp;
+    u32 uVar1;
+    s16 iVar2;
+    s32 X, Y0, Y1, base, ni;
+    register s32 sy __asm__("$16");
+    register s16 xtmp __asm__("$4");
+    register s32 sxy __asm__("$3");
+
+    dp = &D_800AF648;
+    func_8004914C(dp);
+    func_800491AC(dp);
+    input[0] = *(u16 *)(param_1 + 6);
+    input[1] = *(u16 *)(param_1 + 0xA);
+    input[2] = *(u16 *)(param_1 + 0xE);
+    RotTransPers((s32)input, (s32)out.xy, &out.sp1c, &out.flag);
+    if ((out.flag & 0xffffefff) == 0) {
+        sxy = *(s32 *)out.xy;
+        prim.a04 = 0x10;
+        X = *(u16 *)(param_1 + 0x2a) + sxy;
+        sy = (u16)out.xy[1];
+        prim.ax = prim.cx = X;
+        prim.bx = prim.dx = X + 8;
+        Y0 = sy - *(u16 *)(param_1 + 0x26);
+        prim.ay = prim.by = Y0;
+        sxy = *(u16 *)(param_1 + 0x26);
+        prim.v0 = prim.v1 = 0x1d0;
+        prim.v2 = prim.v3 = 0x1d8;
+        sxy = sy + sxy;
+        prim.cy = prim.dy = sxy;
+        __asm__ __volatile__("" : : "r"(sy));
+        prim.r = prim.g = prim.b = *(u8 *)(param_1 + 0x24);
+        prim.code = (&D_801814E4)[*(s32 *)(param_1 + 0x2c)];
+        if (*(s16 *)(param_1 + 0x26) < 5) {
+            prim.tag = 0;
         } else {
-            sp4C = 0x50000000;
+            prim.tag = 0x50000000;
         }
-        var_s0 = arg0->unk30;
-        var_s2 = 0;
-        if ((arg0->unk28 + 1) > 0) {
-            var_v0 = var_s0 + 1;
+        uVar1 = *(u16 *)(param_1 + 0x30);
+        iVar2 = 0;
+        if (0 < *(s16 *)(param_1 + 0x28) + 1) {
             do {
-                temp_v0_4 = (var_v0 & 0xF) * 8;
-                temp_v1_4 = temp_v0_4 + 0x620;
-                temp_v0_5 = temp_v0_4 + 0x628;
-                sp40 = temp_v1_4;
-                sp38 = temp_v1_4;
-                sp44 = temp_v0_5;
-                sp3C = temp_v0_5;
-                func_80016ED4(&sp18);
-                var_s0 = (u16) ((s32) (var_s0 << 0x10) >> 0x14);
-                temp_v1_3 = var_s2 + 1;
-                var_s2 = temp_v1_3;
-                temp_a0 = sp18;
-                temp_v0_6 = temp_a0 - 8;
-                sp18 = temp_v0_6;
-                sp28 = temp_v0_6;
-                sp30 = temp_a0;
-                sp20 = temp_a0;
-                var_v0 = var_s0 + 1;
-            } while (temp_v1_3 < (arg0->unk28 + 1));
+                base = ((uVar1 + 1) & 0xf) << 3;
+                prim.u0 = prim.u2 = base + 0x620;
+                prim.u1 = prim.u3 = base + 0x628;
+                func_80016ED4(&prim);
+                uVar1 = (s32)(uVar1 << 0x10) >> 0x14;
+                iVar2 = iVar2 + 1;
+                __asm__ __volatile__("");
+                xtmp = prim.ax;
+                prim.cx = prim.ax = xtmp - 8;
+                prim.bx = prim.dx = xtmp;
+            } while ((s16)iVar2 < *(s16 *)(param_1 + 0x28) + 1);
         }
     }
 }

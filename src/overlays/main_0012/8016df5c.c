@@ -2,116 +2,111 @@
  * SHA256(span)=cd6dc2a177638756d310fa7db96027160a97ef80feb21f45c38f326a9a366cac.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8016DF5C - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* Vendor names mapped to address-named symbols for the link-by-address harness. */
+#define ApplyMatrixSV func_80048FBC
+#define RotMatrixY func_8004A0DC
+#define rand func_8005C49C
 
-void func_8001CD50(void *, s8 *);                /* extern */
-void func_800233CC(s8 *, s32);               /* extern */
-void func_80048FBC(s32 *, u16 *, u16 *);         /* extern */
-void func_8004A0DC(u32, s32 *);                  /* extern */
-s32 func_8005C49C(s32, void *);                  /* extern */
-extern s32 D_80184EF9;
-extern s32 D_80184EFA;
-extern s32 D_80184EFD;
-extern s32 D_80184EFE;
-void *func_801465C0();                              /* static */
-void func_80146C3C(u16 *);                       /* static */
-void func_8016E3CC(void *);                      /* static */
-extern s32 *D_800AE620;
-extern u16 D_8011D030;
-extern u16 D_80126B5E;
-extern u16 D_80126B62;
-extern u16 D_80126B66;
-extern s8 D_80184EF8;
-extern s8 D_80184EFC;
+/* File-scope declarations from the vendor translation unit. */
+typedef struct { s16 vx, vy, vz, pad; } Svec_801372B0;
+typedef struct { s32 w0, w4, w8, wC; s16 h10, hpad; s32 t0, t1, t2; } Mat32;
+typedef struct { s32 w[8]; } Blk20_8016DF5C;
+void func_8012A568(void (*a0)(void));
+extern void func_8012A568(void (*a0)(void));
+extern Mat32 D_800AE620;
+extern void ApplyMatrixSV(void *m, Svec_801372B0 *in, Svec_801372B0 *out);
+extern s32 rand(void);
 
-void func_8016DF5C(void *arg0) {
-    s32 sp54;
-    s32 sp50;
-    s32 sp4C;
-    s32 sp48;
-    s32 sp44;
-    s32 sp40;
-    s32 sp3C;
-    s32 sp38;
-    u16 sp14;
-    s16 sp12;
-    u16 sp10;
-    s32 temp_v0_3;
-    s32 var_s1;
-    u16 *var_s0;
-    u16 temp_v0;
-    u16 var_v0;
-    void *temp_s3;
-    void *temp_v0_2;
+extern void func_8001CD50(s32 a0, s32 a1);
+extern void func_800233CC(void *, unsigned short);
+extern void func_801465C0(void);
+extern void func_80146C3C(u8*);
 
-    temp_s3 = M2C_FIELD(arg0, void **, 0x34);
-    if (!(M2C_FIELD(arg0, s32 *, 0x2C) & 0x8000)) {
-        var_s1 = 0;
-        var_s0 = &D_8011D030;
+
+
+
+void func_8016DF5C(s32 param_1)
+{
+
+    extern s32 D_8011D030;
+    extern u16 D_80126B5E;
+    extern u16 D_80126B62;
+    extern u16 D_80126B66;
+    extern void func_8016E3CC(s32);
+    extern void RotMatrixY(s32 a0, void *a1);
+    extern u8 D_80184EF8;
+    extern u8 D_80184EF9;
+    extern u8 D_80184EFA;
+    extern u8 D_80184EFC;
+    extern u8 D_80184EFD;
+    extern u8 D_80184EFE;
+
+    s32 iVar8;
+    short sVar1;
+
+    iVar8 = *(s32 *)((u8 *)((void *)param_1) + 0x34);
+    if ((*(u32 *)((u8 *)((void *)param_1) + 0x2c) & 0x8000) == 0) {
+        unsigned short uVar7 = 0;
+        u16 *psVar6 = (u16 *)&D_8011D030;
+        register s32 iNew __asm__("$17");
+        s32 base;
         do {
-            if ((var_s0 != arg0) && ((temp_v0 = *var_s0, (temp_v0 == 0x41)) || (temp_v0 == 0x48))) {
-                func_80146C3C(var_s0);
+            if (psVar6 != (u16 *)((void *)param_1) && (*psVar6 == 0x41 || *psVar6 == 0x48)) {
+                ((void (*)(void *))func_80146C3C)(psVar6);
             }
-            var_s1 += 1;
-            var_s0 += 0x58;
-        } while ((u32) (var_s1 & 0xFFFF) < 0x1EU);
-        temp_v0_2 = func_801465C0();
-        if (temp_v0_2 != 0) {
-            D_80184EFA = 0xC0;
-            D_80184EF8 = 0xC0;
-            D_80184EF9 = 0;
-            D_80184EFE = 0;
-            D_80184EFD = 0;
-            D_80184EFC = 0;
-            func_800233CC(&D_80184EF8, 0x40);
-            func_8001CD50(temp_v0_2, &D_80184EF8);
-            M2C_FIELD(temp_v0_2, void **, 0x34) = (void *) (arg0 + 0x38);
-            M2C_FIELD(temp_v0_2, s16 *, 0x1A) = 0;
-            M2C_FIELD(temp_v0_2, s16 *, 0x18) = 0;
-            M2C_FIELD(temp_v0_2, s32 *, 4) = (s32) (M2C_FIELD(temp_v0_2, s32 *, 4) | 0x50000000);
-            func_8016E3CC(arg0);
-            M2C_FIELD(arg0, void **, 0x20) = temp_v0_2;
-            M2C_FIELD(arg0, s32 *, 0x1C) = 0x10;
-            var_v0 = M2C_FIELD(arg0, u16 *, 2) + 1;
-            goto block_10;
+            uVar7++;
+            psVar6 += 0x2c;
+        } while (uVar7 < 0x1e);
+        iNew = ((s32(*)())func_801465C0)();
+        if (iNew == 0) {
+            return;
         }
+        base = (s32)&D_80184EF8;
+        D_80184EFA = 0xc0;
+        *(u8 *)base = 0xc0;
+        D_80184EF9 = 0;
+        D_80184EFE = 0;
+        D_80184EFD = 0;
+        D_80184EFC = 0;
+        ((void(*)(void *, unsigned short))func_800233CC)((void *)base, 0x40);
+        func_8001CD50(iNew, base);
+        *(s32 *)(iNew + 0x34) = (s32)((u8 *)((void *)param_1) + 0x38);
+        *(s16 *)(iNew + 0x1a) = 0;
+        *(s16 *)(iNew + 0x18) = 0;
+        *(u32 *)(iNew + 4) = *(u32 *)(iNew + 4) | 0x50000000;
+        ((void (*)(void *))func_8016E3CC)(((void *)param_1));
+        {
+            register s32 t10 __asm__("$3");
+            t10 = 0x10;
+            *(s32 *)((u8 *)((void *)param_1) + 0x20) = iNew;
+            *(s32 *)((u8 *)((void *)param_1) + 0x1c) = t10;
+        }
+        sVar1 = *(u16 *)((u8 *)((void *)param_1) + 2) + 1;
     } else {
-        sp10 = 0;
-        sp12 = 0;
-        sp14 = 0x20;
-        sp38 = M2C_FIELD(&D_800AE620, s32 *, 0);
-        sp3C = M2C_FIELD(&D_800AE620, s32 *, 4);
-        sp40 = M2C_FIELD(&D_800AE620, s32 *, 8);
-        sp44 = M2C_FIELD(&D_800AE620, s32 *, 0xC);
-        sp48 = M2C_FIELD(&D_800AE620, s32 *, 0x10);
-        sp4C = M2C_FIELD(&D_800AE620, s32 *, 0x14);
-        sp50 = M2C_FIELD(&D_800AE620, s32 *, 0x18);
-        sp54 = M2C_FIELD(&D_800AE620, s32 *, 0x1C);
-        temp_v0_3 = func_8005C49C(M2C_FIELD(&D_800AE620, s32 *, 0x14), &D_800AE620);
-        func_8004A0DC((u32) (temp_v0_3 & 0x7F00) >> 3, &sp38);
-        func_80048FBC(&sp38, &sp10, &sp10);
-        M2C_FIELD(arg0, s16 *, 6) = (s16) (D_80126B5E + sp10);
-        M2C_FIELD(arg0, s16 *, 0xA) = (s16) (D_80126B62 - (temp_v0_3 & 0x3F));
-        M2C_FIELD(arg0, s16 *, 0xE) = (s16) (D_80126B66 + sp14);
-        M2C_FIELD(arg0, s32 *, 0x38) = (s32) M2C_FIELD(temp_s3, s32 *, 0x38);
-        M2C_FIELD(arg0, s32 *, 0x3C) = (s32) M2C_FIELD(temp_s3, s32 *, 0x3C);
-        M2C_FIELD(arg0, s32 *, 0x40) = (s32) M2C_FIELD(temp_s3, s32 *, 0x40);
-        M2C_FIELD(arg0, s32 *, 0x44) = (s32) M2C_FIELD(temp_s3, s32 *, 0x44);
-        M2C_FIELD(arg0, s32 *, 0x48) = (s32) M2C_FIELD(temp_s3, s32 *, 0x48);
-        M2C_FIELD(arg0, s32 *, 0x4C) = (s32) M2C_FIELD(temp_s3, s32 *, 0x4C);
-        M2C_FIELD(arg0, s32 *, 0x50) = (s32) M2C_FIELD(temp_s3, s32 *, 0x50);
-        M2C_FIELD(arg0, s32 *, 0x54) = (s32) M2C_FIELD(temp_s3, s32 *, 0x54);
-        M2C_FIELD(arg0, s32 *, 0x2C) = 0x1000;
-        M2C_FIELD(arg0, s32 *, 0x30) = 0xFF;
-        M2C_FIELD(arg0, s32 *, 0x1C) = 0x10;
-        var_v0 = 4;
-block_10:
-        M2C_FIELD(arg0, u16 *, 2) = var_v0;
+        short asStack_60[20];
+        Blk20_8016DF5C localMatrix;
+        s32 uVar2;
+
+        asStack_60[0] = 0;
+        asStack_60[1] = 0;
+        asStack_60[2] = 0x20;
+        localMatrix = (*(Blk20_8016DF5C*)&D_800AE620);
+        uVar2 = ((s32(*)())rand)();
+        RotMatrixY((uVar2 & 0x7f00) >> 3, &localMatrix);
+        ApplyMatrixSV(&localMatrix, asStack_60, asStack_60);
+        *(s16 *)((u8 *)((void *)param_1) + 6) = D_80126B5E + asStack_60[0];
+        *(s16 *)((u8 *)((void *)param_1) + 0xa) = D_80126B62 - ((u16)uVar2 & 0x3f);
+        *(s16 *)((u8 *)((void *)param_1) + 0xe) = D_80126B66 + asStack_60[2];
+        *(Blk20_8016DF5C *)((u8 *)((void *)param_1) + 0x38) = *(Blk20_8016DF5C *)((u8 *)iVar8 + 0x38);
+        *(s32 *)((u8 *)((void *)param_1) + 0x2c) = 0x1000;
+        *(s32 *)((u8 *)((void *)param_1) + 0x30) = 0xff;
+        *(s32 *)((u8 *)((void *)param_1) + 0x1c) = 0x10;
+        __asm__ __volatile__("" ::: "memory");
+        sVar1 = 4;
     }
+    *(s16 *)((u8 *)((void *)param_1) + 2) = sVar1;
 }

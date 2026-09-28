@@ -2,92 +2,89 @@
  * SHA256(span)=b089bbd6e907161a46a1af5aecb48ee8cec36f1f16def25d19973291ee00269d.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80156B74 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* File-scope declarations from the vendor translation unit. */
+typedef struct { s16 a; s16 b; s16 c; s16 d; } S8;
+typedef struct { u8 b[8]; } B8;
 
-void func_800139C8(s16, u16 *, u16 *);                 /* extern */
-void func_801484B0(u16 *, void *);                        /* static */
-void func_801484E8(u16 *, void *, u16);                   /* static */
-void func_80148534(u16 *, void *);                        /* static */
-void func_8014856C(u16 *, void *, u16);                   /* static */
-void func_80156ECC(void *, s16 *, u16 *, u16 *, u16 *); /* static */
-extern u16 D_80126AF0;
-extern u16 D_80126AF2;
-extern u16 D_80126AF4;
-extern u16 D_80126AF8;
-extern u16 D_80126AFA;
-extern u16 D_80126AFC;
-extern s16 D_801270A8;
-extern s16 D_801270AA;
-extern s16 D_801270AC;
-
-void func_80156B74(void *arg0, s32 arg1, u8 *arg2) {
-    s32 sp20;
-    u16 sp18;
-    s32 temp_a0;
-    void *temp_v1;
-
-    temp_v1 = arg0->unk20;
-    D_801270A8 = 0;
-    D_801270AA = -0x1E;
-    D_801270AC = 0;
-    if (arg1 == 0) {
-        if (temp_v1->unk20 != 0) {
-            func_801484B0(&sp18, &sp20);
-            D_80126AF0 = sp18;
-            D_80126AF2 = sp1A;
-            D_80126AF4 = sp1C;
-            func_801484E8(&sp18, &sp20, sp1C);
-            D_80126AF8 = sp18;
-            D_80126AFA = sp1A;
-            D_80126AFC = sp1C;
-        } else {
-            goto block_6;
+/* func_80156B74 — shared body (overlay slot 0x80128158, h_exact 892f5585). ONE source: instantiated by #include at each
+ * member's site in address order; the members are recorded in config/dedup.us.yaml (Phase 35). */
+void func_80156B74(s32 param_1, u32 param_2, u8 *param_3) {
+    extern S8 D_80126AF0[];
+    extern S8 D_801270A8;
+    extern void func_801484B0(s32 a0, s32 a1);
+    extern void func_801484E8(s32 a0, s32 a1);
+    extern void func_80148534(s32 a0, s32 a1);
+    extern void func_8014856C(s32 a0, s32 a1);
+    extern void func_800139C8(s32 a0, void *a1, void *a2);
+    extern void func_80156ECC(s32 a0, void *a1, void *a2, void *a3, void *a4);
+    u16 local_28[3];
+    B8 auStack_20;
+    s32 v1 = *(s32 *)(param_1 + 0x20);
+    D_801270A8.a = 0;
+    D_801270A8.b = -0x1E;
+    D_801270A8.c = 0;
+    if (param_2 == 0) {
+        if (*(s32 *)(v1 + 0x20) != 0) {
+            ((void (*)(void *, void *))func_801484B0)(local_28, &auStack_20);
+            D_80126AF0[0].a = local_28[0];
+            D_80126AF0[0].b = local_28[1];
+            D_80126AF0[0].c = local_28[2];
+            ((void (*)(void *, void *))func_801484E8)(local_28, &auStack_20);
+            D_80126AF0[1].a = local_28[0];
+            D_80126AF0[1].b = local_28[1];
+            D_80126AF0[1].c = local_28[2];
+            goto L_call;
         }
-    } else if (arg1 == 1) {
-        if (temp_v1->unk20 != 0) {
-            func_80148534(&sp18, &sp20);
-            D_80126AF0 = sp18;
-            D_80126AF2 = sp1A;
-            D_80126AF4 = sp1C;
-            func_8014856C(&sp18, &sp20, sp1C);
-            D_80126AF8 = sp1A;
-            D_80126AFA = sp1A;
-            D_80126AFC = sp1C;
-        } else {
-block_6:
-            D_80126AF0 = 0;
-            D_80126AF2 = 0;
-            D_80126AF4 = 0;
-            D_80126AF8 = 0;
-            D_80126AFA = 0;
-            D_80126AFC = 0;
-        }
-    } else if (arg1 == 2) {
-        D_80126AF0 = 0;
-        D_80126AF2 = -0x1EU;
-        D_80126AF4 = -0x52U;
-        func_800139C8((s16) (arg0->unk24A - arg0->unk20->unk12), &D_80126AF0, &D_80126AF0);
-        D_80126AF8 = 0;
-        D_80126AFA = -0x1EU;
-        D_80126AFC = -0x52U;
-    } else {
-        temp_a0 = arg1 & 0x80FFFFFF;
-        D_80126AF0 = (u16) (s8) *((*arg2 * 3) + temp_a0);
-        D_80126AF2 = (u16) (s8) ((*arg2 * 3) + temp_a0)->unk1;
-        D_80126AF4 = (u16) (s8) ((*arg2 * 3) + temp_a0)->unk2;
-        D_80126AF8 = (u16) (s8) ((*arg2 * 3) + temp_a0)->unk3;
-        D_80126AFA = (u16) (s8) ((*arg2 * 3) + temp_a0)->unk4;
-        D_80126AFC = (u16) (s8) ((*arg2 * 3) + temp_a0)->unk5;
+        goto L_zero;
     }
-    if (!(arg1 & 0x0F000000)) {
-        *arg2 += 1;
+    if (param_2 != 1) goto L_not1;
+    if (*(s32 *)(v1 + 0x20) != 0) {
+        ((void (*)(void *, void *))func_80148534)(local_28, &auStack_20);
+        D_80126AF0[0].a = local_28[0];
+        D_80126AF0[0].b = local_28[1];
+        D_80126AF0[0].c = local_28[2];
+        ((void (*)(void *, void *))func_8014856C)(local_28, &auStack_20);
+        D_80126AF0[1].a = local_28[1];
+        D_80126AF0[1].b = local_28[1];
+        D_80126AF0[1].c = local_28[2];
+        goto L_call;
     }
-    func_80156ECC(arg0, &D_801270A8, &D_80126AF0, &D_80126AF0 + 8, &D_80126AF0 + 0x10);
+L_zero:
+    D_80126AF0[0].a = 0;
+    D_80126AF0[0].b = 0;
+    D_80126AF0[0].c = 0;
+    D_80126AF0[1].a = 0;
+    D_80126AF0[1].b = 0;
+    D_80126AF0[1].c = 0;
+    goto L_call;
+L_not1:
+    if (param_2 == 2) {
+        D_80126AF0[0].a = 0;
+        D_80126AF0[0].b = -0x1E;
+        D_80126AF0[0].c = -0x52;
+        func_800139C8((s32)(s16)(*(u16 *)(param_1 + 0x24A) - *(u16 *)(*(s32 *)(param_1 + 0x20) + 0x12)),
+                      &D_80126AF0[0], &D_80126AF0[0]);
+        D_80126AF0[1].a = 0;
+        D_80126AF0[1].b = -0x1E;
+        D_80126AF0[1].c = -0x52;
+        goto L_call;
+    }
+    {
+        u32 uVar1 = param_2 & 0x80FFFFFF;
+        D_80126AF0[0].a = (s8)*(u8 *)(*param_3 * 3 + uVar1);
+        D_80126AF0[0].b = (s8)*(u8 *)(*param_3 * 3 + uVar1 + 1);
+        D_80126AF0[0].c = (s8)*(u8 *)(*param_3 * 3 + uVar1 + 2);
+        D_80126AF0[1].a = (s8)*(u8 *)(*param_3 * 3 + uVar1 + 3);
+        D_80126AF0[1].b = (s8)*(u8 *)(*param_3 * 3 + uVar1 + 4);
+        D_80126AF0[1].c = (s8)*(u8 *)(*param_3 * 3 + uVar1 + 5);
+    }
+L_call:
+    if ((param_2 & 0xF000000) == 0) {
+        *param_3 = *param_3 + 1;
+    }
+    func_80156ECC(param_1, &D_801270A8, &D_80126AF0[0], &D_80126AF0[1], &D_80126AF0[2]);
 }

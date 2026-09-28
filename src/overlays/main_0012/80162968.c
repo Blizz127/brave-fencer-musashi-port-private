@@ -2,48 +2,51 @@
  * SHA256(span)=d2e0c33c693da4e8a2b877b03abb4dc903f772d76f08068285df8f7d6ada6239.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80162968 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* Vendor names mapped to address-named symbols for the link-by-address harness. */
+#define ratan2 func_8004CFEC
 
-void func_800123F0(void *, s16);                 /* extern */
-void func_80012558(void *, s16);                 /* extern */
-void func_800126C4(void *, s16);                 /* extern */
-void func_80013F3C(void *);                      /* extern */
-s16 func_80047D3C(s32);                             /* extern */
-s16 func_8004CFEC(s16, s16);                        /* extern */
-
-void func_80162968(void *arg0) {
-    s16 temp_v0;
-    s16 temp_v0_2;
-    s16 var_a0;
-    s32 temp_v0_3;
-    void *temp_s0;
-    void *temp_s1;
-    void *temp_s3;
-
-    temp_s1 = M2C_FIELD(arg0, void **, 4);
-    temp_s3 = M2C_FIELD(arg0, void **, 8);
-    temp_s0 = arg0 + 0xC;
-    M2C_FIELD(temp_s3, s16 *, 0x10) = func_8004CFEC(M2C_FIELD(temp_s1, s16 *, 0x84), M2C_FIELD(temp_s1, s16 *, 0x82));
-    temp_v0 = M2C_FIELD(temp_s1, s16 *, 0x84);
-    temp_v0_2 = M2C_FIELD(temp_s1, s16 *, 0x82);
-    M2C_FIELD(temp_s3, s16 *, 0x14) = func_8004CFEC(M2C_FIELD(temp_s1, s16 *, 0x80), -func_80047D3C((temp_v0 * temp_v0) + (temp_v0_2 * temp_v0_2)));
-    func_80013F3C(temp_s0);
-    func_800126C4(temp_s0, M2C_FIELD(temp_s3, s16 *, 0x10));
-    func_800123F0(temp_s0, M2C_FIELD(temp_s3, s16 *, 0x14));
-    func_80012558(temp_s0, M2C_FIELD(M2C_FIELD(temp_s1, void **, 0x20), s16 *, 0x12));
-    func_800126C4(temp_s0, 0x400);
-    temp_v0_3 = 0x300 - (s16) (M2C_FIELD(arg0, s32 *, 0x24) - M2C_FIELD(temp_s1, u16 *, 0xA));
-    var_a0 = (temp_v0_3 << 0xD) / 768;
-    if (M2C_FIELD(temp_s1, s32 *, 0x44) & 0x400) {
-        var_a0 = ((temp_v0_3 << 0xD) / 768) / 3;
+/* func_80162968 — shared body (overlay slot 0x80128158, h_exact a44c8b39). ONE source: instantiated by #include at each
+ * member's site in address order; the members are recorded in config/dedup.us.yaml (Phase 35). */
+extern s32 ratan2(s32 a0, s32 a1);
+extern s32 func_80047D3C(s32 a0);
+extern void func_80013F3C(s32 a0);
+extern void func_800126C4(s32 a0, s32 a1);
+extern void func_800123F0(s32 a0, s32 a1);
+extern void func_80012558(s32 a0, s32 a1);
+void func_80162968(s32 param_1)
+{
+    register int p __asm__("$18");
+    register int iVar4 __asm__("$17");
+    register int iVar3 __asm__("$16");
+    register int iVar5 __asm__("$19");
+    short sVar2;
+    int iVar6;
+    p = param_1;
+    iVar4 = *(int *)(p + 4);
+    iVar5 = *(int *)(p + 8);
+    iVar3 = p + 0xc;
+    *(short *)(iVar5 + 0x10) =
+        (short)ratan2((int)*(short *)(iVar4 + 0x84), (int)*(short *)(iVar4 + 0x82));
+    sVar2 = (short)func_80047D3C((int)*(short *)(iVar4 + 0x84) * (int)*(short *)(iVar4 + 0x84) +
+                                 (int)*(short *)(iVar4 + 0x82) * (int)*(short *)(iVar4 + 0x82));
+    *(short *)(iVar5 + 0x14) =
+        (short)ratan2((int)*(short *)(iVar4 + 0x80), -(int)sVar2);
+    func_80013F3C(iVar3);
+    func_800126C4(iVar3, (int)*(short *)(iVar5 + 0x10));
+    func_800123F0(iVar3, (int)*(short *)(iVar5 + 0x14));
+    func_80012558(iVar3, (int)*(short *)(*(int *)(iVar4 + 0x20) + 0x12));
+    func_800126C4(iVar3, 0x400);
+    iVar6 = ((0x300 - (int)(short)(*(int *)(p + 0x24) - (unsigned int)*(unsigned short *)(iVar4 + 0xa))) * 0x2000) / 0x300;
+    sVar2 = (short)iVar6;
+    if ((*(unsigned int *)(iVar4 + 0x44) & 0x400) != 0) {
+        sVar2 = (short)iVar6 / 3;
     }
-    M2C_FIELD(temp_s3, s16 *, 0x1C) = var_a0;
-    M2C_FIELD(temp_s3, s16 *, 0x1A) = var_a0;
-    M2C_FIELD(temp_s3, s16 *, 0x18) = var_a0;
+    *(short *)(iVar5 + 0x1c) = sVar2;
+    *(short *)(iVar5 + 0x1a) = sVar2;
+    *(short *)(iVar5 + 0x18) = sVar2;
+    return;
 }

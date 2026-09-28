@@ -2,69 +2,57 @@
  * SHA256(span)=d7c36acac9637fdf2c369feedad65fa625cb40fce2df74d6413f2d35961da477.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80163A94 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* File-scope declarations from the vendor translation unit. */
+typedef struct { u32 a, b, c, d; } Blk16;
 
-void func_8001C214(void *, void *);           /* extern */
-void *func_8014659C();                              /* static */
-void func_80146A6C(s32, void *, s32, s32, s32, s32, s32); /* static */
-void func_80146CA0(void *);                      /* static */
-void func_80146DE8(void *, s32, s32, s32); /* static */
-void func_80146E90(void *, s32);             /* static */
-void func_80147324(s32, s32, s32, s32);      /* static */
-void func_80149374(void *, void *);              /* static */
-extern s32 *D_800636C8;
-extern s32 *D_800DE5A0;
-
-void func_80163A94(void *arg0) {
-    s32 temp_a1;
-    s32 temp_a2;
-    s32 temp_a3;
-    void *temp_s1;
-    void *temp_v0;
-    void *temp_v0_2;
-    void *temp_v1;
-
-    temp_s1 = M2C_FIELD(arg0, void **, 0x4C);
-    M2C_FIELD(temp_s1, s32 *, 0x44) = (s32) (M2C_FIELD(temp_s1, s32 *, 0x44) | 4);
-    temp_v0 = func_8014659C();
-    M2C_FIELD(arg0, void **, 0x20) = temp_v0;
-    if (temp_v0 != 0) {
-        func_8001C214(temp_v0, &D_800DE5A0);
-        M2C_FIELD(temp_v0, void **, 0x20) = &D_800636C8;
-        M2C_FIELD(temp_v0, s16 *, 0x1C) = 0x1800;
-        M2C_FIELD(temp_v0, s16 *, 0x1A) = 0x1800;
-        M2C_FIELD(temp_v0, s16 *, 0x18) = 0x1800;
-        M2C_FIELD(temp_v0, u16 *, 0x2C) = (u16) (M2C_FIELD(temp_v0, u16 *, 0x2C) | 0x10);
-        func_80149374(temp_s1, arg0 + 4);
-        temp_v1 = M2C_FIELD(arg0, void **, 0x20);
-        temp_v0_2 = M2C_FIELD(temp_s1, void **, 0x20);
-        M2C_FIELD(temp_v1, s32 *, 0x34) = (s32) M2C_FIELD(temp_v0_2, s32 *, 0x34);
-        M2C_FIELD(temp_v1, s32 *, 0x38) = (s32) M2C_FIELD(temp_v0_2, s32 *, 0x38);
-        M2C_FIELD(temp_v1, s32 *, 0x3C) = (s32) M2C_FIELD(temp_v0_2, s32 *, 0x3C);
-        M2C_FIELD(temp_v1, s32 *, 0x40) = (s32) M2C_FIELD(temp_v0_2, s32 *, 0x40);
-        temp_a1 = M2C_FIELD(temp_v0_2, s32 *, 0x48);
-        temp_a2 = M2C_FIELD(temp_v0_2, s32 *, 0x4C);
-        temp_a3 = M2C_FIELD(temp_v0_2, s32 *, 0x50);
-        M2C_FIELD(temp_v1, s32 *, 0x44) = (s32) M2C_FIELD(temp_v0_2, s32 *, 0x44);
-        M2C_FIELD(temp_v1, s32 *, 0x48) = temp_a1;
-        M2C_FIELD(temp_v1, s32 *, 0x4C) = temp_a2;
-        M2C_FIELD(temp_v1, s32 *, 0x50) = temp_a3;
-        M2C_FIELD(temp_v0, u16 *, 0x10) = (u16) M2C_FIELD(M2C_FIELD(temp_s1, void **, 0x20), u16 *, 0x10);
-        M2C_FIELD(temp_v0, u16 *, 0x12) = (u16) M2C_FIELD(M2C_FIELD(temp_s1, void **, 0x20), u16 *, 0x12);
-        M2C_FIELD(temp_v0, u16 *, 0x14) = (u16) M2C_FIELD(M2C_FIELD(temp_s1, void **, 0x20), u16 *, 0x14);
-        M2C_FIELD(arg0, u16 *, 0x60) = (u16) M2C_FIELD(temp_s1, u16 *, 0x100);
-        M2C_FIELD(arg0, u16 *, 0x62) = (u16) M2C_FIELD(temp_s1, u16 *, 0x102);
-        M2C_FIELD(arg0, u16 *, 0x64) = (u16) M2C_FIELD(temp_s1, u16 *, 0x104);
-        func_80147324(0x448, temp_a1, temp_a2, temp_a3);
-        func_80146E90(arg0, 0x10);
-        func_80146A6C(0xD, arg0, 0, 0, 0, 0, 0);
-        func_80146DE8(arg0, 0, 0, 0xFFE00000);
-        func_80146CA0(arg0);
+/* func_80163A94 — shared body (overlay slot 0x80128158, h_exact 205796ba). ONE source: instantiated by #include at each
+ * member's site in address order; the members are recorded in config/dedup.us.yaml (Phase 35). */
+void func_80163A94(s32 param_1) {
+    extern s32 D_800636C8;
+    extern s32 D_800DE5A0;
+    extern void func_8001C214(s32 a0, s32 a1);
+    extern void func_8014659C(void);
+    extern s32 func_80146A6C(s32 a0, void *a1, s32 a2, s32 a3, s32 a4, s32 a5, s32 a6);
+    extern void func_80146CA0(void *a0);
+    extern void func_80146DE8(s32 *a0, s32 a1, s32 a2, s32 a3);
+    extern void func_80146E90(s32 *a0, s32 a1);
+    extern void func_80147324(s32 a0);
+    extern void func_80149374(int, int);
+    s32 iVar7;
+    s32 iVar1;
+    s32 iVar2;
+    s32 iVar3;
+    iVar7 = *(s32 *)(param_1 + 0x4c);
+    *(u32 *)(iVar7 + 0x44) = *(u32 *)(iVar7 + 0x44) | 4;
+    iVar1 = ((s32 (*)(void))func_8014659C)();
+    *(s32 *)(param_1 + 0x20) = iVar1;
+    if (iVar1 != 0) {
+        func_8001C214(iVar1, (s32)&D_800DE5A0);
+        *(s32 *)(iVar1 + 0x20) = (s32)&D_800636C8;
+        *(s16 *)(iVar1 + 0x1c) = 0x1800;
+        *(s16 *)(iVar1 + 0x1a) = 0x1800;
+        *(s16 *)(iVar1 + 0x18) = 0x1800;
+        *(u16 *)(iVar1 + 0x2c) = *(u16 *)(iVar1 + 0x2c) | 0x10;
+        func_80149374(iVar7, param_1 + 4);
+        iVar3 = *(s32 *)(param_1 + 0x20);
+        iVar2 = *(s32 *)(iVar7 + 0x20);
+        *(Blk16 *)(iVar3 + 0x34) = *(Blk16 *)(iVar2 + 0x34);
+        *(Blk16 *)(iVar3 + 0x44) = *(Blk16 *)(iVar2 + 0x44);
+        *(s16 *)(iVar1 + 0x10) = *(s16 *)(*(s32 *)(iVar7 + 0x20) + 0x10);
+        *(s16 *)(iVar1 + 0x12) = *(s16 *)(*(s32 *)(iVar7 + 0x20) + 0x12);
+        *(s16 *)(iVar1 + 0x14) = *(s16 *)(*(s32 *)(iVar7 + 0x20) + 0x14);
+        *(s16 *)(param_1 + 0x60) = *(s16 *)(iVar7 + 0x100);
+        *(s16 *)(param_1 + 0x62) = *(s16 *)(iVar7 + 0x102);
+        *(s16 *)(param_1 + 0x64) = *(s16 *)(iVar7 + 0x104);
+        func_80147324(0x448);
+        func_80146E90((s32 *)param_1, 0x10);
+        func_80146A6C(0xd, (void *)param_1, 0, 0, 0, 0, 0);
+        func_80146DE8((s32 *)param_1, 0, 0, 0xffe00000);
+        func_80146CA0((void *)param_1);
     }
+    return;
 }

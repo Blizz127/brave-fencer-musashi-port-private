@@ -2,155 +2,61 @@
  * SHA256(span)=2f588bba7bca73975724ec4c768f57db23ca1b91150f1a87acfd59cfcaaa0f9f.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8017DF40 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* 152-byte engine block, copied whole (struct assignment -> 9x16B block move + 8B tail).
+ * Uniquely suffixed: the host TU already sees `Blk152` from engine_types.h, and a C89
+ * re-typedef of a visible name is a redefinition error. Same layout, same codegen. */
+typedef struct { u32 w[38]; } Blk152_8017DF40;
+/* ALIGN-1 4-byte element => lwl/lwr + swl/swr (cookbook §160a); a u32[] loop is wrong. */
+typedef struct { u8 b[4]; } Blk4_8017DF40;
 
-extern s32 D_8018581C;
-extern s32 D_801858B4;
-extern s32 D_80185934;
-extern s32 D_80185974;
-extern s32 D_80185A74;
-extern s32 *D_80078E78;
-extern s32 *D_800A6588;
-extern s32 *D_800AE648;
-extern s32 *D_800BA1B8;
-extern s32 *D_800BA2B8;
+extern u8  D_80078E78[];   /* live: 152-byte block            (host TU declares this identically) */
+extern u16 D_800A6588[];   /* live: u16[64]                                                      */
+extern u8  D_800AE648[];   /* live: u8[64]                                                       */
+extern u8  D_800BA1B8[];   /* live: u8[256]                                                      */
+extern u8  D_800BA2B8[];   /* live: 4-byte struct[24], align 1                                   */
 
+extern u8  D_8018581C[];   /* shadow: +0x000 */
+extern u16 D_801858B4[];   /* shadow: +0x098 */
+extern u8  D_80185934[];   /* shadow: +0x118 */
+extern u8  D_80185974[];   /* shadow: +0x158 */
+extern u8  D_80185A74[];   /* shadow: +0x258 */
+
+/* Param is declared s32 by the host TU's file-scope prototype (:3695); the true test is
+ * 16-bit (`sll $a0,$a0,16 ; bnez`, no sra), so the truncation lives in the test instead. */
 void func_8017DF40(s32 arg0) {
-    s32 (*var_a2)();
-    s32 (*var_a3_2)();
-    void *var_a2_2;
-    void *var_a3;
-    s16 temp_v0_3;
-    s16 temp_v0_6;
-    s16 temp_v1;
-    s16 temp_v1_2;
-    s16 temp_v1_3;
-    s16 temp_v1_4;
-    s16 temp_v1_5;
-    s16 temp_v1_6;
-    s16 var_t0;
-    s16 var_t0_2;
-    s16 var_t0_3;
-    s16 var_t0_4;
-    s16 var_t0_5;
-    s16 var_t0_6;
-    s16 var_t0_7;
-    s16 var_t0_8;
-    s32 temp_a0;
-    s32 temp_a0_2;
-    s32 temp_a0_3;
-    s32 temp_a0_4;
-    s32 temp_v0;
-    s32 temp_v0_2;
-    s32 temp_v0_4;
-    s32 temp_v0_5;
-    s32 var_v0;
-    s32 var_v0_2;
-    s32 var_v0_3;
-    s32 var_v0_4;
-    s32 var_v0_5;
-    s32 var_v0_6;
+    s16 i;
 
-    if ((arg0 << 0x10) == 0) {
-        var_a3 = &D_80078E78;
-        var_a2 = D_8018581C;
-        do {
-            var_a3->unk0 = (s32) var_a2->unk0;
-            var_a3->unk4 = (s32) var_a2->unk4;
-            var_a3->unk8 = (s32) var_a2->unk8;
-            var_a3->unkC = (s32) var_a2->unkC;
-            var_a2 += 0x10;
-            var_a3 += 0x10;
-        } while (var_a2 != (D_8018581C + 0x90));
-        var_a3->unk0 = (s32) var_a2->unk0;
-        var_a3->unk4 = (s32) var_a2->unk4;
-        var_t0 = 0;
-        do {
-            temp_a0 = var_t0 << 0x10;
-            temp_v1 = var_t0 + 1;
-            var_t0 = temp_v1;
-            temp_a0_2 = temp_a0 >> 0xF;
-            *(temp_a0_2 + &D_800A6588) = *(temp_a0_2 + D_801858B4);
-        } while (temp_v1 < 0x40);
-        var_t0_2 = 0;
-        var_v0 = 0 << 0x10;
-        do {
-            temp_v0 = var_v0 >> 0x10;
-            temp_v1_2 = var_t0_2 + 1;
-            var_t0_2 = temp_v1_2;
-            *(&D_800AE648 + temp_v0) = *(D_80185934 + temp_v0);
-            var_v0 = var_t0_2 << 0x10;
-        } while (temp_v1_2 < 0x40);
-        var_t0_3 = 0;
-        var_v0_2 = 0 << 0x10;
-        do {
-            temp_v0_2 = var_v0_2 >> 0x10;
-            temp_v1_3 = var_t0_3 + 1;
-            var_t0_3 = temp_v1_3;
-            *(&D_800BA1B8 + temp_v0_2) = *(D_80185974 + temp_v0_2);
-            var_v0_2 = var_t0_3 << 0x10;
-        } while (temp_v1_3 < 0x100);
-        var_t0_4 = 0;
-        var_v0_3 = 0 << 0x10;
-        do {
-            ((var_v0_3 >> 0xE) + &D_800BA2B8)->unk3 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-            temp_v0_3 = var_t0_4 + 1;
-            var_t0_4 = temp_v0_3;
-            var_v0_3 = var_t0_4 << 0x10;
-        } while (temp_v0_3 < 0x18);
-        return;
+    if ((s16)arg0 == 0) {
+        *(Blk152_8017DF40 *)D_80078E78 = *(Blk152_8017DF40 *)D_8018581C;
+        for (i = 0; i < 64; i++) {
+            D_800A6588[i] = D_801858B4[i];
+        }
+        for (i = 0; i < 64; i++) {
+            D_800AE648[i] = D_80185934[i];
+        }
+        for (i = 0; i < 256; i++) {
+            D_800BA1B8[i] = D_80185974[i];
+        }
+        for (i = 0; i < 24; i++) {
+            ((Blk4_8017DF40 *)D_800BA2B8)[i] = ((Blk4_8017DF40 *)D_80185A74)[i];
+        }
+    } else {
+        *(Blk152_8017DF40 *)D_8018581C = *(Blk152_8017DF40 *)D_80078E78;
+        for (i = 0; i < 64; i++) {
+            D_801858B4[i] = D_800A6588[i];
+        }
+        for (i = 0; i < 64; i++) {
+            D_80185934[i] = D_800AE648[i];
+        }
+        for (i = 0; i < 256; i++) {
+            D_80185974[i] = D_800BA1B8[i];
+        }
+        for (i = 0; i < 24; i++) {
+            ((Blk4_8017DF40 *)D_80185A74)[i] = ((Blk4_8017DF40 *)D_800BA2B8)[i];
+        }
     }
-    var_a3_2 = D_8018581C;
-    var_a2_2 = &D_80078E78;
-    do {
-        var_a3_2->unk0 = (s32) var_a2_2->unk0;
-        var_a3_2->unk4 = (s32) var_a2_2->unk4;
-        var_a3_2->unk8 = (s32) var_a2_2->unk8;
-        var_a3_2->unkC = (s32) var_a2_2->unkC;
-        var_a2_2 += 0x10;
-        var_a3_2 += 0x10;
-    } while (var_a2_2 != (&D_80078E78 + 0x90));
-    var_a3_2->unk0 = (s32) var_a2_2->unk0;
-    var_a3_2->unk4 = (s32) var_a2_2->unk4;
-    var_t0_5 = 0;
-    do {
-        temp_a0_3 = var_t0_5 << 0x10;
-        temp_v1_4 = var_t0_5 + 1;
-        var_t0_5 = temp_v1_4;
-        temp_a0_4 = temp_a0_3 >> 0xF;
-        *(temp_a0_4 + D_801858B4) = *(temp_a0_4 + &D_800A6588);
-    } while (temp_v1_4 < 0x40);
-    var_t0_6 = 0;
-    var_v0_4 = 0 << 0x10;
-    do {
-        temp_v0_4 = var_v0_4 >> 0x10;
-        temp_v1_5 = var_t0_6 + 1;
-        var_t0_6 = temp_v1_5;
-        *(D_80185934 + temp_v0_4) = *(&D_800AE648 + temp_v0_4);
-        var_v0_4 = var_t0_6 << 0x10;
-    } while (temp_v1_5 < 0x40);
-    var_t0_7 = 0;
-    var_v0_5 = 0 << 0x10;
-    do {
-        temp_v0_5 = var_v0_5 >> 0x10;
-        temp_v1_6 = var_t0_7 + 1;
-        var_t0_7 = temp_v1_6;
-        *(D_80185974 + temp_v0_5) = *(&D_800BA1B8 + temp_v0_5);
-        var_v0_5 = var_t0_7 << 0x10;
-    } while (temp_v1_6 < 0x100);
-    var_t0_8 = 0;
-    var_v0_6 = 0 << 0x10;
-    do {
-        ((var_v0_6 >> 0xE) + D_80185A74)->unk3 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-        temp_v0_6 = var_t0_8 + 1;
-        var_t0_8 = temp_v0_6;
-        var_v0_6 = var_t0_8 << 0x10;
-    } while (temp_v0_6 < 0x18);
 }

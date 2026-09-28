@@ -2,62 +2,61 @@
  * SHA256(span)=16465872d600a0f874cdc85c1f695309cef91aa754f6d4c4613a46695e9883c1.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80168BDC - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* Vendor names mapped to address-named symbols for the link-by-address harness. */
+#define ApplyMatrixSV func_80048FBC
+#define RotMatrixYXZ func_80049A1C
 
-void func_80048FBC(void *, u16 *, u16 *);     /* extern */
-void func_80049A1C(u16 *, void *);            /* extern */
-void func_800D2318();                            /* extern */
-void *func_80146A6C(s32, void *, s16, s16, s32, s32, s32); /* static */
+/* File-scope declarations from the vendor translation unit. */
+typedef struct { s16 vx, vy, vz, pad; } Svec_801372B0;
 
-void func_80168BDC(void *arg0, s32 arg1, s16 arg2, s16 arg3) {
-    u16 sp44;
-    u16 sp42;
-    u16 sp40;
-    s32 sp20;
-    s16 var_s1;
-    s16 var_v0_2;
-    s32 var_a0;
-    u16 var_v0;
-    void *temp_v0;
-
+extern void func_800D2318(void);
+extern void RotMatrixYXZ(void *a0, void *a1);
+extern void ApplyMatrixSV(void*, Svec_801372B0*, Svec_801372B0*);
+extern s32 func_80146A6C(s32 a0, void *a1, s32 a2, s32 a3, s32 a4, s32 a5, s32 a6);
+void func_80168BDC(s32 param_1, s32 param_2, s32 param_3, s32 param_4)
+{
+    short mtx[16];
+    short vec[4];
+    int r;
+    register int i __asm__("$17");     /* loop counter, survives the call -> $s1 */
+    register int tmp __asm__("$2");    /* increment temp -> $v0 (the split-IV) */
     func_800D2318();
-    sp40 = M2C_FIELD(arg0, u16 *, 0x12);
-    sp44 = 0;
-    sp42 = M2C_FIELD(arg0, u16 *, 0x16);
-    func_80049A1C(&sp40, &sp20);
-    sp40 = 0;
-    if (M2C_FIELD(arg0, s32 *, 0x2C) < 0) {
-        sp44 = -8U;
-        var_v0 = -4U;
+    vec[0] = *(short *)(param_1 + 0x12);
+    vec[1] = *(short *)(param_1 + 0x16);
+    vec[2] = 0;
+    RotMatrixYXZ(vec, mtx);
+    vec[0] = 0;
+    if (*(int *)(param_1 + 0x2c) < 0) {
+        vec[2] = -8;
+        vec[1] = -4;
     } else {
-        sp44 = 2;
-        var_v0 = -2U;
+        vec[2] = 2;
+        vec[1] = -2;
     }
-    sp42 = var_v0;
-    func_80048FBC(&sp20, &sp40, &sp40);
-    M2C_FIELD(arg0, u16 *, 6) = (u16) (M2C_FIELD(arg0, u16 *, 6) + sp40);
-    M2C_FIELD(arg0, u16 *, 0xA) = (u16) (M2C_FIELD(arg0, u16 *, 0xA) + sp42);
-    M2C_FIELD(arg0, u16 *, 0xE) = (u16) (M2C_FIELD(arg0, u16 *, 0xE) + sp44);
-    var_s1 = 0;
-    if (arg3 > 0) {
-        var_a0 = arg1 & 0xFFFF;
+    ((void (*)(void *, void *, void *))ApplyMatrixSV)(mtx, vec, vec);
+    *(short *)(param_1 + 6) = *(short *)(param_1 + 6) + vec[0];
+    *(short *)(param_1 + 0xa) = *(short *)(param_1 + 0xa) + vec[1];
+    *(short *)(param_1 + 0xe) = *(short *)(param_1 + 0xe) + vec[2];
+    i = 0;
+    if ((short)param_4 > 0) {
         do {
-            temp_v0 = func_80146A6C(var_a0, arg0, (s16) M2C_FIELD(arg0, u16 *, 6), (s16) M2C_FIELD(arg0, u16 *, 0xA), (s32) (s16) M2C_FIELD(arg0, u16 *, 0xE), (s32) arg2, 0);
-            var_v0_2 = var_s1 + 1;
-            if (temp_v0 != 0) {
-                M2C_FIELD(temp_v0, u16 *, 0x12) = (u16) M2C_FIELD(arg0, u16 *, 0x12);
-                M2C_FIELD(temp_v0, u16 *, 0x16) = (u16) M2C_FIELD(arg0, u16 *, 0x16);
-                M2C_FIELD(temp_v0, u16 *, 0x1A) = (u16) M2C_FIELD(arg0, u16 *, 0x1A);
-                var_v0_2 = var_s1 + 1;
+            r = func_80146A6C((unsigned short)param_2, (void *)param_1,
+                              (short)*(short *)(param_1 + 6),
+                              (short)*(short *)(param_1 + 0xa),
+                              (short)*(short *)(param_1 + 0xe),
+                              (short)param_3, 0);
+            if (r != 0) {
+                *(short *)(r + 0x12) = *(short *)(param_1 + 0x12);
+                *(short *)(r + 0x16) = *(short *)(param_1 + 0x16);
+                *(short *)(r + 0x1a) = *(short *)(param_1 + 0x1a);
             }
-            var_s1 = var_v0_2;
-            var_a0 = arg1 & 0xFFFF;
-        } while (var_v0_2 < arg3);
+            tmp = i + 1;
+            i = tmp;
+            __asm__ __volatile__("" : "=r"(i) : "0"(i));
+        } while ((short)tmp < (short)param_4);
     }
 }

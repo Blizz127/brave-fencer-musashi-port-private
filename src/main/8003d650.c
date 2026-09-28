@@ -1,47 +1,34 @@
 /* Exact retail word export [8003D650,8003D6E4); verified against pinned EXE and asm. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Sony PsyQ library routine (vendor/bfm-decomp keeps it as INCLUDE_ASM); C written from the retail disassembly. */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_8003D650 - byte-exact against retail at -O2 (tools/register_match.py). */
 
-void func_8003C598(s32 *, s32);                        /* static */
+typedef struct { s32 mask; s32 f04[4]; s32 f14; s32 f18; s32 f1C; s32 f20; s32 f24; } RvAttr;
+extern void func_8003C598(RvAttr *);
+void func_8003D650(u8 a, u8 b, u8 c)
+{
+    RvAttr at;
 
-void func_8003D650(s32 arg0, s32 arg1, s32 arg2) {
-    s32 sp34;
-    s32 sp30;
-    s32 sp28;
-    s32 sp24;
-    s32 sp10;
-    s32 temp_a0;
-    s32 temp_a1;
-    s32 temp_v1;
-
-    if (!(arg0 & 0xFF)) {
-        temp_v1 = arg1 & 0xFF;
-        if (temp_v1 == 0) {
-            sp10 = 0x200;
-            sp28 = arg2 & 0xFF;
+    if (a == 0) {
+        if (b == 0) {
+            at.mask = 0x200;
+            at.f18 = c;
         }
-        if (temp_v1 == 1) {
-            sp10 = 0x100;
-            sp24 = arg2 & 0xFF;
+        if (b == 1) {
+            at.mask = 0x100;
+            at.f14 = c;
         }
     }
-    temp_a0 = arg0 & 0xFF;
-    temp_a1 = arg1 & 0xFF;
-    if (temp_a0 == 1) {
-        if (temp_a1 == 0) {
-            sp10 = 0x2000;
-            sp34 = arg2 & 0xFF;
+    if (a == 1) {
+        if (b == 0) {
+            at.mask = 0x2000;
+            at.f24 = c;
         }
-        if (temp_a1 == temp_a0) {
-            sp10 = 0x1000;
-            sp30 = arg2 & 0xFF;
+        if (b == 1) {
+            at.mask = 0x1000;
+            at.f20 = c;
         }
     }
-    func_8003C598(&sp10, temp_a1);
+    func_8003C598(&at);
 }

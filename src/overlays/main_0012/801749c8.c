@@ -2,57 +2,60 @@
  * SHA256(span)=d77bb51435a6a69e74f131f67d7a7a2e6c6b27a4275eaef69d3782d0417f027b.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_801749C8 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* File-scope declarations from the vendor translation unit. */
+typedef struct {
+    /* 0x00 */ s8  head[0x14];
+    /* 0x14 */ s32 f14;
+    /* 0x18 */ s32 f18;
+    /* 0x1C */ s32 f1c;
+    /* 0x20 */ s16 f20;
+    /* 0x22 */ s16 f22;
+    /* 0x24 */ s16 f24;
+    /* 0x26 */ s16 pad26;
+    /* 0x28 */ s16 f28;
+    /* 0x2A */ s16 f2a;
+    /* 0x2C */ s16 f2c;
+} Buf_c1;
 
-s16 func_80012ABC(s16, s16, s32);                     /* extern */
-s16 func_80012C6C(s16, s16, s32);                     /* extern */
-void func_80049CAC(void *, void *, s16);                  /* extern */
-void func_8012F14C(void *, s16 *, s16 *);                 /* static */
-extern s16 D_80126B5E;
-extern s16 D_80126B62;
+/* func_801749C8 — shared body (overlay slot 0x80128158, h_exact 7e04ee18). ONE source: instantiated by #include at each
+ * member's site in address order; the members are recorded in config/dedup.us.yaml (Phase 35). */
+extern u16 D_80126B5E;
+extern u16 D_80126B62;
 extern u16 D_80126B66;
-
-void func_801749C8(void *arg0) {
-    s16 sp38;
-    s16 sp34;
-    s16 sp32;
-    s16 sp30;
-    s32 sp2C;
-    s32 sp28;
-    s32 sp24;
-    s32 sp10;
-    s16 temp_s1;
-    s16 temp_s2;
-
-    arg0->unk8 = (s32) func_80012C6C(arg0->unk8, arg0->unkC, 4);
-    arg0->unk10 = (s32) func_80012C6C(arg0->unk10, arg0->unk14, 4);
-    arg0->unk18 = func_80012ABC(arg0->unk18, arg0->unk20, 4);
-    arg0->unk1A = func_80012ABC(arg0->unk1A, arg0->unk22, 4);
-    arg0->unk1C = func_80012ABC(arg0->unk1C, arg0->unk24, 4);
-    arg0->unk28 = func_80012C6C(arg0->unk28, arg0->unk2E, 0x10);
-    arg0->unk2A = func_80012C6C(arg0->unk2A, arg0->unk30, 0x10);
-    arg0->unk2C = func_80012C6C(arg0->unk2C, arg0->unk32, 0x10);
-    temp_s2 = D_80126B5E;
-    temp_s1 = (s16) D_80126B66;
-    arg0->unk48 = (s32) (arg0->unk28 + temp_s2);
-    arg0->unk50 = (s32) (arg0->unk2C + temp_s1);
-    arg0->unk4C = (s32) (arg0->unk2A + D_80126B62);
-    func_80049CAC(arg0 + 0x18, &sp10, D_80126B62);
-    sp24 = arg0->unk28 + temp_s2;
-    sp28 = arg0->unk2A + D_80126B62;
-    sp30 = 0;
-    sp32 = 0;
-    sp2C = arg0->unk2C + temp_s1;
-    sp34 = (s16) (s32) arg0->unk10;
-    func_8012F14C(&sp10, &sp30, &sp38);
-    arg0->unk3C = (s32) sp38;
-    arg0->unk40 = (s32) sp3A;
-    arg0->unk44 = (s32) sp3C;
+extern s32 func_80012C6C(s32 a0, s32 a1, s32 a2);
+extern s32 func_80012ABC(s32, s32, s32);
+extern void func_80049CAC(s32 a0, s32 a1);
+extern void func_8012F14C(s32 a0, s32 a1, s32 a2);
+s32 func_801749C8(s32 param_1)
+{
+    Buf_c1 buf;
+    register s32 iVar5 __asm__("$18");
+    register u32 iVar4 __asm__("$17");
+    *(s32 *)(param_1 + 8) = (s16)((s16 (*)(s32, s32, s32))func_80012C6C)((s32)*(s16 *)(param_1 + 8), (s32)*(s16 *)(param_1 + 0xc), 4);
+    *(s32 *)(param_1 + 0x10) = (s16)((s16 (*)(s32, s32, s32))func_80012C6C)((s32)*(s16 *)(param_1 + 0x10), (s32)*(s16 *)(param_1 + 0x14), 4);
+    *(s16 *)(param_1 + 0x18) = ((s16 (*)(s32, s32, s32))func_80012ABC)((s32)*(s16 *)(param_1 + 0x18), (s32)*(s16 *)(param_1 + 0x20), 4);
+    *(s16 *)(param_1 + 0x1a) = ((s16 (*)(s32, s32, s32))func_80012ABC)((s32)*(s16 *)(param_1 + 0x1a), (s32)*(s16 *)(param_1 + 0x22), 4);
+    *(s16 *)(param_1 + 0x1c) = ((s16 (*)(s32, s32, s32))func_80012ABC)((s32)*(s16 *)(param_1 + 0x1c), (s32)*(s16 *)(param_1 + 0x24), 4);
+    *(s16 *)(param_1 + 0x28) = ((s16 (*)(s32, s32, s32))func_80012C6C)((s32)*(s16 *)(param_1 + 0x28), (s32)*(s16 *)(param_1 + 0x2e), 0x10);
+    *(s16 *)(param_1 + 0x2a) = ((s16 (*)(s32, s32, s32))func_80012C6C)((s32)*(s16 *)(param_1 + 0x2a), (s32)*(s16 *)(param_1 + 0x30), 0x10);
+    *(s16 *)(param_1 + 0x2c) = ((s16 (*)(s32, s32, s32))func_80012C6C)((s32)*(s16 *)(param_1 + 0x2c), (s32)*(s16 *)(param_1 + 0x32), 0x10);
+    iVar4 = (u16)D_80126B66;
+    *(s32 *)(param_1 + 0x48) = *(s16 *)(param_1 + 0x28) + (iVar5 = (s16)D_80126B5E);
+    *(s32 *)(param_1 + 0x4c) = *(s16 *)(param_1 + 0x2a) + (s16)D_80126B62;
+    *(s32 *)(param_1 + 0x50) = *(s16 *)(param_1 + 0x2c) + (s16)iVar4;
+    func_80049CAC(param_1 + 0x18, (s32)&buf);
+    buf.f14 = *(s16 *)(param_1 + 0x28) + iVar5;
+    buf.f18 = *(s16 *)(param_1 + 0x2a) + (s16)D_80126B62;
+    buf.f1c = *(s16 *)(param_1 + 0x2c) + (s16)iVar4;
+    buf.f20 = 0;
+    buf.f22 = 0;
+    buf.f24 = (s16)*(s32 *)(param_1 + 0x10);
+    ((void (*)(s32, s32, s32))func_8012F14C)((s32)&buf, (s32)&buf.f20, (s32)&buf.f28);
+    *(s32 *)(param_1 + 0x3c) = buf.f28;
+    *(s32 *)(param_1 + 0x40) = buf.f2a;
+    *(s32 *)(param_1 + 0x44) = buf.f2c;
 }

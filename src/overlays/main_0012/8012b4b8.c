@@ -2,65 +2,54 @@
  * SHA256(span)=7d39d50e18390c571865d9e9c70bfa25a1dfa7203e01f868654b363f4368bbcc.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8012B4B8 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* Vendor names mapped to address-named symbols for the link-by-address harness. */
+#define RotMatrixX func_80049F3C
+#define RotMatrixY func_8004A0DC
+#define RotMatrixZ func_8004A27C
 
-void func_80049F3C(s16, s32 *);                  /* extern */
-void func_8004A0DC(s16, s32 *);                  /* extern */
-void func_8004A27C(s16, s32 *);                  /* extern */
-extern s32 *D_800AE620;
+/* File-scope declarations from the vendor translation unit. */
+typedef struct { s32 w0, w4, w8, wC; s16 h10, hpad; s32 t0, t1, t2; } Mat32;
 
-void func_8012B4B8(void *arg0) {
-    s32 sp2C;
-    s32 sp28;
-    s32 sp24;
-    s32 sp20;
-    s32 sp1C;
-    s32 sp18;
-    s32 sp14;
-    s32 sp10;
-    s16 temp_v0;
-    s16 temp_v0_2;
-    s16 temp_v0_3;
-    void *temp_a0;
-    void *temp_s0;
-
-    temp_s0 = M2C_FIELD(arg0, void **, 0x20);
-    if (temp_s0 != 0) {
-        sp10 = M2C_FIELD(&D_800AE620, s32 *, 0);
-        sp14 = M2C_FIELD(&D_800AE620, s32 *, 4);
-        sp18 = M2C_FIELD(&D_800AE620, s32 *, 8);
-        sp1C = M2C_FIELD(&D_800AE620, s32 *, 0xC);
-        sp20 = M2C_FIELD(&D_800AE620, s32 *, 0x10);
-        sp24 = M2C_FIELD(&D_800AE620, s32 *, 0x14);
-        sp28 = M2C_FIELD(&D_800AE620, s32 *, 0x18);
-        sp2C = M2C_FIELD(&D_800AE620, s32 *, 0x1C);
-        func_80049F3C(M2C_FIELD(temp_s0, s16 *, 0x10), &sp10);
-        func_8004A27C(M2C_FIELD(temp_s0, s16 *, 0x14), &sp10);
-        func_8004A0DC(M2C_FIELD(temp_s0, s16 *, 0x12), &sp10);
-        M2C_FIELD(temp_s0, s32 *, 0x34) = sp10;
-        M2C_FIELD(temp_s0, s32 *, 0x38) = sp14;
-        M2C_FIELD(temp_s0, s32 *, 0x3C) = sp18;
-        M2C_FIELD(temp_s0, s32 *, 0x40) = sp1C;
-        M2C_FIELD(temp_s0, s32 *, 0x44) = sp20;
-        M2C_FIELD(temp_s0, s32 *, 0x48) = sp24;
-        M2C_FIELD(temp_s0, s32 *, 0x4C) = sp28;
-        M2C_FIELD(temp_s0, s32 *, 0x50) = sp2C;
-        temp_a0 = M2C_FIELD(arg0, void **, 0x20);
-        temp_v0 = M2C_FIELD(arg0, u16 *, 6) + M2C_FIELD(arg0, u16 *, 0x50);
-        M2C_FIELD(temp_a0, s16 *, 8) = temp_v0;
-        M2C_FIELD(temp_a0, s32 *, 0x48) = (s32) temp_v0;
-        temp_v0_2 = M2C_FIELD(arg0, u16 *, 0xA) + M2C_FIELD(arg0, u16 *, 0x52);
-        M2C_FIELD(temp_a0, s16 *, 0xA) = temp_v0_2;
-        M2C_FIELD(temp_a0, s32 *, 0x4C) = (s32) temp_v0_2;
-        temp_v0_3 = M2C_FIELD(arg0, u16 *, 0xE) + M2C_FIELD(arg0, u16 *, 0x54);
-        M2C_FIELD(temp_a0, s16 *, 0xC) = temp_v0_3;
-        M2C_FIELD(temp_a0, u16 *, 0x2C) = (u16) (M2C_FIELD(temp_a0, u16 *, 0x2C) | 1);
-        M2C_FIELD(temp_a0, s32 *, 0x50) = (s32) temp_v0_3;
+/* func_8012B4B8 — shared body (overlay slot 0x80128158, h_exact fe8e0984). ONE source: instantiated by #include at each
+ * member's site in address order; the members are recorded in config/dedup.us.yaml (Phase 35). */
+extern Mat32 D_800AE620;
+extern void RotMatrixX(int r, void *m);
+extern void RotMatrixY(int r, void *m);
+extern void RotMatrixZ(int r, void *m);
+s32 func_8012B4B8(int param_1)
+{
+    register int self __asm__("$17");
+    register int obj  __asm__("$16");
+    register int *src __asm__("$5");
+    int m[8];
+    short sVar1;
+    int o2, t0, t1, t2;
+    self = param_1;
+    obj = *(int *)(self + 0x20);
+    if (obj != 0) {
+        src = (int *)&D_800AE620;
+        __asm__("" : "=r"(src) : "0"(src));
+        t0 = src[0]; t1 = src[1]; t2 = src[2]; m[0] = t0; m[1] = t1; m[2] = t2;
+        t0 = src[3]; t1 = src[4]; t2 = src[5]; m[3] = t0; m[4] = t1; m[5] = t2;
+        t0 = src[6]; t1 = src[7];              m[6] = t0; m[7] = t1;
+        RotMatrixX((int)*(short *)(obj + 0x10), (void *)m);
+        RotMatrixZ((int)*(short *)(obj + 0x14), (void *)m);
+        RotMatrixY((int)*(short *)(obj + 0x12), (void *)m);
+        *(Mat32 *)(obj + 0x34) = *(Mat32 *)m;
+        o2 = *(int *)(self + 0x20);
+        sVar1 = *(unsigned short *)(self + 6) + *(unsigned short *)(self + 0x50);
+        *(short *)(o2 + 8) = sVar1;
+        *(int *)(o2 + 0x48) = (int)sVar1;
+        sVar1 = *(unsigned short *)(self + 0xa) + *(unsigned short *)(self + 0x52);
+        *(short *)(o2 + 0xa) = sVar1;
+        *(int *)(o2 + 0x4c) = (int)sVar1;
+        sVar1 = *(unsigned short *)(self + 0xe) + *(unsigned short *)(self + 0x54);
+        *(short *)(o2 + 0xc) = sVar1;
+        *(unsigned short *)(o2 + 0x2c) = *(unsigned short *)(o2 + 0x2c) | 1;
+        *(int *)(o2 + 0x50) = (int)sVar1;
     }
 }

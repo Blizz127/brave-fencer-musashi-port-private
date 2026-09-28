@@ -2,142 +2,168 @@
  * SHA256(span)=a013304adca2220a795012db515a8031787493c6938cc6db02b72efc3b4aafc9.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80135480 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* Vendor names mapped to address-named symbols for the link-by-address harness. */
+#define ApplyRotMatrix func_8004864C
+#define ApplyRotMatrixLV func_80048B6C
+#define ApplyTransposeMatrixLV func_8004D504
 
-void func_8004864C(u16 *, s32 *);                      /* extern */
-void func_80048B6C(s32 *, s32 *);                      /* extern */
-void func_80048EAC(void *, s32 (*)(), s32);              /* extern */
-void func_8004914C(s32 *, u16);                        /* extern */
-void func_8004D504(s32 (*)(), s32 *, s32 *);             /* extern */
-extern s32 D_8017E910;
-extern s32 D_8017E914;
-extern s32 D_80184134;
-extern s32 D_80184138;
-extern s32 D_8018413C;
-extern s32 D_80184140;
-extern s32 D_80184144;
-extern s32 D_80184154;
-extern s32 D_8018415A;
-extern s32 D_8018415E;
-extern s32 D_80184162;
-extern s32 *D_80000004;
-extern s16 D_80184158;
-extern s16 D_8018415C;
-extern s16 D_80184160;
+/* File-scope declarations from the vendor translation unit. */
+typedef struct { s32 w0, w4, w8, wC; s16 h10, hpad; s32 t0, t1, t2; } Mat32;
+typedef struct { s16 vx, vy, vz, pad; } Vec16;
+typedef struct { s32 vx, vy, vz, pad; } Vec32;
 
-s16 func_80135480(void *arg0, s32 arg1, void *arg2, void *arg3) {
-    u16 sp64;
-    u16 sp62;
-    u16 sp60;
-    u16 sp50;
-    s32 sp4C;
-    s32 sp48;
-    s32 sp44;
-    s32 sp40;
-    s32 sp30;
-    s32 sp28;
-    s32 sp24;
-    s32 sp20;
-    s32 sp18;
-    s32 sp14;
-    s32 sp10;
-    s16 var_s3;
-    s16 var_v0;
-    s32 temp_a0;
-    s32 temp_lo;
-    s32 temp_s0;
-    s32 temp_v1;
-    s32 var_a0;
-    u16 temp_a1;
+/* func_80135480 — cull + coordinate-transform emitter (258 ins, ov_SC01_077 split _a, ×134 family).
+ *
+ * NOT a §43 s16-param giant. Params are (void*, s32, s16*, s16*); the sole `sll/sra 16` is the s16
+ * RETURN narrowing on $s3 (result), not an in-place arg-reg narrow. So §43's K&R-s16-param map does
+ * not apply here — no //@EDIT, no ec_edit. func_80135480 has NO ambient prototype/caller anywhere in
+ * src/include, so the s16 return type is free (no void->s32 flip, no engine_core.h edit).
+ *
+ * THE CRACK (residual class = §31 regalloc/schedule, RC-4/RC-2 in gcc-2.7.2-map/regalloc.md):
+ * the two output buffers D_8017E910 / D_8017E914 are written through a pointer in each of the two
+ * return tails (mode!=0 and mode==0). A single function-scope `s16 *tmp` reused across both tails is a
+ * GLOBAL allocno (used in 2 blocks, dies 4x) -> forced onto one hard reg ($a1), which is WRONG and also
+ * perturbs the switch's first-`beq` delay-slot fill (extra nop). The target instead allocates each
+ * store-group's pointer as a LOCAL-ALLOC pseudo (set once, used 3x, dies once, single block) that picks
+ * the lowest-free scratch over its OWN window:
+ *     mode!=0 tail:  p_AC -> $v1,  p_B0 -> $v1 (reused, $v0 = the load temp)
+ *     mode==0 tail:  p_AC -> $v1,  p_B0 -> $a0 (the sub-scratch occupies $v1, so $v1 is unavailable)
+ * Reproduced by giving each of the four store-groups its OWN block-scoped pointer. With the tail
+ * allocation correct, the whole schedule (incl. the beq delay slot) re-derives to byte-identical.
+ * No register pins (§17 caveat: don't pin $v1 — the target reuses it for the cull; a pin cascades
+ * per RC-5). NOTE: the block-scope `s16 *p` intentionally shadows the function-scope `s32 p` (the
+ * case-0x20000000 pointer base); scopes never overlap — legal and byte-verified.
+ *
+ * Zero file-scope footprint (block-scoped typedefs + externs; D_8017E910/B0 read via the ambient
+ * `extern u8` + `*(s16**)&` §30 anon-cast, matching neighbor func_80135168) -> ×134-clean for
+ * family_sweep --edit-remap with no cc1 crash.
+ *
+ * VERIFIED: tools/rtu_match.py func_80135480 --split ov_SC01_077_a  ->  MATCH (258 ins), 3x stable.
+ */
+s16 func_80135480(void *param_1, s32 param_2, s16 *param_3, s16 *param_4)
+{
+    /* [T48] moved from FILE scope into the two consumers: a file-scope decl of these symbols
+       forces every LATER function in this TU to agree with it, which blocks a byte-true
+       pointer-typed decl in func_80135260. Declaration-only move; R22 is the arbiter. */
+    extern u8 D_8017E914;
+    extern u8 D_8017E910;
+    extern s16 *D_801870B4;
+    extern u8 D_801870B8;
+        extern void func_80048EAC(void *m0, void *m1);
+    extern void func_8004914C(void *m);
+    extern void ApplyTransposeMatrixLV(void *m, void *in, void *out);
+    extern void ApplyRotMatrixLV(void *in, void *out);
+    extern void ApplyRotMatrix(void *in, void *out);
+    extern s32 D_80184134, D_80184138, D_8018413C, D_80184140;
+    extern s16 D_80184144;
+    extern s32 D_80184154;
+    extern s16 D_80184158, D_8018415A, D_8018415C, D_8018415E, D_80184160, D_80184162;
 
-    temp_a0 = arg2->unk0 - arg0->unk48;
-    sp10 = temp_a0;
-    temp_v1 = arg2->unk4 - arg0->unk50;
-    sp18 = temp_v1;
-    if ((arg1 & 0x10000000) || (var_v0 = 0, ((((temp_a0 * temp_a0) + (temp_v1 * temp_v1)) > 0x40000) == 0))) {
-        var_a0 = arg1 & 0x60000000;
-        if (var_a0 != 0) {
-            var_s3 = 1;
-            if (arg1 >= 0) {
-                var_a0 &= 0x40000000;
-            }
-            sp14 = arg2->unk2 - arg0->unk4C;
-            sp20 = arg3->unk0 - arg0->unk48;
-            sp24 = arg3->unk2 - arg0->unk4C;
-            sp28 = arg3->unk4 - arg0->unk50;
-            if (var_a0 != 0x40000000) {
-                if (var_a0 <= 0x40000000) {
-                    if (var_a0 != 0x20000000) {
+    Vec32 in0, in1, rotout;
+    Mat32 mat2;
+    Vec16 vecin;
+    s32 result;
+    s32 mode;
+    s32 q1, q2;
+    s32 p;
+    s32 t18, t1A, t1C;
+    s32 *m;
 
-                    } else {
-                        goto block_11;
-                    }
-                } else if (var_a0 == 0x60000000) {
-                    D_80184134 = (s32) (0x01000000 / (s16) arg0->unk18);
-                    temp_lo = 0x01000000 / (s16) arg0->unk1A;
-                    var_s3 = 2;
-                    D_80184138 = 0;
-                    D_80184140 = 0;
-                    D_8018413C = temp_lo;
-                    D_80184144 = (s16) (0x01000000 / (s16) arg0->unk1C);
-                    func_80048EAC(arg0 + 0x34, D_80184134, temp_lo);
-                    func_8004D504(D_80184134, &sp10, &sp10);
-                    func_80048B6C(&sp20, &sp20);
-block_11:
-                    temp_a1 = (u16) arg0->unk1C;
-                    sp44 = 0;
-                    sp4C = 0;
-                    sp40 = (s32) arg0->unk18;
-                    temp_s0 = (arg1 & 0x0FFFFFFF) | (s32) &D_80000004;
-                    sp48 = (s32) arg0->unk1A;
-                    sp50 = temp_a1;
-                    func_8004914C(&sp40, temp_a1);
-                    sp60 = *temp_s0;
-                    sp62 = *temp_s0;
-                    sp64 = *temp_s0;
-                    func_8004864C(&sp60, &sp30);
-                    D_80184158 = (s16) sp30;
-                    D_8018415C = (s16) sp34;
-                    D_80184160 = (s16) sp38;
-                    sp60 = *temp_s0;
-                    sp62 = *temp_s0;
-                    sp64 = *temp_s0;
-                    func_8004864C(&sp60, &sp30);
-                    D_80184154 = 0;
-                    D_8018415A = (s16) sp30;
-                    D_8018415E = (s16) sp34;
-                    D_80184162 = (s16) sp38;
-                    var_s3 += 2;
-                }
-            } else {
-                func_8004D504(arg0 + 0x34, &sp10, &sp10);
-                func_80048B6C(&sp20, &sp20);
-                var_s3 = 2;
-            }
-            D_8017E910->unk0 = (s16) sp10;
-            D_8017E910->unk2 = (s16) sp14;
-            D_8017E910->unk4 = (s16) sp18;
-            D_8017E914->unk0 = (s16) sp20;
-            D_8017E914->unk2 = (s16) sp24;
-            D_8017E914->unk4 = (s16) sp28;
-            return var_s3;
+    in0.vx = param_3[0] - *(s32 *)((s32)param_1 + 0x48);
+    in0.vz = param_3[2] - *(s32 *)((s32)param_1 + 0x50);
+    if ((param_2 & 0x10000000) == 0) {
+        if (in0.vx * in0.vx + in0.vz * in0.vz > 0x40000) {
+            return 0;
         }
-        D_8017E910->unk0 = (s16) sp10;
-        D_8017E910->unk2 = (s16) ((u16) arg2->unk2 - arg0->unk4C);
-        D_8017E910->unk4 = (s16) sp18;
-        D_8017E914->unk0 = (s16) ((u16) arg3->unk0 - arg0->unk48);
-        D_8017E914->unk2 = (s16) ((u16) arg3->unk2 - arg0->unk4C);
-        var_v0 = 1;
-        D_8017E914->unk4 = (s16) ((u16) arg3->unk4 - arg0->unk50);
-        /* Duplicate return node #15. Try simplifying control flow for better match */
-        return var_v0;
     }
-    return var_v0;
+    mode = param_2 & 0x60000000;
+    if (mode != 0) {
+        result = 1;
+        if (param_2 >= 0) {
+            mode &= 0x40000000;
+        }
+        in0.vy = param_3[1] - *(s32 *)((s32)param_1 + 0x4C);
+        in1.vx = param_4[0] - *(s32 *)((s32)param_1 + 0x48);
+        in1.vy = param_4[1] - *(s32 *)((s32)param_1 + 0x4C);
+        in1.vz = param_4[2] - *(s32 *)((s32)param_1 + 0x50);
+        switch (mode) {
+        case 0x60000000:
+            m = &D_80184134;
+            *m = 0x1000000 / *(s16 *)((s32)param_1 + 0x18);
+            q1 = 0x1000000 / *(s16 *)((s32)param_1 + 0x1A);
+            q2 = 0x1000000 / *(s16 *)((s32)param_1 + 0x1C);
+            D_80184138 = 0;
+            D_80184140 = 0;
+            D_8018413C = q1;
+            D_80184144 = q2;
+            func_80048EAC((void *)((s32)param_1 + 0x34), m);
+            ApplyTransposeMatrixLV(m, &in0, &in0);
+            ApplyRotMatrixLV(&in1, &in1);
+            result = 2;
+            /* fallthrough */
+        case 0x20000000:
+            p = (param_2 & 0xFFFFFFF) | 0x80000000;
+            t18 = *(s16 *)((s32)param_1 + 0x18);
+            t1A = *(s16 *)((s32)param_1 + 0x1A);
+            t1C = *(u16 *)((s32)param_1 + 0x1C);
+            mat2.w4 = 0;
+            mat2.wC = 0;
+            mat2.w0 = t18;
+            mat2.w8 = t1A;
+            mat2.h10 = t1C;
+            func_8004914C(&mat2);
+            vecin.vx = *(u16 *)(p + 4);
+            vecin.vy = *(u16 *)(p + 8);
+            vecin.vz = *(u16 *)(p + 0xC);
+            ApplyRotMatrix(&vecin, &rotout);
+            D_80184158 = rotout.vx;
+            D_8018415C = rotout.vy;
+            D_80184160 = rotout.vz;
+            vecin.vx = *(u16 *)(p + 6);
+            vecin.vy = *(u16 *)(p + 0xA);
+            vecin.vz = *(u16 *)(p + 0xE);
+            ApplyRotMatrix(&vecin, &rotout);
+            D_80184154 = 0;
+            D_8018415A = rotout.vx;
+            D_8018415E = rotout.vy;
+            D_80184162 = rotout.vz;
+            result += 2;
+            break;
+        case 0x40000000:
+            ApplyTransposeMatrixLV((void *)((s32)param_1 + 0x34), &in0, &in0);
+            ApplyRotMatrixLV(&in1, &in1);
+            result = 2;
+            break;
+        }
+        {
+            s16 *p = *(s16 **)&D_8017E910;
+            p[0] = in0.vx;
+            p[1] = in0.vy;
+            p[2] = in0.vz;
+        }
+        {
+            s16 *p = *(s16 **)&D_8017E914;
+            p[0] = in1.vx;
+            p[1] = in1.vy;
+            p[2] = in1.vz;
+        }
+        return result;
+    }
+    {
+        s16 *p = *(s16 **)&D_8017E910;
+        p[0] = in0.vx;
+        p[1] = ((u16 *)param_3)[1] - *(s32 *)((s32)param_1 + 0x4C);
+        p[2] = in0.vz;
+    }
+    {
+        s16 *p = *(s16 **)&D_8017E914;
+        p[0] = ((u16 *)param_4)[0] - *(s32 *)((s32)param_1 + 0x48);
+        p[1] = ((u16 *)param_4)[1] - *(s32 *)((s32)param_1 + 0x4C);
+        p[2] = ((u16 *)param_4)[2] - *(s32 *)((s32)param_1 + 0x50);
+    }
+    return 1;
 }

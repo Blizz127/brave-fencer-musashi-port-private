@@ -2,76 +2,61 @@
  * SHA256(span)=305afe34bd589aff0789e6266f78eb97dc365cf77c6248d9d5ea22158140f30f.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_801412A8 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* File-scope declarations from the vendor translation unit. */
+typedef struct { u32 *ot; u32 pad[4]; } Env_1412A8;
+typedef struct { u32 addr : 24; u32 len : 8; } PTag_1412A8;
+typedef struct { u32 tag; u32 w1; u32 w2; u32 w3; } Prim_1412A8;
+#define OT_1412A8            (D_800AE7BC[*(volatile u16 *)&D_800B9A02].ot)
+#define getaddr_1412A8(t)    (((PTag_1412A8 *)(t))->addr)
+#define setaddr_1412A8(t, v) (((PTag_1412A8 *)(t))->addr = (u32)(v))
+#define addPrim_1412A8(ot, p) (setaddr_1412A8(p, getaddr_1412A8(ot)), setaddr_1412A8(ot, p))
 
-extern s32 *D_800AE7BC;
-extern u16 D_800B9A02;
-extern u16 D_80115116;
-
-void *func_801412A8(void *arg0, s32 arg1, s16 arg2, s16 arg3, u16 arg4, u16 arg5) {
-    s32 temp_a1;
-    s32 temp_a1_2;
-    s32 var_t0;
-    s32 var_v1;
-    void *temp_a0;
-    void *temp_a0_2;
-    void *temp_a0_3;
-    void *temp_t6;
-    void *temp_t6_2;
-    void *temp_t6_3;
-    void *temp_v1;
-
-    var_t0 = 0xF800F8;
-    if ((arg1 << 0x10) != 0) {
-        var_v1 = 0x5E;
-        if (D_80115116 & 1) {
-            goto block_6;
-        }
-    } else if (arg2 != 0) {
-        var_v1 = (s32) (arg3 * 0x5E) / arg2;
+/* func_801412A8 — shared body (overlay slot 0x80128158, h_exact 280fa04f). ONE source: instantiated by #include at each
+ * member's site in address order; the members are recorded in config/dedup.us.yaml (Phase 35). */
+Prim_1412A8 *aF801412A8(Prim_1412A8 *out, int a1, int a2, int a3, u16 a4, u16 a5) __asm__("func_801412A8");
+Prim_1412A8 *aF801412A8(Prim_1412A8 *out, int a1, int a2, int a3, u16 a4, u16 a5) {
+    extern Env_1412A8 D_800AE7BC[];
+    extern short D_800B9A02;
+    extern u16 D_80115116;
+    Prim_1412A8 *p = out;
+    int y = a5;
+    int color = 0xF800F8;
+    int val;
+    if ((short)a1) {
+        val = 0x5E;
+        if (D_80115116 & 1) { color = 0xF89C00; }
+    } else if ((short)a2) {
+        val = (short)a3 * 0x5E / (short)a2;
     } else {
-        var_v1 = 0x5E;
-block_6:
-        var_t0 = 0xF89C00;
+        val = 0x5E;
+        color = 0xF89C00;
     }
-    temp_a1 = arg4 | (((s16) arg5 + 0xA) << 0x10);
-    M2C_FIELD(arg0, s32 *, 4) = (s32) (var_t0 | 0x60000000);
-    M2C_FIELD(arg0, s32 *, 0) = 0x03000000;
-    M2C_FIELD(arg0, s32 *, 8) = temp_a1;
-    M2C_FIELD(arg0, s32 *, 0xC) = (s32) (var_v1 | 0x20000);
-    M2C_FIELD(arg0, s32 *, 0) = (s32) ((M2C_FIELD(arg0, s32 *, 0) & 0xFF000000) | (M2C_FIELD(*(&D_800AE7BC + (D_800B9A02 * 0x14)), s32 *, 8) & 0xFFFFFF));
-    temp_a0 = *(&D_800AE7BC + (D_800B9A02 * 0x14));
-    temp_t6_2 = arg0 + 0x10;
-    M2C_FIELD(temp_a0, s32 *, 8) = (s32) ((M2C_FIELD(temp_a0, s32 *, 8) & 0xFF000000) | ((s32) arg0 & 0xFFFFFF));
-    M2C_FIELD(temp_t6_2, s32 *, 4) = 0x60080808;
-    M2C_FIELD(arg0, s32 *, 0x10) = 0x03000000;
-    M2C_FIELD(temp_t6_2, s32 *, 8) = temp_a1;
-    M2C_FIELD(temp_t6_2, s32 *, 0xC) = 0x2005E;
-    M2C_FIELD(arg0, s32 *, 0x10) = (s32) ((M2C_FIELD(arg0, s32 *, 0x10) & 0xFF000000) | (M2C_FIELD(*(&D_800AE7BC + (D_800B9A02 * 0x14)), s32 *, 8) & 0xFFFFFF));
-    temp_a1_2 = (arg4 - 1) & 0xFFFF;
-    temp_a0_2 = *(&D_800AE7BC + (D_800B9A02 * 0x14));
-    temp_t6_3 = temp_t6_2 + 0x10;
-    M2C_FIELD(temp_a0_2, s32 *, 8) = (s32) ((M2C_FIELD(temp_a0_2, s32 *, 8) & 0xFF000000) | ((s32) temp_t6_2 & 0xFFFFFF));
-    M2C_FIELD(temp_t6_3, s32 *, 4) = 0x60FFFFFF;
-    M2C_FIELD(temp_t6_2, s32 *, 0x10) = 0x03000000;
-    M2C_FIELD(temp_t6_3, s32 *, 8) = (s32) ((((s16) arg5 + 9) << 0x10) | temp_a1_2);
-    M2C_FIELD(temp_t6_3, s32 *, 0xC) = 0x20060;
-    M2C_FIELD(temp_t6_2, s32 *, 0x10) = (s32) ((M2C_FIELD(temp_t6_2, s32 *, 0x10) & 0xFF000000) | (M2C_FIELD(*(&D_800AE7BC + (D_800B9A02 * 0x14)), s32 *, 8) & 0xFFFFFF));
-    temp_a0_3 = *(&D_800AE7BC + (D_800B9A02 * 0x14));
-    temp_t6 = temp_t6_3 + 0x10;
-    M2C_FIELD(temp_a0_3, s32 *, 8) = (s32) ((M2C_FIELD(temp_a0_3, s32 *, 8) & 0xFF000000) | ((s32) temp_t6_3 & 0xFFFFFF));
-    M2C_FIELD(temp_t6_3, s32 *, 0x10) = 0x03000000;
-    M2C_FIELD(temp_t6, s32 *, 4) = 0x60E0C0A0;
-    M2C_FIELD(temp_t6, s32 *, 8) = (s32) ((((s16) arg5 + 0xB) << 0x10) | temp_a1_2);
-    M2C_FIELD(temp_t6, s32 *, 0xC) = 0x20060;
-    M2C_FIELD(temp_t6_3, s32 *, 0x10) = (s32) ((M2C_FIELD(temp_t6_3, s32 *, 0x10) & 0xFF000000) | (M2C_FIELD(*(&D_800AE7BC + (D_800B9A02 * 0x14)), s32 *, 8) & 0xFFFFFF));
-    temp_v1 = *(&D_800AE7BC + (D_800B9A02 * 0x14));
-    M2C_FIELD(temp_v1, s32 *, 8) = (s32) ((M2C_FIELD(temp_v1, s32 *, 8) & 0xFF000000) | ((s32) temp_t6 & 0xFFFFFF));
-    return temp_t6 + 0x10;
+    p->tag = 0x03000000;
+    p->w1 = color | 0x60000000;
+    p->w2 = a4 | (((short)y + 0xA) << 16);
+    p->w3 = val | 0x20000;
+    addPrim_1412A8(&OT_1412A8[2], p);
+    p++;
+    p->w1 = 0x60080808;
+    p->tag = 0x03000000;
+    p->w2 = a4 | (((short)y + 0xA) << 16);
+    p->w3 = 0x2005E;
+    addPrim_1412A8(&OT_1412A8[2], p);
+    p++;
+    p->w1 = 0x60FFFFFF;
+    p->tag = 0x03000000;
+    p->w2 = (((short)y + 9) << 16) | (u16)(a4 - 1);
+    p->w3 = 0x20060;
+    addPrim_1412A8(&OT_1412A8[2], p);
+    p++;
+    p->tag = 0x03000000;
+    p->w1 = 0x60E0C0A0;
+    p->w2 = (((short)y + 0xB) << 16) | (u16)(a4 - 1);
+    p->w3 = 0x20060;
+    addPrim_1412A8(&OT_1412A8[2], p);
+    return p + 1;
 }

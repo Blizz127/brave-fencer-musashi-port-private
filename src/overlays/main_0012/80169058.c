@@ -2,64 +2,70 @@
  * SHA256(span)=c7230aea3a6e0a5f96d8d9bec02297485e0954e7b7202fe8c0cb62bc2044ef34.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80169058 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* Vendor names mapped to address-named symbols for the link-by-address harness. */
+#define ApplyMatrixSV func_80048FBC
+#define RotMatrixYXZ func_80049A1C
+#define rand func_8005C49C
 
-void func_80048EAC(void *, void *);        /* extern */
-void func_80048FBC(void *, u16 *, u16 *);     /* extern */
-void func_80049A1C(u16 *, void *);            /* extern */
-s32 func_8005C49C();                                /* extern */
-void func_800D20C0(u16 *, u16 *, s32);       /* extern */
-void func_800D23D0(u16 *);                       /* extern */
+/* File-scope declarations from the vendor translation unit. */
+typedef struct { s16 vx, vy, vz, pad; } Svec_801372B0;
 
-void func_80169058(void *arg0) {
-    s32 sp40;
-    s32 sp20;
-    u16 sp18;
-    u16 sp14;
-    u16 sp12;
-    u16 sp10;
-    s32 temp_v0;
-    s32 temp_v0_2;
-    u16 var_v0;
-    u16 var_v1;
-
-    sp10 = M2C_FIELD(arg0, u16 *, 6);
-    sp12 = M2C_FIELD(arg0, u16 *, 0xA);
-    sp14 = M2C_FIELD(arg0, u16 *, 0xE);
-    func_800D20C0(&sp10, &sp18, 1);
-    func_800D23D0(&sp18);
-    func_80049A1C(&sp18, arg0 + 0x38);
-    sp10 = M2C_FIELD(arg0, u16 *, 0x12);
-    sp12 = M2C_FIELD(arg0, u16 *, 0x16);
-    sp14 = M2C_FIELD(arg0, u16 *, 0x1A);
-    func_80049A1C(&sp10, &sp40);
-    if (!(M2C_FIELD(arg0, s32 *, 0x2C) & 2)) {
-        temp_v0 = func_8005C49C();
-        var_v1 = (temp_v0 & 0x7F) * 8;
-        var_v0 = ((u32) (temp_v0 & 0x7F00) >> 5) + 0xC00;
+extern void func_800D20C0(void *a0, void *a1, s32 a2);
+extern void func_800D23D0(void *a0);
+extern void RotMatrixYXZ(void *a0, void *a1);
+extern void func_80048EAC(void *a0, void *a1);
+extern s32 rand(void);
+extern void ApplyMatrixSV(void*, Svec_801372B0*, Svec_801372B0*);
+void func_80169058(s32 a0) {
+    s32 s1 = a0;
+    s16 v10[4];   /* sp+0x10 SVECTOR */
+    s16 v18[4];   /* sp+0x18 SVECTOR */
+    s16 v20[16];  /* sp+0x20 MATRIX_L48 */
+    s16 v40[16];  /* sp+0x40 MATRIX_L48 */
+    register s32 v1 __asm__("$3");
+    register s32 v0 __asm__("$2");
+    v10[0] = *(u16 *)(s1 + 0x6);
+    v10[1] = *(u16 *)(s1 + 0xA);
+    v10[2] = *(u16 *)(s1 + 0xE);
+    func_800D20C0(v10, v18, 1);
+    func_800D23D0(v18);
+    RotMatrixYXZ(v18, (void *)(s1 + 0x38));
+    v10[0] = *(u16 *)(s1 + 0x12);
+    v10[1] = *(u16 *)(s1 + 0x16);
+    v10[2] = *(u16 *)(s1 + 0x1A);
+    RotMatrixYXZ(v10, v40);
+    if ((*(s32 *)(s1 + 0x2C) & 0x2) == 0) {
+        v0 = rand();
+        v1 = (v0 & 0x7F) << 3;
+        v0 = ((u32)(v0 & 0x7F00)) >> 5;
+        __asm__ __volatile__("" : "=r"(v0) : "0"(v0));
+        v0 = v0 + 0xC00;
     } else {
-        temp_v0_2 = func_8005C49C();
-        var_v1 = ((temp_v0_2 & 0x7F) * 8) + 0xE40;
-        var_v0 = ((u32) (temp_v0_2 & 0x7F00) >> 5) + 0xE00;
+        v0 = rand();
+        v1 = ((v0 & 0x7F) << 3) + 0xE40;
+        v0 = (((u32)(v0 & 0x7F00)) >> 5) + 0xE00;
     }
-    sp10 = var_v1;
-    sp12 = var_v0;
-    sp14 = 0;
-    func_80049A1C(&sp10, &sp20);
-    func_80048EAC(&sp40, &sp20);
-    sp10 = 0;
-    sp12 = 0;
-    sp14 = 0xA;
-    func_80048FBC(&sp20, &sp10, &sp10);
-    M2C_FIELD(arg0, u16 *, 0x12) = sp10;
-    M2C_FIELD(arg0, u16 *, 0x16) = sp12;
-    M2C_FIELD(arg0, s32 *, 0x1C) = 0;
-    M2C_FIELD(arg0, u16 *, 2) = (u16) (M2C_FIELD(arg0, u16 *, 2) + 1);
-    M2C_FIELD(arg0, u16 *, 0x1A) = sp14;
+    v10[0] = v1;
+    v10[1] = v0;
+    __asm__ __volatile__("" : : "r"(v1), "r"(v0));
+    v10[2] = 0;
+    RotMatrixYXZ(v10, v20);
+    func_80048EAC(v40, v20);
+    v10[0] = 0;
+    v10[1] = 0;
+    v10[2] = 0xA;
+    ((void (*)(void *, void *, void *))ApplyMatrixSV)(v20, v10, v10);
+    *(u16 *)(s1 + 0x12) = v10[0];
+    *(u16 *)(s1 + 0x16) = v10[1];
+    {
+        s32 c = *(u16 *)(s1 + 0x2);
+        s32 z = (u16)v10[2];
+        *(s32 *)(s1 + 0x1C) = 0;
+        *(u16 *)(s1 + 0x2) = c + 1;
+        *(u16 *)(s1 + 0x1A) = z;
+    }
 }

@@ -1,0 +1,192 @@
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_800D1B00 - byte-exact against retail at -O0 (tools/register_match.py). */
+#include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+extern u8 D_80078E78[];
+extern void func_80029124(s32 a0, s32 a1);
+extern void func_800291A0(s32 a0, s32 a1);
+extern u8 D_8010F4D6;
+extern u8 D_8010F4DE;
+extern u8 D_8010F4EE;
+extern u8 D_8010F4E6;
+extern u8 D_8010F5AE;
+extern u8 D_8010F4F6;
+extern u8 D_8010F4FE;
+extern u16 D_8010F4D4;
+extern u16 D_8010F4DC;
+extern u16 D_8010F4EC;
+extern u16 D_8010F4E4;
+extern u16 D_8010F5AC;
+extern u16 D_8010F4F4;
+extern u16 D_8010F4FC;
+extern u16 D_800A65A0;
+extern u16 D_800A65A2;
+extern u16 D_800A65A6;
+extern u16 D_800A65A4;
+extern u16 D_800A65D6;
+extern u16 D_800A65A8;
+extern u16 D_800A65AA;
+
+void func_800D1B00(void) {
+    typedef struct {
+        s32 pad00;
+        s32 f04; s32 f08; s32 f0C; s32 f10; s32 f14; s32 f18;
+        s32 f1C; s32 f20; s32 f24; s32 f28; s32 f2C; s32 f30;
+        u16 f34;
+        u8 f36; u8 f37;
+        u16 f38; u16 f3A; u16 f3C; u16 f3E; u16 f40;
+        u8 f42; u8 f43; u8 f44; u8 f45; u8 f46; u8 f47; u8 f48; u8 f49; u8 f4A; u8 f4B; u8 f4C;
+        s32 f50; s32 f54; s32 f58; s32 f5C; s32 f60; s32 f64;
+        u8 f68;
+        s32 f6C; s32 f70; s32 f74; s32 f78; s32 f7C; s32 f80; s32 f84; s32 f88; s32 f8C; s32 f90; s32 f94;
+    } St78;
+
+    St78 *p = (St78 *)D_80078E78;
+
+    p->f04 = 0;
+    p->f08 = 0x258;
+    p->f0C = 0x1A;
+    p->f10 = 2;
+    p->f14 = 0x64;
+    p->f18 = 0x1FE0000;
+    p->f1C = 0;
+    p->f20 = 0;
+    p->f24 = 0x640000;
+    p->f28 = 0;
+    p->f2C = 0x640000;
+    p->f30 = 0;
+    p->f34 = 1;
+    p->f36 = 1;
+    p->f37 = 1;
+    p->f38 = 0x81E;
+    p->f3A = 0x15E;
+    p->f3C = 0x15E;
+    p->f3E = 0x1C2;
+    p->f40 = 0x1C2;
+    p->f42 = 0;
+    p->f43 = 0;
+    p->f44 = 3;
+    p->f45 = 0;
+    p->f46 = 0;
+    p->f47 = 0;
+    p->f48 = 1;
+    p->f49 = 0;
+    p->f4A = 0;
+    p->f4B = 0;
+    p->f4C = 0;
+    p->f50 = 0;
+    p->f54 = 0;
+    p->f58 = 0;
+    p->f5C = 0;
+    p->f60 = 0;
+    p->f64 = 0;
+    p->f68 = 0;
+    p->f6C = 0x13;
+    p->f70 = 0;
+    p->f74 = 0x13;
+    p->f78 = 0;
+    p->f7C = 0x13;
+    p->f80 = 0;
+    p->f84 = 0x13;
+    p->f88 = 0;
+    p->f8C = 0;
+    p->f90 = 0x5C44;
+    p->f94 = 0x5C44;
+
+    func_80029124(0xF5, 1);
+    func_80029124(0x106, 1);
+    func_80029124(0xF8, 1);
+    func_80029124(0xFF, 1);
+    func_80029124(0xF9, 1);
+    func_80029124(0x105, 1);
+    func_80029124(0x100, 1);
+    func_80029124(0xFD, 1);
+    func_80029124(0xFE, 1);
+    func_80029124(0xFB, 1);
+    func_80029124(0xF4, 1);
+    func_80029124(0xF6, 1);
+    func_80029124(0x17, 1);
+    func_80029124(0x20, 1);
+    func_80029124(0x1E, 1);
+    func_80029124(0x83, 1);
+    func_80029124(0x85, 1);
+    func_80029124(0x86, 1);
+    func_80029124(0x87, 1);
+    func_80029124(0x8B, 1);
+    func_80029124(0xB6, 1);
+    func_80029124(0x1B, 1);
+    func_80029124(0x48, 1);
+    func_80029124(0x49, 1);
+    func_80029124(0x4B, 1);
+
+    func_800291A0(0x3B, 5);
+    func_800291A0(0x3C, 3);
+    func_800291A0(0x3D, 4);
+    func_800291A0(0x3E, 3);
+    func_800291A0(0x3F, 3);
+    func_800291A0(0x40, 2);
+    func_800291A0(0x41, 2);
+    func_800291A0(0x42, 2);
+    func_800291A0(0x43, 3);
+    func_800291A0(0x44, 2);
+    func_800291A0(0x45, 2);
+    func_800291A0(0x46, 3);
+    func_800291A0(0x47, 3);
+    func_800291A0(0x48, 3);
+    func_800291A0(0x49, 2);
+    func_800291A0(0x4A, 3);
+    func_800291A0(0x4B, 2);
+    func_800291A0(0x4C, 3);
+    func_800291A0(0x4D, 5);
+    func_800291A0(0x4E, 2);
+    func_800291A0(0x4F, 3);
+    func_800291A0(0x50, 3);
+    func_800291A0(0x51, 2);
+    func_800291A0(0x52, 2);
+    func_800291A0(0x53, 0);
+    func_800291A0(0x54, 0);
+    func_800291A0(0x55, 2);
+    func_800291A0(0x56, 0);
+    func_800291A0(0x57, 2);
+    func_800291A0(0x58, 0);
+    func_800291A0(0x59, 2);
+    func_800291A0(0x5A, 3);
+    func_800291A0(0x5B, 0);
+    func_800291A0(0x5C, 0);
+    func_800291A0(0x5D, 0);
+    func_800291A0(0x5E, 3);
+    func_800291A0(0x5F, 2);
+    func_800291A0(0x60, 0);
+    func_800291A0(0x61, 0);
+    func_800291A0(0x62, 3);
+    func_800291A0(0x2E, 3);
+
+    func_800291A0(0x71, (D_8010F4D6 | 0x80) & 0xFF);
+    func_800291A0(0x72, (D_8010F4DE | 0x80) & 0xFF);
+    func_800291A0(0x73, (D_8010F4EE | 0x80) & 0xFF);
+    func_800291A0(0x74, (D_8010F4E6 | 0x80) & 0xFF);
+    func_800291A0(0x75, (D_8010F5AE | 0x80) & 0xFF);
+    func_800291A0(0x76, (D_8010F4F6 | 0x80) & 0xFF);
+    func_800291A0(0x6D, (D_8010F4FE | 0x80) & 0xFF);
+
+    D_800A65A0 = D_8010F4D4;
+    D_800A65A2 = D_8010F4DC;
+    D_800A65A6 = D_8010F4EC;
+    D_800A65A4 = D_8010F4E4;
+    D_800A65D6 = D_8010F5AC;
+    D_800A65A8 = D_8010F4F4;
+    D_800A65AA = D_8010F4FC;
+
+    func_80029124(0x101, 1);
+    func_80029124(0x102, 1);
+    func_80029124(0x103, 1);
+    func_80029124(0x104, 1);
+    func_80029124(0xB3, 1);
+}

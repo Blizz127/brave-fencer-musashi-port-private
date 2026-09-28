@@ -2,173 +2,172 @@
  * SHA256(span)=e4e15e6d5e9ea4bfb92ef25ceec307d63522d42fc2081a9f7f203fc8a5008582.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80140958 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* File-scope declarations from the vendor translation unit. */
+typedef struct { s16 x; s16 y; } Hw4;
+typedef struct { u16 f0; s16 f2; } Prim4;
+typedef struct 
+  {
+    u32 *ot;
+    u32 pad[4];
+  } Env_80140958;
 
-extern s32 D_8017F1A0;
-extern s32 D_8017F1F0;
-extern s32 D_8017F222;
-extern s32 D_8017F2E4;
-extern s32 D_8017F700;
-extern s32 D_8017F710;
-s32 *func_80140D68(s32 *, s32 (*)(), s16, s16, s32);  /* static */
-s32 func_8014168C(s32);                             /* static */
-extern s32 *D_800AE7BC;
-extern u16 D_800B9A02;
-extern s32 D_80115110;
-extern s32 *D_80115140;
-extern u8 D_80115143;
-extern u8 D_8011514E;
-extern s32 *D_80115158;
-extern s32 *D_8011516A;
-extern u16 D_8017F220;
+extern s16 func_8014168C(s16);
+extern s32 *func_80140D68(s32 *, Prim4 *, s32, s32, s32);
+/* func_80140958 -- MATCH (260 ins), verified by
+ *   python3 tools/match_one.py func_80140958 --c .run/near6/wave23/func_80140958.c \
+ *       --asm-subdir asm/ov_SC01_077/nonmatchings/ov_SC01_077
+ *
+ * Three levers took the seed from 6 -> 0 (see the numbered notes in the inner block):
+ *   [L1] `m == i` (not `m == 3`)  -- keeps b[0] a RUNTIME value; `m == 3` let gcc
+ *        const-fold it and materialise `li a3,3` / `li t3,12` instead of
+ *        `addu a3,v1,zero` / `sll t3,v1,2`.
+ *   [L2] one dead `__asm__ volatile("" :: "r"(j))` -- +1 weighted REG_N_REFS on j so
+ *        global.c:594 allocno_compare ranks j above k (j -> $a2, k -> $a3).
+ *   [L3] `t3v = m * 4` as an EXPLICIT preheader statement (instead of letting loop.c
+ *        hoist D_8011516A[m]'s index) -- gives it a LUID *below* the three constant
+ *        assignments, which is what puts `move a3,v1 / sll t3,v1,2` ahead of them in
+ *        sched1's backward LUID tie-break.
+ */
+s32 *func_80140958(ot, i, n)
+s32 *ot;
+s16 i;
+s16 n;
+{
 
-s32 *func_80140958(s32 *arg0, s16 arg1, s16 arg2) {
-    s16 sp18;
-    s32 (*var_a1)();
-    s32 (*var_s2)();
-    s16 var_a2;
-    s16 var_a2_2;
-    s16 var_a3;
-    s16 var_s3;
-    s16 var_v0_2;
-    s16 var_v0_5;
-    s16 var_v0_7;
-    s16 var_v0_8;
-    s16 var_v1;
-    s32 *var_a0;
-    s32 *var_a1_2;
-    s32 *var_s1;
-    s32 temp_a0;
-    s32 temp_v1;
-    s32 temp_v1_2;
-    s32 var_v0;
-    s32 var_v0_3;
-    s32 var_v0_4;
-    s32 var_v0_6;
-    void *temp_a0_2;
-    void *temp_s5;
-    void *temp_s7;
-
-    var_s1 = arg0;
-    var_s3 = arg1;
-    sp18 = arg2;
-    if (arg1 < arg2) {
-        temp_s5 = &D_80115110 + 0xA;
-        temp_s7 = &D_80115110 + 6;
-        do {
-            var_v0 = var_s3 << 0x10;
-            if (D_80115110.unk0 == 0) {
-                if ((D_80115110.unk2 != 3) && ((u16) D_80115110.unk2 < 6U)) {
-                    var_a2 = var_s3;
-                    var_v0_2 = var_s3;
-                    if (var_a2 == D_80115110.unkA) {
-                        var_a0 = var_s1;
-                        var_a3 = *(D_8017F700 + ((D_80115110.unk6 & 7) * 2));
-                        var_a1 = (var_a2 * 4) + D_8017F1A0;
-                        goto block_21;
-                    }
-                } else {
-                    var_v0 = var_s3 << 0x10;
-                    goto block_8;
-                }
-            } else {
-block_8:
-                temp_v1 = var_v0 >> 0x10;
-                var_s2 = *(D_8017F2E4 + (temp_v1 * 4));
-                var_v0_3 = var_s3 << 0x10;
-                if (var_s2 != 0) {
-                    var_v0_3 = var_s3 << 0x10;
-                    if (temp_v1 == D_80115110.unkA) {
-                        if (temp_v1 != 6) {
-                            var_v0_4 = var_s3 << 0x10;
-                            if (temp_v1 == 2) {
-                                var_v0_4 = var_s3 << 0x10;
-                                if (temp_s5->unkE != 0) {
-                                    var_s2 = D_8017F1F0;
-                                }
-                            }
-                            temp_a0 = var_v0_4 >> 0x10;
-                            if (temp_a0 != 3) {
-                                var_v0_5 = func_8014168C(temp_a0) * 2;
-                            } else {
-                                var_v0_5 = (D_8011514E - D_80115143) * 2;
-                            }
-                            var_s1 = func_80140D68(var_s1, var_s2, var_s3, *(D_8017F710 + ((D_80115110.unk6 & 7) * 2)), (s32) var_v0_5);
-                            var_v0_3 = var_s3 << 0x10;
-                            if (var_s3 == 2) {
-                                var_v0_3 = var_s3 << 0x10;
-                                if (temp_s7->unk12 == 1) {
-                                    if (temp_s7->unk18 != 0) {
-                                        var_a0 = var_s1;
-                                        var_a1 = var_s2;
-                                        var_a2 = 2;
-                                        var_a3 = 8;
-block_21:
-                                        var_s1 = func_80140D68(var_a0, var_a1, var_a2, var_a3);
-                                    }
-                                    goto block_22;
-                                }
-                            }
-                        } else {
-block_22:
-                            var_v0_3 = var_s3 << 0x10;
-                        }
-                    }
-                }
-                var_v0_2 = (s16) (var_v0_3 >> 0x10);
+    extern short D_800B9A02;
+    extern u16 D_80115110;
+    extern u8 D_80115140[];
+    extern s16 D_8011514E;
+    extern u8 D_80115158[];
+    extern Hw4 D_8011516A[];
+    extern Prim4 D_8017F1F0[];
+    extern Prim4 *D_8017F2E4[];
+    extern u8 D_80115143;
+    extern Prim4 D_8017F1A0[];
+    extern s16 D_8017F700[];
+    extern s16 D_8017F710[];
+    extern u16 D_8017F220;
+    extern u16 D_8017F222;
+  extern Env_80140958 D_800AE7BC[];
+  Prim4 *p;
+  s16 t;
+  s32 c3;
+register u16 *a __asm__("$20");
+register u16 *b __asm__("$21");
+register u16 *c __asm__("$23");
+register u16 *e __asm__("$22");
+register u16 *pb __asm__("$10");
+register u32 m24 __asm__("$8");
+register u32 mhi __asm__("$9");
+register s32 eight __asm__("$2");
+  if (i < n)
+  {
+    c3 = 3;
+    a = &D_80115110;
+    b = a + 5;
+    c = a + 3;
+    e = &D_8017F222;
+    do
+    {
+      if (((a[0] == 0) && (a[1] != c3)) && (a[1] < 6))
+      {
+        if (i == a[5])
+        {
+          ot = func_80140D68(ot, &D_8017F1A0[i], i, D_8017F700[a[3] & 7], 0);
+        }
+      }
+      else
+      {
+        p = D_8017F2E4[i];
+        if (((p != 0) && (i == b[0])) && (i != 6))
+        {
+          if ((i == 2) && ((*((s16 *) (b + 7))) != 0))
+          {
+            p = D_8017F1F0;
+          }
+          if (i != c3)
+          {
+            t = ((s32 (*)(s16)) func_8014168C)(i) * 2;
+          }
+          else
+          {
+            t = ((*((u8 *) (&D_8011514E))) - D_80115143) * 2;
+          }
+          ot = func_80140D68(ot, p, i, D_8017F710[c[0] & 7], t);
+          if (((i == 2) && ((*((s16 *) (c + 9))) == 1)) && ((*((s16 *) (c + 12))) != 0))
+          {
+            ot = func_80140D68(ot, p, 2, 8, ((*((s16 *) (c + 12))) & 0xF) * 2);
+          }
+        }
+      }
+      if (i == c3)
+      {
+        s32 m = b[0];
+        /* [L1] compare against `i`, NOT against the literal 3. */
+        if ((m == i) && ((b[-2] & 8) != 0))
+        {
+          s16 j;
+          s32 k;
+          s32 t3v;
+          u8 *q = ((u8 *) ot) + 0x14;
+          s16 y;
+          j = 0;
+          k = m;
+          t3v = m * 4;                  /* [L3] explicit, must sit before the 3 constants */
+          pb = (u16 *) (&D_800B9A02);
+          m24 = 0xFFFFFF;
+          mhi = 0xFF000000;
+          for (; j < 2; j++)
+          {
+            if (j == 0)
+            {
+              if (D_80115140[k] == 0)
+              {
+                continue;
+              }
+              q[-7] = 0x30;
+              y = (*e) - 4;
             }
-            var_v1 = var_s3 + 1;
-            if (var_v0_2 == 3) {
-                if ((D_80115110.unkA == var_v0_2) && (temp_s5->unk-4 & 8)) {
-                    var_a2_2 = 0;
-                    var_a1_2 = var_s1 + 0x10;
-                    var_v0_6 = 0 << 0x10;
-                    do {
-                        if (var_v0_6 == 0) {
-                            if (*(&D_80115140 + D_80115110.unkA) != 0) {
-                                var_a1_2->unk-3 = 0x30;
-                                var_v0_8 = D_8017F222 - 4;
-                                goto block_33;
-                            }
-                            goto block_34;
-                        }
-                        var_v0_7 = var_a2_2 + 1;
-                        if ((*(&D_80115158 + (D_80115110.unkA * 2)) - *(&D_80115140 + D_80115110.unkA)) >= 2) {
-                            var_a1_2->unk-3 = 0x38;
-                            var_v0_8 = D_8017F222 + 3;
-block_33:
-                            var_a1_2->unk-6 = var_v0_8;
-                            *var_s1 = 0x04000000;
-                            var_a1_2->unk-4 = 0x78;
-                            var_a1_2->unk-C = 0x64808080;
-                            var_a1_2->unk-2 = 0x4056;
-                            var_a1_2->unk2 = 8;
-                            var_a1_2->unk0 = 8;
-                            var_a1_2->unk-8 = (s16) (D_8017F220 + *(&D_8011516A + (D_80115110.unkA * 4)) + 0x4A);
-                            *var_s1 = (*var_s1 & 0xFF000000) | ((*(&D_800AE7BC + (D_800B9A02 * 0x14)))->unk8 & 0xFFFFFF);
-                            var_a1_2 += 0x14;
-                            temp_a0_2 = *(&D_800AE7BC + (D_800B9A02 * 0x14));
-                            temp_v1_2 = (s32) var_s1 & 0xFFFFFF;
-                            var_s1 += 0x14;
-                            temp_a0_2->unk8 = (s32) ((temp_a0_2->unk8 & 0xFF000000) | temp_v1_2);
-block_34:
-                            var_v0_7 = var_a2_2 + 1;
-                        }
-                        var_a2_2 = var_v0_7;
-                        var_v0_6 = var_a2_2 << 0x10;
-                    } while (var_v0_7 < 2);
-                }
-                var_v1 = var_s3 + 1;
+            else
+            {
+              s32 k2 = k * 2;
+              if ((((s8 *) D_80115158)[k2] - ((s8 *) D_80115140)[k]) < 2)
+              {
+                continue;
+              }
+              q[-7] = 0x38;
+              y = (*e) + 3;
             }
-            var_s3 = var_v1;
-        } while (var_v1 < (s16) (u16) sp18);
+            *((s16 *) (q - 10)) = y;
+__asm__("" ::: "memory");
+            *((u32 *) ot) = 0x4000000;
+            q[-8] = 0x78;
+            *((u32 *) (q - 0x10)) = 0x64808080;
+            *((s16 *) (q - 6)) = 0x4056;
+            *((s16 *) (q - 0xC)) = (D_8017F220 + ((u16) *((u16 *) (((u8 *) D_8011516A) + t3v)))) + 0x4A;
+            eight = 8;
+            *((s16 *) (q - 2)) = eight;
+            *((s16 *) (q - 4)) = eight;
+            *((u32 *) ot) = ((*((u32 *) ot)) & mhi) | (D_800AE7BC[*pb].ot[2] & m24);
+            {
+register u32 *op __asm__("$4");
+              op = D_800AE7BC[*pb].ot;
+              op[2] = (op[2] & mhi) | (((u32) ot) & m24);
+            }
+            q += 0x14;
+            ot += 5;
+            __asm__ volatile("" :: "r"(j));   /* [L2] zero code, +1 ref on j */
+          }
+
+        }
+      }
+      i = i + 1;
     }
-    return var_s1;
+    while (i < n);
+  }
+  return ot;
 }

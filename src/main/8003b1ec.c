@@ -1,23 +1,19 @@
 /* Exact retail word export for [8003B1EC,8003B250); EXE-verified. */
+/* Sony PsyQ library routine (vendor/bfm-decomp keeps it as INCLUDE_ASM); C written from the retail disassembly. */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_8003B1EC - byte-exact against retail at -O2 (tools/register_match.py). */
 
-extern s32 D_8006B544;
-
-void func_8003B1EC(void *arg0) {
-    s32 temp_v0;
-
-    temp_v0 = M2C_FIELD(arg0, s32 *, 0);
-    if ((temp_v0 == 0) || (temp_v0 & 1)) {
-        if (M2C_FIELD(arg0, s32 *, 4) != 0) {
-            D_8006B544 = (s32) (D_8006B544 | 1);
-            return;
+extern u32 D_8006B544;
+void func_8003B1EC(s32 *attr)
+{
+    if (attr[0] == 0 || (attr[0] & 1)) {
+        if (attr[1]) {
+            u32 *p = &D_8006B544;
+            *p |= 1;
+        } else {
+            u32 *p = &D_8006B544;
+            *p &= ~1;
         }
-        D_8006B544 = (s32) (D_8006B544 & ~1);
     }
 }

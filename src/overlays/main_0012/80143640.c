@@ -2,41 +2,43 @@
  * SHA256(span)=a6e186045920e868d566dca5d5917f320b89e8f96d01fa1045ee8711348ac55c.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80143640 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* Vendor names mapped to address-named symbols for the link-by-address harness. */
+#define rand func_8005C49C
 
-s32 func_8005C49C(s16);                             /* extern */
-void *func_8012913C();                             /* static */
-
-void func_80143640(u16 *arg0, void *arg1, void *arg2, s32 arg3) {
-    s16 temp_a0;
-    s16 temp_a0_2;
-    s16 temp_a0_3;
-    s32 temp_v1;
-    void *temp_v0;
-
-    if (!(*arg0 & (s16) ((1 << arg3) - 1))) {
-        temp_v0 = func_8012913C(0x22);
-        if (temp_v0 != 0) {
-            temp_a0 = arg2->unk0;
-            temp_v0->unk6 = (s16) ((arg1->unk0 + (func_8005C49C() % (s32) (temp_a0 * 2))) - temp_a0);
-            temp_a0_2 = arg2->unk2;
-            temp_v0->unkA = (s16) ((arg1->unk2 + (func_8005C49C(temp_a0) % (s32) (temp_a0_2 * 2))) - temp_a0_2);
-            temp_a0_3 = arg2->unk4;
-            temp_v1 = func_8005C49C(temp_a0_2) % (s32) (temp_a0_3 * 2);
-            temp_v0->unk18 = 0;
-            temp_v0->unk14 = 0;
-            temp_v0->unk10 = 0;
-            temp_v0->unkE = (s16) ((arg1->unk4 + temp_v1) - temp_a0_3);
-            temp_v0->unk34 = (u16) arg1->unk6;
-            temp_v0->unk20->unk2C = 0xC008;
+/* func_80143640 — shared body (overlay slot 0x80128158, h_exact b99172e9). ONE source: instantiated by #include at each
+ * member's site in address order; the members are recorded in config/dedup.us.yaml (Phase 35). */
+extern u8 *func_8012913C(s32 a0);
+extern s32 rand(void);
+void func_80143640(s32 a0, s32 a1, s32 a2, s32 a3) {
+    u8 *s0;
+    s32 r;
+    s32 d0, d1, d2;
+    s32 t;
+    s32 pad[6];
+    (void)pad;
+    if ((*(u16 *)(a0 + 0) & (s16)((1 << a3) - 1)) == 0) {
+        s0 = func_8012913C(0x22);
+        if (s0 != 0) {
+            r = rand();
+            d0 = *(s16 *)(a2 + 0);
+            *(s16 *)(s0 + 6) = (*(u16 *)(a1 + 0) + (r % (d0 << 1))) - d0;
+            r = rand();
+            d1 = *(s16 *)(a2 + 2);
+            *(s16 *)(s0 + 0xA) = (*(u16 *)(a1 + 2) + (r % (d1 << 1))) - d1;
+            r = rand();
+            d2 = *(s16 *)(a2 + 4);
+            t = *(u16 *)(a1 + 4);
+            *(s32 *)(s0 + 0x18) = 0;
+            *(s32 *)(s0 + 0x14) = 0;
+            *(s32 *)(s0 + 0x10) = 0;
+            *(s16 *)(s0 + 0xE) = (t + (r % (d2 << 1))) - d2;
+            *(s16 *)(s0 + 0x34) = *(u16 *)(a1 + 6);
+            *(u16 *)(*(s32 *)(s0 + 0x20) + 0x2C) = 0xC008;
         }
     }
-    *arg0 += 1;
+    *(u16 *)(a0 + 0) += 1;
 }

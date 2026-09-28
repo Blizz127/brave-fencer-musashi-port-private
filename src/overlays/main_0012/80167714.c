@@ -2,66 +2,63 @@
  * SHA256(span)=a333a41b9d3dd6768d0c0aa78ad54cfb0e9d6ea2472d2c3a6be4bc90638cdc1b.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80167714 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* Vendor names mapped to address-named symbols for the link-by-address harness. */
+#define rand func_8005C49C
 
-s32 func_8005C49C();                                /* extern */
-void func_80146C3C(void *);                      /* static */
-void func_80147324();                     /* static */
-void func_801670E4(void *, s32, s32, s32); /* static */
+/* File-scope declarations from the vendor translation unit. */
+typedef struct { u32 a, b, c, d; } Blk16;
 
-void func_80167714(void *arg0) {
-    s32 temp_v0;
-    s32 var_v0;
-    s32 var_v0_2;
-    void *temp_s1;
-    void *temp_v0_2;
-
-    temp_s1 = M2C_FIELD(arg0, void **, 0x34);
-    if (M2C_FIELD(temp_s1, u16 *, 0) == 1) {
-        if (M2C_FIELD(arg0, s16 *, 0x10) < M2C_FIELD(arg0, s16 *, 0x12)) {
-            if (M2C_FIELD(arg0, s32 *, 0x1C) > 0) {
-                M2C_FIELD(arg0, s16 *, 0x10) = (s16) (func_8005C49C() & 0x30);
-                var_v0 = -0x20;
-                goto block_6;
-            }
-        } else if (M2C_FIELD(arg0, s32 *, 0x1C) < 0) {
-            M2C_FIELD(arg0, s16 *, 0x10) = (s16) ((func_8005C49C() & 0x30) + 0x40);
-            var_v0 = 0x20;
-block_6:
-            M2C_FIELD(arg0, s32 *, 0x1C) = var_v0;
-        }
-        M2C_FIELD(arg0, s16 *, 0x12) = (s16) ((u16) M2C_FIELD(arg0, s16 *, 0x12) + M2C_FIELD(arg0, s32 *, 0x1C));
-        if (M2C_FIELD(arg0, s32 *, 0x2C) & 8) {
-            var_v0_2 = M2C_FIELD(arg0, s32 *, 0x30) + 0x80;
-        } else {
-            var_v0_2 = M2C_FIELD(arg0, s32 *, 0x30) - 0x40;
-        }
-        M2C_FIELD(arg0, s32 *, 0x30) = var_v0_2;
-        temp_v0 = M2C_FIELD(arg0, s32 *, 0x2C);
-        M2C_FIELD(arg0, s32 *, 0x2C) = (s32) (temp_v0 + 1);
-        if (!(temp_v0 & 0xF)) {
-            func_80147324(0x44E);
-        }
-        temp_v0_2 = M2C_FIELD(temp_s1, void **, 0x20);
-        M2C_FIELD(arg0, s32 *, 0x38) = (s32) M2C_FIELD(temp_v0_2, s32 *, 0x34);
-        M2C_FIELD(arg0, s32 *, 0x3C) = (s32) M2C_FIELD(temp_v0_2, s32 *, 0x38);
-        M2C_FIELD(arg0, s32 *, 0x40) = (s32) M2C_FIELD(temp_v0_2, s32 *, 0x3C);
-        M2C_FIELD(arg0, s32 *, 0x44) = (s32) M2C_FIELD(temp_v0_2, s32 *, 0x40);
-        M2C_FIELD(arg0, s32 *, 0x48) = (s32) M2C_FIELD(temp_v0_2, s32 *, 0x44);
-        M2C_FIELD(arg0, s32 *, 0x4C) = (s32) M2C_FIELD(temp_v0_2, s32 *, 0x48);
-        M2C_FIELD(arg0, s32 *, 0x50) = (s32) M2C_FIELD(temp_v0_2, s32 *, 0x4C);
-        M2C_FIELD(arg0, s32 *, 0x54) = (s32) M2C_FIELD(temp_v0_2, s32 *, 0x50);
-        func_801670E4(arg0, 0, 0, 0);
-        if (!(M2C_FIELD(M2C_FIELD(M2C_FIELD(arg0, void **, 0x34), void **, 0x4C), s32 *, 0x44) & 0x20)) {
-            M2C_FIELD(arg0, u16 *, 2) = (u16) (M2C_FIELD(arg0, u16 *, 2) - 1);
-        }
-    } else {
-        func_80146C3C(arg0);
+/* func_80167714 — shared body (overlay slot 0x80128158, h_exact a7f0e3d6). ONE source: instantiated by #include at each
+ * member's site in address order; the members are recorded in config/dedup.us.yaml (Phase 35). */
+extern void func_80146C3C();
+extern void func_80147324(s32 arg0);
+extern s32 func_801670E4(s32 a0, s32 a1, s32 a2, s32 a3);
+extern s32 rand(void);
+void func_80167714(s32 param_1) {
+    s32 *psVar7;
+    s32 iVar2;
+    s32 src;
+    u32 uVar4;
+    psVar7 = *(s32 **)(param_1 + 0x34);
+    if (*(u16 *)psVar7 != 1) {
+        goto LAB_80167894;
     }
+    if (*(s16 *)(param_1 + 0x12) > *(s16 *)(param_1 + 0x10)) {
+        iVar2 = *(s32 *)(param_1 + 0x1c);
+        if (iVar2 < 1) goto LAB_801677b0;
+        *(u16 *)(param_1 + 0x10) = rand() & 0x30;
+        iVar2 = -0x20;
+    } else {
+        iVar2 = *(s32 *)(param_1 + 0x1c);
+        if (-1 < iVar2) goto LAB_801677b0;
+        *(u16 *)(param_1 + 0x10) = (rand() & 0x30) + 0x40;
+        iVar2 = 0x20;
+    }
+    *(s32 *)(param_1 + 0x1c) = iVar2;
+LAB_801677b0:
+    *(s16 *)(param_1 + 0x12) = *(u16 *)(param_1 + 0x12) + *(s32 *)(param_1 + 0x1c);
+    if ((*(u32 *)(param_1 + 0x2c) & 8) != 0) {
+        *(s32 *)(param_1 + 0x30) = *(s32 *)(param_1 + 0x30) + 0x80;
+    } else {
+        *(s32 *)(param_1 + 0x30) = *(s32 *)(param_1 + 0x30) - 0x40;
+    }
+    uVar4 = *(u32 *)(param_1 + 0x2c);
+    *(u32 *)(param_1 + 0x2c) = uVar4 + 1;
+    if ((uVar4 & 0xf) == 0) {
+        func_80147324(0x44e);
+    }
+    src = *(s32 *)((s32)psVar7 + 0x20);
+    *(Blk16 *)(param_1 + 0x38) = *(Blk16 *)(src + 0x34);
+    *(Blk16 *)(param_1 + 0x48) = *(Blk16 *)(src + 0x44);
+    func_801670E4(param_1, 0, 0, 0);
+    if ((*(u32 *)(*(s32 *)(*(s32 *)(param_1 + 0x34) + 0x4c) + 0x44) & 0x20) == 0) {
+        *(s16 *)(param_1 + 2) = *(s16 *)(param_1 + 2) - 1;
+    }
+    return;
+LAB_80167894:
+    ((void (*)(s32))func_80146C3C)(param_1);
 }

@@ -2,103 +2,74 @@
  * SHA256(span)=ce0f359ad05ded980e5a6df6c82bd82232897bf5fd7ae54be00aec95176765d0.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8014F74C - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* File-scope declarations from the vendor translation unit. */
+typedef struct { s16 x, y, z, w; } PosT;
+typedef struct { u16 x, y, z, w; } MoveT;
 
-s32 func_80029178();                               /* extern */
-s32 func_80133784(s32, u16 *, u16 *);                 /* static */
-extern s32 D_801152B0;
+/* func_8014F74C — shared body (overlay slot 0x80128158, h_exact f969fea3). ONE source: instantiated by #include at each
+ * member's site in address order; the members are recorded in config/dedup.us.yaml (Phase 35). */
+extern s32 func_80133784(s32 a0, void *a1, s32 a2);
+extern s32 func_80029178(s32 arg);
+extern u8 D_800D3918[];
+extern u8 D_801152A8[];
+extern s16 D_801152B0;
 extern s32 D_801152BC;
-
-s32 func_8014F74C(void *arg0) {
-    u16 sp24;
-    u16 sp22;
-    u16 sp20;
-    u16 sp1C;
-    u16 sp1A;
-    u16 sp18;
-    u16 sp14;
-    u16 sp12;
-    u16 sp10;
-    s32 var_s1;
-    s32 var_v0;
-    u16 temp_a0;
-    u16 temp_a1;
-    u16 temp_v1;
-
-    sp10 = arg0->unk88;
-    sp12 = arg0->unk8A;
-    sp14 = arg0->unk8C;
-    temp_v1 = arg0->unk6;
-    sp20 = temp_v1;
-    sp18 = temp_v1;
-    temp_a0 = arg0->unkA;
-    sp22 = temp_a0;
-    sp1A = temp_a0;
-    temp_a1 = arg0->unkE;
-    sp24 = temp_a1;
-    sp1C = temp_a1;
-    if (arg0->unk146 != 0) {
-        sp18 = temp_v1 + arg0->unk140;
-        sp1A = temp_a0 + arg0->unk142;
-        sp1C = temp_a1 + arg0->unk144;
+int func_8014F74C(s32 arg0)
+{
+    PosT  sp10;
+    MoveT sp18;
+    PosT  sp20;
+    u16 x6, xA, xE;
+    s32 ret;
+    sp10.x = *(u16 *)(arg0 + 0x88);
+    sp10.y = *(u16 *)(arg0 + 0x8A);
+    sp10.z = *(u16 *)(arg0 + 0x8C);
+    sp18.x = sp20.x = x6 = *(u16 *)(arg0 + 6);
+    sp18.y = sp20.y = xA = *(u16 *)(arg0 + 0xA);
+    sp18.z = sp20.z = xE = *(u16 *)(arg0 + 0xE);
+    if (*(s16 *)(arg0 + 0x146) != 0) {
+        sp18.x = x6 + *(u16 *)(arg0 + 0x140);
+        sp18.y = xA + *(u16 *)(arg0 + 0x142);
+        sp18.z = xE + *(u16 *)(arg0 + 0x144);
     }
-    var_s1 = func_80133784(0, &sp10, &sp18);
-    if (var_s1 != 0) {
-        arg0->unk6 = sp18;
-        arg0->unkA = sp1A;
-        arg0->unkE = sp1C;
-        if (sp1E != 0) {
-            arg0->unk16C = (u16) sp1E;
+    ret = func_80133784(0, &sp10, (s32)&sp18);
+    if (ret != 0) {
+        *(s16 *)(arg0 + 6)   = sp18.x;
+        *(s16 *)(arg0 + 0xA) = sp18.y;
+        *(s16 *)(arg0 + 0xE) = sp18.z;
+        if (*(u8 *)&sp18.w != 0) {
+            *(u16 *)(arg0 + 0x16C) = *(u8 *)&sp18.w;
         }
-        arg0->unk16E = (s16) ((u16) sp1E >> 0xD);
-        if (var_s1 == 0x2000) {
-            arg0->unk123 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-            arg0->unk127 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-        } else if (var_s1 == 0x4000) {
-            arg0->unk123 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-            arg0->unk127 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
+        *(u16 *)(arg0 + 0x16E) = (u32)sp18.w >> 13;
+        if (ret == 0x2000) {
+            __builtin_memcpy((void *)(arg0 + 0x120), (void *)D_801152A8, 8);
+        } else if (ret == 0x4000) {
+            __builtin_memcpy((void *)(arg0 + 0x120), (void *)&D_801152B0, 8);
         }
-        var_v0 = var_s1;
-        if (arg0->unk16C == 0x1D) {
-            if (!(func_80029178(0x21) & 0xFF)) {
-                var_s1 = (var_s1 & ~0x2000) | 0x4000;
-                D_801152B0.unk3 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-                D_801152B0.unk7 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-                D_801152BC = 1;
-            }
-            return var_s1;
+        if (*(u16 *)(arg0 + 0x16C) != 0x1D) {
+            return ret;
         }
-        /* Duplicate return node #23. Try simplifying control flow for better match */
-        return var_v0;
+        if ((func_80029178(0x21) & 0xFF) == 0) {
+            ret &= ~0x2000;
+            ret |= 0x4000;
+            __builtin_memcpy((void *)&D_801152B0, (void *)D_801152A8, 8);
+            D_801152BC = 1;
+        }
+        __asm__ __volatile__("" ::: "memory");
+        return ret;
     }
-    arg0->unk123 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-    arg0->unk127 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-    if (sp1E != 0) {
-        arg0->unk16C = (u16) sp1E;
+    /* ret == 0 */
+    __builtin_memcpy((void *)(arg0 + 0x120), (void *)D_800D3918, 8);
+    if (*(u8 *)&sp18.w != 0) {
+        *(u16 *)(arg0 + 0x16C) = *(u8 *)&sp18.w;
     }
-    if ((s16) sp10 == (s16) sp20) {
-        if (((s16) sp12 != (s16) sp22) || (var_v0 = 0, ((s16) sp14 != (s16) sp24))) {
-            goto block_19;
-        }
-    } else {
-block_19:
-        var_v0 = 0;
-        if ((s16) sp10 == (s16) sp18) {
-            var_v0 = 0;
-            if ((s16) sp12 == (s16) sp1A) {
-                var_v0 = 0;
-                if ((s16) sp14 == (s16) sp1C) {
-                    var_v0 = 0x8000;
-                }
-            }
-        }
+    if (((sp10.x != sp20.x) || (sp10.y != sp20.y) || (sp10.z != sp20.z)) &&
+        (sp10.x == (s16)sp18.x) && (sp10.y == (s16)sp18.y) && (sp10.z == (s16)sp18.z)) {
+        return 0x8000;
     }
-    return var_v0;
+    return 0;
 }

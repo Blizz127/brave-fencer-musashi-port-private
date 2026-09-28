@@ -23,15 +23,18 @@ RECOVERY_KINDS = ("c", "assembly", "mixed", "unclassified")
 EXTENTS = ("function", "partial", "unclassified")
 QUALIFYING_RECOVERIES = frozenset({"c", "assembly"})
 
-# Identified split code: SLUS_007.26 t_size + MAIN.CD member 0007 + member
-# 0010's code [0x800CEDFC, 0x800D3408) + member 0012's code chunk
-# [0x28000, 0x86000). Overlay members not yet shown to be code are outside
+# Identified split code: SLUS_007.26 t_size + MAIN.CD member 0003's code
+# [0x800CEED0, 0x800D3574) (including two handwritten MDEC routines) + member
+# 0007 + member 0010's code [0x800CEDFC, 0x800D3408) + member 0011's code
+# [0x800CEE74, 0x800D31F8) + member 0012's code chunk [0x28000, 0x86000). Overlay members not yet shown to be code are outside
 # this denominator, and so are their registered ranges: a region only counts
 # toward coverage once its code size is part of the denominator.
 IDENTIFIED_REGION_BYTES = {
     "main": 411648,
+    "main_0003": 18084,
     "main_0007": 9600,
     "main_0010": 17932,
+    "main_0011": 17284,
     "main_0012": 385024,
 }
 IDENTIFIED_CODE_BYTES = sum(IDENTIFIED_REGION_BYTES.values())
@@ -239,7 +242,8 @@ def load_registry(path: Path) -> list[dict[str, Any]]:
 def summarise(matches: list[dict[str, Any]]) -> dict[str, Any]:
     """Total registered ranges and declared recovery, without inferring either."""
 
-    seen: set[int] = set()
+    # Overlays share load addresses, so a vram repeats only within a region.
+    seen: set[tuple[str, int]] = set()
     total_bytes = 0
     regions: Counter[str] = Counter()
     recovery_counts: Counter[str] = Counter()
@@ -256,9 +260,10 @@ def summarise(matches: list[dict[str, Any]]) -> dict[str, Any]:
         if not isinstance(size, int) or size <= 0:
             raise RetailError(f"match {match['name']!r} has a non-positive size: {size}")
         vram = match["vram"]
-        if vram in seen:
-            raise RetailError(f"match {match['name']!r} repeats vram 0x{vram:08X}")
-        seen.add(vram)
+        key = (match["region"], vram)
+        if key in seen:
+            raise RetailError(f"match {match['name']!r} repeats vram 0x{vram:08X} in {match['region']}")
+        seen.add(key)
         total_bytes += size
         regions[match["region"]] += 1
         recovery = match.get("recovery", "unclassified")
