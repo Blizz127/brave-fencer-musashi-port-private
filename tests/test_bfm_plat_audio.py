@@ -69,6 +69,7 @@ class SpuToSinkTests(unittest.TestCase):
             run = subprocess.run([str(probe)], capture_output=True, text=True, timeout=60)
             self.assertEqual(run.returncode, 0, run.stderr)
             self.assertIn("OK null frames=5145 nonsilent=4410", run.stdout)
+            self.assertIn("OK adpcm frames=2940", run.stdout)
 
     @unittest.skipUnless(shutil.which("cc") and Path("/usr/include/AL/al.h").is_file(),
                          "OpenAL headers unavailable")

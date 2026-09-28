@@ -25,6 +25,47 @@ static uint64_t one_thread(void *u) { (void)u; return 1; }
 int bfm_plat_backend_openal_audio_register(void);
 #endif
 
+static int wr(MusashiSpuCdAudio *a, unsigned reg, unsigned v) {
+    return musashi_spu_cd_audio_write16(a, 0x1f801000u + reg, (uint16_t)v);
+}
+
+/* An ADPCM voice through the real SPU core: one looping block uploaded by
+ * manual transfer to SPU RAM 0x1000, voice 0 set up, KON. */
+static int adpcm_voice(void) {
+    MusashiPlatAudioSink sink;
+    const MusashiSpuCdAudioBackend *backend;
+    MusashiSpuCdAudio *spu;
+    BfmPlatAudioStatus st;
+    unsigned i;
+    CHECK(bfm_plat_audio_open("null", NULL) == BFM_PLAT_OK);
+    backend = musashi_plat_audio_sink_init(&sink, one_thread, NULL);
+    CHECK(backend != NULL);
+    spu = musashi_spu_cd_audio_create();
+    CHECK(spu && musashi_spu_cd_audio_init_bios_muted(spu, backend, 0));
+    /* Block: shift/filter 7, flags 7 (loop start, repeat, end), data 0x77. */
+    CHECK(wr(spu, 0xdac, 4) && wr(spu, 0xda6, 0x200) && wr(spu, 0xda8, 7u | (7u << 8)));
+    for (i = 0; i < 7u; i++) CHECK(wr(spu, 0xda8, 0x7777u));
+    CHECK(wr(spu, 0xc00, 0x3fff) && wr(spu, 0xc02, 0x3fff));     /* voice volume */
+    CHECK(wr(spu, 0xc04, 0x1000) && wr(spu, 0xc06, 0x200));      /* 44.1 kHz, start 0x1000 */
+    CHECK(wr(spu, 0xc08, 0) && wr(spu, 0xc0a, 0));               /* ADSR */
+    CHECK(wr(spu, 0xd80, 0x3fff) && wr(spu, 0xd82, 0x3fff));     /* main volume */
+    CHECK(wr(spu, 0xdaa, 0xc000));                               /* SPU on, unmuted */
+    CHECK(wr(spu, 0xd88, 1));                                    /* KON voice 0 */
+    for (i = 1; i <= 4u; i++) {
+        CHECK(musashi_spu_cd_audio_advance(spu, (uint64_t)i * 735u * MUSASHI_SPU_CD_AUDIO_SAMPLE_CYCLES));
+        fake_ns += 1000000000ull / 60u;
+    }
+    CHECK(!sink.faulted && sink.frames == 4u * 735u);
+    CHECK(sink.nonsilent > 2000u && sink.peak > 0);
+    CHECK(bfm_plat_audio_status(&st) == BFM_PLAT_OK &&
+          st.submitted_frames[BFM_AUDIO_STREAM_MAIN] == sink.frames);
+    CHECK(musashi_spu_cd_audio_destroy(spu));
+    bfm_plat_audio_close();
+    printf("OK adpcm frames=%llu nonsilent=%llu peak=%d\n", (unsigned long long)sink.frames,
+           (unsigned long long)sink.nonsilent, sink.peak);
+    return 0;
+}
+
 int main(int argc, char **argv) {
     static int16_t tone[FRAMES * 2];
     const char *want = argc > 1 ? argv[1] : "null", *sel = NULL;
@@ -75,5 +116,6 @@ int main(int argc, char **argv) {
     bfm_plat_audio_close();
     printf("OK %s frames=%llu nonsilent=%llu peak=%d\n", sel,
            (unsigned long long)sink.frames, (unsigned long long)sink.nonsilent, sink.peak);
+    if (!strcmp(want, "null") && adpcm_voice()) return 1;
     return 0;
 }

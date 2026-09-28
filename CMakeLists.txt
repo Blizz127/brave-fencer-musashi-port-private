@@ -561,6 +561,13 @@ if(MUSASHI_BUILD_PC_PORT)
         target_compile_definitions(musashi_native_boot PRIVATE MUSASHI_WITH_BFM_PLAT=1)
         target_sources(musashi_native_boot PRIVATE pc_port/plat_audio_sink.c)
     endif()
+    # SPU core -> plat_audio_sink -> bfm_plat null sink, in-process: a CD tone
+    # and an ADPCM voice (SPU RAM upload, KON) must reach the sink non-silent.
+    add_executable(musashi_plat_audio_sink_probe tests/plat_audio_sink_probe.c
+        pc_port/plat_audio_sink.c)
+    target_include_directories(musashi_plat_audio_sink_probe PRIVATE pc_port/include)
+    target_link_libraries(musashi_plat_audio_sink_probe PRIVATE bfm_plat musashi_pc_port)
+    add_test(NAME plat_audio_sink COMMAND musashi_plat_audio_sink_probe)
 
     if(MUSASHI_NATIVE_LANE)
         find_program(MUSASHI_CLANG NAMES clang REQUIRED)
