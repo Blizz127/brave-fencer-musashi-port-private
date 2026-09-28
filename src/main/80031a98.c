@@ -1,50 +1,54 @@
 /* Exact retail word export for [80031A98,80031B7C); EXE and assembly verified. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_80031A98 - byte-exact against retail at -O2 (tools/register_match.py). */
 
-void func_80030D80(void *, s32);          /* static */
-extern u8 D_800A46B0;
-extern s32 *D_800A4988;
-extern s32 *D_800C5328;
-extern s32 *D_800C532A;
+typedef struct Ent30D80 {
+     s32 unk00;
+     u8 pad04[6];
+     u16 unk0A;
+     u8 pad0C[0x34];
+     void (*unk40)(s32, s32);
+     s32 unk44;
+     u8 pad48[6];
+     u8 unk4E;
+     u8 pad4F;
+     u8 unk50;
+     u8 unk51;
+} Ent30D80;
+extern void func_80031A98(void);
+struct Ent30D80;
+extern s16 D_800C5328[];
+extern s16 D_800C532A[];
+extern u8  D_800A4988[];
+extern u8  D_800A46B0;
+extern void func_80030D80(Ent30D80 *arg0, s16 arg1);
 
-void func_80031A98(void) {
-    void *var_s1;
-    s16 var_v0;
-    s32 var_s2;
-    u16 temp_v1;
-    void *var_s0;
+void func_80031A98(void)
+{
+    u8 *p;
+    s32 i;
+    s32 w;
+    u16 h;
 
-    var_s1 = &D_800A4988;
-    var_s2 = 0;
-    var_s0 = &D_800A4988 + 0xE;
-    do {
-        if (M2C_FIELD(var_s0, u8 *, 0x40) != 0) {
-            if (M2C_FIELD(var_s0, u8 *, 0x28) != 0) {
-                var_v0 = *(&D_800C532A + (M2C_FIELD(var_s0, u16 *, 0) * 4));
-                goto block_8;
+    for (p = D_800A4988, i = 0; i < 8; i++, p += 0x54) {
+        if (p[0x4E] != 0) {
+            if (p[0x36] != 0) {
+                w = *(s16 *)((u8 *)D_800C532A + (*(u16 *)(p + 0xE) << 2));
+                goto chk;
             }
-            temp_v1 = M2C_FIELD(var_s0, u16 *, 0);
-            if (temp_v1 & 0x80) {
-                if (D_800A46B0 != 0) {
-                    goto block_9;
-                }
+            h = *(u16 *)(p + 0xE);
+            if (h & 0x80) {
+                if (D_800A46B0 != 0)
+                    func_80030D80((Ent30D80 *)p, 1);
             } else {
-                var_v0 = *(&D_800C5328 + (temp_v1 * 4));
-block_8:
-                if (var_v0 < 0) {
-block_9:
-                    func_80030D80(var_s1, 1);
-                }
+                w = *(s16 *)((u8 *)D_800C5328 + (h << 2));
+            chk:
+                if (w >= 0)
+                    continue;
+                func_80030D80((Ent30D80 *)p, 1);
             }
         }
-        var_s2 += 1;
-        var_s0 += 0x54;
-        var_s1 += 0x54;
-    } while (var_s2 < 8);
+    }
 }

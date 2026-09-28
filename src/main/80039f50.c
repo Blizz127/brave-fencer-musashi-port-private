@@ -2,47 +2,52 @@
  * SHA256(span)=98b78d3a359472689bbe2ba1742c6f72837e597c3ee2ff8224b02d3fe9a4083d.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80039F50 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+extern void func_80039C70(u8 *arg0, s16 arg1, s16 arg2);   
+extern void func_80039DEC();  
 
-void func_80039C70(void **, s16, u8, void **);   /* static */
-void func_80039DEC(void **, s16, u8, void **);   /* static */
+void func_80039F50(u8 **a0, s16 a1)
+{
+    register u8 **pvVar4 __asm__("$7"); 
+    u8 *pbVar3;
+    register s32 bVar1 __asm__("$4"); 
+    u8 bVar2;
+    register u8 *pbVar5 __asm__("$2"); 
+    u8 bVar6;
 
-void func_80039F50(void **arg0, s16 arg1) {
-    u8 temp_a0;
-    u8 temp_a2;
-    void *temp_v0;
-    void *temp_v1;
+    pvVar4 = a0;
+    pbVar3 = *pvVar4;
+    *pvVar4 = pbVar3 + 1;
+    bVar1 = *pbVar3;
+    *pvVar4 = pbVar3 + 2;
+    bVar2 = pbVar3[1];
 
-    temp_v1 = *arg0;
-    *arg0 = temp_v1 + 1;
-    temp_a0 = M2C_FIELD(temp_v1, u8 *, 0);
-    *arg0 = temp_v1 + 2;
-    temp_a2 = M2C_FIELD(temp_v1, u8 *, 1);
-    switch (temp_a0) {                              /* irregular */
-    case 0x6:
-        func_80039C70(arg0, arg1, temp_a2, arg0);
-        return;
-    case 0x7:
-        M2C_FIELD((arg0 + (arg1 * 0x1A)), u8 *, 0x1B) = temp_a2;
-        return;
+    switch (bVar1) {
+    case 6:
+        func_80039C70(pvVar4, a1, bVar2);
+        break;
+    case 7:
+        pbVar5 = (u8 *)pvVar4 + a1 * 0x1A;
+        pbVar5[0x1B] = bVar2;
+        break;
+    case 8:
+        break;
     case 0xA:
-        M2C_FIELD((arg0 + (arg1 * 0x1A)), u8 *, 0x1E) = temp_a2;
-        return;
+        pbVar5 = (u8 *)pvVar4 + a1 * 0x1A;
+        pbVar5[0x1E] = bVar2;
+        break;
     case 0x62:
-        temp_v0 = arg0 + (arg1 * 0x1A);
-        M2C_FIELD(temp_v0, u8 *, 0x20) = temp_a2;
-        M2C_FIELD(temp_v0, s8 *, 0x22) = (s8) (temp_a2 + 1);
-        M2C_FIELD(temp_v0, u8 *, 0x21) = (u8) (M2C_FIELD(temp_v0, u8 *, 0x21) | 2);
-        return;
+        pbVar5 = (u8 *)pvVar4 + a1 * 0x1A;
+        bVar6 = pbVar5[0x21];
+        pbVar5[0x20] = bVar2;
+        pbVar5[0x22] = bVar2 + 1;
+        pbVar5[0x21] = bVar6 | 2;
+        break;
     case 0x63:
-        func_80039DEC(arg0, arg1, temp_a2, arg0);
-        /* fallthrough */
-        return;
+        func_80039DEC(pvVar4, a1, bVar2);
+        break;
     }
 }

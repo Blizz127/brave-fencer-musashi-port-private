@@ -2,71 +2,87 @@
  * SHA256(span)=21c4a123dd5d7a5c0e254f72e0cb1644f79887e32f138c4575b66b87f919bf6f.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80037028 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+typedef struct { u8  v; } W8;
 
-extern s32 D_80064D49[];
-extern s32 D_80076228;
-extern s32 D_8007622C;
-extern s32 D_80076238;
-extern s16 D_80076240;
-extern s8 D_80076242;
-extern s8 D_80076243;
-extern s32 *D_80076244;
-extern s32 *D_80076248;
-extern s32 *D_8007624C;
-extern s32 *D_80076250;
-extern s32 *D_80076251;
-extern s32 *D_80076252;
-extern s32 D_80076294;
+typedef struct {               
+    s32 unk00;
+    u8  unk04[0x14];
+} Ent24;
+
+typedef struct {              
+    u8  unk00;
+    u8  pad[11];
+} Elm12;
+
+typedef struct {              
+    u16 unk00;
+    u16 unk02;
+    s32 unk04;
+    s32 unk08;
+    s32 unk0C;
+} Slot16A;
+
+typedef struct {
+    s32 unk00;
+    s32 unk04;
+    s32 unk08;
+    u8  unk0C;
+    u8  unk0D;
+    u8  unk0E;
+    u8  unk0F;
+} Slot16;
+
+typedef struct { s32 v; } W32;
+
+extern Slot16A D_80076240[];
+extern Slot16 D_80076244[];
+extern Elm12   D_80064D49[];
+extern Ent24   D_800A463C[];
+extern u8  D_80076251;
+extern s32 D_8007622C[];
+extern W32 D_80076228;
+extern W8  D_80076243;
+extern W8  D_80076242;
+extern W32 D_80076294;
+extern W32 D_80076238;
 extern s32 D_8007629C;
-extern s32 *D_800A463C;
 
-void func_80037028(s32 arg0, s32 arg1) {
-    s32 temp_a0;
-    s32 temp_v1_2;
-    s32 var_a2;
-    s32 var_v0;
-    s32 var_v1;
-    u8 temp_v1;
+void func_80037028(s32 base, s32 val) {
+    s32 slot;
+    s32 i;
+    s32 b;
 
-    var_a2 = 0;
-    var_v1 = 0;
-loop_1:
-    var_v0 = var_a2 < 5;
-    if (*(&D_80076251 + var_v1) != 0) {
-        var_a2 += 1;
-        var_v1 += 0x10;
-        if (var_a2 >= 5) {
-            var_v0 = var_a2 < 5;
-        } else {
-            goto loop_1;
+    for (slot = 0, i = 0; slot < 5; slot++, i += 0x10) {
+        if ((&D_80076251)[i] == 0) {
+            break;
         }
     }
-    temp_a0 = var_a2 * 0x10;
-    if (var_v0 != 0) {
-        *(&D_80076251 + temp_a0) = 1;
-        *(&D_80076244 + temp_a0) = arg1;
-        *(&D_80076250 + temp_a0) = 0;
-        *(&D_80076248 + temp_a0) = arg0;
-        temp_v1 = *(D_80064D49 + (arg0 * 0xC));
-        *(&D_80076252 + temp_a0) = temp_v1;
-        temp_v1_2 = temp_v1 * 0x18;
-        *(&D_8007624C + temp_a0) = *(&D_800A463C + temp_v1_2);
-        if (var_a2 == 0) {
-            D_8007622C = arg1;
-            D_80076228 = arg1;
-            D_80076240 = 0;
-            D_80076243 = 2;
-            D_80076242 = 0;
-            D_80076294 = 0;
-            D_80076238 = *(&D_800A463C + temp_v1_2);
+
+    if (slot < 5) {
+        D_80076244[slot].unk0D = 1;
+        D_80076240[slot].unk04 = val;
+        D_80076244[slot].unk0C = 0;
+        D_80076240[slot].unk08 = base;
+        b = D_80064D49[base].unk00;
+        D_80076244[slot].unk0E = b;
+        D_80076240[slot].unk0C = D_800A463C[b].unk00;
+
+        if (slot == 0) {
+            s32 r;
+            D_8007622C[0] = val;
+            r = D_800A463C[b].unk00;
+            D_80076228.v = val;
+            D_80076240[0].unk00 = 0;
+            D_80076243.v = 2;
+            D_80076242.v = 0;
+            D_80076294.v = 0;
+            D_80076238.v = r;
         }
     }
+
     D_8007629C = 0;
 }

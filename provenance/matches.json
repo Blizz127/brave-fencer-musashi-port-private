@@ -140,7 +140,8 @@
       "source": "src/main/80010bb4.c",
       "optimization": "-O0",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80010C7C",
@@ -160,7 +161,8 @@
       "source": "src/main/80010cec.c",
       "optimization": "-O0",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80010D60",
@@ -180,7 +182,8 @@
       "source": "src/main/80010da0.c",
       "optimization": "-O0",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80010DE0",
@@ -220,7 +223,8 @@
       "source": "src/main/80010e7c.c",
       "optimization": "-O0",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80010ED4",
@@ -240,7 +244,8 @@
       "source": "src/main/80010f80.c",
       "optimization": "-O0",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_800110CC",
@@ -270,7 +275,8 @@
       "source": "src/main/800111bc.c",
       "optimization": "-O0",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80011220",
@@ -290,7 +296,8 @@
       "source": "src/main/8001125c.c",
       "optimization": "-O0",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_800112A8",
@@ -350,7 +357,8 @@
       "source": "src/main/80011680.c",
       "optimization": "-O0",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_800116E0",
@@ -370,7 +378,8 @@
       "source": "src/main/80011778.c",
       "optimization": "-O0",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80011818",
@@ -400,7 +409,8 @@
       "source": "src/main/80011928.c",
       "optimization": "-O0",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80011998",
@@ -410,7 +420,8 @@
       "source": "src/main/80011998.c",
       "optimization": "-O0",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_800119F0",
@@ -420,7 +431,8 @@
       "source": "src/main/800119f0.c",
       "optimization": "-O0",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80011A3C",
@@ -430,7 +442,8 @@
       "source": "src/main/80011a3c.c",
       "optimization": "-O0",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80011ADC",
@@ -440,7 +453,8 @@
       "source": "src/main/80011adc.c",
       "optimization": "-O0",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80011B7C",
@@ -470,7 +484,8 @@
       "source": "src/main/80011c8c.c",
       "optimization": "-O0",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80011CFC",
@@ -480,7 +495,8 @@
       "source": "src/main/80011cfc.c",
       "optimization": "-O0",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80011D54",
@@ -490,7 +506,8 @@
       "source": "src/main/80011d54.c",
       "optimization": "-O0",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80011DA0",
@@ -570,7 +587,8 @@
       "source": "src/main/8001212c.c",
       "optimization": "-O0",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_800123F0",
@@ -656,7 +674,8 @@
       "region": "main",
       "source": "src/main/80012ab0.c",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80012ABC",
@@ -6015,7 +6034,8 @@
       "source": "src/main/8003dc90.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8003DF8C",
@@ -6025,7 +6045,8 @@
       "source": "src/main/8003df8c.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8003E2E4",
@@ -6120,7 +6141,8 @@
       "source": "src/main/80040de8.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80041354",
@@ -6130,7 +6152,8 @@
       "source": "src/main/80041354.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_800413B8",
@@ -6140,7 +6163,8 @@
       "source": "src/main/800413b8.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80041400",
@@ -6150,7 +6174,8 @@
       "source": "src/main/80041400.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80041448",
@@ -6160,7 +6185,8 @@
       "source": "src/main/80041448.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80041A20",
@@ -10022,7 +10048,8 @@
       "source": "src/overlays/main_0007/800cee2c.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_800CEEFC",
@@ -10072,7 +10099,8 @@
       "source": "src/overlays/main_0007/800cf02c.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_800CF068",
@@ -10092,7 +10120,8 @@
       "source": "src/overlays/main_0007/800cf0b8.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_800CF0F4",
@@ -10191,7 +10220,8 @@
       "source": "src/overlays/main_0007/800cf408.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_800CF6D0",
@@ -10201,7 +10231,8 @@
       "source": "src/overlays/main_0007/800cf6d0.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80128158",
@@ -10373,7 +10404,8 @@
       "source": "src/overlays/main_0012/80128678.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801288B0",
@@ -10470,7 +10502,8 @@
       "source": "src/overlays/main_0012/80128db4.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80128EA8",
@@ -10490,7 +10523,8 @@
       "source": "src/overlays/main_0012/80128ed8.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80128FAC",
@@ -10510,7 +10544,8 @@
       "source": "src/overlays/main_0012/80129010.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801290DC",
@@ -10627,7 +10662,8 @@
       "source": "src/overlays/main_0012/80129398.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80129428",
@@ -10655,7 +10691,8 @@
       "source": "src/overlays/main_0012/8012944c.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801298F4",
@@ -10665,7 +10702,8 @@
       "source": "src/overlays/main_0012/801298f4.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80129C40",
@@ -11024,7 +11062,8 @@
       "source": "src/overlays/main_0012/8012b030.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8012B0B4",
@@ -11034,7 +11073,8 @@
       "source": "src/overlays/main_0012/8012b0b4.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8012B14C",
@@ -11144,7 +11184,8 @@
       "source": "src/overlays/main_0012/8012b608.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8012B6D4",
@@ -11214,7 +11255,8 @@
       "source": "src/overlays/main_0012/8012bccc.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8012BD14",
@@ -11273,7 +11315,8 @@
       "source": "src/overlays/main_0012/8012bf10.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8012BF4C",
@@ -11351,7 +11394,8 @@
       "source": "src/overlays/main_0012/8012c0ec.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8012C194",
@@ -11401,7 +11445,8 @@
       "source": "src/overlays/main_0012/8012c284.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8012C31C",
@@ -11441,7 +11486,8 @@
       "source": "src/overlays/main_0012/8012c51c.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8012C588",
@@ -11451,7 +11497,8 @@
       "source": "src/overlays/main_0012/8012c588.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8012C724",
@@ -11471,7 +11518,8 @@
       "source": "src/overlays/main_0012/8012c750.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8012C820",
@@ -11481,7 +11529,8 @@
       "source": "src/overlays/main_0012/8012c820.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8012CAE4",
@@ -11491,7 +11540,8 @@
       "source": "src/overlays/main_0012/8012cae4.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8012CB64",
@@ -11501,7 +11551,8 @@
       "source": "src/overlays/main_0012/8012cb64.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8012CBA4",
@@ -11571,7 +11622,8 @@
       "source": "src/overlays/main_0012/8012ce2c.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8012CEB0",
@@ -11581,7 +11633,8 @@
       "source": "src/overlays/main_0012/8012ceb0.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8012D098",
@@ -11591,7 +11644,8 @@
       "source": "src/overlays/main_0012/8012d098.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8012D38C",
@@ -11671,7 +11725,8 @@
       "source": "src/overlays/main_0012/8012d714.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8012DB84",
@@ -11691,7 +11746,8 @@
       "source": "src/overlays/main_0012/8012dbd0.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8012DEB8",
@@ -11701,7 +11757,8 @@
       "source": "src/overlays/main_0012/8012deb8.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8012DF34",
@@ -11721,7 +11778,8 @@
       "source": "src/overlays/main_0012/8012dfbc.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8012DFCC",
@@ -11751,7 +11809,8 @@
       "source": "src/overlays/main_0012/8012e014.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8012E27C",
@@ -11799,7 +11858,8 @@
       "source": "src/overlays/main_0012/8012e470.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8012E4C8",
@@ -11809,7 +11869,8 @@
       "source": "src/overlays/main_0012/8012e4c8.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8012E504",
@@ -11888,7 +11949,8 @@
       "source": "src/overlays/main_0012/8012e8e0.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8012E9C0",
@@ -12024,7 +12086,8 @@
       "source": "src/overlays/main_0012/8012f568.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8012F5F4",
@@ -12114,7 +12177,8 @@
       "source": "src/overlays/main_0012/8012f968.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8012FB54",
@@ -12214,7 +12278,8 @@
       "source": "src/overlays/main_0012/8013001c.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80130088",
@@ -12224,7 +12289,8 @@
       "source": "src/overlays/main_0012/80130088.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801300F4",
@@ -12234,7 +12300,8 @@
       "source": "src/overlays/main_0012/801300f4.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801301E8",
@@ -12244,7 +12311,8 @@
       "source": "src/overlays/main_0012/801301e8.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80130278",
@@ -12433,7 +12501,8 @@
       "source": "src/overlays/main_0012/80130c08.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80130D0C",
@@ -12463,7 +12532,8 @@
       "source": "src/overlays/main_0012/80131a34.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80131AC8",
@@ -12473,7 +12543,8 @@
       "source": "src/overlays/main_0012/80131ac8.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80131C78",
@@ -12653,7 +12724,8 @@
       "source": "src/overlays/main_0012/8013240c.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8013277C",
@@ -12751,7 +12823,8 @@
       "source": "src/overlays/main_0012/8013361c.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801336E8",
@@ -12830,7 +12903,8 @@
       "source": "src/overlays/main_0012/80136bc4.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80136C1C",
@@ -13037,7 +13111,8 @@
       "source": "src/overlays/main_0012/801379fc.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80137B80",
@@ -13057,7 +13132,8 @@
       "source": "src/overlays/main_0012/80137bd8.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80137D08",
@@ -13077,7 +13153,8 @@
       "source": "src/overlays/main_0012/80137fd8.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801387B8",
@@ -13087,7 +13164,8 @@
       "source": "src/overlays/main_0012/801387b8.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80138948",
@@ -13107,7 +13185,8 @@
       "source": "src/overlays/main_0012/8013895c.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80138AB4",
@@ -13117,7 +13196,8 @@
       "source": "src/overlays/main_0012/80138ab4.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80138B88",
@@ -13177,7 +13257,8 @@
       "source": "src/overlays/main_0012/80138de0.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80138ED0",
@@ -13187,7 +13268,8 @@
       "source": "src/overlays/main_0012/80138ed0.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8013914C",
@@ -13197,7 +13279,8 @@
       "source": "src/overlays/main_0012/8013914c.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801391F0",
@@ -13365,7 +13448,8 @@
       "source": "src/overlays/main_0012/80139d04.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80139DC8",
@@ -13395,7 +13479,8 @@
       "source": "src/overlays/main_0012/80139df4.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80139E84",
@@ -13405,7 +13490,8 @@
       "source": "src/overlays/main_0012/80139e84.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80139F0C",
@@ -13485,7 +13571,8 @@
       "source": "src/overlays/main_0012/8013a2bc.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8013A378",
@@ -13505,7 +13592,8 @@
       "source": "src/overlays/main_0012/8013a380.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8013A448",
@@ -13535,7 +13623,8 @@
       "source": "src/overlays/main_0012/8013a530.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8013A860",
@@ -13575,7 +13664,8 @@
       "source": "src/overlays/main_0012/8013a8fc.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8013A9B4",
@@ -13595,7 +13685,8 @@
       "source": "src/overlays/main_0012/8013a9f8.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8013AA24",
@@ -13919,7 +14010,8 @@
       "source": "src/overlays/main_0012/8013e448.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8013E558",
@@ -13977,7 +14069,8 @@
       "source": "src/overlays/main_0012/8013f1bc.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8013F244",
@@ -13987,7 +14080,8 @@
       "source": "src/overlays/main_0012/8013f244.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80140F00",
@@ -14007,7 +14101,8 @@
       "source": "src/overlays/main_0012/801415c0.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8014168C",
@@ -14027,7 +14122,8 @@
       "source": "src/overlays/main_0012/801416d4.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80141788",
@@ -14126,7 +14222,8 @@
       "source": "src/overlays/main_0012/80142454.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801425CC",
@@ -14675,7 +14772,8 @@
       "source": "src/overlays/main_0012/80144988.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801449C8",
@@ -14802,7 +14900,8 @@
       "source": "src/overlays/main_0012/80145b24.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80145BF8",
@@ -14822,7 +14921,8 @@
       "source": "src/overlays/main_0012/80145c54.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80146014",
@@ -14851,7 +14951,8 @@
       "source": "src/overlays/main_0012/80146128.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80146360",
@@ -14930,7 +15031,8 @@
       "source": "src/overlays/main_0012/80146608.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801466B4",
@@ -14960,7 +15062,8 @@
       "source": "src/overlays/main_0012/80146750.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8014680C",
@@ -14970,7 +15073,8 @@
       "source": "src/overlays/main_0012/8014680c.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801468C8",
@@ -14990,7 +15094,8 @@
       "source": "src/overlays/main_0012/80146924.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80146994",
@@ -15010,7 +15115,8 @@
       "source": "src/overlays/main_0012/801469c8.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80146A6C",
@@ -15200,7 +15306,8 @@
       "source": "src/overlays/main_0012/80146fc4.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8014704C",
@@ -15330,7 +15437,8 @@
       "source": "src/overlays/main_0012/80147118.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80147264",
@@ -15477,7 +15585,8 @@
       "source": "src/overlays/main_0012/80147628.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80147718",
@@ -15667,7 +15776,8 @@
       "source": "src/overlays/main_0012/80147b5c.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80147C30",
@@ -15677,7 +15787,8 @@
       "source": "src/overlays/main_0012/80147c30.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80147CC8",
@@ -15707,7 +15818,8 @@
       "source": "src/overlays/main_0012/80147dc0.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80147F50",
@@ -15727,7 +15839,8 @@
       "source": "src/overlays/main_0012/80147f78.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80148038",
@@ -15867,7 +15980,8 @@
       "source": "src/overlays/main_0012/80148824.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801488A8",
@@ -15877,7 +15991,8 @@
       "source": "src/overlays/main_0012/801488a8.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8014891C",
@@ -16366,7 +16481,8 @@
       "source": "src/overlays/main_0012/80149210.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80149228",
@@ -16396,7 +16512,8 @@
       "source": "src/overlays/main_0012/80149290.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80149350",
@@ -16416,7 +16533,8 @@
       "source": "src/overlays/main_0012/801493d0.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8014942C",
@@ -16436,7 +16554,8 @@
       "source": "src/overlays/main_0012/80149450.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801494CC",
@@ -16446,7 +16565,8 @@
       "source": "src/overlays/main_0012/801494cc.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80149544",
@@ -16476,7 +16596,8 @@
       "source": "src/overlays/main_0012/801495c4.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801496D4",
@@ -16486,7 +16607,8 @@
       "source": "src/overlays/main_0012/801496d4.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80149704",
@@ -16523,7 +16645,8 @@
       "source": "src/overlays/main_0012/801497a8.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80149864",
@@ -16591,7 +16714,8 @@
       "source": "src/overlays/main_0012/80149ad4.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80149B14",
@@ -16601,7 +16725,8 @@
       "source": "src/overlays/main_0012/80149b14.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80149B54",
@@ -16691,7 +16816,8 @@
       "source": "src/overlays/main_0012/80149d9c.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80149DD8",
@@ -16701,7 +16827,8 @@
       "source": "src/overlays/main_0012/80149dd8.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80149E94",
@@ -16711,7 +16838,8 @@
       "source": "src/overlays/main_0012/80149e94.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80149F2C",
@@ -16760,7 +16888,8 @@
       "source": "src/overlays/main_0012/8014a2e4.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8014A380",
@@ -16780,7 +16909,8 @@
       "source": "src/overlays/main_0012/8014a454.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8014A4B4",
@@ -16820,7 +16950,8 @@
       "source": "src/overlays/main_0012/8014a59c.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8014A638",
@@ -16910,7 +17041,8 @@
       "source": "src/overlays/main_0012/8014a850.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8014AA04",
@@ -16930,7 +17062,8 @@
       "source": "src/overlays/main_0012/8014aa28.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8014AB5C",
@@ -16950,7 +17083,8 @@
       "source": "src/overlays/main_0012/8014ab7c.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8014ABF0",
@@ -16970,7 +17104,8 @@
       "source": "src/overlays/main_0012/8014ac10.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8014ACC0",
@@ -17020,7 +17155,8 @@
       "source": "src/overlays/main_0012/8014ade0.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8014B00C",
@@ -17050,7 +17186,8 @@
       "source": "src/overlays/main_0012/8014b084.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8014B12C",
@@ -17090,7 +17227,8 @@
       "source": "src/overlays/main_0012/8014b190.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8014B2A8",
@@ -17150,7 +17288,8 @@
       "source": "src/overlays/main_0012/8014b350.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8014B4C4",
@@ -17240,7 +17379,8 @@
       "source": "src/overlays/main_0012/8014b5d8.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8014B6F0",
@@ -17270,7 +17410,8 @@
       "source": "src/overlays/main_0012/8014b944.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8014BB0C",
@@ -17290,7 +17431,8 @@
       "source": "src/overlays/main_0012/8014bb24.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8014BC0C",
@@ -17530,7 +17672,8 @@
       "source": "src/overlays/main_0012/8014c050.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8014C088",
@@ -17550,7 +17693,8 @@
       "source": "src/overlays/main_0012/8014c0c8.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8014C168",
@@ -17560,7 +17704,8 @@
       "source": "src/overlays/main_0012/8014c168.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8014C1A0",
@@ -17610,7 +17755,8 @@
       "source": "src/overlays/main_0012/8014c308.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8014C3A4",
@@ -18009,7 +18155,8 @@
       "source": "src/overlays/main_0012/8014cd0c.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8014CD80",
@@ -18019,7 +18166,8 @@
       "source": "src/overlays/main_0012/8014cd80.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8014CF04",
@@ -18029,7 +18177,8 @@
       "source": "src/overlays/main_0012/8014cf04.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8014D04C",
@@ -18058,7 +18207,8 @@
       "source": "src/overlays/main_0012/8014d12c.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8014D2A0",
@@ -18068,7 +18218,8 @@
       "source": "src/overlays/main_0012/8014d2a0.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8014D3E0",
@@ -18097,7 +18248,8 @@
       "source": "src/overlays/main_0012/8014d4c0.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8014D610",
@@ -18107,7 +18259,8 @@
       "source": "src/overlays/main_0012/8014d610.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8014D738",
@@ -18145,7 +18298,8 @@
       "source": "src/overlays/main_0012/8014df94.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8014E434",
@@ -18213,7 +18367,8 @@
       "source": "src/overlays/main_0012/8014e83c.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8014E934",
@@ -18232,7 +18387,8 @@
       "source": "src/overlays/main_0012/8014e98c.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8014EA4C",
@@ -18242,7 +18398,8 @@
       "source": "src/overlays/main_0012/8014ea4c.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8014ED28",
@@ -18271,7 +18428,8 @@
       "source": "src/overlays/main_0012/8014ee14.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8014F1F4",
@@ -18300,7 +18458,8 @@
       "source": "src/overlays/main_0012/8014f2e0.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8014F3E8",
@@ -18338,7 +18497,8 @@
       "source": "src/overlays/main_0012/8014fa70.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8014FBC0",
@@ -18357,7 +18517,8 @@
       "source": "src/overlays/main_0012/8014fc18.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8014FCFC",
@@ -18376,7 +18537,8 @@
       "source": "src/overlays/main_0012/8014fd54.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8014FDF4",
@@ -18396,7 +18558,8 @@
       "source": "src/overlays/main_0012/8014fe60.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80150150",
@@ -18416,7 +18579,8 @@
       "source": "src/overlays/main_0012/80150170.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80150460",
@@ -18445,7 +18609,8 @@
       "source": "src/overlays/main_0012/80150528.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801505FC",
@@ -18485,7 +18650,8 @@
       "source": "src/overlays/main_0012/801508b4.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801508F8",
@@ -18495,7 +18661,8 @@
       "source": "src/overlays/main_0012/801508f8.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80150B9C",
@@ -18944,7 +19111,8 @@
       "source": "src/overlays/main_0012/8015126c.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80151664",
@@ -18984,7 +19152,8 @@
       "source": "src/overlays/main_0012/80151780.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80151878",
@@ -19003,7 +19172,8 @@
       "source": "src/overlays/main_0012/80151880.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801518D8",
@@ -19013,7 +19183,8 @@
       "source": "src/overlays/main_0012/801518d8.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80151924",
@@ -19053,7 +19224,8 @@
       "source": "src/overlays/main_0012/801519c8.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80151AE4",
@@ -19073,7 +19245,8 @@
       "source": "src/overlays/main_0012/80151b98.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80151C54",
@@ -19213,7 +19386,8 @@
       "source": "src/overlays/main_0012/80152254.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801522CC",
@@ -19253,7 +19427,8 @@
       "source": "src/overlays/main_0012/80152500.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801525F4",
@@ -19363,7 +19538,8 @@
       "source": "src/overlays/main_0012/80152a50.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80152AC8",
@@ -19483,7 +19659,8 @@
       "source": "src/overlays/main_0012/80152f44.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80152FBC",
@@ -19553,7 +19730,8 @@
       "source": "src/overlays/main_0012/80153204.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8015327C",
@@ -19623,7 +19801,8 @@
       "source": "src/overlays/main_0012/801534d8.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80153550",
@@ -19643,7 +19822,8 @@
       "source": "src/overlays/main_0012/801535f4.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8015369C",
@@ -19663,7 +19843,8 @@
       "source": "src/overlays/main_0012/801536dc.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80153800",
@@ -19673,7 +19854,8 @@
       "source": "src/overlays/main_0012/80153800.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801539F8",
@@ -19683,7 +19865,8 @@
       "source": "src/overlays/main_0012/801539f8.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80153B58",
@@ -19693,7 +19876,8 @@
       "source": "src/overlays/main_0012/80153b58.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80153BD8",
@@ -20023,7 +20207,8 @@
       "source": "src/overlays/main_0012/80154ed8.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80154F9C",
@@ -20033,7 +20218,8 @@
       "source": "src/overlays/main_0012/80154f9c.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801550FC",
@@ -20173,7 +20359,8 @@
       "source": "src/overlays/main_0012/80155a44.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80155B20",
@@ -20203,7 +20390,8 @@
       "source": "src/overlays/main_0012/80155c0c.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80155C64",
@@ -20223,7 +20411,8 @@
       "source": "src/overlays/main_0012/80155d70.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80155E30",
@@ -20243,7 +20432,8 @@
       "source": "src/overlays/main_0012/80155ea4.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80155F58",
@@ -20303,7 +20493,8 @@
       "source": "src/overlays/main_0012/80155ff8.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80156370",
@@ -20333,7 +20524,8 @@
       "source": "src/overlays/main_0012/8015640c.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801565C0",
@@ -20393,7 +20585,8 @@
       "source": "src/overlays/main_0012/80156a88.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80156ECC",
@@ -20403,7 +20596,8 @@
       "source": "src/overlays/main_0012/80156ecc.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80156FA8",
@@ -20413,7 +20607,8 @@
       "source": "src/overlays/main_0012/80156fa8.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80157158",
@@ -20433,7 +20628,8 @@
       "source": "src/overlays/main_0012/801571c4.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801574DC",
@@ -20483,7 +20679,8 @@
       "source": "src/overlays/main_0012/801575e4.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801576A8",
@@ -20723,7 +20920,8 @@
       "source": "src/overlays/main_0012/801580b4.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801581AC",
@@ -20733,7 +20931,8 @@
       "source": "src/overlays/main_0012/801581ac.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8015824C",
@@ -20773,7 +20972,8 @@
       "source": "src/overlays/main_0012/80158344.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80158548",
@@ -20903,7 +21103,8 @@
       "source": "src/overlays/main_0012/80158c40.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80158CD8",
@@ -20913,7 +21114,8 @@
       "source": "src/overlays/main_0012/80158cd8.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80158D60",
@@ -20923,7 +21125,8 @@
       "source": "src/overlays/main_0012/80158d60.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80158E24",
@@ -20933,7 +21136,8 @@
       "source": "src/overlays/main_0012/80158e24.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80158FA4",
@@ -20953,7 +21157,8 @@
       "source": "src/overlays/main_0012/80159070.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80159120",
@@ -20963,7 +21168,8 @@
       "source": "src/overlays/main_0012/80159120.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801592CC",
@@ -21302,7 +21508,8 @@
       "source": "src/overlays/main_0012/8015b6f4.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8015B7B4",
@@ -21312,7 +21519,8 @@
       "source": "src/overlays/main_0012/8015b7b4.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8015B858",
@@ -21472,7 +21680,8 @@
       "source": "src/overlays/main_0012/8015c030.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8015C08C",
@@ -21492,7 +21701,8 @@
       "source": "src/overlays/main_0012/8015c0c4.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8015C6A4",
@@ -22632,7 +22842,8 @@
       "source": "src/overlays/main_0012/8016007c.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801600D0",
@@ -22772,7 +22983,8 @@
       "source": "src/overlays/main_0012/80160410.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801607B8",
@@ -22932,7 +23144,8 @@
       "source": "src/overlays/main_0012/80160c28.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80160CB4",
@@ -23112,7 +23325,8 @@
       "source": "src/overlays/main_0012/801612b8.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8016130C",
@@ -23242,7 +23456,8 @@
       "source": "src/overlays/main_0012/8016197c.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801619A4",
@@ -23252,7 +23467,8 @@
       "source": "src/overlays/main_0012/801619a4.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801619D0",
@@ -23302,7 +23518,8 @@
       "source": "src/overlays/main_0012/80161a90.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80161B18",
@@ -23402,7 +23619,8 @@
       "source": "src/overlays/main_0012/801620c4.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80162120",
@@ -23482,7 +23700,8 @@
       "source": "src/overlays/main_0012/801626b8.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80162714",
@@ -23542,7 +23761,8 @@
       "source": "src/overlays/main_0012/801628f4.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80162AC0",
@@ -23592,7 +23812,8 @@
       "source": "src/overlays/main_0012/80162b1c.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80162CC4",
@@ -23721,7 +23942,8 @@
       "source": "src/overlays/main_0012/80162ff4.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801630C4",
@@ -23731,7 +23953,8 @@
       "source": "src/overlays/main_0012/801630c4.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80163194",
@@ -23741,7 +23964,8 @@
       "source": "src/overlays/main_0012/80163194.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80163234",
@@ -23861,7 +24085,8 @@
       "source": "src/overlays/main_0012/801638a0.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80163950",
@@ -23871,7 +24096,8 @@
       "source": "src/overlays/main_0012/80163950.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80163A58",
@@ -23911,7 +24137,8 @@
       "source": "src/overlays/main_0012/8016432c.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80164410",
@@ -23961,7 +24188,8 @@
       "source": "src/overlays/main_0012/80164acc.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80164BA0",
@@ -24051,7 +24279,8 @@
       "source": "src/overlays/main_0012/80164f44.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80165024",
@@ -24221,7 +24450,8 @@
       "source": "src/overlays/main_0012/80165718.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80165770",
@@ -24311,7 +24541,8 @@
       "source": "src/overlays/main_0012/80165910.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80165938",
@@ -24561,7 +24792,8 @@
       "source": "src/overlays/main_0012/80165e90.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80165FA4",
@@ -24591,7 +24823,8 @@
       "source": "src/overlays/main_0012/80166054.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801661CC",
@@ -24671,7 +24904,8 @@
       "source": "src/overlays/main_0012/80166438.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801665B4",
@@ -24961,7 +25195,8 @@
       "source": "src/overlays/main_0012/80169228.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801693CC",
@@ -24991,7 +25226,8 @@
       "source": "src/overlays/main_0012/80169584.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801696D8",
@@ -25001,7 +25237,8 @@
       "source": "src/overlays/main_0012/801696d8.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80169830",
@@ -25031,7 +25268,8 @@
       "source": "src/overlays/main_0012/80169a4c.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80169B80",
@@ -25111,7 +25349,8 @@
       "source": "src/overlays/main_0012/8016a08c.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8016A1CC",
@@ -25151,7 +25390,8 @@
       "source": "src/overlays/main_0012/8016aa50.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8016AB30",
@@ -25181,7 +25421,8 @@
       "source": "src/overlays/main_0012/8016b114.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8016B3F4",
@@ -25371,7 +25612,8 @@
       "source": "src/overlays/main_0012/8016c374.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8016CB84",
@@ -25441,7 +25683,8 @@
       "source": "src/overlays/main_0012/8016d778.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8016D848",
@@ -25451,7 +25694,8 @@
       "source": "src/overlays/main_0012/8016d848.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8016D984",
@@ -25601,7 +25845,8 @@
       "source": "src/overlays/main_0012/8016e460.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8016E5B8",
@@ -25681,7 +25926,8 @@
       "source": "src/overlays/main_0012/8016e918.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8016EAC0",
@@ -25781,7 +26027,8 @@
       "source": "src/overlays/main_0012/8016efc8.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8016F094",
@@ -25821,7 +26068,8 @@
       "source": "src/overlays/main_0012/8016f14c.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8016F1AC",
@@ -26221,7 +26469,8 @@
       "source": "src/overlays/main_0012/8016f95c.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8016F9C4",
@@ -26361,7 +26610,8 @@
       "source": "src/overlays/main_0012/8016fd08.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8016FD7C",
@@ -26411,7 +26661,8 @@
       "source": "src/overlays/main_0012/8016fe78.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8016FED0",
@@ -26961,7 +27212,8 @@
       "source": "src/overlays/main_0012/80170cf0.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80170D68",
@@ -27221,7 +27473,8 @@
       "source": "src/overlays/main_0012/801716ac.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801717A0",
@@ -27341,7 +27594,8 @@
       "source": "src/overlays/main_0012/801719a4.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80171A04",
@@ -28471,7 +28725,8 @@
       "source": "src/overlays/main_0012/80173648.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801736A8",
@@ -28571,7 +28826,8 @@
       "source": "src/overlays/main_0012/8017385c.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801738D4",
@@ -28661,7 +28917,8 @@
       "source": "src/overlays/main_0012/80173a60.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80173B4C",
@@ -28711,7 +28968,8 @@
       "source": "src/overlays/main_0012/80173cb4.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80173E1C",
@@ -28721,7 +28979,8 @@
       "source": "src/overlays/main_0012/80173e1c.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80173EF8",
@@ -28731,7 +28990,8 @@
       "source": "src/overlays/main_0012/80173ef8.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80174158",
@@ -29451,7 +29711,8 @@
       "source": "src/overlays/main_0012/80175590.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80175624",
@@ -29491,7 +29752,8 @@
       "source": "src/overlays/main_0012/801756e4.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80175798",
@@ -29531,7 +29793,8 @@
       "source": "src/overlays/main_0012/80176d00.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80176D94",
@@ -29541,7 +29804,8 @@
       "source": "src/overlays/main_0012/80176d94.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80176FF4",
@@ -29551,7 +29815,8 @@
       "source": "src/overlays/main_0012/80176ff4.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801770E0",
@@ -29561,7 +29826,8 @@
       "source": "src/overlays/main_0012/801770e0.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80177340",
@@ -29571,7 +29837,8 @@
       "source": "src/overlays/main_0012/80177340.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8017742C",
@@ -29581,7 +29848,8 @@
       "source": "src/overlays/main_0012/8017742c.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801775E0",
@@ -29591,7 +29859,8 @@
       "source": "src/overlays/main_0012/801775e0.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801776EC",
@@ -29601,7 +29870,8 @@
       "source": "src/overlays/main_0012/801776ec.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80177784",
@@ -29611,7 +29881,8 @@
       "source": "src/overlays/main_0012/80177784.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801777BC",
@@ -29621,7 +29892,8 @@
       "source": "src/overlays/main_0012/801777bc.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801778A8",
@@ -29631,7 +29903,8 @@
       "source": "src/overlays/main_0012/801778a8.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80177940",
@@ -29641,7 +29914,8 @@
       "source": "src/overlays/main_0012/80177940.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80177AD4",
@@ -29651,7 +29925,8 @@
       "source": "src/overlays/main_0012/80177ad4.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80177F84",
@@ -29661,7 +29936,8 @@
       "source": "src/overlays/main_0012/80177f84.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80178298",
@@ -29671,7 +29947,8 @@
       "source": "src/overlays/main_0012/80178298.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801783D0",
@@ -29681,7 +29958,8 @@
       "source": "src/overlays/main_0012/801783d0.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80178438",
@@ -29701,7 +29979,8 @@
       "source": "src/overlays/main_0012/8017849c.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80178608",
@@ -29721,7 +30000,8 @@
       "source": "src/overlays/main_0012/8017869c.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80178744",
@@ -29731,7 +30011,8 @@
       "source": "src/overlays/main_0012/80178744.c",
       "optimization": "-O2",
       "recovery": "c",
-      "extent": "function"
+      "extent": "function",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_801787D4",
@@ -30797,7 +31078,8 @@
       "source": "src/overlays/main_0010/800d18dc.c",
       "recovery": "c",
       "extent": "function",
-      "optimization": "-O2"
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_800D1938",
@@ -30807,7 +31089,8 @@
       "source": "src/overlays/main_0010/800d1938.c",
       "recovery": "c",
       "extent": "function",
-      "optimization": "-O2"
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_800D1984",
@@ -30817,7 +31100,8 @@
       "source": "src/overlays/main_0010/800d1984.c",
       "recovery": "c",
       "extent": "function",
-      "optimization": "-O2"
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_800D19DC",
@@ -30887,7 +31171,8 @@
       "source": "src/overlays/main_0010/800d1f58.c",
       "recovery": "c",
       "extent": "function",
-      "optimization": "-O2"
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_800D21C4",
@@ -30918,6 +31203,1957 @@
       "recovery": "c",
       "extent": "function",
       "optimization": "-O2"
+    },
+    {
+      "name": "func_800342E8",
+      "vram": 2147697384,
+      "size": 44,
+      "region": "main",
+      "source": "src/main/800342e8.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8001AF04",
+      "vram": 2147593988,
+      "size": 48,
+      "region": "main",
+      "source": "src/main/8001af04.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_800381E4",
+      "vram": 2147713508,
+      "size": 44,
+      "region": "main",
+      "source": "src/main/800381e4.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002A1B4",
+      "vram": 2147656116,
+      "size": 76,
+      "region": "main",
+      "source": "src/main/8002a1b4.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-referenced (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8003A3D8",
+      "vram": 2147722200,
+      "size": 44,
+      "region": "main",
+      "source": "src/main/8003a3d8.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002A400",
+      "vram": 2147656704,
+      "size": 76,
+      "region": "main",
+      "source": "src/main/8002a400.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-referenced (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80038908",
+      "vram": 2147715336,
+      "size": 80,
+      "region": "main",
+      "source": "src/main/80038908.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002A670",
+      "vram": 2147657328,
+      "size": 76,
+      "region": "main",
+      "source": "src/main/8002a670.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-referenced (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80038A00",
+      "vram": 2147715584,
+      "size": 88,
+      "region": "main",
+      "source": "src/main/80038a00.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002A8E0",
+      "vram": 2147657952,
+      "size": 76,
+      "region": "main",
+      "source": "src/main/8002a8e0.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-referenced (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80037368",
+      "vram": 2147709800,
+      "size": 104,
+      "region": "main",
+      "source": "src/main/80037368.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8003916C",
+      "vram": 2147717484,
+      "size": 104,
+      "region": "main",
+      "source": "src/main/8003916c.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_800385C0",
+      "vram": 2147714496,
+      "size": 120,
+      "region": "main",
+      "source": "src/main/800385c0.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_800387C0",
+      "vram": 2147715008,
+      "size": 120,
+      "region": "main",
+      "source": "src/main/800387c0.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8003775C",
+      "vram": 2147710812,
+      "size": 124,
+      "region": "main",
+      "source": "src/main/8003775c.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80036F18",
+      "vram": 2147708696,
+      "size": 128,
+      "region": "main",
+      "source": "src/main/80036f18.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80037F3C",
+      "vram": 2147712828,
+      "size": 136,
+      "region": "main",
+      "source": "src/main/80037f3c.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80037CD8",
+      "vram": 2147712216,
+      "size": 156,
+      "region": "main",
+      "source": "src/main/80037cd8.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80037EA0",
+      "vram": 2147712672,
+      "size": 156,
+      "region": "main",
+      "source": "src/main/80037ea0.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80038958",
+      "vram": 2147715416,
+      "size": 168,
+      "region": "main",
+      "source": "src/main/80038958.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80038838",
+      "vram": 2147715128,
+      "size": 176,
+      "region": "main",
+      "source": "src/main/80038838.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80038210",
+      "vram": 2147713552,
+      "size": 248,
+      "region": "main",
+      "source": "src/main/80038210.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80037D98",
+      "vram": 2147712408,
+      "size": 264,
+      "region": "main",
+      "source": "src/main/80037d98.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_800384A8",
+      "vram": 2147714216,
+      "size": 280,
+      "region": "main",
+      "source": "src/main/800384a8.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80038698",
+      "vram": 2147714712,
+      "size": 296,
+      "region": "main",
+      "source": "src/main/80038698.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80039B20",
+      "vram": 2147719968,
+      "size": 316,
+      "region": "main",
+      "source": "src/main/80039b20.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80039F50",
+      "vram": 2147721040,
+      "size": 328,
+      "region": "main",
+      "source": "src/main/80039f50.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8003A0E4",
+      "vram": 2147721444,
+      "size": 336,
+      "region": "main",
+      "source": "src/main/8003a0e4.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8003A234",
+      "vram": 2147721780,
+      "size": 420,
+      "region": "main",
+      "source": "src/main/8003a234.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80037FC4",
+      "vram": 2147712964,
+      "size": 472,
+      "region": "main",
+      "source": "src/main/80037fc4.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80038A58",
+      "vram": 2147715672,
+      "size": 1388,
+      "region": "main",
+      "source": "src/main/80038a58.c",
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80039308",
+      "vram": 2147717896,
+      "size": 2072,
+      "region": "main",
+      "source": "src/main/80039308.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80034A9C",
+      "vram": 2147699356,
+      "size": 68,
+      "region": "main",
+      "source": "src/main/80034a9c.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80034A54",
+      "vram": 2147699284,
+      "size": 72,
+      "region": "main",
+      "source": "src/main/80034a54.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80030470",
+      "vram": 2147681392,
+      "size": 88,
+      "region": "main",
+      "source": "src/main/80030470.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80031B7C",
+      "vram": 2147687292,
+      "size": 100,
+      "region": "main",
+      "source": "src/main/80031b7c.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_800348A8",
+      "vram": 2147698856,
+      "size": 116,
+      "region": "main",
+      "source": "src/main/800348a8.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80036FB0",
+      "vram": 2147708848,
+      "size": 84,
+      "region": "main",
+      "source": "src/main/80036fb0.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_800331D4",
+      "vram": 2147693012,
+      "size": 120,
+      "region": "main",
+      "source": "src/main/800331d4.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002EE64",
+      "vram": 2147675748,
+      "size": 44,
+      "region": "main",
+      "source": "src/main/8002ee64.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_800347C8",
+      "vram": 2147698632,
+      "size": 124,
+      "region": "main",
+      "source": "src/main/800347c8.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002CFE4",
+      "vram": 2147667940,
+      "size": 80,
+      "region": "main",
+      "source": "src/main/8002cfe4.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80034650",
+      "vram": 2147698256,
+      "size": 128,
+      "region": "main",
+      "source": "src/main/80034650.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002D1F0",
+      "vram": 2147668464,
+      "size": 80,
+      "region": "main",
+      "source": "src/main/8002d1f0.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8003350C",
+      "vram": 2147693836,
+      "size": 172,
+      "region": "main",
+      "source": "src/main/8003350c.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8001AE90",
+      "vram": 2147593872,
+      "size": 116,
+      "region": "main",
+      "source": "src/main/8001ae90.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-referenced (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002ED90",
+      "vram": 2147675536,
+      "size": 84,
+      "region": "main",
+      "source": "src/main/8002ed90.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8003310C",
+      "vram": 2147692812,
+      "size": 200,
+      "region": "main",
+      "source": "src/main/8003310c.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8001D074",
+      "vram": 2147602548,
+      "size": 116,
+      "region": "main",
+      "source": "src/main/8001d074.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-referenced (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002D240",
+      "vram": 2147668544,
+      "size": 92,
+      "region": "main",
+      "source": "src/main/8002d240.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80030538",
+      "vram": 2147681592,
+      "size": 252,
+      "region": "main",
+      "source": "src/main/80030538.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8001D388",
+      "vram": 2147603336,
+      "size": 116,
+      "region": "main",
+      "source": "src/main/8001d388.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-referenced (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002C3B0",
+      "vram": 2147664816,
+      "size": 96,
+      "region": "main",
+      "source": "src/main/8002c3b0.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8003324C",
+      "vram": 2147693132,
+      "size": 216,
+      "region": "main",
+      "source": "src/main/8003324c.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8001FB8C",
+      "vram": 2147613580,
+      "size": 124,
+      "region": "main",
+      "source": "src/main/8001fb8c.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-referenced (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002EAB0",
+      "vram": 2147674800,
+      "size": 96,
+      "region": "main",
+      "source": "src/main/8002eab0.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80030CA4",
+      "vram": 2147683492,
+      "size": 220,
+      "region": "main",
+      "source": "src/main/80030ca4.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002EFF8",
+      "vram": 2147676152,
+      "size": 108,
+      "region": "main",
+      "source": "src/main/8002eff8.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80031A98",
+      "vram": 2147687064,
+      "size": 228,
+      "region": "main",
+      "source": "src/main/80031a98.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002F064",
+      "vram": 2147676260,
+      "size": 108,
+      "region": "main",
+      "source": "src/main/8002f064.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_800373D0",
+      "vram": 2147709904,
+      "size": 252,
+      "region": "main",
+      "source": "src/main/800373d0.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80031BE0",
+      "vram": 2147687392,
+      "size": 232,
+      "region": "main",
+      "source": "src/main/80031be0.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002E8DC",
+      "vram": 2147674332,
+      "size": 112,
+      "region": "main",
+      "source": "src/main/8002e8dc.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80037028",
+      "vram": 2147708968,
+      "size": 284,
+      "region": "main",
+      "source": "src/main/80037028.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_800335B8",
+      "vram": 2147694008,
+      "size": 240,
+      "region": "main",
+      "source": "src/main/800335b8.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002E79C",
+      "vram": 2147674012,
+      "size": 124,
+      "region": "main",
+      "source": "src/main/8002e79c.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80037144",
+      "vram": 2147709252,
+      "size": 496,
+      "region": "main",
+      "source": "src/main/80037144.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_800346D0",
+      "vram": 2147698384,
+      "size": 248,
+      "region": "main",
+      "source": "src/main/800346d0.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002F150",
+      "vram": 2147676496,
+      "size": 124,
+      "region": "main",
+      "source": "src/main/8002f150.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8003750C",
+      "vram": 2147710220,
+      "size": 592,
+      "region": "main",
+      "source": "src/main/8003750c.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80030634",
+      "vram": 2147681844,
+      "size": 252,
+      "region": "main",
+      "source": "src/main/80030634.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002F1CC",
+      "vram": 2147676620,
+      "size": 124,
+      "region": "main",
+      "source": "src/main/8002f1cc.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80034CF0",
+      "vram": 2147699952,
+      "size": 268,
+      "region": "main",
+      "source": "src/main/80034cf0.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002D29C",
+      "vram": 2147668636,
+      "size": 132,
+      "region": "main",
+      "source": "src/main/8002d29c.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8003491C",
+      "vram": 2147698972,
+      "size": 312,
+      "region": "main",
+      "source": "src/main/8003491c.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002A088",
+      "vram": 2147655816,
+      "size": 128,
+      "region": "main",
+      "source": "src/main/8002a088.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002C320",
+      "vram": 2147664672,
+      "size": 144,
+      "region": "main",
+      "source": "src/main/8002c320.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80033398",
+      "vram": 2147693464,
+      "size": 372,
+      "region": "main",
+      "source": "src/main/80033398.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002A2D4",
+      "vram": 2147656404,
+      "size": 128,
+      "region": "main",
+      "source": "src/main/8002a2d4.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002F67C",
+      "vram": 2147677820,
+      "size": 152,
+      "region": "main",
+      "source": "src/main/8002f67c.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_800336A8",
+      "vram": 2147694248,
+      "size": 484,
+      "region": "main",
+      "source": "src/main/800336a8.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002A544",
+      "vram": 2147657028,
+      "size": 128,
+      "region": "main",
+      "source": "src/main/8002a544.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002E700",
+      "vram": 2147673856,
+      "size": 156,
+      "region": "main",
+      "source": "src/main/8002e700.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_800322A8",
+      "vram": 2147689128,
+      "size": 508,
+      "region": "main",
+      "source": "src/main/800322a8.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002A7B4",
+      "vram": 2147657652,
+      "size": 128,
+      "region": "main",
+      "source": "src/main/8002a7b4.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002EA10",
+      "vram": 2147674640,
+      "size": 160,
+      "region": "main",
+      "source": "src/main/8002ea10.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80030D80",
+      "vram": 2147683712,
+      "size": 512,
+      "region": "main",
+      "source": "src/main/80030d80.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002FA3C",
+      "vram": 2147678780,
+      "size": 164,
+      "region": "main",
+      "source": "src/main/8002fa3c.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80034DFC",
+      "vram": 2147700220,
+      "size": 528,
+      "region": "main",
+      "source": "src/main/80034dfc.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002FD14",
+      "vram": 2147679508,
+      "size": 180,
+      "region": "main",
+      "source": "src/main/8002fd14.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80032048",
+      "vram": 2147688520,
+      "size": 608,
+      "region": "main",
+      "source": "src/main/80032048.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002E818",
+      "vram": 2147674136,
+      "size": 196,
+      "region": "main",
+      "source": "src/main/8002e818.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80030A14",
+      "vram": 2147682836,
+      "size": 656,
+      "region": "main",
+      "source": "src/main/80030a14.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002E94C",
+      "vram": 2147674444,
+      "size": 196,
+      "region": "main",
+      "source": "src/main/8002e94c.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8001BADC",
+      "vram": 2147597020,
+      "size": 132,
+      "region": "main",
+      "source": "src/main/8001badc.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_800324A4",
+      "vram": 2147689636,
+      "size": 720,
+      "region": "main",
+      "source": "src/main/800324a4.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002E638",
+      "vram": 2147673656,
+      "size": 200,
+      "region": "main",
+      "source": "src/main/8002e638.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8001C0C8",
+      "vram": 2147598536,
+      "size": 132,
+      "region": "main",
+      "source": "src/main/8001c0c8.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-referenced (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80030730",
+      "vram": 2147682096,
+      "size": 740,
+      "region": "main",
+      "source": "src/main/80030730.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002D59C",
+      "vram": 2147669404,
+      "size": 220,
+      "region": "main",
+      "source": "src/main/8002d59c.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80028488",
+      "vram": 2147648648,
+      "size": 132,
+      "region": "main",
+      "source": "src/main/80028488.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80032774",
+      "vram": 2147690356,
+      "size": 768,
+      "region": "main",
+      "source": "src/main/80032774.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002F714",
+      "vram": 2147677972,
+      "size": 248,
+      "region": "main",
+      "source": "src/main/8002f714.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80034314",
+      "vram": 2147697428,
+      "size": 828,
+      "region": "main",
+      "source": "src/main/80034314.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002FDE8",
+      "vram": 2147679720,
+      "size": 292,
+      "region": "main",
+      "source": "src/main/8002fde8.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80034B98",
+      "vram": 2147699608,
+      "size": 140,
+      "region": "main",
+      "source": "src/main/80034b98.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80035210",
+      "vram": 2147701264,
+      "size": 96,
+      "region": "main",
+      "source": "src/main/80035210.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002EC10",
+      "vram": 2147675152,
+      "size": 384,
+      "region": "main",
+      "source": "src/main/8002ec10.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002D034",
+      "vram": 2147668020,
+      "size": 444,
+      "region": "main",
+      "source": "src/main/8002d034.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002CDD8",
+      "vram": 2147667416,
+      "size": 524,
+      "region": "main",
+      "source": "src/main/8002cdd8.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002F80C",
+      "vram": 2147678220,
+      "size": 560,
+      "region": "main",
+      "source": "src/main/8002f80c.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8003500C",
+      "vram": 2147700748,
+      "size": 476,
+      "region": "main",
+      "source": "src/main/8003500c.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002F5C8",
+      "vram": 2147677640,
+      "size": 88,
+      "region": "main",
+      "source": "src/main/8002f5c8.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002CC4C",
+      "vram": 2147667020,
+      "size": 104,
+      "region": "main",
+      "source": "src/main/8002cc4c.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002F4E4",
+      "vram": 2147677412,
+      "size": 228,
+      "region": "main",
+      "source": "src/main/8002f4e4.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002FB08",
+      "vram": 2147678984,
+      "size": 348,
+      "region": "main",
+      "source": "src/main/8002fb08.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002D320",
+      "vram": 2147668768,
+      "size": 408,
+      "region": "main",
+      "source": "src/main/8002d320.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002D904",
+      "vram": 2147670276,
+      "size": 868,
+      "region": "main",
+      "source": "src/main/8002d904.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002FF0C",
+      "vram": 2147680012,
+      "size": 664,
+      "region": "main",
+      "source": "src/main/8002ff0c.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_800301C8",
+      "vram": 2147680712,
+      "size": 680,
+      "region": "main",
+      "source": "src/main/800301c8.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002FC64",
+      "vram": 2147679332,
+      "size": 176,
+      "region": "main",
+      "source": "src/main/8002fc64.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002CCD8",
+      "vram": 2147667160,
+      "size": 256,
+      "region": "main",
+      "source": "src/main/8002ccd8.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_800314DC",
+      "vram": 2147685596,
+      "size": 540,
+      "region": "main",
+      "source": "src/main/800314dc.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8003602C",
+      "vram": 2147704876,
+      "size": 260,
+      "region": "main",
+      "source": "src/main/8003602c.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "rodata_base": 2147955544,
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_800383A4",
+      "vram": 2147713956,
+      "size": 260,
+      "region": "main",
+      "source": "src/main/800383a4.c",
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002D6D8",
+      "vram": 2147669720,
+      "size": 284,
+      "region": "main",
+      "source": "src/main/8002d6d8.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80039DEC",
+      "vram": 2147720684,
+      "size": 296,
+      "region": "main",
+      "source": "src/main/80039dec.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80030F80",
+      "vram": 2147684224,
+      "size": 1372,
+      "region": "main",
+      "source": "src/main/80030f80.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80029124",
+      "vram": 2147651876,
+      "size": 84,
+      "region": "main",
+      "source": "src/main/80029124.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_800234E4",
+      "vram": 2147628260,
+      "size": 140,
+      "region": "main",
+      "source": "src/main/800234e4.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80032A74",
+      "vram": 2147691124,
+      "size": 1688,
+      "region": "main",
+      "source": "src/main/80032a74.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80028304",
+      "vram": 2147648260,
+      "size": 144,
+      "region": "main",
+      "source": "src/main/80028304.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80028394",
+      "vram": 2147648404,
+      "size": 148,
+      "region": "main",
+      "source": "src/main/80028394.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8001C14C",
+      "vram": 2147598668,
+      "size": 152,
+      "region": "main",
+      "source": "src/main/8001c14c.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8001BBBC",
+      "vram": 2147597244,
+      "size": 176,
+      "region": "main",
+      "source": "src/main/8001bbbc.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002AAB4",
+      "vram": 2147658420,
+      "size": 176,
+      "region": "main",
+      "source": "src/main/8002aab4.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80029444",
+      "vram": 2147652676,
+      "size": 192,
+      "region": "main",
+      "source": "src/main/80029444.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80029ED4",
+      "vram": 2147655380,
+      "size": 256,
+      "region": "main",
+      "source": "src/main/80029ed4.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_800241C0",
+      "vram": 2147631552,
+      "size": 272,
+      "region": "main",
+      "source": "src/main/800241c0.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8001BC6C",
+      "vram": 2147597420,
+      "size": 276,
+      "region": "main",
+      "source": "src/main/8001bc6c.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_800233CC",
+      "vram": 2147627980,
+      "size": 280,
+      "region": "main",
+      "source": "src/main/800233cc.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_800242D0",
+      "vram": 2147631824,
+      "size": 284,
+      "region": "main",
+      "source": "src/main/800242d0.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80020DA4",
+      "vram": 2147618212,
+      "size": 400,
+      "region": "main",
+      "source": "src/main/80020da4.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8001F9F8",
+      "vram": 2147613176,
+      "size": 404,
+      "region": "main",
+      "source": "src/main/8001f9f8.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8001D1C4",
+      "vram": 2147602884,
+      "size": 452,
+      "region": "main",
+      "source": "src/main/8001d1c4.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8001B86C",
+      "vram": 2147596396,
+      "size": 536,
+      "region": "main",
+      "source": "src/main/8001b86c.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8001E7E0",
+      "vram": 2147608544,
+      "size": 564,
+      "region": "main",
+      "source": "src/main/8001e7e0.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80023138",
+      "vram": 2147627320,
+      "size": 660,
+      "region": "main",
+      "source": "src/main/80023138.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8001D3FC",
+      "vram": 2147603452,
+      "size": 784,
+      "region": "main",
+      "source": "src/main/8001d3fc.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80036AF8",
+      "vram": 2147707640,
+      "size": 556,
+      "region": "main",
+      "source": "src/main/80036af8.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8001FC08",
+      "vram": 2147613704,
+      "size": 1600,
+      "region": "main",
+      "source": "src/main/8001fc08.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002F248",
+      "vram": 2147676744,
+      "size": 668,
+      "region": "main",
+      "source": "src/main/8002f248.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "rodata_base": 2147954804,
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002EED8",
+      "vram": 2147675864,
+      "size": 248,
+      "region": "main",
+      "source": "src/main/8002eed8.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "rodata_base": 2147954732,
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002DC68",
+      "vram": 2147671144,
+      "size": 792,
+      "region": "main",
+      "source": "src/main/8002dc68.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "rodata_base": 2147954492,
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80036D58",
+      "vram": 2147708248,
+      "size": 348,
+      "region": "main",
+      "source": "src/main/80036d58.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002E138",
+      "vram": 2147672376,
+      "size": 1156,
+      "region": "main",
+      "source": "src/main/8002e138.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "rodata_base": 2147954564,
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002B0B4",
+      "vram": 2147659956,
+      "size": 4716,
+      "region": "main",
+      "source": "src/main/8002b0b4.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "rodata_base": 2147954244,
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_800377D8",
+      "vram": 2147710936,
+      "size": 1264,
+      "region": "main",
+      "source": "src/main/800377d8.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80031988",
+      "vram": 2147686792,
+      "size": 272,
+      "region": "main",
+      "source": "src/main/80031988.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "rodata_base": 2147954932,
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_800316F8",
+      "vram": 2147686136,
+      "size": 656,
+      "region": "main",
+      "source": "src/main/800316f8.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "rodata_base": 2147954884,
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8003388C",
+      "vram": 2147694732,
+      "size": 2652,
+      "region": "main",
+      "source": "src/main/8003388c.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "rodata_base": 2147954976,
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80036260",
+      "vram": 2147705440,
+      "size": 364,
+      "region": "main",
+      "source": "src/main/80036260.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "rodata_base": 2147955568,
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80038FFC",
+      "vram": 2147717116,
+      "size": 368,
+      "region": "main",
+      "source": "src/main/80038ffc.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "rodata_base": 2147955712,
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80039C70",
+      "vram": 2147720304,
+      "size": 380,
+      "region": "main",
+      "source": "src/main/80039c70.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "rodata_base": 2147955744,
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_800359B0",
+      "vram": 2147703216,
+      "size": 668,
+      "region": "main",
+      "source": "src/main/800359b0.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "rodata_base": 2147955440,
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80035270",
+      "vram": 2147701360,
+      "size": 1856,
+      "region": "main",
+      "source": "src/main/80035270.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "rodata_base": 2147955360,
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80035C4C",
+      "vram": 2147703884,
+      "size": 992,
+      "region": "main",
+      "source": "src/main/80035c4c.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "rodata_base": 2147955520,
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8001B26C",
+      "vram": 2147594860,
+      "size": 184,
+      "region": "main",
+      "source": "src/main/8001b26c.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8001BE30",
+      "vram": 2147597872,
+      "size": 368,
+      "region": "main",
+      "source": "src/main/8001be30.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8001ACF0",
+      "vram": 2147593456,
+      "size": 416,
+      "region": "main",
+      "source": "src/main/8001acf0.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002AC98",
+      "vram": 2147658904,
+      "size": 456,
+      "region": "main",
+      "source": "src/main/8002ac98.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80023570",
+      "vram": 2147628400,
+      "size": 476,
+      "region": "main",
+      "source": "src/main/80023570.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80028694",
+      "vram": 2147649172,
+      "size": 924,
+      "region": "main",
+      "source": "src/main/80028694.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002374C",
+      "vram": 2147628876,
+      "size": 1188,
+      "region": "main",
+      "source": "src/main/8002374c.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8001C5B8",
+      "vram": 2147599800,
+      "size": 300,
+      "region": "main",
+      "source": "src/main/8001c5b8.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002823C",
+      "vram": 2147648060,
+      "size": 192,
+      "region": "main",
+      "source": "src/main/8002823c.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     }
   ]
 }

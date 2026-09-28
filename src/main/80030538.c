@@ -1,43 +1,43 @@
 /* Main-exec range [80030538,80030604) from the SLUS executable.
  * SHA256(span)=15cd8f41b9cac7da6597356ccd0dc4834e9f98e231602b36e7ec5b62d9c3e37c.
- * Word export for the native seam; the body below is an
- * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+ * Word export for the native seam. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_80030538 - byte-exact against retail at -O2 (tools/register_match.py). */
 
-void func_80030620();                                 /* extern */
-void func_80030604();                                  /* static */
-s16 func_80042154(s32, s32, s16);                     /* static */
-extern s32 *D_800A4642;
-extern s32 *D_800A4650;
+extern s16 D_800A46CC;
+extern u8  D_800A4650[];
+extern s16 D_800A4642[];
+extern s16 D_800A46CE[];
 extern s32 D_800A46C0;
 extern s32 D_800A46C4;
-extern u16 D_800A46CC;
-extern s16 D_800A46CE;
+extern s16 func_80042154();
 
-void func_80030538(void) {
-    s16 temp_v0;
-    s32 temp_s0;
+s32 func_80030538(void) {
+    s32 idx;
+    s16 ret;
 
-    temp_s0 = D_800A46CE * 0x18;
-    temp_v0 = func_80042154(D_800A46C0 + D_800A46C4, 0x8000, *(&D_800A4642 + temp_s0));
-    if (temp_v0 != -2) {
-        if (temp_v0 != -1) {
-            func_80030604();
-            return;
-        }
-        *(&D_800A4650 + temp_s0) = 1;
-        D_800A46CC += 2;
-        func_80030620();
-        return;
+    idx = D_800A46CE[0];
+    ret = func_80042154(D_800A46C0 + D_800A46C4, 0x8000, *(s16 *)((u8 *)D_800A4642 + idx * 24));
+    switch (ret) {
+    case -2: {
+        s16 t2 = D_800A46CC + 1;
+        s32 t1 = D_800A46C4 + 0x8000;
+        D_800A46C4 = t1;
+        D_800A46CC = t2;
+        goto L_zero;
     }
-    D_800A46C4 += 0x8000;
-    D_800A46CC += 1;
-    func_80030620(0x8000);
+    case -1:
+        D_800A4650[idx * 24] = 1;
+        D_800A46CC = D_800A46CC + 2;
+        return 1;
+    default: {
+        s16 *p = &D_800A46CC;
+        *p = *p + 2;
+        goto L_zero;
+    }
+    }
+L_zero:
+    return 0;
 }

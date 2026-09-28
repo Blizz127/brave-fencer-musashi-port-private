@@ -1,29 +1,25 @@
 /* Main-exec range [8002A8E0,8002A92C) from the SLUS executable.
  * SHA256(span)=a77e0c7ab6571ca18f7736c988f866af351a915b68654226040dcf59cbb120d4.
- * Word export for the native seam; the body below is an
- * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+ * Word export for the native seam. */
+/* Source: written against Druthulu/BFM-decomp (vendor/bfm-decomp) as reference. */
+/* func_8002A8E0 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-s32 func_8002A998();                                /* static */
-s32 func_8002A9A8();                                /* static */
-s32 func_8002A9B8();                                /* static */
-s32 func_8002AA00(s32);                             /* static */
+extern s32 func_8002A998(void);
+extern s32 func_8002AA00(s32);
+extern s32 func_8002A9A8(void);
+extern s32 func_8002A9B8(void);
 
 s32 func_8002A8E0(void) {
-    s32 temp_s0;
-    s32 var_v0;
+    s32 a;
 
-    var_v0 = 0;
-    if (func_8002AA00(func_8002A998() + 1) != 0) {
-        temp_s0 = func_8002A9A8();
-        var_v0 = temp_s0 == func_8002A9B8();
+    if (func_8002AA00(func_8002A998() + 1) == 0) {
+        return 0;
     }
-    return var_v0;
+    a = func_8002A9A8();
+    a ^= func_8002A9B8();
+    if (a == 0) {
+        return 1;
+    }
+    return 0;
 }

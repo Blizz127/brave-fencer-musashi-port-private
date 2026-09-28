@@ -1,116 +1,85 @@
 /* Exact retail word export for [8001F9F8,8001FB8C); EXE and assembly verified. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8001F9F8 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-void func_8001FB8C(void *, s32 *);                        /* static */
-extern s32 *D_800AF8D8;
-extern s32 *D_800AFB6C;
-extern s32 *D_800AFBF0;
-extern s32 *D_800B0430;
-extern s32 *D_800B0C70;
-extern s32 *D_800B3DF0;
+extern u8 D_800AF8D8[];
+extern u8 D_800AFB6C[];
+extern u8 D_800AFBF0[];
+extern u8 D_800B0430[];
+extern u8 D_800B0C70[];
+extern u8 D_800B3DF0[];
 extern u8 D_800B9A11;
+extern void func_8001FB8C(s32* a0, s32* a1);
 
 void func_8001F9F8(void) {
-    s32 sp10;
-    void *var_s0;
-    void *var_s0_2;
-    void *var_s0_3;
-    void *var_s0_4;
-    void *var_s0_5;
-    void *var_s0_6;
-    void *var_s0_7;
-    s32 var_s1;
-    s32 var_s1_2;
-    s32 var_s1_3;
-    s32 var_s1_4;
-    s32 var_s1_5;
-    s32 var_s1_6;
-    s32 var_s1_7;
-    s32 var_v0;
-    s32 var_v0_2;
-    s32 var_v0_3;
-    s32 var_v0_4;
-    s32 var_v0_5;
-    u8 temp_s2;
+    u8* p;
+    u8 bits;
+    s32 x;
 
-    temp_s2 = D_800B9A11;
-    var_s1 = 0;
-    var_s0 = &D_800AF8D8;
-    sp10 = 0;
-    do {
-        func_8001FB8C(var_s0, &sp10);
-        var_s1 += 1;
-        var_s0 += 0x84;
-    } while (var_s1 < 4);
-    var_v0 = temp_s2 & 8;
-    if (!(temp_s2 & 2)) {
-        var_s1_2 = 0;
-        var_s0_2 = &D_800AF8D8 + 0x210;
-        do {
-            func_8001FB8C(var_s0_2, &sp10);
-            var_s1_2 += 1;
-            var_s0_2 += 0x84;
-        } while (var_s1_2 <= 0);
-        var_v0 = temp_s2 & 8;
+    bits = D_800B9A11;
+    {
+        s32 i;
+        i = 0;
+        p = D_800AF8D8;
+        x = 0;
+        for (; i < 4; i++) {
+            func_8001FB8C(p, &x);
+            p += 0x84;
+        }
     }
-    var_v0_2 = temp_s2 & 0x10;
-    if (var_v0 == 0) {
-        var_s1_3 = 0;
-        var_s0_3 = &D_800AFB6C;
-        do {
-            func_8001FB8C(var_s0_3, &sp10);
-            var_s1_3 += 1;
-            var_s0_3 += 0x84;
-        } while (var_s1_3 <= 0);
-        var_v0_2 = temp_s2 & 0x10;
+    if (!(bits & 2)) {
+        s32 i;
+        i = 0;
+        p = D_800AF8D8 + 0x210;
+        for (; i < 1; i++) {
+            func_8001FB8C(p, &x);
+            p += 0x84;
+        }
     }
-    var_v0_3 = temp_s2 & 0x20;
-    if (var_v0_2 == 0) {
-        var_s1_4 = 0;
-        var_s0_4 = &D_800AFBF0;
-        do {
-            func_8001FB8C(var_s0_4, &sp10);
-            var_s1_4 += 1;
-            var_s0_4 += 0x84;
-        } while (var_s1_4 < 0x10);
-        var_v0_3 = temp_s2 & 0x20;
+    if (!(bits & 8)) {
+        s32 i;
+        i = 0;
+        p = D_800AFB6C;
+        for (; i < 1; i++) {
+            func_8001FB8C(p, &x);
+            p += 0x84;
+        }
     }
-    var_v0_4 = temp_s2 & 0x40;
-    if (var_v0_3 == 0) {
-        var_s1_5 = 0;
-        var_s0_5 = &D_800B0430;
-        do {
-            func_8001FB8C(var_s0_5, &sp10);
-            var_s1_5 += 1;
-            var_s0_5 += 0x84;
-        } while (var_s1_5 < 0x10);
-        var_v0_4 = temp_s2 & 0x40;
+    if (!(bits & 0x10)) {
+        s32 i;
+        i = 0;
+        p = D_800AFBF0;
+        for (; i < 0x10; i++) {
+            func_8001FB8C(p, &x);
+            p += 0x84;
+        }
     }
-    var_v0_5 = temp_s2 & 0x80;
-    if (var_v0_4 == 0) {
-        var_s1_6 = 0;
-        var_s0_6 = &D_800B0C70;
-        do {
-            func_8001FB8C(var_s0_6, &sp10);
-            var_s1_6 += 1;
-            var_s0_6 += 0x84;
-        } while (var_s1_6 < 0x60);
-        var_v0_5 = temp_s2 & 0x80;
+    if (!(bits & 0x20)) {
+        s32 i;
+        i = 0;
+        p = D_800B0430;
+        for (; i < 0x10; i++) {
+            func_8001FB8C(p, &x);
+            p += 0x84;
+        }
     }
-    var_s1_7 = 0;
-    if (var_v0_5 == 0) {
-        var_s0_7 = &D_800B3DF0;
-        do {
-            func_8001FB8C(var_s0_7, &sp10);
-            var_s1_7 += 1;
-            var_s0_7 += 0x84;
-        } while (var_s1_7 < 0x3A);
+    if (!(bits & 0x40)) {
+        s32 i;
+        i = 0;
+        p = D_800B0C70;
+        for (; i < 0x60; i++) {
+            func_8001FB8C(p, &x);
+            p += 0x84;
+        }
+    }
+    if (!(bits & 0x80)) {
+        s32 i;
+        i = 0;
+        p = D_800B3DF0;
+        for (; i < 0x3A; i++) {
+            func_8001FB8C(p, &x);
+            p += 0x84;
+        }
     }
 }

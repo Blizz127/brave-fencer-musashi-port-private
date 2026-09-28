@@ -1,87 +1,116 @@
 /* Exact retail word export for [800322A8,800324A4); EXE and assembly verified. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_800322A8 - byte-exact against retail at -O2 (tools/register_match.py). */
 
-extern s32 D_80068304;
-void func_80032A74(void *, s32, void *, s32);          /* static */
-s32 func_8003310C(u16);                             /* static */
-s32 func_800331D4(s32, u8, u8);                     /* static */
-void func_8003324C(s32);                               /* static */
-extern void *D_800A4EE8;
+typedef struct Rec14 {
+     u16 unk00;
+     u16 unk02;
+     u32 unk04;
+     u32 unk08;
+     u16 unk0C;
+     u16 unk0E;
+     u32 unk10;
+} Rec14;
+typedef struct Owner4EE8 {
+     u8 pad00[0x14];
+     Rec14 **unk14;
+} Owner4EE8;
+typedef struct Slot54 {
+     s16 unk00;
+     s16 unk02;
+     s16 unk04;
+     s16 unk06;
+     u16 unk08;
+     s8  unk0A;
+} Slot54;
+extern s32  func_800322A8(u32, u8 *, u32);
+extern Rec14 *D_80068304[];
+extern Owner4EE8 *D_800A4EE8;
 extern s16 D_800A4EF0;
-extern u8 D_800A4F17;
+extern s8 D_800A4F17;
+extern s32 func_800331D4(s32);
+extern s32 func_8003310C(s32);
+extern void func_8003324C(s32);
+extern void func_80032A74(Slot54 *, s32, Rec14 *, s32);
+#define SLOT_BASE ((u8 *)&D_800A4F17 - 0x82F)
 
-s32 func_800322A8(u16 arg0, void *arg1, s32 arg2) {
-    u16 sp10;
-    s32 temp_v0;
-    s32 temp_v0_2;
-    s32 var_s0;
-    s32 var_s3;
-    s32 var_v0;
-    u16 temp_s6;
-    u8 temp_a1;
-    u8 temp_a2;
-    u8 temp_s7;
-    u8 temp_v1;
-    void *var_s1;
-    void *var_s2;
+s32 func_800322A8(u32 arg0, u8 *p, u32 arg2) {
+    Rec14 *rec;
+    Slot54 *e;
+    s32 idx;
+    s32 ret;
+    u16 y;
+    u32 x;
+    u32 flags;
+    u32 v;
+    u8 old;
+    u8 b1;
+    u8 b2;
+    u32 b3;
+    u32 b0;
 
-    sp10 = (u16) (arg0 >> 0x10);
-    temp_v1 = arg1->unk2;
-    temp_a2 = arg1->unk1;
-    temp_a1 = arg1->unk3;
-    if (temp_a2 == 0) {
-        var_s2 = *(D_80068304 + (temp_v1 * 4)) + (temp_a1 * 0x14);
-        goto block_6;
-    }
-    var_v0 = 0;
-    if (D_800A4EF0 == temp_a2) {
+    y = arg0 >> 16;
+    flags = arg2;
+    x = arg0;
+    b1 = p[1];
+    b2 = p[2];
+    b3 = p[3];
+
+    if (b1 == 0) {
+        rec = &D_80068304[b2][b3];
+    } else {
+        if (D_800A4EF0 != b1) {
+            return 0;
+        }
         if (D_800A4EE8 == 0) {
             return 0;
         }
-        var_s2 = *((temp_v1 * 4) + D_800A4EE8->unk14) + (temp_a1 * 0x14);
-block_6:
-        var_s3 = 0;
-        temp_s7 = D_800A4F17;
-        D_800A4F17 = 1;
-        temp_s6 = var_s2->unk0;
-        temp_v0 = func_800331D4(arg0 & 0xFFFF, temp_a1, temp_a2);
-        if (temp_v0 == 0) {
-            if (!(arg2 & 0x4000) || (arg2 & 0x3000)) {
-                temp_v0_2 = func_8003310C(temp_s6);
-                if (temp_v0_2 != 0) {
-                    var_s3 = temp_v0_2;
-                    var_s0 = var_s3 - 1;
-                    var_s1 = (var_s0 * 0x54) + (&D_800A4F17 - 0x82F);
-                    goto block_13;
-                }
-            }
-        } else {
-            var_s0 = temp_v0 - 1;
-            var_s1 = (var_s0 * 0x54) + (&D_800A4F17 - 0x82F);
-            if (var_s1->unk8 == 0) {
-                var_s3 = var_s0 + 1;
-                func_8003324C(var_s0 & 0xFFFF);
-block_13:
-                var_s1->unk4 = arg0;
-                var_s1->unk6 = sp10;
-                var_s1->unk2 = temp_s6;
-                var_s1->unk0 = (s16) ((arg1->unk0 & 0xC0) | 1);
-                var_s1->unkA = 5;
-                var_s1->unk8 = (u16) var_s2->unkC;
-                func_80032A74(var_s1, var_s0, var_s2, arg2 & 0xFFFF);
+        rec = D_800A4EE8->unk14[b2];
+        rec += b3;
+    }
+
+    old = *(u8 *)&D_800A4F17;
+    *(u8 *)&D_800A4F17 = 1;
+
+    ret = 0;
+    v = rec->unk00;
+
+    idx = func_800331D4((u16)arg0);
+    if (idx == 0) {
+        if (flags & 0x4000) {
+            if ((flags & 0x3000) == 0) {
+                goto done;
             }
         }
-        D_800A4F17 = temp_s7;
-        var_v0 = var_s3;
-        /* Duplicate return node #15. Try simplifying control flow for better match */
-        return var_v0;
+        idx = func_8003310C(v);
+        if (idx == 0) {
+            goto done;
+        }
+        ret = idx;
+        idx = ret - 1;
+        e = (Slot54 *)(SLOT_BASE + idx * 0x54);
+    } else {
+        idx--;
+        e = (Slot54 *)(SLOT_BASE + idx * 0x54);
+        if (e->unk08 != 0) {
+            goto done;
+        }
+        ret = idx + 1;
+        func_8003324C((u16)idx);
     }
-    return var_v0;
+
+    b0 = p[0];
+    e->unk04 = x;
+    e->unk06 = y;
+    e->unk02 = v;
+    e->unk00 = (b0 & 0xC0) | 1;
+    e->unk08 = rec->unk0C;
+    e->unk0A = 5;
+    func_80032A74(e, idx, rec, (u16)flags);
+
+done:
+    *(u8 *)&D_800A4F17 = old;
+    return ret;
 }

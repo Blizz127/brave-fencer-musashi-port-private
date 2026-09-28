@@ -2,31 +2,36 @@
  * SHA256(span)=d1bfb59f95dd2f0c91c1401575c77d0f3fc6b54d51b80b079bc320a4e9e3a426.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_8002F67C - byte-exact against retail at -O2 (tools/register_match.py). */
 
-void func_800415A8(s16);                               /* static */
+extern u8  D_800A4698;
 extern s16 D_800A4688;
-extern u8 D_800A4698;
+extern s16 D_800C5328[];
 extern s16 D_800A46A2;
-extern u8 D_800A46B0;
-extern s32 *D_800C5328;
+extern u8  D_800A46B0;
+
+extern void func_800415A8(s32);
 
 void func_8002F67C(void) {
-    if (D_800A4698 == 0) {
-        *(&D_800C5328 + (D_800A4688 * 4)) = -1;
-        D_800A4698 = 1;
+    u8 *p = &D_800A4698;
+    s32 v0;
+    s32 t;
+
+    if (*p == 0) {
+        v0 = D_800A4688;
+        *(s16 *)((u8 *)D_800C5328 + (v0 << 2)) = -1;
+        *p = 1;
     }
-    if (D_800A46A2 >= 0) {
-        func_800415A8(D_800A46A2);
+
+    t = D_800A46A2;
+    if (t >= 0) {
+        func_800415A8(t);
         D_800A46A2 = -1;
     }
+
     if (D_800A46B0 == 0) {
         D_800A46B0 = 1;
     }

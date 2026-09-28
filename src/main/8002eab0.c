@@ -1,20 +1,23 @@
 /* Exact retail word export for [8002EAB0,8002EB10); EXE and assembly verified. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_8002EAB0 - byte-exact against retail at -O2 (tools/register_match.py). */
 
-void func_80038308(s16);                               /* static */
-extern s16 D_800A4E86;
-extern u16 D_800A4E8E;
+extern u16   D_800A4E8E;
+extern s16   D_800A4E86;
+extern void func_80038308(s16 a0);
 
 void func_8002EAB0(void) {
-    if (D_800A4E8E & 0x10) {
+    register u16 *s0 __asm__("$16");
+    u16 v0;
+
+    s0 = &D_800A4E8E;
+    v0 = *s0;
+    if ((v0 & 0x10) != 0) {
         func_80038308(D_800A4E86);
-        D_800A4E8E = (D_800A4E8E | 9) & 0xFFEF;
+        v0 = *s0;
+        v0 = (v0 | 0x9) & 0xFFEF;
+        *s0 = v0;
     }
 }

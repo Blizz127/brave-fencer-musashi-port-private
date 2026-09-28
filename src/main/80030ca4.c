@@ -1,60 +1,72 @@
 /* Exact retail word export for [80030CA4,80030D80); EXE and assembly verified. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_80030CA4 - byte-exact against retail at -O2 (tools/register_match.py). */
 
-void func_80030D80(void *, s32, s32, s32); /* static */
-extern s32 *D_800A4988;
+typedef struct Ent30D80 {
+     s32 unk00;
+     u8 pad04[6];
+     u16 unk0A;
+     u8 pad0C[0x34];
+     void (*unk40)(s32, s32);
+     s32 unk44;
+     u8 pad48[6];
+     u8 unk4E;
+     u8 pad4F;
+     u8 unk50;
+     u8 unk51;
+} Ent30D80;
+s32 aF800301A4(void) __asm__("func_800301A4");
+extern void func_800301A4(void);
+extern u8 D_800A4988[];
+extern void func_80030D80(Ent30D80 *arg0, s16 arg1);
+extern s32 func_80030CA4(u16);
 
-s32 func_80030CA4(s32 arg0) {
-    u8 sp1A;
-    u16 sp18;
-    void *sp14;
-    s32 sp10;
-    void *var_s0;
-    s32 var_a2;
-    s32 var_v0;
-    u16 temp_v1;
-    void *var_a1;
+s32 func_80030CA4(u16 arg0)
+{
+    u8 *base;
+    u8 *p;
+    register s32 i __asm__("$6");
+    register s32 one __asm__("$7");
+    s32 besti;
+    u8 *bestp;
+    u16 best;
+    u8 first;
 
-    var_s0 = &D_800A4988;
-    var_a2 = 0;
-    var_a1 = &D_800A4988 + 8;
-    sp1A = 0;
-loop_1:
-    var_v0 = var_a2 + 1;
-    if (M2C_FIELD(var_a1, u8 *, 0x46) != 0) {
-        if (sp1A == 0) {
-            sp1A = 1;
-            sp10 = var_a2;
-            sp14 = var_s0;
-            sp18 = M2C_FIELD(var_a1, u16 *, 0);
-        } else {
-            temp_v1 = M2C_FIELD(var_a1, u16 *, 0);
-            if (temp_v1 < sp18) {
-                sp18 = temp_v1;
-                sp10 = var_a2;
-                sp14 = var_s0;
-            }
+    (void)&besti;
+    (void)&bestp;
+    (void)&best;
+    (void)&first;
+
+    base = D_800A4988;
+    i = 0;
+    one = 1;
+    p = base + 8;
+    first = 0;
+
+    for (; i < 8; i++, p += 0x54, base += 0x54) {
+        if (p[0x46] == 0) {
+            return i + 1;
         }
-        var_a2 += 1;
-        var_a1 += 0x54;
-        var_s0 += 0x54;
-        if (var_a2 >= 8) {
-            var_v0 = 0;
-            if ((u32) (arg0 & 0xFFFF) >= sp18) {
-                func_80030D80(sp14, 1, var_a2, 1);
-                M2C_FIELD(var_s0, s8 *, 0x4E) = 0;
-                var_v0 = sp10 + 1;
-                sp10 = var_v0;
-            }
-        } else {
-            goto loop_1;
+        if (first == 0) {
+            best = *(u16 *)p;
+            first = (u8)one;
+            besti = i;
+            bestp = base;
+        } else if (*(u16 *)p < best) {
+            best = *(u16 *)p;
+            besti = i;
+            bestp = base;
         }
     }
-    return var_v0;
+
+    if ((u16)arg0 < best) {
+        return 0;
+    }
+
+    func_80030D80((Ent30D80 *)bestp, 1);
+    *(u8 *)(base + 0x4E) = 0;
+    besti = besti + 1;
+    return besti;
 }

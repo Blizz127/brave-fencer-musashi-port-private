@@ -1,110 +1,108 @@
 /* Exact retail word export for [8003750C,8003775C); EXE and assembly verified. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8003750C - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+typedef struct {
+    s16 unk00;
+    s16 unk02;
+    s16 unk04;
+    s16 unk06;
+    s16 unk08;
+    s16 unk0A;
+    s16 unk0C;
+    s16 unk0E;
+    u8  unk10;
+    u8  unk11;
+    u8  unk12;
+    u8  unk13;
+    s32 unk14;
+} Rsc24;
 
-extern s32 D_80064D4A;
-void func_80031A98();                                  /* static */
-s32 func_8003C4F0();                               /* static */
-void func_800415A8(s16, s16, u8);                      /* static */
-extern u8 D_8006AEF4;
-extern s32 *D_80076248;
-extern s32 *D_80076251;
-extern s32 *D_80076252;
-extern s8 D_80076298;
-extern s32 D_8007629C;
-extern s32 *D_800A4640;
-extern s32 *D_800A4642;
-extern s32 *D_800A4644;
-extern s32 *D_800A4648;
-extern s32 *D_800A4650;
-extern s32 *D_800C5328;
-extern s32 *D_800C532A;
+typedef struct {
+    s32 unk00;
+    u8  unk04;
+    u8  unk05;
+    u8  unk06;
+    u8  unk07;
+    u8  unk08;
+    u8  unk09;
+    u8  unk0A;
+    u8  unk0B;
+    s32 unk0C;
+} Rsc16;
+
+typedef struct {
+    u8  unk00;
+    u8  unk01[11];
+} Rsc12;
+
+extern s32  D_8007629C;
+extern u8   D_8006AEF4;
+extern u8   D_80076298;
+extern Rsc16 D_80076248[];    
+extern Rsc12 D_80064D4A[];
+extern Rsc24  D_800A4640[];
+extern s16  D_800C5328[];
+extern s16  D_800C532A[];
+
+extern s32  func_8003C4F0(s32);
+extern void func_800415A8(s32);
+extern void func_80031A98(void);
 
 s32 func_8003750C(void) {
-    s16 temp_a0_3;
-    s16 temp_a1;
-    s32 temp_a0;
-    s32 temp_a0_2;
-    s32 temp_v1;
-    s32 var_s0;
-    s32 var_s1;
-    s32 var_s2;
-    s32 var_v0;
-    s32 var_v0_2;
-    u8 temp_a2;
+    s32 i;
+    s32 val;
+    s32 k;
+    s32 h;
 
-    if (D_8007629C != 1) {
-        if (D_8007629C < 2) {
-            if (D_8007629C != 0) {
-                return 0;
-            }
-            var_v0 = 0;
-            if (!(D_8006AEF4 & 2)) {
-                D_8006AEF4 |= 2;
-                D_8007629C = 1;
-                goto block_8;
-            }
-            /* Duplicate return node #24. Try simplifying control flow for better match */
-            return var_v0;
-        }
-        var_s2 = 0;
-        if (D_8007629C != 2) {
+    switch (D_8007629C) {
+    case 0:
+        if (D_8006AEF4 & 2) {
             return 0;
         }
-        goto block_11;
-    }
-block_8:
-    if (!(D_8006AEF4 & 1) || (var_v0 = 0, (func_8003C4F0(0) != 0))) {
-        D_8007629C += 1;
-        var_s2 = 0;
-block_11:
-        var_s1 = 0;
-        var_s0 = 0;
-        do {
-            if (*(&D_80076251 + var_s0) != 0) {
-                temp_a0 = *(&D_80076248 + var_s0);
-                temp_a2 = *(&D_80076252 + var_s0);
-                if (!(temp_a0 & 0x6000)) {
-                    temp_v1 = temp_a2 * 0x18;
-                    temp_a1 = *(&D_800A4644 + temp_v1);
-                    if (temp_a1 != 0) {
-                        var_v0_2 = temp_a2 * 2;
-                        if (temp_a1 != *(D_80064D4A + (temp_a0 * 0xC))) {
-                            *(&D_800C532A + (*(&D_800A4648 + temp_v1) * 4)) = -1;
-                            *(&D_800A4644 + temp_v1) = 0;
-                            *(&D_800A4648 + temp_v1) = 0;
-                            goto block_17;
-                        }
-                    } else {
-block_17:
-                        var_v0_2 = temp_a2 * 2;
-                    }
-                    temp_a0_2 = (var_v0_2 + temp_a2) * 8;
-                    if (*(&D_800A4650 + temp_a0_2) == 0) {
-                        *(&D_800A4650 + temp_a0_2) = 1;
-                        *(&D_800C5328 + (*(&D_800A4640 + temp_a0_2) * 4)) = -1;
-                        temp_a0_3 = *(&D_800A4642 + var_s1);
-                        if (temp_a0_3 >= 0) {
-                            func_800415A8(temp_a0_3, temp_a1, temp_a2);
-                            *(&D_800A4642 + var_s1) = -1;
-                        }
-                        func_80031A98();
-                    }
-                }
+        D_8006AEF4 |= 2;
+        D_8007629C = 1;
+
+    case 1:
+        if (D_8006AEF4 & 1) {
+            if (func_8003C4F0(0) == 0) {
+                return 0;
             }
-            var_s1 += 0x18;
-            var_s2 += 1;
-            var_s0 += 0x10;
-        } while (var_s2 < 5);
+        }
+        D_8007629C = D_8007629C + 1;
+
+    case 2:
+        for (i = 0; i < 5; i++) {
+            if (D_80076248[i].unk09 == 0) {
+                continue;
+            }
+            val = D_80076248[i].unk00;
+            k = D_80076248[i].unk0A;
+            if (val & 0x6000) {
+                continue;
+            }
+            h = D_800A4640[k].unk04;
+            if (h != 0 && h != D_80064D4A[val].unk00) {
+                D_800C532A[D_800A4640[k].unk08 * 2] = -1;
+                D_800A4640[k].unk04 = 0;
+                D_800A4640[k].unk08 = 0;
+            }
+            if (D_800A4640[k].unk10 != 0) {
+                continue;
+            }
+            D_800A4640[k].unk10 = 1;
+            D_800C5328[D_800A4640[k].unk00 * 2] = -1;
+            if (D_800A4640[i].unk02 >= 0) {
+                func_800415A8(D_800A4640[i].unk02);
+                D_800A4640[i].unk02 = -1;
+            }
+            func_80031A98();
+        }
         D_8007629C = 0;
         D_80076298 = 0;
-        var_v0 = 1;
+        return 1;
+    default:
+        return 0;
     }
-    return var_v0;
 }

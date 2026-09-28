@@ -1,271 +1,421 @@
 /* Exact retail word export for [80032A74,8003310C); EXE and assembly verified. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80032A74 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+/* Types from vendor/bfm-decomp/src/800_shared.h. */
+/* was: src/800.c */
+typedef struct Rec14 {
+    /* 0x00 */ u16 unk00;
+    /* 0x02 */ u16 unk02;
+    /* 0x04 */ u32 unk04;
+    /* 0x08 */ u32 unk08;
+    /* 0x0C */ u16 unk0C;
+    /* 0x0E */ u16 unk0E;
+    /* 0x10 */ u32 unk10;
+} Rec14; /* 0x14 */
+typedef struct Slot {
+    /* 0x00 */ s32 unk00;
+    /* 0x04 */ s32 unk04;
+    /* 0x08 */ u8 unk08[0xC];
+    /* 0x14 */ s16 unk14;
+    /* 0x16 */ u8 unk16[2];
+    /* 0x18 */ s16 unk18;
+    /* 0x1A */ u8 unk1A[0x26];
+    /* 0x40 */ s32 unk40;
+    /* 0x44 */ u8 unk44;
+    /* 0x45 */ u8 unk45[3];
+} Slot;
+/* was: src/800.c */
+typedef struct {
+    /* 0x00 */ u8 *unk00;
+    /* 0x04 */ u8  pad04[2];
+    /* 0x06 */ u8  unk06;
+    /* 0x07 */ u8  unk07;
+    /* 0x08 */ u8  unk08;
+    /* 0x09 */ u8  pad09[3];
+} A12; /* 0x0C */
 
-extern s32 D_80064D44;
-extern s32 D_8006A970;
-extern s32 D_8006AA30;
-extern s32 D_8006AB32;
-extern s32 D_8006AED8;
-extern s32 D_80073140;
-extern s32 D_8007319E;
-extern s32 D_800731A0;
-extern s32 *D_8007321E;
-void func_8002EFF8(s32, s32);                            /* static */
-void func_8002F064(s32, s32);                            /* static */
-s32 func_80030CA4(u16, u32);                        /* static */
-void func_800316F8(void *);                            /* static */
-extern s32 func_80033324;
-s32 func_8003F144(s16, s32, u8, void *);               /* static */
-s32 func_8003F380(s16, s16);                        /* static */
-extern s32 *D_8006AB30;
-extern s32 *D_800A4646;
+/* was: src/800.c */
+typedef struct {
+    /* 0x00 */ s32 unk00;
+    /* 0x04 */ s16 unk04;
+    /* 0x06 */ s16 unk06;
+    /* 0x08 */ s16 unk08;
+    /* 0x0A */ u8  unk0A;
+    /* 0x0B */ u8  unk0B;
+} B12; /* 0x0C */
+typedef struct {
+    /* 0x00 */ u8  pad00[4];
+    /* 0x04 */ u8  unk04;
+    /* 0x05 */ u8  pad05[11];
+    /* 0x10 */ u16 unk10;
+    /* 0x12 */ u16 unk12;
+    /* 0x14 */ u8  pad14[2];
+    /* 0x16 */ s16 unk16;
+    /* 0x18 */ u8  pad18[8];
+} C24; /* 0x20 */
+/* was: src/800.c */
+typedef struct Slot54 {
+    /* 0x00 */ s16 unk00;
+    /* 0x02 */ s16 unk02;
+    /* 0x04 */ s16 unk04;
+    /* 0x06 */ s16 unk06;
+    /* 0x08 */ u16 unk08;
+    /* 0x0A */ s8  unk0A;
+} Slot54;
+/* ---- views this function needs (new names, no TU collision) ---- */
+
+/* the caller's 0x54 request slot (Slot54, seen past its declared tail) */
+typedef struct {
+    /* 0x00 */ u16 unk00;
+    /* 0x02 */ u16 unk02;
+    /* 0x04 */ u8  pad04[6];
+    /* 0x0A */ u8  unk0A;
+    /* 0x0B */ u8  pad0B[1];
+    /* 0x0C */ u16 unk0C;
+    /* 0x0E */ u8  unk0E[8];
+} Req32A74;
+
+/* the 0x14 record walked by this loop (Rec14, byte-resolved) */
+typedef struct {
+    /* 0x00 */ u16 unk00;
+    /* 0x02 */ u16 unk02;
+    /* 0x04 */ u16 unk04;
+    /* 0x06 */ u8  unk06;
+    /* 0x07 */ u8  unk07;
+    /* 0x08 */ u8  unk08;
+    /* 0x09 */ u8  unk09;
+    /* 0x0A */ u8  unk0A;
+    /* 0x0B */ u8  unk0B;
+    /* 0x0C */ u8  pad0C[4];
+    /* 0x10 */ s32 unk10;
+} Rec32A74; /* 0x14 */
+
+/* the 0x54 mixer channel at D_800A4988 (cf. Chan336A8) */
+typedef struct {
+    /* 0x00 */ s32 unk00;
+    /* 0x04 */ s32 unk04;
+    /* 0x08 */ u16 unk08;
+    /* 0x0A */ u16 unk0A;
+    /* 0x0C */ u16 unk0C;
+    /* 0x0E */ u16 unk0E;
+    /* 0x10 */ s16 unk10;
+    /* 0x12 */ s16 unk12;
+    /* 0x14 */ s32 unk14;
+    /* 0x18 */ u8  pad18[0xC];
+    /* 0x24 */ s32 unk24;
+    /* 0x28 */ u8  pad28[0xC];
+    /* 0x34 */ u8  unk34;
+    /* 0x35 */ u8  unk35;
+    /* 0x36 */ u8  unk36;
+    /* 0x37 */ u8  pad37[9];
+    /* 0x40 */ s32 unk40;
+    /* 0x44 */ s32 unk44;
+    /* 0x48 */ s16 unk48;
+    /* 0x4A */ s16 unk4A;
+    /* 0x4C */ u8  unk4C;
+    /* 0x4D */ u8  unk4D;
+    /* 0x4E */ u8  unk4E;
+    /* 0x4F */ u8  unk4F;
+    /* 0x50 */ u8  pad50[2];
+    /* 0x52 */ u8  unk52;
+    /* 0x53 */ u8  unk53;
+} Chan32A74; /* 0x54 */
+
+/* the 0x48 voice at D_800A4C28 (Slot, byte-resolved) */
+typedef struct {
+    /* 0x00 */ s32 unk00;
+    /* 0x04 */ s32 unk04;
+    /* 0x08 */ u16 unk08;
+    /* 0x0A */ u16 unk0A;
+    /* 0x0C */ u16 unk0C;
+    /* 0x0E */ u16 unk0E;
+    /* 0x10 */ u8  pad10[4];
+    /* 0x14 */ u16 unk14;
+    /* 0x16 */ u8  pad16[2];
+    /* 0x18 */ u16 unk18;
+    /* 0x1A */ u8  pad1A[2];
+    /* 0x1C */ s32 unk1C;
+    /* 0x20 */ u8  pad20[0x1A];
+    /* 0x3A */ u16 unk3A;
+    /* 0x3C */ u16 unk3C;
+    /* 0x3E */ u8  pad3E[2];
+    /* 0x40 */ s32 unk40;
+    /* 0x44 */ u8  unk44;
+    /* 0x45 */ u8  unk45;
+    /* 0x46 */ u8  pad46[2];
+} Voice32A74; /* 0x48 */
+
+extern s16 D_800C5328[];
+extern s16 D_800C532A[];
+extern s16 D_800A4646[];
+extern A12   D_80064D44[];
+extern B12 *D_8006A970[];
+extern Slot D_800A4C28[];
+extern u8 D_800A4988[];
+extern s32 D_80073140[];
 extern s16 D_800A46A2;
-extern s32 *D_800A4988;
-extern s32 *D_800A4C28;
 extern s16 D_800A4EF6;
 extern s16 D_800A4EFA;
 extern u8 D_800A4F19;
 extern u8 D_800A4F1E;
-extern s32 *D_800C5328;
-extern s32 *D_800C532A;
+extern u16 D_8006AA30[];
+extern u16 D_8006AB30[];
+extern u16 D_8006AB32[];
+extern const u16 D_8007319E[];
+extern const u16 D_800731A0[];
+extern u16 D_8007321E;
+extern u8 D_8006AED8[];
+extern s16  func_8003F144(s32, s32, s32, C24 *);
+extern s32 func_8003F380(s32, s32);
+extern s32 func_80030CA4(u16);
+extern void func_8002EFF8(s32, s32);
+extern void func_8002F064(s32, s32);
+extern void func_800316F8(s32);
+extern void func_80033324(s32, s32);
 
-void func_80032A74(void *arg0, s32 arg1, void *arg2, s32 arg3) {
-    void *sp40;
-    s32 sp38;
-    void *sp30;
-    s32 sp10;
-    s32 var_a0_2;
-    s16 var_s2;
-    s16 var_v0_4;
-    s32 temp_a0_3;
-    s32 temp_a1_3;
-    s32 temp_s5;
-    s32 temp_v0;
-    s32 temp_v0_2;
-    s32 temp_v1_3;
-    s32 temp_v1_4;
-    s32 var_s6;
-    s32 var_v0_2;
-    s32 var_v0_3;
-    s32 var_v1;
-    s8 var_fp;
-    u16 temp_a0_2;
-    u16 temp_v0_3;
-    u16 var_s7;
-    u16 var_v0_5;
-    u32 temp_a0_4;
-    u32 temp_a1;
-    u32 temp_a1_2;
-    u32 temp_v0_5;
-    u8 temp_a0;
-    u8 temp_s4;
-    u8 temp_v0_4;
-    u8 var_a0;
-    u8 var_s2_2;
-    void *temp_s0;
-    void *temp_s1;
-    void *temp_v1;
-    void *temp_v1_2;
-    void *var_s3;
-    void *var_v0;
+void func_80032A74(Slot54 *arg0, s32 arg1, Rec14 *arg2, s32 flags) {
+#define REQ ((Req32A74 *)arg0)
+#define REC ((Rec32A74 *)arg2)
+    C24 sp10;
 
-    var_s6 = arg3;
-    var_v1 = 7;
-    var_v0 = arg0 + 7;
-    sp30 = arg0;
-    sp38 = arg1;
-    sp40 = arg2;
-    var_s7 = arg0->unk2;
+    Chan32A74 *ch;
+    Voice32A74 *vo;
+    A12 *dd;
+    B12 *q;
+    u8 *cp;
+    const u16 *tA;
+    const u16 *tB;
+    u8 *vB;
+    s32 i2;
+    u16 v;
+    u32 vv;
+    s32 idx;
+    s32 w;
+    s32 n;
+    s32 flag;
+    s32 h;
+    s32 i;
+    s32 b;
+    s32 sub;
+    u8 pan;
+    u32 vol;
+    u32 mp;
+    u32 qq;
+    s32 tb;
+    u32 d;
+    register s32 base __asm__("$2");
+    u16 t16;
+    s32 t8;
+    s32 t32;
+    u32 gx;
+
+    tA = D_8007319E;
+    tB = D_800731A0;
+    vB = (u8 *)D_800A4C28;
+    v = REQ->unk02;
+    i = 7;
+    cp = (u8 *)arg0 + 7;
     do {
-        var_v0->unkE = 0;
-        var_v1 -= 1;
-        var_v0 -= 1;
-    } while (var_v1 >= 0);
-    sp30->unkC = 0U;
-    var_s3 = sp40 + 0xB;
-loop_3:
-    temp_s4 = var_s3->unk-3;
-    var_fp = 0;
-    if (!(temp_s4 & 0x80)) {
-        temp_v1 = (temp_s4 * 0xC) + D_80064D44;
-        temp_a0 = var_s3->unk-2;
-        var_v0_2 = temp_s4 * 4;
-        if (temp_v1->unk6 != 0) {
-            var_fp = temp_a0 < (u8) temp_v1->unk7;
-            var_v0_2 = temp_s4 * 4;
-        }
-        var_s2 = *(&D_800C5328 + var_v0_2);
-        if (var_s2 < 0) {
-            if (var_fp != 0) {
-                var_s2 = *(&D_800C532A + var_v0_2);
-                if (var_s2 >= 0) {
-                    var_v0_3 = var_s6 & 0x1000;
-                    if ((s32) temp_a0 < *(&D_800A4646 + (var_s2 * 0x18))) {
-                        goto block_13;
-                    }
+        cp[0xE] = 0;
+        i--;
+        cp--;
+    } while (i >= 0);
+    REQ->unk0C = 0;
+
+    for (;;) {
+        b = REC->unk08;
+        flag = 0;
+        if ((b & 0x80) == 0) {
+            dd = &D_80064D44[b];
+            sub = REC->unk09;
+            if (dd->unk06 != 0) {
+                gx = dd->unk07;
+                gx -= 0x100;
+                flag = (u32)sub < (u32)(u8)gx;
+            }
+            n = D_800C5328[b * 2];
+            if (n < 0) {
+                if (flag == 0) {
+                    break;
+                }
+                n = D_800C532A[b * 2];
+                if (n < 0) {
+                    break;
+                }
+                if (sub >= D_800A4646[n * 12]) {
+                    break;
                 }
             }
         } else {
-            goto block_12;
+            n = 4;
         }
-    } else {
-        var_s2 = 4;
-block_12:
-        var_v0_3 = var_s6 & 0x1000;
-block_13:
-        temp_a1 = var_s6 & 0x7F;
-        if ((var_v0_3 != 0) && (temp_a1 < 0x30U)) {
-            var_s7 = (u16) (var_s7 >> 1);
-            var_s6 = (var_s6 & 0xFF80) | (0x2F - ((s32) (0x2F - temp_a1) >> 1));
+        if ((flags & 0x1000) && (flags & 0x7F) < 0x30U) {
+            v >>= 1;
+            flags = (flags & 0xFF80) | (0x2F - ((0x2F - (flags & 0x7F)) >> 1));
         }
-        temp_v0 = func_80030CA4(var_s7, temp_a1);
-        temp_s5 = temp_v0 - 1;
-        if (temp_v0 != 0) {
-            temp_s1 = (temp_s5 * 0x48) + &D_800A4C28;
-            if (!(temp_s4 & 0x80)) {
-                temp_v1_2 = *(D_8006A970 + (var_s2 * 4)) + (var_s3->unk-2 * 0xC);
-                temp_s1->unk1C = (s32) temp_v1_2->unk0;
-                temp_s1->unk18 = (u16) temp_v1_2->unk4;
-                temp_s1->unk3A = (u16) temp_v1_2->unk6;
-                temp_s1->unk3C = (u16) temp_v1_2->unk8;
-                goto block_22;
-            }
-            if ((func_8003F144(D_800A46A2, temp_s4 & 0x7F, var_s3->unk-2, &sp10) << 0x10) == 0) {
-                temp_v0_2 = func_8003F380(D_800A46A2, sp26);
-                if (temp_v0_2 >= 0) {
-                    temp_s1->unk1C = temp_v0_2;
-                    temp_s1->unk18 = (u16) (sp14 << 8);
-                    temp_s1->unk3A = sp20;
-                    temp_s1->unk3C = sp22;
-block_22:
-                    temp_a0_2 = temp_s5 + 0x10;
-                    temp_s1->unk0 = (s32) *(D_80073140 + (temp_a0_2 * 4));
-                    temp_s0 = (temp_s5 * 0x54) + &D_800A4988;
-                    temp_s0->unk4C = 0;
-                    temp_s0->unk4A = 0x7FFF;
-                    if (sp30->unk0 & 0x80) {
-                        temp_s0->unk4D = 0;
-                    } else {
-                        temp_s0->unk4D = 1;
-                    }
-                    temp_s0->unk4 = 0;
-                    temp_s0->unk8 = var_s7;
-                    temp_s0->unkA = temp_a0_2;
-                    temp_s0->unk0 = (s32) var_s3->unk-9;
-                    temp_s0->unkE = (s16) temp_s4;
-                    temp_s0->unk36 = var_fp;
-                    temp_s0->unk10 = var_s2;
-                    temp_s0->unk12 = 0;
-                    temp_s0->unkC = (s16) var_s3->unk-2;
-                    temp_s0->unk4F = 0;
-                    temp_s0->unk4E = 0x85;
-                    temp_s0->unk14 = (s32) var_s3->unk5;
-                    var_a0 = var_s3->unk-5;
-                    if (D_800A4F1E != 0) {
-                        var_a0 = (u8) ((u32) (var_a0 * 0x70) >> 7);
-                    }
-                    var_v0_4 = var_s6 & 0x7F;
-                    if (!(var_s6 & 0x1000)) {
-                        var_v0_4 = 0x7F;
-                    }
-                    temp_s0->unk48 = var_v0_4;
-                    temp_s0->unk34 = (u8) (var_a0 & 0x7F);
-                    var_s2_2 = var_s3->unk-4;
-                    temp_s0->unk35 = var_s2_2;
-                    if (var_s6 & 0x8000) {
-                        var_v0_5 = var_s3->unk-7 - 0x80;
-                    } else {
-                        var_v0_5 = var_s3->unk-7;
-                    }
-                    temp_s0->unk24 = (s32) var_v0_5;
-                    temp_s0->unk40 = func_80033324;
-                    temp_s0->unk44 = sp38;
-                    if ((var_s6 & 0x2000) && (var_s2_2 & 0xFF)) {
-                        if ((var_s6 & 0x3000) == 0x3000) {
-                            temp_s0->unk53 = (u8) *(D_8006AED8 + ((u32) (var_s6 & 0xF00) >> 8));
-                        } else {
-                            temp_s0->unk53 = (u8) (var_s6 & 0x7F);
-                        }
-                    } else {
-                        temp_s0->unk53 = 0U;
-                    }
-                    if (var_s3->unk-9 == 0) {
-                        func_800316F8(temp_s0);
-                    }
-                    temp_v0_3 = temp_s1->unk18;
-                    temp_a1_2 = temp_s0->unk24 - (((temp_v0_3 & 0xFF00) + ((s32) (temp_v0_3 << 0x18) >> 0x17)) - 0x3C00);
-                    if (temp_a1_2 >= 0x5300U) {
-                        temp_s1->unk14 = 0x3FFF;
-                    } else {
-                        temp_a0_3 = (temp_a1_2 >> 8) * 2;
-                        temp_a1_3 = temp_a1_2 & 0xFF;
-                        temp_s1->unk14 = (s16) ((u32) ((*(&D_8006AB30 + temp_a0_3) * (0x100 - temp_a1_3)) + (*(D_8006AB32 + temp_a0_3) * temp_a1_3)) >> 8);
-                    }
-                    temp_a0_4 = (u32) (((u32) (*(D_8006AA30 + (temp_s0->unk34 * 2)) * D_800A4EFA) >> 7) * temp_s0->unk48) >> 7;
-                    if (var_s2_2 & 0xFF) {
-                        temp_v0_4 = temp_s0->unk53;
-                        temp_v1_3 = var_s2_2 + temp_v0_4;
-                        if (temp_v0_4 != 0) {
-                            var_s2_2 = 1;
-                            if ((u32) (temp_v1_3 & 0xFF) >= 0x42U) {
-                                var_s2_2 = temp_v1_3 - 0x40;
-                                if ((u32) (var_s2_2 & 0xFF) >= 0x80U) {
-                                    var_s2_2 = 0x7F;
-                                }
-                            }
-                        }
-                        temp_v1_4 = var_s2_2 & 0xFF;
-                        if (D_800A4F19 != 0) {
-                            temp_s1->unkA = (s16) ((u32) (temp_a0_4 * *((temp_v1_4 * 2) + D_8007319E)) >> 0xE);
-                            temp_s1->unk8 = (s16) ((u32) (temp_a0_4 * *(((0x7F - temp_v1_4) * 2) + D_800731A0)) >> 0xE);
-                        } else {
-                            temp_v0_5 = (u32) (temp_a0_4 * D_8007321E) >> 0xE;
-                            temp_s1->unkA = (s16) temp_v0_5;
-                            temp_s1->unk8 = (s16) temp_v0_5;
-                        }
-                    } else {
-                        temp_s1->unk8 = (s16) temp_a0_4;
-                        temp_s1->unkA = (s16) temp_a0_4;
-                    }
-                    temp_s0->unk52 = var_s2_2;
-                    temp_s1->unkC = 0;
-                    temp_s1->unkE = 0;
-                    temp_s1->unk4 = 0x6009F;
-                    var_a0_2 = 1;
-                    if ((s32) var_s3->unk-1 < D_800A4EF6) {
-
-                    } else {
-                        var_a0_2 = 0;
-                    }
-                    func_8002F064(var_a0_2, temp_s1->unk0);
-                    temp_s1->unk45 = 0;
-                    temp_s1->unk44 = 1;
-                    temp_s1->unk40 = (s32) temp_s0->unkA;
-                    if (var_s3->unk-9 == 0) {
-                        func_8002EFF8(1, temp_s1->unk0);
-                    }
-                    sp30->unkC = (u16) (sp30->unkC + 1);
-                    (sp30 + temp_s5)->unkE = 1;
+        idx = func_80030CA4(v);
+        if (idx != 0) {
+            idx--;
+            vo = (Voice32A74 *)(idx * 0x48 + (s32)vB);
+            if ((b & 0x80) == 0) {
+                q = &D_8006A970[n][REC->unk09];
+                vo->unk1C = q->unk00;
+                vo->unk18 = q->unk04;
+                vo->unk3A = q->unk06;
+                vo->unk3C = q->unk08;
+            } else {
+                if (func_8003F144(D_800A46A2, b & 0x7F, REC->unk09, &sp10) != 0) {
+                    goto next;
                 }
+                h = func_8003F380(D_800A46A2, sp10.unk16);
+                if (h < 0) {
+                    goto next;
+                }
+                tb = sp10.unk04;
+                vo->unk1C = h;
+                vo->unk18 = tb << 8;
+                vo->unk3A = sp10.unk10;
+                vo->unk3C = sp10.unk12;
             }
+            w = idx + 0x10;
+            vo->unk00 = D_80073140[w];
+            ch = (Chan32A74 *)(D_800A4988 + idx * 0x54);
+            ch->unk4C = 0;
+            ch->unk4A = 0x7FFF;
+            if (REQ->unk00 & 0x80) {
+                ch->unk4D = 0;
+            } else {
+                ch->unk4D = 1;
+            }
+            t16 = REC->unk02;
+            ch->unk04 = 0;
+            ch->unk08 = v;
+            ch->unk0A = w;
+            ch->unk00 = t16;
+            t8 = REC->unk09;
+            ch->unk0E = b;
+            ch->unk36 = flag;
+            ch->unk10 = n;
+            ch->unk12 = 0;
+            ch->unk0C = t8;
+            t32 = REC->unk10;
+            ch->unk4F = 0;
+            ch->unk4E = 0x85;
+            ch->unk14 = t32;
+            __asm__ __volatile__("");
+            vol = REC->unk06;
+            if (D_800A4F1E != 0) {
+                vol *= 0x70;
+                vol >>= 7;
+            }
+            if (flags & 0x1000) {
+                ch->unk48 = flags & 0x7F;
+            } else {
+                ch->unk48 = 0x7F;
+            }
+            ch->unk34 = vol & 0x7F;
+            pan = REC->unk07;
+            ch->unk35 = pan;
+            if (flags & 0x8000) {
+                ch->unk24 = REC->unk04 - 0x80;
+            } else {
+                ch->unk24 = REC->unk04;
+            }
+            ch->unk40 = (s32)func_80033324;
+            ch->unk44 = arg1;
+            if ((flags & 0x2000) && pan != 0) {
+                if ((flags & 0x3000) == 0x3000) {
+                    ch->unk53 = D_8006AED8[(u32)(flags & 0xF00) >> 8];
+                } else {
+                    ch->unk53 = flags & 0x7F;
+                }
+            } else {
+                ch->unk53 = 0;
+            }
+            if (REC->unk02 == 0) {
+                func_800316F8(ch);
+            }
+            {
+                u16 u18 = vo->unk18;
+                base = (u18 & 0xFF00) + (s8)u18 * 2;
+            }
+            base -= 0x3C00;
+            d = ch->unk24;
+            d -= base;
+            if (d >= 0x5300) {
+                vo->unk14 = 0x3FFF;
+            } else {
+                qq = D_8006AB30[d >> 8];
+                qq = qq * (0x100 - (d & 0xFF));
+                vo->unk14 = (qq + D_8006AB32[d >> 8] * (d & 0xFF)) >> 8;
+            }
+            vol = D_8006AA30[ch->unk34];
+            mp = vol * D_800A4EFA;
+            vol = mp >> 7;
+            mp = vol * ch->unk48;
+            vol = mp >> 7;
+            if (pan != 0) {
+                if (ch->unk53 != 0) {
+                    pan += ch->unk53;
+                    if (pan >= 0x42) {
+                        pan -= 0x40;
+                        if (pan >= 0x80) {
+                            pan = 0x7F;
+                        }
+                    } else {
+                        pan = 1;
+                    }
+                }
+                if (D_800A4F19 != 0) {
+                    vv = (vol * tA[pan]) >> 14;
+                    vo->unk0A = vv;
+                    vv = (vol * tB[0x7F - pan]) >> 14;
+                    vo->unk08 = vv;
+                } else {
+                    vv = (vol * D_8007321E) >> 14;
+                    vo->unk0A = vv;
+                    vo->unk08 = vv;
+                }
+            } else {
+                vv = vol;
+                vo->unk08 = vv;
+                vo->unk0A = vv;
+            }
+            ch->unk52 = pan;
+            vo->unk0C = 0;
+            vo->unk0E = 0;
+            vo->unk04 = 0x6009F;
+            __asm__ __volatile__("");
+            if (D_800A4EF6 > REC->unk0A) {
+                func_8002F064(1, vo->unk00);
+            } else {
+                func_8002F064(0, vo->unk00);
+            }
+            t16 = ch->unk0A;
+            vo->unk45 = 0;
+            vo->unk44 = 1;
+            vo->unk40 = t16;
+            if (REC->unk02 == 0) {
+                func_8002EFF8(1, vo->unk00);
+            }
+            REQ->unk0C++;
+            REQ->unk0E[idx] = 1;
         }
-        var_s3 += 0x14;
-        if (var_s3->unk0 != 0) {
-            sp40 += 0x14;
-            var_s7 = sp40->unk14;
-            goto loop_3;
+    next:
+        if (REC->unk0B == 0) {
+            break;
         }
+        arg2++;
+        v = REC->unk00;
     }
-    if (sp30->unkC == 0) {
-        sp30->unk0 = 0U;
-        return;
+    if (REQ->unk0C == 0) {
+        REQ->unk00 = 0;
+    } else {
+        REQ->unk0A = 4;
     }
-    sp30->unkA = 4;
 }

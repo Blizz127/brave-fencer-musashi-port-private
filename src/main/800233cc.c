@@ -1,58 +1,46 @@
 /* Exact retail [800233CC,800234E4).
  * Words from pinned SLUS_007.26.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_800233CC - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+extern s32 func_8004787C(s32 a0); /* rcos-like: angle (0..0xFFF) -> 1.12 fixed */
+extern s32 func_80047948(s32 a0); /* rsin-like: angle (0..0xFFF) -> 1.12 fixed */
 
-s32 func_8004787C(s32);                             /* static */
-s32 func_80047948(s32);                             /* static */
+typedef struct {
+    u16 x;
+    u16 y;
+} Poly12Pt;
 
-void func_800233CC(void *arg0, s32 arg1) {
-    s32 temp_lo;
-    s32 temp_s3;
-    s32 var_s0;
-    s32 var_s0_2;
-    s32 var_s0_3;
-    s32 var_s1;
-    void *temp_v0;
-    void *temp_v1;
-    void *var_a0;
-    void *var_a0_2;
-    void *var_s2;
+typedef struct {
+    u8 pad_00[0x10];
+    Poly12Pt pts[12];
+} Poly12Obj;
 
-    var_s0 = 0;
-    temp_s3 = arg1 & 0xFFFF;
-    var_s2 = arg0;
-    var_s1 = 0;
-    do {
-        M2C_FIELD(var_s2, s16 *, 0x10) = (s16) ((s32) (func_8004787C(var_s1) * temp_s3) >> 0xC);
-        temp_lo = func_80047948(var_s1) * temp_s3;
-        var_s1 += 0x155;
-        var_s0 += 1;
-        M2C_FIELD(var_s2, s16 *, 0x12) = (s16) (temp_lo >> 0xC);
-        var_s2 += 4;
-    } while (var_s0 < 4);
-    var_s0_2 = 4;
-    var_a0 = arg0 + 0x10;
-    do {
-        temp_v0 = arg0 + ((6 - var_s0_2) * 4);
-        M2C_FIELD(var_a0, u16 *, 0x10) = (u16) M2C_FIELD(temp_v0, u16 *, 0x10);
-        var_s0_2 += 1;
-        M2C_FIELD(var_a0, s16 *, 0x12) = (s16) -(s16) M2C_FIELD(temp_v0, u16 *, 0x12);
-        var_a0 += 4;
-    } while (var_s0_2 < 7);
-    var_s0_3 = 7;
-    var_a0_2 = arg0 + 0x1C;
-    do {
-        temp_v1 = arg0 + ((0xC - var_s0_3) * 4);
-        M2C_FIELD(var_a0_2, s16 *, 0x10) = (s16) -(s16) M2C_FIELD(temp_v1, u16 *, 0x10);
-        var_s0_3 += 1;
-        M2C_FIELD(var_a0_2, u16 *, 0x12) = (u16) M2C_FIELD(temp_v1, u16 *, 0x12);
-        var_a0_2 += 4;
-    } while (var_s0_3 < 0xC);
+/* Builds a 12-gon of radius a1 into the u16{x,y} table at obj+0x10:
+ * quarter arc (4 pts, angle step 0x155), mirrored in y, then in x. */
+void func_800233CC(Poly12Obj *a0, u16 a1) {
+    s32 i = 0;
+    s32 radius = a1;
+
+    /* `i * 0x155` must stay a DERIVED induction variable (no explicit `ang`
+     * local): loop_strength_reduce then emits its preheader init alongside the
+     * hoisted &pts[0] copy, giving the target's s2-before-s1 init order and the
+     * s1-before-s0 increment order.  An explicit pre-loop `ang = 0` statement
+     * sits ahead of the LSR-inserted init instead -> 6-instruction residual. */
+    for (; i < 4; i++) {
+        a0->pts[i].x = (func_8004787C(i * 0x155) * radius) >> 12;
+        a0->pts[i].y = (func_80047948(i * 0x155) * radius) >> 12;
+    }
+
+    for (i = 4; i < 7; i++) {
+        a0->pts[i].x = a0->pts[6 - i].x;
+        a0->pts[i].y = -a0->pts[6 - i].y;
+    }
+
+    for (i = 7; i < 12; i++) {
+        a0->pts[i].x = -a0->pts[12 - i].x;
+        a0->pts[i].y = a0->pts[12 - i].y;
+    }
 }

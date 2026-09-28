@@ -1,39 +1,38 @@
 /* Exact retail word export for [8002823C,80028304); EXE and assembly verified. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8002823C - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-void func_80028620(s32, void *);                          /* static */
-extern s32 *D_800A5E88;
-extern s32 *D_800A5E8C;
-extern s32 *D_800A5E90;
-extern s32 *D_800A5E94;
-extern s32 *D_800A5E95;
-extern s32 *D_800A5E96;
+extern u8 D_800A5E88;
+extern s32 D_800A5E8C;
+extern s32 D_800A5E90;
+extern u8 D_800A5E94;
+extern u8 D_800A5E95;
+extern u8 D_800A5E96;
+extern void func_80028620(s32 a0, void *a1);
 
 void func_8002823C(void) {
-    void *var_s2;
-    s32 var_s0;
-    s32 var_s1;
+    s32 i;
+    s32 a;
+    s32 b;
+    u8 *p;
+    s32 off;
 
-    var_s1 = 0;
-    var_s2 = &D_800A5E88;
-    var_s0 = 0;
+    i = 0;
+    a = 0x800;
+    b = 0x20;
+    p = &D_800A5E88;
+    off = 0;
     do {
-        *(&D_800A5E88 + var_s0) = 0x800;
-        *(&D_800A5E8C + var_s0) = 0x800;
-        *(&D_800A5E90 + var_s0) = 0;
-        *(&D_800A5E94 + var_s0) = 0x20;
-        *(&D_800A5E95 + var_s0) = 0x20;
-        *(&D_800A5E96 + var_s0) = 0x20;
-        func_80028620(var_s1, var_s2);
-        var_s2 += 0x10;
-        var_s1 += 1;
-        var_s0 += 0x10;
-    } while (var_s1 < 3);
+        *(s32 *)((s32)&D_800A5E88 + off) = a;
+        *(s32 *)((s32)&D_800A5E8C + off) = a;
+        *(s32 *)((s32)&D_800A5E90 + off) = 0;
+        *(u8 *)((s32)&D_800A5E94 + off) = b;
+        *(u8 *)((s32)&D_800A5E95 + off) = b;
+        *(u8 *)((s32)&D_800A5E96 + off) = b;
+        func_80028620(i, p);
+        p += 0x10;
+        i++;
+        off += 0x10;
+    } while (i < 3);
 }

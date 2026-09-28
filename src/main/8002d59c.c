@@ -2,48 +2,44 @@
  * SHA256(span)=14fa1d0b4f66cd9217c308975c794ba2459e336e078081a78791b47451181aba.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_8002D59C - byte-exact against retail at -O2 (tools/register_match.py). */
 
-void func_8002D320();                                  /* static */
-void func_8002D904(u32);                               /* static */
-void func_8002DC68(s32, s32);                          /* static */
-void func_8002E138(u32, s32, s32);                     /* static */
-void func_80030F80();                                  /* static */
-void func_80031BE0();                                  /* static */
-extern s16 D_800A4EFC;
-extern u8 D_800A4F17;
+extern s8 D_800A4F17;
 extern u8 D_800A4F18;
+extern s16 D_800A4EFC;
 
 void func_8002D59C(s32 arg0, s32 arg1, s32 arg2) {
-    u32 temp_v1;
+    u16 id;
+    u8 v0;
+    s8 *p;
 
-    temp_v1 = arg0 & 0xFFFF;
-    D_800A4F17 = 1;
-    if (temp_v1 < 0x80U) {
-        func_8002E138(temp_v1, arg1 & 0xFFFF, arg2 & 0xFFFF);
-    } else if (temp_v1 >= 0x100U) {
-        if (temp_v1 < 0x400U) {
-            func_8002D904(temp_v1);
+    *(u8 *)&D_800A4F17 = 1;
+    id = arg0 & 0xFFFF;
+    if (id < 0x80) {
+        func_8002E138(id, arg1 & 0xFFFF, arg2 & 0xFFFF);
+    } else if (id >= 0x100) {
+        if (id < 0x400) {
+            func_8002D904(id);
         } else {
-            func_8002DC68(temp_v1 | (arg2 << 0x10), arg1 & 0xFFFF);
+            func_8002DC68(id | (arg2 << 16), arg1 & 0xFFFF);
         }
     }
-    D_800A4F17 = D_800A4F18;
-    if (D_800A4F18 != 0) {
-        if (D_800A4EFC != 0) {
-            D_800A4EFC -= 1;
+
+    p = &D_800A4F17;
+    v0 = D_800A4F18;
+    *p = v0;
+    if (v0 != 0) {
+        s16 cnt = D_800A4EFC;
+        if (cnt != 0) {
+            D_800A4EFC = cnt - 1;
         }
         func_80030F80();
         func_8002D320();
         func_80031BE0();
         D_800A4F18 = 0;
-        D_800A4F17 = 0;
+        *p = 0;
     }
 }

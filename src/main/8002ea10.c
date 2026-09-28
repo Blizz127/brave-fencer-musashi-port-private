@@ -1,27 +1,33 @@
 /* Exact retail word export for [8002EA10,8002EAB0); EXE and assembly verified. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_8002EA10 - byte-exact against retail at -O2 (tools/register_match.py). */
 
-void func_8002EC10();                                  /* static */
-s32 func_800381E4(s16, s32);                          /* static */
-s32 func_8003836C(s16);                             /* static */
-void func_800383A4(s16);                               /* static */
-extern s16 D_800A4E86;
 extern u16 D_800A4E8E;
+extern s16 D_800A4E86;
+
+extern s32  func_8003836C(s32 a0);
+extern s32  func_800381E4(s32 a0, s32 a1);
+extern void func_8002EC10(void);
+extern void func_800383A4(s16 a0);
 
 void func_8002EA10(void) {
-    if ((D_800A4E8E & 4) && ((func_8003836C(D_800A4E86) << 0x10) != 0)) {
-        if (func_800381E4(D_800A4E86, 0) != 0) {
-            func_8002EC10();
-            return;
+    register u16 *s0 __asm__("$16");
+    u16 v0;
+    s32 ret;
+
+    s0 = &D_800A4E8E;
+    v0 = *s0;
+    if (v0 & 4) {
+        ret = func_8003836C(D_800A4E86);
+        if ((ret << 16) != 0) {
+            if (func_800381E4(D_800A4E86, 0) != 0) {
+                func_8002EC10();
+            } else {
+                func_800383A4(D_800A4E86);
+                *s0 = *s0 | 0x10;
+            }
         }
-        func_800383A4(D_800A4E86);
-        D_800A4E8E |= 0x10;
     }
 }

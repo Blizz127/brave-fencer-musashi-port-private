@@ -1,38 +1,40 @@
 /* Exact retail word export for [8002E94C,8002EA10); EXE and assembly verified. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_8002E94C - byte-exact against retail at -O2 (tools/register_match.py). */
 
-extern s32 D_8006A9EC[];
-void func_8002EAB0(u16);                         /* static */
-extern u16 D_800A4E8C;
-extern u16 D_800A4E8E;
-extern u16 D_800A4EE2;
-extern s16 D_800A4EE4;
-extern u8 D_800A4EE6;
+void func_8002E94C(s32 a0)
+{
+    extern u16 D_800A4E8E;
+    extern u16 D_800A4E8C;
+    extern u8  D_800A4EE6;
+    extern u16 D_800A4EE4;
+    extern u16 D_800A4EE2;
+    extern u16 D_8006A9EC[];
+    extern void func_8002EAB0(void);
+    register u8 *a1 __asm__("$5");
+    u8 fl;
+    u8 clr;
+    u16 v;
 
-void func_8002E94C(s32 arg0) {
-    s32 var_s0;
-    u8 temp_a0;
-
-    var_s0 = arg0;
-    if ((D_800A4E8E & 4) && (D_800A4E8C == 0x3E) && (D_800A4E8E & 0x10)) {
-        func_8002EAB0(D_800A4E8E);
+    if ((D_800A4E8E & 0x4) != 0 && D_800A4E8C == 0x3E && (D_800A4E8E & 0x10) != 0) {
+        func_8002EAB0();
     }
-    temp_a0 = D_800A4EE6 & 0xFB;
-    if (D_800A4EE6 & 4) {
-        D_800A4EE6 = temp_a0;
-        if (!(D_800A4EE6 & 2)) {
-            if ((u32) (var_s0 & 0xFFFF) >= 5U) {
-                var_s0 = 4;
+
+    a1 = &D_800A4EE6;
+    fl = *a1;
+    if (fl & 0x4) {
+        clr = fl & 0xFB;
+        *a1 = clr;
+        if (!(fl & 0x2)) {
+            if ((u16)a0 >= 5) {
+                a0 = 4;
             }
             D_800A4EE4 = 0x4000;
-            D_800A4EE6 = temp_a0 | 1;
-            D_800A4EE2 = *(D_8006A9EC + ((var_s0 & 0xFFFF) * 2));
+            v = D_8006A9EC[(u16)a0];
+            *a1 = clr | 0x1;
+            D_800A4EE2 = v;
         }
     }
 }

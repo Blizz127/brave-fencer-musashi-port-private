@@ -1,80 +1,88 @@
 /* Exact retail word export for [8002D034,8002D1F0); EXE and assembly verified. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-void func_8002D240(s16, s16, s16, s16);                /* static */
-void func_8002D29C();                                  /* static */
-void func_8002DF80();                                  /* static */
-extern u8 D_8006A980;
+/* func_8002D034 - byte-exact against retail at -O2 (tools/register_match.py). */
+
 extern u8 D_800A46BA;
+extern void func_8002D29C(void);
+
+extern s32 D_800A64B0;
+
+extern u8 D_8006A980;
+extern void func_8002DF80(void);
+
+extern void (*D_800A4F24)(void);
+
+extern u8 D_800A4E70;
 extern s32 D_800A4E68;
 extern s16 D_800A4E6C;
-extern u8 D_800A4E70;
-extern s16 D_800A4E74;
-extern s16 D_800A4E76;
-extern s16 D_800A4E78;
+extern void func_8002D240(s32 a0);
+
 extern u8 D_800A4E7A;
-extern s32 (*D_800A4F24)();
-extern s32 *D_800A64B0;
+extern s16 D_800A4E76;
+extern u16 D_800A4E74;
+extern s16 D_800A4E78;
 
 void func_8002D034(void) {
-    void *var_s0;
-    s32 temp_v0;
-    s32 temp_v0_2;
-    s32 temp_v0_3;
-    s32 var_s1;
+    s32 *ptr;
+    s32 i;
 
-    if (D_800A46BA != 0) {
+    if (D_800A46BA) {
         func_8002D29C();
     }
-    var_s0 = &D_800A64B0;
-    var_s1 = 0;
-    do {
-        temp_v0 = var_s0->unk0;
-        temp_v0_2 = temp_v0 - 1;
-        if (temp_v0 != 0) {
-            var_s0->unk0 = temp_v0_2;
-            if (temp_v0_2 == 0) {
-                var_s0->unk8(var_s0);
-            }
+
+    ptr = &D_800A64B0;
+    for (i = 0; i < 8; i++, ptr = (s32 *)((u8 *)ptr + 0xC)) {
+        if (ptr[0] != 0 && --ptr[0] == 0) {
+            void (*func)(void *) = (void (*)(void *))ptr[2];
+            func(ptr);
         }
-        var_s1 += 1;
-        var_s0 += 0xC;
-    } while (var_s1 < 8);
-    if (D_8006A980 & 0xEF) {
+    }
+
+    if ((D_8006A980 & 0xEF) != 0) {
         func_8002DF80();
     }
-    if (D_800A4F24 != 0) {
+
+    if (D_800A4F24 != NULL) {
         D_800A4F24();
     }
+
     if (D_800A4E70 != 0) {
-        temp_v0_3 = D_800A4E68 - 1;
-        D_800A4E68 = temp_v0_3;
-        if (temp_v0_3 == 0) {
+        if (--D_800A4E68 == 0) {
+            s32 a0 = D_800A4E6C;
             D_800A4E70 = 0;
-            func_8002D240(D_800A4E6C);
+            func_8002D240(a0);
         }
     }
-    if (D_800A4E7A != 0) {
-        if (D_800A4E74 < D_800A4E76) {
-            if (D_800A4E74 < (D_800A4E76 - D_800A4E78)) {
-                D_800A4E74 += D_800A4E78;
+
+    {
+        register u8 *flagPtr __asm__("$8");
+        flagPtr = &D_800A4E7A;
+    if (*flagPtr != 0) {
+        if (D_800A4E76 > (s16)D_800A4E74) {
+            s16 delta = D_800A4E78;
+            if ((s16)D_800A4E74 < D_800A4E76 - delta) {
+                D_800A4E74 = (s16)D_800A4E74 + delta;
             } else {
-                goto block_20;
+                D_800A4E74 = D_800A4E76;
+                *flagPtr = 0;
             }
-        } else if ((D_800A4E76 + D_800A4E78) < D_800A4E74) {
-            D_800A4E74 -= D_800A4E78;
         } else {
-block_20:
-            D_800A4E74 = D_800A4E76;
-            D_800A4E7A = 0;
+            s16 delta = D_800A4E78;
+            if (D_800A4E76 + delta < (s16)D_800A4E74) {
+                D_800A4E74 = (s16)D_800A4E74 - delta;
+            } else {
+                D_800A4E74 = D_800A4E76;
+                *flagPtr = 0;
+            }
         }
-        func_8002D240(D_800A4E74, D_800A4E74, D_800A4E74, D_800A4E76);
+
+        func_8002D240((s16)D_800A4E74);
+    }
     }
 }

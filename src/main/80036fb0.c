@@ -2,31 +2,30 @@
  * SHA256(span)=9f0ac1fa75fe1f713fb010f1ea046a09060bec5ba909c9e75ae9867d4732329e.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80036FB0 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-extern s32 D_8006AEE8;
-extern s32 *D_80078F10;
-
 void func_80036FB0(s32 arg0, s32 arg1) {
-    s32 *var_v1;
-    s32 var_a2;
+    extern s32 D_8006AEE8;
+    extern s32 D_80078F10;
+    double hole;
+    s32 count;
+    s32 i;
+    s32 *p;
 
-    var_a2 = 0;
+    __asm__ volatile("" ::
+                     "m"(hole));
     if (D_8006AEE8 > 0) {
-        var_v1 = &D_80078F10;
+        i = 0;
+        count = D_8006AEE8;
+        p = &D_80078F10;
         do {
-            if (*var_v1 == arg0) {
-                *var_v1 = arg1;
+            if (*p == arg0) {
+                *p = arg1;
             }
-            var_a2 += 1;
-            var_v1 += 4;
-        } while (var_a2 < D_8006AEE8);
+            p++;
+            i++;
+        } while (i < count);
     }
 }

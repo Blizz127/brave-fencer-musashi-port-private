@@ -1,60 +1,65 @@
 /* Exact retail word export for [80038838,800388E8); EXE and assembly verified. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80038838 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+void func_80038838(void *arg0)
+{
+    register unsigned char *a3 asm("$7");
+    register unsigned char *a1 asm("$5");
+    register unsigned char *v1;
+    register unsigned char *v0 asm("$2");
+    register int a2 asm("$6");
+    register int v0_c;
+    register int const1 asm("$8");
+    register int const2 asm("$9");
+    register int const3 asm("$3");
 
-void func_80038838(void *arg0) {
-    s32 var_a2_2;
-    s32 var_v0;
-    s8 *var_a3;
-    s8 *var_v1;
-    s8 var_a2;
-    void *var_a1;
-    void *var_v0_2;
+    a3 = (unsigned char *)arg0 + 0x1A;
+    a2 = 0;
+    const1 = 0x40;
+    const2 = 0x7F;
+    a1 = (unsigned char *)arg0 + 0x1B;
 
-    var_a3 = arg0 + 0x1A;
-    var_a2 = 0;
-    var_a1 = arg0 + 0x1B;
     do {
-        var_v1 = var_a3 + 9;
-        var_v0 = 0xF;
-        *var_a3 = var_a2;
-        M2C_FIELD(var_a1, s16 *, 1) = 0x40;
-        M2C_FIELD(var_a1, s8 *, 3) = 0x40;
-        M2C_FIELD(var_a1, s8 *, 6) = 0;
-        M2C_FIELD(var_a1, s8 *, 0) = 0x7F;
-loop_2:
-        *var_v1 = 0;
-        var_v0 -= 1;
-        var_v1 += 1;
-        if (var_v0 >= 0) {
-            goto loop_2;
-        }
-        var_a2 += 1;
-        var_a1 += 0x1A;
-        var_a3 += 0x1A;
-    } while (var_a2 < 0x10);
-    var_a2_2 = 0;
-    var_v0_2 = arg0;
+        v1 = a3 + 0x9;
+        v0_c = 0xF;
+        a3[0x0] = a2;
+        *(unsigned short *)(a1 + 0x1) = const1;
+        a1[0x3] = const1;
+        a1[0x6] = 0;
+        a1[0x0] = const2;
+
+        do {
+            v1[0x0] = 0;
+            v0_c--;
+            v1++;
+        } while (v0_c >= 0);
+
+        a2++;
+        a1 += 0x1A;
+        a3 += 0x1A;
+    } while (a2 < 0x10);
+
+    a2 = 0;
+    const3 = 0x4000;
+    v0 = (unsigned char *)arg0;
     do {
-        M2C_FIELD(var_v0_2, s8 *, 0x18) = 0;
-        M2C_FIELD(var_v0_2, s16 *, 0x12) = 0x4000;
-        var_a2_2 += 1;
-        var_v0_2 += 8;
-    } while (var_a2_2 <= 0);
-    M2C_FIELD(arg0, s32 *, 8) = 1;
-    M2C_FIELD(arg0, s32 *, 0x1D0) = 0xE10;
-    M2C_FIELD(arg0, s32 *, 0x1D4) = 0xE10;
-    M2C_FIELD(arg0, s32 *, 0x1CC) = 0xE10;
-    M2C_FIELD(arg0, s8 *, 0x1F4) = 0;
-    M2C_FIELD(arg0, s16 *, 0x1E4) = 0x78;
-    M2C_FIELD(arg0, s8 *, 0x1F7) = 0;
-    M2C_FIELD(arg0, s8 *, 0x1F8) = 0;
-    M2C_FIELD(arg0, s8 *, 0x1F9) = 0;
-    M2C_FIELD(arg0, s8 *, 0x1FA) = 0;
-    M2C_FIELD(arg0, s8 *, 0x1F6) = 0;
+        v0[0x18] = 0;
+        *(unsigned short *)(v0 + 0x12) = const3;
+        v0 += 0x8;
+        a2++;
+    } while (a2 <= 0);
+
+    *(int *)((unsigned long)arg0 + 0x8) = 1;
+    *(int *)((unsigned long)arg0 + 0x1D0) = 0xE10;
+    *(int *)((unsigned long)arg0 + 0x1D4) = 0xE10;
+    *(int *)((unsigned long)arg0 + 0x1CC) = 0xE10;
+    *(unsigned char *)((unsigned long)arg0 + 0x1F4) = 0;
+    *(unsigned short *)((unsigned long)arg0 + 0x1E4) = 0x78;
+    *(unsigned char *)((unsigned long)arg0 + 0x1F7) = 0;
+    *(unsigned char *)((unsigned long)arg0 + 0x1F8) = 0;
+    *(unsigned char *)((unsigned long)arg0 + 0x1F9) = 0;
+    *(unsigned char *)((unsigned long)arg0 + 0x1FA) = 0;
+    *(unsigned char *)((unsigned long)arg0 + 0x1F6) = 0;
 }

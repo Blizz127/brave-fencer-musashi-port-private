@@ -1,22 +1,20 @@
-/* Main-exec range [80035210,80035270) from the SLUS executable.
- * SHA256(span)=820cc2e556d7aff76bb316ece9a0666f242be0505455c8dd1f6a3dbf6abeb2a8.
- * Word export for the native seam; the body below is an
- * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Exact retail word export [80035210,80035270); verified against pinned EXE and asm. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80035210 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-void func_8003C438(s32, s32);                          /* static */
-void func_8003C498(s32);                               /* static */
 extern s32 D_80076218;
 
-void func_80035210(s32 arg0, s32 arg1) {
-    func_8003C498(D_80076218);
-    func_8003C438(arg0, arg1);
-    D_80076218 += arg1;
+extern void func_8003C498(s32);
+extern void func_8003C438(s32, s32); /* SpuWrite */
+
+void func_80035210(s32 a0, s32 a1)
+{
+    register s32 v1 __asm__("$3");
+
+    v1 = D_80076218;
+    func_8003C498(v1);
+    func_8003C438(a0, a1);
+    v1 = D_80076218;
+    D_80076218 = v1 + a1;
 }

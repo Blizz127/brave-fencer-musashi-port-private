@@ -1,35 +1,38 @@
 /* Exact retail word export for [800348A8,8003491C); EXE and assembly verified. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_800348A8 - byte-exact against retail at -O2 (tools/register_match.py). */
 
-extern u16 D_800A46E8;
+s32 aF800301A4(void) __asm__("func_800301A4");
+extern void func_800301A4(void);
+extern s32 func_800348A8(u32);
+extern u16 D_800A46E8[];
 
 s32 func_800348A8(u32 arg0) {
-    s32 var_v0;
-    s32 var_v1;
-    u16 *var_a1;
-    u16 *var_a2;
-    u32 temp_a0;
+    u16 *p;
+    u16 *q;
+    s32 i;
+    u32 lo;
+    u32 hi;
+    s32 five;
 
-    var_a2 = &D_800A46E8;
-    var_v1 = 0;
-    temp_a0 = arg0 >> 0x10;
-    var_a1 = &D_800A46E8 + 6;
-loop_1:
-    if ((*var_a2 != 5) || (M2C_FIELD(var_a1, u16 *, -2) != (arg0 & 0xFFFF)) || ((var_v0 = var_v1 + 1, (temp_a0 != 0)) && (var_v0 = var_v1 + 1, (M2C_FIELD(var_a1, u16 *, 0) != temp_a0)))) {
-        var_v1 += 1;
-        var_a1 += 0x54;
-        var_a2 += 0x54;
-        if (var_v1 >= 8) {
-            var_v0 = 0;
-        } else {
-            goto loop_1;
+    p = D_800A46E8;
+    i = 0;
+    five = 5;
+    lo = arg0 & 0xFFFF;
+    hi = arg0 >> 16;
+    q = p + 3;
+    do {
+        __asm__ ("" :: "r"(i), "r"(i));
+        if (p[0] == five && q[-1] == lo) {
+            if (hi == 0 || q[0] == hi) {
+                return i + 1;
+            }
         }
-    }
-    return var_v0;
+        i++;
+        q += 0x2A;
+        p += 0x2A;
+    } while (i < 8);
+    return 0;
 }

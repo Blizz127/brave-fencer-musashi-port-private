@@ -1,23 +1,22 @@
 /* Exact retail word export for [80034A54,80034A9C); EXE and assembly verified. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_80034A54 - byte-exact against retail at -O2 (tools/register_match.py). */
 
-extern u8 D_800A4F17;
+extern s8 D_800A4F17;
 
-void func_80034A54(void *arg0) {
-    u8 temp_a0;
+void func_80034A54(s32 a0) {
+    s32 self = a0;
+    u8 v0 = *(u8 *)(self + 0x37);
 
-    if (M2C_FIELD(arg0, u8 *, 0x37) & 1) {
-        temp_a0 = D_800A4F17;
-        D_800A4F17 = 1;
-        M2C_FIELD(arg0, s8 *, 0x32) = 1;
-        M2C_FIELD(arg0, s16 *, 0x2E) = 0x3FF;
-        M2C_FIELD(arg0, s16 *, 0x30) = 0xFFF;
-        D_800A4F17 = temp_a0;
+    if ((v0 & 0x1) != 0) {
+        s8 *p = &D_800A4F17;
+        s8 old = *p;
+        *p = 1;
+        *(u8 *)(self + 0x32) = 1;
+        *(s16 *)(self + 0x2E) = 0x3FF;
+        *(s16 *)(self + 0x30) = 0xFFF;
+        *p = old;
     }
 }

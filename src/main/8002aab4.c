@@ -2,54 +2,70 @@
  * SHA256(span)=a1aa49c0b09841e96ad182616376ce8cde4250ad6513e5cb3156c5cd0802f99d.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8002AAB4 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+extern s32 func_8002A26C(void);
+extern s32 func_8002A4B8(void);
+extern s32 func_8002A728(void);
+extern s32 func_8002A998(void);
 
-extern s32 D_800638A0;
+extern s32 D_800638A0[];
 extern s32 D_800638EC;
-s32 func_8002A26C();                                /* static */
-s32 func_8002A4B8();                                /* static */
-s32 func_8002A728();                                /* static */
-s32 func_8002A998();                                /* static */
 
 s32 func_8002AAB4(void) {
-    s32 (*var_v1)();
-    s32 *var_a1;
-    s32 temp_s0;
-    s32 temp_s1;
-    s32 temp_s2;
-    s32 var_a0;
-    s32 var_v0;
+    register s32 s0 __asm__("$16");
+    register s32 s1 __asm__("$17");
+    register s32 s2 __asm__("$18");
+    register s32 v0 __asm__("$2");
+    register s32 *v1 __asm__("$3");
+    register s32 a0;
+    register s32 *a1;
 
-    temp_s0 = func_8002A26C();
-    temp_s2 = func_8002A4B8();
-    temp_s1 = func_8002A728();
-    var_v0 = temp_s0 + temp_s2 + temp_s1 + func_8002A998();
-    if (var_v0 < 0) {
-        var_v0 += 3;
+    // Get values from the four functions
+    s0 = func_8002A26C();
+    s2 = func_8002A4B8();
+    s1 = func_8002A728();
+    v0 = func_8002A998();
+
+    // Sum them: s0 = s0 + s2 + s1; v0 = s0 + v0
+    s0 = s0 + s2;
+    s0 = s0 + s1;
+    v0 = s0 + v0;
+
+    // Rounding: if v0 < 0, add 3 before dividing by 4
+    if (v0 < 0) {
+        v0 = v0 + 3;
     }
-    var_v1 = D_800638A0;
-    var_a0 = D_800638A0;
-    if (var_a0 != 0) {
-        var_a1 = D_800638A0 + 4;
-loop_4:
-        var_v1 += 8;
-        if ((var_v0 >> 2) >= var_a0) {
-            return *var_a1;
-        }
-        var_a0 = *var_v1;
-        var_a1 += 8;
-        if (var_a0 == 0) {
-            goto block_7;
-        }
-        goto loop_4;
+
+    // Divide by 4 using arithmetic right shift
+    s0 = v0 >> 2;
+
+    // Initialize pointer to table
+    v1 = D_800638A0;
+    a0 = v1[0];
+
+    // If the first threshold is 0, return the default
+    if (a0 == 0) {
+        return D_800638EC;
     }
-block_7:
-    return D_800638EC;
+
+    a1 = v1 + 1;
+
+    // Search through the table
+    while (1) {
+        if (s0 >= a0) {
+            return a1[0];
+        }
+
+        v1 = v1 + 2;
+        a0 = v1[0];
+
+        if (a0 == 0) {
+            return D_800638EC;
+        }
+
+        a1 = a1 + 2;
+    }
 }

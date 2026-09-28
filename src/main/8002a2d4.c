@@ -1,33 +1,29 @@
 /* Main-exec range [8002A2D4,8002A354) from the SLUS executable.
  * SHA256(span)=7d738daf4841091fc4649276078870993d6d60746426c3eeb54e5efaa093d2ac.
- * Word export for the native seam; the body below is an
- * UNVERIFIED draft, not an oracle match claim. */
+ * Word export for the native seam. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8002A2D4 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+extern s32 func_8002A354(s32 arg0);
+extern s32 func_8002A4B8(void);
+extern void func_8016E918(s16 a0, s16 a1);
+extern void func_8002D4C8(s32 a0, s32 a1);
+extern void func_8002AAAC(void);
+extern u8 D_800638FE[];
 
-void func_8016E918(s32, s16);                /* extern */
-extern s32 D_800638FE[];
-s32 func_8002A354();                                /* static */
-s32 func_8002A4B8();                                /* static */
-void func_8002AAAC();                            /* static */
-void func_8002D4C8(s32, s32);            /* static */
+s32 func_8002A2D4(s32 arg0) {
+    s32 i;
+    s32 off;
 
-s32 func_8002A2D4(void) {
-    s32 temp_v0;
-    s32 var_v0;
-
-    var_v0 = 0;
-    if (func_8002A354() != 0) {
-        temp_v0 = func_8002A4B8();
-        func_8016E918(1, (s16) (*(D_800638FE + (temp_v0 * 0x10)) - *(D_800638FE + ((temp_v0 - 1) * 0x10))));
+    if (func_8002A354(arg0) != 0) {
+        i = func_8002A4B8();
+        off = i * 16;
+        i = (i - 1) * 16;
+        func_8016E918(1, *(u16 *)(D_800638FE + off) - *(u16 *)(D_800638FE + i));
         func_8002D4C8(0xB2C, 0);
         func_8002AAAC();
-        var_v0 = 1;
+        return 1;
     }
-    return var_v0;
+    return 0;
 }

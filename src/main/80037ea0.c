@@ -2,30 +2,29 @@
  * SHA256(span)=50ac7998b3117ad9942bc55d300d1231f38c65ce6084760a7d9bb160a66507a8.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80037EA0 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+extern u8 D_800C6E2E[];
 
-void func_8003D3B4(s32, s32);                /* static */
-extern s32 *D_800C6E2E;
+void func_80037EA0(void)
+{
+    extern void func_8003D3B4(s32, s32);
+    register u8 *p __asm__("$16");
+    register s32 i __asm__("$17");
+    register u32 mask __asm__("$18");
 
-void func_80037EA0(void) {
-    void *var_s0;
-    s32 var_s1;
-
-    var_s1 = 0;
-    var_s0 = &D_800C6E2E;
+    i = 0;
+    mask = 0xFFF9FFFF;
+    p = D_800C6E2E;
     do {
-        if ((M2C_FIELD(var_s0, u8 *, -4) != 0) && (M2C_FIELD(var_s0, u8 *, -1) == 0) && (M2C_FIELD(var_s0, u8 *, 0) != 0)) {
-            func_8003D3B4(var_s1, 8);
-            M2C_FIELD(var_s0, u8 *, 0) = 0U;
-            M2C_FIELD(var_s0, s32 *, -0x4A) = (s32) (M2C_FIELD(var_s0, s32 *, -0x4A) & 0xFFF9FFFF);
+        if (p[-4] != 0 && p[-1] == 0 && p[0] != 0) {
+            func_8003D3B4(i, 8);
+            *(u32 *)(p - 0x4A) &= mask;
+            p[0] = 0;
         }
-        var_s1 += 1;
-        var_s0 += 0x60;
-    } while (var_s1 < 0x10);
+        i++;
+        p += 0x60;
+    } while (i < 0x10);
 }

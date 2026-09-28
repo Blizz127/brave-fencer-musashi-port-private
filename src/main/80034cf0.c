@@ -1,51 +1,58 @@
 /* Exact retail word export for [80034CF0,80034DFC); EXE and assembly verified. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_80034CF0 - byte-exact against retail at -O2 (tools/register_match.py). */
 
-extern s32 D_8006AEF5;
+extern u8 D_8006AEF5;
 extern s32 D_8006AEF8;
 extern s32 D_8006AEFC;
-extern s32 *D_80076118;
+extern u8 D_80076118[];
 
-s32 func_80034CF0(void *arg0) {
-    s32 temp_a0;
-    s32 var_a2;
-    u8 temp_t0;
-    void *temp_v1;
+s32 func_80034CF0(u8 *p) {
+    s32 idx = D_8006AEFC;
+    u8 saved = D_8006AEF5;
+    s32 limit = D_8006AEF8;
+    u8 *self;
+    s32 f28;
+    s32 oldIdx;
+    s32 ret;
 
-    temp_t0 = D_8006AEF5;
-    D_8006AEF5 = 1U;
-    var_a2 = D_8006AEFC + 1;
-    if (var_a2 >= 4) {
-        var_a2 = 0;
+    D_8006AEF5 = 1;
+    idx = idx + 1;
+    if (idx >= 4) {
+        idx = 0;
     }
-    if (var_a2 != D_8006AEF8) {
-        temp_v1 = (D_8006AEFC * 0x30) + &D_80076118;
-        M2C_FIELD(temp_v1, s32 *, 8) = (s32) M2C_FIELD(arg0, s32 *, 8);
-        M2C_FIELD(temp_v1, s32 *, 0xC) = (s32) M2C_FIELD(arg0, s32 *, 0xC);
-        M2C_FIELD(temp_v1, s32 *, 0x10) = (s32) M2C_FIELD(arg0, s32 *, 0x10);
-        M2C_FIELD(temp_v1, s32 *, 0x14) = (s32) M2C_FIELD(arg0, s32 *, 0x14);
-        M2C_FIELD(temp_v1, s32 *, 0x18) = (s32) M2C_FIELD(arg0, s32 *, 0x18);
-        M2C_FIELD(temp_v1, s32 *, 0x1C) = (s32) M2C_FIELD(arg0, s32 *, 0x1C);
-        M2C_FIELD(temp_v1, s32 *, 0x20) = (s32) M2C_FIELD(arg0, s32 *, 0x20);
-        M2C_FIELD(temp_v1, s32 *, 0x24) = (s32) M2C_FIELD(arg0, s32 *, 0x24);
-        M2C_FIELD(temp_v1, s8 *, 0) = 1;
-        M2C_FIELD(temp_v1, s8 *, 1) = 0;
-        M2C_FIELD(temp_v1, s8 *, 2) = 0;
-        M2C_FIELD(temp_v1, s8 *, 3) = 0;
-        M2C_FIELD(temp_v1, s8 *, 7) = 1;
-        temp_a0 = D_8006AEFC;
-        D_8006AEFC = var_a2;
-        D_8006AEF5 = temp_t0;
-        M2C_FIELD(temp_v1, s32 *, 0x28) = (s32) M2C_FIELD(arg0, s32 *, 0x28);
-        M2C_FIELD(temp_v1, s32 *, 0x2C) = temp_a0;
-        return temp_a0 + 1;
+
+    if (idx == limit) {
+        D_8006AEF5 = saved;
+        return 0;
     }
-    D_8006AEF5 = temp_t0;
-    return 0;
+
+    self = D_80076118 + D_8006AEFC * 0x30;
+
+    *(s32 *)(self + 0x8) = *(s32 *)(p + 0x8);
+    *(s32 *)(self + 0xC) = *(s32 *)(p + 0xC);
+    *(s32 *)(self + 0x10) = *(s32 *)(p + 0x10);
+    *(s32 *)(self + 0x14) = *(s32 *)(p + 0x14);
+    *(s32 *)(self + 0x18) = *(s32 *)(p + 0x18);
+    *(s32 *)(self + 0x1C) = *(s32 *)(p + 0x1C);
+    *(s32 *)(self + 0x20) = *(s32 *)(p + 0x20);
+    *(s32 *)(self + 0x24) = *(s32 *)(p + 0x24);
+    f28 = *(s32 *)(p + 0x28);
+
+    self[0] = 1;
+    self[1] = 0;
+    self[2] = 0;
+    self[3] = 0;
+    self[7] = 1;
+
+    oldIdx = D_8006AEFC;
+    D_8006AEFC = idx;
+    D_8006AEF5 = saved;
+
+    ret = oldIdx + 1;
+    *(s32 *)(self + 0x28) = f28;
+    *(s32 *)(self + 0x2C) = oldIdx;
+    return ret;
 }

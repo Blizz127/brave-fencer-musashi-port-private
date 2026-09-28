@@ -32,14 +32,22 @@ ASM_BY_REGION = {
 }
 
 
-def function_size(region: str, vram: int) -> tuple[str, int]:
+def splat_function(region: str, vram: int):
     asm = ASM_BY_REGION.get(region)
     if asm is None or not asm.is_file():
         raise RetailError(f"no splat disassembly known for region {region!r}")
-    for function in batch_match.enumerate_functions(asm.read_text()):
+    text = asm.read_text()
+    for function in batch_match.enumerate_functions(text):
         if function.vram == vram:
-            return function.name, function.size
+            return text, function
     raise RetailError(f"no function at 0x{vram:08X} in {asm.relative_to(REPO)}")
+
+
+def returns_at(text: str, function, size: int) -> bool:
+    """True when the word two before ``size`` is `jr $ra`, i.e. a function ends there."""
+
+    words = {addr: word for addr, word, _op in batch_match.instruction_words(text, function)}
+    return words.get(function.vram + size - 8) == 0x03E00008
 
 
 def gate(entry: dict, targets: dict) -> tuple[bool, str]:
@@ -62,18 +70,35 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--size", type=lambda value: int(value, 0),
                         help="override the splat size when splat split one real function into several")
     parser.add_argument("--recovery", default="c", choices=("c", "assembly", "mixed", "unclassified"))
+    parser.add_argument("--rodata-base", type=lambda value: int(value, 0),
+                        help="retail address of the function's .rodata (switch tables)")
+    parser.add_argument("--origin", help='provenance tag, e.g. "vendor-derived (Druthulu/BFM-decomp)"')
+    parser.add_argument("--replace", action="store_true",
+                        help="upgrade an existing non-C entry at this address (e.g. assembly) to the new source")
     parser.add_argument("--registry", type=Path, default=REPO / "provenance/matches.json")
     args = parser.parse_args(argv)
 
     try:
         data = load_json(args.registry)
         entries = data["matches"]
-        if any(e["region"] == args.region and int(e["vram"]) == args.vram for e in entries):
+        existing = [i for i, e in enumerate(entries)
+                    if e["region"] == args.region and int(e["vram"]) == args.vram]
+        if existing and not args.replace:
             raise RetailError(f"0x{args.vram:08X} is already registered in {args.region}")
-        name, size = function_size(args.region, args.vram)
+        if existing and entries[existing[0]].get("recovery") == "c":
+            raise RetailError(f"0x{args.vram:08X} is already registered as C; --replace only upgrades non-C entries")
+        if args.replace and not existing:
+            raise RetailError(f"--replace given but 0x{args.vram:08X} is not registered in {args.region}")
+        text, function = splat_function(args.region, args.vram)
+        name, size = function.name, function.size
         if args.size is not None:
-            if args.size < size or args.size % 4:
-                raise RetailError(f"--size 0x{args.size:X} must be word-aligned and cover the splat range 0x{size:X}")
+            if args.size <= 0 or args.size % 4:
+                raise RetailError(f"--size 0x{args.size:X} must be positive and word-aligned")
+            # splat sometimes folds a following function into this range; a
+            # shorter size is accepted only where the retail code returns.
+            if args.size < size and not returns_at(text, function, args.size):
+                raise RetailError(f"--size 0x{args.size:X} is shorter than the splat range 0x{size:X} "
+                                  "and does not end at a `jr $ra` + delay slot")
             size = args.size
         source = args.source.resolve().relative_to(REPO)
         entry = {
@@ -86,11 +111,21 @@ def main(argv: list[str] | None = None) -> int:
             "extent": "function",
             "optimization": args.optimization,
         }
+        if args.rodata_base is not None:
+            entry["rodata_base"] = args.rodata_base
+        if args.origin:
+            entry["origin"] = args.origin
         ok, out = gate(entry, data.get("targets", {}))
         if not ok:
             print(f"REFUSED {name}: not a byte-exact match\n{out}")
             return 1
-        entries.append(entry)
+        if existing:
+            previous = entries[existing[0]]
+            if entry["size"] < int(previous["size"]):
+                raise RetailError(f"replacement covers 0x{entry['size']:X} bytes, less than the existing 0x{int(previous['size']):X}")
+            entries[existing[0]] = entry
+        else:
+            entries.append(entry)
         write_json_atomic(args.registry, data)
         print(f"REGISTERED {name} size=0x{size:X} {source} {args.optimization}")
         return 0

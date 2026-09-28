@@ -1,42 +1,53 @@
 /* Exact retail word export for [8002E638,8002E700); EXE and assembly verified. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_8002E638 - byte-exact against retail at -O2 (tools/register_match.py). */
 
-extern s32 D_8006A99C[];
-extern s32 D_8006AEEC;
-void func_8002E700(s32);                         /* static */
-s32 func_8003836C(s16);                             /* static */
-extern s32 D_80078F10;
-extern s32 D_800A46B4;
-extern u16 D_800A46B8;
-extern s8 D_800A46BA;
-extern s16 D_800A4E86;
 extern u16 D_800A4E8E;
-extern s16 D_800A4EF4;
+extern s16 D_800A4E86;
+extern s32 D_80078F10;
+extern u16 D_8006A99C[];
+extern u16 D_800A46B8;
+extern u8 D_8006AEEC;
+extern s32 D_800A46B4;
+extern u8 D_800A46BA;
+extern u16 D_800A4EF4;
 
-void func_8002E638(s32 arg0) {
-    u16 var_v1;
-    u32 temp_a0;
+extern s32 func_8003836C(s32 a0);
+extern void func_8002E700(s32 a0);
 
-    if ((D_800A4E8E & 4) && ((func_8003836C(D_800A4E86) << 0x10) != 0)) {
-        func_8002E700(arg0 & 0xFFFF);
+void func_8002E638(s32 a0) {
+    s32 s0;
+    s16 temp;
+    u16 a0_masked;
+    u16 v1;
+
+    s0 = a0;
+
+    if ((D_800A4E8E & 4) != 0) {
+        temp = D_800A4E86;
+        if ((func_8003836C(temp) << 16) != 0) {
+            func_8002E700(s0 & 0xFFFF);
+            return;
+        }
+    }
+
+    if (D_80078F10 == 0) {
         return;
     }
-    temp_a0 = arg0 & 0xFFFF;
-    if (D_80078F10 != 0) {
-        if (temp_a0 < 5U) {
-            var_v1 = *(D_8006A99C + (temp_a0 * 4));
-        } else {
-            var_v1 = 0x1F;
-        }
-        D_800A46B8 = var_v1;
-        D_800A46B4 = 0xFFFF;
-        D_800A46BA = 1;
-        D_800A4EF4 = (s16) D_8006AEEC;
+
+    a0_masked = s0 & 0xFFFF;
+
+    if (a0_masked < 5) {
+        v1 = *(u16 *)((u8 *)D_8006A99C + a0_masked * 4);
+    } else {
+        v1 = 0x1F;
     }
+
+    D_800A46B8 = v1;
+    v1 = D_8006AEEC;
+    D_800A46B4 = 0xFFFF;
+    D_800A46BA = 1;
+    D_800A4EF4 = v1;
 }

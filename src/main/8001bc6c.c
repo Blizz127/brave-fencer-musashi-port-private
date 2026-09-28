@@ -2,46 +2,78 @@
  * SHA256(span)=89fc8f8417c38e63cd3ed28eb578c07527f75e86f64650c3c3051dff55ceefc8.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8001BC6C - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* addPrim-style sprite emitter (S83 MATCH — 28 -> 6 by the §500-C levers, 6 -> 0 by the two permuter_ils levers below): builds a 0x18-byte SPRT-with-tpage packet at the
+ * D_800A5E60 prim-buffer cursor and addPrim()s it onto word [1] of the frame's
+ * ordering table (D_800A6610 + D_800B9A02 * 0x4000).  Same idiom as the -O0
+ * func_8001212C in src/boot.c. */
+typedef struct { u32 addr : 24; u32 len : 8; } PTag_8001BC6C;
 
-extern s32 *D_800A5E60;
-extern s32 *D_800A6610;
 extern u16 D_800B9A02;
+extern u8 D_800A6610[];
+extern u8 *D_800A5E60;
 
-void func_8001BC6C(void *arg0, s32 arg1) {
-    s32 *temp_a3;
-    s32 temp_a0;
-    s32 var_t2;
-    u16 temp_t3;
-    u16 temp_v0;
-    u16 var_t0;
-    void *temp_t1;
+void func_8001BC6C(s32 a0, s32 a1)
+{
+    short *p1 = (short *)a0;
+    u8 *p;
+    u32 *ot;
+    register u32 color __asm__("$5");
+    register short f0 __asm__("$2");
+    u32 tag;
+    u32 c;
+    u32 c2;
+    u32 k;
+    u32 idx;
+    u32 code;
+    unsigned short f1;
+    short f2;
+    unsigned short f3;
+    unsigned short x1;
+    unsigned short y1;
+    short t0;
 
-    var_t2 = 0x100;
-    temp_v0 = M2C_FIELD(arg0, u16 *, 0);
-    temp_t3 = M2C_FIELD(arg0, u16 *, 2);
-    temp_a3 = D_800A5E60;
-    var_t0 = temp_v0;
-    temp_t1 = (D_800B9A02 << 0xE) + &D_800A6610;
-    if ((s16) var_t0 >= 0x80) {
-        var_t0 -= 0x80;
-        var_t2 = 0x102;
+    code = 0x100;
+    /* §47 live-length lever (S83, found by permuter_ils then re-spelled well-defined): birthing `tag`
+     * (and `k`) HERE lengthens their pseudos' live ranges so local-alloc's qty_compare ranks the OT
+     * index above the base — the $v0/$v1 swap across the six OT-chain insns disappears. The value is
+     * recomputed below; the early statement exists only for the allocator. Paired with `idx` computed
+     * AFTER `color` (the second lever). Every well-defined alternative birth (tag = a1 << 8, tag = 0,
+     * k first) measured 8–20 mismatches. */
+    k = 0;
+    tag = (a1 << 8) | k;
+    c = a1 << 16;
+    k = 0x64000000;
+    f0 = p1[0];
+    f1 = p1[1];
+    f2 = p1[2];
+    f3 = p1[3];
+    p = D_800A5E60;
+    x1 = f0 - 0xA0;
+    y1 = f1 - 0x78;
+    t0 = f0;
+    tag = (a1 << 8) | k;
+    c2 = c | tag;
+    color = c2 | a1;
+    idx = D_800B9A02 << 14;
+    ot = (u32 *)(idx + (u32)D_800A6610);
+
+    if (t0 >= 0x80) {
+        t0 -= 0x80;
+        code = 0x102;
     }
-    M2C_FIELD(temp_a3, s8 *, 3) = 5;
-    M2C_FIELD(temp_a3, s32 *, 4) = (s32) (var_t2 | 0xE1000000);
-    M2C_FIELD(temp_a3, s8 *, 0xB) = 0x64;
-    M2C_FIELD(temp_a3, s32 *, 0xC) = (s32) (((temp_t3 - 0x78) << 0x10) | ((temp_v0 - 0xA0) & 0xFFFF));
-    M2C_FIELD(temp_a3, s32 *, 0x10) = (s32) (((s32) (temp_t3 << 0x10) >> 8) | (s16) var_t0);
-    temp_a0 = M2C_FIELD(temp_a3, s32 *, 0);
-    M2C_FIELD(temp_a3, s32 *, 8) = (s32) ((arg1 << 0x10) | ((arg1 << 8) | 0x64000000) | arg1);
-    M2C_FIELD(temp_a3, s32 *, 0x14) = (s32) ((M2C_FIELD(arg0, u16 *, 6) << 0x10) | (s16) M2C_FIELD(arg0, u16 *, 4));
-    D_800A5E60 = temp_a3 + 0x18;
-    M2C_FIELD(temp_a3, s32 *, 0) = (temp_a0 & 0xFF000000) | (M2C_FIELD(temp_t1, s32 *, 4) & 0xFFFFFF);
-    M2C_FIELD(temp_t1, s32 *, 4) = (s32) ((M2C_FIELD(temp_t1, s32 *, 4) & 0xFF000000) | ((s32) temp_a3 & 0xFFFFFF));
+
+    *(u8 *)(p + 3) = 5;
+    *(u32 *)(p + 4) = code | 0xE1000000;
+    *(u8 *)(p + 0xB) = 100;
+    *(u32 *)(p + 0xC) = ((u32)y1 << 16) | (u32)x1;
+    *(u32 *)(p + 0x10) = (u32)(((s32)((u32)f1 << 16) >> 8) | (s32)t0);
+    *(u32 *)(p + 8) = color;
+    *(u32 *)(p + 0x14) = ((u32)f3 << 16) | (u32)f2;
+    ((PTag_8001BC6C *)p)->addr = ((PTag_8001BC6C *)(ot + 1))->addr;
+    D_800A5E60 = p + 0x18;
+    ((PTag_8001BC6C *)(ot + 1))->addr = (u32)p;
 }

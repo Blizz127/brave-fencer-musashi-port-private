@@ -1,91 +1,122 @@
 /* Exact retail word export for [800336A8,8003388C); EXE and assembly verified. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_800336A8 - byte-exact against retail at -O2 (tools/register_match.py). */
 
-extern s32 D_8006AA30;
-extern s32 D_80073140;
-extern s32 D_8007319E;
-extern s32 *D_8007321E;
-extern s32 *D_800A4988;
+s32 aF800301A4(void) __asm__("func_800301A4");
+extern void func_800301A4(void);
+typedef struct {
+     u8 pad00[0x0A];
+     u16 unk0A;
+     u8 pad0C[0x28];
+     u8 unk34;
+     u8 unk35;
+     u8 pad36[0x1C];
+     u8 unk52;
+     u8 pad53[1];
+} Chan336A8;
+typedef struct {
+     s32 unk00;
+     s32 unk04;
+     s16 unk08;
+     s16 unk0A;
+     u8 pad0C[0x34];
+     s32 unk40;
+     u8 unk44;
+     u8 pad45[3];
+} Voice336A8;
+typedef struct {
+     u8 pad00[0x16];
+     u8 unk16;
+     u8 pad17[1];
+     u16 unk18;
+     u8 pad1A[2];
+     u16 unk1C[12];
+     u8 pad34[4];
+     u8 unk38;
+     u8 pad39[1];
+     u8 unk3A[8];
+} Req336A8;
+extern u8 D_800A4988[];
+extern s32 D_80073140[];
+extern u16 D_8006AA30[];
+extern const u16 D_8007319E[];
+extern u16 D_8007321E;
 extern u8 D_800A4F19;
+extern void func_800336A8();
 
-void func_800336A8(void *arg0) {
-    void *var_t1;
-    s32 var_t2;
-    s32 var_t3;
-    s32 var_v1;
-    u16 *var_a2;
-    u32 temp_lo;
-    u32 temp_v1;
-    u32 var_a1;
-    u32 var_v0;
-    u8 temp_v0;
-    u8 var_v1_2;
-    void *temp_a3;
+void func_800336A8(Req336A8 *arg)
+{
+    Chan336A8 *ch;
+    Voice336A8 *vo;
+    u16 *p;
+    const u16 *q;
+    u32 m;
+    u32 n;
+    u32 v;
+    s32 i;
+    s32 j;
 
-    var_t2 = 0;
-    var_t3 = 0;
-    var_t1 = &D_800A4988;
-    do {
-        if ((arg0 + var_t2)->unk3A != 0) {
-            temp_a3 = var_t3 + (&D_800A4988 + 0x2A0);
-            temp_a3->unk0 = (s32) *(D_80073140 + (var_t1->unkA * 4));
-            var_a1 = (u32) (*(D_8006AA30 + (var_t1->unk34 * 2)) * D_800A4988.unk572) >> 7;
-            if (arg0->unk16 != 0) {
-                var_a1 = (u32) (var_a1 * arg0->unk18) >> 0xF;
-            }
-            var_a2 = arg0 + 0x1C;
-            var_v1 = 2;
-            do {
-                temp_lo = var_a1 * *var_a2;
-                var_v1 -= 1;
-                var_a2 += 8;
-                var_a1 = temp_lo >> 0xE;
-            } while (var_v1 >= 0);
-            var_v1_2 = var_t1->unk35;
-            var_v0 = var_a1;
-            if (var_v1_2 != 0) {
-                temp_v0 = arg0->unk38;
-                if (temp_v0 != 0) {
-                    temp_v1 = var_v1_2 + temp_v0;
-                    var_v1_2 = temp_v1 - 0x40;
-                    if (temp_v1 >= 0x42U) {
-                        if (var_v1_2 >= 0x80U) {
-                            var_v1_2 = 0x7F;
-                        }
-                    } else {
-                        var_v1_2 = 1;
+    for (i = 0; i < 8; i++) {
+        if (arg->unk3A[i] == 0) {
+            continue;
+        }
+        ch = (Chan336A8 *)(D_800A4988 + i * 0x54);
+        vo = (Voice336A8 *)(D_800A4988 + 0x2A0 + i * 0x48);
+        vo->unk00 = D_80073140[ch->unk0A];
+        m = ch->unk34;
+        m = D_8006AA30[m];
+        m = m * *(s16 *)(D_800A4988 + 0x572);
+        m = m >> 7;
+        if (arg->unk16 != 0) {
+            m = m * arg->unk18;
+            m = m >> 15;
+        }
+        p = arg->unk1C;
+        for (j = 2; j >= 0; j--, p += 4) {
+            m = m * *p;
+            m = m >> 14;
+        }
+        n = ch->unk35;
+        if (n == 0) {
+            v = m;
+            vo->unk0A = v;
+            vo->unk08 = v;
+        } else {
+            if (arg->unk38 != 0) {
+                n += arg->unk38;
+                if (n >= 0x42) {
+                    n -= 0x40;
+                    if (n >= 0x80) {
+                        n = 0x7F;
                     }
-                }
-                var_t1->unk52 = var_v1_2;
-                if (D_800A4F19 != 0) {
-                    temp_a3->unkA = (s16) ((u32) (var_a1 * *((var_v1_2 * 2) + D_8007319E)) >> 0xE);
-                    var_v0 = (u32) (var_a1 * *(((0x7F - var_v1_2) * 2) + (D_8007319E + 2))) >> 0xE;
                 } else {
-                    var_v0 = (u32) (var_a1 * D_8007321E) >> 0xE;
-                    goto block_15;
+                    n = 1;
                 }
-            } else {
-block_15:
-                temp_a3->unkA = (s16) var_v0;
             }
-            temp_a3->unk8 = (s16) var_v0;
-            temp_a3->unk40 = (s32) var_t1->unkA;
-            if (temp_a3->unk44 != 0) {
-                temp_a3->unk4 = (s32) (temp_a3->unk4 | 3);
+            ch->unk52 = n;
+            if (D_800A4F19 != 0) {
+                
+
+                __asm__ __volatile__("");
+                v = (m * D_8007319E[n]) >> 14;
+                vo->unk0A = v;
+                q = D_8007319E + 1;
+                v = (m * q[0x7F - n]) >> 14;
+                vo->unk08 = v;
             } else {
-                temp_a3->unk4 = 3;
-                temp_a3->unk44 = 1U;
+                v = (m * D_8007321E) >> 14;
+                vo->unk0A = v;
+                vo->unk08 = v;
             }
         }
-        var_t3 += 0x48;
-        var_t2 += 1;
-        var_t1 += 0x54;
-    } while (var_t2 < 8);
+        vo->unk40 = ch->unk0A;
+        if (vo->unk44 != 0) {
+            vo->unk04 |= 3;
+        } else {
+            vo->unk04 = 3;
+            vo->unk44 = 1;
+        }
+    }
 }

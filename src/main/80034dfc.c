@@ -1,71 +1,71 @@
 /* Exact retail word export for [80034DFC,8003500C); EXE and assembly verified. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_80034DFC - byte-exact against retail at -O2 (tools/register_match.py). */
 
-extern s32 D_8006AEF5;
+extern u8 D_8006AEF5;
 extern s32 D_8006AEF8;
 extern s32 D_8006AEFC;
-extern s32 *D_80076118;
+extern u8 D_80076118[];
 
-void func_80034DFC(s32 arg0) {
-    s16 temp_s1;
-    s16 var_a1;
-    s16 var_s2;
-    u8 temp_s3;
-    void *temp_s0;
-    void *var_v1;
+void func_80034DFC(short arg0) {
+    u8 *cur;
+    u8 *src;
+    u8 saved;
+    s32 i;
+    s32 next;
+    s32 nn;
 
-    if ((arg0 << 0x10) != 0) {
-        var_a1 = arg0 - 1;
-        var_v1 = (var_a1 * 0x30) + &D_80076118;
-        temp_s3 = D_8006AEF5;
-        D_8006AEF5 = 1U;
-        if (var_v1->unk0 != 0) {
-            var_v1->unk0 = 0U;
-            var_v1->unk1 = 1;
-            if ((var_a1 != D_8006AEF8) && (var_v1->unk7 != 0)) {
-                var_s2 = var_a1 + 1;
-loop_6:
-                if (var_s2 >= 4) {
-                    var_s2 = 0;
-                }
-                if (var_s2 != D_8006AEFC) {
-                    temp_s0 = (var_s2 * 0x30) + &D_80076118;
-                    var_v1->unk0 = (u8) temp_s0->unk0;
-                    var_v1->unk1 = (u8) temp_s0->unk1;
-                    var_v1->unk2 = (u8) temp_s0->unk2;
-                    var_v1->unk3 = (u8) temp_s0->unk3;
-                    var_v1->unk4 = (u8) temp_s0->unk4;
-                    var_v1->unk5 = (u8) temp_s0->unk5;
-                    var_v1->unk6 = (u8) temp_s0->unk6;
-                    var_v1->unk7 = (u8) temp_s0->unk7;
-                    var_v1->unk8 = (s32) temp_s0->unk8;
-                    var_v1->unkC = (s32) temp_s0->unkC;
-                    var_v1->unk10 = (s32) temp_s0->unk10;
-                    var_v1->unk14 = (s32) temp_s0->unk14;
-                    var_v1->unk18 = (s32) temp_s0->unk18;
-                    var_v1->unk1C = (s32) temp_s0->unk1C;
-                    var_v1->unk20 = (s32) temp_s0->unk20;
-                    var_v1->unk24 = (s32) temp_s0->unk24;
-                    temp_s1 = var_s2 + 1;
-                    var_v1->unk28 = (s32 (*)()) temp_s0->unk28;
-                    var_v1->unk2C = (s32) temp_s0->unk2C;
-                    temp_s0->unk28(temp_s1, var_a1 + 1);
-                    var_a1 = var_s2;
-                    var_v1 = temp_s0;
-                    var_s2 = temp_s1;
-                    goto loop_6;
-                }
-                D_8006AEFC = (s32) var_a1;
-                *(&D_80076118 + (var_a1 * 0x30)) = 0;
-            }
-        }
-        D_8006AEF5 = temp_s3;
+    if (arg0 == 0) {
+        return;
     }
+    i = (short)(arg0 - 1);
+    cur = D_80076118 + i * 0x30;
+    saved = D_8006AEF5;
+    D_8006AEF5 = 1;
+    if (cur[0] != 0) {
+        cur[0] = 0;
+        cur[1] = 1;
+        if (i != D_8006AEF8 && cur[7] != 0) {
+            next = i + 1;
+            goto check;
+            for (;;) {
+                src = D_80076118 + next * 0x30;
+                cur[0] = src[0];
+                cur[1] = src[1];
+                cur[2] = src[2];
+                cur[3] = src[3];
+                cur[4] = src[4];
+                cur[5] = src[5];
+                cur[6] = src[6];
+                cur[7] = src[7];
+                *(s32 *)(cur + 0x08) = *(s32 *)(src + 0x08);
+                *(s32 *)(cur + 0x0C) = *(s32 *)(src + 0x0C);
+                *(s32 *)(cur + 0x10) = *(s32 *)(src + 0x10);
+                *(s32 *)(cur + 0x14) = *(s32 *)(src + 0x14);
+                *(s32 *)(cur + 0x18) = *(s32 *)(src + 0x18);
+                *(s32 *)(cur + 0x1C) = *(s32 *)(src + 0x1C);
+                *(s32 *)(cur + 0x20) = *(s32 *)(src + 0x20);
+                *(s32 *)(cur + 0x24) = *(s32 *)(src + 0x24);
+                nn = next + 1;
+                *(s32 *)(cur + 0x28) = *(s32 *)(src + 0x28);
+                *(s32 *)(cur + 0x2C) = *(s32 *)(src + 0x2C);
+                ((void (*)(s32, s32)) *(s32 *)(src + 0x28))(nn, i + 1);
+                i = next;
+                cur = src;
+                next = nn;
+            check:
+                if (next >= 4) {
+                    next = 0;
+                }
+                if (next == D_8006AEFC) {
+                    break;
+                }
+            }
+            D_8006AEFC = i;
+            D_80076118[i * 0x30] = 0;
+        }
+    }
+    D_8006AEF5 = saved;
 }

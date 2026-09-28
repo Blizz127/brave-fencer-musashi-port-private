@@ -1,54 +1,54 @@
 /* Main-exec range [8003602C,80036130) from the SLUS executable.
  * SHA256(span)=f0cb22c2f006b8cf007fff763341a46fc2748aa94e25bf8eeec75ed9fb85132e.
- * Word export for the native seam (m2c produced no draft). */
+ * Word export for the native seam. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-#include "m2c_macros.h"
+/* func_8003602C - byte-exact against retail at -O2 (tools/register_match.py). */
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+extern u8 D_80076214;
+extern void func_800434BC(void);
+extern s32 func_8004355C(s32 mode, u8 *result);
+extern s32 func_80043704(u8 com, u8 *param);
+extern void func_8003621C(void);
 
-void func_8003621C();                            /* static */
-void func_800434BC();                            /* static */
-s32 func_8004355C(s32, u8 *);                   /* static */
-void func_80043704(s32, s32);            /* static */
-extern s8 D_80076214;
+void func_8003602C(s32 arg0) {
+    u8 result[8];
+    u8 state;
+    s32 sync;
 
-void func_8003602C(void *arg0) {
-    u8 sp10;
-    s32 temp_v0;
-    u8 temp_v1;
-
-    temp_v1 = M2C_FIELD(arg0, u8 *, 3);
-    switch (temp_v1) {
+    switch (*(u8 *)(arg0 + 3)) {
+    case 0:
+    case 1:
+    default:
+        *(u8 *)(arg0 + 2) = 0;
+        break;
     case 2:
-        M2C_FIELD(arg0, s8 *, 2) = 1;
+        *(u8 *)(arg0 + 2) = 1;
         func_800434BC();
-        M2C_FIELD(arg0, u8 *, 3) = (u8) (M2C_FIELD(arg0, u8 *, 3) + 2);
-        return;
+        *(u8 *)(arg0 + 3) += 2;
+        break;
     case 3:
-        M2C_FIELD(arg0, s8 *, 2) = 1;
+        *(u8 *)(arg0 + 2) = 1;
         func_800434BC();
-        M2C_FIELD(arg0, u8 *, 3) = (u8) (M2C_FIELD(arg0, u8 *, 3) + 1);
-        /* fallthrough */
+        *(u8 *)(arg0 + 3) += 1;
+        /* fall through */
     case 4:
         func_80043704(9, 0);
         func_8003621C();
-        M2C_FIELD(arg0, s8 *, 2) = 1;
-        M2C_FIELD(arg0, u8 *, 3) = (u8) (M2C_FIELD(arg0, u8 *, 3) + 1);
-        return;
+        state = *(u8 *)(arg0 + 3);
+        *(u8 *)(arg0 + 2) = 1;
+        *(u8 *)(arg0 + 3) = state + 1;
+        break;
     case 5:
-        temp_v0 = func_8004355C(1, &sp10);
-        if (temp_v0 == 0) {
-            M2C_FIELD(arg0, s8 *, 2) = 1;
+        sync = func_8004355C(1, result);
+        if (sync == 0) {
+            *(u8 *)(arg0 + 2) = 1;
             return;
         }
-        if ((temp_v0 == 5) && (sp10 & 0x10)) {
+        if (sync == 5 && (result[0] & 0x10)) {
             D_80076214 = 1;
         }
-    default:
-        M2C_FIELD(arg0, s8 *, 2) = 0;
-        return;
+        *(u8 *)(arg0 + 2) = 0;
+        break;
     }
 }

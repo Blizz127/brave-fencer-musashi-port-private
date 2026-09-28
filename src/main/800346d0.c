@@ -1,41 +1,63 @@
 /* Exact retail word export for [800346D0,800347C8); EXE and assembly verified. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_800346D0 - byte-exact against retail at -O2 (tools/register_match.py). */
 
-void func_80030D80(u16 *, s32);              /* static */
-extern u16 D_800A46E8;
+typedef struct Ent30D80 {
+     s32 unk00;
+     u8 pad04[6];
+     u16 unk0A;
+     u8 pad0C[0x34];
+     void (*unk40)(s32, s32);
+     s32 unk44;
+     u8 pad48[6];
+     u8 unk4E;
+     u8 pad4F;
+     u8 unk50;
+     u8 unk51;
+} Ent30D80;
+extern void func_800346D0(s32);
+struct Ent30D80;
+typedef struct {
+    u8 pad[0x3A];
+    u8 flg[8];
+    u8 tail[0x12];
+} S54;
+extern u16 D_800A46E8[];
+extern void func_80030D80(Ent30D80 *arg0, s16 arg1);
 
-void func_800346D0(s16 arg0) {
-    s32 temp_s5;
-    s32 var_s0;
-    s32 var_s4;
-    u16 *var_s1;
-    u16 *var_s2;
-    u16 *var_s3;
+void func_800346D0(s32 arg0) {
+    S54 *p;
+    S54 *q;
+    Ent30D80 *e;
+    Ent30D80 *ebase;
+    s32 i;
+    s32 j;
+    s32 lo;
+    s32 hi;
 
-    var_s2 = &D_800A46E8;
-    var_s4 = 0;
-    temp_s5 = arg0 >> 0x10;
-    var_s3 = &D_800A46E8 + 6;
+    p = (S54 *)D_800A46E8;
+    i = 0;
+    lo = (arg0 << 16) >> 16;
+    hi = arg0 >> 16;
+    ebase = (Ent30D80 *)((u8 *)D_800A46E8 + 0x2A0);
+    q = (S54 *)((u8 *)D_800A46E8 + 6);
     do {
-        if ((*var_s2 == 5) && (M2C_FIELD(var_s3, u16 *, -2) == arg0) && ((var_s0 = 0, (temp_s5 == 0)) || (temp_s5 == M2C_FIELD(var_s3, u16 *, 0)))) {
-            var_s1 = &D_800A46E8 + 0x2A0;
+        if (*(u16 *)p == 5 && *((u16 *)q - 1) == lo && (hi == 0 || hi == *(u16 *)q)) {
+            j = 0;
+            e = ebase;
             do {
-                if (M2C_FIELD((var_s2 + var_s0), u8 *, 0x3A) != 0) {
-                    func_80030D80(var_s1, 0);
+                if (p->flg[j] != 0) {
+                    func_80030D80(e, 0);
                 }
-                var_s0 += 1;
-                var_s1 += 0x54;
-            } while (var_s0 < 8);
-            *var_s2 = 0;
+                j++;
+                e++;
+            } while (j < 8);
+            *(u16 *)p = 0;
         }
-        var_s4 += 1;
-        var_s3 += 0x54;
-        var_s2 += 0x54;
-    } while (var_s4 < 8);
+        i++;
+        q++;
+        p++;
+    } while (i < 8);
 }

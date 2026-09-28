@@ -1,73 +1,109 @@
 /* Exact retail [80023570,8002374C).
  * Words from pinned SLUS_007.26.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80023570 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* Vendor names mapped to address-named symbols for the link-by-address harness. */
+#define GetTPage func_80058B40
 
-s32 func_80058B40(s32, s32, s32, s32);  /* static */
-void func_8005A600(s32 *, s32, s32, s32, s32); /* static */
-extern s32 *D_800A5E60;
-extern s32 *D_800A6610;
+typedef struct { u32 addr : 24; u32 len : 8; } PTag_80023570;
+
+extern u8 D_800A6610[];
 extern u16 D_800B9A02;
+extern u8 *D_800A5E60;
+extern s32 GetTPage(s32, s32, s32, s32);
+extern s32 func_8005A600(s32, s32, s32, s32, s32);
 
-void func_80023570(void *arg0) {
-    s32 *temp_a0;
-    s32 *temp_s0;
-    s32 *temp_s1;
-    s32 *temp_t2;
-    s32 *var_a3;
-    s32 temp_v1;
-    s8 var_t3;
-    u16 temp_s2;
-    u32 temp_a1;
-    u8 *var_t0;
-    void *temp_s3;
-    void *var_a0;
-    void *var_a2;
+void func_80023570(s32 arg0)
+{
+    u32 *ot;
+    register u32 flags __asm__("$5");
+    u16 idx;
+    PTag_80023570 *slot2;
+    u8 *cur;
+    u8 *nxt;
 
-    var_t0 = M2C_FIELD(arg0, u8 **, 0x20);
-    var_a3 = D_800A5E60;
-    temp_a1 = M2C_FIELD(arg0, u32 *, 4);
-    temp_s2 = M2C_FIELD(arg0, u16 *, 0x2C);
-    temp_s3 = (D_800B9A02 << 0xE) + &D_800A6610;
-    var_t3 = 0x60;
-    if (temp_a1 & 0x40000000) {
-        var_t3 = 0x62;
+    {
+        register u8 *rec0 __asm__("$8");
+        register u8 *p __asm__("$7");
+        register u16 addX __asm__("$14");
+        register u16 addY __asm__("$13");
+        register u8 code __asm__("$11");
+        register u32 tagconst __asm__("$15");
+        register u32 *slot __asm__("$10");
+        register u32 maskAddr __asm__("$9");
+        register u32 maskLen __asm__("$12");
+        register u8 *rec3 __asm__("$6");
+        register u8 *q __asm__("$4");
+        register u32 sc __asm__("$2");
+        u8 last;
+        u32 x, y;
+        u16 t16;
+
+        rec0 = *(u8 **)(arg0 + 0x20);
+        sc = (u32)(u16)D_800B9A02;
+        p = D_800A5E60;
+        flags = *(u32 *)(arg0 + 4);
+        addX = *(u16 *)(arg0 + 8);
+        addY = *(u16 *)(arg0 + 0xA);
+        idx = *(u16 *)(arg0 + 0x2C);
+        ot = (u32 *)(D_800A6610 + (sc << 14));
+        code = (flags & 0x40000000) ? 0x62 : 0x60;
+        tagconst = 0x03000000;
+        sc = idx << 2;
+        slot = (u32 *)(sc + (u32)ot);
+        maskAddr = 0x00FFFFFF;
+        maskLen = 0xFF000000;
+        rec3 = rec0 + 3;
+        q = p + 0xE;
+
+        do {
+            q[-7] = code;
+            *(u32 *)p = tagconst;
+            q[-0xA] = rec0[0];
+            q[-9] = rec3[-2];
+            q[-8] = rec3[-1];
+            *(u16 *)(q - 6) = addX + *(u16 *)(rec3 + 1);
+            cur = D_800A5E60;
+            *(u16 *)(q - 4) = addY + *(u16 *)(rec3 + 3);
+            t16 = *(u16 *)(rec3 + 5);
+            rec0 += 0xC;
+            *(u16 *)(q - 2) = t16;
+            t16 = *(u16 *)(rec3 + 7);
+            nxt = cur + 0x10;
+            D_800A5E60 = nxt;
+            *(u16 *)(q) = t16;
+            q += 0x10;
+
+            x = *(u32 *)p;
+            y = *slot;
+            x = x & maskLen;
+            y = y & maskAddr;
+            x = x | y;
+            *(u32 *)p = x;
+            x = (u32)p & maskAddr;
+            p += 0x10;
+            y = *slot;
+            y = y & maskLen;
+            y = y | x;
+            *slot = y;
+
+            last = rec3[0];
+            rec3 += 0xC;
+        } while (last == 0);
     }
-    temp_t2 = (temp_s2 * 4) + temp_s3;
-    var_a2 = var_t0 + 3;
-    var_a0 = var_a3 + 0xE;
-    do {
-        M2C_FIELD(var_a0, s8 *, -7) = var_t3;
-        *var_a3 = 0x03000000;
-        M2C_FIELD(var_a0, u8 *, -0xA) = (u8) *var_t0;
-        M2C_FIELD(var_a0, u8 *, -9) = (u8) M2C_FIELD(var_a2, u8 *, -2);
-        M2C_FIELD(var_a0, u8 *, -8) = (u8) M2C_FIELD(var_a2, u8 *, -1);
-        M2C_FIELD(var_a0, s16 *, -6) = (s16) (M2C_FIELD(arg0, u16 *, 8) + M2C_FIELD(var_a2, u16 *, 1));
-        temp_s0 = D_800A5E60;
-        M2C_FIELD(var_a0, s16 *, -4) = (s16) (M2C_FIELD(arg0, u16 *, 0xA) + M2C_FIELD(var_a2, u16 *, 3));
-        var_t0 += 0xC;
-        M2C_FIELD(var_a0, u16 *, -2) = (u16) M2C_FIELD(var_a2, u16 *, 5);
-        temp_s1 = temp_s0 + 0x10;
-        D_800A5E60 = temp_s1;
-        M2C_FIELD(var_a0, u16 *, 0) = (u16) M2C_FIELD(var_a2, u16 *, 7);
-        var_a0 += 0x10;
-        *var_a3 = (*var_a3 & 0xFF000000) | (*temp_t2 & 0xFFFFFF);
-        temp_v1 = (s32) var_a3 & 0xFFFFFF;
-        var_a3 += 0x10;
-        *temp_t2 = (*temp_t2 & 0xFF000000) | temp_v1;
-        var_a2 += 0xC;
-    } while (M2C_FIELD(var_a2, u8 *, 0) == 0);
-    if (temp_a1 & 0x40000000) {
-        D_800A5E60 = temp_s0 + 0x1C;
-        func_8005A600(temp_s1, 0, 0, func_80058B40(2, (temp_a1 >> 0x1C) & 3, 0x280, 0) & 0xFFFF, 0);
-        temp_a0 = (temp_s2 * 4) + temp_s3;
-        M2C_FIELD(temp_s0, s32 *, 0x10) = (s32) ((M2C_FIELD(temp_s0, s32 *, 0x10) & 0xFF000000) | (*temp_a0 & 0xFFFFFF));
-        *temp_a0 = (*temp_a0 & 0xFF000000) | ((s32) temp_s1 & 0xFFFFFF);
+
+    if (flags & 0x40000000) {
+        s32 tp;
+
+        D_800A5E60 = cur + 0x1C;
+        tp = GetTPage(2, (flags >> 28) & 3, 0x280, 0);
+        func_8005A600((s32)nxt, 0, 0, (u16)tp, 0);
+
+        slot2 = (PTag_80023570 *)(((u32)idx << 2) + (u32)ot);
+        ((PTag_80023570 *)nxt)->addr = slot2->addr;
+        slot2->addr = (u32)nxt;
     }
 }

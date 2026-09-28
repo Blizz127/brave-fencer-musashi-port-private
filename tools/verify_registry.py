@@ -46,6 +46,11 @@ def plan(entry: dict[str, Any], targets: dict[str, Any], candidate: Path) -> tup
         # The "=" form is required: argparse reads a bare "-O0" as another
         # flag rather than this one's value, since it starts with "-".
         build += [f"--optimization={optimization}"]
+    # Switch jump tables live in .rodata; the function's lui/lw of the table
+    # only match when the table is placed at its retail address.
+    rodata_base = entry.get("rodata_base")
+    if rodata_base is not None:
+        build += ["--rodata-base", f"0x{int(rodata_base):X}"]
     match = [
         "--vram", f"0x{int(entry['vram']):X}",
         "--size", f"0x{int(entry['size']):X}",
@@ -84,34 +89,47 @@ def _quiet(fn, argv: list[str]) -> tuple[int, str]:
     return code, sink.getvalue()
 
 
-def verify_all(registry: Path, verbose: bool) -> int:
+def verify_one(entry: dict[str, Any], targets: dict[str, Any]) -> tuple[str, str]:
+    """Rebuild and compare one entry; returns (verdict line, tool output)."""
+
+    with tempfile.TemporaryDirectory(prefix="verify_registry.") as scratch:
+        candidate = Path(scratch) / "candidate.bin"
+        build_argv, match_argv = plan(entry, targets, candidate)
+        code, out = _quiet(build_candidate.main, build_argv)
+        if code != 0 or not candidate.is_file():
+            return f"BUILD FAILED  {entry['name']}  ({entry['source']})", out
+        code, out = _quiet(match_function.main, match_argv)
+        if code == 0:
+            return f"MATCH         {entry['name']}", out
+        return f"MISMATCH      {entry['name']}  ({entry['source']})", out
+
+
+def _verify_worker(job: tuple[dict[str, Any], dict[str, Any]]) -> tuple[str, str]:
+    return verify_one(*job)
+
+
+def verify_all(registry: Path, verbose: bool, jobs: int = 1) -> int:
     data = load_json(registry)
     targets = data.get("targets", {})
     entries = data.get("matches", [])
     if not entries:
         raise RetailError(f"{registry} lists no matches")
 
+    work = [(entry, targets) for entry in entries]
+    if jobs > 1:
+        import multiprocessing
+        with multiprocessing.Pool(jobs) as pool:
+            results = pool.imap(_verify_worker, work, chunksize=8)
+            results = list(results)
+    else:
+        results = map(_verify_worker, work)
     failures = 0
-    with tempfile.TemporaryDirectory(prefix="verify_registry.") as scratch:
-        for entry in entries:
-            candidate = Path(scratch) / "candidate.bin"
-            candidate.unlink(missing_ok=True)
-            build_argv, match_argv = plan(entry, targets, candidate)
-            code, out = _quiet(build_candidate.main, build_argv)
-            if code != 0 or not candidate.is_file():
-                failures += 1
-                print(f"BUILD FAILED  {entry['name']}  ({entry['source']})")
-                if verbose:
-                    print(out)
-                continue
-            code, out = _quiet(match_function.main, match_argv)
-            if code == 0:
-                print(f"MATCH         {entry['name']}")
-            else:
-                failures += 1
-                print(f"MISMATCH      {entry['name']}  ({entry['source']})")
-                if verbose:
-                    print(out)
+    for verdict, out in results:
+        print(verdict, flush=True)
+        if not verdict.startswith("MATCH"):
+            failures += 1
+            if verbose:
+                print(out)
     print(f"\n{len(entries) - failures}/{len(entries)} registry entries re-verified")
     return failures
 
@@ -120,11 +138,12 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--registry", type=Path, help="default: provenance/matches.json")
     parser.add_argument("--verbose", action="store_true", help="print tool output on failure")
+    parser.add_argument("--jobs", type=int, default=1, help="entries to rebuild in parallel")
     args = parser.parse_args(argv)
     repo = Path(__file__).resolve().parents[1]
     registry = args.registry or repo / "provenance/matches.json"
     try:
-        return 1 if verify_all(registry, args.verbose) else 0
+        return 1 if verify_all(registry, args.verbose, args.jobs) else 0
     except RetailError as exc:
         print(f"verify_registry: ERROR: {exc}", file=sys.stderr)
         return 2

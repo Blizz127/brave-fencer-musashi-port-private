@@ -1,73 +1,73 @@
 /* Exact retail word export for [80030D80,80030F80); EXE and assembly verified. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_80030D80 - byte-exact against retail at -O2 (tools/register_match.py). */
 
-extern s32 D_80073140;
-void func_8002EFF8(s32, s32, s32 (*)());                   /* static */
-void func_80031988(void *);                            /* static */
-extern s32 *D_800A4C2C;
-extern s32 *D_800A4C6D;
-extern u8 D_800A4F17;
+typedef struct Ent30D80 {
+     s32 unk00;
+     u8 pad04[6];
+     u16 unk0A;
+     u8 pad0C[0x34];
+     void (*unk40)(s32, s32);
+     s32 unk44;
+     u8 pad48[6];
+     u8 unk4E;
+     u8 pad4F;
+     u8 unk50;
+     u8 unk51;
+} Ent30D80;
+extern void func_80030D80(Ent30D80 *arg0, s16 arg1);
+typedef struct Blk48_30D80 {
+     s32 unk00;
+     u8 pad04[0x3D];
+     u8 unk41;
+     u8 pad42[6];
+} Blk48_30D80;
+extern s8 D_800A4F17;
 extern s32 D_800C7D20;
+extern s32 D_80073140[];
+extern Blk48_30D80 D_800A4C2C[];
+extern void func_8002EFF8(s32 a0, s32 a1);
+extern void func_80031988(Ent30D80 *arg0);
 
-void func_80030D80(void *arg0, s32 arg1, s32 (*arg2)()) {
-    s32 (*temp_v0)();
-    s32 (*var_a2)();
-    s32 temp_v1;
-    s32 temp_v1_2;
-    s32 var_a1;
-    s32 var_s1;
-    s32 var_v0;
-    u8 temp_s2;
+void func_80030D80(Ent30D80 *arg0, s16 arg1) {
+    u8 old;
+    u8 flag;
 
-    var_a2 = arg2;
-    temp_s2 = D_800A4F17;
-    D_800A4F17 = 1;
-    var_s1 = 1;
-    if (arg0->unk0 != 0) {
-        arg0->unk0 = 0;
+    old = *(u8 *)&D_800A4F17;
+    *(u8 *)&D_800A4F17 = 1;
+
+    if (arg0->unk00 != 0) {
+        flag = 1;
+        arg0->unk00 = 0;
+    } else if (arg0->unk4E >= 2 && (D_800C7D20 & D_80073140[arg0->unk0A])) {
+        D_800A4C2C[arg0->unk51].unk41 = 1;
+        D_800A4C2C[arg0->unk51].unk00 &= 0xFFF9FFFF;
+        flag = 1;
+        func_8002EFF8(0, D_80073140[arg0->unk0A]);
     } else {
-        var_v0 = arg1 << 0x10;
-        if ((u8) arg0->unk4E >= 2U) {
-            var_a2 = D_80073140;
-            var_v0 = arg1 << 0x10;
-            if (D_800C7D20 & *(D_80073140 + (arg0->unkA * 4))) {
-                *(&D_800A4C6D + (arg0->unk51 * 0x48)) = 1;
-                temp_v1 = arg0->unk51 * 0x48;
-                *(&D_800A4C2C + temp_v1) = *(&D_800A4C2C + temp_v1) & 0xFFF9FFFF;
-                var_a1 = *((arg0->unkA * 4) + D_80073140);
-                var_s1 = 1;
-                goto block_7;
-            }
-        }
-        var_s1 = 0;
-        if (var_v0 != 0) {
+        flag = 0;
+        if (arg1 != 0) {
             arg0->unk50 = 1;
-            *(&D_800A4C6D + (arg0->unk51 * 0x48)) = 1;
-            temp_v1_2 = arg0->unk51 * 0x48;
-            *(&D_800A4C2C + temp_v1_2) = *(&D_800A4C2C + temp_v1_2) & 0xFFF9FFFF;
-            var_a1 = *(D_80073140 + (arg0->unkA * 4));
-block_7:
-            func_8002EFF8(0, var_a1, var_a2);
+            D_800A4C2C[arg0->unk51].unk41 = 1;
+            D_800A4C2C[arg0->unk51].unk00 &= 0xFFF9FFFF;
+            func_8002EFF8(0, D_80073140[arg0->unk0A]);
         } else {
+            s32 mask = D_80073140[arg0->unk0A];
             arg0->unk50 = 0;
-            func_8002EFF8(0, *(D_80073140 + (arg0->unkA * 4)), var_a2);
+            func_8002EFF8(0, mask);
             func_80031988(arg0);
         }
     }
-    temp_v0 = arg0->unk40;
-    if (temp_v0 != 0) {
-        temp_v0(arg0->unk51, arg0->unk44);
+
+    if (arg0->unk40 != 0) {
+        arg0->unk40(arg0->unk51, arg0->unk44);
     }
     arg0->unk40 = 0;
-    if (var_s1 & 0xFF) {
-        arg0->unk4E = 0U;
+    if (flag) {
+        arg0->unk4E = 0;
     }
-    D_800A4F17 = temp_s2;
+
+    *(u8 *)&D_800A4F17 = old;
 }

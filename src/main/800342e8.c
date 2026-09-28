@@ -1,17 +1,13 @@
 /* Main-exec range [800342E8,80034314) from the SLUS executable.
  * SHA256(span)=bce14d8781d79b933aa5f3c9ef5f30cd5a87adcfa2c378c5f44835693535e128.
- * Word export for the native seam; the body below is an
- * UNVERIFIED draft, not an oracle match claim. */
+ * Word export for the native seam. */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_800342E8 - byte-exact against retail at -O2 (tools/register_match.py). */
 
-extern s32 *D_800A46E8;
+extern u16 D_800A46E8[];
 
-void func_800342E8(s32 arg0, s32 arg1) {
-    M2C_FIELD(((arg1 * 0x54) + &D_800A46E8 + arg0), s8 *, 0x3A) = 0;
+void func_800342E8(u8 *a0, s32 a1) {
+    u32 t = a1 * 84 + (u32)D_800A46E8;
+    *(u8 *)(t + (u32)a0 + 0x3A) = 0;
 }

@@ -1,89 +1,98 @@
 /* Exact retail word export for [8002CDD8,8002CFE4); EXE and assembly verified. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_8002CDD8 - byte-exact against retail at -O2 (tools/register_match.py). */
 
-extern s32 D_8006A990;
-void func_8002CFE4();                                  /* static */
-void func_8002D904(s32, u16);                          /* static */
-void func_8002EC10();                                  /* static */
-void func_80037FC4();                                  /* static */
-s32 func_8003836C(s16);                             /* static */
-s32 func_8003C4F0();                               /* static */
-void func_8003D25C(s32, s32, void *);                         /* static */
-extern u8 D_8006AEF4;
 extern s32 D_800A4638;
-extern s16 D_800A4E86;
-extern s16 D_800A4E8A;
-extern u16 D_800A4E8E;
+extern u16 D_800A4F22;
+extern s16 D_8006A990;
+extern u8  D_800A4EE6;
 extern u16 D_800A4EE0;
 extern u16 D_800A4EE2;
 extern u16 D_800A4EE4;
-extern u8 D_800A4EE6;
-extern s32 *D_800A4EFE;
-extern s8 D_800A4F16;
-extern u8 D_800A4F17;
-extern s8 D_800A4F18;
-extern u16 D_800A4F22;
+extern u8  D_800A4F16;
+extern u8  D_800A4EFE[];
+extern u16 D_800A4E8E;
+extern u16 D_800A4E8A;
+extern s16 D_800A4E86;
+extern s8  D_800A4F17;
+extern u8  D_800A4F18;
+extern u8  D_8006AEF4;
 
-void func_8002CDD8(void) {
-    s16 temp_v0_3;
-    s32 temp_a0;
-    s32 var_v0;
-    u16 temp_v0;
-    u16 temp_v0_2;
-    u32 temp_a0_2;
+extern void func_8002D904(s32);
+extern s32  func_8003D25C(s32, s32, u8 *);
+extern void func_80037FC4(void);
+extern void func_8002EC10(void);
+extern s32  func_8003836C(s32 a0);
+extern void func_8002CFE4(void);
+extern s32  func_8003C4F0(s32);
 
-    temp_a0 = D_800A4F22 & 0xFFFF;
-    D_800A4638 += 1;
-    if (temp_a0 != 0) {
-        D_8006A990 = (u16) D_800A4F22;
-        func_8002D904(temp_a0, D_800A4F22);
+void func_8002CDD8(void)
+{
+    s32 *ctr;
+    u16 tmp;
+    u16 cur;
+    u16 tgt;
+    u8  fl;
+    s16 t;
+
+    ctr = &D_800A4638;
+    tmp = D_800A4F22;
+    *ctr = *ctr + 1;
+    if (tmp != 0) {
+        D_8006A990 = tmp;
+        func_8002D904(tmp);
         D_800A4F22 = 0;
     }
-    if (D_800A4EE6 & 1) {
+
+    fl = D_800A4EE6;
+    if (fl & 1) {
+        tgt = D_800A4EE4;
+        cur = D_800A4EE0;
         D_800A4F16 = 1;
-        temp_a0_2 = D_800A4EE4 & 0xFFFF;
-        if (temp_a0_2 < (u16) D_800A4EE0) {
-            temp_v0 = D_800A4EE0 - D_800A4EE2;
-            D_800A4EE0 = temp_v0;
-            var_v0 = temp_a0_2 < (u32) (temp_v0 & 0xFFFF);
+        if (tgt < cur) {
+            D_800A4EE0 = cur - D_800A4EE2;
+            if (tgt >= D_800A4EE0) {
+                D_800A4EE0 = tgt;
+                D_800A4EE6 = fl & 0xFE;
+            }
         } else {
-            temp_v0_2 = D_800A4EE0 + D_800A4EE2;
-            D_800A4EE0 = temp_v0_2;
-            var_v0 = (u32) (temp_v0_2 & 0xFFFF) < temp_a0_2;
-        }
-        if (var_v0 == 0) {
-            D_800A4EE0 = D_800A4EE4;
-            D_800A4EE6 &= 0xFE;
+            D_800A4EE0 = cur + D_800A4EE2;
+            if (D_800A4EE0 >= tgt) {
+                D_800A4EE0 = tgt;
+                D_800A4EE6 = fl & 0xFE;
+            }
         }
     }
-    func_8003D25C(0, 0x17, &D_800A4EFE);
+
+    func_8003D25C(0, 0x17, D_800A4EFE);
+
     if (D_800A4E8E & 8) {
         func_80037FC4();
-        if (D_800A4E8A != 0) {
-            temp_v0_3 = D_800A4E8A - 1;
-            D_800A4E8A = temp_v0_3;
-            if ((temp_v0_3 << 0x10) == 0) {
+        t = *(s16 *)&D_800A4E8A;
+        if (t != 0) {
+            t--;
+            D_800A4E8A = t;
+            if (t == 0) {
                 func_8002EC10();
             }
         }
-        if ((func_8003836C(D_800A4E86) << 0x10) == 0) {
+        if ((s16)func_8003836C(D_800A4E86) == 0) {
             D_800A4E8E &= 0xFFF7;
         }
     }
-    if (D_800A4F17 == 0) {
+
+    if (*(u8 *)&D_800A4F17 == 0) {
         D_800A4F18 = 0;
         func_8002CFE4();
     } else {
         D_800A4F18 = 1;
     }
-    if ((D_8006AEF4 & 1) && !(D_8006AEF4 & 2) && (func_8003C4F0(0) != 0)) {
-        D_8006AEF4 &= 0xFE;
+
+    if ((D_8006AEF4 & 1) && !(D_8006AEF4 & 2)) {
+        if (func_8003C4F0(0) != 0) {
+            D_8006AEF4 &= 0xFE;
+        }
     }
 }

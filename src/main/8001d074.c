@@ -1,45 +1,36 @@
 /* Exact retail [8001D074,8001D0E8).
  * Words from pinned SLUS_007.26.
  */
+/* Source: written against Druthulu/BFM-decomp (vendor/bfm-decomp) as reference. */
+/* func_8001D074 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+extern u8 D_800AF630[];
 
-extern s32 *D_800AF630;
+u8 *func_8001D074(s32 start, s32 end) {
+    u8 *base = D_800AF630;
+    s32 off;
+    u8 *ptr;
 
-void *func_8001D074(u32 arg0, u32 arg1) {
-    s32 temp_v0;
-    s32 var_a2;
-    u32 var_a0;
-    void *var_v1;
-
-    var_a0 = arg0;
-    if (var_a0 < 0x100U) {
-        if (arg1 >= 0x101U) {
-            return 0;
-        }
-        if ((s32) var_a0 < (s32) arg1) {
-            temp_v0 = var_a0 * 0x38;
-            var_v1 = temp_v0 + &D_800AF630;
-            var_a2 = temp_v0;
-loop_6:
-            var_v1 += 0x38;
-            if (M2C_FIELD(var_v1, u16 *, 0x65A8) != 0) {
-                var_a0 += 1;
-                var_a2 += 0x38;
-                if ((s32) var_a0 >= (s32) arg1) {
-                    goto block_8;
-                }
-                goto loop_6;
-            }
-            return &D_800AF630 + (var_a2 + 0x65A8);
-        }
-        goto block_8;
+    if ((u32)start >= 0x100U) {
+        goto none;
     }
-block_8:
+    if ((u32)end >= 0x101U) {
+        return 0;
+    }
+    if (start >= end) {
+        goto none;
+    }
+    ptr = base + start * 56;
+    off = start * 56;
+    do {
+        if (*(u16 *)(ptr + 0x65A8) == 0) {
+            return base + (off + 0x65A8);
+        }
+        ptr += 0x38;
+        start += 1;
+        off += 0x38;
+    } while (start < end);
+none:
     return 0;
 }

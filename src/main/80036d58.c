@@ -1,71 +1,106 @@
 /* Exact retail word export for [80036D58,80036EB4); EXE and assembly verified. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
+/* func_80036D58 - byte-exact against retail at -O2 (tools/register_match.py). */
+#define CdIntToPos func_80043A18
+#define CdPosToInt func_80043B1C
+#define CdSearchFile func_80045374
+typedef struct {
+    u8 minute;
+    u8 second;
+    u8 sector;
+    u8 track;
+} CdlLOC;
+typedef struct {
+    CdlLOC pos;
+    u32    size;
+    char   name[16];
+} CdlFILE;
+extern CdlFILE *CdSearchFile(CdlFILE *fp, char *name);
+extern int      CdPosToInt(CdlLOC *p);
+extern CdlLOC  *CdIntToPos(int i, CdlLOC *p);
+typedef struct {
+    s32 f00;
+    s32 f04;
+    s32 f08;
+    s32 f0c;
+    s32 f10;
+    s32 f14;
+    s32 f18;
+    s32 f1c;
+    s32 f20;
+    s32 f24;
+    s32 f28;
+    s32 f2c;
+} CdReq;
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+
+
+
+
+
+
+
+
+
 
 extern s32 D_8006AEE8;
-s32 func_80034CF0(void *);                             /* static */
-void func_80034DFC(s16);                               /* static */
-extern s32 func_80035C4C;
-extern s32 func_8003602C;
-extern s32 func_80036F98;
-extern s32 func_80036FB0;
-void func_8003EDE8(s32, s32, s32);                       /* static */
-extern s16 D_80078F10;
-extern s8 D_800A46BA;
-extern s16 D_800A4EF8;
-extern s8 D_800A4F1A;
+extern s32 D_80078F10;
 extern s32 D_800C6D28;
+extern u8 D_800A46BA;
+extern u8 D_800A4F1A;
+extern s16 D_800A4EF8;
 
-void func_80036D58(s16 arg0) {
-    s32 (*sp38)();
-    s32 (*sp34)();
-    s32 sp30;
-    s32 (*sp2C)();
-    s32 sp1C;
-    s32 (*sp18)();
-    s32 sp10;
-    s16 *var_s0;
-    s32 temp_a1;
-    s32 temp_v0;
-    s32 var_s1;
+extern s32 func_80034CF0(u8 *);
+extern void func_80034DFC(s16);
+extern s32 func_8003EDE8(s32, s32, s32);
+extern s32 func_80035C4C();    /* §376: def returns s32 and takes (s32) */
+extern void func_80036F98(void);
+extern void func_8003602C(s32);   /* §376: the definition takes s32 (the use is address-taken and already cast) */
+extern void func_80036FB0(s32, s32);
 
-    if (((arg0 << 0x10) != 0) || (D_800C6D28 != 0)) {
+void func_80036D58(s16 arg0)
+{
+    CdReq req;
+    s32 pad[2];
+    s32 i;
+    s16 *p;
+    s32 r;
+    s32 n;
+    s32 cnt;
+
+    if (arg0 != 0 || D_800C6D28 != 0) {
         D_800A46BA = 0;
         if (D_8006AEE8 != 0) {
-            var_s1 = 0;
+            i = 0;
             if (D_8006AEE8 > 0) {
-                var_s0 = &D_80078F10;
+                p = (s16 *)&D_80078F10;
                 do {
-                    var_s1 += 1;
-                    func_80034DFC(*var_s0);
-                    *var_s0 = 0;
-                    var_s0 += 4;
-                } while (var_s1 < D_8006AEE8);
+                    func_80034DFC(*p);
+                    i++;
+                    cnt = D_8006AEE8;
+                    *(s32 *)p = 0;
+                    p += 2;
+                } while (i < cnt);
             }
             D_8006AEE8 = 0;
         }
-        sp18 = func_80035C4C;
-        sp2C = func_80036F98;
-        sp34 = func_8003602C;
-        sp1C = (s32) arg0;
-        sp30 = 0;
-        sp38 = func_80036FB0;
-        temp_v0 = func_80034CF0(&sp10);
-        *(&D_80078F10 + (D_8006AEE8 * 4)) = temp_v0;
-        if (temp_v0 != 0) {
-            D_8006AEE8 = (s32) (D_8006AEE8 + 1);
+        req.f08 = (s32)func_80035C4C;
+        req.f0c = arg0;
+        req.f1c = (s32)func_80036F98;
+        req.f20 = 0;
+        req.f24 = (s32)func_8003602C;
+        req.f28 = (s32)func_80036FB0;
+        r = func_80034CF0((u8 *)&req);
+        n = D_8006AEE8;
+        (&D_80078F10)[n] = r;
+        if (r != 0) {
+            D_8006AEE8 = n + 1;
         }
         D_800A4F1A = 0;
         if (arg0 != 0) {
             D_800C6D28 = 0;
         }
-        temp_a1 = ((u32) (D_800A4EF8 * 0x61) >> 7) & 0xFF;
-        func_8003EDE8(0, temp_a1, temp_a1);
+        func_8003EDE8(0, ((u32)D_800A4EF8 * 97) >> 7 & 0xFF, ((u32)D_800A4EF8 * 97) >> 7 & 0xFF);
     }
 }

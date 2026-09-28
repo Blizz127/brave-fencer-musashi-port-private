@@ -1,55 +1,51 @@
 /* Exact retail word export for [800384A8,800385C0); EXE and assembly verified. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_800384A8 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+extern u8 D_800A4F1D;
+extern s32 D_80073140[][1];  
+extern u8 D_800B9CD8[];
+extern u8 D_800C6E2D[];
+extern void func_8002EFF8(s32 a0, s32 a1);
+extern void func_8003916C(s16 arg);
 
-extern s32 D_80073140;
-void func_8002EFF8(s32, s32);                /* static */
-void func_8003916C(s16);                         /* static */
-extern s8 D_800A4F1D;
-extern s32 *D_800B9CD8;
-extern s32 *D_800C6E2D;
+void func_800384A8(s16 arg0) {
+    register s32 raw __asm__("$4");
+    u8 *entry;
+    u8 *p;
+    u8 *q;
+    s32 j;
+    u8 *b;
+    s32 *m;
+    s32 *mb;
+    s32 i;
+    s32 one;
 
-void func_800384A8(s32 arg0) {
-    s32 (*var_s2)();
-    void *var_s0;
-    s16 var_s1;
-    s32 var_s4;
-    u8 *var_s3;
-    void *temp_s6;
-    void *var_s5;
-
-    temp_s6 = (arg0 * 0x1FC) + &D_800B9CD8;
-    var_s5 = temp_s6 + 0x1A;
-    var_s4 = 0;
+    entry = &D_800B9CD8[raw * 0x1FC];
+    p = entry + 0x1A;
+    i = 0;
+    one = 1;
+    mb = (s32 *)D_80073140;
     D_800A4F1D = 1;
-    M2C_FIELD(temp_s6, s8 *, 0x1FA) = 0;
-    do {
-        var_s3 = var_s5 + 9;
-        var_s1 = 0;
-        var_s0 = &D_800C6E2D;
-        var_s2 = D_80073140;
-loop_2:
-        var_s3 += 1;
-        if (*var_s3 != 0) {
-            M2C_FIELD(var_s0, s8 *, 1) = 1;
-            M2C_FIELD(var_s0, s8 *, 0) = 0;
-            func_8003916C(var_s1);
-            func_8002EFF8(0, *var_s2);
+    entry[0x1FA] = 0;
+    for (; i < 0x10; i++) {
+        q = p + 9;
+        j = 0;
+        b = D_800C6E2D;
+        m = mb;
+        for (; j < 0x10; j++) {
+            if (*q++ != 0) {
+                b[1] = one;
+                b[0] = 0;
+                func_8003916C(j);
+                func_8002EFF8(0, *m);
+            }
+            m++;
+            b += 0x60;
         }
-        var_s2 += 4;
-        var_s1 += 1;
-        var_s0 += 0x60;
-        if (var_s1 < 0x10) {
-            goto loop_2;
-        }
-        var_s4 += 1;
-        var_s5 += 0x1A;
-    } while (var_s4 < 0x10);
+        p += 0x1A;
+    }
     D_800A4F1D = 0;
-    M2C_FIELD(temp_s6, s32 *, 0) = (s32) M2C_FIELD(temp_s6, s32 *, 4);
+    *(s32 *)entry = *(s32 *)(entry + 4);
 }

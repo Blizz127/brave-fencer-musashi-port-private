@@ -1,104 +1,157 @@
 /* Exact retail word export for [8002FF0C,800301A4); EXE and assembly verified. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8002FF0C - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+/* Types from vendor/bfm-decomp/src/800_shared.h. */
+typedef struct {
+    s16 unk00;
+    s16 unk02;
+    s16 unk04;
+    s16 unk06;
+    s16 unk08;
+    s16 unk0A;
+    s16 unk0C;
+    s16 unk0E;
+    u8  unk10;
+    u8  unk11;
+    u8  unk12;
+    u8  unk13;
+    s32 unk14;
+} Rsc24;                       /* 0x18 */
 
-extern s32 D_80064D49;
-extern s32 D_80064D4A;
-extern s32 D_80064D4E;
-s32 func_80030730(s16);                             /* static */
-s32 func_80030A14(s16);                             /* static */
-void func_80031A98(s32, s32);                          /* static */
-void func_800415A8(s16);                               /* static */
-s16 func_800419B0(s16);                             /* static */
-s16 func_80041A80(s32, s32, s32);                     /* static */
-extern s32 *D_800A463C;
-extern s32 *D_800A4640;
-extern s32 *D_800A4642;
-extern s32 *D_800A4644;
-extern s32 *D_800A4648;
-extern s32 *D_800A464C;
-extern s32 *D_800A4650;
-extern s32 D_800A46BC;
-extern s16 D_800A46CC;
-extern s16 D_800A46CE;
-extern s16 D_800A46D0;
-extern s16 D_800A46D2;
-extern s16 D_800A4EF6;
-extern s32 *D_800C5328;
-extern s32 *D_800C532A;
+typedef struct {               /* 0x18 stride; D_800A463C + k*0x18 */
+    s32 unk00;
+    u8  unk04[0x14];
+} Ent24;
 
-s32 func_8002FF0C(s16 arg0, s32 arg1) {
-    s16 temp_v0_2;
-    s16 temp_v1;
-    s32 temp_a0;
-    s32 temp_a1;
-    s32 temp_s0;
-    s32 var_v0;
-    s32 var_v0_2;
-    s32 var_v1;
-    u8 temp_s1;
-    u8 temp_v0;
+typedef struct {              /* base 0x80064D49, stride 0x0C */
+    u8  unk00;
+    u8  pad[11];
+} Elm12;
+
+/* func_8002FF0C -- start playback of resource `entry` from the buffer `arg`.
+ *
+ * Byte-shape notes (each measured, see the S76y notes):
+ *   - `i` and `idx24` are two SEPARATE `b * 24` locals: the join at the second `if`
+ *     ends cse's extended block, so the target computes b*24 twice ($a0 then $s0).
+ *   - `idx24 = (b * 3) << 3;` -- a top-level LSHIFT_EXPR expands INTO the variable's
+ *     own pseudo, so no `move` copy survives into the join block; written `b * 24`
+ *     the copy costs a sixth callee-saved register and a 0x30 frame.
+ *   - `q = D_800A46CE` is a real pointer local: the target holds &D_800A46CE in $s4
+ *     across the call and derives the D_800A4642 store from it (`addiu $v1,$s4,-0x96`
+ *     / `addu $v1,$s0,$v1` / `sh $v0,0xA($v1)`), so the store is written off `q`.
+ *   - the first zero-byte fence (cookbook S194-A, AFTER placement) keeps the
+ *     D_800C532A store ahead of the two zeroing stores; the second one keeps the
+ *     D_800A464C store ahead of the D_80064D4E load.
+ *   - the `"memory"` clobber after the `w` store is NOT a scheduling lever: it
+ *     invalidates cse's memory table so `D_800A46D2` is RE-READ for the
+ *     func_800419B0 argument (`lui $a0` / `lh $a0`) instead of being folded to the
+ *     sign-extension of `r`.  Without it the function is exactly 2 instructions short.
+ */
+
+
+extern Elm12 D_80064D49[];
+extern u8    D_80064D4A[];
+extern u8    D_80064D4E[];
+extern Ent24 D_800A463C[];
+extern Rsc24 D_800A4640[];
+extern s16   D_800A4642[];
+extern s16   D_800A4644[];
+extern s16   D_800A4648[];
+extern s32   D_800A464C[];
+extern u8    D_800A4650[];
+extern s32   D_800A46BC;
+extern s16   D_800A46CC;
+extern s16   D_800A46CE[];
+extern s16   D_800A46D0;
+extern s16   D_800A4EF6;
+extern s16   D_800C5328[];
+extern s16   D_800C532A[];
+
+extern void func_80031A98(void);
+extern s16  func_80041A80(s32, s32, s32);
+extern s16  func_800419B0(s32);
+extern s32  func_80030730(void);
+extern s32  func_80030A14(void);
+extern void func_800415A8(s32);
+
+s32 func_8002FF0C(s32 a0, s32 a1) {
+    /* block scope: src/800_b.c declares this symbol `extern s16 D_800A46D2[]`
+     * further down the TU, and the ARRAY spelling materialises the address into
+     * a register (`la`) for both the store and the re-read -- the target keeps
+     * two independent %hi/%lo accesses, which only the scalar spelling emits. */
+    extern s16 D_800A46D2;
+    s32 b;
+    s32 i;
+    s32 idx24;
+    s32 j12;
+    s32 v1;
+    s16 t;
+    s16 r;
+    s16 *q;
+    u8  *w;
+    u8  *base;
+    s32 res;
 
     if (D_800A46CC == 0) {
-        temp_a1 = arg0 * 0xC;
-        temp_s1 = *(D_80064D49 + temp_a1);
-        temp_a0 = temp_s1 * 0x18;
-        temp_v1 = *(&D_800A4644 + temp_a0);
-        var_v0_2 = temp_s1 * 2;
-        if (temp_v1 != 0) {
-            if (temp_v1 != *(D_80064D4A + temp_a1)) {
-                *(&D_800C532A + (*(&D_800A4648 + temp_a0) * 4)) = -1;
-                *(&D_800A4644 + temp_a0) = 0;
-                *(&D_800A4648 + temp_a0) = 0;
-            }
-            var_v0_2 = temp_s1 * 2;
+        b = D_80064D49[a0].unk00;
+        i = b * 24;
+        v1 = *(s16 *)((u8 *)D_800A4644 + i);
+        if (v1 != 0 && v1 != D_80064D4A[a0 * 12]) {
+            t = *(s16 *)((u8 *)D_800A4648 + i);
+            *(s16 *)((u8 *)D_800C532A + t * 4) = -1;
+            __asm__ __volatile__("");
+            *(s16 *)((u8 *)D_800A4644 + i) = 0;
+            *(s16 *)((u8 *)D_800A4648 + i) = 0;
         }
-        temp_s0 = (var_v0_2 + temp_s1) * 8;
-        if (*(&D_800A4650 + temp_s0) == 0) {
-            *(&D_800C5328 + (*(&D_800A4640 + temp_s0) * 4)) = -1;
-            func_80031A98(temp_a0, temp_a1);
+        idx24 = (b * 3) << 3;
+        if (D_800A4650[idx24] == 0) {
+            t = *(s16 *)((u8 *)D_800A4640 + idx24);
+            *(s16 *)((u8 *)D_800C5328 + t * 4) = -1;
+            func_80031A98();
         }
-        D_800A46CE = (s16) temp_s1;
-        *(&D_800A4640 + temp_s0) = arg0;
-        D_800A46D0 = arg0;
-        D_800A46BC = arg1;
-        *(&D_800A464C + temp_s0) = arg1;
-        temp_v0 = *(D_80064D4E + (arg0 * 0xC));
-        if (temp_v0 != 0) {
-            D_800A4EF6 = (s16) temp_v0;
+        q = D_800A46CE;
+        j12 = a0 * 12;
+        *q = b;
+        *(s16 *)((u8 *)D_800A4640 + idx24) = a0;
+        D_800A46D0 = a0;
+        D_800A46BC = a1;
+        *(s32 *)((u8 *)D_800A464C + idx24) = a1;
+        __asm__ __volatile__("");
+        if (D_80064D4E[j12] != 0) {
+            D_800A4EF6 = D_80064D4E[j12];
         }
-        temp_v0_2 = func_80041A80(arg1, -1, *(&D_800A463C + temp_s0));
-        D_800A46D2 = temp_v0_2;
-        (temp_s0 + (&D_800A46CE - 0x96))->unkA = temp_v0_2;
-        if ((temp_v0_2 == -1) || (func_800419B0(D_800A46D2) == -1)) {
-            *(&D_800A4650 + temp_s0) = 1;
+        r = func_80041A80(a1, -1, *(s32 *)((u8 *)D_800A463C + idx24));
+        D_800A46D2 = r;
+        base = (u8 *)q - 0x96;
+        w = idx24 + base;
+        *(s16 *)(w + 0xA) = r;
+        __asm__ __volatile__("" ::: "memory");
+        if (r == -1 || func_800419B0(D_800A46D2) == -1) {
+            D_800A4650[idx24] = 1;
             return 1;
         }
         D_800A46CC = 1;
-        goto block_13;
     }
-block_13:
-    var_v1 = 0;
-    switch (D_800A46CC) {                           /* irregular */
+    res = 0;
+    switch (D_800A46CC) {
     case 1:
-        var_v1 = func_80030730(D_800A46CC);
+        res = func_80030730();
         break;
     case 2:
-        var_v1 = func_80030A14(D_800A46CC);
+        res = func_80030A14();
         break;
     }
-    var_v0 = 0;
-    if (var_v1 != 0) {
-        func_800415A8(D_800A46D2);
-        var_v0 = 1;
-        D_800A46D2 = -1;
-        *(&D_800A4642 + (D_800A46CE * 0x18)) = -1;
+    if (res != 0) {
+        s16 *p = &D_800A46D2;
+        func_800415A8(*p);
+        *p = -1;
+        *(s16 *)((u8 *)D_800A4642 + *(s16 *)D_800A46CE * 24) = -1;
+        return 1;
     }
-    return var_v0;
+    return 0;
 }

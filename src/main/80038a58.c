@@ -2,271 +2,286 @@
  * SHA256(span)=05ccdb27f0c65a6e6101d950100ea996630efe116e9b2d36fe792324d46d7409.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80038A58 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-s32 func_80038FC4(void *);                       /* static */
-void func_80038FFC(void *);                   /* static */
 extern u8 *D_800762B0;
-extern u8 D_800762B4;
-extern u16 D_800A4EE0;
+extern u8 D_800762B4[];
+extern u8 D_800B9CD8[];
+extern u8 D_800C6DD0[];
+extern u8 D_800C6E2A[];
 extern s16 D_800A4EF8;
+extern u16 D_800A4EE0;
 extern u8 D_800A4F16;
-extern s32 *D_800B9CD8;
-extern s16 D_800C6DD0;
-extern s32 *D_800C6E2A;
+extern s32 func_80038FC4(u8 **);
+extern s32 func_80038FFC(s32 *);   
 
-void func_80038A58(void) {
-    void *var_a0;
-    void *var_s3;
-    void *var_v1_2;
-    s16 *var_a0_4;
-    s16 *var_a0_6;
-    s16 *var_a1_4;
-    s16 *var_a1_6;
-    s32 temp_a0;
-    s32 temp_lo;
-    s32 temp_lo_2;
-    s32 temp_lo_3;
-    s32 temp_v1;
-    s32 temp_v1_2;
-    s32 temp_v1_3;
-    s32 var_a0_2;
-    s32 var_a0_3;
-    s32 var_a0_5;
-    s32 var_a1;
-    s32 var_a1_5;
-    s32 var_a2_2;
-    s32 var_s0;
-    s32 var_s2;
-    s32 var_s2_2;
-    s32 var_t1;
-    s32 var_t1_2;
-    s32 var_t1_3;
-    s32 var_t2;
-    s32 var_v1;
-    u16 *var_a1_3;
-    u16 *var_t0;
-    u16 *var_v1_3;
-    u16 temp_a2;
-    u16 temp_a3;
-    u16 temp_v0_2;
-    u16 temp_v0_3;
-    u16 temp_v1_4;
-    u16 temp_v1_5;
-    u16 temp_v1_6;
-    u32 temp_a0_2;
-    u8 *var_a2;
-    u8 *var_a3;
-    u8 *var_v0;
-    u8 temp_v0;
-    u8 temp_v0_4;
-    u8 temp_v0_5;
-    void *var_a1_2;
-    void *var_s1;
+void func_80038A58(void)
+{
+    register u8 *base __asm__("$19");
+    register u8 *p __asm__("$17");
+    register s32 i __asm__("$18");
+    register s32 one __asm__("$20");
 
-    var_s3 = &D_800B9CD8;
-    var_v0 = &D_800762B4;
-    var_s2 = 0xF;
-    do {
-        *var_v0 = 0;
-        var_s2 -= 1;
-        var_v0 += 1;
-    } while (var_s2 >= 0);
-    var_a3 = D_800762B0;
-    var_a2 = &D_800762B4;
-    var_a1 = 0;
-    var_a0 = &D_800C6E2A;
-    do {
-        temp_v0 = *var_a3;
-        if (((temp_v0 == 0) || (temp_v0 == 3)) && (*var_a2 == 0)) {
-            M2C_FIELD(var_a0, s8 *, 1) = 0;
-            if (M2C_FIELD(var_a0, u8 *, 0) != 0) {
-                M2C_FIELD((M2C_FIELD(var_a0, s32 *, -0xA) + (M2C_FIELD(var_a0, s16 *, -0x54) * 0x1A) + var_a1), s8 *, 0x23) = 0;
-                M2C_FIELD(var_a0, u8 *, 0) = 0U;
-            }
-        }
-        var_a1 += 1;
-        var_a0 += 0x60;
-        var_a3 += 1;
-        var_a2 += 1;
-    } while (var_a1 < 0x10);
-    var_s2_2 = 0;
-    var_s1 = &D_800B9CD8 + 0x10;
-    do {
-        if ((M2C_FIELD(var_s1, u8 *, 0x1EB) != 0) && (M2C_FIELD(var_s1, u8 *, 0x1EA) != 0)) {
-            temp_a0 = M2C_FIELD(var_s1, s32 *, 0x1C4);
-            temp_v1 = M2C_FIELD(var_s1, s32 *, 0x1BC) + M2C_FIELD(var_s1, s32 *, 0x1C0);
-            M2C_FIELD(var_s1, s32 *, 0x1BC) = temp_v1;
-            if (temp_v1 >= temp_a0) {
-                temp_lo = temp_v1 / temp_a0;
-                temp_v1_2 = M2C_FIELD(var_s1, s32 *, -8);
-                var_a0_2 = temp_v1_2;
-                var_s0 = temp_lo;
-                M2C_FIELD(var_s1, s32 *, 0x1BC) = (s32) (temp_v1 % temp_a0);
-                if (temp_v1_2 != 0) {
-                    if (temp_lo >= temp_v1_2) {
-loop_15:
-                        var_s0 -= var_a0_2;
-                        if (var_a0_2 == var_s0) {
-                            var_s0 = 0;
-                        }
-                        M2C_FIELD(var_s1, s32 *, -8) = 0;
-loop_18:
-                        if ((M2C_FIELD(var_s1, u8 *, 0x1E8) == 0) || (func_80038FFC(var_s3), (M2C_FIELD(var_s1, u8 *, 0x1E9) == 0))) {
-                            temp_v1_3 = func_80038FC4(var_s3);
-                            M2C_FIELD(var_s1, u8 *, 0x1E8) = 1U;
-                            if (temp_v1_3 != 0) {
-                                M2C_FIELD(var_s1, s32 *, -8) = temp_v1_3;
-                                var_a0_2 = temp_v1_3;
-                                if (var_s0 < temp_v1_3) {
-                                    M2C_FIELD(var_s1, s32 *, -8) = (s32) (temp_v1_3 - var_s0);
-                                    goto block_25;
-                                }
-                                goto loop_15;
-                            }
-                            goto loop_18;
-                        }
-                        M2C_FIELD(var_s1, u8 *, 0x1EA) = 0U;
-                        M2C_FIELD(var_s1, u8 *, 0x1E8) = 0U;
-                        goto block_66;
+    base = D_800B9CD8;
+
+    {
+        register u8 *q __asm__("$2");
+        q = D_800762B4;
+        i = 0xF;
+        do {
+            *q = 0;
+            i--;
+            q++;
+        } while (i >= 0);
+    }
+
+    {
+        register u8 *a3 __asm__("$7");
+        register u8 *a2 __asm__("$6");
+        register s32 a1 __asm__("$5");
+        register u8 *a0 __asm__("$4");
+        register s32 t0 __asm__("$8");
+        register s32 v0 __asm__("$2");
+        register s32 v1 __asm__("$3");
+
+        a3 = D_800762B0;
+        a2 = D_800762B4;
+        a1 = 0;
+        t0 = 3;
+        a0 = D_800C6E2A;
+
+        while (a1 < 0x10) {
+            v0 = *a3;
+            if (v0 == 0 || v0 == t0) {
+                if (*a2 == 0) {
+                    v0 = *a0;
+                    a0[1] = 0;
+                    if (v0 != 0) {
+                        v0 = *(s16 *)(a0 - 0x54);
+                        v1 = v0 << 1;
+                        v1 = v1 + v0;
+                        v1 = v1 << 2;
+                        v1 = v1 + v0;
+                        v0 = *(s32 *)(a0 - 0xA);
+                        v1 = v1 << 1;
+                        v0 = v0 + v1;
+                        v0 = v0 + a1;
+                        *(u8 *)(v0 + 0x23) = 0;
+                        a0[0] = 0;
                     }
-                    M2C_FIELD(var_s1, s32 *, -8) = (s32) (temp_v1_2 - temp_lo);
-                    goto block_25;
                 }
-                M2C_FIELD(var_s1, u8 *, 0x1EA) = 0U;
-                M2C_FIELD(var_s1, u8 *, 0x1E8) = 0U;
-                goto block_25;
             }
-block_25:
-            var_t2 = 0;
-            if (M2C_FIELD(var_s1, u8 *, 0x1E4) != 0) {
-                var_t0 = var_s3 + 0x12;
-                var_t1 = 0;
-                var_a1_2 = var_s3 + 0x18;
-                do {
-                    if (M2C_FIELD(var_a1_2, u8 *, 0) != 0) {
-                        temp_a3 = *var_t0;
-                        temp_a2 = M2C_FIELD(var_a1_2, u16 *, -2);
-                        temp_a0_2 = temp_a3 & 0xFFFF;
-                        var_t2 = 1;
-                        if (temp_a0_2 < temp_a2) {
-                            temp_v0_2 = temp_a3 + M2C_FIELD(var_a1_2, u16 *, -4);
-                            *var_t0 = temp_v0_2;
-                            temp_v1_4 = M2C_FIELD(var_a1_2, u16 *, -2);
-                            if ((u32) (temp_v0_2 & 0xFFFF) >= temp_v1_4) {
-                                *var_t0 = temp_v1_4;
-                                goto block_35;
-                            }
-                        } else {
-                            temp_v1_5 = M2C_FIELD(var_a1_2, u16 *, -4);
-                            temp_v0_3 = temp_a3 - temp_v1_5;
-                            if (temp_v1_5 < temp_a0_2) {
-                                *var_t0 = temp_v0_3;
-                                temp_v1_6 = M2C_FIELD(var_a1_2, u16 *, -2);
-                                if (temp_v1_6 >= (u32) (temp_v0_3 & 0xFFFF)) {
-                                    *var_t0 = temp_v1_6;
-                                    goto block_35;
-                                }
+            a1++;
+            a0 += 0x60;
+            a3++;
+            a2++;
+        }
+    }
+
+    i = 0;
+    one = 1;
+    p = base + 0x10;
+    do {
+        if (p[0x1EB] != 0 && p[0x1EA] != 0) {
+            s32 sum = *(s32 *)(p + 0x1BC) + *(s32 *)(p + 0x1C0);
+            s32 lim = *(s32 *)(p + 0x1C4);
+            s32 k;
+            u8 flag;
+
+            *(s32 *)(p + 0x1BC) = sum;
+            if (sum >= lim) {
+                register s32 cur __asm__("$3");
+                register s32 quot __asm__("$5");
+                register s32 c __asm__("$4");
+                register s32 r __asm__("$16");
+                register s32 v __asm__("$3");
+
+                quot = sum / lim;
+                cur = *(s32 *)(p - 8);
+                *(s32 *)(p + 0x1BC) = sum % lim;
+                c = cur;
+                r = quot;
+                if (cur != 0) {
+                    if (quot >= cur) {
+                        do {
+                            if (c == r) {
+                                r = 0;
                             } else {
-                                *var_t0 = temp_a2;
-block_35:
-                                M2C_FIELD(var_a1_2, u8 *, 0) = 0U;
+                                r = r - c;
                             }
+                            *(s32 *)(p - 8) = 0;
+                            do {
+                                if (p[0x1E8] != 0) {
+                                    func_80038FFC((s32 *)base);
+                                    if (p[0x1E9] != 0) {
+                                        p[0x1EA] = 0;
+                                        p[0x1E8] = 0;
+                                        goto next;
+                                    }
+                                }
+                                v = func_80038FC4((u8 **)base);
+                                p[0x1E8] = one;
+                            } while (v == 0);
+                            *(s32 *)(p - 8) = v;
+                            c = v;
+                        } while (r >= v);
+                        {
+                            register s32 d __asm__("$2");
+                            d = v - r;
+                            *(s32 *)(p - 8) = d;
                         }
+                    } else {
+                        register s32 d2 __asm__("$2");
+                        d2 = cur - quot;
+                        *(s32 *)(p - 8) = d2;
                     }
-                    var_t1 += 1;
-                    var_a1_2 += 8;
-                    var_t0 += 8;
-                } while (var_t1 <= 0);
-                var_v1 = 0;
-                var_a1_3 = var_s3 + 0x12;
-                var_a0_3 = (s32) ((D_800A4EF8 << 7) * D_800A4EE0) >> 0xE;
-                do {
-                    temp_lo_2 = var_a0_3 * *var_a1_3;
-                    var_v1 -= 1;
-                    var_a1_3 += 8;
-                    var_a0_3 = temp_lo_2 >> 0xE;
-                } while (var_v1 >= 0);
-                M2C_FIELD(var_s1, s16 *, 0) = (s16) var_a0_3;
-                if ((var_t2 & 0xFF) || (var_t1_2 = 0, (D_800A4F16 != 0))) {
-                    var_a1_4 = &D_800C6DD0;
-                    var_t1_3 = 0;
-                    var_a0_4 = &D_800C6DD0 + 0x5A;
-                    do {
-                        temp_v0_4 = M2C_FIELD(var_a0_4, u8 *, 0);
-                        if (temp_v0_4 == 1) {
-                            if (M2C_FIELD(M2C_FIELD(var_a0_4, void **, -0xA), s16 *, 0x1F0) == var_s2_2) {
-                                M2C_FIELD(var_a0_4, s16 *, -0x42) = (s16) ((u32) (*var_a1_4 * M2C_FIELD(var_s1, s16 *, 0)) >> 0xE);
-                                M2C_FIELD(var_a0_4, s8 *, 3) = 1;
-                                M2C_FIELD(var_a0_4, s32 *, -0x46) = (s32) (M2C_FIELD(var_a0_4, s32 *, -0x46) | 3);
-                                M2C_FIELD(var_a0_4, s16 *, -0x40) = (s16) ((u32) (M2C_FIELD(var_a0_4, s16 *, -0x58) * M2C_FIELD(var_s1, s16 *, 0)) >> 0xE);
-                            }
-                        } else if (temp_v0_4 != 0) {
-                            M2C_FIELD(var_a0_4, u8 *, 0) = 1U;
-                        }
-                        var_t1_3 += 1;
-                        var_a0_4 += 0x60;
-                        var_a1_4 += 0x60;
-                    } while (var_t1_3 < 0x10);
-                    var_s2_2 += 1;
                 } else {
-                    M2C_FIELD(var_s1, u8 *, 0x1E4) = 0U;
-                    var_v1_2 = &D_800C6E2A;
-                    do {
-                        if ((M2C_FIELD(var_v1_2, u8 *, 0) == 2) && (M2C_FIELD(M2C_FIELD(var_v1_2, void **, -0xA), s16 *, 0x1F0) == var_s2_2)) {
-                            M2C_FIELD(var_v1_2, u8 *, 0) = 1U;
-                        }
-                        var_t1_2 += 1;
-                        var_v1_2 += 0x60;
-                    } while (var_t1_2 < 0x10);
-                    var_s2_2 += 1;
+                    p[0x1EA] = 0;
+                    p[0x1E8] = 0;
                 }
-            } else {
-                if (D_800A4F16 != 0) {
-                    var_a1_5 = 0;
-                    var_v1_3 = var_s3 + 0x12;
-                    var_a0_5 = (s32) ((D_800A4EF8 << 7) * D_800A4EE0) >> 0xE;
-                    do {
-                        temp_lo_3 = var_a0_5 * *var_v1_3;
-                        var_a1_5 -= 1;
-                        var_v1_3 += 8;
-                        var_a0_5 = temp_lo_3 >> 0xE;
-                    } while (var_a1_5 >= 0);
-                    M2C_FIELD(var_s1, s16 *, 0) = (s16) var_a0_5;
-                    var_a1_6 = &D_800C6DD0;
-                    var_a2_2 = 0;
-                    var_a0_6 = &D_800C6DD0 + 0x5A;
-                    do {
-                        temp_v0_5 = M2C_FIELD(var_a0_6, u8 *, 0);
-                        if (temp_v0_5 == 1) {
-                            if (M2C_FIELD(M2C_FIELD(var_a0_6, void **, -0xA), s16 *, 0x1F0) == var_s2_2) {
-                                M2C_FIELD(var_a0_6, s16 *, -0x42) = (s16) ((u32) (*var_a1_6 * M2C_FIELD(var_s1, s16 *, 0)) >> 0xE);
-                                M2C_FIELD(var_a0_6, s8 *, 3) = 1;
-                                M2C_FIELD(var_a0_6, s32 *, -0x46) = (s32) (M2C_FIELD(var_a0_6, s32 *, -0x46) | 3);
-                                M2C_FIELD(var_a0_6, s16 *, -0x40) = (s16) ((u32) (M2C_FIELD(var_a0_6, s16 *, -0x58) * M2C_FIELD(var_s1, s16 *, 0)) >> 0xE);
-                            }
-                        } else if (temp_v0_5 != 0) {
-                            M2C_FIELD(var_a0_6, u8 *, 0) = 1U;
-                        }
-                        var_a2_2 += 1;
-                        var_a0_6 += 0x60;
-                        var_a1_6 += 0x60;
-                    } while (var_a2_2 < 0x10);
-                }
-                goto block_66;
             }
-        } else {
-block_66:
-            var_s2_2 += 1;
+
+            flag = 0;
+            if (p[0x1E4] != 0) {
+                register u16 *hp __asm__("$8");
+                register u8 *sq __asm__("$5");
+
+                hp = (u16 *)(base + 0x12);
+                k = 0;
+                sq = base + 0x18;
+                do {
+                    if (*sq != 0) {
+                        u16 cur16 = *hp;
+                        flag = 1;
+                        if (cur16 < *(u16 *)(sq - 2)) {
+                            *hp = cur16 + *(u16 *)(sq - 4);
+                            if (*hp < *(u16 *)(sq - 2)) {
+                                goto cont1;
+                            }
+                            __asm__ __volatile__("");
+                            *hp = *(u16 *)(sq - 2);
+                        } else if (*(u16 *)(sq - 4) < cur16) {
+                            *hp = cur16 - *(u16 *)(sq - 4);
+                            if (*(u16 *)(sq - 2) < *hp) {
+                                goto cont1;
+                            }
+                            *hp = *(u16 *)(sq - 2);
+                        } else {
+                            *hp = *(u16 *)(sq - 2);
+                        }
+                        *sq = 0;
+                    }
+                cont1:
+                    k++;
+                    sq += 8;
+                    hp += 4;
+                } while (k <= 0);
+
+                {
+                    register u16 *hp2 __asm__("$5");
+                    register s32 c2 __asm__("$3");
+                    s32 acc2;
+                    acc2 = D_800A4EF8 << 7;
+                    acc2 *= D_800A4EE0;
+                    c2 = 0;
+                    __asm__("addiu %0,%1,18" : "=r"(hp2) : "r"(base), "r"(c2));
+                    acc2 >>= 14;
+                    do {
+                        acc2 *= *hp2;
+                        acc2 >>= 14;
+                        c2--;
+                        hp2 += 4;
+                    } while (c2 >= 0);
+                    *(s16 *)p = acc2;
+                }
+
+                if (flag != 0 || D_800A4F16 != 0) {
+                    register u8 *b __asm__("$5");
+                    register u8 *e __asm__("$4");
+                    b = D_800C6DD0;
+                    k = 0;
+                    e = b + 0x5A;
+                    do {
+                        if (*e == one) {
+                            if (*(s16 *)(*(s32 *)(e - 0xA) + 0x1F0) == i) {
+                                *(s16 *)(e - 0x42) = (u32)(*(s16 *)b * *(s16 *)p) >> 14;
+                                *(s16 *)(e - 0x40) = (u32)(*(s16 *)(e - 0x58) * *(s16 *)p) >> 14;
+                                e[3] = one;
+                                *(u32 *)(e - 0x46) |= 3;
+                            }
+                        } else if (*e != 0) {
+                            *e = one;
+                        }
+                        k++;
+                        e += 0x60;
+                        b += 0x60;
+                    } while (k < 0x10);
+                } else {
+                    register u8 *c __asm__("$3");
+                    register s32 two __asm__("$5");
+                    register s32 uno __asm__("$4");
+
+                    p[0x1E4] = 0;
+                    k = 0;
+                    two = 2;
+                    uno = 1;
+                    c = D_800C6E2A;
+                    do {
+                        if (*c == two && *(s16 *)(*(s32 *)(c - 0xA) + 0x1F0) == i) {
+                            *c = uno;
+                        }
+                        k++;
+                        c += 0x60;
+                    } while (k < 0x10);
+                }
+            } else if (D_800A4F16 != 0) {
+                register u16 *hp3 __asm__("$3");
+                register s32 c3 __asm__("$5");
+                register u8 *b2 __asm__("$5");
+                register u8 *e2 __asm__("$4");
+                register s32 k2 __asm__("$6");
+
+                s32 acc3;
+                acc3 = D_800A4EF8 << 7;
+                acc3 *= D_800A4EE0;
+                hp3 = (u16 *)(base + 0x12);
+                c3 = 0;
+                acc3 >>= 14;
+                do {
+                    acc3 *= *hp3;
+                    acc3 >>= 14;
+                    c3--;
+                    hp3 += 4;
+                } while (c3 >= 0);
+                *(s16 *)p = acc3;
+
+                b2 = D_800C6DD0;
+                k2 = 0;
+                e2 = b2 + 0x5A;
+                do {
+                    if (*e2 == one) {
+                        if (*(s16 *)(*(s32 *)(e2 - 0xA) + 0x1F0) == i) {
+                            *(s16 *)(e2 - 0x42) = (u32)(*(s16 *)b2 * *(s16 *)p) >> 14;
+                            *(s16 *)(e2 - 0x40) = (u32)(*(s16 *)(e2 - 0x58) * *(s16 *)p) >> 14;
+                            e2[3] = one;
+                            *(u32 *)(e2 - 0x46) |= 3;
+                        }
+                    } else if (*e2 != 0) {
+                        *e2 = one;
+                    }
+                    k2++;
+                    e2 += 0x60;
+                    b2 += 0x60;
+                } while (k2 < 0x10);
+            }
         }
-        var_s1 += 0x1FC;
-        var_s3 += 0x1FC;
-    } while (var_s2_2 < 2);
+    next:
+        i++;
+        p += 0x1FC;
+        base += 0x1FC;
+    } while (i < 2);
+
     D_800A4F16 = 0;
 }

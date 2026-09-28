@@ -1,23 +1,24 @@
 /* Exact retail word export for [800387C0,80038838); EXE and assembly verified. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_800387C0 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+s32 func_800387C0(void *arg0) {
+    u8 *p;
+    s32 v;
 
-s32 func_800387C0(void **arg0) {
-    void *temp_a3;
-
-    temp_a3 = *arg0;
-    *arg0 = temp_a3 + 1;
-    *arg0 = temp_a3 + 2;
-    *arg0 = temp_a3 + 3;
-    *arg0 = temp_a3 + 4;
-    if ((M2C_FIELD(temp_a3, u8 *, 0) | (M2C_FIELD(temp_a3, u8 *, 1) << 8) | (M2C_FIELD(temp_a3, u8 *, 2) << 0x10) | (M2C_FIELD(temp_a3, u8 *, 3) << 0x18)) == 0x6B72544D) {
-        *arg0 = temp_a3 + 8;
-        return 0;
+    p = *(u8 **)arg0;
+    (*(s32 *)arg0)++;
+    v = p[0];
+    (*(s32 *)arg0) = p + 2;
+    v |= p[1] << 8;
+    (*(s32 *)arg0) = p + 3;
+    v |= p[2] << 16;
+    (*(s32 *)arg0) = p + 4;
+    v |= p[3] << 24;
+    if (v != 0x6B72544D) {
+        return -1;
     }
-    return -1;
+    (*(s32 *)arg0) = p + 8;
+    return 0;
 }

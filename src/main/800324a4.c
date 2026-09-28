@@ -1,133 +1,166 @@
 /* Exact retail word export for [800324A4,80032774); EXE and assembly verified. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_800324A4 - byte-exact against retail at -O2 (tools/register_match.py). */
 
-extern s32 D_80068304;
-void func_80032A74(void *, s32, void *, s32);          /* static */
-s32 func_8003310C(u16, s32, u16 *);                 /* static */
-void func_8003324C(s32, s32, u16 *);                   /* static */
-extern s32 *D_800A46E8;
-extern void *D_800A4EE8;
+typedef struct Rec14 {
+     u16 unk00;
+     u16 unk02;
+     u32 unk04;
+     u32 unk08;
+     u16 unk0C;
+     u16 unk0E;
+     u32 unk10;
+} Rec14;
+typedef struct Owner4EE8 {
+     u8 pad00[0x14];
+     Rec14 **unk14;
+} Owner4EE8;
+typedef struct Slot54 {
+     s16 unk00;
+     s16 unk02;
+     s16 unk04;
+     s16 unk06;
+     u16 unk08;
+     s8  unk0A;
+} Slot54;
+extern s32  func_800324A4(u32, u8 *, u32, s32);
+s32 aF800301A4(void) __asm__("func_800301A4");
+extern void func_800301A4(void);
+extern Rec14 *D_80068304[];
+extern Owner4EE8 *D_800A4EE8;
 extern s16 D_800A4EF0;
-extern u8 D_800A4F17;
+extern u16 D_800A46E8[];
+extern s8 D_800A4F17;
+#define LOCKBYTE (*(u8 *)&D_800A4F17)
+#define SLOTBASE ((u8 *)&D_800A4F17 - 0x82F)
+extern s32 func_8003310C(s32);
+extern void func_8003324C(s32);
+extern void func_80032A74(Slot54 *, s32, Rec14 *, s32);
 
-s32 func_800324A4(u16 arg0, void *arg1, s32 arg2, s32 arg3) {
-    u8 sp18;
-    u16 sp10;
-    s32 temp_v0;
-    s32 temp_v1_2;
-    s32 var_a1;
-    s32 var_s0;
-    s32 var_s0_2;
-    s32 var_s2;
-    s32 var_s4;
-    s32 var_s5;
-    s32 var_t0;
-    s32 var_t1;
-    s32 var_v0;
-    s8 temp_v0_2;
-    u16 temp_s7;
-    u8 *var_a0;
-    u8 *var_a2;
-    u8 temp_a0;
-    u8 temp_a1;
-    u8 temp_v1;
-    void *var_s1;
-    void *var_s3;
+s32 func_800324A4(u32 arg0, u8 *p, u32 flags, s32 arg3) {
+    Rec14 *rec;
+    Slot54 *e;
+    u8 *q;
+    s32 i;
+    s32 idx;
+    s32 ret;
+    s32 count;
+    s32 minp;
+    s32 maxp;
+    s32 pr;
+    u32 x;
+    
 
-    var_s2 = arg2;
-    sp10 = (u16) (arg0 >> 0x10);
-    temp_v1 = arg1->unk2;
-    temp_a1 = arg1->unk1;
-    temp_a0 = arg1->unk3;
-    var_s4 = 0;
-    if (temp_a1 == 0) {
-        var_s3 = *(D_80068304 + (temp_v1 * 4)) + (temp_a0 * 0x14);
-        goto block_6;
-    }
-    var_v0 = 0;
-    if (D_800A4EF0 == temp_a1) {
+
+
+    register u32 t __asm__("$4");
+    u16 y;
+    s32 v;
+    u8 old;
+    u8 b0;
+    u8 b1;
+    u8 b2;
+    
+
+
+    u32 b3;
+
+    t = arg0;
+    x = arg0;
+    b2 = p[2];
+    b1 = p[1];
+    b3 = p[3];
+    
+
+    maxp = 0;
+    y = t >> 16;
+
+    if (b1 == 0) {
+        rec = &D_80068304[b2][b3];
+    } else {
+        if (D_800A4EF0 != b1) {
+            return 0;
+        }
         if (D_800A4EE8 == 0) {
             return 0;
         }
-        var_s3 = *((temp_v1 * 4) + D_800A4EE8->unk14) + (temp_a0 * 0x14);
-block_6:
-        var_s5 = 0;
-        var_s0 = 0;
-        var_t1 = 0;
-        var_a2 = &D_800A4F17 - 0x82F;
-        var_t0 = 0x80;
-        var_a1 = 0;
-        var_a0 = &D_800A4F17 - 0x824;
-        sp18 = D_800A4F17;
-        D_800A4F17 = 1;
-        temp_s7 = var_s3->unk0;
-        do {
-            if (((*var_a2 & 0x3F) == 1) && (var_a0->unk-7 == (arg0 & 0xFFFF))) {
-                temp_v1_2 = var_a0->unk0 & 0x7F;
-                if (temp_v1_2 < var_t0) {
-                    var_s0 = var_a1 + 1;
-                    var_t0 = temp_v1_2;
-                }
-                if (temp_v1_2 >= var_s4) {
-                    var_s4 = temp_v1_2;
-                }
-                var_t1 += 1;
-            }
-            var_a1 += 1;
-            var_a0 += 0x54;
-            var_a2 += 0x54;
-        } while (var_a1 < 8);
-        if (arg3 >= var_t1) {
-            var_s0 = 0;
-            goto block_18;
-        }
-        if ((var_s2 & 0x7F) >= var_t0) {
-block_18:
-            if (var_s0 == 0) {
-                if (!(var_s2 & 0x4000) || (var_s2 & 0x3000)) {
-                    temp_v0 = func_8003310C(temp_s7, var_a1, (u16 *) var_a2);
-                    if (temp_v0 != 0) {
-                        var_s5 = temp_v0;
-                        var_s0_2 = var_s5 - 1;
-                        var_s1 = (var_s0_2 * 0x54) + &D_800A46E8;
-                        goto block_25;
-                    }
-                }
-            } else {
-                var_s0_2 = var_s0 - 1;
-                var_s1 = (var_s0_2 * 0x54) + &D_800A46E8;
-                if (var_s1->unk8 == 0) {
-                    var_s5 = var_s0_2 + 1;
-                    func_8003324C(var_s0_2 & 0xFFFF, var_a1, (u16 *) var_a2);
-block_25:
-                    temp_v0_2 = var_s2 & 0x7F;
-                    if (var_s2 & 0x1000) {
-                        var_s1->unkB = temp_v0_2;
-                        if (temp_v0_2 < var_s4) {
-                            var_s2 |= 0x8000;
-                        }
-                    }
-                    var_s1->unk4 = arg0;
-                    var_s1->unk6 = sp10;
-                    var_s1->unk2 = temp_s7;
-                    var_s1->unk0 = (s16) ((arg1->unk0 & 0xC0) | 1);
-                    var_s1->unkA = 5;
-                    var_s1->unk8 = (u16) var_s3->unkC;
-                    func_80032A74(var_s1, var_s0_2, var_s3, var_s2 & 0xFFFF);
-                }
-            }
-        }
-        var_v0 = var_s5;
-        D_800A4F17 = sp18;
-        /* Duplicate return node #31. Try simplifying control flow for better match */
-        return var_v0;
+        rec = D_800A4EE8->unk14[b2];
+        rec += b3;
     }
-    return var_v0;
+
+    ret = 0;
+    idx = 0;
+    count = 0;
+
+    old = LOCKBYTE;
+    LOCKBYTE = 1;
+
+    v = rec->unk00;
+
+    q = SLOTBASE;
+    minp = 0x80;
+    for (i = 0; i < 8; i++, q += 0x54) {
+        if ((*(u16 *)q & 0x3F) == 1 && *(u16 *)(q + 4) == (u16)x) {
+            pr = q[0xB] & 0x7F;
+            if (pr < minp) {
+                idx = i + 1;
+                minp = pr;
+            }
+            if (pr >= maxp) {
+                maxp = pr;
+            }
+            count++;
+        }
+    }
+
+    if (count <= arg3) {
+        idx = 0;
+    } else if ((s32)(flags & 0x7F) < minp) {
+        goto done;
+    }
+
+    if (idx == 0) {
+        if (flags & 0x4000) {
+            if ((flags & 0x3000) == 0) {
+                goto done;
+            }
+        }
+        idx = func_8003310C(v);
+        if (idx == 0) {
+            goto done;
+        }
+        ret = idx;
+        idx = ret - 1;
+        e = (Slot54 *)((u8 *)D_800A46E8 + idx * 0x54);
+    } else {
+        idx--;
+        e = (Slot54 *)((u8 *)D_800A46E8 + idx * 0x54);
+        if (e->unk08 != 0) {
+            goto done;
+        }
+        ret = idx + 1;
+        func_8003324C((u16)idx);
+    }
+
+    if (flags & 0x1000) {
+        ((u8 *)e)[0xB] = flags & 0x7F;
+        if ((s32)(flags & 0x7F) < maxp) {
+            flags |= 0x8000;
+        }
+    }
+
+    b0 = p[0];
+    e->unk04 = x;
+    e->unk06 = y;
+    e->unk02 = v;
+    e->unk00 = (b0 & 0xC0) | 1;
+    e->unk08 = rec->unk0C;
+    e->unk0A = 5;
+    func_80032A74(e, idx, rec, (u16)flags);
+
+done:
+    LOCKBYTE = old;
+    return ret;
 }

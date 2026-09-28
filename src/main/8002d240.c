@@ -1,26 +1,25 @@
 /* Exact retail word export for [8002D240,8002D29C); EXE and assembly verified. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_8002D240 - byte-exact against retail at -O2 (tools/register_match.py). */
 
-extern s32 D_8006ADD8[];
-void func_8003B45C(s32 *, s32 *);                /* static */
-extern s16 D_800A4E74;
 extern s32 D_800A4ECC;
+extern u16 D_8006ADD8[];
+extern u16 D_800A4E74;
 extern u16 D_800A4ED4;
 extern u16 D_800A4ED6;
+extern void func_8003B45C(s32 *a0);
 
-void func_8002D240(s16 arg0) {
-    u16 temp_v1;
+void func_8002D240(s32 a0) {
+    s32 index = (a0 << 16) >> 15;
+    s32 *p = &D_800A4ECC;
+    u16 value = *(u16 *)((u8 *)D_8006ADD8 + index);
 
-    temp_v1 = *(D_8006ADD8 + ((s32) (arg0 << 0x10) >> 0xF));
-    D_800A4ECC = 6;
-    D_800A4E74 = arg0;
-    D_800A4ED4 = temp_v1;
-    D_800A4ED6 = temp_v1;
-    func_8003B45C(&D_800A4ECC, &D_800A4ECC);
+    *p = 0x6;
+    D_800A4E74 = (u16)a0;
+    D_800A4ED4 = value;
+    D_800A4ED6 = value;
+
+    func_8003B45C(p);
 }

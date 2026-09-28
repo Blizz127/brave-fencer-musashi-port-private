@@ -1,23 +1,15 @@
 /* Exact retail word export for [8001FB8C,8001FC08); EXE and assembly verified. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: written against Druthulu/BFM-decomp (vendor/bfm-decomp) as reference. */
+/* func_8001FB8C - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+extern void (*D_80063500[])();
 
-extern s32 D_80063500;
-
-void func_8001FB8C(void *arg0, s32 *arg1) {
-    u16 temp_v1;
-
-    if ((arg0->unk4 >= 0) && (arg0->unk0 == 1)) {
-        temp_v1 = arg0->unk2;
-        if (temp_v1 < 9U) {
-            *(D_80063500 + (temp_v1 * 4))();
-            *arg1 += 1;
-        }
+void func_8001FB8C(s32 *obj, s32 *count) {
+    if (obj[1] < 0) return;
+    if (*(u16 *)obj != 1) return;
+    if (*(u16 *)((u8 *)obj + 2) < 9) {
+        D_80063500[*(u16 *)((u8 *)obj + 2)](obj);
+        count[0]++;
     }
 }

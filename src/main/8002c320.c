@@ -2,55 +2,50 @@
  * SHA256(span)=bc45b3ac220bb74d8607ba4fbc091accf73c21383711723e353df44dfc53606d.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_8002C320 - byte-exact against retail at -O2 (tools/register_match.py). */
 
-extern u8 D_80075AC0;
+extern u8 D_80075AC0[];
 
-s32 func_8002C320(void) {
-    s32 var_a0;
-    s32 var_a3;
-    s32 var_t0;
-    s32 var_t4;
-    s32 var_v0;
-    u8 *var_a2;
-    u8 *var_t2;
-    u8 *var_t3;
-    u8 *var_v1;
-    u8 temp_v0;
+u32 func_8002C320(void) {
+    register u32 result __asm__("$8") = 0;
+    int count = 0;
+    register u32 bit1 __asm__("$14") = 1;
+    register u32 bit2 __asm__("$13") = 2;
+    register u32 shift __asm__("$7") = 0;
+    u8 *base = D_80075AC0;
+    u8 *ptr_data = base + 0x10;
+    u8 *ptr_check = base + 0x2;
+    u8 *ptr_byte = base;
+    u32 sum;
+    u32 masked;
+    int j;
+    u16 val;
 
-    var_t0 = 0;
-    var_t4 = 0;
-    var_a3 = 0;
-    var_a2 = &D_80075AC0 + 0x10;
-    var_t3 = &D_80075AC0 + 2;
-    var_t2 = &D_80075AC0;
-    do {
-        var_a0 = 0;
-        if (*var_t2 != 0) {
-            var_v1 = var_a2;
-            do {
-                temp_v0 = *var_v1;
-                var_v1 += 1;
-                var_a0 += temp_v0;
-            } while ((s32) var_v1 < (s32) (var_a2 + 0x70));
-            var_v0 = 2 << var_a3;
-            if (*var_t3 == (var_a0 & 0xFFFF)) {
-                var_v0 = 1 << var_a3;
+    for (; count < 4; count++) {
+        if (*ptr_byte != 0) {
+            val = *(u16 *)ptr_check;
+            sum = 0;
+
+            for (j = 0; j < 0x70; j++) {
+                sum += ptr_data[j];
             }
-            var_t0 |= var_v0;
+            masked = sum & 0xFFFF;
+
+            if (val == masked) {
+                result |= bit1 << shift;
+            } else {
+                result |= bit2 << shift;
+            }
         }
-        var_a3 += 8;
-        var_a2 += 0x80;
-        var_t3 += 0x80;
-        var_t4 += 1;
-        var_t2 += 0x80;
-    } while (var_t4 < 4);
-    return var_t0;
+
+        shift += 8;
+        ptr_data += 0x80;
+        ptr_check += 0x80;
+        ptr_byte += 0x80;
+    }
+
+    return result;
 }

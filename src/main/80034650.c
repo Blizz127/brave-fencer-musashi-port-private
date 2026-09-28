@@ -1,27 +1,37 @@
 /* Exact retail word export for [80034650,800346D0); EXE and assembly verified. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_80034650 - byte-exact against retail at -O2 (tools/register_match.py). */
 
-void func_80030D80(void *, s16);              /* static */
-extern s32 *D_800A4988;
+typedef struct Ent30D80 {
+     s32 unk00;
+     u8 pad04[6];
+     u16 unk0A;
+     u8 pad0C[0x34];
+     void (*unk40)(s32, s32);
+     s32 unk44;
+     u8 pad48[6];
+     u8 unk4E;
+     u8 pad4F;
+     u8 unk50;
+     u8 unk51;
+} Ent30D80;
+struct Ent30D80;
+extern void func_80034650(u8 *, s32);
+extern u8 D_800A4988[];
+void func_80030D80(Ent30D80 *arg0, s16 arg1);
 
-void func_80034650(s16 *arg0, s32 arg1) {
-    void *var_s1;
-    s32 var_s0;
+void func_80034650(u8 *param_1, s32 param_2)
+{
+    s32 i;
+    s32 pm;
 
-    var_s0 = 0;
-    var_s1 = &D_800A4988;
-    do {
-        if (M2C_FIELD((arg0 + var_s0), u8 *, 0x3A) != 0) {
-            func_80030D80(var_s1, (s16) (arg1 & 0xFF));
+    pm = (param_2 & 0xFF) << 16;
+    for (i = 0; i < 8; i++) {
+        if (*(param_1 + i + 0x3A) != 0) {
+            func_80030D80((Ent30D80 *)(D_800A4988 + i * 0x54), pm >> 16);
         }
-        var_s0 += 1;
-        var_s1 += 0x54;
-    } while (var_s0 < 8);
-    *arg0 = 0;
+    }
+    *(u16 *)param_1 = 0;
 }
