@@ -85,6 +85,10 @@ static int group_config(int argc, char **argv) {
     CHECK(bfm_plat_config_set(&c, "video.dither", "sometimes") == BFM_PLAT_INVALID);
     CHECK(bfm_plat_config_set(&c, "video.dither", "off") == BFM_PLAT_OK && c.dither == BFM_DITHER_OFF);
     CHECK(bfm_plat_config_set(&c, "video.dither", "on") == BFM_PLAT_OK && c.dither == BFM_DITHER_ON);
+    /* GPU path: cpu (default) | bfm_plat */
+    CHECK(c.gpu_path == BFM_GPU_CPU);
+    CHECK(bfm_plat_config_set(&c, "video.gpu", "gl") == BFM_PLAT_INVALID);
+    CHECK(bfm_plat_config_set(&c, "video.gpu", "bfm_plat") == BFM_PLAT_OK && c.gpu_path == BFM_GPU_BFM_PLAT);
     {
         char *args[] = {"prog", "--fps", "30", "--keep-me", "--set",
                         "debug.log_level=4", "--no-mods", "--renderer", "hle"};
@@ -107,7 +111,7 @@ static int group_config(int argc, char **argv) {
         CHECK(bfm_plat_config_load_file(&r, path) == BFM_PLAT_OK);
         CHECK(r.widescreen == 1 && r.internal_scale == 3 && r.frame_rate == 30);
         CHECK(r.log_level == 4 && r.mods_enabled == 0 && r.bad_line == 0);
-        CHECK(r.dither == BFM_DITHER_ON);
+        CHECK(r.dither == BFM_DITHER_ON && r.gpu_path == BFM_GPU_BFM_PLAT);
         CHECK(strcmp(r.renderer, "hle") == 0);
         CHECK(strcmp(bfm_plat_config_get(&r, "mod.hello.greeting"), "hi there") == 0);
         /* --config is applied before other overrides */
@@ -1587,6 +1591,24 @@ static int group_psyq(int argc, char **argv) {
         CHECK(p[1].kind == BFM_PRIM_SPRITE && p[1].w == 16 && p[1].tpage == 0x0205 &&
               p[1].flags == BFM_PRIM_FLAG_RAW_TEXTURE && p[1].v[0].u == 8 && p[1].v[0].r == 0x33);
         CHECK(bfm_psyq_decode_packet(w, 5, &tp, p, 4) == 0);   /* truncated FT4 */
+    }
+    /* draw state: E6 mask bits and the texpage reach untextured prims; a
+     * textured polygon's texpage becomes current */
+    {
+        uint32_t w[] = {0xE6000003, 0x22102030, 0x00000000, 0x00000010, 0x00100000,
+                        0xE6000001, 0x2C808080, 0x00000000, 0x7FC00000, 0x00000010,
+                        0x00400010, 0x00100000, 0x00001000, 0x00100010, 0x00001010,
+                        0x62102030, 0x00000000, 0x00040004};
+        BfmPlatPrim p[4];
+        uint16_t tp = 0x0020;   /* abr 1 from an earlier E1 */
+        CHECK(bfm_psyq_decode_packet(w, 18, &tp, p, 4) == 3);
+        CHECK(p[0].kind == BFM_PRIM_POLY_F3 && p[0].tpage == 0x0020 &&
+              p[0].flags == (BFM_PRIM_FLAG_SEMI_TRANS | BFM_PRIM_FLAG_MASK_SET | BFM_PRIM_FLAG_MASK_CHECK));
+        CHECK(p[1].kind == BFM_PRIM_POLY_FT4 && p[1].tpage == 0x0040 &&
+              p[1].flags == BFM_PRIM_FLAG_MASK_SET);
+        CHECK(p[2].kind == BFM_PRIM_TILE && p[2].tpage == 0x0040 &&
+              p[2].flags == (BFM_PRIM_FLAG_SEMI_TRANS | BFM_PRIM_FLAG_MASK_SET));
+        CHECK(tp == (0x4000 | 0x0040));
     }
 
     /* libcd */

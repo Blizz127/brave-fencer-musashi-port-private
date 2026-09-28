@@ -65,7 +65,9 @@ void bfm_psyq_stats(BfmPsyqStats *out);
 void bfm_psyq_reset(void);
 
 /* GP0 packet decoding (DrawOTag): decodes the command words of one packet
- * into prims; returns prims written (<= max). *tpage carries E1 state. */
+ * into prims; returns prims written (<= max). *tpage carries the draw state
+ * across packets: bits 0-13 the E1 texpage (textured polygons update it),
+ * bit 14 E6 mask-set, bit 15 E6 mask-check. */
 size_t bfm_psyq_decode_packet(const uint32_t *words, size_t nwords, uint16_t *tpage,
                               BfmPlatPrim *out, size_t max);
 

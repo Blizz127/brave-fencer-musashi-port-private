@@ -103,3 +103,6 @@ vendor/
 
 # Local agent session transcripts: keep local, never publish
 /codex-session-*.md
+
+# tools/run_headless_boot.sh default output (logs, traces, captures)
+/headless-out/
