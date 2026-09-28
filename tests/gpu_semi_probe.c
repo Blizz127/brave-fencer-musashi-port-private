@@ -70,9 +70,30 @@ int main(void) {
         vram[0][1] = F;                          /* STP clear: opaque */
         back(B);
         gp0(0x66808080u); gp0((0u << 16) | 100u); gp0(0u); gp0((1u << 16) | 2u);
-        assert(vram[0][100] == expect(B, F, mode));
+        assert(vram[0][100] == (uint16_t)(expect(B, F, mode) | 0x8000u)); /* keeps STP */
         assert(vram[0][101] == F);
     }
-    puts("GPU_SEMI_PASS modes=4 prims=rect,poly,textured-rect stp_gate=1");
+    /* E6 mask: check (bit 1) leaves pixels with bit 15 alone; set (bit 0)
+     * forces bit 15 on what is drawn. Textured pixels keep their STP bit. */
+    gp0(0xe1000000u);
+    back(B);
+    vram[2][102] = (uint16_t)(B | 0x8000u);
+    gp0(0xe6000002u);
+    gp0(cmd(0x60, 8, 16, 30)); gp0((0u << 16) | 100u); gp0((4u << 16) | 4u);
+    assert(vram[2][102] == (uint16_t)(B | 0x8000u) && vram[1][101] == F);
+    gp0(0xe6000001u);
+    gp0(cmd(0x60, 8, 16, 30)); gp0((0u << 16) | 100u); gp0((4u << 16) | 4u);
+    assert(vram[1][101] == (uint16_t)(F | 0x8000u));
+    gp0(0xe6000000u);
+    gp0(0xe1000000u | (2u << 7));
+    vram[0][0] = (uint16_t)(F | 0x8000u);
+    back(B);
+    gp0(0x65808080u); gp0((0u << 16) | 100u); gp0(0u); gp0((1u << 16) | 1u);
+    assert(vram[0][100] == (uint16_t)(F | 0x8000u));
+    /* Non-raw textured rectangle (0x64) modulates: 0x404040 halves. */
+    vram[0][0] = rgb15(20, 10, 4);
+    gp0(0x64404040u); gp0((0u << 16) | 100u); gp0(0u); gp0((1u << 16) | 1u);
+    assert(vram[0][100] == rgb15(10, 5, 2));
+    puts("GPU_SEMI_PASS modes=4 prims=rect,poly,textured-rect stp_gate=1 mask=1 modulate=1");
     return 0;
 }
