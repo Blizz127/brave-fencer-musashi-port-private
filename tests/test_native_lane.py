@@ -22,6 +22,7 @@ EXPECT = {
     0x8001903C: (False, "hooks"),    # STARTUP_RECORD_CLEAR: host-sequenced (enum-named PC)
     0x80015498: (True, None),        # register-pinned locals (`__asm__("$N")`), no asm
     0x80015208: (False, "calls"),    # register-pinned and real inline asm
+    0x80014CF8: (True, None),        # tied empty asm ("" : "=r"(x) : "0"(x)) is an identity
     0x80015310: (False, "memory"),   # volatile device access
     0x8002A088: (False, "abi"),      # passes 0 of 1 arguments to func_8002A108
     0x8001CFDC: (False, "irq"),      # loop with no store or call
@@ -82,6 +83,19 @@ class NativeLaneGeneratorTest(unittest.TestCase):
                         "-I", str(ROOT / "pc_port/include"), "-c",
                         str(self.out / "native_lane_table.c"), "-o", str(self.out / "table.o")],
                        check=True, timeout=60)
+
+
+class EmptyAsmTest(unittest.TestCase):
+    def test_only_identity_empty_asm_is_dropped(self):
+        sys.path.insert(0, str(ROOT / "tools"))
+        import native_lane_gen as g
+        for text in ('__asm__("" : : "r"(i), "r"(c));', '__asm__("" : "=r"(p) : "0"(p));',
+                     '__asm__("" : "=r"(a), "=r"(b) : "0"(a), "1"(b));',
+                     '__asm__ __volatile__("" ::: "memory");'):
+            self.assertEqual(g.strip_empty_asm(text)[1], 1, text)
+        self.assertIsNone(g.strip_empty_asm('__asm__("" : "=r"(a));'))        # untied output
+        self.assertIsNone(g.strip_empty_asm('__asm__("" : "=r"(a) : "0"(b));'))  # tied to another value
+        self.assertEqual(g.strip_empty_asm('__asm__("mtc2 $1, $2");')[1], 0)
 
 
 class NativeLaneSourceTest(unittest.TestCase):

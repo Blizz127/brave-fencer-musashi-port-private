@@ -52,6 +52,56 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 RAM_LO, RAM_HI = 0x80010000, 0x80200000
 HOST_TARGET = "x86_64-unknown-linux-gnu"
+def split_operands(text):
+    """'"=r"(a), "=r"(b)' -> [('=r', 'a'), ('=r', 'b')]"""
+    out = []
+    for part in split_top(text, ","):
+        m = re.match(r'\s*"([^"]*)"\s*\((.*)\)\s*$', part, flags=re.S)
+        if not part.strip():
+            continue
+        if not m:
+            return None
+        out.append((m.group(1), re.sub(r"\s+", "", m.group(2))))
+    return out
+
+
+def strip_empty_asm(text):
+    """Drop empty-template asm statements that are identities on the host:
+    no outputs, or every output tied to an input ("N") with the same
+    expression; clobbers (incl. "memory") only steer MIPS scheduling. Returns
+    (text, dropped) or None when an empty asm has an untied output (its value
+    would be whatever the MIPS register held)."""
+    pat = re.compile(r'\b(?:__asm__|__asm|asm)\s*(?:__volatile__|volatile)?\s*\(\s*""\s*')
+    pos, pieces, dropped = 0, [], 0
+    for m in pat.finditer(text):
+        if m.start() < pos:
+            continue
+        depth, i = 1, text.index("(", m.start()) + 1
+        while i < len(text) and depth:
+            depth += {"(": 1, ")": -1}.get(text[i], 0)
+            i += 1
+        j = i
+        while j < len(text) and text[j] in " \t\n":
+            j += 1
+        if j >= len(text) or text[j] != ";":
+            return None
+        inner = text[m.end():i - 1]
+        sections = split_top(inner, ":")
+        outs = split_operands(sections[1]) if len(sections) > 1 else []
+        ins = split_operands(sections[2]) if len(sections) > 2 else []
+        if outs is None or ins is None:
+            return None
+        for k, (cons, expr) in enumerate(outs):
+            if not any(c == str(k) and e == expr for c, e in ins):
+                return None
+        pieces.append(text[pos:m.start()])
+        pieces.append("/* empty asm removed for the host */")
+        pos = j + 1
+        dropped += 1
+    pieces.append(text[pos:])
+    return "".join(pieces), dropped
+
+
 # Local register pinning in matched C: `register ... name __asm__("$N")`.
 REGISTER_PIN = re.compile(r'(\bregister\b[^;(){}]*?)\s*__asm__\s*\(\s*"\$\d+"\s*\)')
 
@@ -607,12 +657,18 @@ def build_one(entry, out, symbols, hooks, clang):
         o0 = work / f"{tag}.O0.ll"
         compile_src = src
         raw = src.read_text(errors="replace")
-        if REGISTER_PIN.search(raw):
-            # `register T x __asm__("$5")` pins a local to a MIPS register for
-            # the byte match only; it has no meaning on the host. Functions that
-            # also use real inline asm are still refused (rule "calls").
+        host = REGISTER_PIN.sub(r"\1", raw)
+        # `register T x __asm__("$5")` pins a local to a MIPS register for the
+        # byte match only; it has no meaning on the host. Empty asm statements
+        # that are identities go too; any other inline asm is still refused
+        # (rule "calls").
+        stripped = strip_empty_asm(host)
+        if stripped is None:
+            raise Reject("calls", "empty asm with an untied output")
+        host = stripped[0]
+        if host != raw:
             compile_src = work / f"{tag}.host.c"
-            compile_src.write_text(REGISTER_PIN.sub(r"\1", raw))
+            compile_src.write_text(host)
         r = run([clang, *CFLAGS, "-O0", "-Xclang", "-disable-O0-optnone", "-S", "-emit-llvm",
                  "-I", str(ROOT / "include"), "-I", str(src.parent), str(compile_src), "-o", str(o0)])
         if r.returncode:
