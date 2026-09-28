@@ -554,7 +554,8 @@ int bfm_psyq_CdSearchFile(uint32_t *r) {
         const char *base = path;
         const char *s;
         for (s = path; *s; s++) if (*s == '\\' || *s == '/') base = s + 1;
-        strncpy((char *)fp + 8, base, 15);
+        size_t len = strlen(base);
+        memcpy(fp + 8, base, len > 15 ? 15 : len);   /* CdlFILE.name[16], zeroed above */
     }
     RET(A(0));
     return 1;
