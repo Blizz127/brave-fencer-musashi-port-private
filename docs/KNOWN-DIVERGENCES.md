@@ -44,12 +44,26 @@ The shares:
   - 47 fail the lane's hooks rule;
   - 46 are PsyQ stub entries;
   - the rest fail other lane rules.
-- 93.1 M instructions (93% of the non-idle total) are in code with no
-  registry entry:
-  - libcd 46 M (a single sector-copy loop at 80046C38 alone is 43 M);
-  - overlay code at 800CFxxx-800D3xxx, 37 M (the title/movie overlay,
-    unregistered);
-  - libpad 6.4 M, libetc 2.2 M, libgpu 1.2 M.
+By domain, excluding idle, with overlay code attributed to the resident
+MAIN.CD member (73b802be3). Residency is inferred from traced entries; only
+45 K instructions needed the global tie-break.
+- **Game code** (38.7 M instructions, 187 functions):
+  - byte-matched C *runs* for 1.2%: the native lane covers the main EXE
+    only;
+  - byte-matched C *exists* for 44.7%;
+  - the rest is:
+    - main_0003's hand-written MDEC routines (func_800D3204/800D3234,
+      verbatim asm, no C form): 55.3%;
+    - main_0003 matched C, interpreted because overlays have no lane yet:
+      39.5%;
+    - main-EXE matched C: 5.2%.
+- **PsyQ** (61.2 M, 267 functions):
+  - shims run 0.3%;
+  - interpreted retail 99.7%, mostly unregistered libcd (46 M, including
+    the 43 M sector-copy loop at 80046C38), libpad (6.4 M) and libetc
+    (2.2 M).
+  - Under the owner's rule, PsyQ stays platform code. The target there is
+    shims proven faithful, not matched C.
 
 Shadowing:
 - 31 active PsyQ shims shadow a registered matched-C function. 9 of
