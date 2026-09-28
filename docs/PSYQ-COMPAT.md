@@ -9,12 +9,12 @@ and every `asm/overlays/*/*.s`); 30230 `jal`/`j` call sites into the Psy-Q range
 
 | Status | Entry points | Call sites |
 |---|---|---|
-| psycross | 1 (0.5%) | 3629 (12.0%) |
+| psycross | 24 (11.3%) | 13298 (44.0%) |
 | hle | 38 (17.9%) | 6857 (22.7%) |
-| stub-TBD | 173 (81.6%) | 19744 (65.3%) |
-| **covered (psycross + hle)** | **39 / 212 (18.4%)** | **10486 / 30230 (34.7%)** |
+| stub-TBD | 150 (70.8%) | 10075 (33.3%) |
+| **covered (psycross + hle)** | **62 / 212 (29.2%)** | **20155 / 30230 (66.7%)** |
 
-Named: 116 / 212 entry points (vendor symbols, libgte instruction shape, or 14 inferred
+Named: 119 / 212 entry points (vendor symbols, libgte instruction shape, or 14 inferred
 from call context: see `INFERRED` in tools/psyq_compat_status.py). The rest are listed
 by address and Psy-Q object for later naming.
 
@@ -81,59 +81,59 @@ by address and Psy-Q object for later naming.
 | `0x80046B44` | StFreeRing | libcd2 |  | 1 | 1 | stub-TBD | CD: guest code over the CD controller HLE |
 | `0x80046C38` | StGetNext | libcd2 |  | 1 | 1 | stub-TBD | CD: guest code over the CD controller HLE |
 | `0x80046D1C` | StCdInterrupt | libcd2 |  | 1 | 1 | stub-TBD | CD: guest code over the CD controller HLE |
-| `0x8004787C` | *unnamed* | libgte1 | GEO_00.o | 1091 | 73 | stub-TBD | GTE state: needs one shared GTE register file |
-| `0x80047948` | *unnamed* | libgte1 | GEO_01.o | 766 | 73 | stub-TBD | GTE state: needs one shared GTE register file |
+| `0x8004787C` | *unnamed* | libgte1 | GEO_00.o | 1091 | 73 | stub-TBD | not in PsyCross; an HLE on the gteRegs bank via the bridge is possible |
+| `0x80047948` | *unnamed* | libgte1 | GEO_01.o | 766 | 73 | stub-TBD | not in PsyCross; an HLE on the gteRegs bank via the bridge is possible |
 | `0x80047B3C` | csqrt | libgte1 |  | 64 | 64 | stub-TBD | stateless but not in PsyCross; fixed-point semantics to pin before an HLE |
 | `0x80047BD8` | catan | libgte1 |  | 1 | 1 | stub-TBD | stateless but not in PsyCross |
-| `0x80047CB4` | InitGeom | libgte1 |  | 1 | 1 | stub-TBD | GTE state |
-| `0x80047D3C` | *unnamed* | libgte23 |  | 401 | 66 | stub-TBD | GTE state: needs one shared GTE register file |
-| `0x80047E58` | *unnamed* | libgte23 |  | 1 | 1 | stub-TBD | GTE state: needs one shared GTE register file |
-| `0x80047E6C` | VectorNormal | libgte23 |  | 3 | 3 | stub-TBD | GTE state: needs one shared GTE register file |
-| `0x80047E98` | VectorNormalSS | libgte23 |  | 614 | 66 | stub-TBD | GTE state: needs one shared GTE register file |
-| `0x8004806C` | gteMIMefunc | libgte23 |  | 127 | 64 | stub-TBD | GTE state: needs one shared GTE register file |
+| `0x80047CB4` | InitGeom | libgte1 |  | 1 | 1 | psycross | GTE bridge (gte_owner lease) |
+| `0x80047D3C` | *unnamed* | libgte23 |  | 401 | 66 | stub-TBD | not in PsyCross; an HLE on the gteRegs bank via the bridge is possible |
+| `0x80047E58` | *unnamed* | libgte23 |  | 1 | 1 | stub-TBD | not in PsyCross; an HLE on the gteRegs bank via the bridge is possible |
+| `0x80047E6C` | VectorNormal | libgte23 |  | 3 | 3 | stub-TBD | not in PsyCross; an HLE on the gteRegs bank via the bridge is possible |
+| `0x80047E98` | VectorNormalSS | libgte23 |  | 614 | 66 | stub-TBD | not in PsyCross; an HLE on the gteRegs bank via the bridge is possible |
+| `0x8004806C` | gteMIMefunc | libgte23 |  | 127 | 64 | stub-TBD | not in PsyCross; an HLE on the gteRegs bank via the bridge is possible |
 | `0x800480EC` | SquareRoot12 | libgte23 |  | 190 | 64 | stub-TBD | stateless but not in PsyCross |
-| `0x8004818C` | MulMatrix0 | libgte2 |  | 14 | 13 | stub-TBD | GTE state: needs one shared GTE register file |
-| `0x8004829C` | MulRotMatrix | libgte2 |  | 1 | 1 | stub-TBD | GTE state: needs one shared GTE register file |
-| `0x8004838C` | CompMatrix | libgte3 |  | 4 | 3 | stub-TBD | GTE state: needs one shared GTE register file |
-| `0x800484EC` | *unnamed* | libgte3 |  | 722 | 69 | stub-TBD | GTE state: needs one shared GTE register file |
-| `0x8004864C` | ApplyRotMatrix | libgte3 |  | 194 | 65 | stub-TBD | GTE state: needs one shared GTE register file |
-| `0x8004867C` | PushMatrix | libgte3 |  | 5 | 5 | stub-TBD | GTE state: needs one shared GTE register file |
-| `0x8004871C` | PopMatrix | libgte3 |  | 5 | 5 | stub-TBD | GTE state: needs one shared GTE register file |
-| `0x800487BC` | ReadRotMatrix | libgte3 |  | 5 | 5 | stub-TBD | GTE state: needs one shared GTE register file |
-| `0x8004880C` | SetMulMatrix | libgte4 |  | 1 | 1 | stub-TBD | GTE state: needs one shared GTE register file |
-| `0x8004891C` | CompMatrixLV | libgte4 |  | 1 | 1 | stub-TBD | GTE state: needs one shared GTE register file |
-| `0x80048B6C` | ApplyRotMatrixLV | libgte4 |  | 142 | 65 | stub-TBD | GTE state: needs one shared GTE register file |
-| `0x80048CAC` | SetMulRotMatrix | libgte5 |  | 1 | 1 | stub-TBD | GTE state: needs one shared GTE register file |
-| `0x80048D9C` | *unnamed* | libgte5 |  | 73 | 71 | stub-TBD | GTE state: needs one shared GTE register file |
-| `0x80048EAC` | *unnamed* | libgte5 |  | 1017 | 65 | stub-TBD | GTE state: needs one shared GTE register file |
-| `0x80048FBC` | ApplyMatrixSV | libgte5 |  | 2078 | 70 | stub-TBD | GTE state: needs one shared GTE register file |
-| `0x8004901C` | *unnamed* | libgte5 |  | 13 | 6 | stub-TBD | GTE state: needs one shared GTE register file |
-| `0x8004914C` | *unnamed* | libgte6 |  | 1423 | 66 | stub-TBD | GTE state: needs one shared GTE register file |
-| `0x8004917C` | *unnamed* | libgte6 |  | 1 | 1 | stub-TBD | GTE state: needs one shared GTE register file |
-| `0x800491AC` | *unnamed* | libgte6 |  | 1356 | 66 | stub-TBD | GTE state: needs one shared GTE register file |
-| `0x800491CC` | ReadGeomOffset | libgte6 |  | 5 | 5 | stub-TBD | GTE state: needs one shared GTE register file |
-| `0x800491EC` | *unnamed* | libgte6 |  | 75 | 63 | stub-TBD | GTE state: needs one shared GTE register file |
-| `0x800491FC` | *unnamed* | libgte6 |  | 2 | 1 | stub-TBD | GTE state: needs one shared GTE register file |
-| `0x8004921C` | SetGeomOffset | libgte6 |  | 9 | 5 | stub-TBD | GTE state: needs one shared GTE register file (records projection via hook site meanwhile) |
-| `0x8004923C` | SetGeomScreen | libgte7 |  | 1 | 1 | stub-TBD | GTE state: needs one shared GTE register file (records projection via hook site meanwhile) |
-| `0x800492FC` | Square12 | libgte24 |  | 64 | 64 | stub-TBD | GTE state: needs one shared GTE register file |
-| `0x80049324` | Square0 | libgte24 |  | 142 | 64 | stub-TBD | GTE state: needs one shared GTE register file |
-| `0x80049440` | *unnamed* | libgte24 |  | 3 | 1 | stub-TBD | GTE state: needs one shared GTE register file |
-| `0x8004945C` | RotTransSV | libgte8 |  | 861 | 67 | stub-TBD | GTE state: needs one shared GTE register file |
-| `0x8004955C` | RotTransPers | libgte8 |  | 983 | 65 | stub-TBD | GTE state: needs one shared GTE register file |
-| `0x8004958C` | RotTransPers3 | libgte8 |  | 6 | 2 | stub-TBD | GTE state: needs one shared GTE register file |
-| `0x800495EC` | *unnamed* | libgte9 |  | 5 | 3 | stub-TBD | GTE state: needs one shared GTE register file |
-| `0x8004961C` | RotTransPers4 | libgte10 |  | 11 | 8 | stub-TBD | GTE state: needs one shared GTE register file |
-| `0x8004969C` | RotNclip4 | libgte11 |  | 4 | 4 | stub-TBD | GTE state: needs one shared GTE register file |
-| `0x8004974C` | *unnamed* | libgte11 |  | 5 | 5 | stub-TBD | GTE state: needs one shared GTE register file |
-| `0x8004978C` | *unnamed* | libgte25 | FGO_01.o | 137 | 65 | stub-TBD | GTE state: needs one shared GTE register file |
-| `0x80049A1C` | RotMatrixYXZ | libgte25 |  | 1906 | 75 | stub-TBD | GTE state: needs one shared GTE register file |
-| `0x80049CAC` | *unnamed* | libgte25 | FGO_03.o | 1191 | 99 | stub-TBD | GTE state: needs one shared GTE register file |
-| `0x80049F3C` | RotMatrixX | libgte25 |  | 193 | 65 | stub-TBD | GTE state: needs one shared GTE register file |
-| `0x8004A0DC` | RotMatrixY | libgte25 |  | 273 | 74 | stub-TBD | GTE state: needs one shared GTE register file |
-| `0x8004A27C` | RotMatrixZ | libgte25 |  | 201 | 71 | stub-TBD | GTE state: needs one shared GTE register file |
-| `0x8004CFEC` | ratan2 | libgte16 |  | 3629 | 68 | psycross | stateless; PsyCross table |
-| `0x8004D504` | ApplyTransposeMatrixLV | libgte17 |  | 638 | 65 | stub-TBD | GTE state: needs one shared GTE register file |
+| `0x8004818C` | MulMatrix0 | libgte2 |  | 14 | 13 | psycross | GTE bridge (gte_owner lease); clobbers the rotation matrix like Psy-Q |
+| `0x8004829C` | MulRotMatrix | libgte2 |  | 1 | 1 | psycross | GTE bridge (gte_owner lease) |
+| `0x8004838C` | CompMatrix | libgte3 |  | 4 | 3 | psycross | GTE bridge (gte_owner lease) |
+| `0x800484EC` | *unnamed* | libgte3 |  | 722 | 69 | stub-TBD | not in PsyCross; an HLE on the gteRegs bank via the bridge is possible |
+| `0x8004864C` | ApplyRotMatrix | libgte3 |  | 194 | 65 | psycross | GTE bridge (gte_owner lease) |
+| `0x8004867C` | PushMatrix | libgte3 |  | 5 | 5 | stub-TBD | PsyCross keeps its matrix stack host-side, the retail one is in guest RAM: mixing would desync |
+| `0x8004871C` | PopMatrix | libgte3 |  | 5 | 5 | stub-TBD | PsyCross keeps its matrix stack host-side, the retail one is in guest RAM: mixing would desync |
+| `0x800487BC` | ReadRotMatrix | libgte3 |  | 5 | 5 | psycross | GTE bridge (gte_owner lease) |
+| `0x8004880C` | SetMulMatrix | libgte4 |  | 1 | 1 | stub-TBD | not in PsyCross; an HLE on the gteRegs bank via the bridge is possible |
+| `0x8004891C` | CompMatrixLV | libgte4 |  | 1 | 1 | psycross | GTE bridge (gte_owner lease) |
+| `0x80048B6C` | ApplyRotMatrixLV | libgte4 |  | 142 | 65 | psycross | GTE bridge (gte_owner lease) |
+| `0x80048CAC` | SetMulRotMatrix | libgte5 |  | 1 | 1 | stub-TBD | not in PsyCross; an HLE on the gteRegs bank via the bridge is possible |
+| `0x80048D9C` | *unnamed* | libgte5 |  | 73 | 71 | stub-TBD | not in PsyCross; an HLE on the gteRegs bank via the bridge is possible |
+| `0x80048EAC` | *unnamed* | libgte5 |  | 1017 | 65 | stub-TBD | not in PsyCross; an HLE on the gteRegs bank via the bridge is possible |
+| `0x80048FBC` | ApplyMatrixSV | libgte5 |  | 2078 | 70 | psycross | GTE bridge (gte_owner lease); sets the rotation matrix like Psy-Q |
+| `0x8004901C` | *unnamed* | libgte5 |  | 13 | 6 | stub-TBD | not in PsyCross; an HLE on the gteRegs bank via the bridge is possible |
+| `0x8004914C` | SetRotMatrix | libgte6 |  | 1423 | 66 | psycross | GTE bridge (gte_owner lease) |
+| `0x8004917C` | SetLightMatrix | libgte6 |  | 1 | 1 | psycross | GTE bridge (gte_owner lease) |
+| `0x800491AC` | SetTransMatrix | libgte6 |  | 1356 | 66 | psycross | GTE bridge (gte_owner lease) |
+| `0x800491CC` | ReadGeomOffset | libgte6 |  | 5 | 5 | psycross | GTE bridge (gte_owner lease); reads C2_OFX/OFY |
+| `0x800491EC` | *unnamed* | libgte6 |  | 75 | 63 | stub-TBD | not in PsyCross; an HLE on the gteRegs bank via the bridge is possible |
+| `0x800491FC` | *unnamed* | libgte6 |  | 2 | 1 | stub-TBD | not in PsyCross; an HLE on the gteRegs bank via the bridge is possible |
+| `0x8004921C` | SetGeomOffset | libgte6 |  | 9 | 5 | psycross | GTE bridge (gte_owner lease); the hook site also records the projection |
+| `0x8004923C` | SetGeomScreen | libgte7 |  | 1 | 1 | psycross | GTE bridge (gte_owner lease); the hook site also records the projection |
+| `0x800492FC` | Square12 | libgte24 |  | 64 | 64 | stub-TBD | not in PsyCross; an HLE on the gteRegs bank via the bridge is possible |
+| `0x80049324` | Square0 | libgte24 |  | 142 | 64 | stub-TBD | not in PsyCross; an HLE on the gteRegs bank via the bridge is possible |
+| `0x80049440` | *unnamed* | libgte24 |  | 3 | 1 | stub-TBD | not in PsyCross; an HLE on the gteRegs bank via the bridge is possible |
+| `0x8004945C` | RotTransSV | libgte8 |  | 861 | 67 | psycross | GTE bridge (gte_owner lease); long *flag via a host temporary |
+| `0x8004955C` | RotTransPers | libgte8 |  | 983 | 65 | psycross | GTE bridge (gte_owner lease); long *p/*flag via host temporaries |
+| `0x8004958C` | RotTransPers3 | libgte8 |  | 6 | 2 | psycross | GTE bridge (gte_owner lease); args 5-8 from the guest stack; long * via temporaries |
+| `0x800495EC` | *unnamed* | libgte9 |  | 5 | 3 | stub-TBD | not in PsyCross; an HLE on the gteRegs bank via the bridge is possible |
+| `0x8004961C` | RotTransPers4 | libgte10 |  | 11 | 8 | psycross | GTE bridge (gte_owner lease); args 5-10 from the guest stack; long * via temporaries |
+| `0x8004969C` | RotNclip4 | libgte11 |  | 4 | 4 | stub-TBD | not in PsyCross; an HLE on the gteRegs bank via the bridge is possible |
+| `0x8004974C` | *unnamed* | libgte11 |  | 5 | 5 | stub-TBD | not in PsyCross; an HLE on the gteRegs bank via the bridge is possible |
+| `0x8004978C` | *unnamed* | libgte25 | FGO_01.o | 137 | 65 | stub-TBD | not in PsyCross; an HLE on the gteRegs bank via the bridge is possible |
+| `0x80049A1C` | RotMatrixYXZ | libgte25 |  | 1906 | 75 | psycross | stateless (PsyCross rcossin table) |
+| `0x80049CAC` | *unnamed* | libgte25 | FGO_03.o | 1191 | 99 | stub-TBD | not in PsyCross; an HLE on the gteRegs bank via the bridge is possible |
+| `0x80049F3C` | RotMatrixX | libgte25 |  | 193 | 65 | psycross | stateless |
+| `0x8004A0DC` | RotMatrixY | libgte25 |  | 273 | 74 | psycross | stateless |
+| `0x8004A27C` | RotMatrixZ | libgte25 |  | 201 | 71 | psycross | stateless |
+| `0x8004CFEC` | ratan2 | libgte16 |  | 3629 | 68 | psycross | stateless (PsyCross table) |
+| `0x8004D504` | ApplyTransposeMatrixLV | libgte17 |  | 638 | 65 | stub-TBD | not in PsyCross; an HLE on the gteRegs bank via the bridge is possible |
 | `0x8005080C` | GsSortBg | libgs7 |  | 63 | 63 | stub-TBD | libgs: high-level on top of libgpu/libgte; guest code for now |
 | `0x80051044` | GsSortFastBg | libgs7 |  | 63 | 63 | stub-TBD | libgs: high-level on top of libgpu/libgte; guest code for now |
 | `0x80051DC8` | GsSortLine | libgs2 |  | 882 | 63 | stub-TBD | libgs: high-level on top of libgpu/libgte; guest code for now |

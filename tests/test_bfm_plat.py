@@ -865,8 +865,9 @@ bfm.on("frame_end", function() if seen.late == nil then
             if status == "STUB":
                 self.assertEqual(wrapper, "bfm_psyq_stub", name)
             else:
-                self.assertRegex(impl, rf"\bint {wrapper}\(uint32_t \*r\)", name)
-                self.assertTrue(0 <= int(argc) <= 8 and ret in ("0", "1"))
+                self.assertTrue(re.search(rf"\bint {wrapper}\(uint32_t \*r\)", impl) or
+                                re.search(rf"^\w+\(\w+, {wrapper}\)$", impl, re.M), name)
+                self.assertTrue(0 <= int(argc) <= 12 and ret in ("0", "1"), name)
         self.assertEqual(sum(sites.values()), data["meta"]["callsites"])
         md = (ROOT / "docs/PSYQ-COMPAT.md").read_text()
         self.assertIn("| hle | %d (" % counts["HLE"], md)
@@ -883,6 +884,46 @@ bfm.on("frame_end", function() if seen.late == nil then
             self.assertIsNotNone(e, name)
             self.assertEqual((e["name"], e["name_source"]), (name, "inferred"))
             self.assertTrue(ev)
+
+    def test_psyq_gte_wrappers_on_psycross_gte(self):
+        psyc = Path("/home/blizz/dev/brave-fencer-musashi-decomp/tools/third_party/psycross")
+        for cand in (ROOT / "tools/third_party/psycross", psyc):
+            if (cand / "src/psx/LIBGTE.C").is_file():
+                psyc = cand
+                break
+        else:
+            self.skipTest("PsyCross not fetched (tools/fetch_toolchains.sh)")
+        d = self.fresh("gte")
+        inc = ["-I", str(psyc / "include"), "-I", str(psyc / "src")]
+        objs = []
+
+        def cc(args, out):
+            subprocess.run(args + ["-o", str(d / out)], check=True, stdin=subprocess.DEVNULL, timeout=300)
+            objs.append(str(d / out))
+        # PsyCross's GTE core (MIT), from the local checkout
+        cc(["gcc", "-c", "-O1", "-w", "-x", "c", "-std=gnu11", "-include", "assert.h", *inc,
+            str(psyc / "src/psx/LIBGTE.C")], "libgte.o")
+        cc(["gcc", "-c", "-O1", "-w", "-x", "c", "-std=gnu11", "-include", "assert.h", *inc,
+            str(psyc / "src/psx/INLINE_C.C")], "inline_c.o")
+        cc(["g++", "-c", "-O1", "-w", *inc, str(psyc / "src/gte/PsyX_GTE.cpp")], "gte.o")
+        cc(["g++", "-c", "-O1", "-w", *inc, str(psyc / "src/gte/half_float.cpp")], "half.o")
+        cc(["gcc", "-c", "-std=gnu11", "-Wall", "-Wextra", "-Werror", "-DBFM_PLAT_WITH_PSYCROSS",
+            "-include", "assert.h", "-I", str(PLAT), "-I", str(psyc / "include"),
+            str(PLAT / "psyq/psyq_psycross.c")], "psyq_psycross.o")
+        # only the compat table sees BFM_PLAT_WITH_PSYCROSS (the core would also try to
+        # register the PsyCross renderer backend, which needs SDL/GL)
+        cc(["gcc", "-c", "-std=c99", "-Wall", "-Wextra", "-Werror", "-DBFM_PLAT_WITH_PSYCROSS",
+            "-I", str(PLAT), str(PLAT / "psyq/bfm_psyq_compat.c")], "compat.o")
+        platform = sorted(str(p) for p in PLAT.glob("bfm_plat*.c"))
+        probe = d / "gte_probe"
+        subprocess.run(["gcc", "-std=c99", "-Wall", "-Wextra", "-Werror",
+                        "-I", str(PLAT), *platform, str(ROOT / "tests/bfm_psyq_gte_probe.c"),
+                        *objs, "-lstdc++", "-ldl", "-lm", "-o", str(probe)],
+                       check=True, stdin=subprocess.DEVNULL, timeout=300)
+        out = subprocess.run([str(probe)], capture_output=True, text=True, timeout=60)
+        self.assertEqual(out.returncode, 0, out.stdout + out.stderr)
+        self.assertIn("rtps sx 185 sy 132 otz 250", out.stdout)
+        self.assertIn("ok gte", out.stdout)
 
     def test_overlay_font(self):
         self.run_probe("font")

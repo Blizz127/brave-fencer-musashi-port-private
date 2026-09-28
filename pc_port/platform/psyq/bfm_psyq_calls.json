@@ -890,8 +890,8 @@
   },
   {
    "addr": "0x8004914C",
-   "name": "func_8004914C",
-   "name_source": "unnamed",
+   "name": "SetRotMatrix",
+   "name_source": "shape",
    "evidence": null,
    "segment": "libgte6",
    "object": null,
@@ -900,8 +900,8 @@
   },
   {
    "addr": "0x8004917C",
-   "name": "func_8004917C",
-   "name_source": "unnamed",
+   "name": "SetLightMatrix",
+   "name_source": "shape",
    "evidence": null,
    "segment": "libgte6",
    "object": null,
@@ -910,8 +910,8 @@
   },
   {
    "addr": "0x800491AC",
-   "name": "func_800491AC",
-   "name_source": "unnamed",
+   "name": "SetTransMatrix",
+   "name_source": "shape",
    "evidence": null,
    "segment": "libgte6",
    "object": null,

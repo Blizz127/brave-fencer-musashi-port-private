@@ -62,6 +62,31 @@ int bfm_psyq_stub(uint32_t *r) {
     return 0;
 }
 
+/* ---- GTE bridge ----------------------------------------------------- */
+
+static BfmPsyqGteBridge gte_bridge;
+static int gte_have_bridge;
+static int gte_in_call;
+
+void bfm_psyq_set_gte_bridge(const BfmPsyqGteBridge *b) {
+    gte_have_bridge = b && b->begin && b->end;
+    if (gte_have_bridge) gte_bridge = *b;
+    else memset(&gte_bridge, 0, sizeof gte_bridge);
+}
+
+int bfm_psyq_gte_begin(void) {
+    if (!gte_have_bridge || gte_in_call) return 0;       /* no lease owner, or reentry */
+    if (!gte_bridge.begin(gte_bridge.user)) return 0;
+    gte_in_call = 1;
+    return 1;
+}
+
+void bfm_psyq_gte_end(uint32_t commands) {
+    if (!gte_in_call) return;
+    gte_in_call = 0;
+    gte_bridge.end(gte_bridge.user, commands);
+}
+
 /* ---- guest memory --------------------------------------------------- */
 
 static uint8_t *ram;

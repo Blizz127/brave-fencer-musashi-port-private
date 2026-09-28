@@ -93,12 +93,26 @@ def gte_shape_names(words_by_addr):
         ctc = [((w >> 16) & 31, (w >> 11) & 31) for w in words if (w >> 21) == 0x246]   # ctc2 rt, rd
         body = [w for w in words if w != 0]
         if not ctc:
+            cfc_only = [(w >> 11) & 31 for w in words if (w >> 21) == 0x242]
+            if sorted(cfc_only) == [24, 25]:
+                out[addr] = "ReadGeomOffset"
             continue
         rds = [rd for _, rd in ctc]
+        cfc = [(w >> 11) & 31 for w in words if (w >> 21) == 0x242]   # cfc2
+        # a pure register setter: only lw, ctc2 and the return (plus nops)
+        pure = all(w == 0 or (w >> 26) == 0x23 or (w >> 21) == 0x246 or w == 0x03E00008 for w in words)
         if rds == [26] and len(body) <= 3:
             out[addr] = "SetGeomScreen"
         elif rds == [24, 25] and len(body) <= 6:
             out[addr] = "SetGeomOffset"
+        elif sorted(rds) == [0, 1, 2, 3, 4] and pure:
+            out[addr] = "SetRotMatrix"
+        elif sorted(rds) == [5, 6, 7] and pure:
+            out[addr] = "SetTransMatrix"
+        elif sorted(rds) == [8, 9, 10, 11, 12] and pure:
+            out[addr] = "SetLightMatrix"
+        elif sorted(rds) == [16, 17, 18, 19, 20] and pure:
+            out[addr] = "SetColorMatrix"
     return out
 
 

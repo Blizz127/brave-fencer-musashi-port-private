@@ -706,12 +706,31 @@ static const MusashiNativeLaneEntry psyq_entries[] = {
   backend and texture replacement applies. Unknown commands are counted
   (`bfm_psyq_stats`). E2–E6 inside packets are ignored; the draw
   environment comes from PutDrawEnv.
-- **GTE state:** PsyCross's GTE keeps its own register file, separate from
-  the guest cop2 state that port-int's interpreter (`gte_owner.c`) uses. So
-  only stateless libgte math is mapped to PsyCross. Everything that reads
-  or writes GTE registers (SetRotMatrix, RotTransPers, InitGeom…) waits
-  for one shared GTE register file. PsyCross's `long *` out-parameters are
-  8 bytes on LP64, so those wrappers will need host temporaries.
+- **GTE state (bridge):** there is one cop2 register file: PsyCross's
+  process-wide `gteRegs` bank. port-int's `gte_owner.c` already leases it
+  for the interpreter (its CTC2/CFC2/data/command paths run on that bank),
+  and PsyCross's libgte functions work on the same bank. So no copying is
+  needed; the bridge only enforces the owner's lease.
+  - `bfm_psyq_set_gte_bridge({begin, end, user})`. `begin()` must confirm
+    that the calling thread holds the lease, CP0 Status has CU2 set, and no
+    cop2 operation is in progress, then mark the owner busy. `end(commands)`
+    clears that and accounts for the commands issued.
+  - Without a bridge, every GTE-state wrapper refuses and the interpreter
+    runs the retail code. Reentry is refused too.
+  - Pointer arguments are translated with size checks.
+  - PsyCross's `long *` out-parameters (8 bytes on LP64) go through host
+    temporaries and are stored back as 32-bit words.
+  - `RotTransPers`/`3`/`4` don't call PsyCross's versions. With PGXP on,
+    those store PGXP float bits as `sxy` for PsyCross's float-vertex
+    renderer. Instead the wrappers run RTPS/RTPT on the bank and read SXY,
+    IR0, SZ3 and FLAG back as integers.
+  - `PushMatrix`/`PopMatrix` stay STUB, because PsyCross keeps that stack
+    host-side while the retail one lives in guest RAM.
+  - `tests/bfm_psyq_gte_probe.c` links PsyCross's real GTE core (MIT, from
+    the local checkout) and checks the setters, `ReadGeomOffset`/
+    `ReadRotMatrix`, `RotTransPers` against the projection maths (sx 185,
+    sy 132, otz 250), `RotTransPers3`/`4` with guest-stack arguments, and
+    the matrix functions and the bridge.
 - **rand** updates the guest's own seed word (`0x80078980`), so native and
   interpreted callers share one sequence.
 - **VSync:** mode > 1 waits n fields through `bfm_plat_timing_vsync`, 0
@@ -723,7 +742,8 @@ static const MusashiNativeLaneEntry psyq_entries[] = {
 **Next:**
 - name the 96 unnamed entries (their Psy-Q objects are listed in the
   report)
-- share the GTE register file, then map libgte to PsyCross
+- HLE the libgte functions PsyCross lacks (Square0/12, VectorNormalSS,
+  ApplyTransposeMatrixLV, csqrt…) on the same bank through the bridge
 - SetDrawEnv (DR_ENV packets) and printf (guest varargs)
 
 ## CMake wiring (note for port/native-lane)

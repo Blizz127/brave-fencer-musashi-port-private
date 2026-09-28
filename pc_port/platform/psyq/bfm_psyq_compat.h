@@ -69,6 +69,27 @@ void bfm_psyq_reset(void);
 size_t bfm_psyq_decode_packet(const uint32_t *words, size_t nwords, uint16_t *tpage,
                               BfmPlatPrim *out, size_t max);
 
+/* ---- GTE bridge ---------------------------------------------------------
+ * There is one cop2 register file: PsyCross's process-wide gteRegs bank,
+ * which port-int's gte_owner already leases for the interpreter. PsyCross's
+ * libgte functions work on the same bank, so the libgte wrappers need no
+ * copying. They only have to respect the owner's lease: begin() must confirm
+ * that this thread owns the lease, CU2 is enabled and no cop2 operation is
+ * in progress, and mark the owner busy; end() clears that mark and accounts
+ * the work (commands issued). Without a bridge every GTE-state wrapper refuses,
+ * so the interpreter runs the retail code. Stateless wrappers (ratan2,
+ * RotMatrix{X,Y,Z,YXZ}) don't touch the bank and don't need the bridge. */
+typedef struct BfmPsyqGteBridge {
+    int (*begin)(void *user);                     /* 1 = may use gteRegs now */
+    void (*end)(void *user, uint32_t commands);   /* commands = GTE ops issued */
+    void *user;
+} BfmPsyqGteBridge;
+
+/* NULL removes the bridge. */
+void bfm_psyq_set_gte_bridge(const BfmPsyqGteBridge *bridge);
+int bfm_psyq_gte_begin(void);
+void bfm_psyq_gte_end(uint32_t commands);
+
 /* The stub every STUB entry uses: refuses. */
 int bfm_psyq_stub(uint32_t *r);
 
