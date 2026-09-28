@@ -80,8 +80,27 @@ Shadowing:
 
 | ID | Divergence | Where | Why | Status |
 |----|------------|-------|-----|--------|
-| D-020 | PsyQ compat entries run hand-written C instead of the retail library instructions at their PCs. By default (`MUSASHI_PSYQ_LANE=pure`) that means every non-stub entry except the device entries and those whose body holds a port-sequenced PC. Seven were found wrong by the lane probe and fixed (7935600a2). The GTE functions RotMatrix, RotMatrixYXZ/X/Y/Z and ratan2 were made exact against retail semantics over the game's own tables (193b41e86). The rest have no per-entry differential. | `pc_port/platform/psyq/bfm_psyq_compat.def` (HLE/PsyCross entries), `pc_port/native_lane_psyq.c` | Speed and portability; the retail bodies were not yet matched. | open; `tools/port_matched_ratio.py` lists them as `shadowed_*` |
+| D-020 | PsyQ compat entries run hand-written C instead of the retail library instructions at their PCs. This is by design: the port's PsyQ layer is PsyCross or its own code, never decompiled PsyQ. By default (`MUSASHI_PSYQ_LANE=pure`) that means every non-stub entry except the device entries and those whose body holds a port-sequenced PC. Each shim must be proven faithful by `tests/psyq_shim_probe.c` (retail on the interpreter vs the shim, same inputs, comparing v0 and guest RAM). The proven ones are in the table below. Seven were fixed after the lane probe (7935600a2). The GTE functions RotMatrix, RotMatrixYXZ/X/Y/Z and ratan2 read the game's own tables (193b41e86). All other entries have no per-entry differential yet. | `pc_port/platform/psyq/bfm_psyq_compat.def`, `pc_port/native_lane_psyq.c` | Owner rule: no decompiled PsyQ in the port. | open for every entry not proven below |
 | D-021 | Entries with the `PSYCROSS` status call PsyCross (MIT, a PsyQ reimplementation), whose GTE and libgpu semantics are not retail. | `pc_port/platform/psyq/psyq_psycross.c` | Same as D-020. | untested |
+| D-022 | Shims set v0 (and write memory) exactly, but leave the other caller-saved registers (v1, a0-a3, t0-t9) as they were on entry, where the retail code clobbers them. Under the o32 ABI no C caller can observe this; hand-written asm callers could. | `native_lane_psyq.c`, `mips_formatter.c` `lane_try` | Wrappers work on the live register file. | open (believed invisible; not measured) |
+
+### PsyQ shim differential status (`tests/psyq_shim_probe.c`, 96 inputs each)
+
+| Shim | PC | Result | Evidence |
+|------|----|--------|----------|
+| memcpy | 8005C324 | same on 96/96 after fixing overlapping forward copy, NULL dst and n <= 0 | f986ce7a8 |
+| memset | 8005C358 | same on 96/96 after fixing NULL dst and the return of 0 for n <= 0 | f986ce7a8 |
+| bzero | 8005C2C8 | same on 96/96 (v0 too) after the same fix | f986ce7a8 |
+| CatPrim | 80058CE4 | same on 96/96 | 1a8944bb4 |
+| CdIntToPos | 80043A18 | same on 96/96 (including negative and large values) | 1a8944bb4 |
+| CdPosToInt | 80043B1C | same on 96/96 (valid and invalid BCD) | 1a8944bb4 |
+| SetDefDispEnv | 80058B04 | same on 96/96 | 1a8944bb4 |
+| GsInitCoordinate2 | 80052D90 | same on 96/96 (NULL and non-NULL super) | 1a8944bb4 |
+| GsSetLightMode | 800538EC | same on 96/96 | 1a8944bb4 |
+| ClearOTagR | 80059BFC | **untested**. Retail programs DMA6, which the device-less probe cannot run. The shim was corrected from the asm: retail relinks ot[0] to the terminator at 0x80072844, where the shim wrote 0x00FFFFFF, and it prints at debug level >= 2. It needs a device-backed differential. | f986ce7a8 |
+
+"Same on N/N" is evidence for the inputs tried, not a proof for all
+inputs.
 
 ## Video
 
