@@ -32,7 +32,7 @@ def test_cd_irq_services_scheduler():
             *[str(ROOT/'pc_port'/f'{name}.c') for name in ('mips_formatter','boot_memory',
               'cd_controller','disc_media','bios_events','bios_kernel','irq_controller','irq_scheduler','cpu_status','vblank_bindings')],
             *[str(ROOT/'src/main'/f'{name}.c') for name in
-              ('800427f4','8001096c','800616d0','8006291c','80062988')],str(ROOT/'pc_port/libetc_dma_irq.c'),str(ROOT/'pc_port/libetc_vsync_handler.c'),str(ROOT/'pc_port/libetc_dma_registration.c'),
+              ('8001096c','800616d0','8006291c','80062988')],str(ROOT/'pc_port/libetc_irq_dispatch.c'),str(ROOT/'pc_port/libetc_dma_irq.c'),str(ROOT/'pc_port/libetc_vsync_handler.c'),str(ROOT/'pc_port/libetc_dma_registration.c'),
             '-lcrypto',*flags,'-o',str(exe)],check=True,timeout=30)
         _sync_code_image(generated)
         subprocess.run([str(exe),str(cue),str(binary)],check=True,timeout=30)

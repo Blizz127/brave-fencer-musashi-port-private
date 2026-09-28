@@ -591,7 +591,8 @@ Replacement status (each entry: what now provides it):
 | 80042F8C | libetc DMACallback registration (DICR) | port HLE `pc_port/libetc_dma_registration.c` |
 | 80042CE8 | libetc VSync callback service | port HLE `pc_port/libetc_vsync_handler.c` |
 | 80042E08 | libetc DMA interrupt service (DICR drain) | port HLE `pc_port/libetc_dma_irq.c` |
-| 800426FC 800427F4 | libetc IRQ mask exchange / IRQ dispatcher | pending: port HLE on the emulated IRQ/DMA controllers (PsyCross's libetc drives host SDL timing, not a guest interrupt chain) |
+| 800427F4 | libetc interrupt service (I_STAT dispatch, storm guard, RFE) | port HLE `pc_port/libetc_irq_dispatch.c` |
+| 800426FC | libetc I_MASK exchange (used by the GPU reset) | pending: port HLE on the emulated IRQ/DMA controllers (PsyCross's libetc drives host SDL timing, not a guest interrupt chain) |
 | 8005BD7C 8005C1C0 | libgpu device ops | pending: port HLE on the GPU device / PsyCross GPU backend |
 | 800616D0 8006291C 80062988 | libmcrd VBlank | pending: port HLE |
 

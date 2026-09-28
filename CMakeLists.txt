@@ -234,7 +234,7 @@ if(MUSASHI_BUILD_PC_PORT)
         src/main/8001096c.c
         pc_port/libetc_vsync_handler.c
         pc_port/libetc_dma_irq.c
-        src/main/800427f4.c
+        pc_port/libetc_irq_dispatch.c
         src/main/800616d0.c
         src/main/8006291c.c
         src/main/80062988.c
@@ -252,8 +252,6 @@ if(MUSASHI_BUILD_PC_PORT)
         COMPILE_DEFINITIONS MUSASHI_NATIVE_DEVICE_BINDING=1)
     set_source_files_properties(src/main/8001096c.c PROPERTIES
         COMPILE_DEFINITIONS MUSASHI_NATIVE_CALLBACK_HANDLER=1)
-    set_source_files_properties(src/main/800427f4.c PROPERTIES
-        COMPILE_DEFINITIONS MUSASHI_NATIVE_IRQ_DISPATCH=1)
     set_source_files_properties(src/main/800616d0.c src/main/8006291c.c src/main/80062988.c PROPERTIES
         COMPILE_DEFINITIONS MUSASHI_NATIVE_VBLANK=1)
     set_source_files_properties(src/main/80016714.c PROPERTIES
@@ -371,7 +369,7 @@ if(MUSASHI_BUILD_PC_PORT)
             pc_port/mips_formatter.c
             pc_port/irq_controller.c
             pc_port/boot_memory.c
-            src/main/800427f4.c
+            pc_port/libetc_irq_dispatch.c
             pc_port/libetc_vsync_handler.c
             src/main/8001096c.c
             pc_port/libetc_dma_irq.c

@@ -43,7 +43,7 @@ def _compile_and_run(cue, binary, flags, mutation=None):
             *[str(ROOT/'pc_port'/f'{name}.c') for name in ('boot_memory',
               'cd_controller','disc_media','bios_events','irq_controller','irq_scheduler','cpu_status','vblank_bindings')],
             *[str(ROOT/'src/main'/f'{name}.c') for name in
-              ('800427f4','8001096c','800616d0','8006291c','80062988')],str(ROOT/'pc_port/libetc_dma_irq.c'),str(ROOT/'pc_port/libetc_vsync_handler.c'),str(ROOT/'pc_port/libetc_dma_registration.c'),
+              ('8001096c','800616d0','8006291c','80062988')],str(ROOT/'pc_port/libetc_irq_dispatch.c'),str(ROOT/'pc_port/libetc_dma_irq.c'),str(ROOT/'pc_port/libetc_vsync_handler.c'),str(ROOT/'pc_port/libetc_dma_registration.c'),
             '-lcrypto',*flags,'-o',str(exe)]
         compiled = subprocess.run(command, capture_output=True, text=True,
                                   timeout=30)
