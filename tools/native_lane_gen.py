@@ -60,6 +60,37 @@ def host_long(text):
     return text.replace("\0LL\0", "long long")
 
 
+def lower_arith(ir):
+    """MIPS semantics for i32 shifts and divisions with a variable operand:
+    shift counts are masked to 5 bits (SLLV/SRLV/SRAV use the low 5 bits;
+    LLVM makes >= 32 poison), and sdiv/udiv/srem/urem call the guarded
+    helpers (a trapping divisor aborts the native call instead of faulting
+    the host or inventing a quotient). Constant operands are left alone."""
+    out, n = [], 0
+    used = set()
+    for line in ir.splitlines():
+        m = re.match(r"^(\s*)(%[\w.$-]+) = (shl|lshr|ashr)((?: nuw| nsw| exact)*) i32 (.+)$", line)
+        if m:
+            a, b = split_top(m.group(5))
+            if not re.fullmatch(r"-?\d+", b.strip()):
+                n += 1
+                amt = f"%lane.amt{n}"
+                out.append(f"{m.group(1)}{amt} = and i32 {b.strip()}, 31")
+                line = f"{m.group(1)}{m.group(2)} = {m.group(3)} i32 {a.strip()}, {amt}"
+        m = re.match(r"^(\s*)(%[\w.$-]+) = (sdiv|udiv|srem|urem)(?: exact)? i32 (.+)$", line)
+        if m:
+            a, b = split_top(m.group(4))
+            if not re.fullmatch(r"-?\d+", b.strip()) or int(b) in (0, -1):
+                fn = {"sdiv": "lane_sdiv32", "srem": "lane_srem32",
+                      "udiv": "lane_udiv32", "urem": "lane_urem32"}[m.group(3)]
+                used.add(fn)
+                line = f"{m.group(1)}{m.group(2)} = call i32 @{fn}(i32 {a.strip()}, i32 {b.strip()})"
+        out.append(line)
+    for fn in sorted(used):
+        out.append(f"declare i32 @{fn}(i32, i32)")
+    return "\n".join(out) + "\n"
+
+
 def split_operands(text):
     """'"=r"(a), "=r"(b)' -> [('=r', 'a'), ('=r', 'b')]"""
     out = []
@@ -312,6 +343,8 @@ def parse_signature(header_or_decl, name):
 # ---- Compile + check one source -------------------------------------------
 
 MEMORY_FNS = ("memset", "memcpy", "memmove")
+# Guarded division helpers (mips_formatter.c) that lower_arith() calls.
+LANE_HELPERS = ("lane_sdiv32", "lane_srem32", "lane_udiv32", "lane_urem32")
 
 
 def rewrite_symbols(ir, symbols):
@@ -556,7 +589,7 @@ def check_optimized(ir, module_internal):
                                     r"sadd|uadd|ssub|usub|vector\.reduce)", name):
                         raise Reject("calls", f"intrinsic {name}")
                     continue
-                if name in ("memset", "memcpy", "memmove"):
+                if name in ("memset", "memcpy", "memmove") or name in LANE_HELPERS:
                     continue
                 if name in module_internal:
                     continue
@@ -719,7 +752,7 @@ def build_one(entry, out, symbols, hooks, clang):
             raise Reject("compile", (r.stderr.strip().splitlines() or ["?"])[0][:160])
         ir = o0.read_text()
         check_layout(ir)
-        rewritten = narrow_pointer_cells(rewrite_symbols(ir, symbols))
+        rewritten = lower_arith(narrow_pointer_cells(rewrite_symbols(ir, symbols)))
         sub = work / f"{tag}.sub.ll"
         sub.write_text(rewritten)
         opt = work / f"{tag}.opt.ll"
@@ -751,7 +784,8 @@ def build_one(entry, out, symbols, hooks, clang):
             raise Reject("compile", "object: " + (r.stderr.strip().splitlines() or ["?"])[0][:160])
         undefined = run(["nm", "-u", str(obj)]).stdout.split()
         for u in undefined:
-            if u != "U" and not u.startswith(("lane_call_func_", "lane_func_")) and u not in MEMORY_FNS:
+            if u != "U" and not u.startswith(("lane_call_func_", "lane_func_")) and \
+                    u not in MEMORY_FNS and u not in LANE_HELPERS:
                 raise Reject("symbols", f"object still references {u}")
         return dict(name=name, vram=vram, size=size, source=entry["source"], admitted=True,
                     obj=str(obj), defs=sigs, stubs=stubs)

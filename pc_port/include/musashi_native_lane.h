@@ -70,6 +70,19 @@ void musashi_native_lane_suspend(int suspend);
 uint32_t musashi_native_guest_call(uint32_t target, unsigned argc,
                                    const uint32_t *args, uint32_t *v1);
 
+/* Guest PC of the innermost running lane entry, or 0 (diagnostics). */
+uint32_t musashi_native_lane_current(void);
+
+/* Aborts the running native call (the lane step is refused). Only valid
+ * while a lane function runs. */
+void musashi_native_lane_abort(void);
+/* Guarded 32-bit division for natively compiled code (tools/native_lane_gen.py
+ * lowers variable divisors to these); a trapping divisor aborts the call. */
+int32_t lane_sdiv32(int32_t a, int32_t b);
+int32_t lane_srem32(int32_t a, int32_t b);
+uint32_t lane_udiv32(uint32_t a, uint32_t b);
+uint32_t lane_urem32(uint32_t a, uint32_t b);
+
 /* Reference execution for differential checks: run guest function target
  * with argc argument words on a fresh device-less CPU (gp=0x80074750,
  * ra=sentinel, stack args at sp+0x10) until it returns. use_lane=0 forces

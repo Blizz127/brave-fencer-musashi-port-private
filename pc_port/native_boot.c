@@ -3511,6 +3511,27 @@ _Static_assert(offsetof(NativeBoot, memory) == 0, "guest RAM leads the boot owne
  * so the boot owner, whose first member is guest RAM, is placed at host
  * 0x80000000. Without that window the lane stays off and the interpreter
  * runs every word, exactly as without MUSASHI_NATIVE_LANE. */
+/* A host fault inside natively compiled decomp C names the lane function
+ * (async-signal-safe formatting only), then exits 139. */
+static void lane_fault(int sig, siginfo_t *info, void *context) {
+    char buf[128];
+    static const char hex[] = "0123456789abcdef";
+    uint64_t addr = (uint64_t)(uintptr_t)info->si_addr;
+    uint32_t pc = musashi_native_lane_current();
+    int i, n = 0;
+    const char *head = "native_boot: HOST_FAULT addr=";
+    (void)context;
+    while (*head) buf[n++] = *head++;
+    for (i = 60; i >= 0; i -= 4) buf[n++] = hex[(addr >> i) & 15u];
+    head = " lane_pc=";
+    while (*head) buf[n++] = *head++;
+    for (i = 28; i >= 0; i -= 4) buf[n++] = hex[(pc >> i) & 15u];
+    buf[n++] = '\n';
+    (void)!write(2, buf, (size_t)n);
+    signal(sig, SIG_DFL);
+    raise(sig);
+}
+
 static NativeBoot *native_boot_owner(NativeBoot *fallback) {
     const char *value = getenv("MUSASHI_NATIVE_LANE");
     void *window;
@@ -3522,6 +3543,14 @@ static NativeBoot *native_boot_owner(NativeBoot *fallback) {
         if (window != MAP_FAILED) munmap(window, sizeof(NativeBoot));
         fprintf(stderr, "native_boot: NATIVE_LANE window unavailable; interpreter only\n");
         return fallback;
+    }
+    {
+        struct sigaction action;
+        memset(&action, 0, sizeof action);
+        action.sa_sigaction = lane_fault;
+        action.sa_flags = SA_SIGINFO;
+        sigaction(SIGSEGV, &action, NULL);
+        sigaction(SIGBUS, &action, NULL);
     }
     {
         /* Generated decomp C plus port-plat's PsyQ compat wrappers. The

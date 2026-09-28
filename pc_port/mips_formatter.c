@@ -12269,11 +12269,45 @@ typedef struct LaneActive {
     MusashiBootMemory *memory;
     FormatterCpu *cpu;
     jmp_buf abort;
+    uint32_t guest_pc;   /* the lane entry running */
 } LaneActive;
 
 /* The owner thread runs one CPU loop at a time; frames nest by recursion. */
 static LaneRunFrame *g_lane_run_frames;
 static LaneActive *g_lane_active;
+
+uint32_t musashi_native_lane_current(void) {
+    return g_lane_active ? g_lane_active->guest_pc : 0u;
+}
+
+void musashi_native_lane_abort(void) {
+    if (!g_lane_active) {
+        fprintf(stderr, "native_boot: NATIVE_LANE_ABORT outside a lane call\n");
+        abort();
+    }
+    longjmp(g_lane_active->abort, 6);
+}
+
+/* MIPS DIV/DIVU with gcc's guards: a zero divisor (and INT_MIN / -1 for DIV)
+ * reaches `break 7` / `break 6` in the retail code, which the port does not
+ * emulate as a continuation. The native call aborts instead (the step is
+ * refused), never inventing a quotient. */
+int32_t lane_sdiv32(int32_t a, int32_t b) {
+    if (b == 0 || (a == INT32_MIN && b == -1)) musashi_native_lane_abort();
+    return a / b;
+}
+int32_t lane_srem32(int32_t a, int32_t b) {
+    if (b == 0 || (a == INT32_MIN && b == -1)) musashi_native_lane_abort();
+    return a % b;
+}
+uint32_t lane_udiv32(uint32_t a, uint32_t b) {
+    if (b == 0) musashi_native_lane_abort();
+    return a / b;
+}
+uint32_t lane_urem32(uint32_t a, uint32_t b) {
+    if (b == 0) musashi_native_lane_abort();
+    return a % b;
+}
 
 static MusashiResetGraphPrefixStatus run_startup_cpu(
     MusashiBootMemory *memory, FormatterCpu *cpu,
@@ -12446,6 +12480,7 @@ static int lane_try(MusashiBootMemory *memory, FormatterCpu *cpu) {
         return 0;
     ra = cpu->r[31];
     sp = cpu->r[29];
+    active.guest_pc = entry->guest_pc;
     active.prev = g_lane_active;
     active.memory = memory;
     active.cpu = cpu;
