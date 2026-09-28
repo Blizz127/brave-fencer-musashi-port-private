@@ -243,6 +243,9 @@ def main(argv=None):
             f["domain"] = "game"
         size = (m.get("size") or 4) if exact else 4
         f["est_steps"] = f["calls"] * size // 4
+        if a.lane_run == "on" and steps is not None and f["lane_column"] == "native":
+            # ran natively: no interpreted steps exist for its body
+            f["steps"] = f["est_steps"]
 
     key = "steps" if steps is not None else "est_steps"
     tot_f = len(funcs)
@@ -313,8 +316,11 @@ def main(argv=None):
 
     result = {
         "label": a.label,
-        "instructions_basis": "exact interpreted steps per PC (MUSASHI_TRACE_INSNS)" if steps is not None
-                              else "ESTIMATE: calls x registry size / 4 (no loops, no early returns)",
+        "instructions_basis": ("ESTIMATE: calls x registry size / 4 (no loops, no early returns)"
+                               if steps is None else
+                               "exact interpreted steps per PC (MUSASHI_TRACE_INSNS)" if a.lane_run == "off" else
+                               "interpreted steps exact; natively run functions ESTIMATED as calls x size/4, "
+                               "and native-to-native calls are not traced at all"),
         "trace_complete": a.lane_run == "off",
         "classified_as": "lane-ON default build, MUSASHI_PSYQ_LANE=%s" % a.psyq_lane,
         "idle_functions": sorted("%08x" % x for x in idle),
@@ -355,7 +361,9 @@ def main(argv=None):
               100 * domains["game"]["matched_c"]["share_excluding_idle"],
               domains["game"]["matched_c"]["functions"], domains["game"]["functions"],
               100 * domains["psyq"]["port_shim"]["share_excluding_idle"],
-              "" if steps is not None else " [instruction share ESTIMATED]"), file=sys.stderr)
+              (" [instruction share ESTIMATED]" if steps is None else "") +
+              (" [lane-ON trace: native-to-native calls missing, native bodies estimated]"
+               if a.lane_run == "on" else "")), file=sys.stderr)
     return 0
 
 
