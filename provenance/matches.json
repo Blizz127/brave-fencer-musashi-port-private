@@ -30908,6 +30908,16 @@
       "recovery": "c",
       "extent": "function",
       "optimization": "-O2"
+    },
+    {
+      "name": "func_8002F658",
+      "vram": 2147677784,
+      "size": 36,
+      "region": "main",
+      "source": "src/main/8002f658.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2"
     }
   ]
 }
