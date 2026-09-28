@@ -7,18 +7,18 @@ static const uint8_t rom_hash[32] = {
     0xa9,0x41,0x8e,0x66,0x68,0x03,0x87,0x91,0x24,0x51,0xe9,0x71,0xcf,0x8a,0x1f,0xef
 };
 static const uint32_t table_words[7] = {0x1508,0x1b20,0x1420,0x1444,0x1d00,0x1f88,0xc80};
-static const uint32_t original[14] = {
-    0,0,0,0,0x241a0100,0x8f5a0008,0,0x8f5a0000,0,0x235a0008,
-    0xaf410004,0xaf420008,0xaf43000c,0xaf5f007c
-};
-static const uint32_t patched[14] = {
-    0,0,0x241a0100,0x8f5a0008,0,0x8f5a0000,0,0x235a0008,
-    0xaf410004,0xaf420008,0xaf43000c,0xaf5f007c,0x40026800,0
-};
-static const uint32_t continuation[14] = {
-    0x0c0003a8,0,0x3042003c,0x14400009,0,0x8c620000,0,0x00021602,
-    0x304200fe,0x2401004a,0x14410002,0,0x20630004,0xaf430080
-};
+/* No BIOS code is carried here. The handler (C80..CB8) and continuation
+ * (CB8..CF0) come from the user's own ROM when one is supplied (its full
+ * SHA-256 is pinned above); without a ROM they are zero stand-ins, which is
+ * safe because exception entry is serviced natively and never executes
+ * them. The game's own libgte PATCHGTE copies its 14-word handler from the
+ * EXE over C80; that variant is recognised by its FNV-1a 64 digest. */
+#define GTE_PATCH_HANDLER_DIGEST 0x7cecf5a173ee2e66ull
+static uint64_t words_digest(const uint8_t *p, unsigned n) {
+    uint64_t h = 0xcbf29ce484222325ull;
+    for (unsigned i = 0; i < 4u * n; ++i) { h ^= p[i]; h *= 0x100000001b3ull; }
+    return h;
+}
 static uint32_t load32(const uint8_t *p) {
     return p[0]|(uint32_t)p[1]<<8|(uint32_t)p[2]<<16|(uint32_t)p[3]<<24;
 }
@@ -47,12 +47,14 @@ static int binding_valid(const MusashiBiosExceptionImage *image) {
 }
 static int immutable_valid(const MusashiBiosExceptionImage *image) {
     return image->memory && equal_words(image->memory->bytes+0x674,table_words,7) &&
-        equal_words(image->memory->bytes+0xcb8,continuation,14);
+        equal_words(image->memory->bytes+0xcb8,image->seed_continuation,14);
 }
 static int published_valid(const MusashiBiosExceptionImage *image) {
-    const uint32_t *words=image->variant==MUSASHI_BIOS_EXCEPTION_ORIGINAL?original:
-        image->variant==MUSASHI_BIOS_EXCEPTION_GTE_PATCH?patched:NULL;
-    return words && image->generation && equal_words(image->memory->bytes+0xc80,words,14);
+    if(!image->generation)return 0;
+    if(image->variant==MUSASHI_BIOS_EXCEPTION_ORIGINAL)
+        return equal_words(image->memory->bytes+0xc80,image->seed_handler,14);
+    return image->variant==MUSASHI_BIOS_EXCEPTION_GTE_PATCH &&
+        words_digest(image->memory->bytes+0xc80,14)==GTE_PATCH_HANDLER_DIGEST;
 }
 static int end(MusashiBiosExceptionImage *image,int accepted,int fault) {
     if(fault)image->faulted=1;
@@ -82,8 +84,8 @@ static int zeroed(const MusashiBiosExceptionImage *image) {
 static void store_words(uint8_t *p,const uint32_t *words,unsigned count) {
     for(unsigned i=0;i<count;i++)for(unsigned j=0;j<4;j++)p[4*i+j]=(uint8_t)(words[i]>>(8*j));
 }
-int musashi_bios_exception_init_selected(MusashiBiosExceptionImage *image,MusashiBootMemory *memory,
-    MusashiBiosKernel *kernel,MusashiCpuStatus *cpu) {
+static int init_with(MusashiBiosExceptionImage *image,MusashiBootMemory *memory,
+    MusashiBiosKernel *kernel,MusashiCpuStatus *cpu,const uint8_t *rom) {
     MusashiCpuStatusSnapshot s;
     if(!image)return 0;
     if(image->busy) {image->faulted=1;return 0;}
@@ -97,9 +99,13 @@ int musashi_bios_exception_init_selected(MusashiBiosExceptionImage *image,Musash
     if(!musashi_bios_kernel_install_exception_binding(kernel,&image->binding,musashi_bios_exception_enter,image))
         return end(image,0,0);
     image->memory=memory;image->kernel=kernel;image->cpu=cpu;
+    for(unsigned i=0;i<14;i++) {
+        image->seed_handler[i]=rom?load32(rom+0x10780+4*i):0;
+        image->seed_continuation[i]=rom?load32(rom+0x107b8+4*i):0;
+    }
     store_words(memory->bytes+0x674,table_words,7);
-    store_words(memory->bytes+0xc80,original,14);
-    store_words(memory->bytes+0xcb8,continuation,14);
+    store_words(memory->bytes+0xc80,image->seed_handler,14);
+    store_words(memory->bytes+0xcb8,image->seed_continuation,14);
     image->variant=MUSASHI_BIOS_EXCEPTION_ORIGINAL;image->generation=1;image->initialized=1;
     return end(image,1,0);
 }
@@ -108,9 +114,12 @@ int musashi_bios_exception_init(MusashiBiosExceptionImage *image,MusashiBootMemo
     unsigned length=0;uint8_t digest[32];
     if(image && image->busy) {image->faulted=1;return 0;}
     if(!rom || size!=524288 || !EVP_Digest(rom,size,digest,&length,EVP_sha256(),NULL) ||
-        length!=32 || memcmp(digest,rom_hash,32) || !equal_words(rom+0x10174,table_words,7) ||
-        !equal_words(rom+0x10780,original,14) || !equal_words(rom+0x107b8,continuation,14))return 0;
-    return musashi_bios_exception_init_selected(image,memory,kernel,cpu);
+        length!=32 || memcmp(digest,rom_hash,32) || !equal_words(rom+0x10174,table_words,7))return 0;
+    return init_with(image,memory,kernel,cpu,rom);
+}
+int musashi_bios_exception_init_selected(MusashiBiosExceptionImage *image,MusashiBootMemory *memory,
+    MusashiBiosKernel *kernel,MusashiCpuStatus *cpu) {
+    return init_with(image,memory,kernel,cpu,NULL);
 }
 int musashi_bios_exception_table(MusashiBiosExceptionImage *image,uint32_t *out) {
     MusashiCpuStatusSnapshot s;
@@ -139,8 +148,8 @@ int musashi_bios_exception_publish(MusashiBiosExceptionImage *image) {
     if(!ordinary(image,&s))return 0;
     if((s.sr&0x401u) || !image->dirty || image->written_mask!=0x3fff || image->generation==UINT64_MAX)
         return end(image,0,1);
-    if(equal_words(image->memory->bytes+0xc80,patched,14))variant=MUSASHI_BIOS_EXCEPTION_GTE_PATCH;
-    else if(equal_words(image->memory->bytes+0xc80,original,14))variant=MUSASHI_BIOS_EXCEPTION_ORIGINAL;
+    if(words_digest(image->memory->bytes+0xc80,14)==GTE_PATCH_HANDLER_DIGEST)variant=MUSASHI_BIOS_EXCEPTION_GTE_PATCH;
+    else if(equal_words(image->memory->bytes+0xc80,image->seed_handler,14))variant=MUSASHI_BIOS_EXCEPTION_ORIGINAL;
     else return end(image,0,1);
     image->variant=variant;image->generation++;image->dirty=0;image->written_mask=0;
     return end(image,1,0);

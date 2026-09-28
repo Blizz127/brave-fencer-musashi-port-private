@@ -37,7 +37,9 @@ static void fresh(const uint8_t *rom,size_t size) {
     assert(selected?musashi_bios_exception_init_selected(&image,&ram,&kernel,cpu):
         musashi_bios_exception_init(&image,&ram,&kernel,cpu,rom,size));
     assert(!memcmp(ram.bytes+0x674,rom+0x10174,28));
-    assert(!memcmp(ram.bytes+0xc80,rom+0x10780,112));
+    if(selected) {  /* no ROM: zero stand-in handler and continuation */
+        for(unsigned i=0;i<112;i++)assert(ram.bytes[0xc80+i]==0);
+    } else assert(!memcmp(ram.bytes+0xc80,rom+0x10780,112));
     assert(image.variant==MUSASHI_BIOS_EXCEPTION_ORIGINAL && image.generation==1 && !image.dirty);
     assert(kernel.early_hook==&card.early_hook && kernel.exception_required);
     for(unsigned i=0;i<MUSASHI_RAM_SIZE;i++)
@@ -146,7 +148,8 @@ static void constructor_controls(uint8_t *rom,size_t size) {
     reenter=1;assert(!musashi_bios_exception_init_selected(&image,&ram,&kernel,cpu));
     assert(image.faulted && !image.initialized && !memcmp(&ram,&before,sizeof(ram)) && !kernel.exception_binding);
     memset(&image,0,sizeof(image));assert(musashi_bios_exception_init_selected(&image,&ram,&kernel,cpu));
-    assert(!memcmp(ram.bytes+0x674,rom+0x10174,28) && !memcmp(ram.bytes+0xc80,rom+0x10780,112));
+    assert(!memcmp(ram.bytes+0x674,rom+0x10174,28));
+    for(unsigned i=0;i<112;i++)assert(ram.bytes[0xc80+i]==0);  /* selected: stand-ins */
     MusashiBiosExceptionImage other={0};before=ram;
     assert(!musashi_bios_exception_init_selected(&other,&ram,&kernel,cpu));
     assert(!other.initialized && !memcmp(&ram,&before,sizeof(ram)));

@@ -20,6 +20,22 @@
 #define MUSASHI_FORMATTER_NOINLINE
 #endif
 
+/* Instruction-site admission without retail words: a site admits an
+ * instruction only when the instruction equals the word the verified code
+ * image holds at that PC (the hash-checked EXE, or the overlay the guest
+ * loaded) and the site's group digest confirms that image is the one the
+ * site was carved from. */
+static int code_site(uint32_t pc, unsigned group, uint32_t instruction);
+
+/* MIPS I field encoders for generic checks (a call to a named target, a
+ * register jump, a syscall): they state the operation, not stored words. */
+#define MIPS_I(op, rs, rt, imm) \
+    (((uint32_t)(op) << 26) | ((uint32_t)(rs) << 21) | ((uint32_t)(rt) << 16) | (uint32_t)(imm))
+#define MIPS_JAL(target) ((3u << 26) | (((uint32_t)(target) >> 2) & 0x03ffffffu))
+#define MIPS_JR(rs) (((uint32_t)(rs) << 21) | 8u)
+#define MIPS_JALR(rs, rd) (((uint32_t)(rs) << 21) | ((uint32_t)(rd) << 11) | 9u)
+#define MIPS_SYSCALL 0x0000000cu
+
 static const uint32_t kMain80017758Words[8]; /* shape only: 8 words, fetched from guest RAM */
 static const uint32_t kMain80017778Words[84]; /* shape only: 84 words, fetched from guest RAM */
 static const uint32_t kMain800178C8Words[9]; /* shape only: 9 words, fetched from guest RAM */
@@ -8348,15 +8364,15 @@ static int spu_source_guard(MusashiBootMemory *memory, const FormatterCpu *cpu) 
         return cpu->r[5] == 0x1f8010f4u;
     case 0x8003c5ecu:
     case 0x8003c6b4u: {
-        static const uint32_t targets[2][8] = {
-            {0x8003c62cu,0x8003c5f4u,0x8003c5fcu,0x8003c604u,
-             0x8003c60cu,0x8003c614u,0x8003c61cu,0x8003c624u},
-            {0x8003c6f4u,0x8003c6bcu,0x8003c6c4u,0x8003c6ccu,
-             0x8003c6d4u,0x8003c6dcu,0x8003c6e4u,0x8003c6ecu}
-        };
-        /* Index and loaded target remain the source's live values. */
-        return cpu->r[3] < 8u &&
-            cpu->r[2] == targets[cpu->pc == 0x8003c6b4u][cpu->r[3]];
+        /* Each switch sends index 0 to its default body and indices 1-7 to
+         * eight-byte case bodies right after the dispatch (the guest's own
+         * jump table holds these; it is not copied here). Index and loaded
+         * target remain the source's live values. */
+        const uint32_t first_case = cpu->pc + 8u;
+        const uint32_t default_body = first_case + 7u * 8u;
+        const uint32_t expected = cpu->r[3] == 0 ? default_body
+                                                 : first_case + (cpu->r[3] - 1u) * 8u;
+        return cpu->r[3] < 8u && cpu->r[2] == expected;
     }
     case 0x8003c0a0u:
         return 0; /* SPU DMA helper has no bound native executor. */
@@ -8405,129 +8421,129 @@ enum {
  * matched exactly as before on all three fields. */
 typedef struct {
     uint32_t pc;
-    uint32_t word;
+    uint32_t grp; /* code-site group: the word comes from the verified image */
     uint8_t reg;
 } MergeRetireSite;
 
 static const MergeRetireSite kMergeRetireSites[] = {
-    { 0x800d251cu, 0x88a30007u, 2u },
-    { 0x800d2524u, 0xaba20013u, 3u },
-    { 0x8012a0acu, 0x88830027u, 2u },
-    { 0x8012a0b4u, 0xa882001bu, 3u },
-    { 0x80134268u, 0x8a630007u, 2u },
-    { 0x80134270u, 0xa8a20003u, 3u },
-    { 0x801349ccu, 0x8a830007u, 2u },
-    { 0x801349d4u, 0xa8a20003u, 3u },
-    { 0x80136ca8u, 0x88a30007u, 2u },
+    { 0x800d251cu, 84u /* site group */, 2u },
+    { 0x800d2524u, 84u /* site group */, 3u },
+    { 0x8012a0acu, 96u /* site group */, 2u },
+    { 0x8012a0b4u, 96u /* site group */, 3u },
+    { 0x80134268u, 111u /* site group */, 2u },
+    { 0x80134270u, 111u /* site group */, 3u },
+    { 0x801349ccu, 112u /* site group */, 2u },
+    { 0x801349d4u, 112u /* site group */, 3u },
+    { 0x80136ca8u, 113u /* site group */, 2u },
     { 0x80136cb0u, 0x80a40008u, 3u },
-    { 0x8013d65cu, 0x88a30007u, 2u },
-    { 0x8013d664u, 0xa8820003u, 3u },
-    { 0x80146168u, 0x88a30007u, 2u },
-    { 0x80146170u, 0xa8820003u, 3u },
-    { 0x80146490u, 0x88a30007u, 2u },
-    { 0x80146498u, 0xa8820003u, 3u },
-    { 0x80147008u, 0x8a030007u, 2u },
-    { 0x80147010u, 0xaa22008bu, 3u },
-    { 0x80147530u, 0x8a030127u, 2u },
-    { 0x80147538u, 0xaba20013u, 3u },
-    { 0x8014be1cu, 0x8a03009fu, 2u },
-    { 0x8014be24u, 0xaba20013u, 3u },
-    { 0x8014c520u, 0x88e30007u, 2u },
-    { 0x8014c528u, 0xa902007fu, 3u },
-    { 0x8014c758u, 0x88440017u, 3u },
-    { 0x8014c760u, 0xaa030167u, 4u },
-    { 0x8014c868u, 0x88a30007u, 2u },
-    { 0x8014c870u, 0xa8820157u, 3u },
-    { 0x8014c8d0u, 0x88a30007u, 2u },
-    { 0x8014c8d8u, 0xa882015fu, 3u },
-    { 0x8014c8f8u, 0x88830097u, 2u },
-    { 0x8014c900u, 0xa882015fu, 3u },
-    { 0x8014cbacu, 0x88830007u, 2u },
-    { 0x8014cbb4u, 0xa8c20003u, 3u },
-    { 0x8014db78u, 0x8ba3002fu, 2u },
-    { 0x8014db80u, 0xaba20033u, 3u },
-    { 0x8014ea8cu, 0x8a230007u, 2u },
-    { 0x8014ea94u, 0xaba20023u, 3u },
-    { 0x8014f5dcu, 0x88a30007u, 2u },
-    { 0x8014f5e4u, 0xaa020123u, 3u },
-    { 0x8014f614u, 0x88a30007u, 2u },
-    { 0x8014f61cu, 0xaa020123u, 3u },
-    { 0x8014f670u, 0x88a30007u, 2u },
-    { 0x8014f678u, 0xa8820003u, 3u },
-    { 0x8014f6acu, 0x88a30007u, 2u },
-    { 0x8014f6b4u, 0xaa020123u, 3u },
-    { 0x8014f874u, 0x88a30007u, 2u },
-    { 0x8014f87cu, 0xaa020123u, 3u },
-    { 0x8014f8acu, 0x88a30007u, 2u },
-    { 0x8014f8b4u, 0xaa020123u, 3u },
-    { 0x8014f908u, 0x88a30007u, 2u },
-    { 0x8014f910u, 0xa8820003u, 3u },
-    { 0x8014f944u, 0x88a30007u, 2u },
-    { 0x8014f94cu, 0xaa020123u, 3u },
-    { 0x8014fb64u, 0x88a30007u, 2u },
-    { 0x8014fb6cu, 0xa8820003u, 3u },
-    { 0x8014ff20u, 0x8ba30027u, 2u },
-    { 0x8014ff28u, 0xaa020083u, 3u },
-    { 0x8014ff74u, 0x88a30007u, 2u },
-    { 0x8014ff7cu, 0xaa020083u, 3u },
-    { 0x80150008u, 0x8a430007u, 2u },
-    { 0x80150010u, 0xaba20013u, 3u },
-    { 0x80150080u, 0x8ba30017u, 2u },
-    { 0x80150088u, 0xaba2001bu, 3u },
-    { 0x801500d0u, 0x8ba3001fu, 2u },
-    { 0x801500d8u, 0xaa420003u, 3u },
-    { 0x801500f8u, 0x88a30007u, 2u },
-    { 0x80150100u, 0xaa820003u, 3u },
-    { 0x80150230u, 0x8ba30027u, 2u },
-    { 0x80150238u, 0xaa020083u, 3u },
-    { 0x80150284u, 0x88a30007u, 2u },
-    { 0x8015028cu, 0xaa020083u, 3u },
-    { 0x80150318u, 0x8a430007u, 2u },
-    { 0x80150320u, 0xaba20013u, 3u },
-    { 0x80150390u, 0x8ba30017u, 2u },
-    { 0x80150398u, 0xaba2001bu, 3u },
-    { 0x801503e0u, 0x8ba3001fu, 2u },
-    { 0x801503e8u, 0xaa420003u, 3u },
-    { 0x80150408u, 0x88a30007u, 2u },
-    { 0x80150410u, 0xaa820003u, 3u },
-    { 0x80163420u, 0x89230007u, 2u },
-    { 0x80163428u, 0xaba2001bu, 3u },
-    { 0x801634f4u, 0x89480007u, 2u },
-    { 0x801634fcu, 0xaba2001bu, 8u },
-    { 0x80172384u, 0x88a30007u, 2u },
-    { 0x8017238cu, 0xa8820093u, 3u },
-    { 0x801723a4u, 0x88830097u, 2u },
-    { 0x801723acu, 0xa882008bu, 3u },
-    { 0x80172798u, 0x88830007u, 2u },
-    { 0x801727a0u, 0xa8c20003u, 3u },
-    { 0x801728acu, 0x88830007u, 2u },
-    { 0x801728b4u, 0xa8c20003u, 3u },
-    { 0x80172c68u, 0x88830007u, 2u },
-    { 0x80172c70u, 0xa8c20003u, 3u },
-    { 0x80173420u, 0x8a030007u, 2u },
-    { 0x80173428u, 0xa8a20003u, 3u },
-    { 0x80173484u, 0x8a030007u, 2u },
-    { 0x8017348cu, 0xa8a20003u, 3u },
-    { 0x80179488u, 0x8ba4002fu, 2u },
-    { 0x80179490u, 0xaa02000fu, 4u },
-    { 0x801794e8u, 0x8ba4003fu, 2u },
-    { 0x801794f0u, 0xaa02000fu, 4u },
-    { 0x8017b8f8u, 0x88830007u, 2u },
-    { 0x8017b900u, 0xa8c20003u, 3u },
-    { 0x8017b920u, 0x8883000fu, 2u },
-    { 0x8017b928u, 0xa8c20003u, 3u },
-    { 0x8017c4d4u, 0x88c30007u, 2u },
-    { 0x8017c4dcu, 0x88c4000bu, 3u },
-    { 0x8017c4e4u, 0x88c5000fu, 4u },
-    { 0x8017c4ecu, 0xa8e20003u, 5u },
-    { 0x8017c554u, 0x88c30007u, 2u },
-    { 0x8017c55cu, 0x88c4000bu, 3u },
-    { 0x8017c564u, 0xa8e20003u, 4u },
-    { 0x801826b4u, 0x8a630007u, 2u },
-    { 0x801826bcu, 0xaba20013u, 3u },
-    { 0x8018288cu, 0x8a630007u, 2u },
-    { 0x80182894u, 0xaba20013u, 3u },
-    { 0x80183f08u, 0x89829482u, 2u },
+    { 0x8013d65cu, 124u /* site group */, 2u },
+    { 0x8013d664u, 124u /* site group */, 3u },
+    { 0x80146168u, 131u /* site group */, 2u },
+    { 0x80146170u, 131u /* site group */, 3u },
+    { 0x80146490u, 132u /* site group */, 2u },
+    { 0x80146498u, 132u /* site group */, 3u },
+    { 0x80147008u, 133u /* site group */, 2u },
+    { 0x80147010u, 133u /* site group */, 3u },
+    { 0x80147530u, 134u /* site group */, 2u },
+    { 0x80147538u, 134u /* site group */, 3u },
+    { 0x8014be1cu, 135u /* site group */, 2u },
+    { 0x8014be24u, 135u /* site group */, 3u },
+    { 0x8014c520u, 136u /* site group */, 2u },
+    { 0x8014c528u, 136u /* site group */, 3u },
+    { 0x8014c758u, 137u /* site group */, 3u },
+    { 0x8014c760u, 137u /* site group */, 4u },
+    { 0x8014c868u, 138u /* site group */, 2u },
+    { 0x8014c870u, 138u /* site group */, 3u },
+    { 0x8014c8d0u, 138u /* site group */, 2u },
+    { 0x8014c8d8u, 138u /* site group */, 3u },
+    { 0x8014c8f8u, 138u /* site group */, 2u },
+    { 0x8014c900u, 139u /* site group */, 3u },
+    { 0x8014cbacu, 140u /* site group */, 2u },
+    { 0x8014cbb4u, 140u /* site group */, 3u },
+    { 0x8014db78u, 141u /* site group */, 2u },
+    { 0x8014db80u, 141u /* site group */, 3u },
+    { 0x8014ea8cu, 142u /* site group */, 2u },
+    { 0x8014ea94u, 142u /* site group */, 3u },
+    { 0x8014f5dcu, 143u /* site group */, 2u },
+    { 0x8014f5e4u, 143u /* site group */, 3u },
+    { 0x8014f614u, 144u /* site group */, 2u },
+    { 0x8014f61cu, 144u /* site group */, 3u },
+    { 0x8014f670u, 144u /* site group */, 2u },
+    { 0x8014f678u, 144u /* site group */, 3u },
+    { 0x8014f6acu, 144u /* site group */, 2u },
+    { 0x8014f6b4u, 144u /* site group */, 3u },
+    { 0x8014f874u, 145u /* site group */, 2u },
+    { 0x8014f87cu, 145u /* site group */, 3u },
+    { 0x8014f8acu, 145u /* site group */, 2u },
+    { 0x8014f8b4u, 145u /* site group */, 3u },
+    { 0x8014f908u, 146u /* site group */, 2u },
+    { 0x8014f910u, 146u /* site group */, 3u },
+    { 0x8014f944u, 146u /* site group */, 2u },
+    { 0x8014f94cu, 146u /* site group */, 3u },
+    { 0x8014fb64u, 147u /* site group */, 2u },
+    { 0x8014fb6cu, 147u /* site group */, 3u },
+    { 0x8014ff20u, 148u /* site group */, 2u },
+    { 0x8014ff28u, 148u /* site group */, 3u },
+    { 0x8014ff74u, 148u /* site group */, 2u },
+    { 0x8014ff7cu, 148u /* site group */, 3u },
+    { 0x80150008u, 149u /* site group */, 2u },
+    { 0x80150010u, 149u /* site group */, 3u },
+    { 0x80150080u, 149u /* site group */, 2u },
+    { 0x80150088u, 149u /* site group */, 3u },
+    { 0x801500d0u, 149u /* site group */, 2u },
+    { 0x801500d8u, 149u /* site group */, 3u },
+    { 0x801500f8u, 149u /* site group */, 2u },
+    { 0x80150100u, 150u /* site group */, 3u },
+    { 0x80150230u, 151u /* site group */, 2u },
+    { 0x80150238u, 151u /* site group */, 3u },
+    { 0x80150284u, 151u /* site group */, 2u },
+    { 0x8015028cu, 151u /* site group */, 3u },
+    { 0x80150318u, 152u /* site group */, 2u },
+    { 0x80150320u, 152u /* site group */, 3u },
+    { 0x80150390u, 152u /* site group */, 2u },
+    { 0x80150398u, 152u /* site group */, 3u },
+    { 0x801503e0u, 152u /* site group */, 2u },
+    { 0x801503e8u, 152u /* site group */, 3u },
+    { 0x80150408u, 153u /* site group */, 2u },
+    { 0x80150410u, 153u /* site group */, 3u },
+    { 0x80163420u, 154u /* site group */, 2u },
+    { 0x80163428u, 154u /* site group */, 3u },
+    { 0x801634f4u, 154u /* site group */, 2u },
+    { 0x801634fcu, 154u /* site group */, 8u },
+    { 0x80172384u, 156u /* site group */, 2u },
+    { 0x8017238cu, 156u /* site group */, 3u },
+    { 0x801723a4u, 156u /* site group */, 2u },
+    { 0x801723acu, 156u /* site group */, 3u },
+    { 0x80172798u, 157u /* site group */, 2u },
+    { 0x801727a0u, 157u /* site group */, 3u },
+    { 0x801728acu, 158u /* site group */, 2u },
+    { 0x801728b4u, 158u /* site group */, 3u },
+    { 0x80172c68u, 159u /* site group */, 2u },
+    { 0x80172c70u, 159u /* site group */, 3u },
+    { 0x80173420u, 160u /* site group */, 2u },
+    { 0x80173428u, 160u /* site group */, 3u },
+    { 0x80173484u, 160u /* site group */, 2u },
+    { 0x8017348cu, 160u /* site group */, 3u },
+    { 0x80179488u, 161u /* site group */, 2u },
+    { 0x80179490u, 161u /* site group */, 4u },
+    { 0x801794e8u, 161u /* site group */, 2u },
+    { 0x801794f0u, 161u /* site group */, 4u },
+    { 0x8017b8f8u, 162u /* site group */, 2u },
+    { 0x8017b900u, 163u /* site group */, 3u },
+    { 0x8017b920u, 163u /* site group */, 2u },
+    { 0x8017b928u, 163u /* site group */, 3u },
+    { 0x8017c4d4u, 164u /* site group */, 2u },
+    { 0x8017c4dcu, 164u /* site group */, 3u },
+    { 0x8017c4e4u, 164u /* site group */, 4u },
+    { 0x8017c4ecu, 164u /* site group */, 5u },
+    { 0x8017c554u, 165u /* site group */, 2u },
+    { 0x8017c55cu, 165u /* site group */, 3u },
+    { 0x8017c564u, 165u /* site group */, 4u },
+    { 0x801826b4u, 188u /* site group */, 2u },
+    { 0x801826bcu, 188u /* site group */, 3u },
+    { 0x8018288cu, 189u /* site group */, 2u },
+    { 0x80182894u, 189u /* site group */, 3u },
+    { 0x80183f08u, 201u /* site group */, 2u },
 };
 
 MUSASHI_FORMATTER_NOINLINE static int merge_retire_site(uint32_t pc, uint32_t word,
@@ -8536,7 +8552,7 @@ MUSASHI_FORMATTER_NOINLINE static int merge_retire_site(uint32_t pc, uint32_t wo
 
     for (index = 0; index < sizeof kMergeRetireSites / sizeof kMergeRetireSites[0]; ++index) {
         if (kMergeRetireSites[index].pc == pc
-                && kMergeRetireSites[index].word == word
+                && code_site(pc, kMergeRetireSites[index].grp, word)
                 && kMergeRetireSites[index].reg == reg) {
             return 1;
         }
@@ -8560,594 +8576,594 @@ static int merge_kind_for(uint32_t pc, uint32_t instruction) {
         if (op == 42u) return MERGE_SWL;
         if (op == 46u) return MERGE_SWR;
     }
-    static const struct { uint32_t pc, word; uint8_t kind; } sites[] = {
-        {0x80045720u,0x88a20003u,MERGE_LWL},
-        {0x80045724u,0x98a20000u,MERGE_LWR},
-        {0x8004572cu,0xaba2001bu,MERGE_SWL},
-        {0x80045730u,0xbba20018u,MERGE_SWR},
-        {0x800457e4u,0x8a230005u,MERGE_LWL},
-        {0x800457e8u,0x9a230002u,MERGE_LWR},
-        {0x800457f0u,0xa8430003u,MERGE_SWL},
-        {0x800457f4u,0xb8430000u,MERGE_SWR},
-        {0x80045ae4u,0x8a020005u,MERGE_LWL},
-        {0x80045ae8u,0x9a020002u,MERGE_LWR},
-        {0x80045af0u,0xaba2001bu,MERGE_SWL},
-        {0x80045af4u,0xbba20018u,MERGE_SWR},
-        {0x80045b0cu,0x8a03000du,MERGE_LWL},
-        {0x80045b10u,0x9a03000au,MERGE_LWR},
-        {0x80045b18u,0xa8430003u,MERGE_SWL},
-        {0x80045b1cu,0xb8430000u,MERGE_SWR},
-        {0x800469fcu,0x8862001fu,MERGE_LWL},
-        {0x80046a00u,0x9862001cu,MERGE_LWR},
-        {0x80046a08u,0xa8c20003u,MERGE_SWL},
-        {0x80046a0cu,0xb8c20000u,MERGE_SWR},
-        {0x80046fd0u,0x8ba4002bu,MERGE_LWL},
-        {0x80046fd4u,0x9ba40028u,MERGE_LWR},
-        {0x80046fdcu,0xa844001fu,MERGE_SWL},
-        {0x80046fe0u,0xb844001cu,MERGE_SWR},
-        {0x800cfac4u,0x9bbbbbcdu,MERGE_LWR},
-        {0x800cfb04u,0x9bbbbbcdu,MERGE_LWR},
-        {0x800cfb44u,0x9bbbbbcdu,MERGE_LWR},
-        {0x800cfc04u,0x99ddddd0u,MERGE_LWR},
-        {0x800cfc44u,0xaaddaa00u,MERGE_SWL},
-        {0x800d0144u,0x9bbbbbcdu,MERGE_LWR},
-        {0x800d0184u,0x9bbbbbcdu,MERGE_LWR},
-        {0x800d01c4u,0x9bbbbbcdu,MERGE_LWR},
-        {0x800d0284u,0x99ddddd0u,MERGE_LWR},
-        {0x800d02c4u,0xaaddaa00u,MERGE_SWL},
-        {0x800d11bcu,0x9a908264u,MERGE_LWR},
-        {0x800d1200u,0xaa1e0000u,MERGE_SWL},
-        {0x800d1334u,0xa80f0000u,MERGE_SWL},
-        {0x800d1fa4u,0x98000000u,MERGE_LWR},
-        {0x800d2154u,0x980391ffu,MERGE_LWR},
-        {0x800d2168u,0xabababafu,MERGE_SWL},
-        {0x800d229cu,0x8affffffu,MERGE_LWL},
-        {0x800d2504u,0xbb080000u,MERGE_SWR},
-        {0x800d2514u,0x88a20003u,MERGE_LWL},
-        {0x800d2518u,0x98a20000u,MERGE_LWR},
-        {0x800d251cu,0x88a30007u,MERGE_LWL},
-        {0x800d2520u,0x98a30004u,MERGE_LWR},
-        {0x800d2524u,0xaba20013u,MERGE_SWL},
-        {0x800d2528u,0xbba20010u,MERGE_SWR},
-        {0x800d252cu,0xaba30017u,MERGE_SWL},
-        {0x800d2530u,0xbba30014u,MERGE_SWR},
-        {0x800d2638u,0xb9140000u,MERGE_SWR},
-        {0x800d27a4u,0xb927d0ffu,MERGE_SWR},
-        {0x800d28f8u,0x98060000u,MERGE_LWR},
-        {0x800d2a80u,0x98320800u,MERGE_LWR},
-        {0x800d2d6cu,0xba4cbcffu,MERGE_SWR},
-        {0x800d2f60u,0x8970666cu,MERGE_LWL},
-        {0x800d3444u,0x88c2fbffu,MERGE_LWL},
-        {0x800d34c0u,0xb9f3ffffu,MERGE_SWR},
-        {0x800d34e8u,0xabebffffu,MERGE_SWL},
-        {0x8012a0a4u,0x88820023u,MERGE_LWL},
-        {0x8012a0a8u,0x98820020u,MERGE_LWR},
-        {0x8012a0acu,0x88830027u,MERGE_LWL},
-        {0x8012a0b0u,0x98830024u,MERGE_LWR},
-        {0x8012a0b4u,0xa882001bu,MERGE_SWL},
-        {0x8012a0b8u,0xb8820018u,MERGE_SWR},
-        {0x8012a0bcu,0xa883001fu,MERGE_SWL},
-        {0x8012a0c0u,0xb883001cu,MERGE_SWR},
-        {0x80134260u,0x8a620003u,MERGE_LWL},
-        {0x80134264u,0x9a620000u,MERGE_LWR},
-        {0x80134268u,0x8a630007u,MERGE_LWL},
-        {0x8013426cu,0x9a630004u,MERGE_LWR},
-        {0x80134270u,0xa8a20003u,MERGE_SWL},
-        {0x80134274u,0xb8a20000u,MERGE_SWR},
-        {0x80134278u,0xa8a30007u,MERGE_SWL},
-        {0x8013427cu,0xb8a30004u,MERGE_SWR},
-        {0x801349c4u,0x8a820003u,MERGE_LWL},
-        {0x801349c8u,0x9a820000u,MERGE_LWR},
-        {0x801349ccu,0x8a830007u,MERGE_LWL},
-        {0x801349d0u,0x9a830004u,MERGE_LWR},
-        {0x801349d4u,0xa8a20003u,MERGE_SWL},
-        {0x801349d8u,0xb8a20000u,MERGE_SWR},
-        {0x801349dcu,0xa8a30007u,MERGE_SWL},
-        {0x801349e0u,0xb8a30004u,MERGE_SWR},
-        {0x80136ca0u,0x88a20003u,MERGE_LWL},
-        {0x80136ca4u,0x98a20000u,MERGE_LWR},
-        {0x80136ca8u,0x88a30007u,MERGE_LWL},
-        {0x80136cacu,0x98a30004u,MERGE_LWR},
-        {0x80136cb4u,0xaba2001bu,MERGE_SWL},
-        {0x80136cb8u,0xbba20018u,MERGE_SWR},
-        {0x80136cbcu,0xaba3001fu,MERGE_SWL},
-        {0x80136cc0u,0xbba3001cu,MERGE_SWR},
-        {0x8013ae98u,0x8b030003u,MERGE_LWL},
-        {0x8013ae9cu,0x9b030000u,MERGE_LWR},
-        {0x8013aea4u,0xa8430003u,MERGE_SWL},
-        {0x8013aea8u,0xb8430000u,MERGE_SWR},
-        {0x8013cc34u,0x882355a3u,MERGE_LWL},
-        {0x8013cc40u,0x982355a0u,MERGE_LWR},
-        {0x8013cc4cu,0x882455a7u,MERGE_LWL},
-        {0x8013cc58u,0x982455a4u,MERGE_LWR},
-        {0x8013cc68u,0xa8c30003u,MERGE_SWL},
-        {0x8013cc6cu,0xb8c30000u,MERGE_SWR},
-        {0x8013cc70u,0xa8c40007u,MERGE_SWL},
-        {0x8013cc74u,0xb8c40004u,MERGE_SWR},
-        {0x8013d5fcu,0x882355a3u,MERGE_LWL},
-        {0x8013d5fcu,0x8823ecb3u,MERGE_LWL},
-        {0x8013d608u,0x982355a0u,MERGE_LWR},
-        {0x8013d608u,0x9823ecb0u,MERGE_LWR},
-        {0x8013d614u,0x882455a7u,MERGE_LWL},
-        {0x8013d614u,0x8824ecb7u,MERGE_LWL},
-        {0x8013d620u,0x982455a4u,MERGE_LWR},
-        {0x8013d620u,0x9824ecb4u,MERGE_LWR},
-        {0x8013d630u,0xa8c30003u,MERGE_SWL},
-        {0x8013d634u,0xb8c30000u,MERGE_SWR},
-        {0x8013d638u,0xa8c40007u,MERGE_SWL},
-        {0x8013d63cu,0xb8c40004u,MERGE_SWR},
-        {0x8013d654u,0x88a20003u,MERGE_LWL},
-        {0x8013d658u,0x98a20000u,MERGE_LWR},
-        {0x8013d65cu,0x88a30007u,MERGE_LWL},
-        {0x8013d660u,0x98a30004u,MERGE_LWR},
-        {0x8013d664u,0xa8820003u,MERGE_SWL},
-        {0x8013d668u,0xb8820000u,MERGE_SWR},
-        {0x8013d66cu,0xa8830007u,MERGE_SWL},
-        {0x8013d670u,0xb8830004u,MERGE_SWR},
-        {0x80146160u,0x88a20003u,MERGE_LWL},
-        {0x80146164u,0x98a20000u,MERGE_LWR},
-        {0x80146168u,0x88a30007u,MERGE_LWL},
-        {0x8014616cu,0x98a30004u,MERGE_LWR},
-        {0x80146170u,0xa8820003u,MERGE_SWL},
-        {0x80146174u,0xb8820000u,MERGE_SWR},
-        {0x80146178u,0xa8830007u,MERGE_SWL},
-        {0x8014617cu,0xb8830004u,MERGE_SWR},
-        {0x80146488u,0x88a20003u,MERGE_LWL},
-        {0x8014648cu,0x98a20000u,MERGE_LWR},
-        {0x80146490u,0x88a30007u,MERGE_LWL},
-        {0x80146494u,0x98a30004u,MERGE_LWR},
-        {0x80146498u,0xa8820003u,MERGE_SWL},
-        {0x8014649cu,0xb8820000u,MERGE_SWR},
-        {0x801464a0u,0xa8830007u,MERGE_SWL},
-        {0x801464a4u,0xb8830004u,MERGE_SWR},
-        {0x80147000u,0x8a020003u,MERGE_LWL},
-        {0x80147004u,0x9a020000u,MERGE_LWR},
-        {0x80147008u,0x8a030007u,MERGE_LWL},
-        {0x8014700cu,0x9a030004u,MERGE_LWR},
-        {0x80147010u,0xaa22008bu,MERGE_SWL},
-        {0x80147014u,0xba220088u,MERGE_SWR},
-        {0x80147018u,0xaa23008fu,MERGE_SWL},
-        {0x8014701cu,0xba23008cu,MERGE_SWR},
-        {0x80147528u,0x8a020123u,MERGE_LWL},
-        {0x8014752cu,0x9a020120u,MERGE_LWR},
-        {0x80147530u,0x8a030127u,MERGE_LWL},
-        {0x80147534u,0x9a030124u,MERGE_LWR},
-        {0x80147538u,0xaba20013u,MERGE_SWL},
-        {0x8014753cu,0xbba20010u,MERGE_SWR},
-        {0x80147540u,0xaba30017u,MERGE_SWL},
-        {0x80147544u,0xbba30014u,MERGE_SWR},
-        {0x8014be14u,0x8a02009bu,MERGE_LWL},
-        {0x8014be18u,0x9a020098u,MERGE_LWR},
-        {0x8014be1cu,0x8a03009fu,MERGE_LWL},
-        {0x8014be20u,0x9a03009cu,MERGE_LWR},
-        {0x8014be24u,0xaba20013u,MERGE_SWL},
-        {0x8014be28u,0xbba20010u,MERGE_SWR},
-        {0x8014be2cu,0xaba30017u,MERGE_SWL},
-        {0x8014be30u,0xbba30014u,MERGE_SWR},
-        {0x8014c518u,0x88e20003u,MERGE_LWL},
-        {0x8014c51cu,0x98e20000u,MERGE_LWR},
-        {0x8014c520u,0x88e30007u,MERGE_LWL},
-        {0x8014c524u,0x98e30004u,MERGE_LWR},
-        {0x8014c528u,0xa902007fu,MERGE_SWL},
-        {0x8014c52cu,0xb902007cu,MERGE_SWR},
-        {0x8014c530u,0xa9030083u,MERGE_SWL},
-        {0x8014c534u,0xb9030080u,MERGE_SWR},
-        {0x8014c750u,0x88430013u,MERGE_LWL},
-        {0x8014c754u,0x98430010u,MERGE_LWR},
-        {0x8014c758u,0x88440017u,MERGE_LWL},
-        {0x8014c75cu,0x98440014u,MERGE_LWR},
-        {0x8014c760u,0xaa030167u,MERGE_SWL},
-        {0x8014c764u,0xba030164u,MERGE_SWR},
-        {0x8014c768u,0xaa04016bu,MERGE_SWL},
-        {0x8014c76cu,0xba040168u,MERGE_SWR},
-        {0x8014c860u,0x88a20003u,MERGE_LWL},
-        {0x8014c864u,0x98a20000u,MERGE_LWR},
-        {0x8014c868u,0x88a30007u,MERGE_LWL},
-        {0x8014c86cu,0x98a30004u,MERGE_LWR},
-        {0x8014c870u,0xa8820157u,MERGE_SWL},
-        {0x8014c874u,0xb8820154u,MERGE_SWR},
-        {0x8014c878u,0xa883015bu,MERGE_SWL},
-        {0x8014c87cu,0xb8830158u,MERGE_SWR},
-        {0x8014c8c8u,0x88a20003u,MERGE_LWL},
-        {0x8014c8ccu,0x98a20000u,MERGE_LWR},
-        {0x8014c8d0u,0x88a30007u,MERGE_LWL},
-        {0x8014c8d4u,0x98a30004u,MERGE_LWR},
-        {0x8014c8d8u,0xa882015fu,MERGE_SWL},
-        {0x8014c8dcu,0xb882015cu,MERGE_SWR},
-        {0x8014c8e0u,0xa8830163u,MERGE_SWL},
-        {0x8014c8e4u,0xb8830160u,MERGE_SWR},
-        {0x8014c8f0u,0x88820093u,MERGE_LWL},
-        {0x8014c8f4u,0x98820090u,MERGE_LWR},
-        {0x8014c8f8u,0x88830097u,MERGE_LWL},
-        {0x8014c8fcu,0x98830094u,MERGE_LWR},
-        {0x8014c900u,0xa882015fu,MERGE_SWL},
-        {0x8014c904u,0xb882015cu,MERGE_SWR},
-        {0x8014c908u,0xa8830163u,MERGE_SWL},
-        {0x8014c90cu,0xb8830160u,MERGE_SWR},
-        {0x8014cba4u,0x88820003u,MERGE_LWL},
-        {0x8014cba8u,0x98820000u,MERGE_LWR},
-        {0x8014cbacu,0x88830007u,MERGE_LWL},
-        {0x8014cbb0u,0x98830004u,MERGE_LWR},
-        {0x8014cbb4u,0xa8c20003u,MERGE_SWL},
-        {0x8014cbb8u,0xb8c20000u,MERGE_SWR},
-        {0x8014cbbcu,0xa8c30007u,MERGE_SWL},
-        {0x8014cbc0u,0xb8c30004u,MERGE_SWR},
-        {0x8014db70u,0x8ba2002bu,MERGE_LWL},
-        {0x8014db74u,0x9ba20028u,MERGE_LWR},
-        {0x8014db78u,0x8ba3002fu,MERGE_LWL},
-        {0x8014db7cu,0x9ba3002cu,MERGE_LWR},
-        {0x8014db80u,0xaba20033u,MERGE_SWL},
-        {0x8014db84u,0xbba20030u,MERGE_SWR},
-        {0x8014db88u,0xaba30037u,MERGE_SWL},
-        {0x8014db8cu,0xbba30034u,MERGE_SWR},
-        {0x8014ea84u,0x8a220003u,MERGE_LWL},
-        {0x8014ea88u,0x9a220000u,MERGE_LWR},
-        {0x8014ea8cu,0x8a230007u,MERGE_LWL},
-        {0x8014ea90u,0x9a230004u,MERGE_LWR},
-        {0x8014ea94u,0xaba20023u,MERGE_SWL},
-        {0x8014ea98u,0xbba20020u,MERGE_SWR},
-        {0x8014ea9cu,0xaba30027u,MERGE_SWL},
-        {0x8014eaa0u,0xbba30024u,MERGE_SWR},
-        {0x8014f5d4u,0x88a20003u,MERGE_LWL},
-        {0x8014f5d8u,0x98a20000u,MERGE_LWR},
-        {0x8014f5dcu,0x88a30007u,MERGE_LWL},
-        {0x8014f5e0u,0x98a30004u,MERGE_LWR},
-        {0x8014f5e4u,0xaa020123u,MERGE_SWL},
-        {0x8014f5e8u,0xba020120u,MERGE_SWR},
-        {0x8014f5ecu,0xaa030127u,MERGE_SWL},
-        {0x8014f5f0u,0xba030124u,MERGE_SWR},
-        {0x8014f60cu,0x88a20003u,MERGE_LWL},
-        {0x8014f610u,0x98a20000u,MERGE_LWR},
-        {0x8014f614u,0x88a30007u,MERGE_LWL},
-        {0x8014f618u,0x98a30004u,MERGE_LWR},
-        {0x8014f61cu,0xaa020123u,MERGE_SWL},
-        {0x8014f620u,0xba020120u,MERGE_SWR},
-        {0x8014f624u,0xaa030127u,MERGE_SWL},
-        {0x8014f628u,0xba030124u,MERGE_SWR},
-        {0x8014f668u,0x88a20003u,MERGE_LWL},
-        {0x8014f66cu,0x98a20000u,MERGE_LWR},
-        {0x8014f670u,0x88a30007u,MERGE_LWL},
-        {0x8014f674u,0x98a30004u,MERGE_LWR},
-        {0x8014f678u,0xa8820003u,MERGE_SWL},
-        {0x8014f67cu,0xb8820000u,MERGE_SWR},
-        {0x8014f680u,0xa8830007u,MERGE_SWL},
-        {0x8014f684u,0xb8830004u,MERGE_SWR},
-        {0x8014f6a4u,0x88a20003u,MERGE_LWL},
-        {0x8014f6a8u,0x98a20000u,MERGE_LWR},
-        {0x8014f6acu,0x88a30007u,MERGE_LWL},
-        {0x8014f6b0u,0x98a30004u,MERGE_LWR},
-        {0x8014f6b4u,0xaa020123u,MERGE_SWL},
-        {0x8014f6b8u,0xba020120u,MERGE_SWR},
-        {0x8014f6bcu,0xaa030127u,MERGE_SWL},
-        {0x8014f6c0u,0xba030124u,MERGE_SWR},
-        {0x8014f86cu,0x88a20003u,MERGE_LWL},
-        {0x8014f870u,0x98a20000u,MERGE_LWR},
-        {0x8014f874u,0x88a30007u,MERGE_LWL},
-        {0x8014f878u,0x98a30004u,MERGE_LWR},
-        {0x8014f87cu,0xaa020123u,MERGE_SWL},
-        {0x8014f880u,0xba020120u,MERGE_SWR},
-        {0x8014f884u,0xaa030127u,MERGE_SWL},
-        {0x8014f888u,0xba030124u,MERGE_SWR},
-        {0x8014f8a4u,0x88a20003u,MERGE_LWL},
-        {0x8014f8a8u,0x98a20000u,MERGE_LWR},
-        {0x8014f8acu,0x88a30007u,MERGE_LWL},
-        {0x8014f8b0u,0x98a30004u,MERGE_LWR},
-        {0x8014f8b4u,0xaa020123u,MERGE_SWL},
-        {0x8014f8b8u,0xba020120u,MERGE_SWR},
-        {0x8014f8bcu,0xaa030127u,MERGE_SWL},
-        {0x8014f8c0u,0xba030124u,MERGE_SWR},
-        {0x8014f900u,0x88a20003u,MERGE_LWL},
-        {0x8014f904u,0x98a20000u,MERGE_LWR},
-        {0x8014f908u,0x88a30007u,MERGE_LWL},
-        {0x8014f90cu,0x98a30004u,MERGE_LWR},
-        {0x8014f910u,0xa8820003u,MERGE_SWL},
-        {0x8014f914u,0xb8820000u,MERGE_SWR},
-        {0x8014f918u,0xa8830007u,MERGE_SWL},
-        {0x8014f91cu,0xb8830004u,MERGE_SWR},
-        {0x8014f93cu,0x88a20003u,MERGE_LWL},
-        {0x8014f940u,0x98a20000u,MERGE_LWR},
-        {0x8014f944u,0x88a30007u,MERGE_LWL},
-        {0x8014f948u,0x98a30004u,MERGE_LWR},
-        {0x8014f94cu,0xaa020123u,MERGE_SWL},
-        {0x8014f950u,0xba020120u,MERGE_SWR},
-        {0x8014f954u,0xaa030127u,MERGE_SWL},
-        {0x8014f958u,0xba030124u,MERGE_SWR},
-        {0x8014fb5cu,0x88a20003u,MERGE_LWL},
-        {0x8014fb60u,0x98a20000u,MERGE_LWR},
-        {0x8014fb64u,0x88a30007u,MERGE_LWL},
-        {0x8014fb68u,0x98a30004u,MERGE_LWR},
-        {0x8014fb6cu,0xa8820003u,MERGE_SWL},
-        {0x8014fb70u,0xb8820000u,MERGE_SWR},
-        {0x8014fb74u,0xa8830007u,MERGE_SWL},
-        {0x8014fb78u,0xb8830004u,MERGE_SWR},
-        {0x8014ff18u,0x8ba20023u,MERGE_LWL},
-        {0x8014ff1cu,0x9ba20020u,MERGE_LWR},
-        {0x8014ff20u,0x8ba30027u,MERGE_LWL},
-        {0x8014ff24u,0x9ba30024u,MERGE_LWR},
-        {0x8014ff28u,0xaa020083u,MERGE_SWL},
-        {0x8014ff2cu,0xba020080u,MERGE_SWR},
-        {0x8014ff30u,0xaa030087u,MERGE_SWL},
-        {0x8014ff34u,0xba030084u,MERGE_SWR},
-        {0x8014ff6cu,0x88a20003u,MERGE_LWL},
-        {0x8014ff70u,0x98a20000u,MERGE_LWR},
-        {0x8014ff74u,0x88a30007u,MERGE_LWL},
-        {0x8014ff78u,0x98a30004u,MERGE_LWR},
-        {0x8014ff7cu,0xaa020083u,MERGE_SWL},
-        {0x8014ff80u,0xba020080u,MERGE_SWR},
-        {0x8014ff84u,0xaa030087u,MERGE_SWL},
-        {0x8014ff88u,0xba030084u,MERGE_SWR},
-        {0x80150000u,0x8a420003u,MERGE_LWL},
-        {0x80150004u,0x9a420000u,MERGE_LWR},
-        {0x80150008u,0x8a430007u,MERGE_LWL},
-        {0x8015000cu,0x9a430004u,MERGE_LWR},
-        {0x80150010u,0xaba20013u,MERGE_SWL},
-        {0x80150014u,0xbba20010u,MERGE_SWR},
-        {0x80150018u,0xaba30017u,MERGE_SWL},
-        {0x8015001cu,0xbba30014u,MERGE_SWR},
-        {0x80150078u,0x8ba20013u,MERGE_LWL},
-        {0x8015007cu,0x9ba20010u,MERGE_LWR},
-        {0x80150080u,0x8ba30017u,MERGE_LWL},
-        {0x80150084u,0x9ba30014u,MERGE_LWR},
-        {0x80150088u,0xaba2001bu,MERGE_SWL},
-        {0x8015008cu,0xbba20018u,MERGE_SWR},
-        {0x80150090u,0xaba3001fu,MERGE_SWL},
-        {0x80150094u,0xbba3001cu,MERGE_SWR},
-        {0x801500c8u,0x8ba2001bu,MERGE_LWL},
-        {0x801500ccu,0x9ba20018u,MERGE_LWR},
-        {0x801500d0u,0x8ba3001fu,MERGE_LWL},
-        {0x801500d4u,0x9ba3001cu,MERGE_LWR},
-        {0x801500d8u,0xaa420003u,MERGE_SWL},
-        {0x801500dcu,0xba420000u,MERGE_SWR},
-        {0x801500e0u,0xaa430007u,MERGE_SWL},
-        {0x801500e4u,0xba430004u,MERGE_SWR},
-        {0x801500f0u,0x88a20003u,MERGE_LWL},
-        {0x801500f4u,0x98a20000u,MERGE_LWR},
-        {0x801500f8u,0x88a30007u,MERGE_LWL},
-        {0x801500fcu,0x98a30004u,MERGE_LWR},
-        {0x80150100u,0xaa820003u,MERGE_SWL},
-        {0x80150104u,0xba820000u,MERGE_SWR},
-        {0x80150108u,0xaa830007u,MERGE_SWL},
-        {0x8015010cu,0xba830004u,MERGE_SWR},
-        {0x80150228u,0x8ba20023u,MERGE_LWL},
-        {0x8015022cu,0x9ba20020u,MERGE_LWR},
-        {0x80150230u,0x8ba30027u,MERGE_LWL},
-        {0x80150234u,0x9ba30024u,MERGE_LWR},
-        {0x80150238u,0xaa020083u,MERGE_SWL},
-        {0x8015023cu,0xba020080u,MERGE_SWR},
-        {0x80150240u,0xaa030087u,MERGE_SWL},
-        {0x80150244u,0xba030084u,MERGE_SWR},
-        {0x8015027cu,0x88a20003u,MERGE_LWL},
-        {0x80150280u,0x98a20000u,MERGE_LWR},
-        {0x80150284u,0x88a30007u,MERGE_LWL},
-        {0x80150288u,0x98a30004u,MERGE_LWR},
-        {0x8015028cu,0xaa020083u,MERGE_SWL},
-        {0x80150290u,0xba020080u,MERGE_SWR},
-        {0x80150294u,0xaa030087u,MERGE_SWL},
-        {0x80150298u,0xba030084u,MERGE_SWR},
-        {0x80150310u,0x8a420003u,MERGE_LWL},
-        {0x80150314u,0x9a420000u,MERGE_LWR},
-        {0x80150318u,0x8a430007u,MERGE_LWL},
-        {0x8015031cu,0x9a430004u,MERGE_LWR},
-        {0x80150320u,0xaba20013u,MERGE_SWL},
-        {0x80150324u,0xbba20010u,MERGE_SWR},
-        {0x80150328u,0xaba30017u,MERGE_SWL},
-        {0x8015032cu,0xbba30014u,MERGE_SWR},
-        {0x80150388u,0x8ba20013u,MERGE_LWL},
-        {0x8015038cu,0x9ba20010u,MERGE_LWR},
-        {0x80150390u,0x8ba30017u,MERGE_LWL},
-        {0x80150394u,0x9ba30014u,MERGE_LWR},
-        {0x80150398u,0xaba2001bu,MERGE_SWL},
-        {0x8015039cu,0xbba20018u,MERGE_SWR},
-        {0x801503a0u,0xaba3001fu,MERGE_SWL},
-        {0x801503a4u,0xbba3001cu,MERGE_SWR},
-        {0x801503d8u,0x8ba2001bu,MERGE_LWL},
-        {0x801503dcu,0x9ba20018u,MERGE_LWR},
-        {0x801503e0u,0x8ba3001fu,MERGE_LWL},
-        {0x801503e4u,0x9ba3001cu,MERGE_LWR},
-        {0x801503e8u,0xaa420003u,MERGE_SWL},
-        {0x801503ecu,0xba420000u,MERGE_SWR},
-        {0x801503f0u,0xaa430007u,MERGE_SWL},
-        {0x801503f4u,0xba430004u,MERGE_SWR},
-        {0x80150400u,0x88a20003u,MERGE_LWL},
-        {0x80150404u,0x98a20000u,MERGE_LWR},
-        {0x80150408u,0x88a30007u,MERGE_LWL},
-        {0x8015040cu,0x98a30004u,MERGE_LWR},
-        {0x80150410u,0xaa820003u,MERGE_SWL},
-        {0x80150414u,0xba820000u,MERGE_SWR},
-        {0x80150418u,0xaa830007u,MERGE_SWL},
-        {0x8015041cu,0xba830004u,MERGE_SWR},
-        {0x80163418u,0x89220003u,MERGE_LWL},
-        {0x8016341cu,0x99220000u,MERGE_LWR},
-        {0x80163420u,0x89230007u,MERGE_LWL},
-        {0x80163424u,0x99230004u,MERGE_LWR},
-        {0x80163428u,0xaba2001bu,MERGE_SWL},
-        {0x8016342cu,0xbba20018u,MERGE_SWR},
-        {0x80163430u,0xaba3001fu,MERGE_SWL},
-        {0x80163434u,0xbba3001cu,MERGE_SWR},
-        {0x801634ecu,0x89420003u,MERGE_LWL},
-        {0x801634f0u,0x99420000u,MERGE_LWR},
-        {0x801634f4u,0x89480007u,MERGE_LWL},
-        {0x801634f8u,0x99480004u,MERGE_LWR},
-        {0x801634fcu,0xaba2001bu,MERGE_SWL},
-        {0x80163500u,0xbba20018u,MERGE_SWR},
-        {0x80163504u,0xaba8001fu,MERGE_SWL},
-        {0x80163508u,0xbba8001cu,MERGE_SWR},
-        {0x8017237cu,0x88a20003u,MERGE_LWL},
-        {0x80172380u,0x98a20000u,MERGE_LWR},
-        {0x80172384u,0x88a30007u,MERGE_LWL},
-        {0x80172388u,0x98a30004u,MERGE_LWR},
-        {0x8017238cu,0xa8820093u,MERGE_SWL},
-        {0x80172390u,0xb8820090u,MERGE_SWR},
-        {0x80172394u,0xa8830097u,MERGE_SWL},
-        {0x80172398u,0xb8830094u,MERGE_SWR},
-        {0x8017239cu,0x88820093u,MERGE_LWL},
-        {0x801723a0u,0x98820090u,MERGE_LWR},
-        {0x801723a4u,0x88830097u,MERGE_LWL},
-        {0x801723a8u,0x98830094u,MERGE_LWR},
-        {0x801723acu,0xa882008bu,MERGE_SWL},
-        {0x801723b0u,0xb8820088u,MERGE_SWR},
-        {0x801723b4u,0xa883008fu,MERGE_SWL},
-        {0x801723b8u,0xb883008cu,MERGE_SWR},
-        {0x80172790u,0x88820003u,MERGE_LWL},
-        {0x80172794u,0x98820000u,MERGE_LWR},
-        {0x80172798u,0x88830007u,MERGE_LWL},
-        {0x8017279cu,0x98830004u,MERGE_LWR},
-        {0x801727a0u,0xa8c20003u,MERGE_SWL},
-        {0x801727a4u,0xb8c20000u,MERGE_SWR},
-        {0x801727a8u,0xa8c30007u,MERGE_SWL},
-        {0x801727acu,0xb8c30004u,MERGE_SWR},
-        {0x801728a4u,0x88820003u,MERGE_LWL},
-        {0x801728a8u,0x98820000u,MERGE_LWR},
-        {0x801728acu,0x88830007u,MERGE_LWL},
-        {0x801728b0u,0x98830004u,MERGE_LWR},
-        {0x801728b4u,0xa8c20003u,MERGE_SWL},
-        {0x801728b8u,0xb8c20000u,MERGE_SWR},
-        {0x801728bcu,0xa8c30007u,MERGE_SWL},
-        {0x801728c0u,0xb8c30004u,MERGE_SWR},
-        {0x80172c60u,0x88820003u,MERGE_LWL},
-        {0x80172c64u,0x98820000u,MERGE_LWR},
-        {0x80172c68u,0x88830007u,MERGE_LWL},
-        {0x80172c6cu,0x98830004u,MERGE_LWR},
-        {0x80172c70u,0xa8c20003u,MERGE_SWL},
-        {0x80172c74u,0xb8c20000u,MERGE_SWR},
-        {0x80172c78u,0xa8c30007u,MERGE_SWL},
-        {0x80172c7cu,0xb8c30004u,MERGE_SWR},
-        {0x80173418u,0x8a020003u,MERGE_LWL},
-        {0x8017341cu,0x9a020000u,MERGE_LWR},
-        {0x80173420u,0x8a030007u,MERGE_LWL},
-        {0x80173424u,0x9a030004u,MERGE_LWR},
-        {0x80173428u,0xa8a20003u,MERGE_SWL},
-        {0x8017342cu,0xb8a20000u,MERGE_SWR},
-        {0x80173430u,0xa8a30007u,MERGE_SWL},
-        {0x80173434u,0xb8a30004u,MERGE_SWR},
-        {0x8017347cu,0x8a020003u,MERGE_LWL},
-        {0x80173480u,0x9a020000u,MERGE_LWR},
-        {0x80173484u,0x8a030007u,MERGE_LWL},
-        {0x80173488u,0x9a030004u,MERGE_LWR},
-        {0x8017348cu,0xa8a20003u,MERGE_SWL},
-        {0x80173490u,0xb8a20000u,MERGE_SWR},
-        {0x80173494u,0xa8a30007u,MERGE_SWL},
-        {0x80173498u,0xb8a30004u,MERGE_SWR},
-        {0x80179480u,0x8ba2002bu,MERGE_LWL},
-        {0x80179484u,0x9ba20028u,MERGE_LWR},
-        {0x80179488u,0x8ba4002fu,MERGE_LWL},
-        {0x8017948cu,0x9ba4002cu,MERGE_LWR},
-        {0x80179490u,0xaa02000fu,MERGE_SWL},
-        {0x80179494u,0xba02000cu,MERGE_SWR},
-        {0x80179498u,0xaa040013u,MERGE_SWL},
-        {0x8017949cu,0xba040010u,MERGE_SWR},
-        {0x801794e0u,0x8ba2003bu,MERGE_LWL},
-        {0x801794e4u,0x9ba20038u,MERGE_LWR},
-        {0x801794e8u,0x8ba4003fu,MERGE_LWL},
-        {0x801794ecu,0x9ba4003cu,MERGE_LWR},
-        {0x801794f0u,0xaa02000fu,MERGE_SWL},
-        {0x801794f4u,0xba02000cu,MERGE_SWR},
-        {0x801794f8u,0xaa040013u,MERGE_SWL},
-        {0x801794fcu,0xba040010u,MERGE_SWR},
-        {0x8017b8f0u,0x88820003u,MERGE_LWL},
-        {0x8017b8f4u,0x98820000u,MERGE_LWR},
-        {0x8017b8f8u,0x88830007u,MERGE_LWL},
-        {0x8017b8fcu,0x98830004u,MERGE_LWR},
-        {0x8017b900u,0xa8c20003u,MERGE_SWL},
-        {0x8017b904u,0xb8c20000u,MERGE_SWR},
-        {0x8017b908u,0xa8c30007u,MERGE_SWL},
-        {0x8017b90cu,0xb8c30004u,MERGE_SWR},
-        {0x8017b918u,0x8882000bu,MERGE_LWL},
-        {0x8017b91cu,0x98820008u,MERGE_LWR},
-        {0x8017b920u,0x8883000fu,MERGE_LWL},
-        {0x8017b924u,0x9883000cu,MERGE_LWR},
-        {0x8017b928u,0xa8c20003u,MERGE_SWL},
-        {0x8017b92cu,0xb8c20000u,MERGE_SWR},
-        {0x8017b930u,0xa8c30007u,MERGE_SWL},
-        {0x8017b934u,0xb8c30004u,MERGE_SWR},
-        {0x8017c4ccu,0x88c20003u,MERGE_LWL},
-        {0x8017c4d0u,0x98c20000u,MERGE_LWR},
-        {0x8017c4d4u,0x88c30007u,MERGE_LWL},
-        {0x8017c4d8u,0x98c30004u,MERGE_LWR},
-        {0x8017c4dcu,0x88c4000bu,MERGE_LWL},
-        {0x8017c4e0u,0x98c40008u,MERGE_LWR},
-        {0x8017c4e4u,0x88c5000fu,MERGE_LWL},
-        {0x8017c4e8u,0x98c5000cu,MERGE_LWR},
-        {0x8017c4ecu,0xa8e20003u,MERGE_SWL},
-        {0x8017c4f0u,0xb8e20000u,MERGE_SWR},
-        {0x8017c4f4u,0xa8e30007u,MERGE_SWL},
-        {0x8017c4f8u,0xb8e30004u,MERGE_SWR},
-        {0x8017c4fcu,0xa8e4000bu,MERGE_SWL},
-        {0x8017c500u,0xb8e40008u,MERGE_SWR},
-        {0x8017c504u,0xa8e5000fu,MERGE_SWL},
-        {0x8017c508u,0xb8e5000cu,MERGE_SWR},
-        {0x8017c54cu,0x88c20003u,MERGE_LWL},
-        {0x8017c550u,0x98c20000u,MERGE_LWR},
-        {0x8017c554u,0x88c30007u,MERGE_LWL},
-        {0x8017c558u,0x98c30004u,MERGE_LWR},
-        {0x8017c55cu,0x88c4000bu,MERGE_LWL},
-        {0x8017c560u,0x98c40008u,MERGE_LWR},
-        {0x8017c564u,0xa8e20003u,MERGE_SWL},
-        {0x8017c568u,0xb8e20000u,MERGE_SWR},
-        {0x8017c56cu,0xa8e30007u,MERGE_SWL},
-        {0x8017c570u,0xb8e30004u,MERGE_SWR},
-        {0x8017c574u,0xa8e4000bu,MERGE_SWL},
-        {0x8017c578u,0xb8e40008u,MERGE_SWR},
-        {0x801814c0u,0x89829282u,MERGE_LWL},
-        {0x80181b64u,0xb8adaeb7u,MERGE_SWR},
-        {0x801826acu,0x8a620003u,MERGE_LWL},
-        {0x801826b0u,0x9a620000u,MERGE_LWR},
-        {0x801826b4u,0x8a630007u,MERGE_LWL},
-        {0x801826b8u,0x9a630004u,MERGE_LWR},
-        {0x801826bcu,0xaba20013u,MERGE_SWL},
-        {0x801826c0u,0xbba20010u,MERGE_SWR},
-        {0x801826c4u,0xaba30017u,MERGE_SWL},
-        {0x801826c8u,0xbba30014u,MERGE_SWR},
-        {0x80182884u,0x8a620003u,MERGE_LWL},
-        {0x80182888u,0x9a620000u,MERGE_LWR},
-        {0x8018288cu,0x8a630007u,MERGE_LWL},
-        {0x80182890u,0x9a630004u,MERGE_LWR},
-        {0x80182894u,0xaba20013u,MERGE_SWL},
-        {0x80182898u,0xbba20010u,MERGE_SWR},
-        {0x8018289cu,0xaba30017u,MERGE_SWL},
-        {0x801828a0u,0xbba30014u,MERGE_SWR},
-        {0x80183258u,0x98826482u,MERGE_LWR},
-        {0x801832c0u,0x89826c82u,MERGE_LWL},
-        {0x801832ecu,0x99828482u,MERGE_LWR},
-        {0x80183348u,0x8b828382u,MERGE_LWL},
-        {0x8018335cu,0x9a828982u,MERGE_LWR},
-        {0x80183380u,0x88827282u,MERGE_LWL},
-        {0x8018339cu,0x88829382u,MERGE_LWL},
-        {0x801833a8u,0x89826f82u,MERGE_LWL},
-        {0x801833b8u,0x8b827282u,MERGE_LWL},
-        {0x801833c0u,0x89827682u,MERGE_LWL},
-        {0x801833ccu,0x89826582u,MERGE_LWL},
-        {0x80183410u,0x88828382u,MERGE_LWL},
-        {0x80183444u,0x88827282u,MERGE_LWL},
-        {0x801834a8u,0x89827582u,MERGE_LWL},
-        {0x801834c8u,0x89826382u,MERGE_LWL},
-        {0x80183570u,0x89827582u,MERGE_LWL},
-        {0x801839b4u,0x89826c82u,MERGE_LWL},
-        {0x801839c8u,0x99828482u,MERGE_LWR},
-        {0x80183a10u,0x89828c82u,MERGE_LWL},
-        {0x80183a2cu,0x89828d82u,MERGE_LWL},
-        {0x80183a74u,0x89826582u,MERGE_LWL},
-        {0x80183a90u,0x89827182u,MERGE_LWL},
-        {0x80183aa4u,0x89829882u,MERGE_LWL},
-        {0x80183ab4u,0x99829082u,MERGE_LWR},
-        {0x80183ad4u,0x88827282u,MERGE_LWL},
-        {0x80183ad8u,0x89829282u,MERGE_LWL},
-        {0x80183adcu,0x8b828e82u,MERGE_LWL},
-        {0x80183b08u,0x89826a82u,MERGE_LWL},
-        {0x80183b0cu,0x8b828382u,MERGE_LWL},
-        {0x80183b48u,0x89829482u,MERGE_LWL},
-        {0x80183b5cu,0x89829482u,MERGE_LWL},
-        {0x80183b68u,0x89826c82u,MERGE_LWL},
-        {0x80183b88u,0x89829382u,MERGE_LWL},
-        {0x80183e84u,0x89826582u,MERGE_LWL},
-        {0x80183f04u,0x99828182u,MERGE_LWR},
-        {0x80183f08u,0x89829482u,MERGE_LWL},
-        {0x80183f74u,0x8b827282u,MERGE_LWL},
-        {0x80183f7cu,0x88827382u,MERGE_LWL},
+    static const struct { uint32_t pc, grp; uint8_t kind; } sites[] = {
+        {0x80045720u,17u /* site group */,MERGE_LWL},
+        {0x80045724u,17u /* site group */,MERGE_LWR},
+        {0x8004572cu,17u /* site group */,MERGE_SWL},
+        {0x80045730u,17u /* site group */,MERGE_SWR},
+        {0x800457e4u,17u /* site group */,MERGE_LWL},
+        {0x800457e8u,17u /* site group */,MERGE_LWR},
+        {0x800457f0u,17u /* site group */,MERGE_SWL},
+        {0x800457f4u,17u /* site group */,MERGE_SWR},
+        {0x80045ae4u,18u /* site group */,MERGE_LWL},
+        {0x80045ae8u,18u /* site group */,MERGE_LWR},
+        {0x80045af0u,18u /* site group */,MERGE_SWL},
+        {0x80045af4u,18u /* site group */,MERGE_SWR},
+        {0x80045b0cu,19u /* site group */,MERGE_LWL},
+        {0x80045b10u,19u /* site group */,MERGE_LWR},
+        {0x80045b18u,19u /* site group */,MERGE_SWL},
+        {0x80045b1cu,19u /* site group */,MERGE_SWR},
+        {0x800469fcu,20u /* site group */,MERGE_LWL},
+        {0x80046a00u,21u /* site group */,MERGE_LWR},
+        {0x80046a08u,21u /* site group */,MERGE_SWL},
+        {0x80046a0cu,21u /* site group */,MERGE_SWR},
+        {0x80046fd0u,22u /* site group */,MERGE_LWL},
+        {0x80046fd4u,22u /* site group */,MERGE_LWR},
+        {0x80046fdcu,22u /* site group */,MERGE_SWL},
+        {0x80046fe0u,22u /* site group */,MERGE_SWR},
+        {0x800cfac4u,67u /* site group */,MERGE_LWR},
+        {0x800cfb04u,69u /* site group */,MERGE_LWR},
+        {0x800cfb44u,69u /* site group */,MERGE_LWR},
+        {0x800cfc04u,70u /* site group */,MERGE_LWR},
+        {0x800cfc44u,70u /* site group */,MERGE_SWL},
+        {0x800d0144u,71u /* site group */,MERGE_LWR},
+        {0x800d0184u,71u /* site group */,MERGE_LWR},
+        {0x800d01c4u,71u /* site group */,MERGE_LWR},
+        {0x800d0284u,72u /* site group */,MERGE_LWR},
+        {0x800d02c4u,72u /* site group */,MERGE_SWL},
+        {0x800d11bcu,74u /* site group */,MERGE_LWR},
+        {0x800d1200u,75u /* site group */,MERGE_SWL},
+        {0x800d1334u,76u /* site group */,MERGE_SWL},
+        {0x800d1fa4u,77u /* site group */,MERGE_LWR},
+        {0x800d2154u,79u /* site group */,MERGE_LWR},
+        {0x800d2168u,79u /* site group */,MERGE_SWL},
+        {0x800d229cu,81u /* site group */,MERGE_LWL},
+        {0x800d2504u,83u /* site group */,MERGE_SWR},
+        {0x800d2514u,84u /* site group */,MERGE_LWL},
+        {0x800d2518u,84u /* site group */,MERGE_LWR},
+        {0x800d251cu,84u /* site group */,MERGE_LWL},
+        {0x800d2520u,84u /* site group */,MERGE_LWR},
+        {0x800d2524u,84u /* site group */,MERGE_SWL},
+        {0x800d2528u,84u /* site group */,MERGE_SWR},
+        {0x800d252cu,84u /* site group */,MERGE_SWL},
+        {0x800d2530u,84u /* site group */,MERGE_SWR},
+        {0x800d2638u,85u /* site group */,MERGE_SWR},
+        {0x800d27a4u,86u /* site group */,MERGE_SWR},
+        {0x800d28f8u,87u /* site group */,MERGE_LWR},
+        {0x800d2a80u,88u /* site group */,MERGE_LWR},
+        {0x800d2d6cu,89u /* site group */,MERGE_SWR},
+        {0x800d2f60u,90u /* site group */,MERGE_LWL},
+        {0x800d3444u,93u /* site group */,MERGE_LWL},
+        {0x800d34c0u,93u /* site group */,MERGE_SWR},
+        {0x800d34e8u,93u /* site group */,MERGE_SWL},
+        {0x8012a0a4u,96u /* site group */,MERGE_LWL},
+        {0x8012a0a8u,96u /* site group */,MERGE_LWR},
+        {0x8012a0acu,96u /* site group */,MERGE_LWL},
+        {0x8012a0b0u,96u /* site group */,MERGE_LWR},
+        {0x8012a0b4u,96u /* site group */,MERGE_SWL},
+        {0x8012a0b8u,96u /* site group */,MERGE_SWR},
+        {0x8012a0bcu,96u /* site group */,MERGE_SWL},
+        {0x8012a0c0u,96u /* site group */,MERGE_SWR},
+        {0x80134260u,111u /* site group */,MERGE_LWL},
+        {0x80134264u,111u /* site group */,MERGE_LWR},
+        {0x80134268u,111u /* site group */,MERGE_LWL},
+        {0x8013426cu,111u /* site group */,MERGE_LWR},
+        {0x80134270u,111u /* site group */,MERGE_SWL},
+        {0x80134274u,111u /* site group */,MERGE_SWR},
+        {0x80134278u,111u /* site group */,MERGE_SWL},
+        {0x8013427cu,111u /* site group */,MERGE_SWR},
+        {0x801349c4u,112u /* site group */,MERGE_LWL},
+        {0x801349c8u,112u /* site group */,MERGE_LWR},
+        {0x801349ccu,112u /* site group */,MERGE_LWL},
+        {0x801349d0u,112u /* site group */,MERGE_LWR},
+        {0x801349d4u,112u /* site group */,MERGE_SWL},
+        {0x801349d8u,112u /* site group */,MERGE_SWR},
+        {0x801349dcu,112u /* site group */,MERGE_SWL},
+        {0x801349e0u,112u /* site group */,MERGE_SWR},
+        {0x80136ca0u,113u /* site group */,MERGE_LWL},
+        {0x80136ca4u,113u /* site group */,MERGE_LWR},
+        {0x80136ca8u,113u /* site group */,MERGE_LWL},
+        {0x80136cacu,113u /* site group */,MERGE_LWR},
+        {0x80136cb4u,113u /* site group */,MERGE_SWL},
+        {0x80136cb8u,113u /* site group */,MERGE_SWR},
+        {0x80136cbcu,113u /* site group */,MERGE_SWL},
+        {0x80136cc0u,113u /* site group */,MERGE_SWR},
+        {0x8013ae98u,117u /* site group */,MERGE_LWL},
+        {0x8013ae9cu,117u /* site group */,MERGE_LWR},
+        {0x8013aea4u,117u /* site group */,MERGE_SWL},
+        {0x8013aea8u,117u /* site group */,MERGE_SWR},
+        {0x8013cc34u,120u /* site group */,MERGE_LWL},
+        {0x8013cc40u,120u /* site group */,MERGE_LWR},
+        {0x8013cc4cu,120u /* site group */,MERGE_LWL},
+        {0x8013cc58u,120u /* site group */,MERGE_LWR},
+        {0x8013cc68u,119u /* site group */,MERGE_SWL},
+        {0x8013cc6cu,119u /* site group */,MERGE_SWR},
+        {0x8013cc70u,119u /* site group */,MERGE_SWL},
+        {0x8013cc74u,119u /* site group */,MERGE_SWR},
+        {0x8013d5fcu,122u /* site group */,MERGE_LWL},
+        {0x8013d5fcu,121u /* site group */,MERGE_LWL},
+        {0x8013d608u,125u /* site group */,MERGE_LWR},
+        {0x8013d608u,123u /* site group */,MERGE_LWR},
+        {0x8013d614u,125u /* site group */,MERGE_LWL},
+        {0x8013d614u,123u /* site group */,MERGE_LWL},
+        {0x8013d620u,125u /* site group */,MERGE_LWR},
+        {0x8013d620u,123u /* site group */,MERGE_LWR},
+        {0x8013d630u,124u /* site group */,MERGE_SWL},
+        {0x8013d634u,124u /* site group */,MERGE_SWR},
+        {0x8013d638u,124u /* site group */,MERGE_SWL},
+        {0x8013d63cu,124u /* site group */,MERGE_SWR},
+        {0x8013d654u,124u /* site group */,MERGE_LWL},
+        {0x8013d658u,124u /* site group */,MERGE_LWR},
+        {0x8013d65cu,124u /* site group */,MERGE_LWL},
+        {0x8013d660u,124u /* site group */,MERGE_LWR},
+        {0x8013d664u,124u /* site group */,MERGE_SWL},
+        {0x8013d668u,124u /* site group */,MERGE_SWR},
+        {0x8013d66cu,124u /* site group */,MERGE_SWL},
+        {0x8013d670u,124u /* site group */,MERGE_SWR},
+        {0x80146160u,131u /* site group */,MERGE_LWL},
+        {0x80146164u,131u /* site group */,MERGE_LWR},
+        {0x80146168u,131u /* site group */,MERGE_LWL},
+        {0x8014616cu,131u /* site group */,MERGE_LWR},
+        {0x80146170u,131u /* site group */,MERGE_SWL},
+        {0x80146174u,131u /* site group */,MERGE_SWR},
+        {0x80146178u,131u /* site group */,MERGE_SWL},
+        {0x8014617cu,131u /* site group */,MERGE_SWR},
+        {0x80146488u,132u /* site group */,MERGE_LWL},
+        {0x8014648cu,132u /* site group */,MERGE_LWR},
+        {0x80146490u,132u /* site group */,MERGE_LWL},
+        {0x80146494u,132u /* site group */,MERGE_LWR},
+        {0x80146498u,132u /* site group */,MERGE_SWL},
+        {0x8014649cu,132u /* site group */,MERGE_SWR},
+        {0x801464a0u,132u /* site group */,MERGE_SWL},
+        {0x801464a4u,132u /* site group */,MERGE_SWR},
+        {0x80147000u,133u /* site group */,MERGE_LWL},
+        {0x80147004u,133u /* site group */,MERGE_LWR},
+        {0x80147008u,133u /* site group */,MERGE_LWL},
+        {0x8014700cu,133u /* site group */,MERGE_LWR},
+        {0x80147010u,133u /* site group */,MERGE_SWL},
+        {0x80147014u,133u /* site group */,MERGE_SWR},
+        {0x80147018u,133u /* site group */,MERGE_SWL},
+        {0x8014701cu,133u /* site group */,MERGE_SWR},
+        {0x80147528u,134u /* site group */,MERGE_LWL},
+        {0x8014752cu,134u /* site group */,MERGE_LWR},
+        {0x80147530u,134u /* site group */,MERGE_LWL},
+        {0x80147534u,134u /* site group */,MERGE_LWR},
+        {0x80147538u,134u /* site group */,MERGE_SWL},
+        {0x8014753cu,134u /* site group */,MERGE_SWR},
+        {0x80147540u,134u /* site group */,MERGE_SWL},
+        {0x80147544u,134u /* site group */,MERGE_SWR},
+        {0x8014be14u,135u /* site group */,MERGE_LWL},
+        {0x8014be18u,135u /* site group */,MERGE_LWR},
+        {0x8014be1cu,135u /* site group */,MERGE_LWL},
+        {0x8014be20u,135u /* site group */,MERGE_LWR},
+        {0x8014be24u,135u /* site group */,MERGE_SWL},
+        {0x8014be28u,135u /* site group */,MERGE_SWR},
+        {0x8014be2cu,135u /* site group */,MERGE_SWL},
+        {0x8014be30u,135u /* site group */,MERGE_SWR},
+        {0x8014c518u,136u /* site group */,MERGE_LWL},
+        {0x8014c51cu,136u /* site group */,MERGE_LWR},
+        {0x8014c520u,136u /* site group */,MERGE_LWL},
+        {0x8014c524u,136u /* site group */,MERGE_LWR},
+        {0x8014c528u,136u /* site group */,MERGE_SWL},
+        {0x8014c52cu,136u /* site group */,MERGE_SWR},
+        {0x8014c530u,136u /* site group */,MERGE_SWL},
+        {0x8014c534u,136u /* site group */,MERGE_SWR},
+        {0x8014c750u,137u /* site group */,MERGE_LWL},
+        {0x8014c754u,137u /* site group */,MERGE_LWR},
+        {0x8014c758u,137u /* site group */,MERGE_LWL},
+        {0x8014c75cu,137u /* site group */,MERGE_LWR},
+        {0x8014c760u,137u /* site group */,MERGE_SWL},
+        {0x8014c764u,137u /* site group */,MERGE_SWR},
+        {0x8014c768u,137u /* site group */,MERGE_SWL},
+        {0x8014c76cu,137u /* site group */,MERGE_SWR},
+        {0x8014c860u,138u /* site group */,MERGE_LWL},
+        {0x8014c864u,138u /* site group */,MERGE_LWR},
+        {0x8014c868u,138u /* site group */,MERGE_LWL},
+        {0x8014c86cu,138u /* site group */,MERGE_LWR},
+        {0x8014c870u,138u /* site group */,MERGE_SWL},
+        {0x8014c874u,138u /* site group */,MERGE_SWR},
+        {0x8014c878u,138u /* site group */,MERGE_SWL},
+        {0x8014c87cu,138u /* site group */,MERGE_SWR},
+        {0x8014c8c8u,138u /* site group */,MERGE_LWL},
+        {0x8014c8ccu,138u /* site group */,MERGE_LWR},
+        {0x8014c8d0u,138u /* site group */,MERGE_LWL},
+        {0x8014c8d4u,138u /* site group */,MERGE_LWR},
+        {0x8014c8d8u,138u /* site group */,MERGE_SWL},
+        {0x8014c8dcu,138u /* site group */,MERGE_SWR},
+        {0x8014c8e0u,138u /* site group */,MERGE_SWL},
+        {0x8014c8e4u,138u /* site group */,MERGE_SWR},
+        {0x8014c8f0u,138u /* site group */,MERGE_LWL},
+        {0x8014c8f4u,138u /* site group */,MERGE_LWR},
+        {0x8014c8f8u,138u /* site group */,MERGE_LWL},
+        {0x8014c8fcu,138u /* site group */,MERGE_LWR},
+        {0x8014c900u,139u /* site group */,MERGE_SWL},
+        {0x8014c904u,139u /* site group */,MERGE_SWR},
+        {0x8014c908u,139u /* site group */,MERGE_SWL},
+        {0x8014c90cu,139u /* site group */,MERGE_SWR},
+        {0x8014cba4u,140u /* site group */,MERGE_LWL},
+        {0x8014cba8u,140u /* site group */,MERGE_LWR},
+        {0x8014cbacu,140u /* site group */,MERGE_LWL},
+        {0x8014cbb0u,140u /* site group */,MERGE_LWR},
+        {0x8014cbb4u,140u /* site group */,MERGE_SWL},
+        {0x8014cbb8u,140u /* site group */,MERGE_SWR},
+        {0x8014cbbcu,140u /* site group */,MERGE_SWL},
+        {0x8014cbc0u,140u /* site group */,MERGE_SWR},
+        {0x8014db70u,141u /* site group */,MERGE_LWL},
+        {0x8014db74u,141u /* site group */,MERGE_LWR},
+        {0x8014db78u,141u /* site group */,MERGE_LWL},
+        {0x8014db7cu,141u /* site group */,MERGE_LWR},
+        {0x8014db80u,141u /* site group */,MERGE_SWL},
+        {0x8014db84u,141u /* site group */,MERGE_SWR},
+        {0x8014db88u,141u /* site group */,MERGE_SWL},
+        {0x8014db8cu,141u /* site group */,MERGE_SWR},
+        {0x8014ea84u,142u /* site group */,MERGE_LWL},
+        {0x8014ea88u,142u /* site group */,MERGE_LWR},
+        {0x8014ea8cu,142u /* site group */,MERGE_LWL},
+        {0x8014ea90u,142u /* site group */,MERGE_LWR},
+        {0x8014ea94u,142u /* site group */,MERGE_SWL},
+        {0x8014ea98u,142u /* site group */,MERGE_SWR},
+        {0x8014ea9cu,142u /* site group */,MERGE_SWL},
+        {0x8014eaa0u,142u /* site group */,MERGE_SWR},
+        {0x8014f5d4u,143u /* site group */,MERGE_LWL},
+        {0x8014f5d8u,143u /* site group */,MERGE_LWR},
+        {0x8014f5dcu,143u /* site group */,MERGE_LWL},
+        {0x8014f5e0u,143u /* site group */,MERGE_LWR},
+        {0x8014f5e4u,143u /* site group */,MERGE_SWL},
+        {0x8014f5e8u,143u /* site group */,MERGE_SWR},
+        {0x8014f5ecu,143u /* site group */,MERGE_SWL},
+        {0x8014f5f0u,143u /* site group */,MERGE_SWR},
+        {0x8014f60cu,144u /* site group */,MERGE_LWL},
+        {0x8014f610u,144u /* site group */,MERGE_LWR},
+        {0x8014f614u,144u /* site group */,MERGE_LWL},
+        {0x8014f618u,144u /* site group */,MERGE_LWR},
+        {0x8014f61cu,144u /* site group */,MERGE_SWL},
+        {0x8014f620u,144u /* site group */,MERGE_SWR},
+        {0x8014f624u,144u /* site group */,MERGE_SWL},
+        {0x8014f628u,144u /* site group */,MERGE_SWR},
+        {0x8014f668u,144u /* site group */,MERGE_LWL},
+        {0x8014f66cu,144u /* site group */,MERGE_LWR},
+        {0x8014f670u,144u /* site group */,MERGE_LWL},
+        {0x8014f674u,144u /* site group */,MERGE_LWR},
+        {0x8014f678u,144u /* site group */,MERGE_SWL},
+        {0x8014f67cu,144u /* site group */,MERGE_SWR},
+        {0x8014f680u,144u /* site group */,MERGE_SWL},
+        {0x8014f684u,144u /* site group */,MERGE_SWR},
+        {0x8014f6a4u,144u /* site group */,MERGE_LWL},
+        {0x8014f6a8u,144u /* site group */,MERGE_LWR},
+        {0x8014f6acu,144u /* site group */,MERGE_LWL},
+        {0x8014f6b0u,144u /* site group */,MERGE_LWR},
+        {0x8014f6b4u,144u /* site group */,MERGE_SWL},
+        {0x8014f6b8u,144u /* site group */,MERGE_SWR},
+        {0x8014f6bcu,144u /* site group */,MERGE_SWL},
+        {0x8014f6c0u,144u /* site group */,MERGE_SWR},
+        {0x8014f86cu,145u /* site group */,MERGE_LWL},
+        {0x8014f870u,145u /* site group */,MERGE_LWR},
+        {0x8014f874u,145u /* site group */,MERGE_LWL},
+        {0x8014f878u,145u /* site group */,MERGE_LWR},
+        {0x8014f87cu,145u /* site group */,MERGE_SWL},
+        {0x8014f880u,145u /* site group */,MERGE_SWR},
+        {0x8014f884u,145u /* site group */,MERGE_SWL},
+        {0x8014f888u,145u /* site group */,MERGE_SWR},
+        {0x8014f8a4u,145u /* site group */,MERGE_LWL},
+        {0x8014f8a8u,145u /* site group */,MERGE_LWR},
+        {0x8014f8acu,145u /* site group */,MERGE_LWL},
+        {0x8014f8b0u,145u /* site group */,MERGE_LWR},
+        {0x8014f8b4u,145u /* site group */,MERGE_SWL},
+        {0x8014f8b8u,145u /* site group */,MERGE_SWR},
+        {0x8014f8bcu,145u /* site group */,MERGE_SWL},
+        {0x8014f8c0u,145u /* site group */,MERGE_SWR},
+        {0x8014f900u,146u /* site group */,MERGE_LWL},
+        {0x8014f904u,146u /* site group */,MERGE_LWR},
+        {0x8014f908u,146u /* site group */,MERGE_LWL},
+        {0x8014f90cu,146u /* site group */,MERGE_LWR},
+        {0x8014f910u,146u /* site group */,MERGE_SWL},
+        {0x8014f914u,146u /* site group */,MERGE_SWR},
+        {0x8014f918u,146u /* site group */,MERGE_SWL},
+        {0x8014f91cu,146u /* site group */,MERGE_SWR},
+        {0x8014f93cu,146u /* site group */,MERGE_LWL},
+        {0x8014f940u,146u /* site group */,MERGE_LWR},
+        {0x8014f944u,146u /* site group */,MERGE_LWL},
+        {0x8014f948u,146u /* site group */,MERGE_LWR},
+        {0x8014f94cu,146u /* site group */,MERGE_SWL},
+        {0x8014f950u,146u /* site group */,MERGE_SWR},
+        {0x8014f954u,146u /* site group */,MERGE_SWL},
+        {0x8014f958u,146u /* site group */,MERGE_SWR},
+        {0x8014fb5cu,147u /* site group */,MERGE_LWL},
+        {0x8014fb60u,147u /* site group */,MERGE_LWR},
+        {0x8014fb64u,147u /* site group */,MERGE_LWL},
+        {0x8014fb68u,147u /* site group */,MERGE_LWR},
+        {0x8014fb6cu,147u /* site group */,MERGE_SWL},
+        {0x8014fb70u,147u /* site group */,MERGE_SWR},
+        {0x8014fb74u,147u /* site group */,MERGE_SWL},
+        {0x8014fb78u,147u /* site group */,MERGE_SWR},
+        {0x8014ff18u,148u /* site group */,MERGE_LWL},
+        {0x8014ff1cu,148u /* site group */,MERGE_LWR},
+        {0x8014ff20u,148u /* site group */,MERGE_LWL},
+        {0x8014ff24u,148u /* site group */,MERGE_LWR},
+        {0x8014ff28u,148u /* site group */,MERGE_SWL},
+        {0x8014ff2cu,148u /* site group */,MERGE_SWR},
+        {0x8014ff30u,148u /* site group */,MERGE_SWL},
+        {0x8014ff34u,148u /* site group */,MERGE_SWR},
+        {0x8014ff6cu,148u /* site group */,MERGE_LWL},
+        {0x8014ff70u,148u /* site group */,MERGE_LWR},
+        {0x8014ff74u,148u /* site group */,MERGE_LWL},
+        {0x8014ff78u,148u /* site group */,MERGE_LWR},
+        {0x8014ff7cu,148u /* site group */,MERGE_SWL},
+        {0x8014ff80u,148u /* site group */,MERGE_SWR},
+        {0x8014ff84u,148u /* site group */,MERGE_SWL},
+        {0x8014ff88u,148u /* site group */,MERGE_SWR},
+        {0x80150000u,149u /* site group */,MERGE_LWL},
+        {0x80150004u,149u /* site group */,MERGE_LWR},
+        {0x80150008u,149u /* site group */,MERGE_LWL},
+        {0x8015000cu,149u /* site group */,MERGE_LWR},
+        {0x80150010u,149u /* site group */,MERGE_SWL},
+        {0x80150014u,149u /* site group */,MERGE_SWR},
+        {0x80150018u,149u /* site group */,MERGE_SWL},
+        {0x8015001cu,149u /* site group */,MERGE_SWR},
+        {0x80150078u,149u /* site group */,MERGE_LWL},
+        {0x8015007cu,149u /* site group */,MERGE_LWR},
+        {0x80150080u,149u /* site group */,MERGE_LWL},
+        {0x80150084u,149u /* site group */,MERGE_LWR},
+        {0x80150088u,149u /* site group */,MERGE_SWL},
+        {0x8015008cu,149u /* site group */,MERGE_SWR},
+        {0x80150090u,149u /* site group */,MERGE_SWL},
+        {0x80150094u,149u /* site group */,MERGE_SWR},
+        {0x801500c8u,149u /* site group */,MERGE_LWL},
+        {0x801500ccu,149u /* site group */,MERGE_LWR},
+        {0x801500d0u,149u /* site group */,MERGE_LWL},
+        {0x801500d4u,149u /* site group */,MERGE_LWR},
+        {0x801500d8u,149u /* site group */,MERGE_SWL},
+        {0x801500dcu,149u /* site group */,MERGE_SWR},
+        {0x801500e0u,149u /* site group */,MERGE_SWL},
+        {0x801500e4u,149u /* site group */,MERGE_SWR},
+        {0x801500f0u,149u /* site group */,MERGE_LWL},
+        {0x801500f4u,149u /* site group */,MERGE_LWR},
+        {0x801500f8u,149u /* site group */,MERGE_LWL},
+        {0x801500fcu,149u /* site group */,MERGE_LWR},
+        {0x80150100u,150u /* site group */,MERGE_SWL},
+        {0x80150104u,150u /* site group */,MERGE_SWR},
+        {0x80150108u,150u /* site group */,MERGE_SWL},
+        {0x8015010cu,150u /* site group */,MERGE_SWR},
+        {0x80150228u,151u /* site group */,MERGE_LWL},
+        {0x8015022cu,151u /* site group */,MERGE_LWR},
+        {0x80150230u,151u /* site group */,MERGE_LWL},
+        {0x80150234u,151u /* site group */,MERGE_LWR},
+        {0x80150238u,151u /* site group */,MERGE_SWL},
+        {0x8015023cu,151u /* site group */,MERGE_SWR},
+        {0x80150240u,151u /* site group */,MERGE_SWL},
+        {0x80150244u,151u /* site group */,MERGE_SWR},
+        {0x8015027cu,151u /* site group */,MERGE_LWL},
+        {0x80150280u,151u /* site group */,MERGE_LWR},
+        {0x80150284u,151u /* site group */,MERGE_LWL},
+        {0x80150288u,151u /* site group */,MERGE_LWR},
+        {0x8015028cu,151u /* site group */,MERGE_SWL},
+        {0x80150290u,151u /* site group */,MERGE_SWR},
+        {0x80150294u,151u /* site group */,MERGE_SWL},
+        {0x80150298u,151u /* site group */,MERGE_SWR},
+        {0x80150310u,152u /* site group */,MERGE_LWL},
+        {0x80150314u,152u /* site group */,MERGE_LWR},
+        {0x80150318u,152u /* site group */,MERGE_LWL},
+        {0x8015031cu,152u /* site group */,MERGE_LWR},
+        {0x80150320u,152u /* site group */,MERGE_SWL},
+        {0x80150324u,152u /* site group */,MERGE_SWR},
+        {0x80150328u,152u /* site group */,MERGE_SWL},
+        {0x8015032cu,152u /* site group */,MERGE_SWR},
+        {0x80150388u,152u /* site group */,MERGE_LWL},
+        {0x8015038cu,152u /* site group */,MERGE_LWR},
+        {0x80150390u,152u /* site group */,MERGE_LWL},
+        {0x80150394u,152u /* site group */,MERGE_LWR},
+        {0x80150398u,152u /* site group */,MERGE_SWL},
+        {0x8015039cu,152u /* site group */,MERGE_SWR},
+        {0x801503a0u,152u /* site group */,MERGE_SWL},
+        {0x801503a4u,152u /* site group */,MERGE_SWR},
+        {0x801503d8u,152u /* site group */,MERGE_LWL},
+        {0x801503dcu,152u /* site group */,MERGE_LWR},
+        {0x801503e0u,152u /* site group */,MERGE_LWL},
+        {0x801503e4u,152u /* site group */,MERGE_LWR},
+        {0x801503e8u,152u /* site group */,MERGE_SWL},
+        {0x801503ecu,152u /* site group */,MERGE_SWR},
+        {0x801503f0u,152u /* site group */,MERGE_SWL},
+        {0x801503f4u,152u /* site group */,MERGE_SWR},
+        {0x80150400u,153u /* site group */,MERGE_LWL},
+        {0x80150404u,153u /* site group */,MERGE_LWR},
+        {0x80150408u,153u /* site group */,MERGE_LWL},
+        {0x8015040cu,153u /* site group */,MERGE_LWR},
+        {0x80150410u,153u /* site group */,MERGE_SWL},
+        {0x80150414u,153u /* site group */,MERGE_SWR},
+        {0x80150418u,153u /* site group */,MERGE_SWL},
+        {0x8015041cu,153u /* site group */,MERGE_SWR},
+        {0x80163418u,154u /* site group */,MERGE_LWL},
+        {0x8016341cu,154u /* site group */,MERGE_LWR},
+        {0x80163420u,154u /* site group */,MERGE_LWL},
+        {0x80163424u,154u /* site group */,MERGE_LWR},
+        {0x80163428u,154u /* site group */,MERGE_SWL},
+        {0x8016342cu,154u /* site group */,MERGE_SWR},
+        {0x80163430u,154u /* site group */,MERGE_SWL},
+        {0x80163434u,154u /* site group */,MERGE_SWR},
+        {0x801634ecu,154u /* site group */,MERGE_LWL},
+        {0x801634f0u,154u /* site group */,MERGE_LWR},
+        {0x801634f4u,154u /* site group */,MERGE_LWL},
+        {0x801634f8u,154u /* site group */,MERGE_LWR},
+        {0x801634fcu,154u /* site group */,MERGE_SWL},
+        {0x80163500u,155u /* site group */,MERGE_SWR},
+        {0x80163504u,155u /* site group */,MERGE_SWL},
+        {0x80163508u,155u /* site group */,MERGE_SWR},
+        {0x8017237cu,156u /* site group */,MERGE_LWL},
+        {0x80172380u,156u /* site group */,MERGE_LWR},
+        {0x80172384u,156u /* site group */,MERGE_LWL},
+        {0x80172388u,156u /* site group */,MERGE_LWR},
+        {0x8017238cu,156u /* site group */,MERGE_SWL},
+        {0x80172390u,156u /* site group */,MERGE_SWR},
+        {0x80172394u,156u /* site group */,MERGE_SWL},
+        {0x80172398u,156u /* site group */,MERGE_SWR},
+        {0x8017239cu,156u /* site group */,MERGE_LWL},
+        {0x801723a0u,156u /* site group */,MERGE_LWR},
+        {0x801723a4u,156u /* site group */,MERGE_LWL},
+        {0x801723a8u,156u /* site group */,MERGE_LWR},
+        {0x801723acu,156u /* site group */,MERGE_SWL},
+        {0x801723b0u,156u /* site group */,MERGE_SWR},
+        {0x801723b4u,156u /* site group */,MERGE_SWL},
+        {0x801723b8u,156u /* site group */,MERGE_SWR},
+        {0x80172790u,157u /* site group */,MERGE_LWL},
+        {0x80172794u,157u /* site group */,MERGE_LWR},
+        {0x80172798u,157u /* site group */,MERGE_LWL},
+        {0x8017279cu,157u /* site group */,MERGE_LWR},
+        {0x801727a0u,157u /* site group */,MERGE_SWL},
+        {0x801727a4u,157u /* site group */,MERGE_SWR},
+        {0x801727a8u,157u /* site group */,MERGE_SWL},
+        {0x801727acu,157u /* site group */,MERGE_SWR},
+        {0x801728a4u,158u /* site group */,MERGE_LWL},
+        {0x801728a8u,158u /* site group */,MERGE_LWR},
+        {0x801728acu,158u /* site group */,MERGE_LWL},
+        {0x801728b0u,158u /* site group */,MERGE_LWR},
+        {0x801728b4u,158u /* site group */,MERGE_SWL},
+        {0x801728b8u,158u /* site group */,MERGE_SWR},
+        {0x801728bcu,158u /* site group */,MERGE_SWL},
+        {0x801728c0u,158u /* site group */,MERGE_SWR},
+        {0x80172c60u,159u /* site group */,MERGE_LWL},
+        {0x80172c64u,159u /* site group */,MERGE_LWR},
+        {0x80172c68u,159u /* site group */,MERGE_LWL},
+        {0x80172c6cu,159u /* site group */,MERGE_LWR},
+        {0x80172c70u,159u /* site group */,MERGE_SWL},
+        {0x80172c74u,159u /* site group */,MERGE_SWR},
+        {0x80172c78u,159u /* site group */,MERGE_SWL},
+        {0x80172c7cu,159u /* site group */,MERGE_SWR},
+        {0x80173418u,160u /* site group */,MERGE_LWL},
+        {0x8017341cu,160u /* site group */,MERGE_LWR},
+        {0x80173420u,160u /* site group */,MERGE_LWL},
+        {0x80173424u,160u /* site group */,MERGE_LWR},
+        {0x80173428u,160u /* site group */,MERGE_SWL},
+        {0x8017342cu,160u /* site group */,MERGE_SWR},
+        {0x80173430u,160u /* site group */,MERGE_SWL},
+        {0x80173434u,160u /* site group */,MERGE_SWR},
+        {0x8017347cu,160u /* site group */,MERGE_LWL},
+        {0x80173480u,160u /* site group */,MERGE_LWR},
+        {0x80173484u,160u /* site group */,MERGE_LWL},
+        {0x80173488u,160u /* site group */,MERGE_LWR},
+        {0x8017348cu,160u /* site group */,MERGE_SWL},
+        {0x80173490u,160u /* site group */,MERGE_SWR},
+        {0x80173494u,160u /* site group */,MERGE_SWL},
+        {0x80173498u,160u /* site group */,MERGE_SWR},
+        {0x80179480u,161u /* site group */,MERGE_LWL},
+        {0x80179484u,161u /* site group */,MERGE_LWR},
+        {0x80179488u,161u /* site group */,MERGE_LWL},
+        {0x8017948cu,161u /* site group */,MERGE_LWR},
+        {0x80179490u,161u /* site group */,MERGE_SWL},
+        {0x80179494u,161u /* site group */,MERGE_SWR},
+        {0x80179498u,161u /* site group */,MERGE_SWL},
+        {0x8017949cu,161u /* site group */,MERGE_SWR},
+        {0x801794e0u,161u /* site group */,MERGE_LWL},
+        {0x801794e4u,161u /* site group */,MERGE_LWR},
+        {0x801794e8u,161u /* site group */,MERGE_LWL},
+        {0x801794ecu,161u /* site group */,MERGE_LWR},
+        {0x801794f0u,161u /* site group */,MERGE_SWL},
+        {0x801794f4u,161u /* site group */,MERGE_SWR},
+        {0x801794f8u,161u /* site group */,MERGE_SWL},
+        {0x801794fcu,161u /* site group */,MERGE_SWR},
+        {0x8017b8f0u,162u /* site group */,MERGE_LWL},
+        {0x8017b8f4u,162u /* site group */,MERGE_LWR},
+        {0x8017b8f8u,162u /* site group */,MERGE_LWL},
+        {0x8017b8fcu,162u /* site group */,MERGE_LWR},
+        {0x8017b900u,163u /* site group */,MERGE_SWL},
+        {0x8017b904u,163u /* site group */,MERGE_SWR},
+        {0x8017b908u,163u /* site group */,MERGE_SWL},
+        {0x8017b90cu,163u /* site group */,MERGE_SWR},
+        {0x8017b918u,163u /* site group */,MERGE_LWL},
+        {0x8017b91cu,163u /* site group */,MERGE_LWR},
+        {0x8017b920u,163u /* site group */,MERGE_LWL},
+        {0x8017b924u,163u /* site group */,MERGE_LWR},
+        {0x8017b928u,163u /* site group */,MERGE_SWL},
+        {0x8017b92cu,163u /* site group */,MERGE_SWR},
+        {0x8017b930u,163u /* site group */,MERGE_SWL},
+        {0x8017b934u,163u /* site group */,MERGE_SWR},
+        {0x8017c4ccu,164u /* site group */,MERGE_LWL},
+        {0x8017c4d0u,164u /* site group */,MERGE_LWR},
+        {0x8017c4d4u,164u /* site group */,MERGE_LWL},
+        {0x8017c4d8u,164u /* site group */,MERGE_LWR},
+        {0x8017c4dcu,164u /* site group */,MERGE_LWL},
+        {0x8017c4e0u,164u /* site group */,MERGE_LWR},
+        {0x8017c4e4u,164u /* site group */,MERGE_LWL},
+        {0x8017c4e8u,164u /* site group */,MERGE_LWR},
+        {0x8017c4ecu,164u /* site group */,MERGE_SWL},
+        {0x8017c4f0u,164u /* site group */,MERGE_SWR},
+        {0x8017c4f4u,164u /* site group */,MERGE_SWL},
+        {0x8017c4f8u,164u /* site group */,MERGE_SWR},
+        {0x8017c4fcu,164u /* site group */,MERGE_SWL},
+        {0x8017c500u,165u /* site group */,MERGE_SWR},
+        {0x8017c504u,165u /* site group */,MERGE_SWL},
+        {0x8017c508u,165u /* site group */,MERGE_SWR},
+        {0x8017c54cu,165u /* site group */,MERGE_LWL},
+        {0x8017c550u,165u /* site group */,MERGE_LWR},
+        {0x8017c554u,165u /* site group */,MERGE_LWL},
+        {0x8017c558u,165u /* site group */,MERGE_LWR},
+        {0x8017c55cu,165u /* site group */,MERGE_LWL},
+        {0x8017c560u,165u /* site group */,MERGE_LWR},
+        {0x8017c564u,165u /* site group */,MERGE_SWL},
+        {0x8017c568u,165u /* site group */,MERGE_SWR},
+        {0x8017c56cu,165u /* site group */,MERGE_SWL},
+        {0x8017c570u,165u /* site group */,MERGE_SWR},
+        {0x8017c574u,165u /* site group */,MERGE_SWL},
+        {0x8017c578u,165u /* site group */,MERGE_SWR},
+        {0x801814c0u,180u /* site group */,MERGE_LWL},
+        {0x80181b64u,182u /* site group */,MERGE_SWR},
+        {0x801826acu,188u /* site group */,MERGE_LWL},
+        {0x801826b0u,188u /* site group */,MERGE_LWR},
+        {0x801826b4u,188u /* site group */,MERGE_LWL},
+        {0x801826b8u,188u /* site group */,MERGE_LWR},
+        {0x801826bcu,188u /* site group */,MERGE_SWL},
+        {0x801826c0u,188u /* site group */,MERGE_SWR},
+        {0x801826c4u,188u /* site group */,MERGE_SWL},
+        {0x801826c8u,188u /* site group */,MERGE_SWR},
+        {0x80182884u,189u /* site group */,MERGE_LWL},
+        {0x80182888u,189u /* site group */,MERGE_LWR},
+        {0x8018288cu,189u /* site group */,MERGE_LWL},
+        {0x80182890u,189u /* site group */,MERGE_LWR},
+        {0x80182894u,189u /* site group */,MERGE_SWL},
+        {0x80182898u,189u /* site group */,MERGE_SWR},
+        {0x8018289cu,189u /* site group */,MERGE_SWL},
+        {0x801828a0u,189u /* site group */,MERGE_SWR},
+        {0x80183258u,192u /* site group */,MERGE_LWR},
+        {0x801832c0u,192u /* site group */,MERGE_LWL},
+        {0x801832ecu,192u /* site group */,MERGE_LWR},
+        {0x80183348u,193u /* site group */,MERGE_LWL},
+        {0x8018335cu,193u /* site group */,MERGE_LWR},
+        {0x80183380u,193u /* site group */,MERGE_LWL},
+        {0x8018339cu,193u /* site group */,MERGE_LWL},
+        {0x801833a8u,193u /* site group */,MERGE_LWL},
+        {0x801833b8u,193u /* site group */,MERGE_LWL},
+        {0x801833c0u,193u /* site group */,MERGE_LWL},
+        {0x801833ccu,193u /* site group */,MERGE_LWL},
+        {0x80183410u,194u /* site group */,MERGE_LWL},
+        {0x80183444u,194u /* site group */,MERGE_LWL},
+        {0x801834a8u,194u /* site group */,MERGE_LWL},
+        {0x801834c8u,194u /* site group */,MERGE_LWL},
+        {0x80183570u,195u /* site group */,MERGE_LWL},
+        {0x801839b4u,196u /* site group */,MERGE_LWL},
+        {0x801839c8u,196u /* site group */,MERGE_LWR},
+        {0x80183a10u,197u /* site group */,MERGE_LWL},
+        {0x80183a2cu,197u /* site group */,MERGE_LWL},
+        {0x80183a74u,197u /* site group */,MERGE_LWL},
+        {0x80183a90u,197u /* site group */,MERGE_LWL},
+        {0x80183aa4u,197u /* site group */,MERGE_LWL},
+        {0x80183ab4u,197u /* site group */,MERGE_LWR},
+        {0x80183ad4u,197u /* site group */,MERGE_LWL},
+        {0x80183ad8u,197u /* site group */,MERGE_LWL},
+        {0x80183adcu,197u /* site group */,MERGE_LWL},
+        {0x80183b08u,198u /* site group */,MERGE_LWL},
+        {0x80183b0cu,198u /* site group */,MERGE_LWL},
+        {0x80183b48u,198u /* site group */,MERGE_LWL},
+        {0x80183b5cu,198u /* site group */,MERGE_LWL},
+        {0x80183b68u,198u /* site group */,MERGE_LWL},
+        {0x80183b88u,198u /* site group */,MERGE_LWL},
+        {0x80183e84u,199u /* site group */,MERGE_LWL},
+        {0x80183f04u,201u /* site group */,MERGE_LWR},
+        {0x80183f08u,201u /* site group */,MERGE_LWL},
+        {0x80183f74u,201u /* site group */,MERGE_LWL},
+        {0x80183f7cu,201u /* site group */,MERGE_LWL},
     };
     unsigned i;
     for (i = 0; i < sizeof(sites)/sizeof(sites[0]); ++i)
-        if (sites[i].pc == pc && sites[i].word == instruction) return sites[i].kind;
+        if (sites[i].pc == pc && code_site(pc, sites[i].grp, instruction)) return sites[i].kind;
     return MERGE_NONE;
 }
 
@@ -9157,20 +9173,20 @@ static int merge_pending_matches(const FormatterCpu *cpu, uint32_t instruction) 
     if (cpu->pc >= 0x8013d5fcu && cpu->pc < 0x8013d680u) {
         /* Retail nine-byte copies: the first pairs retire across LUI;
          * the second copy interleaves adjacent pairs and their stores. */
-        static const struct { uint32_t pc, word; uint8_t reg, kind; } sites[] = {
-            {0x8013d600u,0x3c018018u,3,MERGE_LWL},
-            {0x8013d60cu,0x3c018018u,3,MERGE_LWR},
-            {0x8013d618u,0x3c018018u,4,MERGE_LWL},
-            {0x8013d624u,0x3c018018u,4,MERGE_LWR},
-            {0x8013d658u,0x98a20000u,2,MERGE_LWL},
-            {0x8013d65cu,0x88a30007u,2,MERGE_LWR},
-            {0x8013d660u,0x98a30004u,3,MERGE_LWL},
-            {0x8013d664u,0xa8820003u,3,MERGE_LWR}
+        static const struct { uint32_t pc, grp; uint8_t reg, kind; } sites[] = {
+            {0x8013d600u,124u /* site group */,3,MERGE_LWL},
+            {0x8013d60cu,124u /* site group */,3,MERGE_LWR},
+            {0x8013d618u,124u /* site group */,4,MERGE_LWL},
+            {0x8013d624u,124u /* site group */,4,MERGE_LWR},
+            {0x8013d658u,124u /* site group */,2,MERGE_LWL},
+            {0x8013d65cu,124u /* site group */,2,MERGE_LWR},
+            {0x8013d660u,124u /* site group */,3,MERGE_LWL},
+            {0x8013d664u,124u /* site group */,3,MERGE_LWR}
         };
         unsigned i;
         if (cpu->npc != cpu->pc+4u || cpu->delay_slot || cpu->branch_pc) return 0;
         for (i=0;i<sizeof(sites)/sizeof(sites[0]);++i)
-            if (sites[i].pc == cpu->pc && sites[i].word == instruction &&
+            if (sites[i].pc == cpu->pc && code_site(cpu->pc, sites[i].grp, instruction) &&
                 sites[i].reg == cpu->merge_reg && sites[i].kind == cpu->merge_kind) return 1;
         return 0;
     }
@@ -9336,6 +9352,506 @@ static int code_word(MusashiBootMemory *memory, const FormatterCpu *cpu,
     *out = (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) |
            ((uint32_t)p[3] << 24);
     return 1;
+}
+
+/* Site groups (generated from the developer's own disc images by a one-off
+ * conversion; addresses and digests only, no retail words). A group is the
+ * set of admission sites of one code image (or of images that share those
+ * words) within one 256-byte window; its digest is FNV-1a 64 over the words
+ * the image holds at the group's PCs, in order. */
+typedef struct CodeSiteGroup { uint64_t digest; uint16_t first, count; } CodeSiteGroup;
+static const uint32_t kCodeSitePcs[] = {
+    0x80012450u, 0x80012454u, 0x80012464u, 0x80012468u, 0x8001246cu, 0x80012480u,
+    0x80012484u, 0x80012488u, 0x80012494u, 0x80012498u, 0x8001249cu, 0x800124a0u,
+    0x800124a4u, 0x800124c0u, 0x800124c4u, 0x800124c8u, 0x800124d4u, 0x800124dcu,
+    0x800124e0u, 0x800124e4u, 0x800124e8u, 0x80012504u, 0x80012508u, 0x8001250cu,
+    0x80012518u, 0x80012520u, 0x80012524u, 0x80012528u, 0x8001252cu, 0x800125bcu,
+    0x800125c0u, 0x800125d0u, 0x800125d4u, 0x800125d8u, 0x800125ecu, 0x800125f0u,
+    0x800125f4u, 0x80012600u, 0x80012604u, 0x80012608u, 0x8001260cu, 0x80012610u,
+    0x8001262cu, 0x80012630u, 0x80012634u, 0x80012640u, 0x80012648u, 0x8001264cu,
+    0x80012650u, 0x80012654u, 0x80012670u, 0x80012674u, 0x80012678u, 0x80012684u,
+    0x8001268cu, 0x80012690u, 0x80012694u, 0x80012698u, 0x80012724u, 0x80012728u,
+    0x80012738u, 0x8001273cu, 0x80012740u, 0x80012754u, 0x80012758u, 0x8001275cu,
+    0x80012768u, 0x8001276cu, 0x80012770u, 0x80012774u, 0x80012778u, 0x80012794u,
+    0x80012798u, 0x8001279cu, 0x800127a8u, 0x800127b0u, 0x800127b4u, 0x800127b8u,
+    0x800127bcu, 0x800127d8u, 0x800127dcu, 0x800127e0u, 0x800127ecu, 0x800127f4u,
+    0x800127f8u, 0x800127fcu, 0x80012800u, 0x80012988u, 0x80012994u, 0x8001299cu,
+    0x80019b30u, 0x8001e0e0u, 0x8001e0e4u, 0x8001e0f4u, 0x8001e0f8u, 0x8001e0fcu,
+    0x800207c0u, 0x800207c4u, 0x800207d4u, 0x800207d8u, 0x800207dcu, 0x800207ecu,
+    0x800207f0u, 0x800207f4u, 0x80020800u, 0x80020804u, 0x80020808u, 0x8002080cu,
+    0x80020828u, 0x8002082cu, 0x80020830u, 0x8002083cu, 0x80020844u, 0x80020848u,
+    0x8002084cu, 0x80020868u, 0x8002086cu, 0x80020870u, 0x8002087cu, 0x80020884u,
+    0x80020888u, 0x8002088cu, 0x800208acu, 0x800208b0u, 0x800208c0u, 0x800208c4u,
+    0x800208c8u, 0x800208d8u, 0x800208dcu, 0x800208e0u, 0x800208ecu, 0x800208f4u,
+    0x800208f8u, 0x800208fcu, 0x80020918u, 0x8002091cu, 0x80020920u, 0x8002092cu,
+    0x80020934u, 0x80020938u, 0x8002093cu, 0x80020958u, 0x8002095cu, 0x80020960u,
+    0x8002096cu, 0x80020974u, 0x80020978u, 0x8002097cu, 0x80020994u, 0x8002099cu,
+    0x800209a0u, 0x800209b8u, 0x800209bcu, 0x800209c8u, 0x800209d0u, 0x800209d4u,
+    0x800209d8u, 0x80020f44u, 0x80020f48u, 0x80020f4cu, 0x80020f50u, 0x80020f5cu,
+    0x80020f70u, 0x80020f74u, 0x80020f78u, 0x80020f7cu, 0x80020f88u, 0x80020f8cu,
+    0x80020f90u, 0x80020f94u, 0x80020fa0u, 0x80020fb4u, 0x80020fb8u, 0x80020fbcu,
+    0x80020fc0u, 0x80020fccu, 0x80020fd0u, 0x80020fd4u, 0x80020fd8u, 0x80020fe4u,
+    0x80020fe8u, 0x80020fecu, 0x80020ff0u, 0x80020ff4u, 0x8002119cu, 0x800211a0u,
+    0x800211b0u, 0x800211b4u, 0x800211b8u, 0x800211c4u, 0x800211ccu, 0x800211d0u,
+    0x800211e4u, 0x800211e8u, 0x800211f4u, 0x800211f8u, 0x80021200u, 0x80021210u,
+    0x8003d080u, 0x80041f10u, 0x80042598u, 0x80045720u, 0x80045724u, 0x8004572cu,
+    0x80045730u, 0x800457e4u, 0x800457e8u, 0x800457f0u, 0x800457f4u, 0x80045ae4u,
+    0x80045ae8u, 0x80045af0u, 0x80045af4u, 0x80045b0cu, 0x80045b10u, 0x80045b18u,
+    0x80045b1cu, 0x80045b54u, 0x800469fcu, 0x80046a00u, 0x80046a08u, 0x80046a0cu,
+    0x80046fd0u, 0x80046fd4u, 0x80046fdcu, 0x80046fe0u, 0x80047a2cu, 0x80047a48u,
+    0x80047a58u, 0x80047a74u, 0x80047b7cu, 0x80047bb0u, 0x80047cd0u, 0x80047cdcu,
+    0x80047ce8u, 0x80047cf4u, 0x80047d00u, 0x80047d0cu, 0x80047d18u, 0x80047d20u,
+    0x80047d24u, 0x80047d3cu, 0x80047d48u, 0x80047d4cu, 0x80047d68u, 0x80047d88u,
+    0x80047d8cu, 0x80047ec8u, 0x80047eccu, 0x80047ed0u, 0x80047ed8u, 0x80047edcu,
+    0x80047ee0u, 0x80047ee4u, 0x80047ee8u, 0x80047ef0u, 0x80047efcu, 0x80047f00u,
+    0x80047f0cu, 0x80047f28u, 0x80047f2cu, 0x80047f48u, 0x80047f4cu, 0x80047f50u,
+    0x80047f54u, 0x80047f60u, 0x80047f64u, 0x80047f68u, 0x80047f6cu, 0x80047f70u,
+    0x80047f74u, 0x80047f78u, 0x800483a0u, 0x800483a4u, 0x800483a8u, 0x800483acu,
+    0x800483b0u, 0x800483ccu, 0x800483d0u, 0x800483d8u, 0x800483f0u, 0x800483f4u,
+    0x800483f8u, 0x800483fcu, 0x80048400u, 0x80048408u, 0x80048424u, 0x80048428u,
+    0x8004842cu, 0x80048430u, 0x80048434u, 0x8004843cu, 0x80048460u, 0x80048464u,
+    0x80048468u, 0x80048480u, 0x80048484u, 0x8004848cu, 0x800484b0u, 0x800484b4u,
+    0x800484b8u, 0x800484bcu, 0x80048500u, 0x80048504u, 0x80048508u, 0x8004850cu,
+    0x80048510u, 0x80048598u, 0x8004859cu, 0x800485a0u, 0x800485a8u, 0x800485acu,
+    0x800485b0u, 0x800485b4u, 0x800485b8u, 0x800485bcu, 0x800485c0u, 0x800485c8u,
+    0x80048620u, 0x80048624u, 0x80048628u, 0x8004862cu, 0x80048654u, 0x80048658u,
+    0x80048660u, 0x80048664u, 0x80048668u, 0x8004866cu, 0x80048bf0u, 0x80048bf4u,
+    0x80048bf8u, 0x80048c00u, 0x80048c04u, 0x80048c08u, 0x80048c0cu, 0x80048c10u,
+    0x80048c14u, 0x80048c18u, 0x80048c20u, 0x80048c78u, 0x80048c7cu, 0x80048c80u,
+    0x80048c84u, 0x80048db0u, 0x80048db4u, 0x80048db8u, 0x80048dbcu, 0x80048dc0u,
+    0x80048ddcu, 0x80048de0u, 0x80048de8u, 0x80048e00u, 0x80048e04u, 0x80048e08u,
+    0x80048e0cu, 0x80048e10u, 0x80048e18u, 0x80048e34u, 0x80048e38u, 0x80048e3cu,
+    0x80048e40u, 0x80048e44u, 0x80048e4cu, 0x80048e70u, 0x80048e74u, 0x80048e78u,
+    0x80048e98u, 0x80048ec0u, 0x80048ec4u, 0x80048ec8u, 0x80048eccu, 0x80048ed0u,
+    0x80048eecu, 0x80048ef0u, 0x80048ef8u, 0x80048f10u, 0x80048f14u, 0x80048f18u,
+    0x80048f1cu, 0x80048f20u, 0x80048f28u, 0x80048f44u, 0x80048f48u, 0x80048f4cu,
+    0x80048f50u, 0x80048f54u, 0x80048f5cu, 0x80048f80u, 0x80048f84u, 0x80048f88u,
+    0x80048fa8u, 0x80048fd0u, 0x80048fd4u, 0x80048fd8u, 0x80048fdcu, 0x80048fe0u,
+    0x80048fe4u, 0x80048fe8u, 0x80048ff0u, 0x80048ff4u, 0x80048ff8u, 0x80048ffcu,
+    0x80049000u, 0x80049160u, 0x80049164u, 0x80049168u, 0x8004916cu, 0x80049170u,
+    0x800491b8u, 0x800491bcu, 0x800491c0u, 0x800491ecu, 0x800491f0u, 0x80049208u,
+    0x8004920cu, 0x80049210u, 0x80049224u, 0x80049228u, 0x8004923cu, 0x80049324u,
+    0x80049328u, 0x8004932cu, 0x80049334u, 0x80049338u, 0x8004933cu, 0x80049340u,
+    0x80049440u, 0x8004944cu, 0x80049450u, 0x8004945cu, 0x80049460u, 0x80049468u,
+    0x8004946cu, 0x80049470u, 0x80049474u, 0x80049480u, 0x80049484u, 0x8004961cu,
+    0x80049620u, 0x80049624u, 0x80049628u, 0x8004962cu, 0x80049630u, 0x80049638u,
+    0x80049648u, 0x8004964cu, 0x80049650u, 0x80049654u, 0x80049658u, 0x8004965cu,
+    0x80049664u, 0x80049674u, 0x80049678u, 0x8004967cu, 0x80049680u, 0x80049684u,
+    0x8004d180u, 0x8004d190u, 0x8004d1acu, 0x8004d558u, 0x8004d55cu, 0x8004d560u,
+    0x8004d564u, 0x8004d568u, 0x8004d5fcu, 0x8004d600u, 0x8004d608u, 0x8004d60cu,
+    0x8004d610u, 0x8004d614u, 0x8004d618u, 0x8004d624u, 0x8004d628u, 0x8004d630u,
+    0x8004d688u, 0x8004d68cu, 0x8004d690u, 0x8004d694u, 0x80052868u, 0x8005343cu,
+    0x80053480u, 0x800534c4u, 0x8005355cu, 0x800535a0u, 0x800535e4u, 0x80053680u,
+    0x800536c4u, 0x80053708u, 0x800538d0u, 0x800538d4u, 0x800538d8u, 0x800538dcu,
+    0x800538e0u, 0x80053ae4u, 0x80053ae8u, 0x80053aecu, 0x80054070u, 0x800540e0u,
+    0x80054154u, 0x80054194u, 0x8005437cu, 0x8005438cu, 0x8005439cu, 0x800543acu,
+    0x800543bcu, 0x800543ccu, 0x80059398u, 0x800598f4u, 0x80059df4u, 0x8005b090u,
+    0x8005b690u, 0x8005b8bcu, 0x8006cb8cu, 0x8006cf5cu, 0x8006cf80u, 0x8006cf84u,
+    0x8006cf88u, 0x8006cf8cu, 0x8006cf90u, 0x8007285cu, 0x80072868u, 0x80072878u,
+    0x800cee80u, 0x800cfac4u, 0x800cfac4u, 0x800cfac8u, 0x800cfb04u, 0x800cfb44u,
+    0x800cfc04u, 0x800cfc44u, 0x800d0144u, 0x800d0184u, 0x800d01c4u, 0x800d0284u,
+    0x800d02c4u, 0x800d0dc8u, 0x800d0dccu, 0x800d0dd0u, 0x800d0dd4u, 0x800d0dd8u,
+    0x800d11bcu, 0x800d1200u, 0x800d1334u, 0x800d1fa4u, 0x800d1fbcu, 0x800d2074u,
+    0x800d2088u, 0x800d209cu, 0x800d213cu, 0x800d2154u, 0x800d2168u, 0x800d21e4u,
+    0x800d2174u, 0x800d2188u, 0x800d219cu, 0x800d229cu, 0x800d230cu, 0x800d2374u,
+    0x800d23e8u, 0x800d2504u, 0x800d25b8u, 0x800d2514u, 0x800d2518u, 0x800d251cu,
+    0x800d2520u, 0x800d2524u, 0x800d2528u, 0x800d252cu, 0x800d2530u, 0x800d257cu,
+    0x800d2638u, 0x800d268cu, 0x800d27a4u, 0x800d28f8u, 0x800d2a80u, 0x800d2d6cu,
+    0x800d2f60u, 0x800d30d4u, 0x800d3348u, 0x800d3444u, 0x800d34c0u, 0x800d34e8u,
+    0x800d34d8u, 0x800d3524u, 0x800d3534u, 0x8012a0a4u, 0x8012a0a8u, 0x8012a0acu,
+    0x8012a0b0u, 0x8012a0b4u, 0x8012a0b8u, 0x8012a0bcu, 0x8012a0c0u, 0x8012bff0u,
+    0x8012bff4u, 0x8012bff8u, 0x8012c004u, 0x8012c00cu, 0x8012c010u, 0x8012c014u,
+    0x8012e7acu, 0x8012e7b0u, 0x8012e7c0u, 0x8012e7c4u, 0x8012e7c8u, 0x8012e7d4u,
+    0x8012e7dcu, 0x8012e7e0u, 0x8012e7f4u, 0x8012e7f8u, 0x8012e804u, 0x8012e80cu,
+    0x8012ed78u, 0x8012ed7cu, 0x8012ed8cu, 0x8012ed90u, 0x8012ed94u, 0x8012eda4u,
+    0x8012eda8u, 0x8012edacu, 0x8012edb8u, 0x8012edbcu, 0x8012edc0u, 0x8012edc4u,
+    0x8012edc8u, 0x8012ede4u, 0x8012ede8u, 0x8012edecu, 0x8012edf8u, 0x8012edfcu,
+    0x8012ee00u, 0x8012ee04u, 0x8012ee08u, 0x8012ee24u, 0x8012ee28u, 0x8012ee2cu,
+    0x8012ee38u, 0x8012ee3cu, 0x8012ee40u, 0x8012ee44u, 0x8012ee48u, 0x8012ee68u,
+    0x8012ee70u, 0x8012ee74u, 0x8012ee8cu, 0x8012ee90u, 0x8012ee9cu, 0x8012eea0u,
+    0x8012eea4u, 0x8012eea8u, 0x8012ef4cu, 0x8012ef88u, 0x8012ef8cu, 0x8012efccu,
+    0x8012efd0u, 0x8012efe0u, 0x8012efe4u, 0x8012efe8u, 0x8012eff4u, 0x8012effcu,
+    0x8012f000u, 0x8012f004u, 0x8012f008u, 0x8012f014u, 0x8012f018u, 0x8012f01cu,
+    0x8012f020u, 0x80132a24u, 0x80132a28u, 0x80132a38u, 0x80132a3cu, 0x80132a40u,
+    0x80132a54u, 0x80132a58u, 0x80132a5cu, 0x80132a68u, 0x80132a70u, 0x80132a74u,
+    0x80132a78u, 0x80132a7cu, 0x80132a98u, 0x80132a9cu, 0x80132aa0u, 0x80132aacu,
+    0x80132ab4u, 0x80132ab8u, 0x80132abcu, 0x80132ac0u, 0x80132adcu, 0x80132ae0u,
+    0x80132ae4u, 0x80132af0u, 0x80132af8u, 0x80132afcu, 0x80132b00u, 0x80132b04u,
+    0x80132b18u, 0x80132b20u, 0x80132b24u, 0x80132b3cu, 0x80132b40u, 0x80132b4cu,
+    0x80132b54u, 0x80132b58u, 0x80132b5cu, 0x80132bd8u, 0x80132bdcu, 0x80132becu,
+    0x80132bf0u, 0x80132bf4u, 0x80132c04u, 0x80132c08u, 0x80132c0cu, 0x80132c18u,
+    0x80132c1cu, 0x80132c20u, 0x80132c24u, 0x80132c28u, 0x80132c40u, 0x80132c44u,
+    0x80132c48u, 0x80132c54u, 0x80132c5cu, 0x80132c60u, 0x80132c64u, 0x80132c68u,
+    0x80132c80u, 0x80132c84u, 0x80132c88u, 0x80132c94u, 0x80132c9cu, 0x80132ca0u,
+    0x80132ca4u, 0x80132ca8u, 0x80132cbcu, 0x80132cc4u, 0x80132cc8u, 0x80132cdcu,
+    0x80132ce0u, 0x80132cecu, 0x80132cf4u, 0x80132cf8u, 0x80132cfcu, 0x80133100u,
+    0x80133108u, 0x8013310cu, 0x80133118u, 0x8013311cu, 0x8013312cu, 0x80133130u,
+    0x80133134u, 0x80133138u, 0x8013313cu, 0x80133148u, 0x80133150u, 0x80133154u,
+    0x80133158u, 0x80133160u, 0x80133164u, 0x80133fe8u, 0x80133fecu, 0x80133ff0u,
+    0x80133ffcu, 0x8013400cu, 0x80134010u, 0x80134014u, 0x80134260u, 0x80134264u,
+    0x80134268u, 0x8013426cu, 0x80134270u, 0x80134274u, 0x80134278u, 0x8013427cu,
+    0x801349c4u, 0x801349c8u, 0x801349ccu, 0x801349d0u, 0x801349d4u, 0x801349d8u,
+    0x801349dcu, 0x801349e0u, 0x80136ca0u, 0x80136ca4u, 0x80136ca8u, 0x80136cacu,
+    0x80136cb4u, 0x80136cb8u, 0x80136cbcu, 0x80136cc0u, 0x8013aa98u, 0x8013aa9cu,
+    0x8013aaacu, 0x8013aab0u, 0x8013aab4u, 0x8013aac0u, 0x8013aac8u, 0x8013aaccu,
+    0x8013ac84u, 0x8013ac88u, 0x8013ac98u, 0x8013ac9cu, 0x8013aca0u, 0x8013acacu,
+    0x8013acb4u, 0x8013acb8u, 0x8013addcu, 0x8013ade0u, 0x8013adecu, 0x8013adf4u,
+    0x8013adf8u, 0x8013adfcu, 0x8013ae98u, 0x8013ae9cu, 0x8013aea4u, 0x8013aea8u,
+    0x8013b41cu, 0x8013b420u, 0x8013b42cu, 0x8013b434u, 0x8013b438u, 0x8013b43cu,
+    0x8013b47cu, 0x8013b480u, 0x8013b48cu, 0x8013b494u, 0x8013b498u, 0x8013b49cu,
+    0x8013cc68u, 0x8013cc6cu, 0x8013cc70u, 0x8013cc74u, 0x8013cc34u, 0x8013cc40u,
+    0x8013cc4cu, 0x8013cc58u, 0x8013d5fcu, 0x8013d5fcu, 0x8013d608u, 0x8013d614u,
+    0x8013d620u, 0x8013d600u, 0x8013d60cu, 0x8013d618u, 0x8013d624u, 0x8013d630u,
+    0x8013d634u, 0x8013d638u, 0x8013d63cu, 0x8013d654u, 0x8013d658u, 0x8013d65cu,
+    0x8013d660u, 0x8013d664u, 0x8013d668u, 0x8013d66cu, 0x8013d670u, 0x8013d608u,
+    0x8013d614u, 0x8013d620u, 0x8013daa8u, 0x8013daacu, 0x8013dab0u, 0x8013dabcu,
+    0x8013dac8u, 0x8013e0acu, 0x8013e0b0u, 0x8013e0b4u, 0x8013e0c0u, 0x8013e0c8u,
+    0x8013e0ccu, 0x8013e0d0u, 0x8013e144u, 0x8013e148u, 0x8013e14cu, 0x8013e158u,
+    0x8013e160u, 0x8013e164u, 0x8013e168u, 0x8013e1dcu, 0x8013e1e0u, 0x8013e1e4u,
+    0x8013e1f0u, 0x8013e1f8u, 0x8013e1fcu, 0x8013e200u, 0x8013e30cu, 0x8013e310u,
+    0x8013e314u, 0x8013e320u, 0x8013e328u, 0x8013e32cu, 0x8013e330u, 0x80146160u,
+    0x80146164u, 0x80146168u, 0x8014616cu, 0x80146170u, 0x80146174u, 0x80146178u,
+    0x8014617cu, 0x80146488u, 0x8014648cu, 0x80146490u, 0x80146494u, 0x80146498u,
+    0x8014649cu, 0x801464a0u, 0x801464a4u, 0x80147000u, 0x80147004u, 0x80147008u,
+    0x8014700cu, 0x80147010u, 0x80147014u, 0x80147018u, 0x8014701cu, 0x80147528u,
+    0x8014752cu, 0x80147530u, 0x80147534u, 0x80147538u, 0x8014753cu, 0x80147540u,
+    0x80147544u, 0x8014be14u, 0x8014be18u, 0x8014be1cu, 0x8014be20u, 0x8014be24u,
+    0x8014be28u, 0x8014be2cu, 0x8014be30u, 0x8014c518u, 0x8014c51cu, 0x8014c520u,
+    0x8014c524u, 0x8014c528u, 0x8014c52cu, 0x8014c530u, 0x8014c534u, 0x8014c750u,
+    0x8014c754u, 0x8014c758u, 0x8014c75cu, 0x8014c760u, 0x8014c764u, 0x8014c768u,
+    0x8014c76cu, 0x8014c860u, 0x8014c864u, 0x8014c868u, 0x8014c86cu, 0x8014c870u,
+    0x8014c874u, 0x8014c878u, 0x8014c87cu, 0x8014c8c8u, 0x8014c8ccu, 0x8014c8d0u,
+    0x8014c8d4u, 0x8014c8d8u, 0x8014c8dcu, 0x8014c8e0u, 0x8014c8e4u, 0x8014c8f0u,
+    0x8014c8f4u, 0x8014c8f8u, 0x8014c8fcu, 0x8014c900u, 0x8014c904u, 0x8014c908u,
+    0x8014c90cu, 0x8014cba4u, 0x8014cba8u, 0x8014cbacu, 0x8014cbb0u, 0x8014cbb4u,
+    0x8014cbb8u, 0x8014cbbcu, 0x8014cbc0u, 0x8014db70u, 0x8014db74u, 0x8014db78u,
+    0x8014db7cu, 0x8014db80u, 0x8014db84u, 0x8014db88u, 0x8014db8cu, 0x8014ea84u,
+    0x8014ea88u, 0x8014ea8cu, 0x8014ea90u, 0x8014ea94u, 0x8014ea98u, 0x8014ea9cu,
+    0x8014eaa0u, 0x8014f5d4u, 0x8014f5d8u, 0x8014f5dcu, 0x8014f5e0u, 0x8014f5e4u,
+    0x8014f5e8u, 0x8014f5ecu, 0x8014f5f0u, 0x8014f60cu, 0x8014f610u, 0x8014f614u,
+    0x8014f618u, 0x8014f61cu, 0x8014f620u, 0x8014f624u, 0x8014f628u, 0x8014f668u,
+    0x8014f66cu, 0x8014f670u, 0x8014f674u, 0x8014f678u, 0x8014f67cu, 0x8014f680u,
+    0x8014f684u, 0x8014f6a4u, 0x8014f6a8u, 0x8014f6acu, 0x8014f6b0u, 0x8014f6b4u,
+    0x8014f6b8u, 0x8014f6bcu, 0x8014f6c0u, 0x8014f86cu, 0x8014f870u, 0x8014f874u,
+    0x8014f878u, 0x8014f87cu, 0x8014f880u, 0x8014f884u, 0x8014f888u, 0x8014f8a4u,
+    0x8014f8a8u, 0x8014f8acu, 0x8014f8b0u, 0x8014f8b4u, 0x8014f8b8u, 0x8014f8bcu,
+    0x8014f8c0u, 0x8014f900u, 0x8014f904u, 0x8014f908u, 0x8014f90cu, 0x8014f910u,
+    0x8014f914u, 0x8014f918u, 0x8014f91cu, 0x8014f93cu, 0x8014f940u, 0x8014f944u,
+    0x8014f948u, 0x8014f94cu, 0x8014f950u, 0x8014f954u, 0x8014f958u, 0x8014fb5cu,
+    0x8014fb60u, 0x8014fb64u, 0x8014fb68u, 0x8014fb6cu, 0x8014fb70u, 0x8014fb74u,
+    0x8014fb78u, 0x8014ff18u, 0x8014ff1cu, 0x8014ff20u, 0x8014ff24u, 0x8014ff28u,
+    0x8014ff2cu, 0x8014ff30u, 0x8014ff34u, 0x8014ff6cu, 0x8014ff70u, 0x8014ff74u,
+    0x8014ff78u, 0x8014ff7cu, 0x8014ff80u, 0x8014ff84u, 0x8014ff88u, 0x80150000u,
+    0x80150004u, 0x80150008u, 0x8015000cu, 0x80150010u, 0x80150014u, 0x80150018u,
+    0x8015001cu, 0x80150078u, 0x8015007cu, 0x80150080u, 0x80150084u, 0x80150088u,
+    0x8015008cu, 0x80150090u, 0x80150094u, 0x801500c8u, 0x801500ccu, 0x801500d0u,
+    0x801500d4u, 0x801500d8u, 0x801500dcu, 0x801500e0u, 0x801500e4u, 0x801500f0u,
+    0x801500f4u, 0x801500f8u, 0x801500fcu, 0x80150100u, 0x80150104u, 0x80150108u,
+    0x8015010cu, 0x80150228u, 0x8015022cu, 0x80150230u, 0x80150234u, 0x80150238u,
+    0x8015023cu, 0x80150240u, 0x80150244u, 0x8015027cu, 0x80150280u, 0x80150284u,
+    0x80150288u, 0x8015028cu, 0x80150290u, 0x80150294u, 0x80150298u, 0x80150310u,
+    0x80150314u, 0x80150318u, 0x8015031cu, 0x80150320u, 0x80150324u, 0x80150328u,
+    0x8015032cu, 0x80150388u, 0x8015038cu, 0x80150390u, 0x80150394u, 0x80150398u,
+    0x8015039cu, 0x801503a0u, 0x801503a4u, 0x801503d8u, 0x801503dcu, 0x801503e0u,
+    0x801503e4u, 0x801503e8u, 0x801503ecu, 0x801503f0u, 0x801503f4u, 0x80150400u,
+    0x80150404u, 0x80150408u, 0x8015040cu, 0x80150410u, 0x80150414u, 0x80150418u,
+    0x8015041cu, 0x80163418u, 0x8016341cu, 0x80163420u, 0x80163424u, 0x80163428u,
+    0x8016342cu, 0x80163430u, 0x80163434u, 0x801634ecu, 0x801634f0u, 0x801634f4u,
+    0x801634f8u, 0x801634fcu, 0x80163500u, 0x80163504u, 0x80163508u, 0x8017237cu,
+    0x80172380u, 0x80172384u, 0x80172388u, 0x8017238cu, 0x80172390u, 0x80172394u,
+    0x80172398u, 0x8017239cu, 0x801723a0u, 0x801723a4u, 0x801723a8u, 0x801723acu,
+    0x801723b0u, 0x801723b4u, 0x801723b8u, 0x80172790u, 0x80172794u, 0x80172798u,
+    0x8017279cu, 0x801727a0u, 0x801727a4u, 0x801727a8u, 0x801727acu, 0x801728a4u,
+    0x801728a8u, 0x801728acu, 0x801728b0u, 0x801728b4u, 0x801728b8u, 0x801728bcu,
+    0x801728c0u, 0x80172c60u, 0x80172c64u, 0x80172c68u, 0x80172c6cu, 0x80172c70u,
+    0x80172c74u, 0x80172c78u, 0x80172c7cu, 0x80173418u, 0x8017341cu, 0x80173420u,
+    0x80173424u, 0x80173428u, 0x8017342cu, 0x80173430u, 0x80173434u, 0x8017347cu,
+    0x80173480u, 0x80173484u, 0x80173488u, 0x8017348cu, 0x80173490u, 0x80173494u,
+    0x80173498u, 0x80179480u, 0x80179484u, 0x80179488u, 0x8017948cu, 0x80179490u,
+    0x80179494u, 0x80179498u, 0x8017949cu, 0x801794e0u, 0x801794e4u, 0x801794e8u,
+    0x801794ecu, 0x801794f0u, 0x801794f4u, 0x801794f8u, 0x801794fcu, 0x8017b8f0u,
+    0x8017b8f4u, 0x8017b8f8u, 0x8017b8fcu, 0x8017b900u, 0x8017b904u, 0x8017b908u,
+    0x8017b90cu, 0x8017b918u, 0x8017b91cu, 0x8017b920u, 0x8017b924u, 0x8017b928u,
+    0x8017b92cu, 0x8017b930u, 0x8017b934u, 0x8017c4ccu, 0x8017c4d0u, 0x8017c4d4u,
+    0x8017c4d8u, 0x8017c4dcu, 0x8017c4e0u, 0x8017c4e4u, 0x8017c4e8u, 0x8017c4ecu,
+    0x8017c4f0u, 0x8017c4f4u, 0x8017c4f8u, 0x8017c4fcu, 0x8017c500u, 0x8017c504u,
+    0x8017c508u, 0x8017c54cu, 0x8017c550u, 0x8017c554u, 0x8017c558u, 0x8017c55cu,
+    0x8017c560u, 0x8017c564u, 0x8017c568u, 0x8017c56cu, 0x8017c570u, 0x8017c574u,
+    0x8017c578u, 0x8017e614u, 0x8017f8c4u, 0x8017f800u, 0x8017f804u, 0x8017f808u,
+    0x8017f80cu, 0x8017f810u, 0x8017f814u, 0x8017f820u, 0x8017f830u, 0x8017f834u,
+    0x8017f838u, 0x8017f840u, 0x8017f844u, 0x8017f850u, 0x8017f858u, 0x8017f860u,
+    0x8017f864u, 0x8017f868u, 0x8017f86cu, 0x8017f870u, 0x8017f874u, 0x8017f880u,
+    0x8017f890u, 0x8017f894u, 0x8017f898u, 0x8017f8a0u, 0x8017f8a4u, 0x8017f8b0u,
+    0x8017f8b8u, 0x8017f8c0u, 0x8017f8c4u, 0x8017fc34u, 0x8017fc08u, 0x8017fc0cu,
+    0x8017fc10u, 0x8017fc14u, 0x8017fc18u, 0x8017fc1cu, 0x8017fc28u, 0x8017fc30u,
+    0x8017fc34u, 0x8017fc5cu, 0x8017fc70u, 0x8017fca8u, 0x8017fcacu, 0x8017fcb0u,
+    0x8017fcc0u, 0x8017fcc4u, 0x8017fcc8u, 0x8017ff74u, 0x801802b8u, 0x8018038cu,
+    0x80180390u, 0x80180394u, 0x80180398u, 0x8018039cu, 0x801803a8u, 0x80180484u,
+    0x80180480u, 0x801804b0u, 0x801804b4u, 0x801804b8u, 0x801804bcu, 0x801804c4u,
+    0x80180524u, 0x80180b30u, 0x80180c68u, 0x80180c74u, 0x80180ca0u, 0x80180cc0u,
+    0x801812a0u, 0x801812acu, 0x801814c0u, 0x801814dcu, 0x80181778u, 0x80181b64u,
+    0x80181bbcu, 0x80181c0cu, 0x80181ef4u, 0x80181f00u, 0x80181f58u, 0x80181f64u,
+    0x8018205cu, 0x80182068u, 0x80182308u, 0x801823bcu, 0x801823c8u, 0x801826acu,
+    0x801826b0u, 0x801826b4u, 0x801826b8u, 0x801826bcu, 0x801826c0u, 0x801826c4u,
+    0x801826c8u, 0x80182884u, 0x80182888u, 0x8018288cu, 0x80182890u, 0x80182894u,
+    0x80182898u, 0x8018289cu, 0x801828a0u, 0x80182f70u, 0x80182f74u, 0x80182f74u,
+    0x80183258u, 0x801832c0u, 0x801832ecu, 0x80183348u, 0x8018335cu, 0x80183380u,
+    0x8018339cu, 0x801833a8u, 0x801833b8u, 0x801833c0u, 0x801833ccu, 0x80183410u,
+    0x80183444u, 0x801834a8u, 0x801834c8u, 0x80183570u, 0x801839b4u, 0x801839c8u,
+    0x80183a10u, 0x80183a2cu, 0x80183a74u, 0x80183a90u, 0x80183aa4u, 0x80183ab4u,
+    0x80183ad4u, 0x80183ad8u, 0x80183adcu, 0x80183b08u, 0x80183b0cu, 0x80183b48u,
+    0x80183b5cu, 0x80183b68u, 0x80183b88u, 0x80183e74u, 0x80183e78u, 0x80183e84u,
+    0x80183e90u, 0x80183ea4u, 0x80183eb4u, 0x80183eb8u, 0x80183ebcu, 0x80183eccu,
+    0x80183ed0u, 0x80183ed4u, 0x80183eecu, 0x80183ef4u, 0x80183ef8u, 0x80183e00u,
+    0x80183e04u, 0x80183e08u, 0x80183e14u, 0x80183e18u, 0x80183e1cu, 0x80183e20u,
+    0x80183f04u, 0x80183f08u, 0x80183f74u, 0x80183f7cu, 0x80184ac8u, 0x80184accu,
+    0x80184adcu, 0x80184ae0u, 0x80184ae4u, 0x80184af0u, 0x80184af8u, 0x80184afcu,
+};
+static const CodeSiteGroup kCodeSiteGroups[] = {
+    {0xdb56c555aeccf5f9ull, 0u, 21u}, /* MAIN */
+    {0xebbb04d7f6e2a1fdull, 21u, 16u}, /* MAIN */
+    {0xb1b444750f337d31ull, 37u, 21u}, /* MAIN */
+    {0xc25de00fa9109f98ull, 58u, 28u}, /* MAIN */
+    {0x4c22d27f9cf20775ull, 86u, 1u}, /* MAIN */
+    {0x5e12c285682bcf23ull, 87u, 3u}, /* MAIN */
+    {0x4dd456c25034c2bdull, 90u, 1u}, /* MAIN */
+    {0xd97c69e412bb1c13ull, 91u, 5u}, /* MAIN */
+    {0x48e6fc889950d9dcull, 96u, 8u}, /* MAIN */
+    {0x200c7496857699c4ull, 104u, 30u}, /* MAIN */
+    {0xb2a4921a5d246cefull, 134u, 23u}, /* MAIN */
+    {0xb42881f752c9c9b0ull, 157u, 27u}, /* MAIN */
+    {0xfabadeae9713e999ull, 184u, 12u}, /* MAIN */
+    {0x15dc64e6530e9325ull, 196u, 2u}, /* MAIN */
+    {0xf6135666e8356e20ull, 198u, 1u}, /* MAIN */
+    {0x5f17a2644f8e3a1eull, 199u, 1u}, /* MAIN */
+    {0x121d52b75d4e26d4ull, 200u, 1u}, /* MAIN */
+    {0x6d80cca636754971ull, 201u, 8u}, /* MAIN */
+    {0x170c13f99f38780dull, 209u, 4u}, /* MAIN */
+    {0x63bafc2d3b8afc9eull, 213u, 5u}, /* MAIN */
+    {0x6c417f2eafd37950ull, 218u, 1u}, /* MAIN */
+    {0x9d80542646382c60ull, 219u, 3u}, /* MAIN */
+    {0xde713a67a4694c2dull, 222u, 4u}, /* MAIN */
+    {0x116c4064cb267865ull, 226u, 4u}, /* MAIN */
+    {0xf994b0b1dc42887eull, 230u, 2u}, /* MAIN */
+    {0x32bab09ed087231dull, 232u, 4u}, /* MAIN */
+    {0xf0200df55dba11d2ull, 236u, 11u}, /* MAIN */
+    {0x297f48aac7ac64b4ull, 247u, 10u}, /* MAIN */
+    {0x0641c8ef6a3c4c17ull, 257u, 15u}, /* MAIN */
+    {0xa95529ba01ad17a1ull, 272u, 12u}, /* MAIN */
+    {0xf0c5a70f7098da5dull, 284u, 18u}, /* MAIN */
+    {0x872339f5f4cddd5aull, 302u, 16u}, /* MAIN */
+    {0x2eb96085a760c3feull, 318u, 10u}, /* MAIN */
+    {0xdc1374b91a40e277ull, 328u, 3u}, /* MAIN */
+    {0xf1a5d208a1f249a2ull, 331u, 12u}, /* MAIN */
+    {0x651e6dc2c4e41b33ull, 343u, 8u}, /* MAIN */
+    {0x75abe5c3b8a0152bull, 351u, 24u}, /* MAIN */
+    {0x0d49ee34225ce23bull, 375u, 27u}, /* MAIN */
+    {0x4a7d627f9b8bf201ull, 402u, 1u}, /* MAIN */
+    {0x07c3ea74bce31361ull, 403u, 10u}, /* MAIN */
+    {0x10eaf3485580f14full, 413u, 6u}, /* MAIN */
+    {0x4eb87c62eb3ffc03ull, 419u, 7u}, /* MAIN */
+    {0xfa1f03460d2b248aull, 426u, 11u}, /* MAIN */
+    {0x6fe68503a052a74aull, 437u, 19u}, /* MAIN */
+    {0xb925ed2d79a9632full, 456u, 3u}, /* MAIN */
+    {0x76cafd61d17671faull, 459u, 6u}, /* MAIN */
+    {0x43eadd4b65afe4cfull, 465u, 13u}, /* MAIN */
+    {0x8dd031586049fa42ull, 478u, 1u}, /* MAIN */
+    {0x4c8c5b155d4f6febull, 479u, 3u}, /* MAIN */
+    {0x4c8c5b155d4f6febull, 482u, 3u}, /* MAIN */
+    {0x4093cb3f0da76445ull, 485u, 2u}, /* MAIN */
+    {0x8f19d75861620ccbull, 487u, 1u}, /* MAIN */
+    {0xd7a11579c92b4ab1ull, 488u, 5u}, /* MAIN */
+    {0x48a37186ebecc372ull, 493u, 3u}, /* MAIN */
+    {0xf4a3d1eaf9c5886full, 496u, 2u}, /* MAIN */
+    {0x6c328fb0a0efdd65ull, 498u, 2u}, /* MAIN */
+    {0x114795da03ccb215ull, 500u, 6u}, /* MAIN */
+    {0x121d52b75d4e26d4ull, 506u, 1u}, /* MAIN */
+    {0x121d52b75d4e26d4ull, 507u, 1u}, /* MAIN */
+    {0x121d52b75d4e26d4ull, 508u, 1u}, /* MAIN */
+    {0x4c3eda7f9d0a8fc5ull, 509u, 1u}, /* MAIN */
+    {0x4c3eba7f9d0a5965ull, 510u, 1u}, /* MAIN */
+    {0x11b094b75cf1c51aull, 511u, 1u}, /* MAIN */
+    {0x5885c0eebefc0b5cull, 512u, 1u}, /* MAIN */
+    {0xd23eb6f33b5da4c1ull, 513u, 6u}, /* MAIN */
+    {0xaef0ac3206761bccull, 519u, 3u}, /* MAIN */
+    {0xc14ef7ba95870815ull, 522u, 1u}, /* MAIN_0004 */
+    {0xb128b6dab75c0807ull, 523u, 1u}, /* MAIN_0000+MAIN_0001 */
+    {0xbb79baf5593bc198ull, 524u, 2u}, /* MAIN_0007 */
+    {0x93ca35dc79a23e15ull, 526u, 2u}, /* MAIN_0000+MAIN_0001 */
+    {0x0918110073ed92d1ull, 528u, 2u}, /* MAIN_0000+MAIN_0001 */
+    {0x8d6da7aae5eb4a97ull, 530u, 3u}, /* MAIN_0007 */
+    {0x0918110073ed92d1ull, 533u, 2u}, /* MAIN_0007 */
+    {0x18c562bbc97352ccull, 535u, 5u}, /* MAIN_0000+MAIN_0001 */
+    {0x0e7ebb6b749b9489ull, 540u, 1u}, /* MAIN_0000+MAIN_0001 */
+    {0x4d39347f9dde4cd9ull, 541u, 1u}, /* MAIN_0000+MAIN_0001 */
+    {0x4d00bc7f9daf6eaaull, 542u, 1u}, /* MAIN_0000+MAIN_0001 */
+    {0xa415dd858a2c2d80ull, 543u, 2u}, /* MAIN_0000+MAIN_0001 */
+    {0x501f7c8ea4c7bb90ull, 545u, 3u}, /* MAIN_0010 */
+    {0xf055c836faf7b499ull, 548u, 4u}, /* MAIN_0000+MAIN_0001 */
+    {0x501f7c8ea4c7bb90ull, 552u, 3u}, /* MAIN_0010 */
+    {0x994f29653e29b67aull, 555u, 1u}, /* MAIN_0000+MAIN_0001 */
+    {0x307ea5178d9672c8ull, 556u, 3u}, /* MAIN_0000+MAIN_0001 */
+    {0x358fe79033d959f5ull, 559u, 2u}, /* MAIN_0000+MAIN_0001 */
+    {0xd884f0cad899177cull, 561u, 9u}, /* MAIN_0004 */
+    {0x04d031bd839c66a0ull, 570u, 2u}, /* MAIN_0000+MAIN_0001 */
+    {0x1ecdf1661ab021baull, 572u, 1u}, /* MAIN_0000+MAIN_0001 */
+    {0x4d1f227f9dc9198bull, 573u, 1u}, /* MAIN_0000+MAIN_0001 */
+    {0x0817627f76c319c7ull, 574u, 1u}, /* MAIN_0000+MAIN_0001 */
+    {0xcac8a2667bbd9dfcull, 575u, 1u}, /* MAIN_0000+MAIN_0001 */
+    {0x1d7ca4ad9e597ac4ull, 576u, 1u}, /* MAIN_0000+MAIN_0001 */
+    {0x4d5ef27f9dfeabf0ull, 577u, 1u}, /* MAIN_0000+MAIN_0001 */
+    {0x993a02653e17182bull, 578u, 1u}, /* MAIN_0000+MAIN_0001 */
+    {0x173d3c231eb9671full, 579u, 3u}, /* MAIN_0000+MAIN_0001 */
+    {0xf529f2920490d7c4ull, 582u, 1u}, /* MAIN_0010 */
+    {0xd053ec7c63eea235ull, 583u, 2u}, /* MAIN_0004 */
+    {0xd8ac9b2ee7327615ull, 585u, 8u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0x1bdec3d7a37e4f9cull, 593u, 3u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0xd7cc71c4fe8a26afull, 596u, 4u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0x4d5d065968ebc868ull, 600u, 10u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0x8bc89ef8fdbdfa6cull, 610u, 2u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0x9923ed72cae771eaull, 612u, 18u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0xc98a695e96eac66dull, 630u, 20u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0x2cded0994100299dull, 650u, 10u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0x21b622b385bc0397ull, 660u, 7u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0x9d4f6d2c12be26f6ull, 667u, 27u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0x0c1df8d4184edf21ull, 694u, 16u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0xcd71b882612fc43aull, 710u, 33u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0xbfdfb449daa568f9ull, 743u, 16u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0x54e6d8967dd67020ull, 759u, 4u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0x797a9683fc2a25b2ull, 763u, 3u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0x370d2ddc4c2c6de9ull, 766u, 8u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0xd44434709fd1c369ull, 774u, 8u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0xa0420b82e8c370ddull, 782u, 8u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0x69d0452a3fc1e7fcull, 790u, 8u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0x69d0452a3fc1e7fcull, 798u, 8u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0x69f997e3c7709a28ull, 806u, 6u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0xde46f3e218bcce91ull, 812u, 4u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0x71a19f9767c1e1d1ull, 816u, 12u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0x724c851b4c22f7c5ull, 828u, 4u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0xef72c6083fbbc7f5ull, 832u, 4u}, /* SC02_031 */
+    {0xbeda5c299bc00539ull, 836u, 1u}, /* MAIN_0012 */
+    {0xb6a7caa94c926faeull, 837u, 1u}, /* SC02_031 */
+    {0x2ee082c0159bac91ull, 838u, 3u}, /* MAIN_0012 */
+    {0x33f6fd3eecf05945ull, 841u, 16u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0xfa7cd9eada81088eull, 857u, 3u}, /* SC02_031 */
+    {0x53a3a63a1b7e0cb4ull, 860u, 5u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0x6c0f278702c78e2bull, 865u, 7u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0xfa7748cd98bdb3f6ull, 872u, 13u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0x4dbba4c2501f0266ull, 885u, 1u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0xcceb3fa4d925018aull, 886u, 7u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0xf16aa9b1e2eec8c5ull, 893u, 8u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0xf16aa9b1e2eec8c5ull, 901u, 8u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0xbae531317076f4ddull, 909u, 8u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0x0ca6550e4f477c3dull, 917u, 8u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0xc0b5b3293893f681ull, 925u, 8u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0x81c895083a0d9329ull, 933u, 8u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0x4167077896529671ull, 941u, 8u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0x0692c39342a7db1dull, 949u, 20u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0xedc1d553164d6ae9ull, 969u, 4u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0xe101c1c47a06aec5ull, 973u, 8u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0xfa61bfb0541f6335ull, 981u, 8u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0x19cde8c979e9f231ull, 989u, 8u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0x095d628d71630ae5ull, 997u, 8u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0x0a5b62da3d7adec5ull, 1005u, 24u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0x6982d5d1594ad0a5ull, 1029u, 16u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0xfbdd968d3fb50905ull, 1045u, 16u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0xf16aa9b1e2eec8c5ull, 1061u, 8u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0x9e76b50f507bd905ull, 1069u, 16u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0x6853246e4cdac23dull, 1085u, 28u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0xd48bb7aaff6bc059ull, 1113u, 4u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0x9e76b50f507bd905ull, 1117u, 16u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0xf6c446eb80df1c4dull, 1133u, 24u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0xa4c876e29c42cb09ull, 1157u, 8u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0x4ae052c504b75685ull, 1165u, 13u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0xdbfe081e70eed159ull, 1178u, 3u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0xb7fb8791f2d1e335ull, 1181u, 16u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0xe101c1c47a06aec5ull, 1197u, 8u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0xe101c1c47a06aec5ull, 1205u, 8u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0xe101c1c47a06aec5ull, 1213u, 8u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0xb939a78be475d46dull, 1221u, 16u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0x07782bed1136c6edull, 1237u, 16u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0xc51b5bf46ddaead5ull, 1253u, 4u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0x3130cad3c69433c5ull, 1257u, 12u}, /* MAIN_0012+SC02_031+SC01_000+SC01_001 */
+    {0x08bfc49fbdcc3e72ull, 1269u, 13u}, /* SC02_031 */
+    {0xcefbc98f7fca51b2ull, 1282u, 15u}, /* SC02_031 */
+    {0x6be0747c289c0282ull, 1297u, 1u}, /* MAIN_0012 */
+    {0x3908408a58e7ad6cull, 1298u, 1u}, /* MAIN_0012 */
+    {0xe303885fa4c67e41ull, 1299u, 30u}, /* SC02_031 */
+    {0x891bd4d0f286f9d7ull, 1329u, 1u}, /* MAIN_0012 */
+    {0xa8bfac649c910e2aull, 1330u, 17u}, /* SC02_031 */
+    {0x0a528692a18ae6d2ull, 1347u, 1u}, /* MAIN_0012 */
+    {0x6d3572669b2cde42ull, 1348u, 1u}, /* MAIN_0012 */
+    {0x0b402f5b24b9cd40ull, 1349u, 6u}, /* SC02_031 */
+    {0x4d25767f9dce13f5ull, 1355u, 1u}, /* MAIN_0012+SC02_031 */
+    {0x8359ca518347f74full, 1356u, 6u}, /* SC02_031 */
+    {0x6d3fa4669b3587bdull, 1362u, 1u}, /* MAIN_0012 */
+    {0x4c29127f9cf6dfe3ull, 1363u, 1u}, /* SC02_031 */
+    {0x62001312a9541422ull, 1364u, 4u}, /* MAIN_0012 */
+    {0x915df86817fef1aeull, 1368u, 2u}, /* MAIN_0012 */
+    {0xbd742d70d0c12151ull, 1370u, 2u}, /* MAIN_0012 */
+    {0x0a528692a18ae6d2ull, 1372u, 1u}, /* MAIN_0012 */
+    {0xf53ef80052cbb842ull, 1373u, 2u}, /* MAIN_0012 */
+    {0x6d3572669b2cde42ull, 1375u, 1u}, /* MAIN_0012 */
+    {0x6c093c7c28bea86eull, 1376u, 1u}, /* MAIN_0012 */
+    {0x09946d29a7bc666eull, 1377u, 3u}, /* MAIN_0012 */
+    {0x432e817dae1b0125ull, 1380u, 2u}, /* MAIN_0012 */
+    {0x90c2743550559d4aull, 1382u, 3u}, /* MAIN_0012 */
+    {0x1b39ee8367060b91ull, 1385u, 8u}, /* SC02_031 */
+    {0x1b39ee8367060b91ull, 1393u, 8u}, /* SC02_031 */
+    {0x8c3751f5666b8db7ull, 1401u, 2u}, /* MAIN_0012 */
+    {0x8dbf88d2fc97a6c8ull, 1403u, 1u}, /* SC02_031 */
+    {0x106a4174b65d5ad1ull, 1404u, 3u}, /* MAIN_0012 */
+    {0xd797e9196ce6bc07ull, 1407u, 8u}, /* MAIN_0012 */
+    {0xb5f67f4cfda1d3e4ull, 1415u, 4u}, /* MAIN_0012 */
+    {0xd64410baff88352dull, 1419u, 1u}, /* MAIN_0012 */
+    {0x379e0696efa58d75ull, 1420u, 2u}, /* MAIN_0012 */
+    {0xb726227e8b353106ull, 1422u, 9u}, /* MAIN_0012 */
+    {0x1d47073678a76aa9ull, 1431u, 6u}, /* MAIN_0012 */
+    {0xc0722ee2f5f23809ull, 1437u, 14u}, /* MAIN_0012 */
+    {0x414e4c79fe6c3e23ull, 1451u, 7u}, /* SC02_031 */
+    {0x9500b8354d16db90ull, 1458u, 4u}, /* MAIN_0012 */
+    {0x69d0452a3fc1e7fcull, 1462u, 8u}, /* SC02_031 */
+};
+enum { CODE_SITE_GROUPS = 203 };
+
+/* Group verification is cached until the code may have changed: a new
+ * overlay selection, a different guest memory, or a new CPU run. */
+static unsigned g_code_epoch = 1u;
+static unsigned g_code_site_epoch[CODE_SITE_GROUPS];
+static int8_t g_code_site_ok[CODE_SITE_GROUPS];
+
+static void code_sites_invalidate(void) {
+    if (++g_code_epoch == 0) g_code_epoch = 1u;
+}
+
+static int code_site_group_ok(unsigned group) {
+    if (group >= CODE_SITE_GROUPS) return 0;
+    if (g_code_site_epoch[group] != g_code_epoch) {
+        const CodeSiteGroup *g = &kCodeSiteGroups[group];
+        uint64_t h = 0xcbf29ce484222325ull;
+        int ok = 1;
+        unsigned i, b;
+        for (i = 0; i < g->count && ok; ++i) {
+            uint32_t word;
+            if (!code_word(g_fetch_memory, NULL, kCodeSitePcs[g->first + i], &word)) {
+                ok = 0;
+                break;
+            }
+            for (b = 0; b < 4u; ++b) {
+                h ^= (word >> (8u * b)) & 0xffu;
+                h *= 0x100000001b3ull;
+            }
+        }
+        g_code_site_ok[group] = (int8_t)(ok && h == g->digest);
+        g_code_site_epoch[group] = g_code_epoch;
+    }
+    return g_code_site_ok[group];
+}
+
+static int code_site(uint32_t pc, unsigned group, uint32_t instruction) {
+    uint32_t word;
+    return code_site_group_ok(group) && code_word(g_fetch_memory, NULL, pc, &word) &&
+        word == instruction;
 }
 
 static int formatter_admitted(const FormatterCpu *cpu, uint32_t *out);
@@ -10052,155 +10568,155 @@ static int gte_load_successor(uint8_t reg, uint32_t pc, uint32_t word) {
         if (rs != reg && !((op == 0u || (op >= 4u && op <= 7u) || (op >= 40u && op <= 46u)) && rt == reg))
             return 1;
     }
-    static const struct { uint8_t reg; uint32_t pc, word; } successors[] = {
-        {2, 0x80049470u, 0x48035000u},
-        {3, 0x80049474u, 0xe8ab0004u},
-        {2, 0x80049484u, 0x03e00008u},
-        {2, 0x80047d4cu, 0x24010020u},
-        {11, 0x80048e04u, 0x480c5000u},
-        {12, 0x80048e08u, 0x480d5800u},
-        {13, 0x80048e0cu, 0x48880000u},
-        {14, 0x80048e38u, 0x480f5000u},
-        {15, 0x80048e3cu, 0x48185800u},
-        {24, 0x80048e40u, 0x48880000u},
-        {8, 0x80048e74u, 0x48095000u},
-        {9, 0x80048e78u, 0x3108ffffu},
-        {11, 0x800485b0u, 0x480cd000u},
-        {12, 0x800485b4u, 0x480dd800u},
-        {13, 0x800485b8u, 0x48884800u},
-        {8, 0x80048624u, 0x4809d000u},
-        {9, 0x80048628u, 0x480ad800u},
-        {10, 0x8004862cu, 0x010b4021u},
-        {12, 0x80012608u, 0x480d5000u},
-        {13, 0x8001260cu, 0x480e5800u},
-        {14, 0x80012610u, 0xa62c0000u},
-        {12, 0x8001264cu, 0x480d5000u},
-        {13, 0x80012650u, 0x480e5800u},
-        {14, 0x80012654u, 0xa44c0000u},
-        {12, 0x80012690u, 0x480d5000u},
-        {13, 0x80012694u, 0x480e5800u},
-        {14, 0x80012698u, 0xa44c0000u}
-        ,{2, 0x80049450u, 0x03e00008u}
-        ,{11, 0x80047ee0u, 0x480cd000u}
-        ,{12, 0x80047ee4u, 0x480dd800u}
-        ,{13, 0x80047ee8u, 0x016c5820u}
-        ,{3, 0x80047f00u, 0x2401fffeu}
-        ,{8, 0x80047f68u, 0x4809d000u}
-        ,{9, 0x80047f6cu, 0x480ad800u}
-        ,{10, 0x80047f70u, 0x01c84007u}
+    static const struct { uint8_t reg; uint32_t pc, grp; } successors[] = {
+        {2, 0x80049470u, 42u /* site group */},
+        {3, 0x80049474u, 42u /* site group */},
+        {2, 0x80049484u, 42u /* site group */},
+        {2, 0x80047d4cu, 26u /* site group */},
+        {11, 0x80048e04u, 36u /* site group */},
+        {12, 0x80048e08u, 36u /* site group */},
+        {13, 0x80048e0cu, 36u /* site group */},
+        {14, 0x80048e38u, 36u /* site group */},
+        {15, 0x80048e3cu, 36u /* site group */},
+        {24, 0x80048e40u, 36u /* site group */},
+        {8, 0x80048e74u, 36u /* site group */},
+        {9, 0x80048e78u, 36u /* site group */},
+        {11, 0x800485b0u, 31u /* site group */},
+        {12, 0x800485b4u, 31u /* site group */},
+        {13, 0x800485b8u, 31u /* site group */},
+        {8, 0x80048624u, 32u /* site group */},
+        {9, 0x80048628u, 32u /* site group */},
+        {10, 0x8004862cu, 32u /* site group */},
+        {12, 0x80012608u, 2u /* site group */},
+        {13, 0x8001260cu, 2u /* site group */},
+        {14, 0x80012610u, 2u /* site group */},
+        {12, 0x8001264cu, 2u /* site group */},
+        {13, 0x80012650u, 2u /* site group */},
+        {14, 0x80012654u, 2u /* site group */},
+        {12, 0x80012690u, 2u /* site group */},
+        {13, 0x80012694u, 2u /* site group */},
+        {14, 0x80012698u, 2u /* site group */}
+        ,{2, 0x80049450u, 42u /* site group */}
+        ,{11, 0x80047ee0u, 27u /* site group */}
+        ,{12, 0x80047ee4u, 27u /* site group */}
+        ,{13, 0x80047ee8u, 27u /* site group */}
+        ,{3, 0x80047f00u, 28u /* site group */}
+        ,{8, 0x80047f68u, 28u /* site group */}
+        ,{9, 0x80047f6cu, 28u /* site group */}
+        ,{10, 0x80047f70u, 28u /* site group */}
         /* func_800126C4's three MFC2 chains, same shape as func_80012558. */
-        ,{12, 0x80012770u, 0x480d5000u}
-        ,{13, 0x80012774u, 0x480e5800u}
-        ,{14, 0x80012778u, 0xa62c0000u}
-        ,{12, 0x800127b4u, 0x480d5000u}
-        ,{13, 0x800127b8u, 0x480e5800u}
-        ,{14, 0x800127bcu, 0xa44c0000u}
-        ,{12, 0x800127f8u, 0x480d5000u}
-        ,{13, 0x800127fcu, 0x480e5800u}
-        ,{14, 0x80012800u, 0xa44c0000u}
+        ,{12, 0x80012770u, 3u /* site group */}
+        ,{13, 0x80012774u, 3u /* site group */}
+        ,{14, 0x80012778u, 3u /* site group */}
+        ,{12, 0x800127b4u, 3u /* site group */}
+        ,{13, 0x800127b8u, 3u /* site group */}
+        ,{14, 0x800127bcu, 3u /* site group */}
+        ,{12, 0x800127f8u, 3u /* site group */}
+        ,{13, 0x800127fcu, 3u /* site group */}
+        ,{14, 0x80012800u, 4u /* site group */}
         /* func_800123F0's three MFC2 chains. */
-        ,{12, 0x8001249cu, 0x480d5000u}
-        ,{13, 0x800124a0u, 0x480e5800u}
-        ,{14, 0x800124a4u, 0xa62c0000u}
-        ,{12, 0x800124e0u, 0x480d5000u}
-        ,{13, 0x800124e4u, 0x480e5800u}
-        ,{14, 0x800124e8u, 0xa44c0000u}
-        ,{12, 0x80012524u, 0x480d5000u}
-        ,{13, 0x80012528u, 0x480e5800u}
-        ,{14, 0x8001252cu, 0xa44c0000u}
+        ,{12, 0x8001249cu, 0u /* site group */}
+        ,{13, 0x800124a0u, 0u /* site group */}
+        ,{14, 0x800124a4u, 0u /* site group */}
+        ,{12, 0x800124e0u, 0u /* site group */}
+        ,{13, 0x800124e4u, 0u /* site group */}
+        ,{14, 0x800124e8u, 0u /* site group */}
+        ,{12, 0x80012524u, 1u /* site group */}
+        ,{13, 0x80012528u, 1u /* site group */}
+        ,{14, 0x8001252cu, 1u /* site group */}
         /* func_80048FBC's three MFC2 reads of IR1..3. */
-        ,{8, 0x80048ff8u, 0x48095000u}
-        ,{9, 0x80048ffcu, 0x480a5800u}
-        ,{10, 0x80049000u, 0xa4c80000u}
+        ,{8, 0x80048ff8u, 37u /* site group */}
+        ,{9, 0x80048ffcu, 37u /* site group */}
+        ,{10, 0x80049000u, 38u /* site group */}
         /* func_80048EAC's three MFC2 read trios. */
-        ,{11, 0x80048f14u, 0x480c5000u}
-        ,{12, 0x80048f18u, 0x480d5800u}
-        ,{13, 0x80048f1cu, 0x48880000u}
-        ,{14, 0x80048f48u, 0x480f5000u}
-        ,{15, 0x80048f4cu, 0x48185800u}
-        ,{24, 0x80048f50u, 0x48880000u}
-        ,{8, 0x80048f84u, 0x48095000u}
-        ,{9, 0x80048f88u, 0x3108ffffu}
+        ,{11, 0x80048f14u, 37u /* site group */}
+        ,{12, 0x80048f18u, 37u /* site group */}
+        ,{13, 0x80048f1cu, 37u /* site group */}
+        ,{14, 0x80048f48u, 37u /* site group */}
+        ,{15, 0x80048f4cu, 37u /* site group */}
+        ,{24, 0x80048f50u, 37u /* site group */}
+        ,{8, 0x80048f84u, 37u /* site group */}
+        ,{9, 0x80048f88u, 37u /* site group */}
         /* func_8004D504's two MFC2 read trios. */
-        ,{11, 0x8004d610u, 0x480cd000u}
-        ,{12, 0x8004d614u, 0x480dd800u}
-        ,{13, 0x8004d618u, 0x3108ffffu}
-        ,{8, 0x8004d68cu, 0x4809d000u}
-        ,{9, 0x8004d690u, 0x480ad800u}
-        ,{10, 0x8004d694u, 0x010b4021u}
+        ,{11, 0x8004d610u, 46u /* site group */}
+        ,{12, 0x8004d614u, 46u /* site group */}
+        ,{13, 0x8004d618u, 46u /* site group */}
+        ,{8, 0x8004d68cu, 46u /* site group */}
+        ,{9, 0x8004d690u, 46u /* site group */}
+        ,{10, 0x8004d694u, 46u /* site group */}
         /* func_80048B6C's two MFC2 read trios. */
-        ,{11, 0x80048c08u, 0x480cd000u}
-        ,{12, 0x80048c0cu, 0x480dd800u}
-        ,{13, 0x80048c10u, 0x48884800u}
-        ,{8, 0x80048c7cu, 0x4809d000u}
-        ,{9, 0x80048c80u, 0x480ad800u}
-        ,{10, 0x80048c84u, 0x010b4021u}
-        ,{12, 0x80020f74u, 0x480d5000u}
-        ,{13, 0x80020f78u, 0x480e5800u}
-        ,{14, 0x80020f7cu, 0xa48c0000u}
-        ,{12, 0x80020fb8u, 0x480d5000u}
-        ,{13, 0x80020fbcu, 0x480e5800u}
-        ,{14, 0x80020fc0u, 0xa48c0002u}
-        ,{12, 0x80020fecu, 0x480d5000u}
-        ,{13, 0x80020ff0u, 0x480e5800u}
-        ,{14, 0x80020ff4u, 0xa48c0004u}
-        ,{12, 0x8012edc0u, 0x480d5000u}
-        ,{13, 0x8012edc4u, 0x480e5800u}
-        ,{14, 0x8012edc8u, 0xa64c0000u}
-        ,{12, 0x8012ee00u, 0x480d5000u}
-        ,{13, 0x8012ee04u, 0x480e5800u}
-        ,{14, 0x8012ee08u, 0xa44c0000u}
-        ,{12, 0x8012ee40u, 0x480d5000u}
-        ,{13, 0x8012ee44u, 0x480e5800u}
-        ,{14, 0x8012ee48u, 0xa44c0000u}
-        ,{12, 0x8012ef8cu, 0x00000000u}
-        ,{12, 0x8012f020u, 0x00000000u}
-        ,{12, 0x80132a74u, 0x480d5000u}
-        ,{13, 0x80132a78u, 0x480e5800u}
-        ,{14, 0x80132a7cu, 0xa64c0000u}
-        ,{12, 0x80132ab8u, 0x480d5000u}
-        ,{13, 0x80132abcu, 0x480e5800u}
-        ,{14, 0x80132ac0u, 0xa44c0000u}
-        ,{12, 0x80132afcu, 0x480d5000u}
-        ,{13, 0x80132b00u, 0x480e5800u}
-        ,{14, 0x80132b04u, 0xa44c0000u}
-        ,{12, 0x80132c20u, 0x480d5000u}
-        ,{13, 0x80132c24u, 0x480e5800u}
-        ,{14, 0x80132c28u, 0xa62c0000u}
-        ,{12, 0x80132c60u, 0x480d5000u}
-        ,{13, 0x80132c64u, 0x480e5800u}
-        ,{14, 0x80132c68u, 0xa44c0000u}
-        ,{12, 0x80132ca0u, 0x480d5000u}
-        ,{13, 0x80132ca4u, 0x480e5800u}
-        ,{14, 0x80132ca8u, 0xa44c0000u}
-        ,{12, 0x80133164u, 0x00000000u}
-        ,{11, 0x800483f4u, 0x480c5000u}
-        ,{12, 0x800483f8u, 0x480d5800u}
-        ,{13, 0x800483fcu, 0x48880000u}
-        ,{14, 0x80048428u, 0x480f5000u}
-        ,{15, 0x8004842cu, 0x48185800u}
-        ,{24, 0x80048430u, 0x48880000u}
-        ,{8, 0x80048464u, 0x48095000u}
-        ,{9, 0x80048468u, 0xe8cb0010u}
-        ,{8, 0x800484b4u, 0x4809d000u}
-        ,{9, 0x800484b8u, 0x480ad800u}
-        ,{10, 0x800484bcu, 0x8c8b0014u}
-        ,{3, 0x80049658u, 0xc8e00000u}
-        ,{8, 0x80049680u, 0x48029800u}
-        ,{2, 0x80049684u, 0x01034025u}
-        ,{19, 0x80182f74u, 0x1443000au}
-        ,{19, 0x80182f74u, 0x44415749u}
-        ,{2, 0x800491f0u, 0x03e00008u}
-        ,{12, 0x8017f8c4u, 0x00000000u}
-        ,{12, 0x8017f8c4u, 0x01a00260u}
-        ,{12, 0x8017fc34u, 0x00000000u}
-        ,{12, 0x8017fc34u, 0x000000c2u}
-        ,{12, 0x80180484u, 0x00000000u}
+        ,{11, 0x80048c08u, 34u /* site group */}
+        ,{12, 0x80048c0cu, 34u /* site group */}
+        ,{13, 0x80048c10u, 34u /* site group */}
+        ,{8, 0x80048c7cu, 34u /* site group */}
+        ,{9, 0x80048c80u, 34u /* site group */}
+        ,{10, 0x80048c84u, 34u /* site group */}
+        ,{12, 0x80020f74u, 11u /* site group */}
+        ,{13, 0x80020f78u, 11u /* site group */}
+        ,{14, 0x80020f7cu, 11u /* site group */}
+        ,{12, 0x80020fb8u, 11u /* site group */}
+        ,{13, 0x80020fbcu, 11u /* site group */}
+        ,{14, 0x80020fc0u, 11u /* site group */}
+        ,{12, 0x80020fecu, 11u /* site group */}
+        ,{13, 0x80020ff0u, 11u /* site group */}
+        ,{14, 0x80020ff4u, 11u /* site group */}
+        ,{12, 0x8012edc0u, 101u /* site group */}
+        ,{13, 0x8012edc4u, 101u /* site group */}
+        ,{14, 0x8012edc8u, 101u /* site group */}
+        ,{12, 0x8012ee00u, 102u /* site group */}
+        ,{13, 0x8012ee04u, 102u /* site group */}
+        ,{14, 0x8012ee08u, 102u /* site group */}
+        ,{12, 0x8012ee40u, 102u /* site group */}
+        ,{13, 0x8012ee44u, 102u /* site group */}
+        ,{14, 0x8012ee48u, 102u /* site group */}
+        ,{12, 0x8012ef8cu, 103u /* site group */}
+        ,{12, 0x8012f020u, 104u /* site group */}
+        ,{12, 0x80132a74u, 105u /* site group */}
+        ,{13, 0x80132a78u, 105u /* site group */}
+        ,{14, 0x80132a7cu, 105u /* site group */}
+        ,{12, 0x80132ab8u, 105u /* site group */}
+        ,{13, 0x80132abcu, 105u /* site group */}
+        ,{14, 0x80132ac0u, 105u /* site group */}
+        ,{12, 0x80132afcu, 105u /* site group */}
+        ,{13, 0x80132b00u, 106u /* site group */}
+        ,{14, 0x80132b04u, 106u /* site group */}
+        ,{12, 0x80132c20u, 107u /* site group */}
+        ,{13, 0x80132c24u, 107u /* site group */}
+        ,{14, 0x80132c28u, 107u /* site group */}
+        ,{12, 0x80132c60u, 107u /* site group */}
+        ,{13, 0x80132c64u, 107u /* site group */}
+        ,{14, 0x80132c68u, 107u /* site group */}
+        ,{12, 0x80132ca0u, 107u /* site group */}
+        ,{13, 0x80132ca4u, 107u /* site group */}
+        ,{14, 0x80132ca8u, 107u /* site group */}
+        ,{12, 0x80133164u, 108u /* site group */}
+        ,{11, 0x800483f4u, 29u /* site group */}
+        ,{12, 0x800483f8u, 29u /* site group */}
+        ,{13, 0x800483fcu, 29u /* site group */}
+        ,{14, 0x80048428u, 30u /* site group */}
+        ,{15, 0x8004842cu, 30u /* site group */}
+        ,{24, 0x80048430u, 30u /* site group */}
+        ,{8, 0x80048464u, 30u /* site group */}
+        ,{9, 0x80048468u, 30u /* site group */}
+        ,{8, 0x800484b4u, 30u /* site group */}
+        ,{9, 0x800484b8u, 30u /* site group */}
+        ,{10, 0x800484bcu, 30u /* site group */}
+        ,{3, 0x80049658u, 43u /* site group */}
+        ,{8, 0x80049680u, 43u /* site group */}
+        ,{2, 0x80049684u, 43u /* site group */}
+        ,{19, 0x80182f74u, 191u /* site group */}
+        ,{19, 0x80182f74u, 190u /* site group */}
+        ,{2, 0x800491f0u, 39u /* site group */}
+        ,{12, 0x8017f8c4u, 168u /* site group */}
+        ,{12, 0x8017f8c4u, 167u /* site group */}
+        ,{12, 0x8017fc34u, 170u /* site group */}
+        ,{12, 0x8017fc34u, 169u /* site group */}
+        ,{12, 0x80180484u, 174u /* site group */}
     };
     unsigned i;
     for (i = 0; i < sizeof(successors)/sizeof(successors[0]); ++i)
         if (successors[i].reg == reg && successors[i].pc == pc &&
-            successors[i].word == word) return 1;
+            code_site(successors[i].pc, successors[i].grp, word)) return 1;
     return 0;
 }
 
@@ -10269,7 +10785,7 @@ static int gte_47d3c_caller(uint32_t ra) {
  */
 typedef struct {
     uint32_t pc;
-    uint32_t word;
+    uint32_t grp; /* code-site group */
     uint8_t slot;
 } GteSite;
 
@@ -10278,7 +10794,7 @@ MUSASHI_FORMATTER_NOINLINE static int gte_site_lookup(const GteSite *sites, size
     size_t index;
 
     for (index = 0; index < count; ++index) {
-        if (sites[index].pc != pc || sites[index].word != word) {
+        if (sites[index].pc != pc || !code_site(pc, sites[index].grp, word)) {
             continue;
         }
         if (slot != NULL) {
@@ -10291,114 +10807,114 @@ MUSASHI_FORMATTER_NOINLINE static int gte_site_lookup(const GteSite *sites, size
 
 static int gte_12558_site(uint32_t pc, uint32_t word, unsigned *slot) {
     static const GteSite sites[] = {
-        {0x800125bcu,0x48cc0000u,0}, {0x800125c0u,0x48cd0800u,0},
-        {0x800125d0u,0x48cc1000u,0}, {0x800125d4u,0x48cd1800u,0},
-        {0x800125d8u,0x48ce2000u,0},
-        {0x800125ecu,0x488c4800u,3}, {0x800125f0u,0x488d5000u,3},
-        {0x800125f4u,0x488e5800u,3},
-        {0x80012600u,0x4a49e012u,4},
-        {0x80012604u,0x480c4800u,1}, {0x80012608u,0x480d5000u,1},
-        {0x8001260cu,0x480e5800u,1},
-        {0x8001262cu,0x488c4800u,3}, {0x80012630u,0x488d5000u,3},
-        {0x80012634u,0x488e5800u,3},
-        {0x80012640u,0x4a49e012u,4},
-        {0x80012648u,0x480c4800u,1}, {0x8001264cu,0x480d5000u,1},
-        {0x80012650u,0x480e5800u,1},
-        {0x80012670u,0x488c4800u,3}, {0x80012674u,0x488d5000u,3},
-        {0x80012678u,0x488e5800u,3},
-        {0x80012684u,0x4a49e012u,4},
-        {0x8001268cu,0x480c4800u,1}, {0x80012690u,0x480d5000u,1},
-        {0x80012694u,0x480e5800u,1}
-        ,{0x80047ec8u,0x48884800u,3u}
-        ,{0x80047eccu,0x48895000u,3u}
-        ,{0x80047ed0u,0x488a5800u,3u}
-        ,{0x80047ed8u,0x4aa00428u,4u}
-        ,{0x80047edcu,0x480bc800u,1u}
-        ,{0x80047ee0u,0x480cd000u,1u}
-        ,{0x80047ee4u,0x480dd800u,1u}
-        ,{0x80047ef0u,0x4882f000u,3u}
-        ,{0x80047efcu,0x4803f800u,1u}
-        ,{0x80047f48u,0x488d4000u,3u}
-        ,{0x80047f4cu,0x48884800u,3u}
-        ,{0x80047f50u,0x48895000u,3u}
-        ,{0x80047f54u,0x488a5800u,3u}
-        ,{0x80047f60u,0x4b90003du,4u}
-        ,{0x80047f64u,0x4808c800u,1u}
-        ,{0x80047f68u,0x4809d000u,1u}
-        ,{0x80047f6cu,0x480ad800u,1u}
+        {0x800125bcu,1u /* site group */,0}, {0x800125c0u,1u /* site group */,0},
+        {0x800125d0u,1u /* site group */,0}, {0x800125d4u,1u /* site group */,0},
+        {0x800125d8u,1u /* site group */,0},
+        {0x800125ecu,1u /* site group */,3}, {0x800125f0u,1u /* site group */,3},
+        {0x800125f4u,1u /* site group */,3},
+        {0x80012600u,2u /* site group */,4},
+        {0x80012604u,2u /* site group */,1}, {0x80012608u,2u /* site group */,1},
+        {0x8001260cu,2u /* site group */,1},
+        {0x8001262cu,2u /* site group */,3}, {0x80012630u,2u /* site group */,3},
+        {0x80012634u,2u /* site group */,3},
+        {0x80012640u,2u /* site group */,4},
+        {0x80012648u,2u /* site group */,1}, {0x8001264cu,2u /* site group */,1},
+        {0x80012650u,2u /* site group */,1},
+        {0x80012670u,2u /* site group */,3}, {0x80012674u,2u /* site group */,3},
+        {0x80012678u,2u /* site group */,3},
+        {0x80012684u,2u /* site group */,4},
+        {0x8001268cu,2u /* site group */,1}, {0x80012690u,2u /* site group */,1},
+        {0x80012694u,2u /* site group */,1}
+        ,{0x80047ec8u,27u /* site group */,3u}
+        ,{0x80047eccu,27u /* site group */,3u}
+        ,{0x80047ed0u,27u /* site group */,3u}
+        ,{0x80047ed8u,27u /* site group */,4u}
+        ,{0x80047edcu,27u /* site group */,1u}
+        ,{0x80047ee0u,27u /* site group */,1u}
+        ,{0x80047ee4u,27u /* site group */,1u}
+        ,{0x80047ef0u,27u /* site group */,3u}
+        ,{0x80047efcu,27u /* site group */,1u}
+        ,{0x80047f48u,28u /* site group */,3u}
+        ,{0x80047f4cu,28u /* site group */,3u}
+        ,{0x80047f50u,28u /* site group */,3u}
+        ,{0x80047f54u,28u /* site group */,3u}
+        ,{0x80047f60u,28u /* site group */,4u}
+        ,{0x80047f64u,28u /* site group */,1u}
+        ,{0x80047f68u,28u /* site group */,1u}
+        ,{0x80047f6cu,28u /* site group */,1u}
         /* func_800126C4 is the second PSY-Q GTE helper of this shape. It
          * overwrites RA with its own internal 80047948 jal (return alias
          * 800126F0) before every COP2 site, so it is admitted by exact
          * PC/word like func_80012558 rather than by caller. */
-        ,{0x80012724u,0x48cc0000u,0u}
-        ,{0x80012728u,0x48cd0800u,0u}
-        ,{0x80012738u,0x48cc1000u,0u}
-        ,{0x8001273cu,0x48cd1800u,0u}
-        ,{0x80012740u,0x48ce2000u,0u}
-        ,{0x80012754u,0x488c4800u,3u}
-        ,{0x80012758u,0x488d5000u,3u}
-        ,{0x8001275cu,0x488e5800u,3u}
-        ,{0x80012768u,0x4a49e012u,4u}
-        ,{0x8001276cu,0x480c4800u,1u}
-        ,{0x80012770u,0x480d5000u,1u}
-        ,{0x80012774u,0x480e5800u,1u}
-        ,{0x80012794u,0x488c4800u,3u}
-        ,{0x80012798u,0x488d5000u,3u}
-        ,{0x8001279cu,0x488e5800u,3u}
-        ,{0x800127a8u,0x4a49e012u,4u}
-        ,{0x800127b0u,0x480c4800u,1u}
-        ,{0x800127b4u,0x480d5000u,1u}
-        ,{0x800127b8u,0x480e5800u,1u}
-        ,{0x800127d8u,0x488c4800u,3u}
-        ,{0x800127dcu,0x488d5000u,3u}
-        ,{0x800127e0u,0x488e5800u,3u}
-        ,{0x800127ecu,0x4a49e012u,4u}
-        ,{0x800127f4u,0x480c4800u,1u}
-        ,{0x800127f8u,0x480d5000u,1u}
-        ,{0x800127fcu,0x480e5800u,1u}
+        ,{0x80012724u,3u /* site group */,0u}
+        ,{0x80012728u,3u /* site group */,0u}
+        ,{0x80012738u,3u /* site group */,0u}
+        ,{0x8001273cu,3u /* site group */,0u}
+        ,{0x80012740u,3u /* site group */,0u}
+        ,{0x80012754u,3u /* site group */,3u}
+        ,{0x80012758u,3u /* site group */,3u}
+        ,{0x8001275cu,3u /* site group */,3u}
+        ,{0x80012768u,3u /* site group */,4u}
+        ,{0x8001276cu,3u /* site group */,1u}
+        ,{0x80012770u,3u /* site group */,1u}
+        ,{0x80012774u,3u /* site group */,1u}
+        ,{0x80012794u,3u /* site group */,3u}
+        ,{0x80012798u,3u /* site group */,3u}
+        ,{0x8001279cu,3u /* site group */,3u}
+        ,{0x800127a8u,3u /* site group */,4u}
+        ,{0x800127b0u,3u /* site group */,1u}
+        ,{0x800127b4u,3u /* site group */,1u}
+        ,{0x800127b8u,3u /* site group */,1u}
+        ,{0x800127d8u,3u /* site group */,3u}
+        ,{0x800127dcu,3u /* site group */,3u}
+        ,{0x800127e0u,3u /* site group */,3u}
+        ,{0x800127ecu,3u /* site group */,4u}
+        ,{0x800127f4u,3u /* site group */,1u}
+        ,{0x800127f8u,3u /* site group */,1u}
+        ,{0x800127fcu,3u /* site group */,1u}
         /* func_800123F0 is the same helper one slot earlier in the same
          * PSY-Q GTE bank (its 80047948 return alias is 8001241C). */
-        ,{0x80012450u,0x48cc0000u,0u}
-        ,{0x80012454u,0x48cd0800u,0u}
-        ,{0x80012464u,0x48cc1000u,0u}
-        ,{0x80012468u,0x48cd1800u,0u}
-        ,{0x8001246cu,0x48ce2000u,0u}
-        ,{0x80012480u,0x488c4800u,3u}
-        ,{0x80012484u,0x488d5000u,3u}
-        ,{0x80012488u,0x488e5800u,3u}
-        ,{0x80012494u,0x4a49e012u,4u}
-        ,{0x80012498u,0x480c4800u,1u}
-        ,{0x8001249cu,0x480d5000u,1u}
-        ,{0x800124a0u,0x480e5800u,1u}
-        ,{0x800124c0u,0x488c4800u,3u}
-        ,{0x800124c4u,0x488d5000u,3u}
-        ,{0x800124c8u,0x488e5800u,3u}
-        ,{0x800124d4u,0x4a49e012u,4u}
-        ,{0x800124dcu,0x480c4800u,1u}
-        ,{0x800124e0u,0x480d5000u,1u}
-        ,{0x800124e4u,0x480e5800u,1u}
-        ,{0x80012504u,0x488c4800u,3u}
-        ,{0x80012508u,0x488d5000u,3u}
-        ,{0x8001250cu,0x488e5800u,3u}
-        ,{0x80012518u,0x4a49e012u,4u}
-        ,{0x80012520u,0x480c4800u,1u}
-        ,{0x80012524u,0x480d5000u,1u}
-        ,{0x80012528u,0x480e5800u,1u}
+        ,{0x80012450u,0u /* site group */,0u}
+        ,{0x80012454u,0u /* site group */,0u}
+        ,{0x80012464u,0u /* site group */,0u}
+        ,{0x80012468u,0u /* site group */,0u}
+        ,{0x8001246cu,0u /* site group */,0u}
+        ,{0x80012480u,0u /* site group */,3u}
+        ,{0x80012484u,0u /* site group */,3u}
+        ,{0x80012488u,0u /* site group */,3u}
+        ,{0x80012494u,0u /* site group */,4u}
+        ,{0x80012498u,0u /* site group */,1u}
+        ,{0x8001249cu,0u /* site group */,1u}
+        ,{0x800124a0u,0u /* site group */,1u}
+        ,{0x800124c0u,0u /* site group */,3u}
+        ,{0x800124c4u,0u /* site group */,3u}
+        ,{0x800124c8u,0u /* site group */,3u}
+        ,{0x800124d4u,0u /* site group */,4u}
+        ,{0x800124dcu,0u /* site group */,1u}
+        ,{0x800124e0u,0u /* site group */,1u}
+        ,{0x800124e4u,0u /* site group */,1u}
+        ,{0x80012504u,1u /* site group */,3u}
+        ,{0x80012508u,1u /* site group */,3u}
+        ,{0x8001250cu,1u /* site group */,3u}
+        ,{0x80012518u,1u /* site group */,4u}
+        ,{0x80012520u,1u /* site group */,1u}
+        ,{0x80012524u,1u /* site group */,1u}
+        ,{0x80012528u,1u /* site group */,1u}
         /* func_80048FBC is the exported 24-word matrix/vector leaf: five CTC2
          * control writes (rotation 0..4), two LWC2 loads of the V0 vector,
          * the 4A486012 MVMVA, three MFC2 reads of IR1..3, and the halfword
          * stores of the transformed result. Same slot convention. */
-        ,{0x80048fd0u,0x48c80000u,0u}
-        ,{0x80048fd4u,0x48c90800u,0u}
-        ,{0x80048fd8u,0x48ca1000u,0u}
-        ,{0x80048fdcu,0x48cb1800u,0u}
-        ,{0x80048fe0u,0x48cc2000u,0u}
-        ,{0x80048fe4u,0xc8a00000u,3u}
-        ,{0x80048fe8u,0xc8a10004u,3u}
-        ,{0x80048ff0u,0x4a486012u,4u}
-        ,{0x80048ff4u,0x48084800u,1u}
-        ,{0x80048ff8u,0x48095000u,1u}
-        ,{0x80048ffcu,0x480a5800u,1u}
+        ,{0x80048fd0u,37u /* site group */,0u}
+        ,{0x80048fd4u,37u /* site group */,0u}
+        ,{0x80048fd8u,37u /* site group */,0u}
+        ,{0x80048fdcu,37u /* site group */,0u}
+        ,{0x80048fe0u,37u /* site group */,0u}
+        ,{0x80048fe4u,37u /* site group */,3u}
+        ,{0x80048fe8u,37u /* site group */,3u}
+        ,{0x80048ff0u,37u /* site group */,4u}
+        ,{0x80048ff4u,37u /* site group */,1u}
+        ,{0x80048ff8u,37u /* site group */,1u}
+        ,{0x80048ffcu,37u /* site group */,1u}
     };
     return gte_site_lookup(sites, sizeof sites / sizeof sites[0], pc, word, slot);
 }
@@ -10423,15 +10939,15 @@ static int gte_47ec8_integer_caller(uint32_t ra) {
 }
 
 static int gte_47ec8_sub_site(uint32_t pc, uint32_t word) {
-    return (pc == 0x80047f0cu && word == 0x01c37022u) ||
-           (pc == 0x80047f28u && word == 0x01635822u);
+    return (pc == 0x80047f0cu && code_site(0x80047f0cu, 28u, word)) ||
+           (pc == 0x80047f28u && code_site(0x80047f28u, 28u, word));
 }
 
 static __attribute__((unused)) int gte_47ec8_srav_site(uint32_t pc, uint32_t word) {
-    return (pc == 0x80047f2cu && word == 0x01626007u) ||
-           (pc == 0x80047f70u && word == 0x01c84007u) ||
-           (pc == 0x80047f74u && word == 0x01c94807u) ||
-           (pc == 0x80047f78u && word == 0x01ca5007u);
+    return (pc == 0x80047f2cu && code_site(0x80047f2cu, 28u, word)) ||
+           (pc == 0x80047f70u && code_site(0x80047f70u, 28u, word)) ||
+           (pc == 0x80047f74u && code_site(0x80047f74u, 28u, word)) ||
+           (pc == 0x80047f78u && code_site(0x80047f78u, 28u, word));
 }
 
 /* func_800479E8 is the exported camera fixed-point stepper [800479E8,
@@ -10441,18 +10957,18 @@ static __attribute__((unused)) int gte_47ec8_srav_site(uint32_t pc, uint32_t wor
  * both pinned here. */
 static __attribute__((unused)) int gte_47a2c_srav_site(uint32_t pc, uint32_t word, uint32_t ra) {
     if (ra != 0x80047ba8u && ra != 0x80047bbcu) return 0;
-    return (pc == 0x80047a2cu && word == 0x00e31807u) ||
-           (pc == 0x80047a48u && word == 0x00e21007u) ||
-           (pc == 0x80047a58u && word == 0x00e31807u) ||
-           (pc == 0x80047a74u && word == 0x00e21007u);
+    return (pc == 0x80047a2cu && code_site(0x80047a2cu, 23u, word)) ||
+           (pc == 0x80047a48u && code_site(0x80047a48u, 23u, word)) ||
+           (pc == 0x80047a58u && code_site(0x80047a58u, 23u, word)) ||
+           (pc == 0x80047a74u && code_site(0x80047a74u, 23u, word));
 }
 
 /* func_80047B3C's two SRAVs. Both sit after one of its own internal calls
  * (80049440 and 800479E8), so each carries that call's fixed return alias
  * rather than a caller alias. */
 static __attribute__((unused)) int gte_47b3c_srav_site(uint32_t pc, uint32_t word, uint32_t ra) {
-    return (pc == 0x80047b7cu && word == 0x00512007u && ra == 0x80047b64u) ||
-           (pc == 0x80047bb0u && word == 0x00621007u && ra == 0x80047ba8u);
+    return (pc == 0x80047b7cu && code_site(0x80047b7cu, 24u, word) && ra == 0x80047b64u) ||
+           (pc == 0x80047bb0u && code_site(0x80047bb0u, 24u, word) && ra == 0x80047ba8u);
 }
 
 /* SRAV sites elsewhere inside exported, word-verified main-exec ranges. Every
@@ -10461,57 +10977,57 @@ static __attribute__((unused)) int gte_47b3c_srav_site(uint32_t pc, uint32_t wor
  * (including the shift source). A shift is defined for every value, so the
  * count is simply the low five bits of the source register. */
 static __attribute__((unused)) int gte_exported_srav_site(uint32_t pc, uint32_t word) {
-    static const struct { uint32_t pc, word; } sites[] = {
-        {0x80012988u, 0x02021007u},
-        {0x80012994u, 0x02031807u},
-        {0x8001299cu, 0x02021007u},
-        {0x8003d080u, 0x00821007u},
-        {0x80041f10u, 0x00648807u},
-        {0x80047a2cu, 0x00e31807u},
-        {0x80047a48u, 0x00e21007u},
-        {0x80047a58u, 0x00e31807u},
-        {0x80047a74u, 0x00e21007u},
-        {0x80047b7cu, 0x00512007u},
-        {0x80047bb0u, 0x00621007u},
-        {0x80047d8cu, 0x01646007u},
-        {0x80047f2cu, 0x01626007u},
-        {0x80047f70u, 0x01c84007u},
-        {0x80047f74u, 0x01c94807u},
-        {0x80047f78u, 0x01ca5007u},
-        {0x8005437cu, 0x00621007u},
-        {0x8005438cu, 0x00621007u},
-        {0x8005439cu, 0x00621007u},
-        {0x800543acu, 0x00621007u},
-        {0x800543bcu, 0x00621007u},
-        {0x800543ccu, 0x00621007u},
-        {0x800d2074u, 0x00821007u},
-        {0x800d2088u, 0x00821007u},
-        {0x800d209cu, 0x00821007u},
-        {0x800d2174u, 0x00821007u},
-        {0x800d2188u, 0x00821007u},
-        {0x800d219cu, 0x00821007u},
-        {0x800d25b8u, 0x00000ec7u},
-        {0x800d34d8u, 0x00061087u},
-        {0x8017e614u, 0x00000047u},
-        {0x8017ff74u, 0x00003087u},
-        {0x801802b8u, 0x00000007u},
-        {0x80180524u, 0x00070007u},
-        {0x80181778u, 0x00003087u},
-        {0x80181bbcu, 0x00000007u},
-        {0x80181c0cu, 0x00000007u},
-        {0x80181ef4u, 0x000c0047u},
-        {0x80181f00u, 0x000c0047u},
-        {0x80181f58u, 0x000c0047u},
-        {0x80181f64u, 0x000c0047u},
-        {0x8018205cu, 0x000c0047u},
-        {0x80182068u, 0x000c0047u},
-        {0x80182308u, 0x000c0007u},
-        {0x801823bcu, 0x00120007u},
-        {0x801823c8u, 0x00660007u},
+    static const struct { uint32_t pc, grp; } sites[] = {
+        {0x80012988u, 5u /* site group */},
+        {0x80012994u, 5u /* site group */},
+        {0x8001299cu, 5u /* site group */},
+        {0x8003d080u, 14u /* site group */},
+        {0x80041f10u, 15u /* site group */},
+        {0x80047a2cu, 23u /* site group */},
+        {0x80047a48u, 23u /* site group */},
+        {0x80047a58u, 23u /* site group */},
+        {0x80047a74u, 23u /* site group */},
+        {0x80047b7cu, 24u /* site group */},
+        {0x80047bb0u, 24u /* site group */},
+        {0x80047d8cu, 26u /* site group */},
+        {0x80047f2cu, 28u /* site group */},
+        {0x80047f70u, 28u /* site group */},
+        {0x80047f74u, 28u /* site group */},
+        {0x80047f78u, 28u /* site group */},
+        {0x8005437cu, 56u /* site group */},
+        {0x8005438cu, 56u /* site group */},
+        {0x8005439cu, 56u /* site group */},
+        {0x800543acu, 56u /* site group */},
+        {0x800543bcu, 56u /* site group */},
+        {0x800543ccu, 56u /* site group */},
+        {0x800d2074u, 78u /* site group */},
+        {0x800d2088u, 78u /* site group */},
+        {0x800d209cu, 78u /* site group */},
+        {0x800d2174u, 80u /* site group */},
+        {0x800d2188u, 80u /* site group */},
+        {0x800d219cu, 80u /* site group */},
+        {0x800d25b8u, 83u /* site group */},
+        {0x800d34d8u, 94u /* site group */},
+        {0x8017e614u, 166u /* site group */},
+        {0x8017ff74u, 171u /* site group */},
+        {0x801802b8u, 172u /* site group */},
+        {0x80180524u, 176u /* site group */},
+        {0x80181778u, 181u /* site group */},
+        {0x80181bbcu, 182u /* site group */},
+        {0x80181c0cu, 183u /* site group */},
+        {0x80181ef4u, 184u /* site group */},
+        {0x80181f00u, 185u /* site group */},
+        {0x80181f58u, 185u /* site group */},
+        {0x80181f64u, 185u /* site group */},
+        {0x8018205cu, 186u /* site group */},
+        {0x80182068u, 186u /* site group */},
+        {0x80182308u, 187u /* site group */},
+        {0x801823bcu, 187u /* site group */},
+        {0x801823c8u, 187u /* site group */},
     };
     unsigned i;
     for (i = 0; i < sizeof(sites)/sizeof(sites[0]); ++i)
-        if (sites[i].pc == pc && sites[i].word == word) return 1;
+        if (sites[i].pc == pc && code_site(pc, sites[i].grp, word)) return 1;
     return 0;
 }
 
@@ -10522,10 +11038,10 @@ static __attribute__((unused)) int gte_exported_srav_site(uint32_t pc, uint32_t 
  * 80013430, 8002C710). Slots: 0 = data write, 1 = command, 2 = data read. */
 static int gte_49324_site(uint32_t pc, uint32_t word, unsigned *slot) {
     static const GteSite sites[] = {
-        {0x80049324u, 0xc8890000u, 0u}, {0x80049328u, 0xc88a0004u, 0u},
-        {0x8004932cu, 0xc88b0008u, 0u}, {0x80049334u, 0x4aa00428u, 1u},
-        {0x80049338u, 0xe8b90000u, 2u}, {0x8004933cu, 0xe8ba0004u, 2u},
-        {0x80049340u, 0xe8bb0008u, 2u}
+        {0x80049324u, 41u /* site group */, 0u}, {0x80049328u, 41u /* site group */, 0u},
+        {0x8004932cu, 41u /* site group */, 0u}, {0x80049334u, 41u /* site group */, 1u},
+        {0x80049338u, 41u /* site group */, 2u}, {0x8004933cu, 41u /* site group */, 2u},
+        {0x80049340u, 41u /* site group */, 2u}
     };
     return gte_site_lookup(sites, sizeof sites / sizeof sites[0], pc, word, slot);
 }
@@ -10543,20 +11059,20 @@ static int gte_49324_caller(uint32_t ra) {
  * 3 = data write, 4 = command. */
 static int gte_48eac_site(uint32_t pc, uint32_t word, unsigned *slot) {
     static const GteSite sites[] = {
-        {0x80048ec0u,0x48c80000u,0u}, {0x80048ec4u,0x48c90800u,0u},
-        {0x80048ec8u,0x48ca1000u,0u}, {0x80048eccu,0x48cb1800u,0u},
-        {0x80048ed0u,0x48cc2000u,0u},
-        {0x80048eecu,0x48880000u,3u}, {0x80048ef0u,0x488a0800u,3u},
-        {0x80048ef8u,0x4a486012u,4u},
-        {0x80048f10u,0x480b4800u,1u}, {0x80048f14u,0x480c5000u,1u},
-        {0x80048f18u,0x480d5800u,1u},
-        {0x80048f1cu,0x48880000u,3u}, {0x80048f20u,0x488a0800u,3u},
-        {0x80048f28u,0x4a486012u,4u},
-        {0x80048f44u,0x480e4800u,1u}, {0x80048f48u,0x480f5000u,1u},
-        {0x80048f4cu,0x48185800u,1u},
-        {0x80048f50u,0x48880000u,3u}, {0x80048f54u,0x488a0800u,3u},
-        {0x80048f5cu,0x4a486012u,4u},
-        {0x80048f80u,0x48084800u,1u}, {0x80048f84u,0x48095000u,1u}
+        {0x80048ec0u,36u /* site group */,0u}, {0x80048ec4u,36u /* site group */,0u},
+        {0x80048ec8u,36u /* site group */,0u}, {0x80048eccu,36u /* site group */,0u},
+        {0x80048ed0u,36u /* site group */,0u},
+        {0x80048eecu,36u /* site group */,3u}, {0x80048ef0u,36u /* site group */,3u},
+        {0x80048ef8u,36u /* site group */,4u},
+        {0x80048f10u,37u /* site group */,1u}, {0x80048f14u,37u /* site group */,1u},
+        {0x80048f18u,37u /* site group */,1u},
+        {0x80048f1cu,37u /* site group */,3u}, {0x80048f20u,37u /* site group */,3u},
+        {0x80048f28u,37u /* site group */,4u},
+        {0x80048f44u,37u /* site group */,1u}, {0x80048f48u,37u /* site group */,1u},
+        {0x80048f4cu,37u /* site group */,1u},
+        {0x80048f50u,37u /* site group */,3u}, {0x80048f54u,37u /* site group */,3u},
+        {0x80048f5cu,37u /* site group */,4u},
+        {0x80048f80u,37u /* site group */,1u}, {0x80048f84u,37u /* site group */,1u}
     };
     return gte_site_lookup(sites, sizeof sites / sizeof sites[0], pc, word, slot);
 }
@@ -10580,17 +11096,17 @@ static int gte_48eac_caller(uint32_t ra) {
  * pair, an MVMVA and an MFC2 read trio. Slots as above. */
 static int gte_4d504_site(uint32_t pc, uint32_t word, unsigned *slot) {
     static const GteSite sites[] = {
-        {0x8004d558u,0x48c80000u,0u}, {0x8004d55cu,0x48c90800u,0u},
-        {0x8004d560u,0x48ca1000u,0u}, {0x8004d564u,0x48cb1800u,0u},
-        {0x8004d568u,0x48cc2000u,0u},
-        {0x8004d5fcu,0x488b0000u,3u}, {0x8004d600u,0x488d0800u,3u},
-        {0x8004d608u,0x4a406012u,4u},
-        {0x8004d60cu,0x480bc800u,1u}, {0x8004d610u,0x480cd000u,1u},
-        {0x8004d614u,0x480dd800u,1u},
-        {0x8004d624u,0x48880000u,3u}, {0x8004d628u,0x488a0800u,3u},
-        {0x8004d630u,0x4a486012u,4u},
-        {0x8004d688u,0x4808c800u,1u}, {0x8004d68cu,0x4809d000u,1u},
-        {0x8004d690u,0x480ad800u,1u}
+        {0x8004d558u,45u /* site group */,0u}, {0x8004d55cu,45u /* site group */,0u},
+        {0x8004d560u,45u /* site group */,0u}, {0x8004d564u,45u /* site group */,0u},
+        {0x8004d568u,45u /* site group */,0u},
+        {0x8004d5fcu,45u /* site group */,3u}, {0x8004d600u,46u /* site group */,3u},
+        {0x8004d608u,46u /* site group */,4u},
+        {0x8004d60cu,46u /* site group */,1u}, {0x8004d610u,46u /* site group */,1u},
+        {0x8004d614u,46u /* site group */,1u},
+        {0x8004d624u,46u /* site group */,3u}, {0x8004d628u,46u /* site group */,3u},
+        {0x8004d630u,46u /* site group */,4u},
+        {0x8004d688u,46u /* site group */,1u}, {0x8004d68cu,46u /* site group */,1u},
+        {0x8004d690u,46u /* site group */,1u}
     };
     return gte_site_lookup(sites, sizeof sites / sizeof sites[0], pc, word, slot);
 }
@@ -10608,14 +11124,14 @@ static int gte_4d504_caller(uint32_t ra) {
  * [80048B6C,80048CA4), same shape as func_8004D504. */
 static int gte_48b6c_site(uint32_t pc, uint32_t word, unsigned *slot) {
     static const GteSite sites[] = {
-        {0x80048bf0u,0x488b4800u,3u}, {0x80048bf4u,0x488c5000u,3u},
-        {0x80048bf8u,0x488d5800u,3u}, {0x80048c00u,0x4a41e012u,4u},
-        {0x80048c04u,0x480bc800u,1u}, {0x80048c08u,0x480cd000u,1u},
-        {0x80048c0cu,0x480dd800u,1u},
-        {0x80048c10u,0x48884800u,3u}, {0x80048c14u,0x48895000u,3u},
-        {0x80048c18u,0x488a5800u,3u}, {0x80048c20u,0x4a49e012u,4u},
-        {0x80048c78u,0x4808c800u,1u}, {0x80048c7cu,0x4809d000u,1u},
-        {0x80048c80u,0x480ad800u,1u}
+        {0x80048bf0u,33u /* site group */,3u}, {0x80048bf4u,33u /* site group */,3u},
+        {0x80048bf8u,33u /* site group */,3u}, {0x80048c00u,34u /* site group */,4u},
+        {0x80048c04u,34u /* site group */,1u}, {0x80048c08u,34u /* site group */,1u},
+        {0x80048c0cu,34u /* site group */,1u},
+        {0x80048c10u,34u /* site group */,3u}, {0x80048c14u,34u /* site group */,3u},
+        {0x80048c18u,34u /* site group */,3u}, {0x80048c20u,34u /* site group */,4u},
+        {0x80048c78u,34u /* site group */,1u}, {0x80048c7cu,34u /* site group */,1u},
+        {0x80048c80u,34u /* site group */,1u}
     };
     return gte_site_lookup(sites, sizeof sites / sizeof sites[0], pc, word, slot);
 }
@@ -10630,8 +11146,8 @@ static int gte_48b6c_caller(uint32_t ra) {
  * [8004864C,8004867C): an MTC2 pair and its MVMVA. */
 static int gte_4864c_site(uint32_t pc, uint32_t word, unsigned *slot) {
     static const GteSite sites[] = {
-        {0x80048654u,0x48880000u,3u}, {0x80048658u,0x48890800u,3u},
-        {0x80048660u,0x4a486012u,4u}
+        {0x80048654u,32u /* site group */,3u}, {0x80048658u,32u /* site group */,3u},
+        {0x80048660u,32u /* site group */,4u}
     };
     return gte_site_lookup(sites, sizeof sites / sizeof sites[0], pc, word, slot);
 }
@@ -10667,349 +11183,349 @@ static int gte_bank_site(uint32_t pc, uint32_t word, unsigned *slot) {
         }
     }
     static const GteSite sites[] = {
-        {0x8001e0e0u,0x48cc0000u,0u},
-        {0x8001e0e4u,0x48cd0800u,0u},
-        {0x8001e0f4u,0x48cc1000u,0u},
-        {0x8001e0f8u,0x48cd1800u,0u},
-        {0x8001e0fcu,0x48ce2000u,0u},
-        {0x80047ce8u,0x48c8e800u,0u},
-        {0x80047cf4u,0x48c8f000u,0u},
-        {0x80047d00u,0x48c8d000u,0u},
-        {0x80047d0cu,0x48c8d800u,0u},
-        {0x80047d18u,0x48c8e000u,0u},
-        {0x80047d20u,0x48c0c000u,0u},
-        {0x80047d24u,0x48c0c800u,0u},
-        {0x800483a0u,0x48c80000u,0u},
-        {0x800483a4u,0x48c90800u,0u},
-        {0x800483a8u,0x48ca1000u,0u},
-        {0x800483acu,0x48cb1800u,0u},
-        {0x800483b0u,0x48cc2000u,0u},
-        {0x800483ccu,0x48880000u,3u},
-        {0x800483d0u,0x488a0800u,3u},
-        {0x800483d8u,0x4a486012u,4u},
-        {0x800483f0u,0x480b4800u,1u},
-        {0x800483f4u,0x480c5000u,1u},
-        {0x800483f8u,0x480d5800u,1u},
-        {0x800483fcu,0x48880000u,3u},
-        {0x80048400u,0x488a0800u,3u},
-        {0x80048408u,0x4a486012u,4u},
-        {0x80048424u,0x480e4800u,1u},
-        {0x80048428u,0x480f5000u,1u},
-        {0x8004842cu,0x48185800u,1u},
-        {0x80048430u,0x48880000u,3u},
-        {0x80048434u,0x488a0800u,3u},
-        {0x8004843cu,0x4a486012u,4u},
-        {0x80048460u,0x48084800u,1u},
-        {0x80048464u,0x48095000u,1u},
-        {0x80048480u,0x488d0000u,3u},
-        {0x80048484u,0x488a0800u,3u},
-        {0x8004848cu,0x4a486012u,4u},
-        {0x800484b0u,0x4808c800u,1u},
-        {0x800484b4u,0x4809d000u,1u},
-        {0x800484b8u,0x480ad800u,1u},
-        {0x80048500u,0x48c80000u,0u},
-        {0x80048504u,0x48c90800u,0u},
-        {0x80048508u,0x48ca1000u,0u},
-        {0x8004850cu,0x48cb1800u,0u},
-        {0x80048510u,0x48cc2000u,0u},
-        {0x80048db0u,0x48c80000u,0u},
-        {0x80048db4u,0x48c90800u,0u},
-        {0x80048db8u,0x48ca1000u,0u},
-        {0x80048dbcu,0x48cb1800u,0u},
-        {0x80048dc0u,0x48cc2000u,0u},
-        {0x80049160u,0x48c80000u,0u},
-        {0x80049164u,0x48c90800u,0u},
-        {0x80049168u,0x48ca1000u,0u},
-        {0x8004916cu,0x48cb1800u,0u},
-        {0x80049170u,0x48cc2000u,0u},
-        {0x800491b8u,0x48c82800u,0u},
-        {0x800491bcu,0x48c93000u,0u},
-        {0x800491c0u,0x48ca3800u,0u},
-        {0x800491ecu,0x4842d000u,5u},
-        {0x80049208u,0x48c46800u,0u},
-        {0x8004920cu,0x48c57000u,0u},
-        {0x80049210u,0x48c67800u,0u},
-        {0x80049224u,0x48c4c000u,0u},
-        {0x80049228u,0x48c5c800u,0u},
-        {0x8004923cu,0x48c4d000u,0u},
-        {0x80049638u,0x4a280030u,4u},
-        {0x80049654u,0x4843f800u,5u},
-        {0x80049664u,0x4a180001u,4u},
-        {0x8004967cu,0x4848f800u,5u},
-        {0x80049680u,0x48029800u,1u},
-        {0x800538d0u,0x48c88000u,0u},
-        {0x800538d4u,0x48c98800u,0u},
-        {0x800538d8u,0x48ca9000u,0u},
-        {0x800538dcu,0x48cb9800u,0u},
-        {0x800538e0u,0x48cca000u,0u},
-        {0x80053ae4u,0x48c4a800u,0u},
-        {0x80053ae8u,0x48c5b000u,0u},
-        {0x80053aecu,0x48c6b800u,0u},
-        {0x800cee80u,0x49462009u,1u},
-        {0x800cfac4u,0x49564f4du,1u},
-        {0x800cfac8u,0x49462045u,1u},
-        {0x800d0dc8u,0x4a314631u,4u},
-        {0x800d0dccu,0x4a514632u,4u},
-        {0x800d0dd0u,0x4a524a33u,4u},
-        {0x800d0dd4u,0x4a524a51u,4u},
-        {0x800d0dd8u,0x4a534e73u,4u},
-        {0x800d1fbcu,0x4a9ce0ffu,4u},
-        {0x800d2374u,0x48000000u,1u},
-        {0x800d3348u,0x4bf5ffffu,4u},
-        {0x8012c004u,0x4aa00428u,4u},
-        {0x8012e7acu,0x48cc0000u,0u},
-        {0x8012e7b0u,0x48cd0800u,0u},
-        {0x8012e7c0u,0x48cc1000u,0u},
-        {0x8012e7c4u,0x48cd1800u,0u},
-        {0x8012e7c8u,0x48ce2000u,0u},
-        {0x8012e7d4u,0x48cc2800u,0u},
-        {0x8012e7dcu,0x48cd3000u,0u},
-        {0x8012e7e0u,0x48ce3800u,0u},
-        {0x8012e7f4u,0x488c0000u,3u},
-        {0x8012e804u,0x4a180001u,4u},
-        {0x8012ed78u,0x48cc0000u,0u},
-        {0x8012ed7cu,0x48cd0800u,0u},
-        {0x8012ed8cu,0x48cc1000u,0u},
-        {0x8012ed90u,0x48cd1800u,0u},
-        {0x8012ed94u,0x48ce2000u,0u},
-        {0x8012eda4u,0x488c4800u,3u},
-        {0x8012eda8u,0x488d5000u,3u},
-        {0x8012edacu,0x488e5800u,3u},
-        {0x8012edb8u,0x4a49e012u,4u},
-        {0x8012edbcu,0x480c4800u,1u},
-        {0x8012edc0u,0x480d5000u,1u},
-        {0x8012edc4u,0x480e5800u,1u},
-        {0x8012ede4u,0x488c4800u,3u},
-        {0x8012ede8u,0x488d5000u,3u},
-        {0x8012edecu,0x488e5800u,3u},
-        {0x8012edf8u,0x4a49e012u,4u},
-        {0x8012edfcu,0x480c4800u,1u},
-        {0x8012ee00u,0x480d5000u,1u},
-        {0x8012ee04u,0x480e5800u,1u},
-        {0x8012ee24u,0x488c4800u,3u},
-        {0x8012ee28u,0x488d5000u,3u},
-        {0x8012ee2cu,0x488e5800u,3u},
-        {0x8012ee38u,0x4a49e012u,4u},
-        {0x8012ee3cu,0x480c4800u,1u},
-        {0x8012ee40u,0x480d5000u,1u},
-        {0x8012ee44u,0x480e5800u,1u},
-        {0x8012ee68u,0x48cc2800u,0u},
-        {0x8012ee70u,0x48cd3000u,0u},
-        {0x8012ee74u,0x48ce3800u,0u},
-        {0x8012ee8cu,0x488c0000u,3u},
-        {0x8012ee9cu,0x4a480012u,4u},
-        {0x8012ef88u,0x480c9800u,1u},
-        {0x8012efccu,0x48cc0000u,0u},
-        {0x8012efd0u,0x48cd0800u,0u},
-        {0x8012efe0u,0x48cc1000u,0u},
-        {0x8012efe4u,0x48cd1800u,0u},
-        {0x8012efe8u,0x48ce2000u,0u},
-        {0x8012eff4u,0x48cc2800u,0u},
-        {0x8012effcu,0x48cd3000u,0u},
-        {0x8012f000u,0x48ce3800u,0u},
-        {0x8012f014u,0x4a180001u,4u},
-        {0x8012f01cu,0x484cf800u,5u},
-        {0x80132a24u,0x48cc0000u,0u},
-        {0x80132a28u,0x48cd0800u,0u},
-        {0x80132a38u,0x48cc1000u,0u},
-        {0x80132a3cu,0x48cd1800u,0u},
-        {0x80132a40u,0x48ce2000u,0u},
-        {0x80132a54u,0x488c4800u,3u},
-        {0x80132a58u,0x488d5000u,3u},
-        {0x80132a5cu,0x488e5800u,3u},
-        {0x80132a68u,0x4a49e012u,4u},
-        {0x80132a70u,0x480c4800u,1u},
-        {0x80132a74u,0x480d5000u,1u},
-        {0x80132a78u,0x480e5800u,1u},
-        {0x80132a98u,0x488c4800u,3u},
-        {0x80132a9cu,0x488d5000u,3u},
-        {0x80132aa0u,0x488e5800u,3u},
-        {0x80132aacu,0x4a49e012u,4u},
-        {0x80132ab4u,0x480c4800u,1u},
-        {0x80132ab8u,0x480d5000u,1u},
-        {0x80132abcu,0x480e5800u,1u},
-        {0x80132adcu,0x488c4800u,3u},
-        {0x80132ae0u,0x488d5000u,3u},
-        {0x80132ae4u,0x488e5800u,3u},
-        {0x80132af0u,0x4a49e012u,4u},
-        {0x80132af8u,0x480c4800u,1u},
-        {0x80132afcu,0x480d5000u,1u},
-        {0x80132b00u,0x480e5800u,1u},
-        {0x80132b18u,0x48cc2800u,0u},
-        {0x80132b20u,0x48cd3000u,0u},
-        {0x80132b24u,0x48ce3800u,0u},
-        {0x80132b3cu,0x488c0000u,3u},
-        {0x80132b4cu,0x4a480012u,4u},
-        {0x80132bd8u,0x48cc0000u,0u},
-        {0x80132bdcu,0x48cd0800u,0u},
-        {0x80132becu,0x48cc1000u,0u},
-        {0x80132bf0u,0x48cd1800u,0u},
-        {0x80132bf4u,0x48ce2000u,0u},
-        {0x80132c04u,0x488c4800u,3u},
-        {0x80132c08u,0x488d5000u,3u},
-        {0x80132c0cu,0x488e5800u,3u},
-        {0x80132c18u,0x4a49e012u,4u},
-        {0x80132c1cu,0x480c4800u,1u},
-        {0x80132c20u,0x480d5000u,1u},
-        {0x80132c24u,0x480e5800u,1u},
-        {0x80132c40u,0x488c4800u,3u},
-        {0x80132c44u,0x488d5000u,3u},
-        {0x80132c48u,0x488e5800u,3u},
-        {0x80132c54u,0x4a49e012u,4u},
-        {0x80132c5cu,0x480c4800u,1u},
-        {0x80132c60u,0x480d5000u,1u},
-        {0x80132c64u,0x480e5800u,1u},
-        {0x80132c80u,0x488c4800u,3u},
-        {0x80132c84u,0x488d5000u,3u},
-        {0x80132c88u,0x488e5800u,3u},
-        {0x80132c94u,0x4a49e012u,4u},
-        {0x80132c9cu,0x480c4800u,1u},
-        {0x80132ca0u,0x480d5000u,1u},
-        {0x80132ca4u,0x480e5800u,1u},
-        {0x80132cbcu,0x48cc2800u,0u},
-        {0x80132cc4u,0x48cd3000u,0u},
-        {0x80132cc8u,0x48ce3800u,0u},
-        {0x80132cdcu,0x488c0000u,3u},
-        {0x80132cecu,0x4a480012u,4u},
-        {0x80133100u,0x48cc2800u,0u},
-        {0x80133108u,0x48cd3000u,0u},
-        {0x8013310cu,0x48ce3800u,0u},
-        {0x80133118u,0x48cc0000u,0u},
-        {0x8013311cu,0x48cd0800u,0u},
-        {0x8013312cu,0x48cc1000u,0u},
-        {0x80133130u,0x48cd1800u,0u},
-        {0x80133134u,0x48ce2000u,0u},
-        {0x80133148u,0x4a480012u,4u},
-        {0x80133160u,0x484cf800u,5u},
-        {0x8013aa98u,0x48cc0000u,0u},
-        {0x8013aa9cu,0x48cd0800u,0u},
-        {0x8013aaacu,0x48cc1000u,0u},
-        {0x8013aab0u,0x48cd1800u,0u},
-        {0x8013aab4u,0x48ce2000u,0u},
-        {0x8013aac0u,0x48cc2800u,0u},
-        {0x8013aac8u,0x48cd3000u,0u},
-        {0x8013aaccu,0x48ce3800u,0u},
-        {0x8013ac84u,0x48cc0000u,0u},
-        {0x8013ac88u,0x48cd0800u,0u},
-        {0x8013ac98u,0x48cc1000u,0u},
-        {0x8013ac9cu,0x48cd1800u,0u},
-        {0x8013aca0u,0x48ce2000u,0u},
-        {0x8013acacu,0x48cc2800u,0u},
-        {0x8013acb4u,0x48cd3000u,0u},
-        {0x8013acb8u,0x48ce3800u,0u},
-        {0x8013adecu,0x4a480012u,4u},
-        {0x8013b42cu,0x4a480012u,4u},
-        {0x8013b48cu,0x4a486012u,4u},
-        {0x8013daa8u,0x48804000u,3u},
-        {0x8013dabcu,0x4a680029u,4u},
-        {0x8013e0c0u,0x4aa80428u,4u},
-        {0x8013e158u,0x4aa80428u,4u},
-        {0x8013e1f0u,0x4aa80428u,4u},
-        {0x8013e320u,0x4aa00428u,4u},
-        {0x8017f820u,0x4a280030u,4u},
-        {0x8017f850u,0x4a180001u,4u},
-        {0x8017f880u,0x4a280030u,4u},
-        {0x8017f8b0u,0x4a180001u,4u},
-        {0x8017f8c0u,0x480c9800u,1u},
-        {0x8017fc28u,0x4a280030u,4u},
-        {0x8017fc30u,0x484cf800u,5u},
-        {0x8017fc5cu,0x4b400006u,4u},
-        {0x801803a8u,0x4a180001u,4u},
-        {0x80180480u,0x484cf800u,5u},
-        {0x801814dcu,0x49816f82u,1u},
-        {0x80182f70u,0x4853494bu,5u},
-        {0x80183e14u,0x4aa00428u,4u},
-        {0x80183e74u,0x48814881u,3u},
-        {0x80183e78u,0x48814881u,3u},
-        {0x80183e90u,0x48814081u,3u},
-        {0x80183ea4u,0x48814081u,3u},
-        {0x80183eb4u,0x48814081u,3u},
-        {0x80183eb8u,0x48814c81u,3u},
-        {0x80183ebcu,0x48814881u,3u},
-        {0x80183eccu,0x48814081u,3u},
-        {0x80183ed0u,0x48814c81u,3u},
-        {0x80183ed4u,0x48814881u,3u},
-        {0x80183eecu,0x48814881u,3u},
-        {0x80183ef4u,0x48814881u,3u},
-        {0x80183ef8u,0x48815c81u,3u},
-        {0x80184ac8u,0x48cc0000u,0u},
-        {0x80184accu,0x48cd0800u,0u},
-        {0x80184adcu,0x48cc1000u,0u},
-        {0x80184ae0u,0x48cd1800u,0u},
-        {0x80184ae4u,0x48ce2000u,0u},
-        {0x80184af0u,0x48cc2800u,0u},
-        {0x80184af8u,0x48cd3000u,0u},
-        {0x80184afcu,0x48ce3800u,0u},
+        {0x8001e0e0u,7u /* site group */,0u},
+        {0x8001e0e4u,7u /* site group */,0u},
+        {0x8001e0f4u,7u /* site group */,0u},
+        {0x8001e0f8u,7u /* site group */,0u},
+        {0x8001e0fcu,7u /* site group */,0u},
+        {0x80047ce8u,25u /* site group */,0u},
+        {0x80047cf4u,25u /* site group */,0u},
+        {0x80047d00u,26u /* site group */,0u},
+        {0x80047d0cu,26u /* site group */,0u},
+        {0x80047d18u,26u /* site group */,0u},
+        {0x80047d20u,26u /* site group */,0u},
+        {0x80047d24u,26u /* site group */,0u},
+        {0x800483a0u,29u /* site group */,0u},
+        {0x800483a4u,29u /* site group */,0u},
+        {0x800483a8u,29u /* site group */,0u},
+        {0x800483acu,29u /* site group */,0u},
+        {0x800483b0u,29u /* site group */,0u},
+        {0x800483ccu,29u /* site group */,3u},
+        {0x800483d0u,29u /* site group */,3u},
+        {0x800483d8u,29u /* site group */,4u},
+        {0x800483f0u,29u /* site group */,1u},
+        {0x800483f4u,29u /* site group */,1u},
+        {0x800483f8u,29u /* site group */,1u},
+        {0x800483fcu,29u /* site group */,3u},
+        {0x80048400u,30u /* site group */,3u},
+        {0x80048408u,30u /* site group */,4u},
+        {0x80048424u,30u /* site group */,1u},
+        {0x80048428u,30u /* site group */,1u},
+        {0x8004842cu,30u /* site group */,1u},
+        {0x80048430u,30u /* site group */,3u},
+        {0x80048434u,30u /* site group */,3u},
+        {0x8004843cu,30u /* site group */,4u},
+        {0x80048460u,30u /* site group */,1u},
+        {0x80048464u,30u /* site group */,1u},
+        {0x80048480u,30u /* site group */,3u},
+        {0x80048484u,30u /* site group */,3u},
+        {0x8004848cu,30u /* site group */,4u},
+        {0x800484b0u,30u /* site group */,1u},
+        {0x800484b4u,30u /* site group */,1u},
+        {0x800484b8u,30u /* site group */,1u},
+        {0x80048500u,31u /* site group */,0u},
+        {0x80048504u,31u /* site group */,0u},
+        {0x80048508u,31u /* site group */,0u},
+        {0x8004850cu,31u /* site group */,0u},
+        {0x80048510u,31u /* site group */,0u},
+        {0x80048db0u,35u /* site group */,0u},
+        {0x80048db4u,35u /* site group */,0u},
+        {0x80048db8u,35u /* site group */,0u},
+        {0x80048dbcu,35u /* site group */,0u},
+        {0x80048dc0u,35u /* site group */,0u},
+        {0x80049160u,39u /* site group */,0u},
+        {0x80049164u,39u /* site group */,0u},
+        {0x80049168u,39u /* site group */,0u},
+        {0x8004916cu,39u /* site group */,0u},
+        {0x80049170u,39u /* site group */,0u},
+        {0x800491b8u,39u /* site group */,0u},
+        {0x800491bcu,39u /* site group */,0u},
+        {0x800491c0u,39u /* site group */,0u},
+        {0x800491ecu,39u /* site group */,5u},
+        {0x80049208u,40u /* site group */,0u},
+        {0x8004920cu,40u /* site group */,0u},
+        {0x80049210u,40u /* site group */,0u},
+        {0x80049224u,40u /* site group */,0u},
+        {0x80049228u,40u /* site group */,0u},
+        {0x8004923cu,40u /* site group */,0u},
+        {0x80049638u,43u /* site group */,4u},
+        {0x80049654u,43u /* site group */,5u},
+        {0x80049664u,43u /* site group */,4u},
+        {0x8004967cu,43u /* site group */,5u},
+        {0x80049680u,43u /* site group */,1u},
+        {0x800538d0u,52u /* site group */,0u},
+        {0x800538d4u,52u /* site group */,0u},
+        {0x800538d8u,52u /* site group */,0u},
+        {0x800538dcu,52u /* site group */,0u},
+        {0x800538e0u,52u /* site group */,0u},
+        {0x80053ae4u,53u /* site group */,0u},
+        {0x80053ae8u,53u /* site group */,0u},
+        {0x80053aecu,53u /* site group */,0u},
+        {0x800cee80u,66u /* site group */,1u},
+        {0x800cfac4u,68u /* site group */,1u},
+        {0x800cfac8u,68u /* site group */,1u},
+        {0x800d0dc8u,73u /* site group */,4u},
+        {0x800d0dccu,73u /* site group */,4u},
+        {0x800d0dd0u,73u /* site group */,4u},
+        {0x800d0dd4u,73u /* site group */,4u},
+        {0x800d0dd8u,73u /* site group */,4u},
+        {0x800d1fbcu,77u /* site group */,4u},
+        {0x800d2374u,82u /* site group */,1u},
+        {0x800d3348u,92u /* site group */,4u},
+        {0x8012c004u,98u /* site group */,4u},
+        {0x8012e7acu,99u /* site group */,0u},
+        {0x8012e7b0u,99u /* site group */,0u},
+        {0x8012e7c0u,99u /* site group */,0u},
+        {0x8012e7c4u,99u /* site group */,0u},
+        {0x8012e7c8u,99u /* site group */,0u},
+        {0x8012e7d4u,99u /* site group */,0u},
+        {0x8012e7dcu,99u /* site group */,0u},
+        {0x8012e7e0u,99u /* site group */,0u},
+        {0x8012e7f4u,99u /* site group */,3u},
+        {0x8012e804u,100u /* site group */,4u},
+        {0x8012ed78u,101u /* site group */,0u},
+        {0x8012ed7cu,101u /* site group */,0u},
+        {0x8012ed8cu,101u /* site group */,0u},
+        {0x8012ed90u,101u /* site group */,0u},
+        {0x8012ed94u,101u /* site group */,0u},
+        {0x8012eda4u,101u /* site group */,3u},
+        {0x8012eda8u,101u /* site group */,3u},
+        {0x8012edacu,101u /* site group */,3u},
+        {0x8012edb8u,101u /* site group */,4u},
+        {0x8012edbcu,101u /* site group */,1u},
+        {0x8012edc0u,101u /* site group */,1u},
+        {0x8012edc4u,101u /* site group */,1u},
+        {0x8012ede4u,101u /* site group */,3u},
+        {0x8012ede8u,101u /* site group */,3u},
+        {0x8012edecu,101u /* site group */,3u},
+        {0x8012edf8u,101u /* site group */,4u},
+        {0x8012edfcu,101u /* site group */,1u},
+        {0x8012ee00u,102u /* site group */,1u},
+        {0x8012ee04u,102u /* site group */,1u},
+        {0x8012ee24u,102u /* site group */,3u},
+        {0x8012ee28u,102u /* site group */,3u},
+        {0x8012ee2cu,102u /* site group */,3u},
+        {0x8012ee38u,102u /* site group */,4u},
+        {0x8012ee3cu,102u /* site group */,1u},
+        {0x8012ee40u,102u /* site group */,1u},
+        {0x8012ee44u,102u /* site group */,1u},
+        {0x8012ee68u,102u /* site group */,0u},
+        {0x8012ee70u,102u /* site group */,0u},
+        {0x8012ee74u,102u /* site group */,0u},
+        {0x8012ee8cu,102u /* site group */,3u},
+        {0x8012ee9cu,102u /* site group */,4u},
+        {0x8012ef88u,103u /* site group */,1u},
+        {0x8012efccu,103u /* site group */,0u},
+        {0x8012efd0u,103u /* site group */,0u},
+        {0x8012efe0u,103u /* site group */,0u},
+        {0x8012efe4u,103u /* site group */,0u},
+        {0x8012efe8u,103u /* site group */,0u},
+        {0x8012eff4u,103u /* site group */,0u},
+        {0x8012effcu,103u /* site group */,0u},
+        {0x8012f000u,104u /* site group */,0u},
+        {0x8012f014u,104u /* site group */,4u},
+        {0x8012f01cu,104u /* site group */,5u},
+        {0x80132a24u,105u /* site group */,0u},
+        {0x80132a28u,105u /* site group */,0u},
+        {0x80132a38u,105u /* site group */,0u},
+        {0x80132a3cu,105u /* site group */,0u},
+        {0x80132a40u,105u /* site group */,0u},
+        {0x80132a54u,105u /* site group */,3u},
+        {0x80132a58u,105u /* site group */,3u},
+        {0x80132a5cu,105u /* site group */,3u},
+        {0x80132a68u,105u /* site group */,4u},
+        {0x80132a70u,105u /* site group */,1u},
+        {0x80132a74u,105u /* site group */,1u},
+        {0x80132a78u,105u /* site group */,1u},
+        {0x80132a98u,105u /* site group */,3u},
+        {0x80132a9cu,105u /* site group */,3u},
+        {0x80132aa0u,105u /* site group */,3u},
+        {0x80132aacu,105u /* site group */,4u},
+        {0x80132ab4u,105u /* site group */,1u},
+        {0x80132ab8u,105u /* site group */,1u},
+        {0x80132abcu,105u /* site group */,1u},
+        {0x80132adcu,105u /* site group */,3u},
+        {0x80132ae0u,105u /* site group */,3u},
+        {0x80132ae4u,105u /* site group */,3u},
+        {0x80132af0u,105u /* site group */,4u},
+        {0x80132af8u,105u /* site group */,1u},
+        {0x80132afcu,105u /* site group */,1u},
+        {0x80132b00u,106u /* site group */,1u},
+        {0x80132b18u,106u /* site group */,0u},
+        {0x80132b20u,106u /* site group */,0u},
+        {0x80132b24u,106u /* site group */,0u},
+        {0x80132b3cu,106u /* site group */,3u},
+        {0x80132b4cu,106u /* site group */,4u},
+        {0x80132bd8u,106u /* site group */,0u},
+        {0x80132bdcu,106u /* site group */,0u},
+        {0x80132becu,106u /* site group */,0u},
+        {0x80132bf0u,106u /* site group */,0u},
+        {0x80132bf4u,106u /* site group */,0u},
+        {0x80132c04u,107u /* site group */,3u},
+        {0x80132c08u,107u /* site group */,3u},
+        {0x80132c0cu,107u /* site group */,3u},
+        {0x80132c18u,107u /* site group */,4u},
+        {0x80132c1cu,107u /* site group */,1u},
+        {0x80132c20u,107u /* site group */,1u},
+        {0x80132c24u,107u /* site group */,1u},
+        {0x80132c40u,107u /* site group */,3u},
+        {0x80132c44u,107u /* site group */,3u},
+        {0x80132c48u,107u /* site group */,3u},
+        {0x80132c54u,107u /* site group */,4u},
+        {0x80132c5cu,107u /* site group */,1u},
+        {0x80132c60u,107u /* site group */,1u},
+        {0x80132c64u,107u /* site group */,1u},
+        {0x80132c80u,107u /* site group */,3u},
+        {0x80132c84u,107u /* site group */,3u},
+        {0x80132c88u,107u /* site group */,3u},
+        {0x80132c94u,107u /* site group */,4u},
+        {0x80132c9cu,107u /* site group */,1u},
+        {0x80132ca0u,107u /* site group */,1u},
+        {0x80132ca4u,107u /* site group */,1u},
+        {0x80132cbcu,107u /* site group */,0u},
+        {0x80132cc4u,107u /* site group */,0u},
+        {0x80132cc8u,107u /* site group */,0u},
+        {0x80132cdcu,107u /* site group */,3u},
+        {0x80132cecu,107u /* site group */,4u},
+        {0x80133100u,108u /* site group */,0u},
+        {0x80133108u,108u /* site group */,0u},
+        {0x8013310cu,108u /* site group */,0u},
+        {0x80133118u,108u /* site group */,0u},
+        {0x8013311cu,108u /* site group */,0u},
+        {0x8013312cu,108u /* site group */,0u},
+        {0x80133130u,108u /* site group */,0u},
+        {0x80133134u,108u /* site group */,0u},
+        {0x80133148u,108u /* site group */,4u},
+        {0x80133160u,108u /* site group */,5u},
+        {0x8013aa98u,114u /* site group */,0u},
+        {0x8013aa9cu,114u /* site group */,0u},
+        {0x8013aaacu,114u /* site group */,0u},
+        {0x8013aab0u,114u /* site group */,0u},
+        {0x8013aab4u,114u /* site group */,0u},
+        {0x8013aac0u,114u /* site group */,0u},
+        {0x8013aac8u,114u /* site group */,0u},
+        {0x8013aaccu,114u /* site group */,0u},
+        {0x8013ac84u,115u /* site group */,0u},
+        {0x8013ac88u,115u /* site group */,0u},
+        {0x8013ac98u,115u /* site group */,0u},
+        {0x8013ac9cu,115u /* site group */,0u},
+        {0x8013aca0u,115u /* site group */,0u},
+        {0x8013acacu,115u /* site group */,0u},
+        {0x8013acb4u,115u /* site group */,0u},
+        {0x8013acb8u,115u /* site group */,0u},
+        {0x8013adecu,116u /* site group */,4u},
+        {0x8013b42cu,118u /* site group */,4u},
+        {0x8013b48cu,118u /* site group */,4u},
+        {0x8013daa8u,126u /* site group */,3u},
+        {0x8013dabcu,126u /* site group */,4u},
+        {0x8013e0c0u,127u /* site group */,4u},
+        {0x8013e158u,128u /* site group */,4u},
+        {0x8013e1f0u,128u /* site group */,4u},
+        {0x8013e320u,130u /* site group */,4u},
+        {0x8017f820u,168u /* site group */,4u},
+        {0x8017f850u,168u /* site group */,4u},
+        {0x8017f880u,168u /* site group */,4u},
+        {0x8017f8b0u,168u /* site group */,4u},
+        {0x8017f8c0u,168u /* site group */,1u},
+        {0x8017fc28u,170u /* site group */,4u},
+        {0x8017fc30u,170u /* site group */,5u},
+        {0x8017fc5cu,170u /* site group */,4u},
+        {0x801803a8u,173u /* site group */,4u},
+        {0x80180480u,175u /* site group */,5u},
+        {0x801814dcu,180u /* site group */,1u},
+        {0x80182f70u,190u /* site group */,5u},
+        {0x80183e14u,200u /* site group */,4u},
+        {0x80183e74u,199u /* site group */,3u},
+        {0x80183e78u,199u /* site group */,3u},
+        {0x80183e90u,199u /* site group */,3u},
+        {0x80183ea4u,199u /* site group */,3u},
+        {0x80183eb4u,199u /* site group */,3u},
+        {0x80183eb8u,199u /* site group */,3u},
+        {0x80183ebcu,199u /* site group */,3u},
+        {0x80183eccu,199u /* site group */,3u},
+        {0x80183ed0u,199u /* site group */,3u},
+        {0x80183ed4u,199u /* site group */,3u},
+        {0x80183eecu,199u /* site group */,3u},
+        {0x80183ef4u,199u /* site group */,3u},
+        {0x80183ef8u,199u /* site group */,3u},
+        {0x80184ac8u,202u /* site group */,0u},
+        {0x80184accu,202u /* site group */,0u},
+        {0x80184adcu,202u /* site group */,0u},
+        {0x80184ae0u,202u /* site group */,0u},
+        {0x80184ae4u,202u /* site group */,0u},
+        {0x80184af0u,202u /* site group */,0u},
+        {0x80184af8u,202u /* site group */,0u},
+        {0x80184afcu,202u /* site group */,0u},
         /* func_80020598 / func_80021174 COP2 stream. Slots match 8012E7AC. */
-        {0x800207c0u,0x48cc0000u,0u},
-        {0x800207c4u,0x48cd0800u,0u},
-        {0x800207d4u,0x48cc1000u,0u},
-        {0x800207d8u,0x48cd1800u,0u},
-        {0x800207dcu,0x48ce2000u,0u},
-        {0x800207ecu,0x488c4800u,3u},
-        {0x800207f0u,0x488d5000u,3u},
-        {0x800207f4u,0x488e5800u,3u},
-        {0x80020800u,0x4a49e012u,4u},
-        {0x80020804u,0x480c4800u,1u},
-        {0x80020808u,0x480d5000u,1u},
-        {0x8002080cu,0x480e5800u,1u},
-        {0x80020828u,0x488c4800u,3u},
-        {0x8002082cu,0x488d5000u,3u},
-        {0x80020830u,0x488e5800u,3u},
-        {0x8002083cu,0x4a49e012u,4u},
-        {0x80020844u,0x480c4800u,1u},
-        {0x80020848u,0x480d5000u,1u},
-        {0x8002084cu,0x480e5800u,1u},
-        {0x80020868u,0x488c4800u,3u},
-        {0x8002086cu,0x488d5000u,3u},
-        {0x80020870u,0x488e5800u,3u},
-        {0x8002087cu,0x4a49e012u,4u},
-        {0x80020884u,0x480c4800u,1u},
-        {0x80020888u,0x480d5000u,1u},
-        {0x8002088cu,0x480e5800u,1u},
-        {0x800208acu,0x48cc0000u,0u},
-        {0x800208b0u,0x48cd0800u,0u},
-        {0x800208c0u,0x48cc1000u,0u},
-        {0x800208c4u,0x48cd1800u,0u},
-        {0x800208c8u,0x48ce2000u,0u},
-        {0x800208d8u,0x488c4800u,3u},
-        {0x800208dcu,0x488d5000u,3u},
-        {0x800208e0u,0x488e5800u,3u},
-        {0x800208ecu,0x4a49e012u,4u},
-        {0x800208f4u,0x480c4800u,1u},
-        {0x800208f8u,0x480d5000u,1u},
-        {0x800208fcu,0x480e5800u,1u},
-        {0x80020918u,0x488c4800u,3u},
-        {0x8002091cu,0x488d5000u,3u},
-        {0x80020920u,0x488e5800u,3u},
-        {0x8002092cu,0x4a49e012u,4u},
-        {0x80020934u,0x480c4800u,1u},
-        {0x80020938u,0x480d5000u,1u},
-        {0x8002093cu,0x480e5800u,1u},
-        {0x80020958u,0x488c4800u,3u},
-        {0x8002095cu,0x488d5000u,3u},
-        {0x80020960u,0x488e5800u,3u},
-        {0x8002096cu,0x4a49e012u,4u},
-        {0x80020974u,0x480c4800u,1u},
-        {0x80020978u,0x480d5000u,1u},
-        {0x8002097cu,0x480e5800u,1u},
-        {0x80020994u,0x48cc2800u,0u},
-        {0x8002099cu,0x48cd3000u,0u},
-        {0x800209a0u,0x48ce3800u,0u},
-        {0x800209b8u,0x488c0000u,3u},
-        {0x800209c8u,0x4a480012u,4u},
-        {0x8002119cu,0x48cc0000u,0u},
-        {0x800211a0u,0x48cd0800u,0u},
-        {0x800211b0u,0x48cc1000u,0u},
-        {0x800211b4u,0x48cd1800u,0u},
-        {0x800211b8u,0x48ce2000u,0u},
-        {0x800211c4u,0x48cc2800u,0u},
-        {0x800211ccu,0x48cd3000u,0u},
-        {0x800211d0u,0x48ce3800u,0u},
-        {0x800211e4u,0x488c0000u,3u},
-        {0x800211f4u,0x4a180001u,4u},
-        {0x80021200u,0x484cf800u,5u},
-        {0x80021210u,0x480c9800u,1u},
+        {0x800207c0u,8u /* site group */,0u},
+        {0x800207c4u,8u /* site group */,0u},
+        {0x800207d4u,8u /* site group */,0u},
+        {0x800207d8u,8u /* site group */,0u},
+        {0x800207dcu,8u /* site group */,0u},
+        {0x800207ecu,8u /* site group */,3u},
+        {0x800207f0u,8u /* site group */,3u},
+        {0x800207f4u,8u /* site group */,3u},
+        {0x80020800u,9u /* site group */,4u},
+        {0x80020804u,9u /* site group */,1u},
+        {0x80020808u,9u /* site group */,1u},
+        {0x8002080cu,9u /* site group */,1u},
+        {0x80020828u,9u /* site group */,3u},
+        {0x8002082cu,9u /* site group */,3u},
+        {0x80020830u,9u /* site group */,3u},
+        {0x8002083cu,9u /* site group */,4u},
+        {0x80020844u,9u /* site group */,1u},
+        {0x80020848u,9u /* site group */,1u},
+        {0x8002084cu,9u /* site group */,1u},
+        {0x80020868u,9u /* site group */,3u},
+        {0x8002086cu,9u /* site group */,3u},
+        {0x80020870u,9u /* site group */,3u},
+        {0x8002087cu,9u /* site group */,4u},
+        {0x80020884u,9u /* site group */,1u},
+        {0x80020888u,9u /* site group */,1u},
+        {0x8002088cu,9u /* site group */,1u},
+        {0x800208acu,9u /* site group */,0u},
+        {0x800208b0u,9u /* site group */,0u},
+        {0x800208c0u,9u /* site group */,0u},
+        {0x800208c4u,9u /* site group */,0u},
+        {0x800208c8u,9u /* site group */,0u},
+        {0x800208d8u,9u /* site group */,3u},
+        {0x800208dcu,9u /* site group */,3u},
+        {0x800208e0u,9u /* site group */,3u},
+        {0x800208ecu,9u /* site group */,4u},
+        {0x800208f4u,9u /* site group */,1u},
+        {0x800208f8u,9u /* site group */,1u},
+        {0x800208fcu,9u /* site group */,1u},
+        {0x80020918u,10u /* site group */,3u},
+        {0x8002091cu,10u /* site group */,3u},
+        {0x80020920u,10u /* site group */,3u},
+        {0x8002092cu,10u /* site group */,4u},
+        {0x80020934u,10u /* site group */,1u},
+        {0x80020938u,10u /* site group */,1u},
+        {0x8002093cu,10u /* site group */,1u},
+        {0x80020958u,10u /* site group */,3u},
+        {0x8002095cu,10u /* site group */,3u},
+        {0x80020960u,10u /* site group */,3u},
+        {0x8002096cu,10u /* site group */,4u},
+        {0x80020974u,10u /* site group */,1u},
+        {0x80020978u,10u /* site group */,1u},
+        {0x8002097cu,10u /* site group */,1u},
+        {0x80020994u,10u /* site group */,0u},
+        {0x8002099cu,10u /* site group */,0u},
+        {0x800209a0u,10u /* site group */,0u},
+        {0x800209b8u,10u /* site group */,3u},
+        {0x800209c8u,10u /* site group */,4u},
+        {0x8002119cu,12u /* site group */,0u},
+        {0x800211a0u,12u /* site group */,0u},
+        {0x800211b0u,12u /* site group */,0u},
+        {0x800211b4u,12u /* site group */,0u},
+        {0x800211b8u,12u /* site group */,0u},
+        {0x800211c4u,12u /* site group */,0u},
+        {0x800211ccu,12u /* site group */,0u},
+        {0x800211d0u,12u /* site group */,0u},
+        {0x800211e4u,12u /* site group */,3u},
+        {0x800211f4u,12u /* site group */,4u},
+        {0x80021200u,13u /* site group */,5u},
+        {0x80021210u,13u /* site group */,1u},
     };
     return gte_site_lookup(sites, sizeof sites / sizeof sites[0], pc, word, slot);
 }
@@ -11021,94 +11537,94 @@ static int lwc2_site(uint32_t pc, uint32_t word) {
     if (gte_decode_lane(pc)) {
         if ((word >> 26) == 50u) return 1;
     }
-    static const struct { uint32_t pc, word; } sites[] = {
-        {0x80048fe4u,0xc8a00000u},
-        {0x80048fe8u,0xc8a10004u},
-        {0x80049324u,0xc8890000u},
-        {0x80049328u,0xc88a0004u},
-        {0x8004932cu,0xc88b0008u},
-        {0x8004945cu,0xc8800000u},
-        {0x80049460u,0xc8810004u},
-        {0x8004961cu,0xc8800000u},
-        {0x80049620u,0xc8810004u},
-        {0x80049624u,0xc8a20000u},
-        {0x80049628u,0xc8a30004u},
-        {0x8004962cu,0xc8c40000u},
-        {0x80049630u,0xc8c50004u},
-        {0x80049658u,0xc8e00000u},
-        {0x8004965cu,0xc8e10004u},
-        {0x800d213cu,0xcbffffffu},
-        {0x800d23e8u,0xcbffffffu},
-        {0x800d30d4u,0xca130000u},
-        {0x8012bff0u,0xcba90000u},
-        {0x8012bff4u,0xcbaa0004u},
-        {0x8012bff8u,0xcbab0008u},
-        {0x8012e7f8u,0xcba10008u},
-        {0x8012ee90u,0xc8410008u},
-        {0x8012f004u,0xc8800000u},
-        {0x8012f008u,0xc8810004u},
-        {0x80132b40u,0xca610008u},
-        {0x80132ce0u,0xca610008u},
-        {0x80133138u,0xc8800000u},
-        {0x8013313cu,0xc8810004u},
-        {0x80133fe8u,0xc9090000u},
-        {0x80133fecu,0xc90a0004u},
-        {0x80133ff0u,0xc90b0008u},
-        {0x8013addcu,0xcba00000u},
-        {0x8013ade0u,0xcba10004u},
-        {0x8013b41cu,0xc8400000u},
-        {0x8013b420u,0xc8410004u},
-        {0x8013b47cu,0xc8400000u},
-        {0x8013b480u,0xc8410004u},
-        {0x8013daacu,0xca860000u},
-        {0x8013dab0u,0xc85c0000u},
-        {0x8013e0acu,0xc8490000u},
-        {0x8013e0b0u,0xc84a0004u},
-        {0x8013e0b4u,0xc84b0008u},
-        {0x8013e144u,0xc8490000u},
-        {0x8013e148u,0xc84a0004u},
-        {0x8013e14cu,0xc84b0008u},
-        {0x8013e1dcu,0xc8490000u},
-        {0x8013e1e0u,0xc84a0004u},
-        {0x8013e1e4u,0xc84b0008u},
-        {0x8013e30cu,0xcba90000u},
-        {0x8013e310u,0xcbaa0004u},
-        {0x8013e314u,0xcbab0008u},
-        {0x8017f800u,0xc8400000u},
-        {0x8017f804u,0xc8410004u},
-        {0x8017f808u,0xc8420008u},
-        {0x8017f80cu,0xc843000cu},
-        {0x8017f810u,0xc8440010u},
-        {0x8017f814u,0xc8450014u},
-        {0x8017f840u,0xc8400000u},
-        {0x8017f844u,0xc8410004u},
-        {0x8017f860u,0xc8400000u},
-        {0x8017f864u,0xc8410004u},
-        {0x8017f868u,0xc8420008u},
-        {0x8017f86cu,0xc843000cu},
-        {0x8017f870u,0xc8440010u},
-        {0x8017f874u,0xc8450014u},
-        {0x8017f8a0u,0xc8400000u},
-        {0x8017f8a4u,0xc8410004u},
-        {0x8017fc08u,0xc9c00000u},
-        {0x8017fc0cu,0xc9c10004u},
-        {0x8017fc10u,0xca020000u},
-        {0x8017fc14u,0xca030004u},
-        {0x8017fc18u,0xca440000u},
-        {0x8017fc1cu,0xca450004u},
-        {0x80180398u,0xca600000u},
-        {0x8018039cu,0xca610004u},
-        {0x80180ca0u,0xca00fdcau},
-        {0x80180cc0u,0xca00fdcau},
-        {0x80183e00u,0xc8490000u},
-        {0x80183e04u,0xc84a0004u},
-        {0x80183e08u,0xc84b0008u},
-        {0x800209bcu,0xc8410008u},
-        {0x800211e8u,0xc8a10008u},
+    static const struct { uint32_t pc, grp; } sites[] = {
+        {0x80048fe4u,37u /* site group */},
+        {0x80048fe8u,37u /* site group */},
+        {0x80049324u,41u /* site group */},
+        {0x80049328u,41u /* site group */},
+        {0x8004932cu,41u /* site group */},
+        {0x8004945cu,42u /* site group */},
+        {0x80049460u,42u /* site group */},
+        {0x8004961cu,43u /* site group */},
+        {0x80049620u,43u /* site group */},
+        {0x80049624u,43u /* site group */},
+        {0x80049628u,43u /* site group */},
+        {0x8004962cu,43u /* site group */},
+        {0x80049630u,43u /* site group */},
+        {0x80049658u,43u /* site group */},
+        {0x8004965cu,43u /* site group */},
+        {0x800d213cu,79u /* site group */},
+        {0x800d23e8u,82u /* site group */},
+        {0x800d30d4u,91u /* site group */},
+        {0x8012bff0u,97u /* site group */},
+        {0x8012bff4u,97u /* site group */},
+        {0x8012bff8u,97u /* site group */},
+        {0x8012e7f8u,99u /* site group */},
+        {0x8012ee90u,102u /* site group */},
+        {0x8012f004u,104u /* site group */},
+        {0x8012f008u,104u /* site group */},
+        {0x80132b40u,106u /* site group */},
+        {0x80132ce0u,107u /* site group */},
+        {0x80133138u,108u /* site group */},
+        {0x8013313cu,108u /* site group */},
+        {0x80133fe8u,109u /* site group */},
+        {0x80133fecu,109u /* site group */},
+        {0x80133ff0u,109u /* site group */},
+        {0x8013addcu,116u /* site group */},
+        {0x8013ade0u,116u /* site group */},
+        {0x8013b41cu,118u /* site group */},
+        {0x8013b420u,118u /* site group */},
+        {0x8013b47cu,118u /* site group */},
+        {0x8013b480u,118u /* site group */},
+        {0x8013daacu,126u /* site group */},
+        {0x8013dab0u,126u /* site group */},
+        {0x8013e0acu,127u /* site group */},
+        {0x8013e0b0u,127u /* site group */},
+        {0x8013e0b4u,127u /* site group */},
+        {0x8013e144u,128u /* site group */},
+        {0x8013e148u,128u /* site group */},
+        {0x8013e14cu,128u /* site group */},
+        {0x8013e1dcu,128u /* site group */},
+        {0x8013e1e0u,128u /* site group */},
+        {0x8013e1e4u,128u /* site group */},
+        {0x8013e30cu,130u /* site group */},
+        {0x8013e310u,130u /* site group */},
+        {0x8013e314u,130u /* site group */},
+        {0x8017f800u,168u /* site group */},
+        {0x8017f804u,168u /* site group */},
+        {0x8017f808u,168u /* site group */},
+        {0x8017f80cu,168u /* site group */},
+        {0x8017f810u,168u /* site group */},
+        {0x8017f814u,168u /* site group */},
+        {0x8017f840u,168u /* site group */},
+        {0x8017f844u,168u /* site group */},
+        {0x8017f860u,168u /* site group */},
+        {0x8017f864u,168u /* site group */},
+        {0x8017f868u,168u /* site group */},
+        {0x8017f86cu,168u /* site group */},
+        {0x8017f870u,168u /* site group */},
+        {0x8017f874u,168u /* site group */},
+        {0x8017f8a0u,168u /* site group */},
+        {0x8017f8a4u,168u /* site group */},
+        {0x8017fc08u,170u /* site group */},
+        {0x8017fc0cu,170u /* site group */},
+        {0x8017fc10u,170u /* site group */},
+        {0x8017fc14u,170u /* site group */},
+        {0x8017fc18u,170u /* site group */},
+        {0x8017fc1cu,170u /* site group */},
+        {0x80180398u,173u /* site group */},
+        {0x8018039cu,173u /* site group */},
+        {0x80180ca0u,178u /* site group */},
+        {0x80180cc0u,178u /* site group */},
+        {0x80183e00u,200u /* site group */},
+        {0x80183e04u,200u /* site group */},
+        {0x80183e08u,200u /* site group */},
+        {0x800209bcu,10u /* site group */},
+        {0x800211e8u,12u /* site group */},
     };
     unsigned i;
     for (i = 0; i < sizeof(sites)/sizeof(sites[0]); ++i)
-        if (sites[i].pc == pc && sites[i].word == word) return 1;
+        if (sites[i].pc == pc && code_site(pc, sites[i].grp, word)) return 1;
     return 0;
 }
 
@@ -11116,8 +11632,8 @@ static int lwc2_site(uint32_t pc, uint32_t word) {
  * 11, so they read the shared control bank; every other admitted SWC2 site
  * reads the data bank. */
 static int swc2_control_site(uint32_t pc, uint32_t word) {
-    return (pc == 0x80048e98u && word == 0xe88b0010u) ||
-           (pc == 0x80048fa8u && word == 0xe8ab0010u);
+    return (pc == 0x80048e98u && code_site(0x80048e98u, 36u, word)) ||
+           (pc == 0x80048fa8u && code_site(0x80048fa8u, 37u, word));
 }
 
 /* SWC2 stores inside exported ranges: hardware SWC2 reads the GTE data bank,
@@ -11126,107 +11642,107 @@ static int swc2_site(uint32_t pc, uint32_t word) {
     if (gte_decode_lane(pc)) {
         if ((word >> 26) == 58u) return 1;
     }
-    static const struct { uint32_t pc, word; } sites[] = {
-        {0x80048468u,0xe8cb0010u},
-        {0x80048664u,0xe8a90000u},
-        {0x80048668u,0xe8aa0004u},
-        {0x8004866cu,0xe8ab0008u},
-        {0x80048e98u,0xe88b0010u},
-        {0x80048fa8u,0xe8ab0010u},
-        {0x80049338u,0xe8b90000u},
-        {0x8004933cu,0xe8ba0004u},
-        {0x80049340u,0xe8bb0008u},
-        {0x80049474u,0xe8ab0004u},
-        {0x80049648u,0xe90c0000u},
-        {0x8004964cu,0xe92d0000u},
-        {0x80049650u,0xe94e0000u},
-        {0x80049674u,0xe90e0000u},
-        {0x80049678u,0xe9280000u},
-        {0x800d21e4u,0xeaffffffu},
-        {0x800d230cu,0xe8250000u},
-        {0x800d268cu,0xe9ffffffu},
-        {0x8012c00cu,0xe8590000u},
-        {0x8012c010u,0xe85a0004u},
-        {0x8012c014u,0xe85b0008u},
-        {0x8012e80cu,0xe84e0000u},
-        {0x8012eea0u,0xe8590000u},
-        {0x8012eea4u,0xe85a0004u},
-        {0x8012eea8u,0xe85b0008u},
-        {0x8012ef4cu,0xe8730000u},
-        {0x8012f018u,0xe8ae0000u},
-        {0x80132b54u,0xe8590000u},
-        {0x80132b58u,0xe85a0004u},
-        {0x80132b5cu,0xe85b0008u},
-        {0x80132cf4u,0xe8590000u},
-        {0x80132cf8u,0xe85a0004u},
-        {0x80132cfcu,0xe85b0008u},
-        {0x80133150u,0xe8590000u},
-        {0x80133154u,0xe85a0004u},
-        {0x80133158u,0xe85b0008u},
-        {0x8013400cu,0xe9190000u},
-        {0x80134010u,0xe91a0004u},
-        {0x80134014u,0xe91b0008u},
-        {0x8013adf4u,0xe8590000u},
-        {0x8013adf8u,0xe85a0004u},
-        {0x8013adfcu,0xe85b0008u},
-        {0x8013b434u,0xe8590000u},
-        {0x8013b438u,0xe85a0004u},
-        {0x8013b43cu,0xe85b0008u},
-        {0x8013b494u,0xe8590000u},
-        {0x8013b498u,0xe85a0004u},
-        {0x8013b49cu,0xe85b0008u},
-        {0x8013dac8u,0xe99d0000u},
-        {0x8013e0c8u,0xe8590000u},
-        {0x8013e0ccu,0xe85a0004u},
-        {0x8013e0d0u,0xe85b0008u},
-        {0x8013e160u,0xe8590000u},
-        {0x8013e164u,0xe85a0004u},
-        {0x8013e168u,0xe85b0008u},
-        {0x8013e1f8u,0xe8590000u},
-        {0x8013e1fcu,0xe85a0004u},
-        {0x8013e200u,0xe85b0008u},
-        {0x8013e328u,0xe8590000u},
-        {0x8013e32cu,0xe85a0004u},
-        {0x8013e330u,0xe85b0008u},
-        {0x8017f830u,0xe88c0000u},
-        {0x8017f834u,0xe86d0000u},
-        {0x8017f838u,0xe84e0000u},
-        {0x8017f858u,0xe84e0000u},
-        {0x8017f890u,0xe88c0000u},
-        {0x8017f894u,0xe86d0000u},
-        {0x8017f898u,0xe84e0000u},
-        {0x8017f8b8u,0xe84e0000u},
-        {0x8017fc70u,0xe8580000u},
-        {0x8017fca8u,0xe84c0000u},
-        {0x8017fcacu,0xe84d0004u},
-        {0x8017fcb0u,0xe84e0008u},
-        {0x8017fcc0u,0xe8910000u},
-        {0x8017fcc4u,0xe8720000u},
-        {0x8017fcc8u,0xe8530000u},
-        {0x8018038cu,0xe84c0000u},
-        {0x80180390u,0xe84d0004u},
-        {0x80180394u,0xe84e0008u},
-        {0x801804b0u,0xe8b00000u},
-        {0x801804b4u,0xe8910000u},
-        {0x801804b8u,0xe8720000u},
-        {0x801804bcu,0xe8530000u},
-        {0x801804c4u,0xe84e0000u},
-        {0x80180b30u,0xe84e0000u},
-        {0x80180c68u,0xe8fa00e8u},
-        {0x80180c74u,0xe8f100e8u},
-        {0x801812a0u,0xe83a003fu},
-        {0x801812acu,0xe8c6d4d4u},
-        {0x80183e18u,0xe8590000u},
-        {0x80183e1cu,0xe85a0004u},
-        {0x80183e20u,0xe85b0008u},
-        {0x800209d0u,0xe8590000u},
-        {0x800209d4u,0xe85a0004u},
-        {0x800209d8u,0xe85b0008u},
-        {0x800211f8u,0xebae0000u},
+    static const struct { uint32_t pc, grp; } sites[] = {
+        {0x80048468u,30u /* site group */},
+        {0x80048664u,32u /* site group */},
+        {0x80048668u,32u /* site group */},
+        {0x8004866cu,32u /* site group */},
+        {0x80048e98u,36u /* site group */},
+        {0x80048fa8u,37u /* site group */},
+        {0x80049338u,41u /* site group */},
+        {0x8004933cu,41u /* site group */},
+        {0x80049340u,41u /* site group */},
+        {0x80049474u,42u /* site group */},
+        {0x80049648u,43u /* site group */},
+        {0x8004964cu,43u /* site group */},
+        {0x80049650u,43u /* site group */},
+        {0x80049674u,43u /* site group */},
+        {0x80049678u,43u /* site group */},
+        {0x800d21e4u,79u /* site group */},
+        {0x800d230cu,82u /* site group */},
+        {0x800d268cu,85u /* site group */},
+        {0x8012c00cu,98u /* site group */},
+        {0x8012c010u,98u /* site group */},
+        {0x8012c014u,98u /* site group */},
+        {0x8012e80cu,100u /* site group */},
+        {0x8012eea0u,102u /* site group */},
+        {0x8012eea4u,102u /* site group */},
+        {0x8012eea8u,102u /* site group */},
+        {0x8012ef4cu,103u /* site group */},
+        {0x8012f018u,104u /* site group */},
+        {0x80132b54u,106u /* site group */},
+        {0x80132b58u,106u /* site group */},
+        {0x80132b5cu,106u /* site group */},
+        {0x80132cf4u,107u /* site group */},
+        {0x80132cf8u,107u /* site group */},
+        {0x80132cfcu,107u /* site group */},
+        {0x80133150u,108u /* site group */},
+        {0x80133154u,108u /* site group */},
+        {0x80133158u,108u /* site group */},
+        {0x8013400cu,110u /* site group */},
+        {0x80134010u,110u /* site group */},
+        {0x80134014u,110u /* site group */},
+        {0x8013adf4u,116u /* site group */},
+        {0x8013adf8u,116u /* site group */},
+        {0x8013adfcu,116u /* site group */},
+        {0x8013b434u,118u /* site group */},
+        {0x8013b438u,118u /* site group */},
+        {0x8013b43cu,118u /* site group */},
+        {0x8013b494u,118u /* site group */},
+        {0x8013b498u,118u /* site group */},
+        {0x8013b49cu,118u /* site group */},
+        {0x8013dac8u,126u /* site group */},
+        {0x8013e0c8u,127u /* site group */},
+        {0x8013e0ccu,127u /* site group */},
+        {0x8013e0d0u,127u /* site group */},
+        {0x8013e160u,128u /* site group */},
+        {0x8013e164u,128u /* site group */},
+        {0x8013e168u,128u /* site group */},
+        {0x8013e1f8u,128u /* site group */},
+        {0x8013e1fcu,128u /* site group */},
+        {0x8013e200u,129u /* site group */},
+        {0x8013e328u,130u /* site group */},
+        {0x8013e32cu,130u /* site group */},
+        {0x8013e330u,130u /* site group */},
+        {0x8017f830u,168u /* site group */},
+        {0x8017f834u,168u /* site group */},
+        {0x8017f838u,168u /* site group */},
+        {0x8017f858u,168u /* site group */},
+        {0x8017f890u,168u /* site group */},
+        {0x8017f894u,168u /* site group */},
+        {0x8017f898u,168u /* site group */},
+        {0x8017f8b8u,168u /* site group */},
+        {0x8017fc70u,170u /* site group */},
+        {0x8017fca8u,170u /* site group */},
+        {0x8017fcacu,170u /* site group */},
+        {0x8017fcb0u,170u /* site group */},
+        {0x8017fcc0u,170u /* site group */},
+        {0x8017fcc4u,170u /* site group */},
+        {0x8017fcc8u,170u /* site group */},
+        {0x8018038cu,173u /* site group */},
+        {0x80180390u,173u /* site group */},
+        {0x80180394u,173u /* site group */},
+        {0x801804b0u,175u /* site group */},
+        {0x801804b4u,175u /* site group */},
+        {0x801804b8u,175u /* site group */},
+        {0x801804bcu,175u /* site group */},
+        {0x801804c4u,175u /* site group */},
+        {0x80180b30u,177u /* site group */},
+        {0x80180c68u,178u /* site group */},
+        {0x80180c74u,178u /* site group */},
+        {0x801812a0u,179u /* site group */},
+        {0x801812acu,179u /* site group */},
+        {0x80183e18u,200u /* site group */},
+        {0x80183e1cu,200u /* site group */},
+        {0x80183e20u,200u /* site group */},
+        {0x800209d0u,10u /* site group */},
+        {0x800209d4u,10u /* site group */},
+        {0x800209d8u,10u /* site group */},
+        {0x800211f8u,12u /* site group */},
     };
     unsigned i;
     for (i = 0; i < sizeof(sites)/sizeof(sites[0]); ++i)
-        if (sites[i].pc == pc && sites[i].word == word) return 1;
+        if (sites[i].pc == pc && code_site(pc, sites[i].grp, word)) return 1;
     return 0;
 }
 
@@ -11235,21 +11751,21 @@ static int swc2_site(uint32_t pc, uint32_t word) {
  * from IR1..IR3. Slots as elsewhere. */
 static int gte_20f34_site(uint32_t pc, uint32_t word, unsigned *slot) {
     static const GteSite sites[] = {
-        {0x80020f44u,0x48884000u,3u}, {0x80020f48u,0x48894800u,3u},
-        {0x80020f4cu,0x488a5000u,3u}, {0x80020f50u,0x488b5800u,3u},
-        {0x80020f5cu,0x4b98003du,4u},
-        {0x80020f70u,0x480c4800u,1u}, {0x80020f74u,0x480d5000u,1u},
-        {0x80020f78u,0x480e5800u,1u},
-        {0x80020f88u,0x48884000u,3u}, {0x80020f8cu,0x48894800u,3u},
-        {0x80020f90u,0x488a5000u,3u}, {0x80020f94u,0x488b5800u,3u},
-        {0x80020fa0u,0x4b98003du,4u},
-        {0x80020fb4u,0x480c4800u,1u}, {0x80020fb8u,0x480d5000u,1u},
-        {0x80020fbcu,0x480e5800u,1u},
-        {0x80020fccu,0x48884000u,3u}, {0x80020fd0u,0x48894800u,3u},
-        {0x80020fd4u,0x488a5000u,3u}, {0x80020fd8u,0x488b5800u,3u},
-        {0x80020fe4u,0x4b98003du,4u},
-        {0x80020fe8u,0x480c4800u,1u}, {0x80020fecu,0x480d5000u,1u},
-        {0x80020ff0u,0x480e5800u,1u}
+        {0x80020f44u,11u /* site group */,3u}, {0x80020f48u,11u /* site group */,3u},
+        {0x80020f4cu,11u /* site group */,3u}, {0x80020f50u,11u /* site group */,3u},
+        {0x80020f5cu,11u /* site group */,4u},
+        {0x80020f70u,11u /* site group */,1u}, {0x80020f74u,11u /* site group */,1u},
+        {0x80020f78u,11u /* site group */,1u},
+        {0x80020f88u,11u /* site group */,3u}, {0x80020f8cu,11u /* site group */,3u},
+        {0x80020f90u,11u /* site group */,3u}, {0x80020f94u,11u /* site group */,3u},
+        {0x80020fa0u,11u /* site group */,4u},
+        {0x80020fb4u,11u /* site group */,1u}, {0x80020fb8u,11u /* site group */,1u},
+        {0x80020fbcu,11u /* site group */,1u},
+        {0x80020fccu,11u /* site group */,3u}, {0x80020fd0u,11u /* site group */,3u},
+        {0x80020fd4u,11u /* site group */,3u}, {0x80020fd8u,11u /* site group */,3u},
+        {0x80020fe4u,11u /* site group */,4u},
+        {0x80020fe8u,11u /* site group */,1u}, {0x80020fecu,11u /* site group */,1u},
+        {0x80020ff0u,11u /* site group */,1u}
     };
     return gte_site_lookup(sites, sizeof sites / sizeof sites[0], pc, word, slot);
 }
@@ -11280,15 +11796,15 @@ static int gte_491_pair_caller(uint32_t ra) {
 
 static int gte_48d9c_site(uint32_t pc, uint32_t word, unsigned *slot) {
     static const GteSite sites[] = {
-        {0x80048ddcu, 0x48880000u, 0}, {0x80048de0u, 0x488a0800u, 0},
-        {0x80048e0cu, 0x48880000u, 0}, {0x80048e10u, 0x488a0800u, 0},
-        {0x80048e40u, 0x48880000u, 0}, {0x80048e44u, 0x488a0800u, 0},
-        {0x80048e00u, 0x480b4800u, 1}, {0x80048e04u, 0x480c5000u, 1},
-        {0x80048e08u, 0x480d5800u, 1}, {0x80048e34u, 0x480e4800u, 1},
-        {0x80048e38u, 0x480f5000u, 1}, {0x80048e3cu, 0x48185800u, 1},
-        {0x80048e70u, 0x48084800u, 1}, {0x80048e74u, 0x48095000u, 1},
-        {0x80048de8u, 0x4a486012u, 2}, {0x80048e18u, 0x4a486012u, 2},
-        {0x80048e4cu, 0x4a486012u, 2}
+        {0x80048ddcu, 35u /* site group */, 0}, {0x80048de0u, 35u /* site group */, 0},
+        {0x80048e0cu, 36u /* site group */, 0}, {0x80048e10u, 36u /* site group */, 0},
+        {0x80048e40u, 36u /* site group */, 0}, {0x80048e44u, 36u /* site group */, 0},
+        {0x80048e00u, 36u /* site group */, 1}, {0x80048e04u, 36u /* site group */, 1},
+        {0x80048e08u, 36u /* site group */, 1}, {0x80048e34u, 36u /* site group */, 1},
+        {0x80048e38u, 36u /* site group */, 1}, {0x80048e3cu, 36u /* site group */, 1},
+        {0x80048e70u, 36u /* site group */, 1}, {0x80048e74u, 36u /* site group */, 1},
+        {0x80048de8u, 35u /* site group */, 2}, {0x80048e18u, 36u /* site group */, 2},
+        {0x80048e4cu, 36u /* site group */, 2}
     };
     return gte_site_lookup(sites, sizeof sites / sizeof sites[0], pc, word, slot);
 }
@@ -11315,13 +11831,13 @@ static int gte_484ec_caller(uint32_t ra) {
 
 static int gte_484ec_site(uint32_t pc, uint32_t word, unsigned *slot) {
     static const GteSite sites[] = {
-        {0x80048598u, 0x488b4800u, 0}, {0x8004859cu, 0x488c5000u, 0},
-        {0x800485a0u, 0x488d5800u, 0}, {0x800485b8u, 0x48884800u, 0},
-        {0x800485bcu, 0x48895000u, 0}, {0x800485c0u, 0x488a5800u, 0},
-        {0x800485acu, 0x480bc800u, 1}, {0x800485b0u, 0x480cd000u, 1},
-        {0x800485b4u, 0x480dd800u, 1}, {0x80048620u, 0x4808c800u, 1},
-        {0x80048624u, 0x4809d000u, 1}, {0x80048628u, 0x480ad800u, 1},
-        {0x800485a8u, 0x4a41e012u, 2}, {0x800485c8u, 0x4a49e012u, 2}
+        {0x80048598u, 31u /* site group */, 0}, {0x8004859cu, 31u /* site group */, 0},
+        {0x800485a0u, 31u /* site group */, 0}, {0x800485b8u, 31u /* site group */, 0},
+        {0x800485bcu, 31u /* site group */, 0}, {0x800485c0u, 31u /* site group */, 0},
+        {0x800485acu, 31u /* site group */, 1}, {0x800485b0u, 31u /* site group */, 1},
+        {0x800485b4u, 31u /* site group */, 1}, {0x80048620u, 32u /* site group */, 1},
+        {0x80048624u, 32u /* site group */, 1}, {0x80048628u, 32u /* site group */, 1},
+        {0x800485a8u, 31u /* site group */, 2}, {0x800485c8u, 31u /* site group */, 2}
     };
     return gte_site_lookup(sites, sizeof sites / sizeof sites[0], pc, word, slot);
 }
@@ -11707,6 +12223,7 @@ void musashi_formatter_set_overlay_hook(MusashiOverlayHook hook, void *userdata)
 
 static void overlay_changed(void) {
     const char *name = NULL;
+    code_sites_invalidate();
     if (!g_overlay_hook) return;
     if (g_overlay_sc02_0031_words) name = "SC02_031";
     else if (g_overlay_sc01_0000_words)
@@ -11960,7 +12477,10 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
         g_overlay_sc01_0000_words = sc01_entry_matches(memory);
         overlay_changed();
     }
-    g_fetch_memory = memory;
+    if (memory != g_fetch_memory) {
+        g_fetch_memory = memory;
+        code_sites_invalidate();
+    }
     if (!formatter_fetch(memory, cpu, &instruction)) return formatter_refuse0(__LINE__, cpu->pc);
     if (cpu->gte_load_pending &&
         (cpu->merge_pending || cpu->gte_load_next_pc != cpu->pc ||
@@ -11978,28 +12498,28 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
     immediate = instruction & 0xffffu;
     signed_immediate = (int16_t)immediate;
     if (opcode == 0u && (instruction & 63u) == 26u &&
-        !((g_overlay_0004_words && cpu->pc == 0x800d257cu && instruction == 0x0043001au) ||
-          (cpu->pc == 0x80052868u && instruction == 0x0065001au) ||
-          (cpu->pc == 0x80054070u && instruction == 0x0212001au) ||
-          (cpu->pc == 0x800540e0u && instruction == 0x00d2001au) ||
-          (cpu->pc == 0x80054154u && instruction == 0x00b2001au) ||
-          (cpu->pc == 0x80054194u && instruction == 0x00d2001au) ||
-          (cpu->pc == 0x8005343cu && instruction == 0x0044001au) ||
-          (cpu->pc == 0x80053480u && instruction == 0x0044001au) ||
-          (cpu->pc == 0x800534c4u && instruction == 0x00c4001au) ||
-          (cpu->pc == 0x8005355cu && instruction == 0x0044001au) ||
-          (cpu->pc == 0x800535a0u && instruction == 0x0044001au) ||
-          (cpu->pc == 0x800535e4u && instruction == 0x00c4001au) ||
-          (cpu->pc == 0x80053680u && instruction == 0x0044001au) ||
-          (cpu->pc == 0x800536c4u && instruction == 0x0044001au) ||
-          (cpu->pc == 0x80053708u && instruction == 0x00c4001au)) &&
+        !((g_overlay_0004_words && cpu->pc == 0x800d257cu && code_site(0x800d257cu, 84u, instruction)) ||
+          (cpu->pc == 0x80052868u && code_site(0x80052868u, 47u, instruction)) ||
+          (cpu->pc == 0x80054070u && code_site(0x80054070u, 54u, instruction)) ||
+          (cpu->pc == 0x800540e0u && code_site(0x800540e0u, 54u, instruction)) ||
+          (cpu->pc == 0x80054154u && code_site(0x80054154u, 55u, instruction)) ||
+          (cpu->pc == 0x80054194u && code_site(0x80054194u, 55u, instruction)) ||
+          (cpu->pc == 0x8005343cu && code_site(0x8005343cu, 48u, instruction)) ||
+          (cpu->pc == 0x80053480u && code_site(0x80053480u, 48u, instruction)) ||
+          (cpu->pc == 0x800534c4u && code_site(0x800534c4u, 48u, instruction)) ||
+          (cpu->pc == 0x8005355cu && code_site(0x8005355cu, 49u, instruction)) ||
+          (cpu->pc == 0x800535a0u && code_site(0x800535a0u, 49u, instruction)) ||
+          (cpu->pc == 0x800535e4u && code_site(0x800535e4u, 49u, instruction)) ||
+          (cpu->pc == 0x80053680u && code_site(0x80053680u, 50u, instruction)) ||
+          (cpu->pc == 0x800536c4u && code_site(0x800536c4u, 50u, instruction)) ||
+          (cpu->pc == 0x80053708u && code_site(0x80053708u, 51u, instruction))) &&
         !div_guard_present(memory, cpu->pc, instruction)) return formatter_refuse0(__LINE__, cpu->pc);
     /* These optional debug-call branches have no admitted host target yet. */
     if (cpu->pc == 0x8005937cu || cpu->pc == 0x80059698u ||
         cpu->pc == 0x80059844u || cpu->pc == 0x8005986cu) return formatter_refuse0(__LINE__, cpu->pc);
     if (cpu->pc == 0x80042598u) {
         uint32_t table, target;
-        if (instruction != 0x0040f809u ||
+        if (!code_site(0x80042598u, 16u, instruction) ||
             !musashi_boot_read32(memory,0x8006cb84u,&table) || table != 0x8006cb64u ||
             !musashi_boot_read32(memory,table+0xcu,&target) || target != 0x80042718u ||
             cpu->r[2] != target) return formatter_refuse0(__LINE__, cpu->pc);
@@ -12010,7 +12530,7 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
         const uint32_t expected=cpu->pc == 0x80059398u ? 0x8005bd7cu : 0x8005b684u;
         /* The source-loaded device table must select the audited operation;
          * another mapped function is not an equivalent device capability. */
-        if (instruction != 0x0040f809u ||
+        if (!code_site(0x80059398u, 57u, instruction) ||
             !musashi_boot_read32(memory,0x80072780u,&table) || table != 0x80072740u ||
             !musashi_boot_read32(memory,table+offset,&target) ||
             target != expected || cpu->r[2] != target)
@@ -12039,13 +12559,13 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
     }
     if (cpu->pc == 0x8005b690u) {
         uint32_t address;
-        if (instruction != 0xac440000u ||
+        if (!code_site(0x8005b690u, 61u, instruction) ||
             !musashi_boot_read32(memory,0x8007285cu,&address) ||
             address != 0x1f801814u || cpu->r[2] != address) return formatter_refuse0(__LINE__, cpu->pc);
     }
     if (cpu->pc == 0x80059df4u) {
         uint32_t table, dispatch, callback;
-        if (instruction != 0x0040f809u ||
+        if (!code_site(0x80059df4u, 59u, instruction) ||
             !musashi_boot_read32(memory,0x80072780u,&table) || table != 0x80072740u ||
             !musashi_boot_read32(memory,table+8u,&dispatch) || dispatch != 0x8005b7b0u ||
             !musashi_boot_read32(memory,table+0x18u,&callback) || callback != 0x8005b710u ||
@@ -12055,7 +12575,7 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
     }
     if (cpu->pc == 0x8005b8bcu) {
         uint32_t callback;
-        if (instruction != 0x0260f809u || cpu->r[4] != cpu->r[16] || (cpu->r[4]&3u)) return formatter_refuse0(__LINE__, cpu->pc);
+        if (!code_site(0x8005b8bcu, 62u, instruction) || cpu->r[4] != cpu->r[16] || (cpu->r[4]&3u)) return formatter_refuse0(__LINE__, cpu->pc);
         if (cpu->r[19] == 0x8005b710u) {
             if (!musashi_boot_read32(memory,0x80072758u,&callback) || callback != cpu->r[19] ||
                 cpu->r[18] != 0 || cpu->r[17] != 0x40u ||
@@ -12074,7 +12594,7 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
     }
     if (cpu->pc == 0x800598f4u) {
         uint32_t table, dispatch, callback;
-        if (instruction != 0x0040f809u ||
+        if (!code_site(0x800598f4u, 58u, instruction) ||
             !musashi_boot_read32(memory,0x80072780u,&table) || table != 0x80072740u ||
             !musashi_boot_read32(memory,table+8u,&dispatch) || dispatch != 0x8005b7b0u ||
             !musashi_boot_read32(memory,table+0xcu,&callback) || callback != 0x8005af68u ||
@@ -12084,7 +12604,7 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
     }
     if (cpu->pc == 0x8005b154u || cpu->pc == 0x8005b090u) {
         uint32_t address;
-        if (instruction != 0x8c440000u ||
+        if (!code_site(0x8005b090u, 60u, instruction) ||
             !musashi_boot_read32(memory,0x8007285cu,&address) ||
             address != 0x1f801814u || cpu->r[2] != address) return formatter_refuse0(__LINE__, cpu->pc);
     }
@@ -12094,16 +12614,16 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
         uint32_t cell, expected, actual, word;
         unsigned reg=2;
         switch (cpu->pc) {
-        case 0x8005b870u: cell=0x80072868u; expected=0x1f8010a8u; word=0x8c420000u; break;
-        case 0x8005b8a4u: cell=0x8007285cu; expected=0x1f801814u; word=0x8c620000u; reg=3; break;
+        case 0x8005b870u: cell=0x80072868u; expected=0x1f8010a8u; word=MIPS_I(35, 2, 2, 0x0000u); break;
+        case 0x8005b8a4u: cell=0x8007285cu; expected=0x1f801814u; word=MIPS_I(35, 3, 2, 0x0000u); reg=3; break;
         case 0x8005b720u:
-            cell=0x8007285cu; expected=0x1f801814u; word=0xac430000u;
+            cell=0x8007285cu; expected=0x1f801814u; word=MIPS_I(43, 2, 3, 0x0000u);
             if (cpu->r[3] != 0x04000002u) return formatter_refuse0(__LINE__, cpu->pc);
             break;
-        case 0x8005b730u: cell=0x80072860u; expected=0x1f8010a0u; word=0xac440000u; break;
-        case 0x8005b740u: cell=0x80072864u; expected=0x1f8010a4u; word=0xac400000u; break;
+        case 0x8005b730u: cell=0x80072860u; expected=0x1f8010a0u; word=MIPS_I(43, 2, 4, 0x0000u); break;
+        case 0x8005b740u: cell=0x80072864u; expected=0x1f8010a4u; word=MIPS_I(43, 2, 0, 0x0000u); break;
         default:
-            cell=0x80072868u; expected=0x1f8010a8u; word=0xac430000u;
+            cell=0x80072868u; expected=0x1f8010a8u; word=MIPS_I(43, 2, 3, 0x0000u);
             if (cpu->r[3] != 0x01000401u) return formatter_refuse0(__LINE__, cpu->pc);
             break;
         }
@@ -12121,7 +12641,7 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
             0x80019c98u,0x80019da0u,0x80019e64u,0x80019f50u,0x80019fc4u
         };
         uint32_t state, table_target;
-        if (instruction != 0x00400008u ||
+        if (!code_site(0x80019b30u, 6u, instruction) ||
             !musashi_boot_read32(memory,0x800ae6f0u,&state) ||
             state >= 9u || !targets[state] || cpu->r[3] != state ||
             !musashi_boot_read32(memory,0x80072a4cu+4u*state,&table_target) ||
@@ -12138,16 +12658,16 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
         if (!cpu_ram_span(memory, cpu, cpu->r[rs] + (uint32_t)(int32_t)signed_immediate, 1))
             return formatter_refuse0(__LINE__, cpu->pc);
         if (cpu->pc >= 0x800459e8u && cpu->pc < 0x80045c94u &&
-            (cpu->pc != 0x80045b54u || instruction != 0x80633a1au))
+            (cpu->pc != 0x80045b54u || !code_site(0x80045b54u, 19u, instruction)))
             return formatter_refuse0(__LINE__, cpu->pc);
     }
     if (cpu->pc == 0x8004d180u &&
-        (instruction != 0x0140f809u || cpu->r[10] != 0xb0u)) return formatter_refuse0(__LINE__, cpu->pc);
+        (!code_site(0x8004d180u, 44u, instruction) || cpu->r[10] != 0xb0u)) return formatter_refuse0(__LINE__, cpu->pc);
     if (cpu->pc == 0x8004d190u &&
-        (instruction != 0x8c420018u || cpu->r[2] != 0x674u)) return formatter_refuse0(__LINE__, cpu->pc);
+        (!code_site(0x8004d190u, 44u, instruction) || cpu->r[2] != 0x674u)) return formatter_refuse0(__LINE__, cpu->pc);
     if (cpu->pc == 0x8004d1acu) {
         uint32_t offset = cpu->r[2] - 0xc84u;
-        if (instruction != 0xac43fffcu || offset >= 56u || (offset & 3u) ||
+        if (!code_site(0x8004d1acu, 44u, instruction) || offset >= 56u || (offset & 3u) ||
             cpu->r[10] != 0x8004d1d8u + offset || cpu->r[9] != 0x8004d20cu)
             return formatter_refuse0(__LINE__, cpu->pc);
     }
@@ -12155,13 +12675,13 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
         int geometry = (cpu->r[31] == 0x80053d08u || cpu->r[31] == 0x80014454u);
         int movie = g_overlay_0004_words && cpu->r[31] == 0x800d2764u;
         if (!cpu->cpu_transfer ||
-            !((geometry && cpu->pc == 0x80047cd0u && instruction == 0x40026000u &&
+            !((geometry && cpu->pc == 0x80047cd0u && code_site(0x80047cd0u, 25u, instruction) &&
                cpu->cpu_transfer->read_status) ||
-              (geometry && cpu->pc == 0x80047cdcu && instruction == 0x40826000u &&
+              (geometry && cpu->pc == 0x80047cdcu && code_site(0x80047cdcu, 25u, instruction) &&
                cpu->cpu_transfer->write_status) ||
-              (movie && cpu->pc == 0x800d3524u && instruction == 0x40096000u &&
+              (movie && cpu->pc == 0x800d3524u && code_site(0x800d3524u, 95u, instruction) &&
                cpu->cpu_transfer->read_status) ||
-              (movie && cpu->pc == 0x800d3534u && instruction == 0x40896000u &&
+              (movie && cpu->pc == 0x800d3534u && code_site(0x800d3534u, 95u, instruction) &&
                cpu->cpu_transfer->write_status))) return formatter_refuse0(__LINE__, cpu->pc);
     }
     if (opcode == 18u && rs != 6u) {
@@ -12191,20 +12711,20 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
              * bound command transfer. */
             vector_command = OVERLAY_SC_ACTIVE &&
                 cpu->cpu_transfer->command != NULL &&
-                cpu->pc == 0x80133ffcu && instruction == 0x4aa00428u &&
+                cpu->pc == 0x80133ffcu && code_site(0x80133ffcu, 109u, instruction) &&
                 cpu->r[31] == 0x80133fb8u;
             /* func_80049324's own MVMVA. The leaf is main-exec code, so the
              * gate is the exact site plus its audited caller aliases. */
             transform_leaf = cpu->cpu_transfer->command != NULL &&
-                cpu->pc == 0x80049334u && instruction == 0x4aa00428u &&
+                cpu->pc == 0x80049334u && code_site(0x80049334u, 41u, instruction) &&
                 gte_49324_caller(cpu->r[31]);
             transform = OVERLAY_SC_ACTIVE && (cpu->r[31] == 0x8012f188u || cpu->r[31] == 0x80166c14u) &&
-                (((cpu->pc == 0x8004946cu && instruction == 0x48024800u) ||
-                  (cpu->pc == 0x80049470u && instruction == 0x48035000u)) ?
+                (((cpu->pc == 0x8004946cu && code_site(0x8004946cu, 42u, instruction)) ||
+                  (cpu->pc == 0x80049470u && code_site(0x80049470u, 42u, instruction))) ?
                      cpu->cpu_transfer->read_data != NULL :
-                 (cpu->pc == 0x80049480u && instruction == 0x4842f800u) ?
+                 (cpu->pc == 0x80049480u && code_site(0x80049480u, 42u, instruction)) ?
                      cpu->cpu_transfer->read_control != NULL :
-                 (cpu->pc == 0x80049468u && instruction == 0x4a480012u) &&
+                 (cpu->pc == 0x80049468u && code_site(0x80049468u, 42u, instruction)) &&
                      cpu->cpu_transfer->command != NULL);
             /* func_80049440 is the same GTE special-register leaf reached from
              * func_800128EC (RA 0x80012930); admitted by exact PC/word. */
@@ -12233,14 +12753,14 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
                  (eac_slot == 3u && cpu->cpu_transfer->write_data != NULL) ||
                  (eac_slot == 4u && cpu->cpu_transfer->command != NULL));
             leaf = !cpu->gte_load_pending &&
-                (((cpu->pc == 0x80049440u && instruction == 0x4884f000u &&
+                (((cpu->pc == 0x80049440u && code_site(0x80049440u, 42u, instruction) &&
                    cpu->cpu_transfer->write_data != NULL) ||
-                  (cpu->pc == 0x8004944cu && instruction == 0x4802f800u &&
+                  (cpu->pc == 0x8004944cu && code_site(0x8004944cu, 42u, instruction) &&
                    cpu->cpu_transfer->read_data != NULL)) ||
                  (gte_47d3c_caller(cpu->r[31]) &&
-                ((cpu->pc == 0x80047d3cu && instruction == 0x4884f000u &&
+                ((cpu->pc == 0x80047d3cu && code_site(0x80047d3cu, 26u, instruction) &&
                   cpu->cpu_transfer->write_data) ||
-                 (cpu->pc == 0x80047d48u && instruction == 0x4802f800u &&
+                 (cpu->pc == 0x80047d48u && code_site(0x80047d48u, 26u, instruction) &&
                   cpu->cpu_transfer->read_data))));
             camera = gte_48d9c_caller(cpu->r[31]) &&
                 gte_48d9c_site(cpu->pc, instruction, &slot) &&
@@ -12261,26 +12781,26 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
              !transform_leaf && !trans_leaf && !bank && !lib_gte)) return formatter_refuse0(__LINE__, cpu->pc);
     } else if (opcode == 18u) {
         static const uint32_t sites[][2] = {
-            {0x80047ce8u,0x48c8e800u},{0x80047cf4u,0x48c8f000u},
-            {0x80047d00u,0x48c8d000u},{0x80047d0cu,0x48c8d800u},
-            {0x80047d18u,0x48c8e000u},{0x80047d20u,0x48c0c000u},
-            {0x80047d24u,0x48c0c800u},{0x80053ae4u,0x48c4a800u},
-            {0x80053ae8u,0x48c5b000u},{0x80053aecu,0x48c6b800u},
-            {0x80049224u,0x48c4c000u},{0x80049228u,0x48c5c800u},
-            {0x8004923cu,0x48c4d000u},{0x80048db0u,0x48c80000u},
-            {0x80048db4u,0x48c90800u},{0x80048db8u,0x48ca1000u},
-            {0x80048dbcu,0x48cb1800u},{0x80048dc0u,0x48cc2000u},
-            {0x80048500u,0x48c80000u},{0x80048504u,0x48c90800u},
-            {0x80048508u,0x48ca1000u},{0x8004850cu,0x48cb1800u},
-            {0x80048510u,0x48cc2000u},{0x80049208u,0x48c46800u},
-            {0x8004920cu,0x48c57000u},{0x80049210u,0x48c67800u},
-            {0x800538d0u,0x48c88000u},{0x800538d4u,0x48c98800u},
-            {0x800538d8u,0x48ca9000u},{0x800538dcu,0x48cb9800u},
-            {0x800538e0u,0x48cca000u},
-            {0x80049160u,0x48c80000u},{0x80049164u,0x48c90800u},
-            {0x80049168u,0x48ca1000u},{0x8004916cu,0x48cb1800u},
-            {0x80049170u,0x48cc2000u},{0x800491b8u,0x48c82800u},
-            {0x800491bcu,0x48c93000u},{0x800491c0u,0x48ca3800u}
+            {0x80047ce8u,25u /* site group */},{0x80047cf4u,25u /* site group */},
+            {0x80047d00u,26u /* site group */},{0x80047d0cu,26u /* site group */},
+            {0x80047d18u,26u /* site group */},{0x80047d20u,26u /* site group */},
+            {0x80047d24u,26u /* site group */},{0x80053ae4u,53u /* site group */},
+            {0x80053ae8u,53u /* site group */},{0x80053aecu,53u /* site group */},
+            {0x80049224u,40u /* site group */},{0x80049228u,40u /* site group */},
+            {0x8004923cu,40u /* site group */},{0x80048db0u,35u /* site group */},
+            {0x80048db4u,35u /* site group */},{0x80048db8u,35u /* site group */},
+            {0x80048dbcu,35u /* site group */},{0x80048dc0u,35u /* site group */},
+            {0x80048500u,31u /* site group */},{0x80048504u,31u /* site group */},
+            {0x80048508u,31u /* site group */},{0x8004850cu,31u /* site group */},
+            {0x80048510u,31u /* site group */},{0x80049208u,40u /* site group */},
+            {0x8004920cu,40u /* site group */},{0x80049210u,40u /* site group */},
+            {0x800538d0u,52u /* site group */},{0x800538d4u,52u /* site group */},
+            {0x800538d8u,52u /* site group */},{0x800538dcu,52u /* site group */},
+            {0x800538e0u,52u /* site group */},
+            {0x80049160u,39u /* site group */},{0x80049164u,39u /* site group */},
+            {0x80049168u,39u /* site group */},{0x8004916cu,39u /* site group */},
+            {0x80049170u,39u /* site group */},{0x800491b8u,39u /* site group */},
+            {0x800491bcu,39u /* site group */},{0x800491c0u,39u /* site group */}
         };
         unsigned i;
         unsigned lib_slot = 99;
@@ -12348,22 +12868,22 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
          * exact PC/word/rt instead of by caller alias, with the same transfer
          * and CPU-state requirements as the audited transform site. */
         int vector = load && cpu->cpu_transfer && cpu->cpu_transfer->write_data &&
-            ((cpu->pc == 0x80133fe8u && instruction == 0xc9090000u && rt == 9u) ||
-             (cpu->pc == 0x80133fecu && instruction == 0xc90a0004u && rt == 10u) ||
-             (cpu->pc == 0x80133ff0u && instruction == 0xc90b0008u && rt == 11u));
+            ((cpu->pc == 0x80133fe8u && code_site(0x80133fe8u, 109u, instruction) && rt == 9u) ||
+             (cpu->pc == 0x80133fecu && code_site(0x80133fecu, 109u, instruction) && rt == 10u) ||
+             (cpu->pc == 0x80133ff0u && code_site(0x80133ff0u, 109u, instruction) && rt == 11u));
         /* func_80048FBC's V0 pair. That leaf is main-exec library code, so its
          * exact sites stand without the SC02 selection the 0x8013 sites need. */
         int library_vector = load && cpu->cpu_transfer && cpu->cpu_transfer->write_data &&
             (lwc2_site(cpu->pc, instruction) ||
-             (cpu->pc == 0x80048fe4u && instruction == 0xc8a00000u && rt == 0u) ||
-             (cpu->pc == 0x80048fe8u && instruction == 0xc8a10004u && rt == 1u));
+             (cpu->pc == 0x80048fe4u && code_site(0x80048fe4u, 37u, instruction) && rt == 0u) ||
+             (cpu->pc == 0x80048fe8u && code_site(0x80048fe8u, 37u, instruction) && rt == 1u));
         vector = vector || library_vector;
         /* The matching stores publish the transformed IR1..3 back out; same
          * clobbered RA, same exact-site discipline. */
         int store_vector = !load && cpu->cpu_transfer && cpu->cpu_transfer->read_data &&
-            ((cpu->pc == 0x8013400cu && instruction == 0xe9190000u && rt == 25u) ||
-             (cpu->pc == 0x80134010u && instruction == 0xe91a0004u && rt == 26u) ||
-             (cpu->pc == 0x80134014u && instruction == 0xe91b0008u && rt == 27u));
+            ((cpu->pc == 0x8013400cu && code_site(0x8013400cu, 110u, instruction) && rt == 25u) ||
+             (cpu->pc == 0x80134010u && code_site(0x80134010u, 110u, instruction) && rt == 26u) ||
+             (cpu->pc == 0x80134014u && code_site(0x80134014u, 110u, instruction) && rt == 27u));
         /* The 80049324 leaf is main-exec code reached from either bank, so it
          * is pinned to its own caller aliases and stands without the SC02
          * selection that the 0x8013 sites require. */
@@ -12380,10 +12900,10 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
             cpu->npc != cpu->pc+4u || cpu->delay_slot || cpu->branch_pc ||
             (address & 3u) || !cpu_ram_span(memory, cpu, address, 4u) ||
             (load ? (!cpu->cpu_transfer->write_data ||
-                     !((cpu->pc == 0x8004945cu && instruction == 0xc8800000u) ||
-                       (cpu->pc == 0x80049460u && instruction == 0xc8810004u))) && !vector :
+                     !((cpu->pc == 0x8004945cu && code_site(0x8004945cu, 42u, instruction)) ||
+                       (cpu->pc == 0x80049460u && code_site(0x80049460u, 42u, instruction)))) && !vector :
                     (!cpu->cpu_transfer->read_data ||
-                     (!store_vector && instruction != 0xe8ab0004u)))) return formatter_refuse0(__LINE__, cpu->pc);
+                     (!store_vector && instruction != MIPS_I(58, 5, 11, 0x0004u))))) return formatter_refuse0(__LINE__, cpu->pc);
     } else if (opcode == 58u) {
         /* Two admitted SWC2 stores of light-matrix control 11: 80048E98 under
          * an audited 80048D9C caller and 80048FA8 under a func_80048EAC
@@ -12391,15 +12911,15 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
          * routines retires at its admitted successor. */
         int control_swc2 = swc2_control_site(cpu->pc, instruction);
         int swc2 = swc2_site(cpu->pc, instruction) ||
-                   (cpu->pc == 0x80048e98u && instruction == 0xe88b0010u &&
+                   (cpu->pc == 0x80048e98u && code_site(0x80048e98u, 36u, instruction) &&
                     gte_48d9c_caller(cpu->r[31])) ||
-                   (cpu->pc == 0x80048fa8u && instruction == 0xe8ab0010u &&
+                   (cpu->pc == 0x80048fa8u && code_site(0x80048fa8u, 37u, instruction) &&
                     gte_48eac_caller(cpu->r[31])) ||
                    /* func_8004864C publishes IR1..IR3 back out. */
                    (gte_4864c_caller(cpu->r[31]) &&
-                    ((cpu->pc == 0x80048664u && instruction == 0xe8a90000u) ||
-                     (cpu->pc == 0x80048668u && instruction == 0xe8aa0004u) ||
-                     (cpu->pc == 0x8004866cu && instruction == 0xe8ab0008u)));
+                    ((cpu->pc == 0x80048664u && code_site(0x80048664u, 32u, instruction)) ||
+                     (cpu->pc == 0x80048668u && code_site(0x80048668u, 32u, instruction)) ||
+                     (cpu->pc == 0x8004866cu && code_site(0x8004866cu, 32u, instruction))));
         if (!swc2 || !cpu->cpu_transfer || cpu->merge_pending ||
             (cpu->gte_load_pending && !gte_load_successor_pc(cpu->pc)) ||
             cpu->npc != cpu->pc+4u ||
@@ -12519,8 +13039,8 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
             int64_t diff;
             if (!((g_overlay_0004_words && cpu->pc >= 0x800d3234u &&
                    cpu->pc < 0x800d3540u) ||
-                  (((cpu->pc == 0x80047d68u && instruction == 0x012a4822u) ||
-                    (cpu->pc == 0x80047d88u && instruction == 0x016a5822u)) &&
+                  (((cpu->pc == 0x80047d68u && code_site(0x80047d68u, 26u, instruction)) ||
+                    (cpu->pc == 0x80047d88u && code_site(0x80047d88u, 26u, instruction))) &&
                    gte_47d3c_caller(cpu->r[31])) ||
                   (gte_47ec8_integer_caller(cpu->r[31]) &&
                    gte_47ec8_sub_site(cpu->pc, instruction))))
@@ -12599,7 +13119,7 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
                    (gte_20f34_caller(cpu->r[31]) &&
                     gte_20f34_site(cpu->pc, instruction, &eac_cmd_slot) &&
                     eac_cmd_slot == 4u) ||
-                   (cpu->pc == 0x80049334u && instruction == 0x4aa00428u &&
+                   (cpu->pc == 0x80049334u && code_site(0x80049334u, 41u, instruction) &&
                     gte_49324_caller(cpu->r[31])) ||
                    (gte_48eac_caller(cpu->r[31]) &&
                     gte_48eac_site(cpu->pc, instruction, &eac_cmd_slot) &&
@@ -13093,6 +13613,7 @@ static MusashiResetGraphPrefixStatus run_startup_cpu(
     frame.observer = observer;
     frame.observer_userdata = observer_userdata;
     g_lane_run_frames = &frame;
+    code_sites_invalidate();
     if (g_trace_state >= 0) musashi_trace_function_entry(cpu->pc, cpu->r[31], 'd');
     status = run_startup_cpu_loop(memory, cpu, sink, userdata, result, stop,
                                   entry_stop, observer, observer_userdata);
@@ -13258,7 +13779,7 @@ static MusashiResetGraphPrefixStatus run_startup_cpu_loop(
              * the actual SYSCALL crosses into the native exception owner. */
             if (cpu->r[4] != (is_enter ? 1u : 2u) || cpu->npc != cpu->pc + 4u ||
                 cpu->delay_slot || cpu->branch_pc || cpu->merge_pending || cpu->gte_load_pending ||
-                !formatter_fetch(memory, cpu, &instruction) || instruction != 0x0000000cu)
+                !formatter_fetch(memory, cpu, &instruction) || instruction != MIPS_SYSCALL)
                 return MUSASHI_RESETGRAPH_PREFIX_INVALID_INPUT;
             if ((is_enter && (!cpu->cd_device || !cpu->cd_device->enter_critical_result)) ||
                 (!is_enter && !device->exit_critical_section))
@@ -13532,10 +14053,10 @@ static int input_callback_call(MusashiBootMemory *memory, const FormatterCpu *cp
     };
     if (!device->read16 || !device->write16) return 0;
     switch (cpu->pc) {
-    case 0x8005d7fcu: return instruction == 0x0c017671u && target == 0x8005d9c4u;
-    case 0x8005d858u: return instruction == 0x0c0176f6u && target == 0x8005dbd8u;
+    case 0x8005d7fcu: return instruction == MIPS_JAL(0x8005d9c4u) && target == 0x8005d9c4u;
+    case 0x8005d858u: return instruction == MIPS_JAL(0x8005dbd8u) && target == 0x8005dbd8u;
     case 0x8005da10u:
-    case 0x8005dc2cu: return instruction == 0x0c017eeau && target == 0x8005fba8u;
+    case 0x8005dc2cu: return instruction == MIPS_JAL(0x8005fba8u) && target == 0x8005fba8u;
     default: break;
     }
     /* Both DATA bindings opt into the observed digital source graph. The
@@ -13546,7 +14067,7 @@ static int input_callback_call(MusashiBootMemory *memory, const FormatterCpu *cp
     case 0x8005dc04u:
         /* Check the OLD index and its exact live slot before DC08 increments
          * it. Index five is a hardware pointer, never an executable entry. */
-        if (instruction != 0x0040f809u ||
+        if (instruction != MIPS_JALR(2, 31) ||
             !musashi_boot_read32(memory, 0x800729a0u, &live) || live >= 5u)
             return 0;
         expected = table[live];
@@ -13557,67 +14078,67 @@ static int input_callback_call(MusashiBootMemory *memory, const FormatterCpu *cp
     case 0x8005daa0u: slot = 0x8007297cu; expected = 0x8005f830u; expected_word = 0x0060f809u; break;
     case 0x8005db04u: slot = 0x8007297cu; expected = 0x8005f830u; break;
     case 0x8005db18u: slot = 0x80072980u; expected = 0x8005f384u; break;
-    case 0x8005db68u: return instruction == 0x0c01784fu && target == 0x8005e13cu;
-    case 0x8005dc34u: return instruction == 0x0c01782bu && target == 0x8005e0acu;
+    case 0x8005db68u: return instruction == MIPS_JAL(0x8005e13cu) && target == 0x8005e13cu;
+    case 0x8005dc34u: return instruction == MIPS_JAL(0x8005e0acu) && target == 0x8005e0acu;
     case 0x8005dc50u: slot = 0x8007295cu; expected = 0x8005f290u; break;
     case 0x8005dc88u: slot = 0x8007295cu; expected = 0x8005f290u; break;
-    case 0x8005dd1cu: return instruction == 0x0c017ef2u && target == 0x8005fbc8u;
-    case 0x8005ddf0u: return instruction == 0x0c017ef2u && target == 0x8005fbc8u;
-    case 0x8005deecu: return instruction == 0x0c017eeau && target == 0x8005fba8u;
-    case 0x8005e028u: return instruction == 0x0c017eeau && target == 0x8005fba8u;
-    case 0x8005e030u: return instruction == 0x0c017ef2u && target == 0x8005fbc8u;
-    case 0x8005e0e0u: return instruction == 0x0c017ef2u && target == 0x8005fbc8u;
-    case 0x8005e1e8u: return instruction == 0x0c017a95u && target == 0x8005ea54u;
-    case 0x8005e1fcu: return instruction == 0x0c017a9au && target == 0x8005ea68u;
-    case 0x8005e210u: return instruction == 0x0c017aaau && target == 0x8005eaa8u;
+    case 0x8005dd1cu: return instruction == MIPS_JAL(0x8005fbc8u) && target == 0x8005fbc8u;
+    case 0x8005ddf0u: return instruction == MIPS_JAL(0x8005fbc8u) && target == 0x8005fbc8u;
+    case 0x8005deecu: return instruction == MIPS_JAL(0x8005fba8u) && target == 0x8005fba8u;
+    case 0x8005e028u: return instruction == MIPS_JAL(0x8005fba8u) && target == 0x8005fba8u;
+    case 0x8005e030u: return instruction == MIPS_JAL(0x8005fbc8u) && target == 0x8005fbc8u;
+    case 0x8005e0e0u: return instruction == MIPS_JAL(0x8005fbc8u) && target == 0x8005fbc8u;
+    case 0x8005e1e8u: return instruction == MIPS_JAL(0x8005ea54u) && target == 0x8005ea54u;
+    case 0x8005e1fcu: return instruction == MIPS_JAL(0x8005ea68u) && target == 0x8005ea68u;
+    case 0x8005e210u: return instruction == MIPS_JAL(0x8005eaa8u) && target == 0x8005eaa8u;
     case 0x8005eafcu: slot = 0x80072974u; expected = 0x8005f75cu; break;
-    case 0x8005eb10u: return instruction == 0x0c017728u && target == 0x8005dca0u;
+    case 0x8005eb10u: return instruction == MIPS_JAL(0x8005dca0u) && target == 0x8005dca0u;
     case 0x8005ebacu: slot = 0x80072974u; expected = 0x8005f75cu; break;
     case 0x8005ebc4u: slot = 0x80072974u; expected = 0x8005f75cu; break;
-    case 0x8005ebe8u: return instruction == 0x0c01779eu && target == 0x8005de78u;
+    case 0x8005ebe8u: return instruction == MIPS_JAL(0x8005de78u) && target == 0x8005de78u;
     case 0x8005ec2cu: slot = 0x80072974u; expected = 0x8005f75cu; break;
     case 0x8005ec44u: slot = 0x80072974u; expected = 0x8005f75cu; break;
-    case 0x8005ec64u: return instruction == 0x0c01779eu && target == 0x8005de78u;
+    case 0x8005ec64u: return instruction == MIPS_JAL(0x8005de78u) && target == 0x8005de78u;
     case 0x8005ed04u: slot = 0x80072964u; expected = 0x8005f394u; break;
-    case 0x8005ed10u: return instruction == 0x0c01779eu && target == 0x8005de78u;
+    case 0x8005ed10u: return instruction == MIPS_JAL(0x8005de78u) && target == 0x8005de78u;
     case 0x8005ed74u: slot = 0x80072968u; expected = 0x8005f450u; break;
     case 0x8005edfcu: slot = 0x80072968u; expected = 0x8005f450u; break;
     case 0x8005ee14u: slot = 0x80072964u; expected = 0x8005f394u; break;
-    case 0x8005ee20u: return instruction == 0x0c01779eu && target == 0x8005de78u;
-    case 0x8005ee30u: return instruction == 0x0c017eeau && target == 0x8005fba8u;
-    case 0x8005ee38u: return instruction == 0x0c01782bu && target == 0x8005e0acu;
+    case 0x8005ee20u: return instruction == MIPS_JAL(0x8005de78u) && target == 0x8005de78u;
+    case 0x8005ee30u: return instruction == MIPS_JAL(0x8005fba8u) && target == 0x8005fba8u;
+    case 0x8005ee38u: return instruction == MIPS_JAL(0x8005e0acu) && target == 0x8005e0acu;
     case 0x8005eed8u: slot = 0x8007297cu; expected = 0x8005f830u; break;
     case 0x8005ef34u: slot = 0x8007297cu; expected = 0x8005f830u; break;
     case 0x8005ef60u: slot = 0x8007297cu; expected = 0x8005f830u; break;
     case 0x8005ef74u: slot = 0x80072980u; expected = 0x8005f384u; break;
     case 0x8005ef94u: slot = 0x80072964u; expected = 0x8005f394u; break;
-    case 0x8005efa0u: return instruction == 0x0c017728u && target == 0x8005dca0u;
-    case 0x8005efb0u: return instruction == 0x0c017eeau && target == 0x8005fba8u;
-    case 0x8005efb8u: return instruction == 0x0c01782bu && target == 0x8005e0acu;
+    case 0x8005efa0u: return instruction == MIPS_JAL(0x8005dca0u) && target == 0x8005dca0u;
+    case 0x8005efb0u: return instruction == MIPS_JAL(0x8005fba8u) && target == 0x8005fba8u;
+    case 0x8005efb8u: return instruction == MIPS_JAL(0x8005e0acu) && target == 0x8005e0acu;
     case 0x8005f00cu: slot = 0x80072964u; expected = 0x8005f394u; break;
-    case 0x8005f018u: return instruction == 0x0c017728u && target == 0x8005dca0u;
-    case 0x8005f028u: return instruction == 0x0c017eeau && target == 0x8005fba8u;
-    case 0x8005f030u: return instruction == 0x0c01782bu && target == 0x8005e0acu;
-    case 0x8005f05cu: return instruction == 0x0c01784fu && target == 0x8005e13cu;
+    case 0x8005f018u: return instruction == MIPS_JAL(0x8005dca0u) && target == 0x8005dca0u;
+    case 0x8005f028u: return instruction == MIPS_JAL(0x8005fba8u) && target == 0x8005fba8u;
+    case 0x8005f030u: return instruction == MIPS_JAL(0x8005e0acu) && target == 0x8005e0acu;
+    case 0x8005f05cu: return instruction == MIPS_JAL(0x8005e13cu) && target == 0x8005e13cu;
     case 0x8005f098u: slot = 0x8007295cu; expected = 0x8005f290u; break;
-    case 0x8005f2f4u: return instruction == 0x0c017ea5u && target == 0x8005fa94u;
-    case 0x8005f2fcu: return instruction == 0x0c017ce1u && target == 0x8005f384u;
-    case 0x8005f34cu: return instruction == 0x0c017671u && target == 0x8005d9c4u;
-    case 0x8005f464u: return instruction == 0x0c0170b2u && target == 0x8005c2c8u;
-    case 0x8005f7d8u: return instruction == 0x0c017a8du && target == 0x8005ea34u;
-    case 0x8005f7e8u: return instruction == 0x0c017a8du && target == 0x8005ea34u;
-    case 0x8005f818u: return instruction == 0x0c017869u && target == 0x8005e1a4u;
-    case 0x8005f910u: return instruction == 0x0c017edcu && target == 0x8005fb70u;
+    case 0x8005f2f4u: return instruction == MIPS_JAL(0x8005fa94u) && target == 0x8005fa94u;
+    case 0x8005f2fcu: return instruction == MIPS_JAL(0x8005f384u) && target == 0x8005f384u;
+    case 0x8005f34cu: return instruction == MIPS_JAL(0x8005d9c4u) && target == 0x8005d9c4u;
+    case 0x8005f464u: return instruction == MIPS_JAL(0x8005c2c8u) && target == 0x8005c2c8u;
+    case 0x8005f7d8u: return instruction == MIPS_JAL(0x8005ea34u) && target == 0x8005ea34u;
+    case 0x8005f7e8u: return instruction == MIPS_JAL(0x8005ea34u) && target == 0x8005ea34u;
+    case 0x8005f818u: return instruction == MIPS_JAL(0x8005e1a4u) && target == 0x8005e1a4u;
+    case 0x8005f910u: return instruction == MIPS_JAL(0x8005fb70u) && target == 0x8005fb70u;
     case 0x8005f95cu: slot = 0x80072960u; expected = 0x8005f228u; break;
     case 0x8005f9a4u: slot = 0x80072960u; expected = 0x8005f228u; break;
-    case 0x8005fa68u: return instruction == 0x0c01788au && target == 0x8005e228u;
-    case 0x8005e31cu: return instruction == 0x0c0178ddu && target == 0x8005e374u;
-    case 0x8005e34cu: return instruction == 0x0c0178ebu && target == 0x8005e3acu;
+    case 0x8005fa68u: return instruction == MIPS_JAL(0x8005e228u) && target == 0x8005e228u;
+    case 0x8005e31cu: return instruction == MIPS_JAL(0x8005e374u) && target == 0x8005e374u;
+    case 0x8005e34cu: return instruction == MIPS_JAL(0x8005e3acu) && target == 0x8005e3acu;
     case 0x8005e3e4u: slot = 0x80072978u; expected = 0x8005fb70u; break;
-    case 0x8005e4c8u: return instruction == 0x0c017a9au && target == 0x8005ea68u;
-    case 0x8005e4dcu: return instruction == 0x0c017aa2u && target == 0x8005ea88u;
-    case 0x8005e500u: return instruction == 0x0c017aaau && target == 0x8005eaa8u;
-    case 0x8005e510u: return instruction == 0x0c017ab2u && target == 0x8005eac8u;
+    case 0x8005e4c8u: return instruction == MIPS_JAL(0x8005ea68u) && target == 0x8005ea68u;
+    case 0x8005e4dcu: return instruction == MIPS_JAL(0x8005ea88u) && target == 0x8005ea88u;
+    case 0x8005e500u: return instruction == MIPS_JAL(0x8005eaa8u) && target == 0x8005eaa8u;
+    case 0x8005e510u: return instruction == MIPS_JAL(0x8005eac8u) && target == 0x8005eac8u;
     case 0x8005fb24u: slot = 0x80072960u; expected = 0x8005f228u; break;
     default: return 0;
     }
@@ -13704,7 +14225,7 @@ int musashi_boot_execute_input_bios_callback(MusashiBootMemory *memory,
             uint32_t call = cpu.pc;
             uint32_t expected = depth ? returns[depth - 1].pc : UINT_MAX;
             uint32_t expected_sp = depth ? returns[depth - 1].sp : MUSASHI_BIOS_CALLBACK_STACK_TOP;
-            int supported = instruction == 0x03e00008u && cpu.r[31] == expected;
+            int supported = instruction == MIPS_JR(31) && cpu.r[31] == expected;
             if (!input_callback_step(memory, &cpu, &remaining, stop) || !input_callback_step(memory, &cpu, &remaining, stop)) break;
             if (!supported || cpu.pc != expected || cpu.r[29] != expected_sp) {
                 stop->call_address = call;
@@ -14437,7 +14958,7 @@ int musashi_boot_execute_cd_irq_with_services(MusashiBootMemory *memory,
                     (depth == 5 && returns[0].pc == 0x80045308u &&
                      returns[1].pc == 0x80045f88u && returns[2].pc == 0x800437dcu &&
                      returns[3].pc == 0x8004473cu && returns[4].pc == 0x80044288u);
-                accepted = instruction == 0x00400008u && worker_frame &&
+                accepted = instruction == MIPS_JR(2) && worker_frame &&
                     cpu_read8(memory,&cpu,cpu.r[29]+0x10u,&interrupt) &&
                     read8(memory,0x8006cca5u,&command);
                 if (accepted && interrupt == 1) {
@@ -14466,7 +14987,7 @@ int musashi_boot_execute_cd_irq_with_services(MusashiBootMemory *memory,
                 transfer = 3;
             } else if (call == 0x8001a3fcu) {
                 uint32_t mode, live;
-                accepted = instruction == 0x00400008u && depth == 1 &&
+                accepted = instruction == MIPS_JR(2) && depth == 1 &&
                     returns[0].target == 0x8001a338u && returns[0].pc == 0x80045308u &&
                     cpu.r[29] == saved_sp-0x88u &&
                     musashi_boot_read32(memory,0x800ae6f8u,&mode) && mode <= 6u;
@@ -14484,7 +15005,7 @@ int musashi_boot_execute_cd_irq_with_services(MusashiBootMemory *memory,
             } else if (call == 0x8001a45cu) {
                 uint32_t live;
                 uint8_t kind;
-                accepted = instruction == 0x00400008u && depth == 1 &&
+                accepted = instruction == MIPS_JR(2) && depth == 1 &&
                     returns[0].target == 0x8001a338u && returns[0].pc == 0x80045308u &&
                     cpu.r[29] == saved_sp-0x88u &&
                     read8(memory,0x80079a74u,&kind) && kind < 9u;
@@ -14499,7 +15020,7 @@ int musashi_boot_execute_cd_irq_with_services(MusashiBootMemory *memory,
                     0x80018824u, 0x80018790u, 0x800187a4u, 0x800187f8u, 0x800188b4u
                 };
                 uint32_t state, live;
-                accepted = instruction == 0x00400008u && depth == 2 &&
+                accepted = instruction == MIPS_JR(2) && depth == 2 &&
                     returns[0].target == 0x8001a338u && returns[0].pc == 0x80045308u &&
                     returns[1].target == 0x80018730u && returns[1].pc == 0x8001a914u &&
                     cpu.r[29] == saved_sp-0x88u &&
@@ -14515,7 +15036,7 @@ int musashi_boot_execute_cd_irq_with_services(MusashiBootMemory *memory,
                  * the BIOS service returns to the existing JAL's live RA. */
                 expected = 0xb0u;
                 expected_sp = cpu.r[29];
-                accepted = instruction == 0x01400008u && depth >= 2 &&
+                accepted = instruction == MIPS_JR(10) && depth >= 2 &&
                     (returns[depth-1].pc == 0x800433b0u ||
                      returns[depth-1].pc == 0x800433d8u || returns[depth-1].pc == 0x80043400u) &&
                     cpu.r[29] == returns[depth-1].sp && cpu.r[10] == expected &&
@@ -14526,7 +15047,7 @@ int musashi_boot_execute_cd_irq_with_services(MusashiBootMemory *memory,
             } else {
                 expected = depth ? returns[depth-1].pc : UINT_MAX;
                 expected_sp = depth ? returns[depth-1].sp : saved_sp-0x28u;
-                accepted = instruction == 0x03e00008u && cpu.r[31] == expected;
+                accepted = instruction == MIPS_JR(31) && cpu.r[31] == expected;
                 transfer = 2;
             }
         }

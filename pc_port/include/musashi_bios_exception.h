@@ -18,6 +18,9 @@ typedef struct MusashiBiosExceptionImage {
     MusashiBiosExceptionBinding binding;
     uint64_t generation, writes, entries, last_sequence;
     uint32_t written_mask;
+    /* Handler/continuation seeded at init: the user's ROM words, or zero
+     * stand-ins without a ROM (never executed; entry is serviced natively). */
+    uint32_t seed_handler[14], seed_continuation[14];
     MusashiBiosExceptionVariant variant;
     int initialized, busy, dirty, faulted;
 } MusashiBiosExceptionImage;
@@ -26,7 +29,8 @@ typedef struct MusashiBiosExceptionImage {
  * match the pinned full SHA256. Copies only674..690 andC80..CF0, never CF0. */
 int musashi_bios_exception_init(MusashiBiosExceptionImage *, MusashiBootMemory *,
     MusashiBiosKernel *, MusashiCpuStatus *, const uint8_t *rom, size_t size);
-/* Same selected bootstrap recipe, no runtime ROM file dependency. */
+/* No ROM: same table, zero stand-in handler/continuation (no BIOS code is
+ * carried by the port). */
 int musashi_bios_exception_init_selected(MusashiBiosExceptionImage *, MusashiBootMemory *,
     MusashiBiosKernel *, MusashiCpuStatus *);
 /* Pure overlap query for routing BEFORE generic RAM at all access widths. */

@@ -628,6 +628,13 @@ if(MUSASHI_BUILD_PC_PORT)
         message(FATAL_ERROR "Sony PsyQ code would be compiled into the port (see above)")
     endif()
 
+    # The built port must carry no retail content (tools/retail_guard.py over
+    # the shipped outputs, against the developer's own disc extract).
+    add_test(NAME retail_content_guard
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/check_port_retail.py
+                ${CMAKE_CURRENT_BINARY_DIR})
+    set_tests_properties(retail_content_guard PROPERTIES SKIP_RETURN_CODE 77)
+
     # Every CTest probe states its expectations as assert(). CMake puts -DNDEBUG
     # in the Release/RelWithDebInfo/MinSizeRel flags, which compiles all of them
     # out: the probe then runs to completion and exits 0 having checked nothing,

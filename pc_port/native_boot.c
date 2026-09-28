@@ -145,12 +145,28 @@ typedef struct NativeBoot {
     uint32_t guest_pending_cycles;
 } NativeBoot;
 
+/* Overlay member signatures without retail words: FNV-1a 64 over two
+ * loaded words that differ between members, compared with the digest of the
+ * member the port's ranges were carved from. */
+#define OPENING_MEMBER0004_SIGNATURE 0xedc2f28bdda02a4eull
+#define TITLE_MEMBER0010_SIGNATURE 0xfc8191f97da7fd5eull
+static uint64_t loaded_pair_digest(MusashiBootMemory *memory, uint32_t address) {
+    uint32_t words[2] = {0, 0};
+    uint64_t h = 0xcbf29ce484222325ull;
+    unsigned i, b;
+    (void)musashi_boot_read32(memory, address, &words[0]);
+    (void)musashi_boot_read32(memory, address + 4u, &words[1]);
+    for (i = 0; i < 2u; ++i)
+        for (b = 0; b < 4u; ++b) {
+            h ^= (words[i] >> (8u * b)) & 0xffu;
+            h *= 0x100000001b3ull;
+        }
+    return h;
+}
+
 static int select_opening_overlay(NativeBoot *boot) {
-    uint32_t first, second;
     if (boot->opening_overlay_ready) return 1;
-    if (!musashi_boot_read32(&boot->memory,0x800ceec8u,&first) ||
-        !musashi_boot_read32(&boot->memory,0x800ceeccu,&second) ||
-        first != 0x3c02800cu || second != 0x944299e4u) return 0;
+    if (loaded_pair_digest(&boot->memory, 0x800ceec8u) != OPENING_MEMBER0004_SIGNATURE) return 0;
     musashi_boot_select_overlay_0004_words(1);
     boot->opening_overlay_ready = 1;
     fputs("native_boot: OVERLAY_SELECT member=4 source=GUEST_RAM bytes_replaced=0\n",stderr);
@@ -2786,22 +2802,17 @@ static void observe_entry(void *userdata, const MusashiEntryCpuSnapshot *cpu) {
     }
     if (cpu->pc == 0x800110ccu) {
         static uint64_t n;
-        uint32_t w0 = 0, w1 = 0;
         boot->title_scene_reached = 1;
         if (log_sample(&n, 8u, 4096u))
             fprintf(stderr, "native_boot: TITLE_SCENE pc=800110cc ra=%08x\n",
                     cpu->r[31]);
-        (void)musashi_boot_read32(&boot->memory, 0x800cedfcu, &w0);
-        (void)musashi_boot_read32(&boot->memory, 0x800cee00u, &w1);
-        if (w0 == 0x3c03800cu && w1 == 0x946399f0u)
+        if (loaded_pair_digest(&boot->memory, 0x800cedfcu) == TITLE_MEMBER0010_SIGNATURE)
             musashi_boot_select_overlay_0010_words(1);
     }
     if (cpu->pc == 0x8001125cu) {
         static int selected_0010;
-        uint32_t w0 = 0, w1 = 0;
-        (void)musashi_boot_read32(&boot->memory, 0x800cedfcu, &w0);
-        (void)musashi_boot_read32(&boot->memory, 0x800cee00u, &w1);
-        if (!selected_0010 && w0 == 0x3c03800cu && w1 == 0x946399f0u) {
+        if (!selected_0010 &&
+            loaded_pair_digest(&boot->memory, 0x800cedfcu) == TITLE_MEMBER0010_SIGNATURE) {
             selected_0010 = 1;
             musashi_boot_select_overlay_0010_words(1);
             fprintf(stderr, "native_boot: OVERLAY_SELECT member=10 dest=800cedf8 "
