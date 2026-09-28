@@ -153,13 +153,14 @@ build, fetched separately) unless marked "repo".
 | `projection` | `0x8004921C` | `func_8004921C` = libgte `SetGeomOffset` (`sll 16; ctc2 $24/$25`, repo `src/main/8004921c.c`) | called per draw buffer by the libgs offset routine `func_80052BEC` (repo) and by overlay camera code (`src/shared/ov/func_8017C530.h:14`) | ofx/ofy = `(int16)$a0/$a1` | high |
 | `battle_start` / `battle_end` / `item_get` | TBD | none | see "Unsited events" below | none | needs runtime tracing |
 
-**Unsited events: what was searched (2026-09-28).** There is no symbol,
+**Unsited events: what was searched (2026-09-28).** Since then, `damage`,
+`bp_use`, `money` and figure `item_get` are derived from the live state
+(below). Battle boundaries and the general inventory are still open. There is no symbol,
 comment or runtime note for battles or items in `vendor/bfm-decomp`
 (ov_MAIN_012, resident/, shared/ov, md_*, the main-exe TUs) or in this
 repository's docs. Candidates looked at and rejected:
-- `func_8017CF3C` (ov_MAIN_012) formats the save-slot display. It gives the
-  slot record layout: play time, time of day, HP and BP cur/max capped at
-  999, money at +0x14 capped at 99999. It is a layout, not an event.
+- `func_8017CF3C` (ov_MAIN_012) formats the save-slot display. It gave the
+  field offsets used in "Live game state"; it is a layout, not an event.
 - `func_80029ED4` is a monotonic counter (`D_80078F08`, capped at
   9,999,999, which calls `func_8002A2D4` every 10 steps), not an
   acquisition.
@@ -199,6 +200,135 @@ How the native lane uses them:
 
 The `events` console command lists each event with its count and every
 registered site with its overlay and hits.
+
+### Live game state
+
+These are the static addresses of the live state (SLUS-00726). They come
+from the save path. `func_80029774(n)` (`src/800.c:21185`) snapshots the
+live globals into the 0x2DC-byte record `D_80078F28 + n*0x2DC`:
+- `+0x24`: the 0x98-byte struct `D_80078E78` (`src/800.c:21190`)
+- `+0xBC`: `D_800A6588[64]`
+- `+0x13C`: `D_800AE648[64]`
+- `+0x17C`: `D_800BA1B8[256]`
+- `+0x27C`: `D_800BA2B8[0x60]`
+
+`func_8002992C` restores the same fields. The save-slot display
+(`ov_MAIN_012_jr_8017CF3C.c:4103-4172`) reads four fields at the same
+offsets from the start of `D_80078E78`, which fixes the offsets.
+Constants are `BFM_GUEST_*` in `bfm_plat_events.h`. Evidence paths are in
+vendor/bfm-decomp, and `tests/test_bfm_plat.py` pins every cited line.
+
+| Field | Address | Type | Evidence | Confidence |
+|---|---|---|---|---|
+| live struct | `0x80078E78` | 0x98 bytes | snapshot at record +0x24, `src/800.c:21190` | high |
+| play time | `0x80078E7C` | u8 frames(/30), s, min, h | `func_80029444` ticks it and caps at 99:59:59 (`src/800.c:21037`, `:21053`); the slot display shows its hour byte (+7) | high |
+| money | `0x80078E8C` | s32 | new game sets 100 (`func_800295D4`, `src/800.c:21125`); the overlays' money routine adds, caps at 99999 and refuses a negative balance (`ov_SC03_124_jr_80188544.c:3740-3741`); the slot display shows it (+0x14, cap 99999) | high |
+| gauge 1 max / current | `0x80078EB2` / `0x80078EB4` | u16 / s16 | new game sets both to 250 (`src/800.c:21116-21117`); max raised with a cap of 500 (`shared/ov/func_8014BC0C.h:6`); refill current = max (`func_8014BB0C.h:6`); the slot display shows them as a pair (+0x3C/+0x3A) | addresses high; the "HP" label medium (first gauge in the display, 500 cap) |
+| gauge 2 max / current | `0x80078EB6` / `0x80078EB8` | u16 / s16 | new game 250/250 (`src/800.c:21118-21119`); max capped at 0x662 (`func_8014BCEC.h:9`); add with clamp to max (`func_8014BD24`); refill (`func_8014BDC8.h:6`); slot display +0x40/+0x3E | addresses high; the "BP" label medium |
+| story flags | `0x800AE648` | 512 bits | set/clear/test `func_80029124` / `func_80029178` (`src/800.c:20881`); new game sets flags 0x1E, 0x80, 0x82, 0x83, 0x85 | high |
+| script variables | `0x800BA1B8` | u8[256] | byte/halfword get/set `func_800291A0/B4/C8/DC` | high |
+| action figures | vars `0x63`..`0x8D` (43) | u8: low nibble price trend, 0x80 unlocked, 0x40 owned | shop purchase: pay `func_8018957C(-price)`, then set 0x40 (`ov_SC03_124_jr_80188544.c:3442`, `:3447`); "all owned" check over 0x2B entries (`src/800.c:22268`); unlock `func_8002AC00` | high |
+| figure prices | `0x800A6588` | u16[64] | drift between a base and 4× in `func_8002AC98`; the shop charges `D_800A6586[i]` (= entry i-1) | high |
+
+Still unknown: the general item inventory (consumables and key items).
+It is not one of the snapshot arrays above, apart from the figures. Also
+unknown: which of `D_800BA2B8`'s 0x60 bytes mean what.
+
+### Memory watches and derived events
+
+`bfm_plat_watch.h`: a watch is a guest range (up to 64 bytes, addresses
+normalised to physical RAM) plus a callback with the old and new bytes.
+There are two feeds:
+- **Write hook** (needs port-int). The native lane / interpreter store path
+  calls `if (bfm_plat_watch_hit(addr, len)) { read old; store;
+  bfm_plat_watch_on_write(addr, len, old, new); }`. `hit` is a min/max
+  test plus a 4 KiB-page bitmap.
+- **Poll** (works today). With `[mods] watch_poll = 1` (default),
+  `bfm_plat_watch_poll()` runs at each FRAME_END (and at the FRAME_END hook
+  site) and diffs each watch against its snapshot through the guest-memory
+  binding. It sees at most one change per frame and doesn't run while
+  paused.
+
+Plugins get `host->watch_add/watch_remove` (plugin ABI 2, appended fields
+only), and Lua gets `bfm.watch(addr, len, fn(addr, old, new))`. A mod's
+watches are dropped when it unloads.
+
+Derived events (`[mods] derived_events = 1`, default) come from data
+changes, not from a code site, and carry `BFM_EVENT_FLAG_DERIVED`:
+
+| Event | Source | Payload |
+|---|---|---|
+| `damage` (16) | gauge-1 current drops | `BfmEventStat {value, previous, max, flags}` |
+| `bp_use` (17) | gauge-2 current drops | `BfmEventStat` |
+| `money` (18) | money word changes | `BfmEventStat` (max 99999) |
+| `item_get` (12) | a figure's owned bit sets | `BfmEventItem {item = figure index, count = 1, kind = BFM_ITEM_KIND_FIGURE, flags}` |
+
+Caveats: a gauge drop is not always combat damage (scripted drains count
+too). In poll mode several changes within one frame collapse into one
+event. `battle_start`/`battle_end` are still unsited; a sustained
+`damage` run is a hint, not a battle boundary.
+
+### Cheat pack
+
+`pc_port/mods/examples/cheat_pack/cheats.ini` holds `infinite_hp` and
+`infinite_bp` (copy cheats: current = max each frame), `max_money` (poke
+99999, the game's own cap) and `max_hp_gauge` (poke 500, the game's cap).
+All are disabled by default. `cheats.ini` supports poke cheats
+(`address`, `value`, `width`) and copy cheats (`address`, `copy_from`,
+`width`).
+
+### 60 fps (design note, not implemented)
+
+Retail logic runs at 30 fps: `main` waits `VSync(*(s32 *)(p + 0xA3E8))`,
+normally 2 fields per frame. The options:
+
+1. **Interpolated presentation (recommended first).** Keep the 30 Hz logic
+   tick. Present twice per tick, drawing the second frame from positions
+   interpolated between the last two ticks.
+   - What to interpolate. In order of payoff: the camera (the GTE
+     rotation/translation the game loads each frame), per-object model
+     matrices, and 2D sprite positions.
+   - Hooks needed:
+     - GTE matrix loads (the rotation/translation setters, the next libgte
+       sites to identify after SetGeomScreen/SetGeomOffset)
+     - a per-object identity (the OT/primitive's owner, or the object
+       struct address)
+     - the frame boundary: FRAME_BEGIN/FRAME_END, which already exist
+   - The renderer needs primitives with a stable identity across frames,
+     so it can match "the same quad" in ticks N and N+1. The semantic
+     `BfmPlatPrim` list is where that belongs.
+   - Risks:
+     - No identity for a primitive: particles, and primitives rebuilt
+       each frame, can't be matched, so they draw uninterpolated or are
+       held.
+     - Teleports and cuts: the camera snaps between scenes, so a large
+       delta must disable interpolation for that frame.
+     - Doubled GPU work.
+     - Movie (MDEC) frames stay at their native rate.
+   - Game logic, timing and RNG are untouched, so saves, scripts and
+     physics stay retail.
+2. **Doubled logic tick.** Run the game at 60 Hz (fields = 1) and halve
+   every per-frame velocity, timer and animation step.
+   - Risks: the game's timers, animation tables and physics constants
+     assume 30 Hz. Every per-frame increment in hundreds of overlays would
+     need patching (e.g. the play-time tick `func_80029444` counts 30
+     frames per second). RNG advances twice as often, and scripted timing
+     and the day/night clock drift. The patches would diverge from the
+     matched decomp.
+   - Hooks needed: essentially per-site patches, not platform hooks. Not
+     recommended.
+3. **Frame generation in the renderer.** Motion-vector or optical-flow
+   extrapolation, with no game knowledge. Artifacts on the PS1's
+   low-resolution affine textures; only as a later renderer option.
+
+What to build first for option 1:
+- identify the libgte matrix setters (SetRotMatrix/SetTransMatrix
+  equivalents) as projection-like hook sites
+- add a per-primitive owner tag to `BfmPlatPrim`
+- give renderers `present_interpolated(alpha)` behind `[video]
+  frame_rate = 60`, which already exists in the config
+
+`frame_rate = 60` is accepted today but has no effect until this lands.
 
 ### Widescreen
 
