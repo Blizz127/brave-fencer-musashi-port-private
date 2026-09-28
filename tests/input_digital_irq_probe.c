@@ -522,7 +522,7 @@ static void test_audited_edge_matrix_and_instruction_budget(const char *path) {
         uint32_t word;
         cpu.pc = edges[i][0];
         cpu.r[(edges[i][1] >> 21) & 31u] = edges[i][2];
-        assert(input_callback_word(cpu.pc, &word) && word == edges[i][1]);
+        assert(input_callback_word(&memory, &cpu, cpu.pc, &word) && word == edges[i][1]);
         assert(input_callback_call(&memory, &cpu, word, edges[i][2]));
         assert(!input_callback_call(&memory, &cpu, word ^ 1u, edges[i][2]));
         uint32_t wrong = edges[i][2] == 0x8005f830u ? 0x8005f384u : 0x8005f830u;

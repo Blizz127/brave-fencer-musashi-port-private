@@ -8,7 +8,7 @@ static MusashiBootMemory memory,expected,saved;
 static FormatterCpu cpu;
 static unsigned cycles,calls;
 static uint32_t refuse_pc;
-static int advance(void *p,uint32_t cost){uint32_t i;(void)p;assert(formatter_fetch(&cpu,&i));assert(cost==2u+((i>>26)>=32u&&(i>>26)<=43u));calls++;if(cpu.pc==refuse_pc)return 0;cycles+=cost;return 1;}
+static int advance(void *p,uint32_t cost){uint32_t i;(void)p;assert(formatter_fetch(NULL,&cpu,&i));assert(cost==2u+((i>>26)>=32u&&(i>>26)<=43u));calls++;if(cpu.pc==refuse_pc)return 0;cycles+=cost;return 1;}
 static MusashiExecutionClock clock_device={NULL,advance};
 static void p16(MusashiBootMemory *m,unsigned a,unsigned v){m->bytes[a]=(uint8_t)v;m->bytes[a+1]=(uint8_t)(v>>8);}
 static void p32(MusashiBootMemory *m,unsigned a,uint32_t v){for(unsigned n=0;n<4;n++)m->bytes[a+n]=(uint8_t)(v>>(n*8));}

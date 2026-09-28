@@ -6,7 +6,7 @@ import struct
 import subprocess
 import tempfile
 import pytest
-from test_bios_event_callbacks import _generate_formatter_includes
+from test_bios_event_callbacks import _generate_formatter_includes, _sync_code_image
 
 ROOT = Path(__file__).resolve().parents[1]
 RANGES = [(0x80059D68,0x80059E6C),(0x8005A870,0x8005AB00),
@@ -53,4 +53,5 @@ def test_draw_packet_source_and_dispatch_guards():
             '-I',str(ROOT/'include'),'-I',str(ROOT/'pc_port/include'),'-I',str(generated),
             str(ROOT/'tests/draw_packet_probe.c'),str(ROOT/'pc_port/boot_memory.c'),
             '-lcrypto','-o',str(binary)],check=True,timeout=40)
+        _sync_code_image(generated)
         subprocess.run([str(binary),str(exe)],check=True,timeout=15)

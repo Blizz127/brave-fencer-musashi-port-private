@@ -2976,6 +2976,49 @@ static int load_exe(NativeBoot *boot, const char *path) {
     return accepted;
 }
 
+/* First-run disc check. Everything from the game (code, overlays, assets)
+ * is read from the user's own disc image; nothing retail ships with the
+ * port. When the supplied files are not the supported release, say so in
+ * terms a player can act on, instead of a bare refusal. */
+#define MUSASHI_EXPECTED_RELEASE "Brave Fencer Musashi (USA), SLUS-00726"
+#define MUSASHI_EXPECTED_EXE_SHA256 \
+    "66371c3a7517e9eabd7cb6cf0c5abffe7296bd4bac29c85b8bf7bb9db349714a"
+
+static void report_exe_identity(const char *path) {
+    FILE *file = fopen(path, "rb");
+    unsigned char digest[SHA256_DIGEST_LENGTH];
+    char hex[SHA256_DIGEST_LENGTH * 2 + 1];
+    long size = -1;
+    unsigned i;
+    fprintf(stderr,
+            "\nThis port needs your own copy of %s.\n"
+            "The game executable it was given is not that release:\n"
+            "  file:     %s\n", MUSASHI_EXPECTED_RELEASE, path);
+    if (!file) {
+        fputs("  problem:  cannot be opened\n", stderr);
+    } else {
+        SHA256_CTX ctx;
+        unsigned char buffer[65536];
+        size_t got;
+        SHA256_Init(&ctx);
+        size = 0;
+        while ((got = fread(buffer, 1, sizeof(buffer), file)) > 0) {
+            SHA256_Update(&ctx, buffer, got);
+            size += (long)got;
+        }
+        fclose(file);
+        SHA256_Final(digest, &ctx);
+        for (i = 0; i < SHA256_DIGEST_LENGTH; ++i) sprintf(hex + 2 * i, "%02x", digest[i]);
+        fprintf(stderr, "  size:     %ld bytes (expected 413696)\n"
+                        "  sha256:   %s\n", size, hex);
+    }
+    fprintf(stderr,
+            "  expected: SLUS_007.26, sha256 %s\n"
+            "Other regions, revisions, patched or re-built images are not supported.\n"
+            "Dump your disc to a .cue/.bin, extract SLUS_007.26 from it, and point the port at it.\n\n",
+            MUSASHI_EXPECTED_EXE_SHA256);
+}
+
 static uint32_t s_png_crc_table[256];
 static int s_png_crc_table_computed = 0;
 
@@ -3290,8 +3333,127 @@ static void hold_window(NativeBoot *boot) {
     }
 }
 
+#ifdef MUSASHI_NATIVE_LANE_TABLE
+#include <stddef.h>
+#include <sys/mman.h>
+#include "musashi_native_lane.h"
+#ifndef MAP_FIXED_NOREPLACE
+#define MAP_FIXED_NOREPLACE 0x100000
+#endif
+extern const MusashiNativeLaneEntry musashi_native_lane_generated[];
+extern const size_t musashi_native_lane_generated_count;
+_Static_assert(offsetof(NativeBoot, memory) == 0, "guest RAM leads the boot owner");
+
+/* Natively compiled decomp C dereferences 32-bit guest addresses directly,
+ * so the boot owner, whose first member is guest RAM, is placed at host
+ * 0x80000000. Without that window the lane stays off and the interpreter
+ * runs every word, exactly as without MUSASHI_NATIVE_LANE. */
+static NativeBoot *native_boot_owner(NativeBoot *fallback) {
+    const char *value = getenv("MUSASHI_NATIVE_LANE");
+    void *window;
+    if (value && value[0] == '0') return fallback;
+    window = mmap((void *)(uintptr_t)MUSASHI_NATIVE_LANE_GUEST_BASE, sizeof(NativeBoot),
+                  PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE,
+                  -1, 0);
+    if (window == MAP_FAILED || (uintptr_t)window != MUSASHI_NATIVE_LANE_GUEST_BASE) {
+        if (window != MAP_FAILED) munmap(window, sizeof(NativeBoot));
+        fprintf(stderr, "native_boot: NATIVE_LANE window unavailable; interpreter only\n");
+        return fallback;
+    }
+    if (musashi_native_lane_install(musashi_native_lane_generated,
+                                    musashi_native_lane_generated_count) < 0) {
+        fprintf(stderr, "native_boot: NATIVE_LANE table rejected; interpreter only\n");
+        return window;
+    }
+    fprintf(stderr, "native_boot: NATIVE_LANE entries=%u\n",
+            (unsigned)musashi_native_lane_generated_count);
+    return window;
+}
+#else
+static NativeBoot *native_boot_owner(NativeBoot *fallback) { return fallback; }
+#endif
+
+#ifdef MUSASHI_WITH_BFM_PLAT
+/* Platform layer (pc_port/platform, docs/ARCHITECTURE-PORT.md): mods,
+ * cheats and hook-site events see guest RAM and, at a hook, the live guest
+ * registers. native_boot still owns PsyCross/SDL, so bfm_plat runs with its
+ * null renderer/audio/input backends until the game-facing calls are
+ * routed through bfm_plat_*. */
+#include "bfm_plat.h"
+#include "bfm_plat_events.h"
+#include "musashi_native_lane.h"
+
+static const uint32_t *g_plat_hook_regs;
+
+static int plat_ram_read(void *user, uint32_t address, void *out, uint32_t size) {
+    const uint8_t *span = musashi_boot_ram_span(user, address, size);
+    if (!span) return -1;
+    memcpy(out, span, size);
+    return 0;
+}
+
+static int plat_ram_write(void *user, uint32_t address, const void *data, uint32_t size) {
+    uint8_t *span = musashi_boot_ram_span(user, address, size);
+    if (!span) return -1;
+    memcpy(span, data, size);
+    return 0;
+}
+
+static int plat_reg_read(void *user, unsigned reg, uint32_t *out) {
+    (void)user;
+    if (!g_plat_hook_regs || reg >= 32u) return -1;
+    *out = g_plat_hook_regs[reg];
+    return 0;
+}
+
+static void plat_entry_hook(void *user, uint32_t pc, const uint32_t *regs) {
+    (void)user;
+    if (!bfm_plat_hooks_has(pc)) return;
+    g_plat_hook_regs = regs;
+    (void)bfm_plat_hooks_at(pc);
+    g_plat_hook_regs = NULL;
+}
+
+static void plat_overlay_hook(void *user, const char *name) {
+    (void)user;
+    bfm_plat_hooks_set_overlay(name);
+}
+
+static void plat_start(MusashiBootMemory *memory) {
+    static BfmPlatGuestMemory ram;
+    static BfmPlatGuestRegs regs;
+    BfmPlatConfig cfg;
+    const char *off = getenv("MUSASHI_BFM_PLAT");
+    if (off && off[0] == '0') return;
+    bfm_plat_config_defaults(&cfg);
+    snprintf(cfg.renderer, sizeof cfg.renderer, "null");
+    snprintf(cfg.audio, sizeof cfg.audio, "null");
+    snprintf(cfg.input, sizeof cfg.input, "null");
+    cfg.disc_path[0] = 0;      /* native_boot owns the disc and its identity check */
+    cfg.disc_search[0] = 0;
+    if (bfm_plat_init(&cfg) != 0) {
+        fprintf(stderr, "native_boot: BFM_PLAT init refused; platform layer off\n");
+        return;
+    }
+    ram.read = plat_ram_read;
+    ram.write = plat_ram_write;
+    ram.user = memory;
+    regs.read = plat_reg_read;
+    regs.user = NULL;
+    bfm_plat_guest_memory_bind(&ram);
+    bfm_plat_guest_regs_bind(&regs);
+    if (bfm_plat_hooks_register_known() != 0)
+        fprintf(stderr, "native_boot: BFM_PLAT hook sites refused\n");
+    fprintf(stderr, "native_boot: BFM_PLAT up hook_sites=%u\n", (unsigned)bfm_plat_hooks_count());
+    musashi_formatter_set_entry_hook(plat_entry_hook, NULL);
+    musashi_formatter_set_overlay_hook(plat_overlay_hook, NULL);
+}
+#endif
+
 int main(int argc, char **argv) {
-    static NativeBoot boot; /* One stable, zero-initialized owner. */
+    static NativeBoot boot_storage; /* One stable, zero-initialized owner. */
+    NativeBoot *const boot_owner = native_boot_owner(&boot_storage);
+#define boot (*boot_owner)
     MusashiEntryRunStop entry_stop = {0};
     MusashiResetGraphPrefixStop stop = {0};
     MusashiResetGraphPrefixStatus status;
@@ -3354,12 +3516,22 @@ int main(int argc, char **argv) {
     boot.exe_path = exe_path;
     boot.last_musashi_action = 0xffffu;
     if (!load_exe(&boot, exe_path)) {
+        report_exe_identity(exe_path);
         fputs("native_boot: pinned retail EXE rejected before startup\n", stderr);
         return 2;
     }
+#ifdef MUSASHI_WITH_BFM_PLAT
+    plat_start(&boot.memory);
+#endif
     if (cue_path && bin_path) {
         boot.media = musashi_disc_media_open_pinned(cue_path, bin_path);
         if (!boot.media) {
+            fprintf(stderr,
+                    "\nThis port needs your own disc image of %s.\n"
+                    "The disc image it was given is not that release (or is incomplete):\n"
+                    "  cue: %s\n  bin: %s\n"
+                    "Use an unmodified single-track .cue/.bin dump of the USA disc.\n\n",
+                    MUSASHI_EXPECTED_RELEASE, cue_path, bin_path);
             fputs("native_boot: pinned media rejected before startup\n", stderr);
             return 2;
         }
@@ -4126,3 +4298,4 @@ int main(int argc, char **argv) {
           " visual_check=REQUIRED\n", stderr);
     return host_stop_signal ? 128 + host_stop_signal : 2;
 }
+#undef boot

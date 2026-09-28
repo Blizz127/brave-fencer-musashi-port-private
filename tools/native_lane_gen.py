@@ -1,0 +1,855 @@
+#!/usr/bin/env python3
+"""Build the native-lane table from byte-matched decomp C (docs/PC-PORT.md,
+"Native lane").
+
+For each main-executable registry entry with recovery "c" whose source has
+a native word export (so the interpreter can always run it as a fallback),
+compile the decomp C branch with clang for the 64-bit host, rewrite every
+guest symbol to its guest address, and admit the function only when an
+IR-level checker proves it pointer-width safe under the "guest RAM mapped
+at host 0x80000000" model. Admitted functions become lane_func_<ADDR> in an
+archive; a generated C file holds the register-ABI wrappers, interpreter
+thunks for every unported callee, and the MusashiNativeLaneEntry table.
+
+Rules (each rejection names the first rule that failed, in report.json):
+  source  : no 'long' or 'sizeof' tokens (their widths differ on the host)
+  compile : clang must accept the source (implicit declarations are fatal)
+  symbols : guest data/function symbols must resolve into game RAM
+            [0x80010000, 0x80200000); mutable data defined by the TU is
+            refused (it would be a host copy, not the guest's)
+  layout  : no struct/union/array type containing a pointer is used, and no
+            pointer-element indexing (checked before optimization)
+  memory  : no pointer-typed load/store to non-local memory; no atomics
+  escape  : no host stack or host data address reaches guest memory, a
+            guest callee, an integer, or the return value
+  inttoptr: integer->pointer only from zero-extended 32-bit values or
+            constants inside game RAM
+  calls   : only direct calls to prototyped guest functions (lane_func_*),
+            module-internal functions and memory intrinsics; no inline asm
+  arith   : no variable or trapping divisors (x86 traps where MIPS does not),
+            variable shift counts must be masked to 5 bits
+  ub      : no undef/poison operands and no unreachable (UB the host
+            optimizer could exploit differently from gcc-2.7.2)
+  abi     : parameters/returns limited to 8/16/32-bit integers and pointers;
+            no direct call passing fewer arguments than the callee reads
+  memory  : (also) no volatile access, which in decomp C means a device
+  irq     : no loop that neither stores nor calls (a native call runs
+            without IRQ delivery, so a polling loop could spin forever)
+  hooks   : the function's guest range contains no PC the port observes or
+            intercepts (0x80xxxxxx literals on pc/ra/continuation/case lines
+            in pc_port/*.c), since native execution would bypass the hook
+"""
+import argparse
+import concurrent.futures
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+RAM_LO, RAM_HI = 0x80010000, 0x80200000
+HOST_TARGET = "x86_64-unknown-linux-gnu"
+CFLAGS = [
+    f"--target={HOST_TARGET}", "-std=gnu89", "-fPIE", "-fwrapv",
+    "-fno-strict-aliasing", "-fno-builtin", "-ffreestanding",
+    "-ftrivial-auto-var-init=zero", "-fno-delete-null-pointer-checks",
+    "-w", "-Werror=implicit-function-declaration", "-Werror=implicit-int",
+    "-Wno-error=int-conversion", "-Wno-int-conversion",
+    "-Wno-error=incompatible-pointer-types",
+]
+SYM_RE = re.compile(r'@(?:"([^"]+)"|([A-Za-z_.$][\w.$]*))')
+GLOBAL_DECL_RE = re.compile(r'^@(?:"([^"]+)"|([\w.$]+)) = (.*)$', re.M)
+DEF_RE = re.compile(r"^\s*(%[\w.\"$]+) = (.*)$")
+
+
+class Reject(Exception):
+    def __init__(self, rule, detail):
+        super().__init__(f"{rule}: {detail}")
+        self.rule, self.detail = rule, detail
+
+
+def run(cmd, **kw):
+    return subprocess.run(cmd, capture_output=True, text=True, **kw)
+
+
+def load_symbol_addrs():
+    """name -> address from tracked config/*syms*.txt / symbol_addrs*.txt."""
+    table = {}
+    for path in sorted((ROOT / "config").glob("*.txt")):
+        if "sym" not in path.name:
+            continue
+        for line in path.read_text(errors="replace").splitlines():
+            m = re.match(r"\s*([A-Za-z_]\w*)\s*=\s*(0x[0-9A-Fa-f]+)\s*;", line)
+            if m:
+                table.setdefault(m.group(1), int(m.group(2), 16))
+    return table
+
+
+def hooked_pcs():
+    """Guest PCs the port compares against: CPU pc / ra / checkpoint
+    continuation tests and case lists. Word-table range bounds and data
+    addresses are not hooks."""
+    pcs = set()
+    context = re.compile(r"\bpc\b|->pc|\.pc|r\[31\]|raw_cpu|_caller|\bcase 0x")
+    for path in (ROOT / "pc_port").glob("*.c"):
+        for line in path.read_text(errors="replace").splitlines():
+            if context.search(line):
+                for m in re.finditer(r"0x(80[0-9a-fA-F]{6})u?\b", line):
+                    pcs.add(int(m.group(1), 16))
+    return pcs
+
+
+def guest_address(name, symbols):
+    plus = re.fullmatch(r"(.+?)\+(\d+|0x[0-9A-Fa-f]+)", name)
+    if plus:  # asm-label aliases such as "D_80078E7C+1"
+        base = guest_address(plus.group(1), symbols)
+        return None if base is None else base + int(plus.group(2), 0)
+    m = re.fullmatch(r"(?:D|func|jtbl|jpt)_([0-9A-Fa-f]{8})", name)
+    if m:
+        return int(m.group(1), 16)
+    return symbols.get(name)
+
+
+def strip_comments(text):
+    text = re.sub(r"/\*.*?\*/", " ", text, flags=re.S)
+    return re.sub(r"//[^\n]*", " ", text)
+
+
+# ---- IR helpers ----------------------------------------------------------
+
+def split_top(text, sep=","):
+    parts, depth, cur = [], 0, []
+    for ch in text:
+        if ch in "([{<":
+            depth += 1
+        elif ch in ")]}>":
+            depth -= 1
+        if ch == sep and depth == 0:
+            parts.append("".join(cur).strip())
+            cur = []
+        else:
+            cur.append(ch)
+    if cur and "".join(cur).strip():
+        parts.append("".join(cur).strip())
+    return parts
+
+
+def named_types(ir):
+    types = {}
+    for m in re.finditer(r"^(%[\w.\"$]+) = type (.*)$", ir, flags=re.M):
+        types[m.group(1)] = m.group(2)
+    return types
+
+
+def type_has_ptr(ty, types, seen=None):
+    seen = seen or set()
+    if re.search(r"\bptr\b", ty):
+        return True
+    for name in re.findall(r"%[\w.\"$]+", ty):
+        if name in types and name not in seen:
+            seen.add(name)
+            if type_has_ptr(types[name], types, seen):
+                return True
+    return False
+
+
+def functions(ir):
+    """Yield (header, [body lines]) for every define."""
+    lines = ir.splitlines()
+    i = 0
+    while i < len(lines):
+        if lines[i].startswith("define "):
+            header, body = lines[i], []
+            i += 1
+            while i < len(lines) and lines[i] != "}":
+                body.append(lines[i])
+                i += 1
+            yield header, body
+        i += 1
+
+
+INT_TYPES = {"i8", "i16", "i32"}
+
+
+def parse_params(text):
+    """'(i32 noundef signext %0, ptr %1)' -> [(type, attrs)]"""
+    inner = text.strip()
+    assert inner[0] == "(" and inner[-1] == ")"
+    inner = inner[1:-1].strip()
+    if not inner:
+        return [], False
+    params, variadic = [], False
+    for part in split_top(inner):
+        if part == "...":
+            variadic = True
+            continue
+        tokens = part.split()
+        params.append((tokens[0], set(tokens[1:])))
+    return params, variadic
+
+
+def abi_type(ty, attrs, what):
+    if ty == "ptr" or ty in INT_TYPES:
+        if attrs & {"byval", "sret", "inalloca", "preallocated"}:
+            raise Reject("abi", f"{what} passes {ty} by value")
+        return ty, ("signext" in attrs, "zeroext" in attrs)
+    raise Reject("abi", f"{what} type {ty}")
+
+
+def parse_signature(header_or_decl, name):
+    """-> (ret_type, ret_ext, [(type, ext)])"""
+    m = re.search(r"^(?:define|declare)\s+(.*?)@" + re.escape(name) + r"(\(.*\))", header_or_decl)
+    if not m:
+        raise Reject("abi", f"cannot parse signature of {name}")
+    pre = m.group(1).split()
+    # Return type is the last token that is a type; attributes precede it.
+    ret = next((t for t in reversed(pre) if t == "void" or t == "ptr" or re.fullmatch(r"i\d+", t)), None)
+    if ret is None:
+        raise Reject("abi", f"return type of {name}")
+    ret_attrs = set(pre)
+    # Trim trailing function attributes / section after the parameter list.
+    params_text = m.group(2)
+    depth = 0
+    for idx, ch in enumerate(params_text):
+        depth += ch == "("
+        depth -= ch == ")"
+        if depth == 0:
+            params_text = params_text[: idx + 1]
+            break
+    params, variadic = parse_params(params_text)
+    if variadic:
+        raise Reject("calls", f"{name} is variadic or unprototyped")
+    if ret != "void":
+        abi_type(ret, set(), f"{name} return")
+    return (ret, ("signext" in ret_attrs, "zeroext" in ret_attrs),
+            [abi_type(t, a, f"{name} param") for t, a in params])
+
+
+# ---- Compile + check one source -------------------------------------------
+
+MEMORY_FNS = ("memset", "memcpy", "memmove")
+
+
+def rewrite_symbols(ir, symbols):
+    """Replace guest data symbols with absolute guest addresses. Functions
+    this TU defines become lane_func_*; calls to guest functions it only
+    declares become lane_call_func_* (resolved per signature later); any
+    other use of a guest function is its guest code address."""
+    decl_globals = {}
+    for m in GLOBAL_DECL_RE.finditer(ir):
+        decl_globals[m.group(1) or m.group(2)] = m.group(3)
+    replace = {}
+    for name, rest in decl_globals.items():
+        if rest.startswith("external "):
+            addr = guest_address(name, symbols)
+            if addr is None:
+                raise Reject("symbols", f"unresolved data symbol {name}")
+            if not RAM_LO <= addr < RAM_HI:
+                raise Reject("symbols", f"{name} at {addr:08x} is outside game RAM")
+            replace[name] = f"inttoptr (i64 {addr} to ptr)"
+        elif not rest.startswith(("private unnamed_addr constant", "internal unnamed_addr constant",
+                                  "private constant", "internal constant")):
+            raise Reject("symbols", f"TU defines data {name}")
+    internal = set(re.findall(r"^define internal [^@]*@([\w.$]+)\(", ir, flags=re.M))
+    defined = set(re.findall(r"^define [^@]*@([\w.$]+)\(", ir, flags=re.M)) - internal
+    declared = set(re.findall(r"^declare [^@]*@([\w.$]+)\(", ir, flags=re.M))
+    guest = set()
+    for fname in defined | declared:
+        if fname.startswith("llvm.") or fname in MEMORY_FNS:
+            continue
+        addr = guest_address(fname, symbols)
+        if addr is None:
+            raise Reject("symbols", f"unresolved function {fname}")
+        if not RAM_LO <= addr < RAM_HI:
+            raise Reject("symbols", f"function {fname} at {addr:08x} outside game RAM")
+        guest.add(fname)
+    out_lines = []
+    for line in ir.splitlines():
+        m = GLOBAL_DECL_RE.match(line)
+        if m and (m.group(1) or m.group(2)) in replace:
+            continue
+        def sub(mm, line=line):
+            name = mm.group(1) or mm.group(2)
+            if name in replace:
+                return replace[name]
+            if name in guest:
+                after = line[mm.end(): mm.end() + 1]
+                is_def_or_decl = line.startswith(("define ", "declare "))
+                is_call_target = after == "(" and re.search(r"\bcall\b", line[:mm.start()]) is not None
+                if is_def_or_decl or is_call_target:
+                    return ("@lane_" if name in defined else "@lane_call_") + name
+                # Address taken: the guest sees its guest code address.
+                return f"inttoptr (i64 {guest_address(name, symbols)} to ptr)"
+            return mm.group(0)
+        out_lines.append(SYM_RE.sub(sub, line))
+    return "\n".join(out_lines) + "\n"
+
+
+def narrow_pointer_cells(ir):
+    """Guest memory holds 32-bit pointers. Before optimization, every
+    pointer-typed load/store whose address is not a host local slot becomes
+    a 32-bit access with zero extension / truncation, and every int->pointer
+    conversion goes through the value's 32-bit guest form (C sign-extends an
+    int converted to a pointer; the MIPS register is already the address).
+    Aggregates holding pointers are refused by check_layout, so no offset or
+    size baked into the IR depends on the pointer width."""
+    out, counter = [], [0]
+
+    def fresh(tag):
+        counter[0] += 1
+        return f"%lane.{tag}{counter[0]}"
+
+    allocas = set()
+    sext_defs = {}
+    for line in ir.splitlines():
+        if line.startswith("define "):
+            allocas, sext_defs = set(), {}
+        m = DEF_RE.match(line)
+        if m:
+            if m.group(2).startswith("alloca "):
+                allocas.add(m.group(1))
+            sm = re.match(r"sext (i\d+) (%[\w.\"$]+) to i64", m.group(2))
+            if sm:
+                sext_defs[m.group(1)] = (sm.group(1), sm.group(2))
+        lm = re.match(r"^(\s*)(%[\w.\"$]+) = load (volatile )?ptr, (.*)$", line)
+        if lm:
+            parts = split_top(lm.group(4))
+            addr = parts[0][len("ptr "):] if parts[0].startswith("ptr ") else None
+            if addr is not None and addr not in allocas:
+                ind, dst, vol = lm.group(1), lm.group(2), lm.group(3) or ""
+                narrow, wide = fresh("n"), fresh("z")
+                out.append(f"{ind}{narrow} = load {vol}i32, ptr {addr}, align 1")
+                out.append(f"{ind}{wide} = zext i32 {narrow} to i64")
+                out.append(f"{ind}{dst} = inttoptr i64 {wide} to ptr")
+                continue
+        st = re.match(r"^(\s*)store (volatile )?ptr (.*)$", line)
+        if st:
+            parts = split_top(st.group(3))
+            addr = parts[1][len("ptr "):] if len(parts) > 1 and parts[1].startswith("ptr ") else None
+            if addr is not None and addr not in allocas:
+                ind, vol, value = st.group(1), st.group(2) or "", parts[0]
+                narrow = fresh("t")
+                out.append(f"{ind}{narrow} = ptrtoint ptr {value} to i32")
+                out.append(f"{ind}store {vol}i32 {narrow}, ptr {addr}, align 1")
+                continue
+        im = re.match(r"^(\s*)(%[\w.\"$]+) = inttoptr i64 (%[\w.\"$]+) to ptr(.*)$", line)
+        if im and im.group(3) in sext_defs:
+            ind = im.group(1)
+            width, src = sext_defs[im.group(3)]
+            value = src
+            if width != "i32":
+                value = fresh("s")
+                out.append(f"{ind}{value} = sext {width} {src} to i32")
+            wide = fresh("z")
+            out.append(f"{ind}{wide} = zext i32 {value} to i64")
+            out.append(f"{ind}{im.group(2)} = inttoptr i64 {wide} to ptr{im.group(4)}")
+            continue
+        out.append(line)
+    return "\n".join(out) + "\n"
+
+
+def check_layout(ir):
+    types = named_types(ir)
+    ptr_types = {n for n, t in types.items() if type_has_ptr(t, types)}
+    body = re.sub(r"^%[\w.\"$]+ = type .*$", "", ir, flags=re.M)
+    for name in ptr_types:
+        if re.search(re.escape(name) + r"\b", body):
+            raise Reject("layout", f"uses pointer-bearing type {name}")
+    if re.search(r"\[\d+ x ptr\]", body):
+        raise Reject("layout", "array of pointers")
+    for header, lines in functions(ir):
+        for line in lines:
+            if re.search(r"getelementptr (?:inbounds |nuw |nusw )*ptr,", line):
+                raise Reject("layout", "pointer-element indexing")
+
+
+def check_optimized(ir, module_internal):
+    types = named_types(ir)
+    private_globals = set(re.findall(r"^@([\w.$]+) = (?:private|internal)", ir, flags=re.M))
+    for header, lines in functions(ir):
+        defs = {}
+        for line in lines:
+            m = DEF_RE.match(line)
+            if m:
+                defs[m.group(1)] = m.group(2)
+        tainted = set()
+        for name, rhs in defs.items():
+            if rhs.startswith("alloca "):
+                tainted.add(name)
+        changed = True
+        while changed:
+            changed = False
+            for name, rhs in defs.items():
+                if name in tainted:
+                    continue
+                op = rhs.split()[0] if rhs.split() else ""
+                if op in ("getelementptr", "bitcast", "phi", "select", "addrspacecast", "freeze"):
+                    if any(t in re.findall(r"%[\w.\"$]+", rhs) for t in tainted) or \
+                            any("@" + g in rhs for g in private_globals):
+                        tainted.add(name)
+                        changed = True
+
+        def refs_host(text):
+            return any(re.search(re.escape(t) + r"\b", text) for t in tainted) or \
+                any(re.search("@" + re.escape(g) + r"\b", text) for g in private_globals)
+
+        for line in lines:
+            s = line.strip()
+            if not s or s.endswith(":") or s.startswith(";"):
+                continue
+            if re.search(r"\b(undef|poison)\b", s):
+                raise Reject("ub", "undef/poison operand")
+            if s == "unreachable":
+                raise Reject("ub", "unreachable")
+            m = DEF_RE.match(line)
+            rhs = m.group(2) if m else s
+            if re.search(r"\basm\b", rhs):
+                raise Reject("calls", "inline asm")
+            if rhs.startswith(("atomicrmw", "cmpxchg", "fence")) or " atomic " in rhs:
+                raise Reject("memory", "atomic operation")
+            if re.match(r"(load|store) volatile ", rhs) or "i1 true)" in rhs and "llvm.mem" in rhs:
+                # Decomp C marks device access volatile; a pointer cell such
+                # as D_8006B560 holds an MMIO address the host cannot map.
+                raise Reject("memory", "volatile access (device register)")
+            if re.match(r"load (volatile )?", rhs):
+                ty = split_top(re.sub(r"^load (volatile )?", "", rhs))[0]
+                addr = split_top(re.sub(r"^load (volatile )?", "", rhs))[1]
+                if type_has_ptr(ty, types) and not refs_host(addr):
+                    raise Reject("memory", "pointer load from guest memory")
+            if re.match(r"store (volatile )?", rhs):
+                parts = split_top(re.sub(r"^store (volatile )?", "", rhs))
+                value, addr = parts[0], parts[1]
+                if type_has_ptr(value.split()[0], types) and not refs_host(addr):
+                    raise Reject("memory", "pointer store to guest memory")
+                if refs_host(value):
+                    raise Reject("escape", "host address stored")
+            if rhs.startswith("ptrtoint") and refs_host(rhs):
+                raise Reject("escape", "host address converted to integer")
+            if rhs.startswith("ret ") and refs_host(rhs):
+                raise Reject("escape", "host address returned")
+            if re.match(r"inttoptr ", rhs):
+                src = split_top(rhs[len("inttoptr "):].split(" to ")[0])[0].split()
+                val = src[-1]
+                if val.startswith("%"):
+                    d = defs.get(val, "")
+                    if not (d.startswith("zext i32") or d.startswith("zext nneg i32") or
+                            re.match(r"and i64 .*, 4294967295$", d)):
+                        raise Reject("inttoptr", f"integer->pointer from '{d[:40]}'")
+                elif re.fullmatch(r"-?\d+", val) and not RAM_LO <= int(val) < RAM_HI:
+                    raise Reject("inttoptr", f"constant address {int(val):x}")
+            for const in re.findall(r"inttoptr \(i64 (-?\d+) to ptr\)", rhs):
+                if not RAM_LO <= int(const) < RAM_HI:
+                    raise Reject("inttoptr", f"constant address {int(const) & 0xffffffffffffffff:x}")
+            dm = re.match(r"(sdiv|udiv|srem|urem)(?: exact)? (i\d+) (.*)$", rhs)
+            if dm:
+                divisor = split_top(dm.group(3))[1]
+                if not re.fullmatch(r"-?\d+", divisor) or int(divisor) in (0, -1):
+                    raise Reject("arith", f"{dm.group(1)} by {divisor}")
+            sm = re.match(r"(shl|lshr|ashr)(?: nuw| nsw| exact)* (i\d+) (.*)$", rhs)
+            if sm:
+                amount = split_top(sm.group(3))[1]
+                if not re.fullmatch(r"\d+", amount):
+                    d = defs.get(amount, "")
+                    mm = re.match(r"and i\d+ (?:%[\w.\"$]+, (\d+)|(\d+), %[\w.\"$]+)$", d)
+                    mask = int(mm.group(1) or mm.group(2)) if mm else None
+                    if mask is None or mask > 31:
+                        raise Reject("arith", "unmasked variable shift")
+                elif int(amount) >= int(sm.group(2)[1:]):
+                    raise Reject("arith", "oversized constant shift")
+            cm = re.search(r"\b(?:tail |musttail |notail )?call\b(.*)$", rhs)
+            if cm:
+                call = cm.group(1)
+                target = re.search(r"(@[\w.$]+|%[\w.\"$]+)\(", call)
+                if not target or target.group(1).startswith("%"):
+                    raise Reject("calls", "indirect call")
+                if "inttoptr" in call.split("(")[0]:
+                    raise Reject("calls", "call through a guest address")
+                name = target.group(1)[1:]
+                args = call[target.end():]
+                if name.startswith("llvm."):
+                    if not re.match(r"llvm\.(lifetime|memset|memcpy|memmove|smax|smin|umax|umin|abs|"
+                                    r"ctlz|cttz|ctpop|fshl|fshr|bswap|assume|experimental\.noalias|"
+                                    r"sadd|uadd|ssub|usub|vector\.reduce)", name):
+                        raise Reject("calls", f"intrinsic {name}")
+                    continue
+                if name in ("memset", "memcpy", "memmove"):
+                    continue
+                if name in module_internal:
+                    continue
+                if not name.startswith(("lane_func_", "lane_call_func_")):
+                    raise Reject("calls", f"call to {name}")
+                if refs_host(args):
+                    raise Reject("escape", f"host address passed to {name}")
+
+
+def check_polling_loops(ir):
+    """A native call runs to completion without IRQ delivery. A loop that
+    neither stores nor calls can only make progress through state an IRQ or
+    device changes (a VSync counter, a DMA flag), so it could spin forever
+    natively. Refuse any such loop; counting loops that also store or call
+    are unaffected."""
+    for header, lines in functions(ir):
+        labels = {}
+        for idx, line in enumerate(lines):
+            m = re.match(r"^([\w.$-]+):", line)
+            if m:
+                labels["%" + m.group(1)] = idx
+        # The entry block is unlabeled; numbered blocks still get "N:" lines.
+        for idx, line in enumerate(lines):
+            if not line.strip().startswith("br "):
+                continue
+            for target in re.findall(r"label (%[\w.$\"-]+)", line):
+                start = labels.get(target)
+                if start is None or start > idx:
+                    continue
+                body = lines[start: idx + 1]
+                if not any(re.search(r"\bstore\b", l) or
+                           (re.search(r"\bcall\b", l) and "@llvm." not in l) for l in body):
+                    raise Reject("irq", "loop with no store or call (polling)")
+
+
+def lane_names(ir):
+    return set(re.findall(r"^define [^@]*@(lane_func_[0-9A-Fa-f]{8})\(", ir, flags=re.M))
+
+
+def sig_code(sig):
+    ret, rext, params = sig
+    def tok(t, e):
+        return t + ("s" if e[0] else "z" if e[1] else "")
+    return "r" + tok(ret, rext) + "".join("_" + tok(t, e) for t, e in params)
+
+
+def resolve_calls(optir):
+    """Give each lane_call_func_* a signature-specific symbol. Returns
+    (ir, {symbol: (callee, sig or None, argc)}); sig None = unprototyped,
+    called with at most argc register-width arguments."""
+    stubs, renames = {}, {}
+    for decl in [l for l in optir.splitlines() if l.startswith("declare ")]:
+        m = re.search(r"@(lane_call_(func_[0-9A-Fa-f]{8}))\(", decl)
+        if not m:
+            continue
+        sym, callee = m.group(1), m.group(2)
+        if re.search(r"\(\s*\.\.\.\s*\)", decl) or ", ...)" in decl:
+            argc = 0
+            ret = parse_return(decl, sym)
+            for line in optir.splitlines():
+                if line.startswith("declare ") or "@" + sym + "(" not in line:
+                    continue
+                inner = line.split("@" + sym + "(", 1)[1]
+                depth, end = 1, 0
+                for end, ch in enumerate(inner):
+                    depth += ch == "("
+                    depth -= ch == ")"
+                    if depth == 0:
+                        break
+                args = split_top(inner[:end])
+                for a in args:
+                    ty = a.split()[0]
+                    if ty not in ("i32", "ptr", "i8", "i16"):
+                        raise Reject("abi", f"unprototyped {callee} gets {ty}")
+                argc = max(argc, len(args))
+            if argc > 6:
+                raise Reject("abi", f"unprototyped {callee} with {argc} arguments")
+            new = f"{sym}__va{argc}_{ret[0]}{'s' if ret[1][0] else ''}"
+            stubs[new] = (callee, None, argc, ret)
+        else:
+            sig = parse_signature(decl, sym)
+            new = f"{sym}__{sig_code(sig)}"
+            stubs[new] = (callee, sig, len(sig[2]), None)
+        renames[sym] = new
+    for old, new in renames.items():
+        optir = re.sub(r"@" + re.escape(old) + r"\b", "@" + new, optir)
+    return optir, stubs
+
+
+def parse_return(decl, name):
+    m = re.search(r"^declare\s+(.*?)@" + re.escape(name) + r"\(", decl)
+    pre = m.group(1).split() if m else []
+    ret = next((t for t in reversed(pre) if t in ("void", "ptr") or re.fullmatch(r"i\d+", t)), None)
+    if ret is None or (ret != "void" and ret not in ("ptr", "i8", "i16", "i32")):
+        raise Reject("abi", f"return type of {name}")
+    return ret, ("signext" in pre, "zeroext" in pre)
+
+
+def build_one(entry, out, symbols, hooks, clang):
+    vram, size, src = entry["vram"], entry["size"], ROOT / entry["source"]
+    name = entry["name"]
+    tag = f"{vram:08x}"
+    work = out / "ir"
+    try:
+        for pc in hooks:
+            if vram <= pc < vram + size:
+                raise Reject("hooks", f"port references {pc:08x}")
+        text = strip_comments(src.read_text(errors="replace"))
+        body = text.split("#else", 1)[1] if "#else" in text else text
+        for token in ("long", "sizeof"):
+            if re.search(r"\b" + token + r"\b", body):
+                raise Reject("source", f"uses '{token}'")
+        o0 = work / f"{tag}.O0.ll"
+        r = run([clang, *CFLAGS, "-O0", "-Xclang", "-disable-O0-optnone", "-S", "-emit-llvm",
+                 "-I", str(ROOT / "include"), str(src), "-o", str(o0)])
+        if r.returncode:
+            raise Reject("compile", (r.stderr.strip().splitlines() or ["?"])[0][:160])
+        ir = o0.read_text()
+        check_layout(ir)
+        rewritten = narrow_pointer_cells(rewrite_symbols(ir, symbols))
+        sub = work / f"{tag}.sub.ll"
+        sub.write_text(rewritten)
+        opt = work / f"{tag}.opt.ll"
+        r = run([clang, f"--target={HOST_TARGET}", "-O2", "-S", "-emit-llvm", "-w",
+                 str(sub), "-o", str(opt)])
+        if r.returncode:
+            raise Reject("compile", "optimize: " + (r.stderr.strip().splitlines() or ["?"])[0][:160])
+        optir = opt.read_text()
+        internal = set(re.findall(r"^define internal [^@]*@([\w.$]+)\(", optir, flags=re.M))
+        check_optimized(optir, internal)
+        check_polling_loops(optir)
+        defs = lane_names(optir)
+        own = f"lane_{name}"
+        if own not in defs:
+            raise Reject("symbols", f"{name} not defined by {entry['source']}")
+        sigs = {}
+        for d in defs:
+            header = next(h for h, _ in functions(optir) if re.search("@" + d + r"\(", h))
+            sigs[d] = parse_signature(header, d)
+        optir, stubs = resolve_calls(optir)
+        final = work / f"{tag}.lane.ll"
+        final.write_text(optir)
+        obj = work / f"{tag}.o"
+        r = run([clang, f"--target={HOST_TARGET}", "-O2", "-c", "-fPIE", "-w", str(final), "-o", str(obj)])
+        if r.returncode:
+            raise Reject("compile", "object: " + (r.stderr.strip().splitlines() or ["?"])[0][:160])
+        undefined = run(["nm", "-u", str(obj)]).stdout.split()
+        for u in undefined:
+            if u != "U" and not u.startswith(("lane_call_func_", "lane_func_")) and u not in MEMORY_FNS:
+                raise Reject("symbols", f"object still references {u}")
+        return dict(name=name, vram=vram, size=size, source=entry["source"], admitted=True,
+                    obj=str(obj), defs=sigs, stubs=stubs)
+    except Reject as e:
+        return dict(name=name, vram=vram, size=size, source=entry["source"], admitted=False,
+                    rule=e.rule, detail=e.detail)
+
+
+# ---- Emit wrappers, stubs and the table ------------------------------------
+
+def c_type(ty, ext):
+    if ty == "ptr":
+        return "void *"
+    signed = ext[0]
+    bits = int(ty[1:])
+    return f"{'int' if signed else 'uint'}{bits}_t"
+
+
+def to_guest(expr, ty, ext):
+    """Host value -> the 32-bit guest register the MIPS ABI would carry."""
+    if ty == "ptr":
+        return f"(uint32_t)(uintptr_t)({expr})"
+    if ext[0]:
+        return f"(uint32_t)(int32_t)({expr})"
+    return f"(uint32_t)({expr})"
+
+
+def from_guest(expr, ty, ext):
+    if ty == "ptr":
+        return f"(void *)(uintptr_t)(uint32_t)({expr})"
+    return f"({c_type(ty, ext)})({expr})"
+
+
+def emit_table(admitted, out):
+    defs = {}
+    for a in admitted:
+        defs.update(a["defs"])
+    stubs = {}
+    for a in admitted:
+        stubs.update(a["stubs"])
+    lines = [
+        "/* Generated by tools/native_lane_gen.py; do not edit. */",
+        "#include <stdint.h>",
+        "#include <stddef.h>",
+        '#include "musashi_native_lane.h"',
+        "",
+    ]
+    for d, (ret, rext, params) in sorted(defs.items()):
+        proto = ", ".join(c_type(t, e) for t, e in params) or "void"
+        lines.append(f"extern {'void' if ret == 'void' else c_type(ret, rext)} {d}({proto});")
+    lines += ["", "/* Guest calls from native code. Each value crosses as the 32-bit",
+              " * register the MIPS ABI carries, so caller and callee prototypes may",
+              " * disagree exactly as they can on the PS1. An admitted callee is called",
+              " * directly; any other runs on the interpreter (same CPU, same loop). */"]
+    direct = thunk = 0
+    for sym, (callee, sig, argc, va_ret) in sorted(stubs.items()):
+        addr = callee[len("func_"):]
+        if sig is None:
+            ret, rext = va_ret
+            params = [("i32", (False, False))] * argc
+        else:
+            ret, rext, params = sig
+        rtype = "void" if ret == "void" else c_type(ret, rext)
+        plist = ", ".join(f"{c_type(t, e)} a{i}" for i, (t, e) in enumerate(params)) or "void"
+        regs = [to_guest(f"a{i}", t, e) for i, (t, e) in enumerate(params)]
+        lines.append(f"{rtype} {sym}({plist}) {{")
+        target = "lane_" + callee
+        if target in defs:
+            direct += 1
+            cret, crext, cparams = defs[target]
+            args = ", ".join(from_guest(regs[i] if i < len(regs) else "0u", t, e)
+                             for i, (t, e) in enumerate(cparams))
+            call = f"{target}({args})"
+            for i in range(len(cparams), len(params)):
+                lines.append(f"    (void)a{i}; /* the callee takes fewer arguments */")
+            if ret == "void":
+                lines.append(f"    {call};")
+            elif cret == "void":
+                lines.append(f"    {call};")
+                lines.append(f"    return {from_guest('0u', ret, rext)};")
+            else:
+                lines.append(f"    return {from_guest(to_guest(call, cret, crext), ret, rext)};")
+        else:
+            thunk += 1
+            if params:
+                lines.append(f"    const uint32_t args[{len(params)}] = {{{', '.join(regs)}}};")
+                call = f"musashi_native_guest_call(0x{addr}u, {len(params)}u, args, NULL)"
+            else:
+                call = f"musashi_native_guest_call(0x{addr}u, 0u, NULL, NULL)"
+            if ret == "void":
+                lines.append(f"    (void){call};")
+            else:
+                lines.append(f"    return {from_guest(call, ret, rext)};")
+        lines.append("}")
+    lines.append("")
+    entries = []
+    for a in sorted(admitted, key=lambda a: a["vram"]):
+        d = "lane_" + a["name"]
+        ret, rext, params = a["defs"][d]
+        args = ", ".join(from_guest(f"musashi_native_lane_arg(call, {i}u)", t, e)
+                         for i, (t, e) in enumerate(params))
+        lines.append(f"static int wrap_{a['vram']:08x}(MusashiNativeLaneCall *call) {{")
+        if not params and ret == "void":
+            lines.append("    (void)call;")
+        if ret == "void":
+            lines.append(f"    {d}({args});")
+        else:
+            lines.append(f"    call->r[2] = {to_guest(f'{d}({args})', ret, rext)};")
+        lines.append("    return 1;")
+        lines.append("}")
+        cost = 2 * (a["size"] // 4)
+        entries.append(f"    {{0x{a['vram']:08x}u, {cost}u, wrap_{a['vram']:08x}, \"{a['name']}\", "
+                       f"{len(params)}u, {0 if ret == 'void' else 1}u}},")
+    lines.append("")
+    lines.append("const MusashiNativeLaneEntry musashi_native_lane_generated[] = {")
+    lines.extend(entries or ["    {0u, 0u, NULL, NULL, 0u, 0u},"])
+    lines.append("};")
+    lines.append(f"const size_t musashi_native_lane_generated_count = {len(entries)}u;")
+    (out / "native_lane_table.c").write_text("\n".join(lines) + "\n")
+    return direct, thunk
+
+
+def candidates(only=None, excluded=None):
+    """Game-code candidates. Sony PsyQ library ranges (config/psyq_ranges.txt)
+    never enter the lane: their entry points belong to PsyCross/HLE."""
+    sys.path.insert(0, str(ROOT / "tools"))
+    import psyq_manifest
+    psyq = psyq_manifest.ranges()
+    registry = json.loads((ROOT / "provenance/matches.json").read_text())["matches"]
+    picked = []
+    for m in registry:
+        if m["region"] != "main" or m.get("recovery") != "c":
+            continue
+        if psyq_manifest.psyq_segment(m["vram"], psyq):
+            if excluded is not None:
+                excluded.append(m["vram"])
+            continue
+        src = ROOT / m["source"]
+        if not src.exists():
+            continue
+        text = src.read_text(errors="replace")
+        if "MUSASHI_NATIVE_MIPS_WORD_EXPORT" not in text:
+            continue
+        other = set(re.findall(r"MUSASHI_NATIVE_[A-Z0-9_]+", text)) - {
+            "MUSASHI_NATIVE_MIPS_WORD_EXPORT", "MUSASHI_NATIVE_MIPS_WORD"}
+        if other:
+            continue  # bespoke binding already owns this file
+        if only and m["vram"] not in only:
+            continue
+        picked.append(m)
+    return picked
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("--out", required=True, type=Path)
+    ap.add_argument("--clang", default=shutil.which("clang") or "clang")
+    ap.add_argument("--ar", default=shutil.which("ar") or "ar")
+    ap.add_argument("--jobs", type=int, default=4)
+    ap.add_argument("--only", help="file of guest PCs (hex, one per line) to consider, e.g. a trace")
+    ap.add_argument("--exclude", help="file of guest PCs (hex) never to admit")
+    args = ap.parse_args()
+    out = args.out
+    (out / "ir").mkdir(parents=True, exist_ok=True)
+    def pcs(path):
+        return {int(t.split()[0], 16) for t in Path(path).read_text().splitlines()
+                if t.strip() and not t.startswith("#")}
+    only = pcs(args.only) if args.only else None
+    exclude = pcs(args.exclude) if args.exclude else set()
+    symbols = load_symbol_addrs()
+    hooks = hooked_pcs()
+    psyq_excluded = []
+    todo = [m for m in candidates(only, psyq_excluded) if m["vram"] not in exclude]
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, args.jobs)) as pool:
+        results = list(pool.map(lambda m: build_one(m, out, symbols, hooks, args.clang), todo))
+    admitted = [r for r in results if r["admitted"]]
+    # A direct native call cannot reproduce a MIPS caller that passes fewer
+    # arguments than the callee reads: the callee sees whatever the caller
+    # left in a1-a3. Refuse such callers (to a fixpoint, since a refused
+    # caller becomes an interpreted callee for others).
+    while True:
+        arity = {"lane_" + a["name"]: len(a["defs"]["lane_" + a["name"]][2]) for a in admitted}
+        drop = set()
+        for a in admitted:
+            for sym, (callee, sig, argc, _) in a["stubs"].items():
+                if "lane_" + callee in arity and argc < arity["lane_" + callee]:
+                    drop.add(a["name"])
+                    a.update(admitted=False, rule="abi",
+                             detail=f"passes {argc} of {arity['lane_' + callee]} arguments to {callee}")
+        if not drop:
+            break
+        admitted = [a for a in admitted if a["name"] not in drop]
+    # A native caller of an admitted callee links to it directly; otherwise
+    # the thunk runs the guest words. Duplicate definitions cannot occur:
+    # each TU defines only its own registry function under lane_func_*.
+    direct, thunk = emit_table(admitted, out)
+    lib = out / "libmusashi_native_lane.a"
+    if lib.exists():
+        lib.unlink()
+    objs = [r["obj"] for r in admitted]
+    if objs:
+        r = run([args.ar, "rcs", str(lib), *objs])
+        if r.returncode:
+            print(r.stderr, file=sys.stderr)
+            return 1
+    else:
+        stub = out / "ir" / "empty.c"
+        stub.write_text("typedef int musashi_native_lane_empty;\n")
+        run([args.clang, "-c", str(stub), "-o", str(out / "ir" / "empty.o")])
+        run([args.ar, "rcs", str(lib), str(out / "ir" / "empty.o")])
+    rules = {}
+    for r in results:
+        if not r["admitted"]:
+            rules[r["rule"]] = rules.get(r["rule"], 0) + 1
+    report = dict(candidates=len(results), admitted=len(admitted), rejected_by_rule=rules,
+                  psyq_excluded=len(psyq_excluded),
+                  call_stubs=dict(direct=direct, interpreter_thunk=thunk),
+                  functions=[{k: v for k, v in r.items() if k not in ("obj", "defs", "stubs")}
+                             for r in sorted(results, key=lambda r: r["vram"])])
+    (out / "report.json").write_text(json.dumps(report, indent=1) + "\n")
+    print(f"native lane: {len(admitted)}/{len(results)} game functions admitted "
+          f"({len(psyq_excluded)} PsyQ-range candidates excluded); rejected {rules}; "
+          f"call stubs direct={direct} thunk={thunk}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

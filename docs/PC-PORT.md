@@ -521,6 +521,268 @@ Those values were read off the built library rather than assumed. PS1 fixed
 point uses 4096 for 1.0 and 4096 units for a full turn, so cosine falls to zero
 exactly where sine reaches one.
 
+## Shipping model: run off the disc (2026-09-28)
+
+The distributed port contains only our code (decompiled game C, our own
+runtime/HLE, the native-lane glue) and open-source dependencies. Everything
+from the game (code words, overlays, tables, assets) is read from the
+user's own SLUS-00726 disc image at run time, or extracted from it in a
+local, gitignored step (`extracted/`). Nothing retail is committed or built
+into a binary.
+
+- **Instruction fetch.** `formatter_fetch`, `input_callback_word` and
+  `cd_irq_word` admit a PC by address range and read the word from guest
+  RAM: the EXE that `musashi_boot_map_exe` mapped (SHA-256 checked) and the
+  overlays the guest loaded from the disc. The 3,649 `k*Words` arrays keep
+  only their shape (`static const uint32_t kX[N];`, zero, never read for
+  words); 489,496 retail words left the build.
+- **Overlay identity.** SC01/SC02 member selection compares an FNV-1a 64
+  digest of the loaded 178-word entry span with the carved member's digest.
+- **CMake** no longer extracts anything at configure time (the 17k-line
+  `extract_asm_words.py` block and the SC01.CD member extraction are gone);
+  no `*_words.inc` exists. `pc_port/800cf02c_overlay_words.inc` is deleted.
+- **First-run disc check.** A wrong or missing EXE prints which release is
+  needed (Brave Fencer Musashi (USA), SLUS-00726), the expected SHA-256
+  (`provenance/exe_identity.json`) and what was found; a wrong disc image
+  (cue SHA-256 and bin size, `pc_port/disc_media.c`) gets the matching
+  message. The original `... rejected before startup` lines remain.
+- **Tests.** Probes that seed synthetic RAM fetch main-exe words from the
+  developer's own extract through `MUSASHI_CODE_IMAGE` (size and digest
+  checked; set by `tools/run_tests.sh`, CTest and `tests/conftest.py`).
+  The shipped port never sets it. The shared helper regenerates
+  `<addr>_words.inc` from the local EXE using
+  `tests/data/formatter_word_ranges.txt` (addresses and counts only), and
+  mutation tests push edits through `_sync_code_image`
+  (`MUSASHI_CODE_IMAGE_MUTANT=1`, test-only).
+
+Still carrying retail words (follow-up): about 1.5k per-site admission
+pairs (pc plus exact word) for merge/GTE/DIV sites and about 100
+`instruction == 0x...` guards in `mips_formatter.c`, redundant now that the
+words come from the hash-checked image; and 21 BIOS-kernel words in
+`bios_exception.c`. Pytest-only white-box probes that seeded RAM from the
+compiled overlay tables (`carve_site`, `pvd_merge`, `gte_transform`,
+`input_digital_irq`, `file_loader_entry`, `overlay_identity`, `sc02_entry`)
+still need their overlay words from the local disc extract.
+
+## PsyQ exclusion (2026-09-28)
+
+No Sony PsyQ code is compiled or linked into the port: neither SDK objects
+nor decompiled PsyQ C. `config/psyq_ranges.txt` lists the 71 PsyQ code
+ranges of the EXE (snd*, lib*, apicard*, gap segments of the vendor splat
+layout; the `sgap_*` islands are game code), built by
+`tools/psyq_manifest.py build`. CMake runs `tools/psyq_manifest.py check`
+over every `src/main` source of every target and fails configuration on any
+PsyQ-range source, except the bindings listed in
+`config/psyq_pending_replacement.txt`. That list started with the 19
+decompiled-PsyQ bindings the port used to compile (libetc callback/IRQ/DMA,
+libgpu device ops, libc2 console/string, libmcrd VBlank) and is now
+**empty**: every one is replaced by port-owned HLE (table below), and
+`tests/test_psyq_exclusion.py` fails if one returns or the list grows.
+
+Replacement status (each entry: what now provides it):
+
+| PsyQ entry | service | provider |
+| --- | --- | --- |
+| 80042C64 | libetc word clear | port HLE `musashi_hle_clear_words` |
+| 8005C29C | libc2 memset | port HLE `musashi_hle_fill_bytes` |
+| 8005CCC8 | libc2 memchr | port HLE `musashi_hle_find_byte` |
+| 80043060 | libetc word exchange | port HLE `musashi_hle_exchange_word` |
+| 8005C388 / 8005CD48 | libc2 TTY putchar / puts | port HLE `musashi_hle_console_putc/puts` |
+| 800425B0 / 800425E0 | libetc InterruptCallback / DMACallback veneers | port HLE `pc_port/libetc_irq_veneer.c`, `libetc_dma_veneer.c` |
+| 800429DC | libetc InterruptCallback registration (I_MASK, BIOS ChangeClearPad/RCnt) | port HLE `pc_port/libetc_irq_registration.c` |
+| 80042F8C | libetc DMACallback registration (DICR) | port HLE `pc_port/libetc_dma_registration.c` |
+| 80042CE8 | libetc VSync callback service | port HLE `pc_port/libetc_vsync_handler.c` |
+| 80042E08 | libetc DMA interrupt service (DICR drain) | port HLE `pc_port/libetc_dma_irq.c` |
+| 800427F4 | libetc interrupt service (I_STAT dispatch, storm guard, RFE) | port HLE `pc_port/libetc_irq_dispatch.c` |
+| 8005BD7C (+800426FC) | libgpu graphics reset (I_MASK exchange, GPU DMA/GP1 reset) | port HLE `pc_port/device_reset_bindings.c` |
+| 8005C1C0 | libgpu GPU-type probe (GP1 10000007h) | port HLE `pc_port/gpu_bindings.c` |
+| 800616D0 8006291C 80062988 | libmcrd memory-card VBlank service (request stack step, idle query, completion) | port HLE `pc_port/libmcrd_vblank.c` |
+
+The HLE (`pc_port/include/musashi_psyq_hle.h`, header-only) is written from
+the documented C-library/libetc behaviour, not from PsyQ code. The native lane never
+admits a PsyQ-range function: **469 of 655 game functions** are admitted
+(240 PsyQ candidates excluded); interpreted game code still runs the PsyQ
+words the user's own disc provides, which ship with nothing.
+
+## Third-party components and licenses
+
+| component | use | license |
+| --- | --- | --- |
+| PsyCross (REDRIVER2 project), `tools/third_party/psycross` | PsyQ API layer, GPU/GTE/audio backends | MIT |
+| SDL2 | window, input, audio | zlib |
+| OpenAL Soft | audio (PsyCross) | LGPL-2.1 (dynamic) |
+| OpenGL / Mesa | rendering | system library |
+| OpenSSL libcrypto | SHA-256 identity checks | Apache-2.0 |
+| mkpsxiso (dumpsxiso), `tools/third_party/mkpsxiso` | local disc extraction tool, not linked | GPL-2.0 |
+| clang/LLVM | native-lane compiler (build tool) | Apache-2.0 with LLVM exception |
+| decompals old-gcc, maspsx, m2c | matching toolchain (dev only, not linked) | GPL / MIT / GPL |
+
+## Platform layer wiring (2026-09-28)
+
+`bfm_plat` (pc_port/platform, from port/platform-layer; design in
+docs/ARCHITECTURE-PORT.md) is a CMake target linked into
+`musashi_native_boot` (`MUSASHI_WITH_BFM_PLAT`). At startup, after the EXE
+identity check, native_boot brings it up with the `null` renderer, audio
+and input backends (native_boot still owns PsyCross/SDL until the game-facing
+calls are routed through `bfm_plat_*`), binds guest RAM and, during a hook,
+the live guest registers, and registers the known hook sites (12 today).
+The formatter reports every guest function entry (a `jal`/`jalr` target,
+after its delay slot, before the native lane) through
+`musashi_formatter_set_entry_hook`, which calls `bfm_plat_hooks_at` for
+registered sites, and reports the selected overlay member (`SC02_031`,
+`SC01_000/001`, `MAIN_0004/0007/0010`) through
+`musashi_formatter_set_overlay_hook` → `bfm_plat_hooks_set_overlay`.
+`MUSASHI_BFM_PLAT=0` turns the layer off.
+
+## Native lane: running matched decomp C on the host (2026-09-28)
+
+Goal: the port executes byte-matched decomp C (`src/main/<vram>.c`, the
+`#else` branch) instead of word-stepping the retail MIPS for those
+functions, without losing the interpreter as the fallback.
+
+### Executed-path tracer
+
+`MUSASHI_TRACE_FUNCS=<path>` makes the formatter record every guest
+function entry it takes: `jal`/`jalr` targets (`j`/`r`) and router entries
+(`d`: run_startup_cpu, nested source execution, CD IRQ, BIOS event and
+fixed-entry routers). `<path>` gets one line per first-seen entry as it
+happens (`seq target kind caller`, flushed, so a killed run keeps it);
+`<path>.counts` gets every entry with its call count, first kind/caller and
+whether the lane ran it (`native`/`interp`), sorted by count, at exit. With
+the variable unset the cost is one predictable branch per `jal`, and guest
+state is never touched (the heap-continuation probe's byte-identical-CPU
+assertion holds with tracing on).
+
+`tools/native_lane_gen.py --only <path>.counts` restricts the lane to the
+traced PCs, so integration can follow what a boot really runs. **Not yet
+done on this box:** the live native boot needs an X display (PsyCross opens
+a GL window; there is no xvfb here), so only the headless probes have been
+traced (`entry_cpu`, `heap_continuation`, `callback_registration`).
+
+### Generic native lane
+
+`formatter_step` consults one guest-PC keyed table (`musashi_native_lane.h`)
+before it fetches a word, so the startup loop, the IRQ routers and nested
+source execution all take the same lane. An entry runs only at a clean call
+boundary (no pending delayed load or LWL/LWR merge, not in a delay slot,
+sequential npc) and only when guest RAM is host-mapped at `0x80000000`;
+otherwise the interpreter steps the words exactly as before. The adapter is
+the o32 register ABI: a0-a3, further arguments at guest `sp+0x10`, v0/v1,
+return to ra. Each entry charges `2 x words` cycles to the execution clock
+once per call (PCSX-Redux's BIAS=2 without the memory surcharge): an
+estimate, since a native loop has no per-iteration cost.
+
+`musashi_native_guest_call` is the interpreter thunk for unported callees:
+it runs the callee on the *same* `FormatterCpu`, re-entering the enclosing
+`run_startup_cpu` loop when there is one (so host-handled PCs, checkpoints
+and IRQ delivery behave as for interpreted code, and the checkpoint sees
+the same continuation identity), with the 16-byte o32 home area and stack
+arguments written below the caller's guest sp. A refusal inside the callee,
+or a host stop request, `longjmp`s back to the lane and refuses the step;
+guest writes the native code already made are not undone, which is the same
+fail-closed stop the interpreter gives.
+
+The existing bespoke bindings (`MUSASHI_NATIVE_*` defines) are unchanged;
+their files are excluded from the table.
+
+### Memory model: guest RAM at host 0x80000000 (design (a))
+
+Two designs were evaluated:
+
+- **(a)** Map guest RAM at host virtual `0x80000000` on the 64-bit host and
+  admit only functions an automatic checker proves pointer-width safe.
+- **(b)** A 32-bit host build (`-m32`) where all decomp C has PS1 data
+  layout. This needs i386 SDL2/OpenAL/GL (the owner would install them), a
+  32-bit PsyCross build, and it still needs the guest RAM window, because
+  host addresses of host objects are no more guest addresses at 32 bits.
+
+**Decision: (a).** Measured on the current tree, (b) would only rescue the
+`layout` rejects (25 functions using structs or arrays holding pointers).
+Every other rejection below is about the host not being a PS1 (inline MIPS
+register asm, MMIO through pointer cells, IRQ-dependent polling, host stack
+locals whose address reaches guest code, trap-on-divide, port hooks) and
+applies to a 32-bit build equally. (a) runs today with the libraries the
+port already uses, and the checker makes the admitted set a proof rather
+than a guess.
+
+How (a) works:
+
+- `musashi_native_boot` (built with `MUSASHI_NATIVE_LANE`) `mmap`s its boot
+  owner with `MAP_FIXED_NOREPLACE` at `0x80000000`; guest RAM is its first
+  member (static-asserted), so `memory.bytes == 0x80000000`. If the window is
+  taken or `MUSASHI_NATIVE_LANE=0`, the static owner is used and the lane
+  stays off.
+- The generator compiles each candidate with clang for x86-64
+  (`-fwrapv -fno-strict-aliasing -ftrivial-auto-var-init=zero`), and before
+  optimisation rewrites every guest data symbol (`D_XXXXXXXX`, asm-label
+  aliases such as `"D_80078E7C+1"`, named symbols from `config/*sym*.txt`)
+  into its absolute guest address, every address-taken guest function into
+  its guest code address, every pointer-typed load/store to non-local memory
+  into a 32-bit access (guest pointer cells are 32-bit), and every
+  int-to-pointer conversion into a zero extension of the 32-bit value.
+- Candidates: registry entries in `main` with recovery `c` whose source has a
+  native word export (so the interpreter can always run them) and no bespoke
+  binding: 870 today.
+- Rules, each rejection naming the first that failed (`report.json`):
+  `source` (no `long`/`sizeof`), `compile`, `symbols` (resolve into
+  `[0x80010000,0x80200000)`; no mutable TU data), `layout` (no pointer-bearing
+  aggregate or pointer-element indexing, checked before optimisation, when
+  struct GEPs are still typed), `memory` (no pointer load/store left to guest
+  memory, no atomics, no volatile: decomp C marks device access volatile),
+  `escape` (no host stack/data address stored, converted, returned or passed
+  to guest code), `inttoptr`, `calls` (only direct calls; no inline asm, no
+  indirect calls), `arith` (no variable or trapping divisor, variable shifts
+  masked to 5 bits), `ub` (no undef/poison/unreachable), `irq` (no loop that
+  neither stores nor calls), `abi` (8/16/32-bit and pointer parameters; a
+  direct call may not pass fewer arguments than the callee reads, because a
+  MIPS callee then sees whatever the caller left in a1-a3), `hooks` (no PC
+  the port compares against — pc/ra/continuation checks — inside the
+  function, since native execution would bypass the hook).
+- Guest calls from native code go through per-signature stubs that convert
+  each value to and from the 32-bit register the MIPS ABI carries (so
+  mismatched prototypes behave as on the PS1): a direct call when the callee
+  is admitted, otherwise the interpreter thunk.
+
+Current tree: **603 of 870 admitted**; rejected hooks 84, compile 52 (MIPS
+register asm and similar), escape 44, layout 25, calls 21, memory 13,
+arith 9, irq 8, ub 4, abi 3, inttoptr 2, source 2. Stubs: 179 direct,
+270 thunks.
+
+Known model gaps (documented, not checked): native code cannot reach the
+RAM mirrors (KUSEG `0x00000000`, KSEG1 `0xA0000000`, the 2-8 MB repeats)
+or the scratchpad, and its address arithmetic does not wrap at 32 bits; a
+wild or mirror pointer faults the host instead of aliasing. A native call
+runs without IRQ delivery or per-instruction clock charging between its
+own instructions (IRQs are delivered in thunked callees and after return).
+
+### Verification
+
+`native_lane_differential` (CTest, built with `MUSASHI_NATIVE_LANE=ON`)
+maps guest RAM at `0x80000000`, loads the pinned EXE, and for every entry
+and three argument patterns runs the function on the interpreter only and
+then through the lane (forked child each), comparing v0 and all guest RAM
+outside the callee's frame. Result on this tree: **1297 comparable cases
+identical, 0 different, 0 native failures; 500 of 603 functions verified**.
+381 cases were not comparable (the interpreter itself refused: a device,
+BIOS call or unsupported pointer), 129 hit the mirror gap and 2 the
+wraparound gap, both from the probe's deliberately absurd arguments. The
+probe found the two real hazards the `memory`/volatile and `abi`/arity rules
+now close (`func_8003B08C` writes DMA through the pointer cell `D_8006B560`;
+`func_80046ABC` passes 1 of 3 arguments to `func_80046CFC`).
+`tests/test_native_lane.py` pins those decisions.
+
+Build it with `-DMUSASHI_NATIVE_LANE=ON` (needs clang). The option stays
+**OFF** until the live boot (`native_startup_boundary`, needs xvfb) has
+been run with it on.
+
+Gate on this branch (2026-09-28): `tools/run_tests.sh` with the user-local
+dependency prefix (`CMAKE_PREFIX_PATH=~/opt/host-port-deps/usr:...`):
+**561 tests OK (2 skipped)**, 22/22 CTests (8 display-dependent skips),
+port symbol check and smoke clean, exit 0. Without that prefix the only
+error is the known `test_native_smoke` configure failure (no system
+SDL2/OpenAL/GL). With `MUSASHI_NATIVE_LANE=ON`, 23/23 CTests including
+`native_lane_differential`.
+
 ## Building
 
 Native builds also require OpenSSL development headers and `libcrypto` for

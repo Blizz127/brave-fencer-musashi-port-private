@@ -5,7 +5,7 @@ import sys
 import tempfile
 
 sys.path.insert(0, str(Path(__file__).parent))
-from test_bios_event_callbacks import _generate_formatter_includes
+from test_bios_event_callbacks import _generate_formatter_includes, _sync_code_image
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -35,6 +35,7 @@ def test_pvd_merge_source_pairs_and_checked_memory():
         generated.mkdir()
         _generate_formatter_includes(generated)
         _compile_probe(Path(temp), generated, ROOT / "tests/pvd_merge_probe.c")
+        _sync_code_image(generated)
         subprocess.run([str(probe)], check=True, timeout=10)
 
 
@@ -71,6 +72,7 @@ def test_pvd_merge_mutants_are_rejected_by_independent_oracle():
                          '#include "../pc_port/mips_formatter.c"', 1)
             )
             probe = _compile_probe(root, generated, probe_source)
+            _sync_code_image(generated)
             result = subprocess.run([str(probe)], timeout=10,
                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             assert result.returncode != 0, f"mutant survived: {label}"

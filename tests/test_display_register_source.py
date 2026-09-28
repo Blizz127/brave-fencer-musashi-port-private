@@ -9,7 +9,7 @@ import pytest
 ROOT = Path(os.environ.get('MUSASHI_TEST_REPO_ROOT', Path(__file__).resolve().parents[1]))
 STAGE = Path(os.environ.get('MUSASHI_GPU_STAGE_ROOT', ROOT))
 sys.path.insert(0, str(ROOT / 'tests'))
-from test_bios_event_callbacks import _generate_formatter_includes
+from test_bios_event_callbacks import _generate_formatter_includes, _sync_code_image
 
 
 @pytest.mark.parametrize('mutation', [None, 'omit_gp1_store', 'omit_cache_store'])
@@ -37,6 +37,7 @@ def test_display_register_source_and_retained_refusal_prefix(tmp_path, mutation)
         str(ROOT / 'pc_port/boot_memory.c'), str(STAGE / 'pc_port/gpu_controller.c'),
         '-lcrypto', '-o', str(binary),
     ], check=True, timeout=45)
+    _sync_code_image(generated)
     run = subprocess.run([str(binary), str(exe)], capture_output=True, text=True, timeout=15)
     if mutation:
         assert run.returncode != 0, 'compiled source mutant escaped: ' + mutation

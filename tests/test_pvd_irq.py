@@ -42,7 +42,7 @@ def _compile_and_run(mutation=None, *, compiler="cc", extra_flags=()):
             str(ROOT/'tests/pvd_irq_probe.c'),
             *map(str,sources.values()),
             *[str(ROOT/'src/main'/f'{name}.c') for name in
-              ('800427f4','80042ce8','8001096c','80042e08','80042f8c','800616d0','8006291c','80062988')],
+              ('8001096c',)],str(ROOT/'pc_port/libmcrd_vblank.c'),str(ROOT/'pc_port/libetc_irq_dispatch.c'),str(ROOT/'pc_port/libetc_dma_irq.c'),str(ROOT/'pc_port/libetc_vsync_handler.c'),str(ROOT/'pc_port/libetc_dma_registration.c'),
             '-lcrypto',*flags,'-o',str(exe)],capture_output=True,text=True,timeout=30)
         assert compiled.returncode == 0, compiled.stderr
         return subprocess.run([str(exe),str(cue),str(binary),str(ROOT/'extracted/disc/files/SLUS_007.26')],capture_output=True,text=True,timeout=30)

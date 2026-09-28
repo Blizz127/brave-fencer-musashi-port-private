@@ -9,7 +9,7 @@ import re
 import struct
 import subprocess
 import pytest
-from test_bios_event_callbacks import _generate_formatter_includes
+from test_bios_event_callbacks import _generate_formatter_includes, _sync_code_image
 
 ROOT = Path(__file__).resolve().parents[1]
 EXE_SHA256 = "66371c3a7517e9eabd7cb6cf0c5abffe7296bd4bac29c85b8bf7bb9db349714a"
@@ -111,6 +111,7 @@ def _run_gte_source_probe(tmp_path, variant, probe_file="gte_init_source_probe.c
                     str(probe_source), *map(str, sources), str(owner), str(inline),
                     *link_extra,
                     "-lcrypto", "-lstdc++", "-o", str(probe)], check=True, timeout=300)
+    _sync_code_image(generated)
     run = subprocess.run([str(probe), str(exe)], text=True, capture_output=True, timeout=30)
     if variant.endswith("mutant"):
         assert run.returncode != 0, f"semantic mutant unexpectedly passed: {variant}"

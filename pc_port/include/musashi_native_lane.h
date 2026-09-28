@@ -1,0 +1,99 @@
+#ifndef MUSASHI_NATIVE_LANE_H
+#define MUSASHI_NATIVE_LANE_H
+
+/* Generic native lane: guest-PC keyed host implementations of guest
+ * functions, consulted by formatter_step before it fetches a word, so the
+ * startup CPU, the IRQ routers and nested source execution all use it.
+ *
+ * Register ABI (PS1 o32): a0-a3 are r[4..7], further arguments are words at
+ * guest sp+0x10, +0x14, ... ; results go to v0/v1 (r[2], r[3]); on success
+ * the lane returns to ra with the interpreter's delay-slot state clean.
+ *
+ * The implementation lives in mips_formatter.c, so every translation unit
+ * that already links the formatter gets it without a new source file. */
+
+#include <stddef.h>
+#include <stdint.h>
+
+#include "musashi_boot_memory.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* Guest main RAM must be host-mapped at this address for natively compiled
+ * decomp C, which dereferences 32-bit guest addresses directly. */
+#define MUSASHI_NATIVE_LANE_GUEST_BASE 0x80000000u
+
+typedef struct MusashiNativeLaneCall {
+    MusashiBootMemory *memory;
+    uint32_t *r; /* the live guest register file, r[0..31] */
+} MusashiNativeLaneCall;
+
+/* A host implementation. Return 1 when the call completed (v0/v1 written as
+ * needed), 0 to refuse; a refusal before any guest-visible side effect makes
+ * the lane fall back to the interpreter. */
+typedef int (*MusashiNativeLaneFn)(MusashiNativeLaneCall *call);
+
+typedef struct MusashiNativeLaneEntry {
+    uint32_t guest_pc;
+    uint32_t cost_cycles; /* charged once to the execution clock per call */
+    MusashiNativeLaneFn fn;
+    const char *name;
+    uint8_t argc;    /* o32 argument words the host function consumes */
+    uint8_t returns; /* 1 when it produces v0, 0 for void */
+} MusashiNativeLaneEntry;
+
+/* Argument n (0-based) under the o32 register ABI. */
+uint32_t musashi_native_lane_arg(const MusashiNativeLaneCall *call, unsigned n);
+
+/* Install one sorted-or-unsorted table (copied into an index; entries and
+ * names must outlive the lane). Replaces any previous table. Returns the
+ * number of accepted entries, or -1 on a duplicate/unaligned PC. */
+int musashi_native_lane_install(const MusashiNativeLaneEntry *entries,
+                                size_t count);
+
+/* Nonzero when MUSASHI_NATIVE_LANE is not "0" and guest RAM is mapped at
+ * MUSASHI_NATIVE_LANE_GUEST_BASE for this memory. */
+int musashi_native_lane_usable(const MusashiBootMemory *memory);
+
+/* Interpreter thunk for natively compiled code: call guest function target
+ * with argc words (a0-a3, then guest stack), on the invoking CPU and its
+ * run loop, and return v0 (v1 through *v1 when non-NULL). A refusal inside
+ * the guest callee aborts the whole native call (longjmp to the lane). Only
+ * valid while a lane function is running. */
+uint32_t musashi_native_guest_call(uint32_t target, unsigned argc,
+                                   const uint32_t *args, uint32_t *v1);
+
+/* Reference execution for differential checks: run guest function target
+ * with argc argument words on a fresh device-less CPU (gp=0x80074750,
+ * ra=sentinel, stack args at sp+0x10) until it returns. use_lane=0 forces
+ * the interpreter for every PC. Returns 1 on a normal return. */
+int musashi_native_lane_reference_call(MusashiBootMemory *memory, uint32_t target,
+                                       const uint32_t *args, unsigned argc,
+                                       uint32_t sp, int use_lane,
+                                       uint32_t *v0, uint32_t *v1);
+
+/* Executed-path tracer (MUSASHI_TRACE_FUNCS=path). Called by the formatter
+ * for jal/jalr targets and CPU dispatch entries; exposed for host routers
+ * that enter guest code without a jal. kind: 'j' jal, 'r' jalr, 'd' entry. */
+void musashi_trace_function_entry(uint32_t target, uint32_t caller, char kind);
+
+/* Guest function-entry hook for the platform layer (bfm_plat hook sites,
+ * mods): called once when execution reaches a jal/jalr target, after the
+ * delay slot (a0-a3 final) and before the native lane. regs is the live
+ * guest register file, valid only during the call. NULL disables it. */
+typedef void (*MusashiEntryHook)(void *userdata, uint32_t pc, const uint32_t *regs);
+void musashi_formatter_set_entry_hook(MusashiEntryHook hook, void *userdata);
+
+/* Overlay selection notice for the platform layer: name is the selected
+ * member ("SC02_031", "SC01_000", "SC01_001", "MAIN_0004", "MAIN_0007",
+ * "MAIN_0010") or NULL when none is selected. Called on changes only. */
+typedef void (*MusashiOverlayHook)(void *userdata, const char *name);
+void musashi_formatter_set_overlay_hook(MusashiOverlayHook hook, void *userdata);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

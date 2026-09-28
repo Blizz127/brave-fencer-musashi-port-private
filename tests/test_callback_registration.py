@@ -38,7 +38,7 @@ class CallbackRegistrationTests(unittest.TestCase):
             "-DMUSASHI_NATIVE_CALLBACK_REGISTRATION=1",
             "-DMUSASHI_NATIVE_CALLBACK_DISPATCH=1",
             "-I", str(ROOT / "include"), "-I", str(ROOT / "pc_port/include"),
-            str(ROOT / "src/main/800429dc.c"), str(ROOT / "src/main/800425b0.c"),
+            str(ROOT / "pc_port/libetc_irq_registration.c"), str(ROOT / "pc_port/libetc_irq_veneer.c"),
             str(ROOT / "pc_port/boot_memory.c"),
             "-lcrypto", "-o", str(library),
         ], check=True, stdin=subprocess.DEVNULL, timeout=60, capture_output=True)

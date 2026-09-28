@@ -25,7 +25,7 @@ class IrqTests(unittest.TestCase):
         subprocess.run(['cc', '-std=c99', '-O2', '-Wall', '-Wextra', '-Werror', '-shared', '-fPIC',
             '-DMUSASHI_NATIVE_IRQ_DISPATCH=1', '-DMUSASHI_NATIVE_CALLBACK_HANDLER=1',
             '-I', str(ROOT/'include'), '-I', str(ROOT/'pc_port/include'),
-            str(ROOT/'src/main/800427f4.c'), str(ROOT/'src/main/80042ce8.c'),
+            str(ROOT/'pc_port/libetc_irq_dispatch.c'), str(ROOT/'pc_port/libetc_vsync_handler.c'),
             str(ROOT/'pc_port/boot_memory.c'), '-lcrypto', '-o', str(out)],
             check=True, capture_output=True, stdin=subprocess.DEVNULL, timeout=60)
         cls.lib = C.CDLL(str(out))

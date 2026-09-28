@@ -5,7 +5,7 @@ import re
 import struct
 import subprocess
 import pytest
-from test_bios_event_callbacks import _generate_formatter_includes
+from test_bios_event_callbacks import _generate_formatter_includes, _sync_code_image
 ROOT = Path(__file__).resolve().parents[1]
 RANGES = [(0x80043078,0x80043088),(0x80059FC0,0x8005A468),(0x8005B684,0x8005B6AC)]
 
@@ -49,6 +49,7 @@ def test_display_entry_source_and_pre_effect_guards(tmp_path):
         '-I',str(ROOT/'include'),'-I',str(ROOT/'pc_port/include'),'-I',str(generated),
         str(ROOT/'tests/display_entry_probe.c'),str(ROOT/'pc_port/boot_memory.c'),'-lcrypto','-o',str(binary)],
         check=True,timeout=40)
+    _sync_code_image(generated)
     result = subprocess.run([str(binary),str(exe)],capture_output=True,text=True,timeout=15)
     assert result.returncode == 0,result.stdout+result.stderr
     assert result.stdout == 'DISPLAY_ENTRY_PASS synthetic_frame=1 gp1_05=REFUSED scanout=NOT_EXECUTED\n'
