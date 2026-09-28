@@ -828,9 +828,24 @@ bfm.on("frame_end", function() if seen.late == nil then
         v = vendor_root()
         if v is None:
             self.skipTest("vendor/bfm-decomp not present")
-        proc = subprocess.run(["python3", str(ROOT / "tools/psyq_callsites.py"), "--vendor", str(v), "--check"],
+        asm = next((a for a in (ROOT / "asm", ROOT.parent / "brave-fencer-musashi-decomp/asm")
+                    if (a / "main.s").is_file()), None)
+        if asm is None:
+            self.skipTest("no local splat disassembly (asm/main.s)")
+        proc = subprocess.run(["python3", str(ROOT / "tools/psyq_callsites.py"), "--vendor", str(v),
+                               "--asm", str(asm), "--check"],
                               capture_output=True, text=True, timeout=600)
         self.assertEqual(proc.returncode, 0, proc.stderr)
+
+    def test_psyq_callsites_fails_clearly_without_disassembly(self):
+        v = vendor_root()
+        if v is None:
+            self.skipTest("vendor/bfm-decomp not present")
+        proc = subprocess.run(["python3", str(ROOT / "tools/psyq_callsites.py"), "--vendor", str(v),
+                               "--asm", str(self.tmp / "no-asm")], capture_output=True, text=True, timeout=60)
+        self.assertEqual(proc.returncode, 2)
+        self.assertIn("asm/main.s", proc.stderr)
+        self.assertIn("never committed", proc.stderr)
 
     def test_psyq_table_consistency(self):
         import json

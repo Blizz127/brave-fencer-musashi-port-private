@@ -31,7 +31,7 @@ INFERRED: dict[int, tuple[str, str]] = {
     0x8005C4CC: ("strcmp", "Psy-Q object STRCMP.o"),
     0x8005C388: ("putchar", "Psy-Q object PUTCHAR.o"),
     0x8005C604: ("printf", "Psy-Q object PRNT.o"),
-    0x80047CB4: ("InitGeom", "sets H=0x3E8, ZSF3/ZSF4, DQA/DQB, OFX=OFY=0 (repo src/main/80047cb4.c)"),
+    0x80047CB4: ("InitGeom", "sets H=0x3E8, ZSF3/ZSF4, DQA/DQB, OFX=OFY=0 (asm/main.s func_80047CB4)"),
     0x800599B8: ("LoadImage", "called (RECT *, data) by func_800184F0 per texture record (vendor src/800.c:5761ff)"),
     0x80059CF4: ("DrawOTag", "main loop passes OT base + 0x3FFC after CatPrim (vendor src/boot.c)"),
     0x80059D68: ("PutDrawEnv", "main loop passes &state[buf * 92 + 0x38]: a 0x5C-byte DRAWENV (vendor src/boot.c)"),

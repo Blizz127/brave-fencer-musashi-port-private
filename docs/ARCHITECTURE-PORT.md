@@ -638,9 +638,11 @@ port/native-lane's native lane consumes. The generated coverage report is
 as follows:
 - It takes the Psy-Q segment ranges from the vendor splat config (the
   `snd*`, `lib*`, `apicard*` segments: `0x8003A444`–`0x80062998`).
-- It collects every `jal`/`j` target in the game code's committed
-  `MUSASHI_NATIVE_MIPS_WORD` exports (`src/main` `0x80010000`–`0x8003A444`
-  and all overlays), plus named C calls in files without an export.
+- It collects every `jal`/`j` target in the local, gitignored splat
+  disassembly: `asm/main.s` game code `0x80010000`–`0x8003A444` and every
+  `asm/overlays/*/*.s`. That disassembly is generated from the user's disc
+  and is never committed. The tool exits with a clear message when it is
+  absent; `--asm DIR` points it elsewhere.
 - It names targets from the vendor symbols, from libgte instruction shape,
   or from `INFERRED` in `tools/psyq_compat_status.py`. Each inferred name
   carries its call-context evidence, e.g. LoadImage/DrawOTag/PutDrawEnv
@@ -648,7 +650,8 @@ as follows:
 
 It writes `bfm_psyq_calls.json` (facts: addresses, names, counts),
 `bfm_psyq_compat.def` (the X-macro table), and `docs/PSYQ-COMPAT.md`. The
-first run found 212 entry points and 1,323 call sites, 116 of them named.
+scan of the disassembly found 212 entry points and 30,230 call sites (overlay
+code shared by many overlays counts once per overlay); 117 of the entry points are named.
 `--check` fails if the committed outputs are stale, and the tests run it
 when the vendor tree is present.
 
@@ -677,14 +680,14 @@ static const MusashiNativeLaneEntry psyq_entries[] = {
 - `bfm_psyq_call(pc, r)` is a lookup-and-call for routers that don't
   instantiate the table.
 
-**Status (first cut): 39 of 212 entry points, 380 of 1,323 call sites
-(28.7%).**
+**Status: see the counts in [PSYQ-COMPAT.md](PSYQ-COMPAT.md).**
 - **HLE (38):** the libgpu packet helpers (GetTPage, GetClut, AddPrim,
   CatPrim, SetSemiTrans, SetPoly*/SetLine*), ClearOTagR, SetDefDispEnv,
   LoadImage/StoreImage/MoveImage, PutDrawEnv/PutDispEnv, DrawOTag,
   DrawSync, SetDispMask; VSync; CdIntToPos/CdPosToInt/CdSearchFile; rand,
   memcpy, memset, bzero, strcpy, strcmp, putchar.
-- **PsyCross (1):** ratan2 (111 call sites).
+- **PsyCross:** ratan2, plus the libgte functions behind the GTE bridge
+  (below).
 - **Stub-TBD (173):** the sound driver, libgs, GTE-state libgte, the
   remaining libcd, libapi/libpad/libmcrd/apicard (the device and BIOS HLE
   run their guest code), callbacks, and printf.

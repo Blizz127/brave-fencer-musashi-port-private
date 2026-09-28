@@ -1,9 +1,7 @@
 {
  "meta": {
-  "game_files": 5315,
-  "callsites": 1323,
-  "callsites_from_words": 1171,
-  "callsites_from_c": 152,
+  "asm_files": 140,
+  "callsites": 30230,
   "psyq_range": [
    "0x8003A444",
    "0x80062998"
@@ -18,7 +16,6 @@
    "segment": "snd1",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -29,7 +26,6 @@
    "segment": "snd1",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -40,7 +36,6 @@
    "segment": "snd1",
    "object": "S_SE.o",
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -51,7 +46,6 @@
    "segment": "snd1",
    "object": "S_SR.o",
    "callsites": 3,
-   "files": 3,
    "binaries": 1
   },
   {
@@ -62,7 +56,6 @@
    "segment": "snd1",
    "object": "S_SR.o",
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -73,7 +66,6 @@
    "segment": "snd1",
    "object": "S_SRMP.o",
    "callsites": 4,
-   "files": 3,
    "binaries": 1
   },
   {
@@ -84,7 +76,6 @@
    "segment": "snd1",
    "object": "S_RRWA.o",
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -95,7 +86,6 @@
    "segment": "snd1",
    "object": "S_SAV.o",
    "callsites": 5,
-   "files": 3,
    "binaries": 1
   },
   {
@@ -106,7 +96,6 @@
    "segment": "snd1",
    "object": "S_SK.o",
    "callsites": 5,
-   "files": 3,
    "binaries": 1
   },
   {
@@ -117,7 +106,6 @@
    "segment": "snd2",
    "object": "S_STSA.o",
    "callsites": 3,
-   "files": 3,
    "binaries": 1
   },
   {
@@ -128,7 +116,6 @@
    "segment": "snd2",
    "object": "S_ITC.o",
    "callsites": 8,
-   "files": 7,
    "binaries": 1
   },
   {
@@ -139,7 +126,6 @@
    "segment": "snd2",
    "object": "S_SCA.o",
    "callsites": 2,
-   "files": 2,
    "binaries": 1
   },
   {
@@ -150,7 +136,6 @@
    "segment": "snd2",
    "object": "SR_GAKS.o",
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -161,7 +146,6 @@
    "segment": "snd2",
    "object": null,
    "callsites": 5,
-   "files": 5,
    "binaries": 1
   },
   {
@@ -172,7 +156,6 @@
    "segment": "snd2",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -183,7 +166,6 @@
    "segment": "snd3",
    "object": "SSEND.o",
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -194,7 +176,6 @@
    "segment": "snd3",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -205,7 +186,6 @@
    "segment": "snd3",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -216,7 +196,6 @@
    "segment": "snd4",
    "object": "SSSTART.o",
    "callsites": 3,
-   "files": 3,
    "binaries": 1
   },
   {
@@ -227,7 +206,6 @@
    "segment": "snd6",
    "object": "TEMPO.o",
    "callsites": 17,
-   "files": 8,
    "binaries": 1
   },
   {
@@ -238,7 +216,6 @@
    "segment": "snd6",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -249,7 +226,6 @@
    "segment": "snd6",
    "object": "UT_GVA.o",
    "callsites": 4,
-   "files": 4,
    "binaries": 1
   },
   {
@@ -260,7 +236,6 @@
    "segment": "snd6",
    "object": "UT_GVAD.o",
    "callsites": 4,
-   "files": 4,
    "binaries": 1
   },
   {
@@ -271,7 +246,6 @@
    "segment": "snd6",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -282,7 +256,6 @@
    "segment": "snd6",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -293,7 +266,6 @@
    "segment": "snd9",
    "object": "S_M_F.o",
    "callsites": 10,
-   "files": 8,
    "binaries": 1
   },
   {
@@ -304,7 +276,6 @@
    "segment": "snd9",
    "object": "VS_VFB.o",
    "callsites": 2,
-   "files": 2,
    "binaries": 1
   },
   {
@@ -315,7 +286,6 @@
    "segment": "snd9",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -326,7 +296,6 @@
    "segment": "snd9",
    "object": "VS_VH.o",
    "callsites": 2,
-   "files": 2,
    "binaries": 1
   },
   {
@@ -337,7 +306,6 @@
    "segment": "snd9",
    "object": "VS_VTBP.o",
    "callsites": 2,
-   "files": 2,
    "binaries": 1
   },
   {
@@ -348,7 +316,6 @@
    "segment": "snd9",
    "object": null,
    "callsites": 3,
-   "files": 3,
    "binaries": 1
   },
   {
@@ -358,9 +325,8 @@
    "evidence": null,
    "segment": "libetc",
    "object": null,
-   "callsites": 17,
-   "files": 13,
-   "binaries": 3
+   "callsites": 20,
+   "binaries": 4
   },
   {
    "addr": "0x80042580",
@@ -370,7 +336,6 @@
    "segment": "libetc",
    "object": null,
    "callsites": 3,
-   "files": 3,
    "binaries": 2
   },
   {
@@ -380,8 +345,7 @@
    "evidence": null,
    "segment": "libetc",
    "object": null,
-   "callsites": 1,
-   "files": 1,
+   "callsites": 2,
    "binaries": 1
   },
   {
@@ -392,7 +356,6 @@
    "segment": "libetc",
    "object": null,
    "callsites": 3,
-   "files": 3,
    "binaries": 1
   },
   {
@@ -403,7 +366,6 @@
    "segment": "libetc",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -414,7 +376,6 @@
    "segment": "libetc",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -425,7 +386,6 @@
    "segment": "libcd1",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -436,7 +396,6 @@
    "segment": "libcd1",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -447,7 +406,6 @@
    "segment": "libcd1",
    "object": "EVENT.o",
    "callsites": 2,
-   "files": 2,
    "binaries": 1
   },
   {
@@ -458,7 +416,6 @@
    "segment": "libcd1",
    "object": "SYS.o",
    "callsites": 5,
-   "files": 2,
    "binaries": 1
   },
   {
@@ -469,7 +426,6 @@
    "segment": "libcd1",
    "object": "SYS.o",
    "callsites": 3,
-   "files": 3,
    "binaries": 1
   },
   {
@@ -480,7 +436,6 @@
    "segment": "libcd1",
    "object": "SYS.o",
    "callsites": 15,
-   "files": 7,
    "binaries": 1
   },
   {
@@ -491,7 +446,6 @@
    "segment": "libcd1",
    "object": null,
    "callsites": 16,
-   "files": 7,
    "binaries": 1
   },
   {
@@ -502,7 +456,6 @@
    "segment": "libcd1",
    "object": null,
    "callsites": 12,
-   "files": 5,
    "binaries": 1
   },
   {
@@ -513,7 +466,6 @@
    "segment": "libcd1",
    "object": "SYS.o",
    "callsites": 24,
-   "files": 7,
    "binaries": 2
   },
   {
@@ -524,7 +476,6 @@
    "segment": "libcd1",
    "object": "SYS.o",
    "callsites": 5,
-   "files": 2,
    "binaries": 1
   },
   {
@@ -535,7 +486,6 @@
    "segment": "libcd1",
    "object": "SYS.o",
    "callsites": 6,
-   "files": 3,
    "binaries": 2
   },
   {
@@ -546,7 +496,6 @@
    "segment": "libcd1",
    "object": null,
    "callsites": 2,
-   "files": 2,
    "binaries": 1
   },
   {
@@ -557,7 +506,6 @@
    "segment": "libcd1",
    "object": null,
    "callsites": 14,
-   "files": 2,
    "binaries": 1
   },
   {
@@ -568,7 +516,6 @@
    "segment": "libcd1",
    "object": null,
    "callsites": 11,
-   "files": 3,
    "binaries": 1
   },
   {
@@ -579,7 +526,6 @@
    "segment": "libcd1",
    "object": null,
    "callsites": 8,
-   "files": 7,
    "binaries": 1
   },
   {
@@ -590,7 +536,6 @@
    "segment": "libcd1",
    "object": null,
    "callsites": 4,
-   "files": 3,
    "binaries": 2
   },
   {
@@ -601,7 +546,6 @@
    "segment": "libcd1",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -612,7 +556,6 @@
    "segment": "libcd1",
    "object": "TYPE.o",
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -623,7 +566,6 @@
    "segment": "libcd1",
    "object": "TYPE.o",
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -634,7 +576,6 @@
    "segment": "libcd1",
    "object": null,
    "callsites": 4,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -645,7 +586,6 @@
    "segment": "libcd2",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -656,7 +596,6 @@
    "segment": "libcd2",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -667,7 +606,6 @@
    "segment": "libcd2",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -678,7 +616,6 @@
    "segment": "libcd2",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -688,9 +625,8 @@
    "evidence": null,
    "segment": "libgte1",
    "object": "GEO_00.o",
-   "callsites": 30,
-   "files": 26,
-   "binaries": 3
+   "callsites": 1091,
+   "binaries": 73
   },
   {
    "addr": "0x80047948",
@@ -699,9 +635,8 @@
    "evidence": null,
    "segment": "libgte1",
    "object": "GEO_01.o",
-   "callsites": 26,
-   "files": 24,
-   "binaries": 3
+   "callsites": 766,
+   "binaries": 73
   },
   {
    "addr": "0x80047B3C",
@@ -710,9 +645,8 @@
    "evidence": null,
    "segment": "libgte1",
    "object": null,
-   "callsites": 3,
-   "files": 3,
-   "binaries": 3
+   "callsites": 64,
+   "binaries": 64
   },
   {
    "addr": "0x80047BD8",
@@ -722,18 +656,16 @@
    "segment": "libgte1",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
    "addr": "0x80047CB4",
    "name": "InitGeom",
    "name_source": "inferred",
-   "evidence": "sets H=0x3E8, ZSF3/ZSF4, DQA/DQB, OFX=OFY=0 (repo src/main/80047cb4.c)",
+   "evidence": "sets H=0x3E8, ZSF3/ZSF4, DQA/DQB, OFX=OFY=0 (asm/main.s func_80047CB4)",
    "segment": "libgte1",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -743,9 +675,8 @@
    "evidence": null,
    "segment": "libgte23",
    "object": null,
-   "callsites": 20,
-   "files": 18,
-   "binaries": 4
+   "callsites": 401,
+   "binaries": 66
   },
   {
    "addr": "0x80047E58",
@@ -755,8 +686,17 @@
    "segment": "libgte23",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
+  },
+  {
+   "addr": "0x80047E6C",
+   "name": "VectorNormal",
+   "name_source": "symbol",
+   "evidence": null,
+   "segment": "libgte23",
+   "object": null,
+   "callsites": 3,
+   "binaries": 3
   },
   {
    "addr": "0x80047E98",
@@ -765,9 +705,8 @@
    "evidence": null,
    "segment": "libgte23",
    "object": null,
-   "callsites": 16,
-   "files": 13,
-   "binaries": 4
+   "callsites": 614,
+   "binaries": 66
   },
   {
    "addr": "0x8004806C",
@@ -776,9 +715,8 @@
    "evidence": null,
    "segment": "libgte23",
    "object": null,
-   "callsites": 3,
-   "files": 2,
-   "binaries": 2
+   "callsites": 127,
+   "binaries": 64
   },
   {
    "addr": "0x800480EC",
@@ -787,9 +725,8 @@
    "evidence": null,
    "segment": "libgte23",
    "object": null,
-   "callsites": 4,
-   "files": 4,
-   "binaries": 2
+   "callsites": 190,
+   "binaries": 64
   },
   {
    "addr": "0x8004818C",
@@ -798,9 +735,8 @@
    "evidence": null,
    "segment": "libgte2",
    "object": null,
-   "callsites": 1,
-   "files": 1,
-   "binaries": 1
+   "callsites": 14,
+   "binaries": 13
   },
   {
    "addr": "0x8004829C",
@@ -810,7 +746,6 @@
    "segment": "libgte2",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -820,9 +755,8 @@
    "evidence": null,
    "segment": "libgte3",
    "object": null,
-   "callsites": 2,
-   "files": 2,
-   "binaries": 1
+   "callsites": 4,
+   "binaries": 3
   },
   {
    "addr": "0x800484EC",
@@ -831,9 +765,8 @@
    "evidence": null,
    "segment": "libgte3",
    "object": null,
-   "callsites": 27,
-   "files": 23,
-   "binaries": 3
+   "callsites": 722,
+   "binaries": 69
   },
   {
    "addr": "0x8004864C",
@@ -842,9 +775,8 @@
    "evidence": null,
    "segment": "libgte3",
    "object": null,
-   "callsites": 7,
-   "files": 5,
-   "binaries": 3
+   "callsites": 194,
+   "binaries": 65
   },
   {
    "addr": "0x8004867C",
@@ -853,9 +785,8 @@
    "evidence": null,
    "segment": "libgte3",
    "object": null,
-   "callsites": 1,
-   "files": 1,
-   "binaries": 1
+   "callsites": 5,
+   "binaries": 5
   },
   {
    "addr": "0x8004871C",
@@ -864,9 +795,8 @@
    "evidence": null,
    "segment": "libgte3",
    "object": null,
-   "callsites": 1,
-   "files": 1,
-   "binaries": 1
+   "callsites": 5,
+   "binaries": 5
   },
   {
    "addr": "0x800487BC",
@@ -875,9 +805,8 @@
    "evidence": null,
    "segment": "libgte3",
    "object": null,
-   "callsites": 1,
-   "files": 1,
-   "binaries": 1
+   "callsites": 5,
+   "binaries": 5
   },
   {
    "addr": "0x8004880C",
@@ -887,7 +816,6 @@
    "segment": "libgte4",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -898,7 +826,6 @@
    "segment": "libgte4",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -908,9 +835,8 @@
    "evidence": null,
    "segment": "libgte4",
    "object": null,
-   "callsites": 5,
-   "files": 3,
-   "binaries": 3
+   "callsites": 142,
+   "binaries": 65
   },
   {
    "addr": "0x80048CAC",
@@ -920,7 +846,6 @@
    "segment": "libgte5",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -930,9 +855,8 @@
    "evidence": null,
    "segment": "libgte5",
    "object": null,
-   "callsites": 2,
-   "files": 2,
-   "binaries": 2
+   "callsites": 73,
+   "binaries": 71
   },
   {
    "addr": "0x80048EAC",
@@ -941,9 +865,8 @@
    "evidence": null,
    "segment": "libgte5",
    "object": null,
-   "callsites": 22,
-   "files": 20,
-   "binaries": 3
+   "callsites": 1017,
+   "binaries": 65
   },
   {
    "addr": "0x80048FBC",
@@ -952,9 +875,8 @@
    "evidence": null,
    "segment": "libgte5",
    "object": null,
-   "callsites": 47,
-   "files": 33,
-   "binaries": 3
+   "callsites": 2078,
+   "binaries": 70
   },
   {
    "addr": "0x8004901C",
@@ -963,9 +885,8 @@
    "evidence": null,
    "segment": "libgte5",
    "object": null,
-   "callsites": 3,
-   "files": 3,
-   "binaries": 1
+   "callsites": 13,
+   "binaries": 6
   },
   {
    "addr": "0x8004914C",
@@ -974,9 +895,8 @@
    "evidence": null,
    "segment": "libgte6",
    "object": null,
-   "callsites": 36,
-   "files": 29,
-   "binaries": 3
+   "callsites": 1423,
+   "binaries": 66
   },
   {
    "addr": "0x8004917C",
@@ -986,7 +906,6 @@
    "segment": "libgte6",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -996,9 +915,8 @@
    "evidence": null,
    "segment": "libgte6",
    "object": null,
-   "callsites": 34,
-   "files": 27,
-   "binaries": 3
+   "callsites": 1356,
+   "binaries": 66
   },
   {
    "addr": "0x800491CC",
@@ -1007,9 +925,8 @@
    "evidence": null,
    "segment": "libgte6",
    "object": null,
-   "callsites": 1,
-   "files": 1,
-   "binaries": 1
+   "callsites": 5,
+   "binaries": 5
   },
   {
    "addr": "0x800491EC",
@@ -1018,9 +935,8 @@
    "evidence": null,
    "segment": "libgte6",
    "object": null,
-   "callsites": 2,
-   "files": 2,
-   "binaries": 2
+   "callsites": 75,
+   "binaries": 63
   },
   {
    "addr": "0x800491FC",
@@ -1030,7 +946,6 @@
    "segment": "libgte6",
    "object": null,
    "callsites": 2,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -1040,9 +955,8 @@
    "evidence": null,
    "segment": "libgte6",
    "object": null,
-   "callsites": 1,
-   "files": 1,
-   "binaries": 1
+   "callsites": 9,
+   "binaries": 5
   },
   {
    "addr": "0x8004923C",
@@ -1052,7 +966,6 @@
    "segment": "libgte7",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -1062,9 +975,8 @@
    "evidence": null,
    "segment": "libgte24",
    "object": null,
-   "callsites": 5,
-   "files": 3,
-   "binaries": 3
+   "callsites": 64,
+   "binaries": 64
   },
   {
    "addr": "0x80049324",
@@ -1073,9 +985,8 @@
    "evidence": null,
    "segment": "libgte24",
    "object": null,
-   "callsites": 11,
-   "files": 9,
-   "binaries": 3
+   "callsites": 142,
+   "binaries": 64
   },
   {
    "addr": "0x80049440",
@@ -1085,7 +996,6 @@
    "segment": "libgte24",
    "object": null,
    "callsites": 3,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -1095,9 +1005,8 @@
    "evidence": null,
    "segment": "libgte8",
    "object": null,
-   "callsites": 18,
-   "files": 12,
-   "binaries": 3
+   "callsites": 861,
+   "binaries": 67
   },
   {
    "addr": "0x8004955C",
@@ -1106,9 +1015,8 @@
    "evidence": null,
    "segment": "libgte8",
    "object": null,
-   "callsites": 25,
-   "files": 16,
-   "binaries": 3
+   "callsites": 983,
+   "binaries": 65
   },
   {
    "addr": "0x8004958C",
@@ -1117,9 +1025,8 @@
    "evidence": null,
    "segment": "libgte8",
    "object": null,
-   "callsites": 5,
-   "files": 5,
-   "binaries": 1
+   "callsites": 6,
+   "binaries": 2
   },
   {
    "addr": "0x800495EC",
@@ -1128,9 +1035,8 @@
    "evidence": null,
    "segment": "libgte9",
    "object": null,
-   "callsites": 1,
-   "files": 1,
-   "binaries": 1
+   "callsites": 5,
+   "binaries": 3
   },
   {
    "addr": "0x8004961C",
@@ -1139,9 +1045,8 @@
    "evidence": null,
    "segment": "libgte10",
    "object": null,
-   "callsites": 3,
-   "files": 3,
-   "binaries": 1
+   "callsites": 11,
+   "binaries": 8
   },
   {
    "addr": "0x8004969C",
@@ -1150,9 +1055,8 @@
    "evidence": null,
    "segment": "libgte11",
    "object": null,
-   "callsites": 1,
-   "files": 1,
-   "binaries": 1
+   "callsites": 4,
+   "binaries": 4
   },
   {
    "addr": "0x8004974C",
@@ -1161,9 +1065,8 @@
    "evidence": null,
    "segment": "libgte11",
    "object": null,
-   "callsites": 1,
-   "files": 1,
-   "binaries": 1
+   "callsites": 5,
+   "binaries": 5
   },
   {
    "addr": "0x8004978C",
@@ -1172,9 +1075,8 @@
    "evidence": null,
    "segment": "libgte25",
    "object": "FGO_01.o",
-   "callsites": 10,
-   "files": 9,
-   "binaries": 3
+   "callsites": 137,
+   "binaries": 65
   },
   {
    "addr": "0x80049A1C",
@@ -1183,9 +1085,8 @@
    "evidence": null,
    "segment": "libgte25",
    "object": null,
-   "callsites": 38,
-   "files": 23,
-   "binaries": 3
+   "callsites": 1906,
+   "binaries": 75
   },
   {
    "addr": "0x80049CAC",
@@ -1194,9 +1095,8 @@
    "evidence": null,
    "segment": "libgte25",
    "object": "FGO_03.o",
-   "callsites": 24,
-   "files": 18,
-   "binaries": 3
+   "callsites": 1191,
+   "binaries": 99
   },
   {
    "addr": "0x80049F3C",
@@ -1205,9 +1105,8 @@
    "evidence": null,
    "segment": "libgte25",
    "object": null,
-   "callsites": 7,
-   "files": 6,
-   "binaries": 3
+   "callsites": 193,
+   "binaries": 65
   },
   {
    "addr": "0x8004A0DC",
@@ -1216,9 +1115,8 @@
    "evidence": null,
    "segment": "libgte25",
    "object": null,
-   "callsites": 6,
-   "files": 6,
-   "binaries": 3
+   "callsites": 273,
+   "binaries": 74
   },
   {
    "addr": "0x8004A27C",
@@ -1227,9 +1125,8 @@
    "evidence": null,
    "segment": "libgte25",
    "object": null,
-   "callsites": 4,
-   "files": 4,
-   "binaries": 3
+   "callsites": 201,
+   "binaries": 71
   },
   {
    "addr": "0x8004CFEC",
@@ -1238,9 +1135,8 @@
    "evidence": null,
    "segment": "libgte16",
    "object": null,
-   "callsites": 111,
-   "files": 69,
-   "binaries": 4
+   "callsites": 3629,
+   "binaries": 68
   },
   {
    "addr": "0x8004D504",
@@ -1249,9 +1145,8 @@
    "evidence": null,
    "segment": "libgte17",
    "object": null,
-   "callsites": 26,
-   "files": 16,
-   "binaries": 3
+   "callsites": 638,
+   "binaries": 65
   },
   {
    "addr": "0x8005080C",
@@ -1260,9 +1155,8 @@
    "evidence": null,
    "segment": "libgs7",
    "object": null,
-   "callsites": 2,
-   "files": 2,
-   "binaries": 2
+   "callsites": 63,
+   "binaries": 63
   },
   {
    "addr": "0x80051044",
@@ -1271,9 +1165,8 @@
    "evidence": null,
    "segment": "libgs7",
    "object": null,
-   "callsites": 2,
-   "files": 2,
-   "binaries": 2
+   "callsites": 63,
+   "binaries": 63
   },
   {
    "addr": "0x80051DC8",
@@ -1282,9 +1175,8 @@
    "evidence": null,
    "segment": "libgs2",
    "object": null,
-   "callsites": 16,
-   "files": 6,
-   "binaries": 2
+   "callsites": 882,
+   "binaries": 63
   },
   {
    "addr": "0x80051F34",
@@ -1293,9 +1185,8 @@
    "evidence": null,
    "segment": "libgs2",
    "object": null,
-   "callsites": 1,
-   "files": 1,
-   "binaries": 1
+   "callsites": 63,
+   "binaries": 63
   },
   {
    "addr": "0x80052460",
@@ -1304,9 +1195,8 @@
    "evidence": null,
    "segment": "libgs3",
    "object": null,
-   "callsites": 5,
-   "files": 3,
-   "binaries": 2
+   "callsites": 253,
+   "binaries": 64
   },
   {
    "addr": "0x800525DC",
@@ -1316,7 +1206,6 @@
    "segment": "libgs8",
    "object": "GS_001.o",
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -1327,7 +1216,6 @@
    "segment": "libgs8",
    "object": null,
    "callsites": 2,
-   "files": 2,
    "binaries": 2
   },
   {
@@ -1337,9 +1225,8 @@
    "evidence": null,
    "segment": "libgs4",
    "object": null,
-   "callsites": 19,
-   "files": 18,
-   "binaries": 3
+   "callsites": 83,
+   "binaries": 64
   },
   {
    "addr": "0x80052E38",
@@ -1348,9 +1235,8 @@
    "evidence": null,
    "segment": "libgs4",
    "object": null,
-   "callsites": 3,
-   "files": 2,
-   "binaries": 2
+   "callsites": 74,
+   "binaries": 63
   },
   {
    "addr": "0x80052F04",
@@ -1360,7 +1246,6 @@
    "segment": "libgs4",
    "object": null,
    "callsites": 2,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -1371,7 +1256,6 @@
    "segment": "libgs4",
    "object": "GS_107.o",
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -1382,7 +1266,6 @@
    "segment": "libgs4",
    "object": "GS_107.o",
    "callsites": 4,
-   "files": 4,
    "binaries": 2
   },
   {
@@ -1392,9 +1275,8 @@
    "evidence": null,
    "segment": "libgs4",
    "object": null,
-   "callsites": 7,
-   "files": 7,
-   "binaries": 1
+   "callsites": 9,
+   "binaries": 3
   },
   {
    "addr": "0x80053308",
@@ -1403,9 +1285,8 @@
    "evidence": null,
    "segment": "libgs4",
    "object": "GS_107.o",
-   "callsites": 3,
-   "files": 3,
-   "binaries": 3
+   "callsites": 64,
+   "binaries": 64
   },
   {
    "addr": "0x80053328",
@@ -1415,7 +1296,6 @@
    "segment": "libgs4",
    "object": "GS_107.o",
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -1426,7 +1306,6 @@
    "segment": "libgs5",
    "object": "GS_108.o",
    "callsites": 3,
-   "files": 3,
    "binaries": 1
   },
   {
@@ -1437,7 +1316,6 @@
    "segment": "libgs5",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -1448,7 +1326,6 @@
    "segment": "libgs6",
    "object": "GS_122.o",
    "callsites": 2,
-   "files": 2,
    "binaries": 1
   },
   {
@@ -1459,7 +1336,6 @@
    "segment": "libgs6",
    "object": "GS_122.o",
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -1470,7 +1346,6 @@
    "segment": "libgs6",
    "object": "GS_131.o",
    "callsites": 2,
-   "files": 2,
    "binaries": 2
   },
   {
@@ -1481,7 +1356,6 @@
    "segment": "libgs6",
    "object": "GS_131.o",
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -1491,9 +1365,8 @@
    "evidence": null,
    "segment": "libgs6",
    "object": "GS_133.o",
-   "callsites": 17,
-   "files": 17,
-   "binaries": 2
+   "callsites": 82,
+   "binaries": 64
   },
   {
    "addr": "0x800547D8",
@@ -1502,9 +1375,8 @@
    "evidence": null,
    "segment": "libgs6",
    "object": "GS_134.o",
-   "callsites": 3,
-   "files": 3,
-   "binaries": 2
+   "callsites": 73,
+   "binaries": 63
   },
   {
    "addr": "0x80054AAC",
@@ -1514,7 +1386,6 @@
    "segment": "libgs6",
    "object": "GS_135.o",
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -1524,9 +1395,8 @@
    "evidence": null,
    "segment": "libgs6",
    "object": null,
-   "callsites": 2,
-   "files": 2,
-   "binaries": 2
+   "callsites": 63,
+   "binaries": 63
   },
   {
    "addr": "0x800553D8",
@@ -1536,7 +1406,6 @@
    "segment": "libgs6",
    "object": null,
    "callsites": 2,
-   "files": 2,
    "binaries": 1
   },
   {
@@ -1547,7 +1416,6 @@
    "segment": "libgs6",
    "object": null,
    "callsites": 2,
-   "files": 2,
    "binaries": 1
   },
   {
@@ -1558,7 +1426,6 @@
    "segment": "libgs6",
    "object": "PRESET2.o",
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -1569,7 +1436,6 @@
    "segment": "libgs6",
    "object": "OBJT.o",
    "callsites": 2,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -1580,7 +1446,6 @@
    "segment": "libgs6",
    "object": "OBJT2.o",
    "callsites": 2,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -1591,7 +1456,6 @@
    "segment": "libgpu",
    "object": "EXT.o",
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -1602,7 +1466,6 @@
    "segment": "libgpu",
    "object": "EXT.o",
    "callsites": 2,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -1613,7 +1476,6 @@
    "segment": "libgpu",
    "object": null,
    "callsites": 4,
-   "files": 3,
    "binaries": 2
   },
   {
@@ -1623,9 +1485,8 @@
    "evidence": null,
    "segment": "libgpu",
    "object": null,
-   "callsites": 22,
-   "files": 15,
-   "binaries": 3
+   "callsites": 224,
+   "binaries": 64
   },
   {
    "addr": "0x80058B7C",
@@ -1634,9 +1495,8 @@
    "evidence": null,
    "segment": "libgpu",
    "object": null,
-   "callsites": 5,
-   "files": 5,
-   "binaries": 1
+   "callsites": 9,
+   "binaries": 4
   },
   {
    "addr": "0x80058C6C",
@@ -1645,9 +1505,8 @@
    "evidence": null,
    "segment": "libgpu",
    "object": null,
-   "callsites": 26,
-   "files": 16,
-   "binaries": 3
+   "callsites": 438,
+   "binaries": 64
   },
   {
    "addr": "0x80058CE4",
@@ -1657,7 +1516,6 @@
    "segment": "libgpu",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -1667,9 +1525,8 @@
    "evidence": null,
    "segment": "libgpu",
    "object": null,
-   "callsites": 1,
-   "files": 1,
-   "binaries": 1
+   "callsites": 2,
+   "binaries": 2
   },
   {
    "addr": "0x80058D70",
@@ -1678,9 +1535,8 @@
    "evidence": null,
    "segment": "libgpu",
    "object": null,
-   "callsites": 3,
-   "files": 3,
-   "binaries": 2
+   "callsites": 65,
+   "binaries": 64
   },
   {
    "addr": "0x80058D84",
@@ -1690,7 +1546,6 @@
    "segment": "libgpu",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -1701,7 +1556,6 @@
    "segment": "libgpu",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -1712,7 +1566,6 @@
    "segment": "libgpu",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -1723,7 +1576,6 @@
    "segment": "libgpu",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -1734,7 +1586,6 @@
    "segment": "libgpu",
    "object": null,
    "callsites": 2,
-   "files": 2,
    "binaries": 1
   },
   {
@@ -1745,7 +1596,6 @@
    "segment": "libgpu",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -1756,7 +1606,6 @@
    "segment": "libgpu",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -1766,9 +1615,8 @@
    "evidence": null,
    "segment": "libgpu",
    "object": null,
-   "callsites": 7,
-   "files": 5,
-   "binaries": 3
+   "callsites": 129,
+   "binaries": 64
   },
   {
    "addr": "0x80058EB0",
@@ -1777,9 +1625,8 @@
    "evidence": null,
    "segment": "libgpu",
    "object": null,
-   "callsites": 5,
-   "files": 4,
-   "binaries": 3
+   "callsites": 65,
+   "binaries": 64
   },
   {
    "addr": "0x80058EE4",
@@ -1789,7 +1636,6 @@
    "segment": "libgpu",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -1800,7 +1646,6 @@
    "segment": "libgpu",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -1811,7 +1656,6 @@
    "segment": "libgpu2",
    "object": "SYS.o",
    "callsites": 7,
-   "files": 6,
    "binaries": 2
   },
   {
@@ -1822,7 +1666,6 @@
    "segment": "libgpu2",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -1833,7 +1676,6 @@
    "segment": "libgpu2",
    "object": null,
    "callsites": 2,
-   "files": 2,
    "binaries": 1
   },
   {
@@ -1843,9 +1685,8 @@
    "evidence": "called with 1 after the first frame is set up (resident md_MAIN_003)",
    "segment": "libgpu2",
    "object": "SYS.o",
-   "callsites": 7,
-   "files": 4,
-   "binaries": 2
+   "callsites": 9,
+   "binaries": 3
   },
   {
    "addr": "0x800596F4",
@@ -1854,9 +1695,8 @@
    "evidence": "main loop: func_800596F4(0) right before VSync (vendor src/boot.c)",
    "segment": "libgpu2",
    "object": "SYS.o",
-   "callsites": 8,
-   "files": 7,
-   "binaries": 4
+   "callsites": 71,
+   "binaries": 65
   },
   {
    "addr": "0x80059888",
@@ -1865,9 +1705,8 @@
    "evidence": null,
    "segment": "libgpu2",
    "object": "SYS.o",
-   "callsites": 18,
-   "files": 10,
-   "binaries": 4
+   "callsites": 137,
+   "binaries": 65
   },
   {
    "addr": "0x800599B8",
@@ -1876,9 +1715,8 @@
    "evidence": "called (RECT *, data) by func_800184F0 per texture record (vendor src/800.c:5761ff)",
    "segment": "libgpu2",
    "object": "SYS.o",
-   "callsites": 14,
-   "files": 11,
-   "binaries": 4
+   "callsites": 293,
+   "binaries": 67
   },
   {
    "addr": "0x80059A1C",
@@ -1887,9 +1725,8 @@
    "evidence": null,
    "segment": "libgpu2",
    "object": null,
-   "callsites": 2,
-   "files": 2,
-   "binaries": 2
+   "callsites": 70,
+   "binaries": 64
   },
   {
    "addr": "0x80059A80",
@@ -1898,9 +1735,8 @@
    "evidence": null,
    "segment": "libgpu2",
    "object": null,
-   "callsites": 9,
-   "files": 6,
-   "binaries": 3
+   "callsites": 286,
+   "binaries": 64
   },
   {
    "addr": "0x80059BFC",
@@ -1910,7 +1746,6 @@
    "segment": "libgpu2",
    "object": null,
    "callsites": 5,
-   "files": 2,
    "binaries": 1
   },
   {
@@ -1920,8 +1755,7 @@
    "evidence": "main loop passes OT base + 0x3FFC after CatPrim (vendor src/boot.c)",
    "segment": "libgpu2",
    "object": "SYS.o",
-   "callsites": 4,
-   "files": 3,
+   "callsites": 5,
    "binaries": 2
   },
   {
@@ -1932,7 +1766,6 @@
    "segment": "libgpu2",
    "object": "SYS.o",
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -1943,7 +1776,6 @@
    "segment": "libgpu2",
    "object": "SYS.o",
    "callsites": 3,
-   "files": 3,
    "binaries": 2
   },
   {
@@ -1953,9 +1785,8 @@
    "evidence": null,
    "segment": "libgpu2",
    "object": "SYS.o",
-   "callsites": 22,
-   "files": 16,
-   "binaries": 3
+   "callsites": 353,
+   "binaries": 69
   },
   {
    "addr": "0x8005A658",
@@ -1964,9 +1795,8 @@
    "evidence": null,
    "segment": "libgpu2",
    "object": null,
-   "callsites": 2,
-   "files": 1,
-   "binaries": 1
+   "callsites": 126,
+   "binaries": 63
   },
   {
    "addr": "0x8005C2C8",
@@ -1976,7 +1806,6 @@
    "segment": "libc2_1",
    "object": "BZERO.o",
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -1987,7 +1816,6 @@
    "segment": "libc2_1",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -1997,9 +1825,8 @@
    "evidence": "symbols.resident.txt: memcpy = 0x8005C324 (libc2 MEMCPY.o)",
    "segment": "libc2_1",
    "object": "MEMSET.o",
-   "callsites": 7,
-   "files": 5,
-   "binaries": 3
+   "callsites": 316,
+   "binaries": 64
   },
   {
    "addr": "0x8005C358",
@@ -2008,8 +1835,7 @@
    "evidence": "Psy-Q object MEMSET.o",
    "segment": "libc2_1",
    "object": "MEMSET.o",
-   "callsites": 6,
-   "files": 3,
+   "callsites": 2,
    "binaries": 1
   },
   {
@@ -2020,7 +1846,6 @@
    "segment": "libc2_1",
    "object": "PUTCHAR.o",
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -2030,9 +1855,8 @@
    "evidence": null,
    "segment": "libc2_1",
    "object": null,
-   "callsites": 68,
-   "files": 36,
-   "binaries": 3
+   "callsites": 4709,
+   "binaries": 83
   },
   {
    "addr": "0x8005C4CC",
@@ -2042,7 +1866,6 @@
    "segment": "libc2_1",
    "object": "STRCMP.o",
    "callsites": 2,
-   "files": 2,
    "binaries": 1
   },
   {
@@ -2052,9 +1875,8 @@
    "evidence": null,
    "segment": "libc2_1",
    "object": null,
-   "callsites": 7,
-   "files": 4,
-   "binaries": 3
+   "callsites": 93,
+   "binaries": 68
   },
   {
    "addr": "0x8005C604",
@@ -2064,7 +1886,6 @@
    "segment": "libc2_1",
    "object": "PRNT.o",
    "callsites": 4,
-   "files": 2,
    "binaries": 1
   },
   {
@@ -2075,7 +1896,6 @@
    "segment": "libapi1",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -2086,7 +1906,6 @@
    "segment": "libapi1",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -2097,18 +1916,6 @@
    "segment": "libapi1",
    "object": null,
    "callsites": 1,
-   "files": 1,
-   "binaries": 1
-  },
-  {
-   "addr": "0x8005CF28",
-   "name": "read",
-   "name_source": "symbol",
-   "evidence": null,
-   "segment": "libapi1",
-   "object": null,
-   "callsites": 2,
-   "files": 2,
    "binaries": 1
   },
   {
@@ -2119,7 +1926,6 @@
    "segment": "libapi1",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -2130,7 +1936,6 @@
    "segment": "libpad1",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -2141,7 +1946,6 @@
    "segment": "libpad1",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -2152,7 +1956,6 @@
    "segment": "libpad1",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -2163,7 +1966,6 @@
    "segment": "libpad1",
    "object": null,
    "callsites": 2,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -2174,7 +1976,6 @@
    "segment": "libpad1",
    "object": null,
    "callsites": 2,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -2185,7 +1986,6 @@
    "segment": "libpad1",
    "object": null,
    "callsites": 2,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -2196,7 +1996,6 @@
    "segment": "libpad2",
    "object": null,
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -2207,7 +2006,6 @@
    "segment": "libmcrd1",
    "object": "LIBMCRD.o",
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -2218,7 +2016,6 @@
    "segment": "libmcrd1",
    "object": "LIBMCRD.o",
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -2229,7 +2026,6 @@
    "segment": "libmcrd1",
    "object": "LIBMCRD.o",
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -2240,7 +2036,6 @@
    "segment": "libmcrd1",
    "object": "LIBMCRD.o",
    "callsites": 2,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -2251,7 +2046,6 @@
    "segment": "libmcrd1",
    "object": "LIBMCRD.o",
    "callsites": 3,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -2262,7 +2056,6 @@
    "segment": "libmcrd1",
    "object": "LIBMCRD.o",
    "callsites": 20,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -2273,7 +2066,6 @@
    "segment": "libmcrd1",
    "object": "LIBMCRD.o",
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -2284,7 +2076,6 @@
    "segment": "libmcrd1",
    "object": "LIBMCRD.o",
    "callsites": 4,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -2295,7 +2086,6 @@
    "segment": "libmcrd1",
    "object": "LIBMCRD.o",
    "callsites": 2,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -2306,7 +2096,6 @@
    "segment": "libmcrd1",
    "object": "LIBMCRD.o",
    "callsites": 2,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -2317,7 +2106,6 @@
    "segment": "libmcrd1",
    "object": "LIBMCRD.o",
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -2328,7 +2116,6 @@
    "segment": "libmcrd1",
    "object": "LIBMCRD.o",
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   },
   {
@@ -2339,7 +2126,6 @@
    "segment": "libmcrd1",
    "object": "LIBMCRD.o",
    "callsites": 1,
-   "files": 1,
    "binaries": 1
   }
  ]
