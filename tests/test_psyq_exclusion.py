@@ -34,12 +34,14 @@ class PsyqExclusionTest(unittest.TestCase):
 
     def test_check_accepts_game_code_and_pending_bindings_only(self):
         self.assertEqual(self.check("src/main/8001903c.c").returncode, 0)
-        run = self.check("src/main/800616d0.c")
-        self.assertEqual(run.returncode, 0)
-        self.assertIn("PENDING replacement src/main/800616d0.c", run.stderr)
         # Replaced bindings never come back.
-        for replaced in ("800425b0", "80042c64", "8005c388", "800427f4", "80042e08", "8005bd7c", "8005c1c0", "800426fc"):
+        for replaced in ("800425b0", "80042c64", "8005c388", "800427f4", "80042e08", "8005bd7c", "8005c1c0", "800426fc", "800616d0", "8006291c", "80062988"):
             self.assertEqual(self.check(f"src/main/{replaced}.c").returncode, 1, replaced)
+
+    def test_no_psyq_binding_is_pending(self):
+        pending = [l for l in (ROOT / "config/psyq_pending_replacement.txt").read_text().splitlines()
+                   if l.strip() and not l.startswith("#")]
+        self.assertEqual(pending, [])
 
     def test_native_lane_never_takes_psyq_candidates(self):
         import native_lane_gen

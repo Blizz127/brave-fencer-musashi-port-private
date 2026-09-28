@@ -232,9 +232,8 @@ if(MUSASHI_BUILD_PC_PORT)
         pc_port/libetc_vsync_handler.c
         pc_port/libetc_dma_irq.c
         pc_port/libetc_irq_dispatch.c
-        src/main/800616d0.c
-        src/main/8006291c.c
-        src/main/80062988.c
+        pc_port/libmcrd_vblank.c
+        
         pc_port/vblank_bindings.c
         src/main/80016714.c
         src/main/80029044.c
@@ -245,8 +244,6 @@ if(MUSASHI_BUILD_PC_PORT)
     # Retail compiler/oracle builds do not define it and retain the original ABI.
     set_source_files_properties(src/main/8001096c.c PROPERTIES
         COMPILE_DEFINITIONS MUSASHI_NATIVE_CALLBACK_HANDLER=1)
-    set_source_files_properties(src/main/800616d0.c src/main/8006291c.c src/main/80062988.c PROPERTIES
-        COMPILE_DEFINITIONS MUSASHI_NATIVE_VBLANK=1)
     set_source_files_properties(src/main/80016714.c PROPERTIES
         COMPILE_DEFINITIONS MUSASHI_NATIVE_MEMSET_BINDING=1)
     set_source_files_properties(src/main/80029044.c src/main/8002906c.c PROPERTIES
@@ -367,9 +364,8 @@ if(MUSASHI_BUILD_PC_PORT)
             src/main/8001096c.c
             pc_port/libetc_dma_irq.c
             pc_port/libetc_dma_registration.c
-            src/main/800616d0.c
-            src/main/8006291c.c
-            src/main/80062988.c
+            pc_port/libmcrd_vblank.c
+            
         )
         target_compile_features(musashi_irq_scheduler_probe PRIVATE c_std_99)
         target_compile_definitions(musashi_irq_scheduler_probe PRIVATE

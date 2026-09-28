@@ -573,9 +573,11 @@ layout; the `sgap_*` islands are game code), built by
 `tools/psyq_manifest.py build`. CMake runs `tools/psyq_manifest.py check`
 over every `src/main` source of every target and fails configuration on any
 PsyQ-range source, except the bindings listed in
-`config/psyq_pending_replacement.txt` (19 today: libetc callback/IRQ/DMA,
-libgpu device ops, libc2 console/string, libmcrd VBlank), which are being
-replaced and are only ever removed from that list.
+`config/psyq_pending_replacement.txt`. That list started with the 19
+decompiled-PsyQ bindings the port used to compile (libetc callback/IRQ/DMA,
+libgpu device ops, libc2 console/string, libmcrd VBlank) and is now
+**empty**: every one is replaced by port-owned HLE (table below), and
+`tests/test_psyq_exclusion.py` fails if one returns or the list grows.
 
 Replacement status (each entry: what now provides it):
 
@@ -594,7 +596,7 @@ Replacement status (each entry: what now provides it):
 | 800427F4 | libetc interrupt service (I_STAT dispatch, storm guard, RFE) | port HLE `pc_port/libetc_irq_dispatch.c` |
 | 8005BD7C (+800426FC) | libgpu graphics reset (I_MASK exchange, GPU DMA/GP1 reset) | port HLE `pc_port/device_reset_bindings.c` |
 | 8005C1C0 | libgpu GPU-type probe (GP1 10000007h) | port HLE `pc_port/gpu_bindings.c` |
-| 800616D0 8006291C 80062988 | libmcrd VBlank | pending: port HLE |
+| 800616D0 8006291C 80062988 | libmcrd memory-card VBlank service (request stack step, idle query, completion) | port HLE `pc_port/libmcrd_vblank.c` |
 
 The HLE (`pc_port/include/musashi_psyq_hle.h`, header-only) is written from
 the documented C-library/libetc behaviour, not from PsyQ code. The native lane never
