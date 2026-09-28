@@ -1,0 +1,68 @@
+--- a/pc_port/mips_formatter.c	2026-09-28 23:40:48.370150466 +0000
++++ b/pc_port/mips_formatter.c	2026-09-28 23:41:17.482559108 +0000
+@@ -12448,6 +12448,28 @@
+ }
+ 
+ /* The candidate whose member's bytes are resident right now, or NULL. */
++/* MUSASHI_TRACE_LANE_OVERLAY=1: observe-only diagnostics for overlay
++ * entries. It logs the first 16 refusals with the RAM digest and every
++ * candidate, and log-scale counts of why lane_try skipped an
++ * overlay-candidate PC. */
++static int g_lane_suspended; /* tentative; defined below */
++
++static int lane_ovl_trace(void) {
++    static int state = -1;
++    if (state < 0) {
++        const char *v = getenv("MUSASHI_TRACE_LANE_OVERLAY");
++        state = v && v[0] && v[0] != '0';
++    }
++    return state;
++}
++
++static void lane_ovl_count(const char *why, uint64_t *counter, uint32_t pc) {
++    uint64_t n = ++*counter;
++    if (lane_ovl_trace() && (n & (n - 1u)) == 0u) /* 1, 2, 4, 8, ... */
++        fprintf(stderr, "native_boot: LANE_OVERLAY_SKIP why=%s count=%llu last_pc=%08x suspended=%d\n",
++                why, (unsigned long long)n, pc, g_lane_suspended);
++}
++
+ static const MusashiNativeLaneEntry *lane_find_overlay(MusashiBootMemory *memory, uint32_t pc) {
+     size_t i = lane_ovl_first(pc);
+     uint32_t hashed_size = 0;
+@@ -12465,6 +12487,20 @@
+         }
+     }
+     ++g_lane_ovl_refused;
++    if (lane_ovl_trace() && g_lane_ovl_refused <= 16u) {
++        size_t k = lane_ovl_first(pc);
++        fprintf(stderr, "native_boot: LANE_OVERLAY_REFUSED pc=%08x n=%llu", pc,
++                (unsigned long long)g_lane_ovl_refused);
++        for (; k < g_lane_ovl_count && g_lane_ovl[k].entry.guest_pc == pc; ++k) {
++            uint64_t ram = 0;
++            int ok = lane_ram_digest(memory, pc, g_lane_ovl[k].size, &ram);
++            fprintf(stderr, " [%s size=%u want=%016llx ram=%016llx%s]",
++                    g_lane_ovl[k].member ? g_lane_ovl[k].member : "?", g_lane_ovl[k].size,
++                    (unsigned long long)g_lane_ovl[k].digest, (unsigned long long)ram,
++                    ok ? "" : " unmapped");
++        }
++        fputc('\n', stderr);
++    }
+     return NULL;
+ }
+ 
+@@ -12573,6 +12609,15 @@
+     volatile int outcome;
+     entry = g_lane_count ? lane_find(cpu->pc) : NULL;
+     if (!entry && lane_ovl_first(cpu->pc) == g_lane_ovl_count) return 0;
++    if (!entry && lane_ovl_trace()) {
++        static uint64_t reached, suspended, pending, npc, unusable;
++        lane_ovl_count("reached", &reached, cpu->pc);
++        if (g_lane_suspended) lane_ovl_count("suspended", &suspended, cpu->pc);
++        else if (cpu->merge_pending || cpu->gte_load_pending || cpu->delay_slot)
++            lane_ovl_count("pending_or_delay_slot", &pending, cpu->pc);
++        else if (cpu->npc != cpu->pc + 4u) lane_ovl_count("npc", &npc, cpu->pc);
++        else if (!musashi_native_lane_usable(memory)) lane_ovl_count("unusable", &unusable, cpu->pc);
++    }
+     if (cpu->merge_pending || cpu->gte_load_pending || cpu->delay_slot ||
+         cpu->npc != cpu->pc + 4u || !musashi_native_lane_usable(memory))
+         return 0;
