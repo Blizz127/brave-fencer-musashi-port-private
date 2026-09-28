@@ -20,8 +20,17 @@
 
 #include <string.h>
 
-/* Defined in PsyCross LIBGTE.C but not declared in its libgte.h. */
+/* Defined in PsyCross LIBGTE.C but not declared in its libgte.h. Weak:
+ * builds that replace PsyCross's LIBGTE with their own GTE owner (native
+ * lane) don't link it, and the wrapper then refuses so the retail code
+ * runs instead. */
+#if defined(__GNUC__) || defined(__clang__)
+extern MATRIX *CompMatrixLV(MATRIX *m0, MATRIX *m1, MATRIX *m2) __attribute__((weak));
+#define BFM_HAVE_COMPMATRIXLV() (CompMatrixLV != NULL)
+#else
 extern MATRIX *CompMatrixLV(MATRIX *m0, MATRIX *m1, MATRIX *m2);
+#define BFM_HAVE_COMPMATRIXLV() 1
+#endif
 
 #define A(n) bfm_psyq_arg(r, n)
 #define P(addr, size) bfm_psyq_ptr((addr), (size))
@@ -159,7 +168,7 @@ int bfm_psyq_CompMatrix(uint32_t *r) {
 int bfm_psyq_CompMatrixLV(uint32_t *r) {
     MATRIX *a = (MATRIX *)P(A(0), sizeof(MATRIX)), *b = (MATRIX *)P(A(1), sizeof(MATRIX));
     MATRIX *c = (MATRIX *)P(A(2), sizeof(MATRIX));
-    if (!a || !b || !c) return 0;
+    if (!a || !b || !c || !BFM_HAVE_COMPMATRIXLV()) return 0;
     GTE_BEGIN();
     CompMatrixLV(a, b, c);
     GTE_END(4);

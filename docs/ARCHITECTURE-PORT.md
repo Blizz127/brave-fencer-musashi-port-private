@@ -614,6 +614,57 @@ display. Without one, `bfm_plat_renderer_open("gl")` fails cleanly and
 falls back to `null`. exec and sdl skip when their libraries are missing
 (`BFM_HOST_DEPS`, `BFM_GL_INCLUDE` and `BFM_OSMESA` override the search).
 
+### GPU bridge (native_boot → bfm_plat renderer)
+
+`bfm_plat_gpu_bridge.{h,c}` speaks the PS1 GPU's port protocol in front
+of the bfm_plat renderer. With it, native_boot, which emulates the GPU ports
+in `gpu_controller.c`, can draw through the `psycross` or `gl` backend
+instead of the controller's CPU rasteriser.
+
+| Input | Output |
+|---|---|
+| GP0 draw commands (polys, lines incl. polylines, rects, fill) | assembled by word count, decoded by `bfm_psyq_decode_packet` (E1/E6 state on the prims), batched into `bfm_plat_renderer_submit` |
+| GP0 E2–E5 | draw env: texture window, drawing area → clip, offset |
+| GP0 A0 / C0 / 80 | `upload_vram` / `download_vram` (answered on GPUREAD) / download + upload. Rects wrapping at the VRAM edge are split |
+| GP1 00/01/03/05/08/10 | reset, FIFO reset, display enable, display env (origin, 256–640 × 240/480, interlace, 24-bit), GPU info |
+| vblank | flush + `present` + `begin_frame` |
+
+- **Attach (tee):** `musashi_gpu_controller` gets a `tap` callback on
+  every GP0/GP1 port write and a `raster_disabled` flag. FIFO, GPUSTAT, fills
+  and VRAM transfers are unchanged, and only the CPU rasterisation stops.
+  native_boot then presents through `bfm_gpu_bridge_vblank`.
+- **Switch:** `MUSASHI_GPU=cpu|bfm_plat` (default `cpu`) and
+  `MUSASHI_RENDERER` (default `psycross`, which draws into native_boot's own
+  PsyCross context). The bfm_plat config key is `[video] gpu`.
+- **Patch:** `tools/patches/native-lane-gpu-bridge.patch` is the change,
+  against port/native-lane 5fecb1337. port-int owns `gpu_controller.c` and
+  `native_boot.c` and applies it: `git apply -p1`. It adds:
+  - the controller's tap and raster switch;
+  - native_boot's switch, attach and `present_frame`;
+  - CMake entries for `bfm_plat_gpu_bridge.c` and `psyq/psyq_psycross.c`.
+  The renderer opens after PsyCross is up; opening it inside `plat_start`
+  crashed in PsyCross `ResetGraph`, so that is called out in the patch.
+- **Tests:** `tests/test_bfm_gpu_bridge.py`.
+  - Synthetic streams go through the bridge into a reference backend
+    (`bfm_gl_ref_draw`), under ASan/UBSan: fill, opaque and semi tiles, the
+    `0x2A` fade quad (abr 2), raw, neutral and dim `0x64/0x65` sprites, a
+    4-bit CLUT sprite, a semi `0x67` sprite, a polyline, a VRAM copy, a
+    moved and clipped drawing area, a wrapped upload, the texture window,
+    C0 GPUREAD, GP1 info and vblank.
+  - When a `gpu_controller.c` is available (`BFM_GPU_CONTROLLER_DIR`), the
+    same streams also go through the controller and are compared region by
+    region. Against port/native-lane's controller with the blend fix
+    (572274c07), every region it implements matches. Semi regions differ
+    on main@ac0ec2dd1, which has no blend fix yet.
+- **Known controller gaps,** reported rather than asserted:
+  - raw-texture rects `0x65/67/75/77/7D/7F` are not drawn;
+  - textured-rect modulation is missing;
+  - polylines are unhandled, and the unhandled words desync the command
+    stream.
+- **Smoke:** the patched native-lane build engages the bridge
+  (`GPU_PATH bfm_plat renderer=psycross`) and runs normally. Rendering it
+  live needs a long boot run.
+
 ### First-run disc check
 
 `bfm_plat_disc_check.h` is the single disc check. The native lane calls
