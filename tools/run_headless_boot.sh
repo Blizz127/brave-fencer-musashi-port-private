@@ -16,20 +16,24 @@
 #                     a real GL context without a display (llvmpipe)
 #   LIBGL_ALWAYS_SOFTWARE unset
 #                     setting it crashes Mesa 25.0's EGL in SDL_CreateWindow
-#   ALSA null PCM (alsa.conf, SDL_AUDIODRIVER=alsa)
-#                     WORKAROUND: native_boot's audio gate refuses SDL's dummy
-#                     and disk drivers on purpose; a null PCM satisfies it
-#                     without any real audio output
+#   MUSASHI_AUDIO=null  explicit, logged null audio (port/native-lane
+#                     8edc1d55d). Used when the binary has it; older builds
+#                     (main before that merge) get the old WORKAROUND instead:
+#                     an ALSA null PCM (alsa.conf, SDL_AUDIODRIVER=alsa), which
+#                     satisfies an audio gate meant to require a real device
 #   MUSASHI_CODE_IMAGE=<the EXE>
-#                     required; without it the run refuses at 80010000 and
-#                     prints no reason (the missing print is a real issue)
+#                     harmless; needed only by builds before 7d483a31b, which
+#                     refused at 80010000 without it
 #   MUSASHI_GUEST_CLOCK=1 (default; --host-clock turns it off)
 #                     on a loaded host the host-paced clock ends the run with
-#                     a silent IRQ-dispatch refusal in the SPU poll loop
-#   LD_PRELOAD Mesa libEGL/libEGL_mesa/libgallium (--no-preload skips)
-#                     WORKAROUND: PsyCross GR_Shutdown calls GL after Mesa's
-#                     EGL libraries were unloaded and segfaults on every exit
-#                     (losing trace.counts); preloading keeps them mapped
+#                     an IRQ-dispatch refusal in the SPU poll loop (printed as
+#                     IRQ_DISPATCH_REFUSED reason=source-overflow since
+#                     8edc1d55d)
+#   LD_PRELOAD Mesa libEGL/libEGL_mesa/libgallium
+#                     only for builds without the ordered PsyCross shutdown
+#                     (musashi_psyx_shutdown, 8edc1d55d): old WORKAROUND for
+#                     GR_Shutdown segfaulting after Mesa's EGL libraries were
+#                     unloaded. --no-preload skips it, --preload forces it
 #   bfm_swap_capture.so (LD_PRELOAD, BFM_CAPTURE_*)
 #                     per-frame non-black counts and periodic PNGs of the
 #                     presented frame and PsyCross's VRAM
@@ -40,7 +44,7 @@ here=$(cd "$(dirname "$0")" && pwd)
 root=$(cd "$here/.." && pwd)
 deps=${BFM_HOST_DEPS:-$HOME/opt/host-port-deps/usr}
 lib=$deps/lib/x86_64-linux-gnu
-binary= disc= out= timeout=600 every=600 guest=1 preload=1
+binary= disc= out= timeout=600 every=600 guest=1 preload=auto
 while [ $# -gt 0 ]; do
     case $1 in
     --binary) binary=$2; shift 2 ;;
@@ -50,6 +54,7 @@ while [ $# -gt 0 ]; do
     --capture-every) every=$2; shift 2 ;;
     --host-clock) guest=0; shift ;;
     --no-preload) preload=0; shift ;;
+    --preload) preload=1; shift ;;
     --) shift; break ;;
     *) echo "run_headless_boot: unknown option $1" >&2; exit 2 ;;
     esac
@@ -79,6 +84,20 @@ cc -std=c99 -O2 -shared -fPIC -I"$root/pc_port/platform" "$here/headless/bfm_swa
     "$root/pc_port/platform/bfm_plat_image.c" -o "$shim" -ldl
 vram_off=$(nm "$binary" 2>/dev/null | awk '$3 == "vram" && ($2 == "B" || $2 == "b") {print $1; exit}')
 
+# what this binary already handles itself
+has_null_audio=0
+grep -aq "MUSASHI_AUDIO" "$binary" && has_null_audio=1
+if [ "$preload" = auto ]; then
+    preload=1
+    nm "$binary" 2>/dev/null | grep -q " musashi_psyx_shutdown$" && preload=0
+fi
+if [ "$has_null_audio" = 1 ]; then
+    audio_env="MUSASHI_AUDIO=null"
+else
+    echo "run_headless_boot: this build has no MUSASHI_AUDIO; using the ALSA null PCM workaround" >&2
+    audio_env="SDL_AUDIODRIVER=alsa ALSA_CONFIG_PATH=$out/alsa.conf"
+fi
+
 pre=$shim
 if [ "$preload" = 1 ]; then
     gallium=$(ls "$lib"/libgallium-*.so 2>/dev/null | head -1)
@@ -93,7 +112,7 @@ set +e
 env -u LIBGL_ALWAYS_SOFTWARE -u DISPLAY -u WAYLAND_DISPLAY \
     LD_LIBRARY_PATH="$lib" LD_PRELOAD="$pre" \
     SDL_VIDEODRIVER=offscreen EGL_PLATFORM=surfaceless __EGL_VENDOR_LIBRARY_FILENAMES="$out/egl.json" \
-    SDL_AUDIODRIVER=alsa ALSA_CONFIG_PATH="$out/alsa.conf" XDG_RUNTIME_DIR="$out" \
+    $audio_env XDG_RUNTIME_DIR="$out" \
     MUSASHI_CODE_IMAGE="$exe" MUSASHI_BOOT_AUTO_START=1 MUSASHI_HOLD_WINDOW_MS=0 \
     MUSASHI_TRACE_REFUSAL=1 MUSASHI_TRACE_FUNCS="$out/trace" $clock \
     BFM_CAPTURE_DIR="$out" BFM_CAPTURE_EVERY="$every" BFM_CAPTURE_VRAM_OFFSET="$vram_off" \
