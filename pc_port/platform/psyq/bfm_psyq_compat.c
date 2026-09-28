@@ -220,12 +220,23 @@ int bfm_psyq_SetDefDispEnv(uint32_t *r) {
     return 1;
 }
 
-/* ClearOTagR(ot, n): ot[i] -> ot[i-1], ot[0] terminates; returns ot */
+/* ClearOTagR(ot, n), following retail func_80059BFC:
+ *   - at libgpu debug level >= 2 (u8 at 0x8007278A) it prints first, so
+ *     refuse and let the retail code run;
+ *   - the driver's OTC clear (DMA6) links ot[i] -> &ot[i-1] and ends ot[0]
+ *     with 0x00FFFFFF;
+ *   - ot[0] is then relinked to the static terminator primitive at
+ *     0x80072844, as a 24-bit address.
+ * Returns ot. n == 0 is left to the retail code (DMA6 BCR 0 semantics). */
+#define PSYQ_GPU_DEBUG_LEVEL 0x8007278Au
+#define PSYQ_OT_TERMINATOR   0x80072844u
 int bfm_psyq_ClearOTagR(uint32_t *r) {
     uint32_t ot = A(0), n = A(1), i;
+    const uint8_t *level = (const uint8_t *)bfm_psyq_ptr(PSYQ_GPU_DEBUG_LEVEL, 1);
+    if (!level || *level >= 2u) return 0;
     if (n == 0 || n > 0x100000u || !bfm_psyq_ptr(ot, n * 4u)) return 0;
-    wr32(ot, 0x00FFFFFFu);
     for (i = 1; i < n; i++) wr32(ot + i * 4u, (ot + (i - 1u) * 4u) & 0x00FFFFFFu);
+    wr32(ot, PSYQ_OT_TERMINATOR & 0x00FFFFFFu);
     RET(ot);
     return 1;
 }
@@ -587,31 +598,40 @@ int bfm_psyq_rand(uint32_t *r) {
     return 1;
 }
 
+/* The retail libc rules (func_8005C324 / 8005C358 / 8005C2C8):
+ * - a NULL destination writes nothing and returns 0;
+ * - a signed count <= 0 writes nothing and returns dst (memcpy) or 0
+ *   (memset, bzero);
+ * - otherwise the copy is a forward byte loop, so overlapping ranges
+ *   propagate bytes exactly as on hardware (not memmove), and the result
+ *   is dst. */
 int bfm_psyq_memcpy(uint32_t *r) {
-    uint32_t n = A(2);
-    void *d = bfm_psyq_ptr(A(0), n), *s = bfm_psyq_ptr(A(1), n);
-    if (n && (!d || !s)) return 0;
-    if (n) memmove(d, s, n);
-    RET(A(0));
+    uint32_t dst = A(0), src = A(1), i;
+    int32_t n = (int32_t)A(2);
+    volatile uint8_t *d, *s; /* volatile: keep the byte loop (no memmove idiom) */
+    if (!dst) { RET(0); return 1; }
+    if (n <= 0) { RET(dst); return 1; }
+    d = (volatile uint8_t *)bfm_psyq_ptr(dst, (uint32_t)n);
+    s = (volatile uint8_t *)bfm_psyq_ptr(src, (uint32_t)n);
+    if (!d || !s) return 0;
+    for (i = 0; i < (uint32_t)n; i++) d[i] = s[i];
+    RET(dst);
     return 1;
 }
 
-int bfm_psyq_memset(uint32_t *r) {
-    uint32_t n = A(2);
-    void *d = bfm_psyq_ptr(A(0), n);
-    if (n && !d) return 0;
-    if (n) memset(d, (int)(A(1) & 0xFFu), n);
-    RET(A(0));
+static int fill(uint32_t *r, uint32_t dst, int32_t n, uint8_t value) {
+    uint8_t *d;
+    if (!dst || n <= 0) { RET(0); return 1; }
+    d = (uint8_t *)bfm_psyq_ptr(dst, (uint32_t)n);
+    if (!d) return 0;
+    memset(d, value, (size_t)n);
+    RET(dst);
     return 1;
 }
 
-int bfm_psyq_bzero(uint32_t *r) {
-    uint32_t n = A(1);
-    void *d = bfm_psyq_ptr(A(0), n);
-    if (n && !d) return 0;
-    if (n) memset(d, 0, n);
-    return 1;
-}
+int bfm_psyq_memset(uint32_t *r) { return fill(r, A(0), (int32_t)A(2), (uint8_t)A(1)); }
+
+int bfm_psyq_bzero(uint32_t *r) { return fill(r, A(0), (int32_t)A(1), 0); }
 
 static int guest_strlen(uint32_t a, uint32_t *len) {
     uint32_t i;
