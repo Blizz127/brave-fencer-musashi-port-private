@@ -21,16 +21,16 @@ def test_sc02_entry_identity(tmp_path):
     code, consumed = decode(member[0x800:329157])
     assert consumed == 327109
     assert hashlib.sha256(code).hexdigest() == '5bb5b6364206ccd0c47d6cf6a1dc2627e13bbef3cda40d618103b92ccfef4db6'
-    source = (ROOT / 'src/overlays/sc02_0031/80128158.c').read_text()
-    words = [int(w,16) for w in re.findall(r'MUSASHI_NATIVE_MIPS_WORD\(0x([0-9A-F]{8})\)', source)]
+    # The entry words come from the user's own disc (decoded member 31).
+    words = list(struct.unpack('<178I', code[:712]))
+    # While src/ still carries word exports, they must equal the disc image.
     for path in (ROOT / 'src/overlays/sc02_0031').glob('*.c'):
         exported = [int(w,16) for w in re.findall(r'MUSASHI_NATIVE_MIPS_WORD\(0x([0-9A-F]{8})\)', path.read_text())]
-        assert exported
+        if not exported:
+            continue
         raw = struct.pack('<' + 'I'*len(exported), *exported)
         offset = int(path.stem,16)-0x80128158
         assert code[offset:offset+len(raw)] == raw, path.name
-    assert len(words) == 178
-    assert struct.pack('<178I', *words) == code[:712]
     assert words[(0x801282AC-0x80128158)//4] == 0x8C224F08
     formatter = (ROOT / 'pc_port/mips_formatter.c').read_text()
     # Slice only the function under test. Reaching to formatter_step now drags
@@ -40,17 +40,22 @@ def test_sc02_entry_identity(tmp_path):
     # with no comment between them, so the slice swallowed it and its
     # undeclared kOverlaySc01_80128158Words table. Cut at this function's own
     # closing brace, which sits alone in column 0.
-    _start = formatter.index('static int sc02_entry_matches(')
-    _end = formatter.index('\n}\n', _start) + len('\n}\n')
-    helper = formatter[_start:_end]
+    # Run off the disc: identity is a digest of the loaded 178-word entry
+    # span, so the harness needs span_digest, the digest constants and
+    # sc02_entry_matches. Each is cut at its own column-0 closing brace.
+    def cut(start):
+        begin = formatter.index(start)
+        return formatter[begin:formatter.index('\n}\n', begin) + 3]
+    consts = formatter[formatter.index('enum { SC_ENTRY_WORDS = 178 };'):
+                       formatter.index('#define SC01_MEMBER0_ENTRY_DIGEST')]
+    helper = cut('static int span_digest(') + consts + cut('static int sc02_entry_matches(')
     assert 'sc01_entry_matches' not in helper
     harness = '''#include <stdint.h>
+#include <stddef.h>
 typedef struct { uint32_t words[178]; int fail; } MusashiBootMemory;
-static const uint32_t kOverlaySc02_80128158Words[] = {''' + ','.join(map(str,words)) + '''};
-static int musashi_boot_read32(MusashiBootMemory *m,uint32_t a,uint32_t *out) {
-unsigned i=(a-0x80128158u)/4u;
-if(i>=178 || (int)i==m->fail) return 0;
-*out=m->words[i]; return 1;
+static uint8_t *musashi_boot_ram_span(MusashiBootMemory *m,uint32_t a,size_t n) {
+if(a!=0x80128158u || n!=178u*4u || m->fail>=0) return 0;
+return (uint8_t *)m->words;
 }
 ''' + helper + '\nint probe(MusashiBootMemory *m) { return sc02_entry_matches(m); }\n'
     path = tmp_path / 'probe.c'; path.write_text(harness)

@@ -5,7 +5,7 @@ import sys
 import tempfile
 
 sys.path.insert(0, str(Path(__file__).parent))
-from test_bios_event_callbacks import _generate_formatter_includes, _sync_code_image
+from test_bios_event_callbacks import _generate_formatter_includes, _materialize_overlays, _sync_code_image
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -33,6 +33,7 @@ def test_carve_sites_are_admitted():
         generated = Path(temp) / "generated"
         generated.mkdir()
         _generate_formatter_includes(generated)
+        _materialize_overlays(generated)
         probe = _compile_probe(Path(temp), generated,
                                ROOT / "tests/carve_site_probe.c")
         _sync_code_image(generated)
