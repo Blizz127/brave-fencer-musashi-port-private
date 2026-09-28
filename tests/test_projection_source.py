@@ -5,7 +5,7 @@ import re
 import struct
 import subprocess
 import pytest
-from test_bios_event_callbacks import _generate_formatter_includes
+from test_bios_event_callbacks import _generate_formatter_includes, _sync_code_image
 ROOT=Path(__file__).resolve().parents[1]
 
 @pytest.mark.parametrize('variant',['baseline','matrix_mutant','div_mutant','sanitizers'])
@@ -30,6 +30,7 @@ def test_projection_source(tmp_path,variant):
         '-Wall','-Wextra','-Werror','-Wno-parentheses','-ffunction-sections','-fdata-sections','-Wl,--gc-sections',
         '-I',str(ROOT/'include'),'-I',str(ROOT/'pc_port/include'),'-I',str(generated),
         str(ROOT/'tests/projection_source_probe.c'),str(ROOT/'pc_port/boot_memory.c'),'-o',str(binary)],check=True,timeout=90)
+    _sync_code_image(generated)
     run=subprocess.run([str(binary)],capture_output=True,text=True,timeout=20)
     if variant.endswith('mutant'):assert run.returncode!=0,'semantic mutant passed: '+variant
     else:

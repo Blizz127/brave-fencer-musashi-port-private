@@ -3,7 +3,7 @@ from pathlib import Path
 import subprocess
 import pytest
 from test_cd_irq import ROOT, _media_and_flags
-from test_bios_event_callbacks import _generate_formatter_includes
+from test_bios_event_callbacks import _generate_formatter_includes, _sync_code_image
 
 
 @pytest.mark.parametrize("variant", ["baseline", "zero_pio_budget", "no_bank_renewal"])
@@ -43,6 +43,7 @@ def test_cd_irq_stream_source(tmp_path, variant):
            '800616d0','8006291c','80062988')],
         '-lcrypto',*flags,'-o',str(exe)]
     subprocess.run(command, check=True, timeout=40)
+    _sync_code_image(generated)
     result = subprocess.run([str(exe),str(cue),str(binary)],capture_output=True,text=True,timeout=30)
     if variant == "zero_pio_budget":
         assert result.returncode != 0 and "budget=3" in result.stderr, result.stdout + result.stderr

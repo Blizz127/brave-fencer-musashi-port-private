@@ -10,7 +10,7 @@ static uint32_t refuse_pc;
 static unsigned cycles,calls;
 static int advance(void *p,uint32_t cost) {
     uint32_t instruction;unsigned opcode;
-    (void)p;assert(formatter_fetch(&cpu,&instruction));opcode=instruction>>26;
+    (void)p;assert(formatter_fetch(NULL,&cpu,&instruction));opcode=instruction>>26;
     assert(cost==2u+((opcode>=32u&&opcode<=43u)||opcode==46u));
     calls++;if(cpu.pc==refuse_pc)return 0;cycles+=cost;return 1;
 }

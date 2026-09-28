@@ -2976,6 +2976,49 @@ static int load_exe(NativeBoot *boot, const char *path) {
     return accepted;
 }
 
+/* First-run disc check. Everything from the game (code, overlays, assets)
+ * is read from the user's own disc image; nothing retail ships with the
+ * port. When the supplied files are not the supported release, say so in
+ * terms a player can act on, instead of a bare refusal. */
+#define MUSASHI_EXPECTED_RELEASE "Brave Fencer Musashi (USA), SLUS-00726"
+#define MUSASHI_EXPECTED_EXE_SHA256 \
+    "66371c3a7517e9eabd7cb6cf0c5abffe7296bd4bac29c85b8bf7bb9db349714a"
+
+static void report_exe_identity(const char *path) {
+    FILE *file = fopen(path, "rb");
+    unsigned char digest[SHA256_DIGEST_LENGTH];
+    char hex[SHA256_DIGEST_LENGTH * 2 + 1];
+    long size = -1;
+    unsigned i;
+    fprintf(stderr,
+            "\nThis port needs your own copy of %s.\n"
+            "The game executable it was given is not that release:\n"
+            "  file:     %s\n", MUSASHI_EXPECTED_RELEASE, path);
+    if (!file) {
+        fputs("  problem:  cannot be opened\n", stderr);
+    } else {
+        SHA256_CTX ctx;
+        unsigned char buffer[65536];
+        size_t got;
+        SHA256_Init(&ctx);
+        size = 0;
+        while ((got = fread(buffer, 1, sizeof(buffer), file)) > 0) {
+            SHA256_Update(&ctx, buffer, got);
+            size += (long)got;
+        }
+        fclose(file);
+        SHA256_Final(digest, &ctx);
+        for (i = 0; i < SHA256_DIGEST_LENGTH; ++i) sprintf(hex + 2 * i, "%02x", digest[i]);
+        fprintf(stderr, "  size:     %ld bytes (expected 413696)\n"
+                        "  sha256:   %s\n", size, hex);
+    }
+    fprintf(stderr,
+            "  expected: SLUS_007.26, sha256 %s\n"
+            "Other regions, revisions, patched or re-built images are not supported.\n"
+            "Dump your disc to a .cue/.bin, extract SLUS_007.26 from it, and point the port at it.\n\n",
+            MUSASHI_EXPECTED_EXE_SHA256);
+}
+
 static uint32_t s_png_crc_table[256];
 static int s_png_crc_table_computed = 0;
 
@@ -3396,12 +3439,19 @@ int main(int argc, char **argv) {
     boot.exe_path = exe_path;
     boot.last_musashi_action = 0xffffu;
     if (!load_exe(&boot, exe_path)) {
+        report_exe_identity(exe_path);
         fputs("native_boot: pinned retail EXE rejected before startup\n", stderr);
         return 2;
     }
     if (cue_path && bin_path) {
         boot.media = musashi_disc_media_open_pinned(cue_path, bin_path);
         if (!boot.media) {
+            fprintf(stderr,
+                    "\nThis port needs your own disc image of %s.\n"
+                    "The disc image it was given is not that release (or is incomplete):\n"
+                    "  cue: %s\n  bin: %s\n"
+                    "Use an unmodified single-track .cue/.bin dump of the USA disc.\n\n",
+                    MUSASHI_EXPECTED_RELEASE, cue_path, bin_path);
             fputs("native_boot: pinned media rejected before startup\n", stderr);
             return 2;
         }

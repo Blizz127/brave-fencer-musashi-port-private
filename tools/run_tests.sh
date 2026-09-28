@@ -7,6 +7,13 @@ trap 'rm -rf -- "$test_root"' EXIT
 
 cd "$repo_root"
 
+# Synthetic-RAM probes fetch main-executable words from the developer's own
+# extracted EXE (the port itself runs them from guest RAM loaded off the
+# disc). Without the licensed extract those probes skip or refuse.
+if [[ -z "${MUSASHI_CODE_IMAGE:-}" && -f extracted/disc/files/SLUS_007.26 ]]; then
+    export MUSASHI_CODE_IMAGE="$repo_root/extracted/disc/files/SLUS_007.26"
+fi
+
 # SDL2 and OpenAL come from Homebrew when present. Override with
 # MUSASHI_CMAKE_PREFIX to point CMake elsewhere; leave both unset to use only
 # the system search path.

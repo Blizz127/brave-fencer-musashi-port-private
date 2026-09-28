@@ -9,7 +9,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).parent))
-from test_bios_event_callbacks import _generate_formatter_includes
+from test_bios_event_callbacks import _generate_formatter_includes, _sync_code_image
 
 
 def test_cd_spu_source_owner_fixture():
@@ -54,4 +54,5 @@ def test_cd_spu_source_owner_fixture():
             check=True,
             timeout=30,
         )
+        _sync_code_image(generated)
         subprocess.run([str(probe), str(cue), str(image)], check=True, timeout=30)

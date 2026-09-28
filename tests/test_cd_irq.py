@@ -7,7 +7,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).parent))
-from test_bios_event_callbacks import _generate_formatter_includes
+from test_bios_event_callbacks import _generate_formatter_includes, _sync_code_image
 from test_audio_sdl import _sdl_compile_flags
 
 
@@ -50,6 +50,7 @@ def _compile_and_run(cue, binary, flags, mutation=None):
                                   timeout=30)
         if compiled.returncode != 0:
             return compiled, None
+        _sync_code_image(generated)
         run = subprocess.run([str(exe),str(cue),str(binary)],
                              capture_output=True, text=True, timeout=30)
         return compiled, run

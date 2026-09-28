@@ -81,9 +81,21 @@ class NativeLaneSourceTest(unittest.TestCase):
         step = source[source.index(
             "static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {"):]
         self.assertLess(step.index("lane_try(memory, cpu)"),
-                        step.index("formatter_fetch(cpu, &instruction)"))
+                        step.index("formatter_fetch(memory, cpu, &instruction)"))
         # Tracing is opt-in and only observes.
         self.assertIn('getenv("MUSASHI_TRACE_FUNCS")', source)
+
+    def test_no_retail_words_compiled_into_the_formatter(self):
+        """Run off the disc: word arrays carry only their shape."""
+        import re
+        source = (ROOT / "pc_port/mips_formatter.c").read_text()
+        self.assertNotRegex(source, r'#include "[^"]*_words\.inc"')
+        for m in re.finditer(r"^static const uint32_t (k\w*Words)(\[[^\]]*\])+(.*)$",
+                             source, flags=re.M):
+            self.assertTrue(m.group(3).startswith(";"), m.group(0)[:100])
+        self.assertFalse((ROOT / "pc_port/800cf02c_overlay_words.inc").exists())
+        cmake = (ROOT / "CMakeLists.txt").read_text()
+        self.assertNotIn("extract_asm_words.py", cmake)
 
 
 if __name__ == "__main__":

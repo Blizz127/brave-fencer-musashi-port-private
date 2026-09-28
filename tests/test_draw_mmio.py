@@ -2,7 +2,7 @@
 from pathlib import Path
 import subprocess
 import pytest
-from test_bios_event_callbacks import _generate_formatter_includes
+from test_bios_event_callbacks import _generate_formatter_includes, _sync_code_image
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -55,6 +55,7 @@ def test_checked_draw_mmio_and_source_guards(tmp_path, mutation):
         str(ROOT / "pc_port/boot_memory.c"), str(ROOT / "pc_port/gpu_controller.c"),
         *extra, "-o", str(probe),
     ], check=True, timeout=40)
+    _sync_code_image(generated)
     run = subprocess.run([str(probe)], capture_output=True, text=True, timeout=15)
     if word_case:
         assert run.returncode == 0, run.stdout + run.stderr

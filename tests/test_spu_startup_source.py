@@ -6,7 +6,7 @@ import struct
 import subprocess
 import tempfile
 import pytest
-from test_bios_event_callbacks import _generate_formatter_includes
+from test_bios_event_callbacks import _generate_formatter_includes, _sync_code_image
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -49,4 +49,5 @@ def test_spu_startup_source_fixture():
             str(ROOT / "src/main/80042c64.c"),
             "-lcrypto", "-o", str(probe),
         ], check=True, timeout=30)
+        _sync_code_image(generated)
         subprocess.run([str(probe), str(exe)], check=True, timeout=30)

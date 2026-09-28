@@ -3,7 +3,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import pytest
-from test_bios_event_callbacks import _generate_formatter_includes
+from test_bios_event_callbacks import _generate_formatter_includes, _sync_code_image
 
 ROOT=Path(__file__).resolve().parents[1]
 
@@ -22,4 +22,5 @@ def test_list_loader_dispatch_and_vsync_source():
             '-I',str(ROOT/'include'),'-I',str(ROOT/'pc_port/include'),'-I',str(generated),
             str(ROOT/'tests/list_loader_probe.c'),str(ROOT/'pc_port/boot_memory.c'),
             str(ROOT/'src/main/80042ce8.c'),'-lcrypto','-o',str(probe)],check=True,timeout=30)
+        _sync_code_image(generated)
         subprocess.run([str(probe),str(exe)],check=True,timeout=15)

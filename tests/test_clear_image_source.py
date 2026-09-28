@@ -5,7 +5,7 @@ import re
 import struct
 import subprocess
 import pytest
-from test_bios_event_callbacks import _generate_formatter_includes
+from test_bios_event_callbacks import _generate_formatter_includes, _sync_code_image
 ROOT=Path(__file__).resolve().parents[1]
 
 @pytest.mark.parametrize('variant',['baseline','packet_mutant','rgb_mutant','sanitizers'])
@@ -27,6 +27,7 @@ def test_clear_image_source(tmp_path,variant):
     subprocess.run(['clang' if variant=='sanitizers' else 'cc','-std=c99',*flags,'-Wall','-Wextra','-Werror','-Wno-parentheses',
         '-ffunction-sections','-fdata-sections','-Wl,--gc-sections','-I',str(ROOT/'include'),'-I',str(ROOT/'pc_port/include'),'-I',str(generated),
         str(ROOT/'tests/clear_image_source_probe.c'),*[str(ROOT/'pc_port'/f) for f in ('boot_memory.c','gpu_controller.c','dma_controller.c','irq_controller.c','scanline_timer.c')],'-lcrypto','-o',str(binary)],check=True,timeout=90)
+    _sync_code_image(generated)
     run=subprocess.run([str(binary),str(exe)],capture_output=True,text=True,timeout=30)
     if variant.endswith('mutant'):
         assert run.returncode!=0,'semantic mutant passed: '+variant

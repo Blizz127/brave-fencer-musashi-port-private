@@ -6,7 +6,7 @@ import struct
 import subprocess
 import tempfile
 import pytest
-from test_bios_event_callbacks import _generate_formatter_includes
+from test_bios_event_callbacks import _generate_formatter_includes, _sync_code_image
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -49,6 +49,7 @@ def _run(mutation=None, compiler='cc', extra_flags=()):
             str(ROOT/'tests/directory_source_probe.c'),str(ROOT/'pc_port/boot_memory.c'),
             str(ROOT/'pc_port/disc_media.c'),'-lcrypto','-o',str(probe)],capture_output=True,text=True,timeout=60)
         assert result.returncode==0,result.stderr
+        _sync_code_image(generated)
         result=subprocess.run([str(probe),str(image_path),str(cue),str(binary),*args],capture_output=True,text=True,timeout=30)
         assert result.returncode==0,result.stdout+result.stderr
         return result.stdout
