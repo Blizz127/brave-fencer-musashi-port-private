@@ -116,6 +116,17 @@ static int pc_disp_env(void *self, const BfmPlatDispEnv *e) {
 #define V(i) q->v[i]
 
 static void draw_one(const BfmPlatPrim *q) {
+    /* Untextured semi-transparent prims blend with the texpage in effect
+     * (its abr): hand PsyCross the prim's own, as a textured one carries it. */
+    if ((q->flags & BFM_PRIM_FLAG_SEMI_TRANS) &&
+        (q->kind == BFM_PRIM_POLY_F3 || q->kind == BFM_PRIM_POLY_F4 ||
+         q->kind == BFM_PRIM_POLY_G3 || q->kind == BFM_PRIM_POLY_G4 ||
+         q->kind == BFM_PRIM_LINE_F || q->kind == BFM_PRIM_LINE_G || q->kind == BFM_PRIM_TILE)) {
+        DR_TPAGE t;
+        setDrawTPage(&t, 1, 0, q->tpage);
+        termPrim(&t);
+        DrawPrim(&t);
+    }
     switch (q->kind) {
     case BFM_PRIM_POLY_F3: { POLY_F3 p; setPolyF3(&p); termPrim(&p);
         setRGB0(&p, V(0).r, V(0).g, V(0).b);
@@ -205,6 +216,7 @@ static int pc_download(void *self, const BfmPlatRect *r, uint16_t *px) {
     RECT16 rr;
     (void)self;
     to_rect(&rr, r);
+    DrawSync(0);   /* queued draws first, so the read sees them */
     StoreImage(&rr, (u_long *)px);
     DrawSync(0);
     return BFM_PLAT_OK;
@@ -212,6 +224,9 @@ static int pc_download(void *self, const BfmPlatRect *r, uint16_t *px) {
 
 static int pc_present(void *self) {
     PsyCrossRenderer *s = (PsyCrossRenderer *)self;
+    /* DrawPrim only queues: DrawSync draws the queued splits (and reads the
+     * framebuffer back into PsyCross's VRAM) before the scene is shown */
+    DrawSync(0);
     if (s->in_scene) {
         PsyX_EndScene();
         s->in_scene = 0;

@@ -53,7 +53,7 @@ class GpuBridgeTests(unittest.TestCase):
     def test_bridge_protocol_and_pixels(self):
         out = self.build_run("bridge", ["-fsanitize=address,undefined",
                                         "-fno-sanitize-recover=all"], SOURCES)
-        self.assertIn("12 prims", out)
+        self.assertIn("15 prims", out)   # incl. the read-back tile and the gouraud polyline
 
     def test_bridge_matches_controller(self):
         d = controller_dir()

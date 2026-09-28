@@ -214,6 +214,7 @@ static int controller_blends(void) {
 /* Does it draw raw-texture rects (0x65) and modulate textured rects? */
 static int controller_raw_rects(void) { return (cvram[0][81] & 0x7fff) != rgb15(6, 4, 2); }
 static int controller_modulates(void) { return (cvram[8][81] & 0x7fff) != rgb15(3, 28, 16); }
+static int controller_polylines(void) { return (cvram[60][10] & 0x7fff) != rgb15(6, 4, 2); }
 #endif
 
 int main(void) {
@@ -280,6 +281,35 @@ int main(void) {
     /* GP1 10 info: draw offset */
     CHECK(bfm_gpu_bridge_write32(&b, BFM_GPU_BRIDGE_GP1, 0x10000007u));
     CHECK(bfm_gpu_bridge_read32(&b, BFM_GPU_BRIDGE_GP0, &v) && v == 2);
+    /* tee-mode VRAM reads: the renderer's VRAM, refreshed after a draw */
+    {
+        uint16_t px = 0;
+        int downloads = rb.downloads;
+        CHECK(bfm_gpu_bridge_read_vram(&b, 30, 16, &px) && px == rb.vram.px[16 * 1024 + 30]);
+        CHECK(bfm_gpu_bridge_read_vram(&b, 1022, 400, &px) && px == 1);
+        CHECK(rb.downloads == downloads + 1);            /* one snapshot for both */
+        CHECK(bfm_gpu_bridge_write32(&b, BFM_GPU_BRIDGE_GP0, 0x60FFFFFFu));   /* white tile */
+        CHECK(bfm_gpu_bridge_write32(&b, BFM_GPU_BRIDGE_GP0, (500u << 16) | 900u));
+        CHECK(bfm_gpu_bridge_write32(&b, BFM_GPU_BRIDGE_GP0, 0x00010001u));
+        CHECK(bfm_gpu_bridge_read_vram(&b, 900, 500, &px) && (px & 0x7fff) == 0x7fff);
+        CHECK(rb.downloads == downloads + 2);            /* the draw made it stale */
+    }
+    /* GP1 03: display enable */
+    CHECK(!bfm_gpu_bridge_display_enabled(&b));
+    CHECK(bfm_gpu_bridge_write32(&b, BFM_GPU_BRIDGE_GP1, 0x03000000u));
+    CHECK(bfm_gpu_bridge_display_enabled(&b));
+    /* gouraud polyline: a vertex word shaped like the terminator is still
+     * a vertex; the terminator counts in a colour position */
+    {
+        size_t before = rb.prims;
+        static const uint32_t pl[] = {0x58000010u, (70u << 16) | 0u, 0x00000020u, 0x50105010u,
+                                      0x00000030u, (72u << 16) | 5u, 0x55555555u};
+        unsigned k;
+        for (k = 0; k < sizeof pl / sizeof pl[0]; k++)
+            CHECK(bfm_gpu_bridge_write32(&b, BFM_GPU_BRIDGE_GP0, pl[k]));
+        CHECK(bfm_gpu_bridge_flush(&b) == BFM_PLAT_OK && rb.prims == before + 2);
+        CHECK(b.have == 0);   /* the terminator closed it; not waiting for more */
+    }
     /* vblank presents */
     CHECK(bfm_gpu_bridge_vblank(&b) == BFM_PLAT_OK && rb.presents == 1 && b.stats.frames == 1);
     printf("bridge: %llu GP0 words, %llu commands, %zu prims in %d submits, %d envs, %d uploads\n",
@@ -290,8 +320,8 @@ int main(void) {
     run_controller();
     {
         /* need: 0 always, 1 semi-transparency, 2 raw-texture rects,
-         * 3 rect modulation; a region whose feature the controller lacks is
-         * reported, not asserted */
+         * 3 rect modulation, 4 polylines; a region whose feature the
+         * controller lacks is reported, not asserted */
         typedef struct Region { const char *name; int x, y, w, h, semi, need; } Region;
         /* gap: a known difference of native-lane's gpu_controller (reported,
          * not asserted): raw-texture rects 0x65/67/.. are not drawn;
@@ -314,16 +344,19 @@ int main(void) {
             {"raw 0x65 4-bit sprite", 80, 12, 8, 1, 0, 2},
             {"raw semi 0x67 sprite", 80, 20, 5, 2, 1, 2},
             {"modulated 0x64 0x101010", 80, 8, 5, 2, 0, 3},
+            {"polyline 0x48", 0, 58, 24, 7, 0, 4},
         };
-        int has[4], r;
-        static const char *what[4] = {"", "semi-transparency", "raw-texture rects",
-                                      "rect modulation"};
+        int has[5], r;
+        static const char *what[5] = {"", "semi-transparency", "raw-texture rects",
+                                      "rect modulation", "polylines"};
         has[0] = 1;
         has[1] = controller_blends();
         has[2] = controller_raw_rects();
         has[3] = controller_modulates();
-        printf("controller: semi-transparency %s, raw-texture rects %s, rect modulation %s\n",
-               has[1] ? "yes" : "no", has[2] ? "yes" : "no", has[3] ? "yes" : "no");
+        has[4] = controller_polylines();
+        printf("controller: semi-transparency %s, raw-texture rects %s, rect modulation %s, "
+               "polylines %s\n", has[1] ? "yes" : "no", has[2] ? "yes" : "no",
+               has[3] ? "yes" : "no", has[4] ? "yes" : "no");
         for (r = 0; r < (int)(sizeof regions / sizeof regions[0]); r++) {
             const Region *g = &regions[r];
             int d = compare_rect(g->name, g->x, g->y, g->w, g->h, 0);

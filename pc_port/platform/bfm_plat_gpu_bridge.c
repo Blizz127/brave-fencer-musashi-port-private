@@ -12,12 +12,38 @@ void bfm_gpu_bridge_init(BfmGpuBridge *b) {
     b->env.clip.h = 512;
     b->disp.disp.w = 320;
     b->disp.disp.h = 240;
+    b->snap_dirty = 1;
+    b->display_disabled = 1;
 }
 
 void bfm_gpu_bridge_free(BfmGpuBridge *b) {
     free(b->up_px);
     free(b->rd_px);
+    free(b->snap);
     b->up_px = b->rd_px = NULL;
+    b->snap = NULL;
+}
+
+int bfm_gpu_bridge_display_enabled(const BfmGpuBridge *b) {
+    return b && !b->display_disabled;
+}
+
+int bfm_gpu_bridge_read_vram(BfmGpuBridge *b, uint16_t x, uint16_t y, uint16_t *pixel) {
+    if (!b || !pixel) return 0;
+    if (!b->snap) {
+        b->snap = (uint16_t *)calloc(1024u * 512u, 2);
+        if (!b->snap) return 0;
+        b->snap_dirty = 1;
+    }
+    if (b->snap_dirty) {
+        BfmPlatRect all = {0, 0, 1024, 512};
+        bfm_gpu_bridge_flush(b);
+        if (bfm_plat_renderer_download_vram(&all, b->snap) != BFM_PLAT_OK)
+            memset(b->snap, 0, 1024u * 512u * 2u);
+        b->snap_dirty = 0;
+    }
+    *pixel = b->snap[(size_t)(y & 511u) * 1024u + (x & 1023u)];
+    return 1;
 }
 
 int bfm_gpu_bridge_selected(const BfmPlatConfig *cfg) {
@@ -27,6 +53,7 @@ int bfm_gpu_bridge_selected(const BfmPlatConfig *cfg) {
 int bfm_gpu_bridge_flush(BfmGpuBridge *b) {
     int r = BFM_PLAT_OK;
     if (b->nbatch) {
+        b->snap_dirty = 1;
         r = bfm_plat_renderer_submit(b->batch, b->nbatch);
         b->stats.submits++;
         b->nbatch = 0;
@@ -134,6 +161,7 @@ static BfmPlatRect xfer_rect(uint32_t xy, uint32_t wh) {
 
 static void finish_upload(BfmGpuBridge *b) {
     bfm_gpu_bridge_flush(b);
+    b->snap_dirty = 1;
     split(&b->up_rect, b->up_px, 1);
     b->stats.uploads++;
     b->up_total = b->up_count = 0;
@@ -170,6 +198,7 @@ static void run_command(BfmGpuBridge *b) {
                                    BFM_GPU_BRIDGE_BATCH - b->nbatch);
         b->nbatch += n;
         b->stats.prims += n;
+        if (n) b->snap_dirty = 1;   /* queued: a VRAM read must flush first */
         return;
     }
     switch (op) {
@@ -199,6 +228,7 @@ static void run_command(BfmGpuBridge *b) {
             free(px);
         }
         b->stats.copies++;
+        b->snap_dirty = 1;
         return;
     }
     if (op >= 0xc0 && op < 0xe0) {        /* VRAM -> CPU (GPUREAD) */
@@ -231,8 +261,14 @@ static int gp0(BfmGpuBridge *b, uint32_t w) {
     }
     if (b->have < 256) b->cmd[b->have++] = w;
     if (b->polyline) {
-        /* terminator after at least two vertices */
-        if (b->have >= 4 && (w & 0xf000f000u) == 0x50005000u) {
+        /* The terminator (w & 0xF000F000) == 0x50005000 counts only after
+         * two vertices, in a vertex position (flat: cmd v0 v1 v2 ..) or a
+         * colour position (gouraud: c0 v0 c1 v1 c2 ..); a gouraud vertex
+         * word that looks like one is still a vertex. */
+        unsigned idx = b->have - 1u;
+        int gouraud = (b->cmd[0] >> 24) & 0x10;
+        int term_slot = gouraud ? (idx >= 4 && (idx & 1u) == 0) : idx >= 3;
+        if (term_slot && (w & 0xf000f000u) == 0x50005000u) {
             run_command(b);
             b->have = 0;
         } else if (b->have >= 256) {

@@ -259,7 +259,9 @@ int bfm_gl_batch_scene_at(const BfmGlBatch *b, int x, int y);
 void bfm_gl_batch_target_size(const BfmGlBatch *b, int target, int *w, int *h);
 
 /* ---- CPU reference rasteriser (tests, and the definition of exact) ----
- * Draws TILE / SPRITE / FILL into a VRAM image with PS1 semantics: env clip
+ * Draws TILE / SPRITE / FILL and lines (Bresenham, inclusive endpoints,
+ * flat colour of v0, clipped to the drawing area) into a VRAM image with
+ * PS1 semantics: env clip
  * and offset, texture window, CLUT decode, transparency of 0x0000,
  * modulation (as the GL path rounds it: bfm_gl_modulate >> 3), semi-
  * transparency by the prim's abr on untextured pixels and STP texels,
