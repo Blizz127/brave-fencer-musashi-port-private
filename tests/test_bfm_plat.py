@@ -809,6 +809,11 @@ bfm.on("frame_end", function() if seen.late == nil then
                 "BFM_GUEST_LOCATION": "0x800B9A08u", "BFM_GUEST_NPC_TIMES": "0x800BA2B8u"}
         for name, value in want.items():
             self.assertRegex(header, rf"#define {name}\s+{value}")
+        modding = (ROOT / "docs/MODDING.md").read_text()
+        for name, value in want.items():
+            self.assertIn(value.rstrip("u").replace("0x", "0x"), modding, name)
+        for sample in ("examples/cheat_pack", "examples/hello", "examples/lua_hello"):
+            self.assertIn(sample, modding)
         pack = (ROOT / "pc_port/mods/examples/cheat_pack/cheats.ini").read_text()
         for addr in ("0x80078EB4", "0x80078EB2", "0x80078EB8", "0x80078EB6", "0x80078E8C"):
             self.assertIn(addr, pack)
