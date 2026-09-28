@@ -39,6 +39,16 @@ INFERRED: dict[int, tuple[str, str]] = {
     0x80059BFC: ("ClearOTagR", "main loop: (OT base, 0x1000) and (OT, 4) each frame (vendor src/boot.c)"),
     0x800596F4: ("DrawSync", "main loop: func_800596F4(0) right before VSync (vendor src/boot.c)"),
     0x80059658: ("SetDispMask", "called with 1 after the first frame is set up (resident md_MAIN_003)"),
+    # libgs (from the repo's decompiled C of each address and the splat object names)
+    0x80052460: ("GsSortFastSprite", "libgs object 2D_SP1; builds E1 + SPRT (0x64) from a GsSPRITE without scale/rotate and links it into a GsOT"),
+    0x80052D90: ("GsInitCoordinate2", "copies GsIDMATRIX into coord, sets super, clears flag, links super->sub (repo src/main/80052d90.c)"),
+    0x80052E38: ("GsSetLsMatrix", "SetRotMatrix(m) + SetTransMatrix(m) (repo src/main/80052e38.c)"),
+    0x80053308: ("GsSetProjection", "libgs object GS_107; a SetGeomScreen(h) wrapper (repo src/main/80053308.c)"),
+    0x80053AF8: ("GsSetAmbient", "SetBackColor(r>>4, g>>4, b>>4) (repo src/main/80053af8.c)"),
+    0x800538EC: ("GsSetLightMode", "libgs object GS_108 (with GsSetFogParam); stores mode 0..3 (repo src/main/800538ec.c)"),
+    0x80054514: ("GsGetLw", "coordinate-hierarchy walk to a world matrix with the flag cache (repo src/main/80054514.c)"),
+    0x800547D8: ("GsGetLs", "GsGetLw-shaped walk, then multiplied with the world-screen matrix (repo src/main/800547d8.c)"),
+    0x80054AAC: ("GsGetLws", "GsGetLw/GsGetLs pair in one walk, three arguments (repo src/main/80054aac.c)"),
 }
 
 H = "hle"
@@ -77,6 +87,27 @@ TABLE: dict[str, Status] = {
     "DrawOTag": Status(H, 1, 0, "bfm_psyq_DrawOTag", "walks the guest OT (24-bit links) and decodes GP0 packets to BfmPlatPrim; unknown codes skipped and counted"),
     "SetDrawEnv": Status(S, 0, 0, None, "builds a DR_ENV packet in guest RAM (TBD)"),
     "DrawSyncCallback": Status(S, 0, 0, None, "callback into guest code: needs the lane's guest-call thunk"),
+    # --- libgs: packet builders over guest RAM (pc_port/platform/psyq/bfm_psyq_libgs.c)
+    "GsSortLine": Status(H, 3, 0, "bfm_psyq_GsSortLine", "E1 + LINE_F2 into GsOUT_PACKET_P, linked into the guest GsOT; drawn by DrawOTag"),
+    "GsSortFastSprite": Status(H, 3, 0, "bfm_psyq_GsSortFastSprite", "E1 + SPRT into GsOUT_PACKET_P, linked into the guest GsOT; drawn by DrawOTag"),
+    "GsInitCoordinate2": Status(H, 2, 0, "bfm_psyq_GsInitCoordinate2", "guest GsCOORDINATE2 fields"),
+    "GsMapModelingData": Status(H, 1, 0, "bfm_psyq_GsMapModelingData", "relocates a TMD object table in guest RAM once"),
+    "GsSetLightMode": Status(H, 1, 0, "bfm_psyq_GsSetLightMode", "libgs global at 0x800C6DC8"),
+    "GsSetLsMatrix": Status(P, 1, 0, "bfm_psyq_GsSetLsMatrix", "GTE bridge: SetRotMatrix + SetTransMatrix"),
+    "GsSetProjection": Status(P, 1, 0, "bfm_psyq_GsSetProjection", "GTE bridge: SetGeomScreen"),
+    "GsSetAmbient": Status(P, 3, 0, "bfm_psyq_GsSetAmbient", "GTE bridge: RBK/GBK/BBK = (c >> 4) << 4"),
+    "SetBackColor": Status(P, 3, 0, "bfm_psyq_SetBackColor", "GTE bridge: RBK/GBK/BBK = c << 4"),
+    "GsSortSprite": Status(S, 0, 0, None, "scaled/rotated sprite: POLY_FT4 corners via rsin/rcos with libgs's exact rounding; next after GsSortFastSprite"),
+    "GsSortBg": Status(S, 0, 0, None, "GsBG cell-map walker with scaling and rotation: large"),
+    "GsSortFastBg": Status(S, 0, 0, None, "GsBG cell-map walker (unscaled): moderate; next"),
+    "GsGetLw": Status(S, 0, 0, None, "coordinate-hierarchy walk with libgs's flag cache and GTE matrix products: must match the cache semantics exactly"),
+    "GsGetLs": Status(S, 0, 0, None, "as GsGetLw, plus the world-screen product"),
+    "GsGetLws": Status(S, 0, 0, None, "as GsGetLw/GsGetLs"),
+    "GsSetRefView2L": Status(S, 0, 0, None, "view matrix from GsRVIEW2 (ratan2, rsin/rcos, matrix products): large"),
+    "GsLinkObject5": Status(S, 0, 0, None, "TMD object packet preset (GsDOBJ5): large; 2 call sites"),
+    "GsPresetObject": Status(S, 0, 0, None, "TMD object packet preset: large; 2 call sites"),
+    "GsInitGraph2": Status(S, 0, 0, None, "display/draw init over libgs globals and libgpu: low call count"),
+    "GsSetFogParam": Status(S, 0, 0, None, "fog: 1 call site"),
     # --- libetc
     "VSync": Status(H, 1, 1, "bfm_psyq_VSync", "n>1 waits n fields via bfm_plat_timing_vsync; n=0 one field; n=1 returns 0 (no hcount); n<0 returns the field counter"),
     "ResetCallback": Status(S, 0, 0, None, "interrupt callbacks belong to the IRQ HLE"),
@@ -130,7 +161,7 @@ TABLE: dict[str, Status] = {
 
 SEGMENT_NOTES = {
     "snd": "sound driver: runs as guest code over the SPU HLE",
-    "libgs": "libgs: high-level on top of libgpu/libgte; guest code for now",
+    "libgs": "libgs internal (TMD object sort/preset, BG and clip setup): large or rarely called; guest code for now",
     "libgte": "not in PsyCross; an HLE on the gteRegs bank via the bridge is possible",
     "libgpu": "libgpu internal",
     "libcd": "CD: guest code over the CD controller HLE",

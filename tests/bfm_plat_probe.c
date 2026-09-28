@@ -1624,6 +1624,93 @@ static int group_psyq(int argc, char **argv) {
     return 0;
 }
 
+
+/* ------------------------------------------------------------------ libgs */
+static int group_libgs(void) {
+    BfmPlatOutput o;
+    BfmPlatRendererStats st;
+    const uint32_t PKT = 0x80100000, OT = 0x80090000, ORG = 0x80091000;
+    uint32_t w;
+    reset_all();
+    memset(ram, 0, sizeof ram);
+    bfm_psyq_reset();
+    bfm_psyq_set_ram(ram, sizeof ram);
+    memset(&o, 0, sizeof o);
+    CHECK(bfm_plat_renderer_open("null", &o, NULL) == BFM_PLAT_OK);
+    g32(0x800A5E60, PKT);                                  /* GsOUT_PACKET_P */
+    put16(0x800A6548, 10); put16(0x800A654A, 20);          /* draw offset */
+    g32(OT + 0, 16); g32(OT + 4, ORG); g32(OT + 8, 0);     /* GsOT: length, org, offset/point */
+    CHECK(call("ClearOTagR", ORG, 16, 0, 0));
+
+    /* GsSortLine: attribute bit 30 = semi-transparent, bits 28-29 = rate 1 */
+    g32(0x80092000, 0x50000000);
+    put16(0x80092004, 1); put16(0x80092006, 2); put16(0x80092008, 30); put16(0x8009200A, 40);
+    ram[0x9200C] = 0x11; ram[0x9200D] = 0x22; ram[0x9200E] = 0x33;
+    CHECK(call("GsSortLine", 0x80092000, OT, 5, 0));
+    CHECK(r32(PKT + 4) == (0xE1000200u | 0x20u));
+    CHECK(r32(PKT + 8) == 0x42332211u);
+    CHECK(r32(PKT + 12) == ((22u << 16) | 11u) && r32(PKT + 16) == ((60u << 16) | 40u));
+    CHECK(r32(PKT) == (0x04000000u | ((ORG + 4 * 4) & 0xFFFFFF)));   /* old slot 5 -> slot 4 */
+    CHECK(r32(ORG + 5 * 4) == (PKT & 0xFFFFFF));
+    CHECK(r32(0x800A5E60) == PKT + 20);
+
+    /* GsSortFastSprite: brightness-off (bit 6) + semi (bit 30), tpage 5, clut (320, 480) */
+    {
+        uint32_t sp = 0x80092100, p2 = PKT + 20;
+        g32(sp, 0x40000040);
+        put16(sp + 4, 100); put16(sp + 6, 50); put16(sp + 8, 16); put16(sp + 10, 32);
+        put16(sp + 12, 5); ram[(sp & 0x1FFFFF) + 14] = 8; ram[(sp & 0x1FFFFF) + 15] = 16;
+        put16(sp + 16, 320); put16(sp + 18, 480);
+        ram[(sp & 0x1FFFFF) + 20] = 0x80; ram[(sp & 0x1FFFFF) + 21] = 0x81; ram[(sp & 0x1FFFFF) + 22] = 0x82;
+        CHECK(call("GsSortFastSprite", sp, OT, 5, 0));
+        CHECK(r32(p2 + 4) == (0xE1000200u | 5u));
+        CHECK(r32(p2 + 8) == (0x64000000u | 0x02000000u | 0x01000000u | 0x828180u));
+        CHECK(r32(p2 + 12) == ((70u << 16) | 110u));
+        CHECK(r32(p2 + 16) == (8u | (16u << 8) | (20u << 16) | (480u << 22)));
+        CHECK(r32(p2 + 20) == ((32u << 16) | 16u));
+        CHECK(r32(p2) == (0x05000000u | (PKT & 0xFFFFFF)));        /* chained in front of the line */
+        CHECK(r32(ORG + 5 * 4) == (p2 & 0xFFFFFF) && r32(0x800A5E60) == p2 + 24);
+        /* zero width or the display-off bit: nothing emitted */
+        put16(sp + 8, 0);
+        CHECK(call("GsSortFastSprite", sp, OT, 6, 0) && r32(0x800A5E60) == p2 + 24);
+        put16(sp + 8, 16); g32(sp, 0x80000000);
+        CHECK(call("GsSortFastSprite", sp, OT, 6, 0) && r32(0x800A5E60) == p2 + 24);
+    }
+
+    /* DrawOTag over the GsOT: the sprite then the line, one packet each */
+    bfm_psyq_reset();
+    CHECK(call("DrawOTag", ORG + 15 * 4, 0, 0, 0));
+    bfm_plat_renderer_stats(&st);
+    CHECK(st.prims_by_kind[BFM_PRIM_SPRITE] == 1 && st.prims_by_kind[BFM_PRIM_LINE_F] == 1);
+    {
+        BfmPsyqStats ps;
+        bfm_psyq_stats(&ps);
+        CHECK(ps.ot_packets == 2 && ps.unknown_commands == 0);
+    }
+
+    /* GsInitCoordinate2 */
+    for (w = 0; w < 8; w++) g32(0x800AE620 + 4 * w, 0x1000 * (w + 1));
+    g32(0x80093100, 0xFFFFFFFF);
+    CHECK(call("GsInitCoordinate2", 0x80093000, 0x80093100, 0, 0));
+    CHECK(r32(0x80093100) == 0 && r32(0x80093104) == 0x1000 && r32(0x80093120) == 0x8000);
+    CHECK(r32(0x80093148) == 0x80093000 && r32(0x8009304C) == 0x80093100);
+    CHECK(call("GsInitCoordinate2", 0, 0x80093200, 0, 0) && r32(0x80093248) == 0);
+
+    /* GsMapModelingData: 2 objects, offsets relative to the object table */
+    g32(0x80094000, 0x41); g32(0x80094004, 0); g32(0x80094008, 2);
+    g32(0x8009400C, 0x40); g32(0x80094014, 0x80); g32(0x8009401C, 0xC0);
+    g32(0x80094028, 0x100); g32(0x80094030, 0x140); g32(0x80094038, 0x180);
+    CHECK(call("GsMapModelingData", 0x80094004, 0, 0, 0));
+    CHECK(r32(0x80094004) == 1 && r32(0x8009400C) == 0x8009404C && r32(0x8009401C) == 0x800940CC);
+    CHECK(r32(0x80094028) == 0x8009410C && r32(0x80094038) == 0x8009418C);
+    CHECK(call("GsMapModelingData", 0x80094004, 0, 0, 0) && r32(0x8009400C) == 0x8009404C);   /* once */
+
+    /* GsSetLightMode */
+    CHECK(call("GsSetLightMode", 2, 0, 0, 0) && r32(0x800C6DC8) == 2);
+    CHECK(call("GsSetLightMode", 7, 0, 0, 0) && r32(0x800C6DC8) == 2);
+    return 0;
+}
+
 #ifdef BFM_PLAT_WITH_LUA
 /* lua MODSDIR: the pytest writes lua_hello + test mods there. */
 static int group_lua(int argc, char **argv) {
@@ -1744,6 +1831,7 @@ int main(int argc, char **argv) {
     else if (strcmp(g, "sha256") == 0) r = group_sha256();
     else if (strcmp(g, "disc_check") == 0) r = group_disc_check(argc - 2, argv + 2);
     else if (strcmp(g, "disc_init") == 0) r = group_disc_init(argc - 2, argv + 2);
+    else if (strcmp(g, "libgs") == 0) r = group_libgs();
     else if (strcmp(g, "psyq") == 0) r = group_psyq(argc - 2, argv + 2);
     else if (strcmp(g, "watch") == 0) r = group_watch(argc - 2, argv + 2);
     else if (strcmp(g, "cheat_pack") == 0) r = group_cheat_pack(argc - 2, argv + 2);

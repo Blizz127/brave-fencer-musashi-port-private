@@ -127,6 +127,12 @@ int main(void) {
     CHECK(memcmp(ram + 0x5100, ram + 0x1100, 18) == 0);
     CHECK(call("CompMatrix", 0x80002000, 0x80002000, 0x80005200, 0) && r32(0x80005200 + 28) == 2000);
 
+    /* libgs over the GTE */
+    CHECK(call("GsSetLsMatrix", 0x80002000, 0, 0, 0) && CFC2(0) == 4096u && CFC2(7) == 1000u);
+    CHECK(call("GsSetProjection", 512, 0, 0, 0) && CFC2(26) == 512u);
+    CHECK(call("GsSetAmbient", 0x7F, 0x80, 0xFFF, 0) && CFC2(13) == 0x70u && CFC2(14) == 0x80u && CFC2(15) == 0xFF0u);
+    CHECK(call("SetBackColor", 1, 2, 3, 0) && CFC2(13) == 16u && CFC2(14) == 32u && CFC2(15) == 48u);
+
     /* bad pointer refuses before the bridge is entered */
     {
         int before = begins;

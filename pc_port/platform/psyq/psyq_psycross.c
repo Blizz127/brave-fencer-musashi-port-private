@@ -293,3 +293,44 @@ int bfm_psyq_RotTransPers4(uint32_t *r) {
     r[2] = (uint32_t)sz;
     return 1;
 }
+
+/* ---- libgs wrappers over the GTE (bridge) ---- */
+
+/* GsSetLsMatrix(m) = SetRotMatrix(m); SetTransMatrix(m) */
+int bfm_psyq_GsSetLsMatrix(uint32_t *r) {
+    MATRIX *m = (MATRIX *)P(A(0), sizeof(MATRIX));
+    if (!m) return 0;
+    GTE_BEGIN();
+    SetRotMatrix(m);
+    SetTransMatrix(m);
+    GTE_END(0);
+    return 1;
+}
+
+/* GsSetProjection(h) = SetGeomScreen(h) */
+int bfm_psyq_GsSetProjection(uint32_t *r) {
+    GTE_BEGIN();
+    SetGeomScreen((int)(A(0) & 0xFFFFu));
+    GTE_END(0);
+    return 1;
+}
+
+/* SetBackColor(r, g, b): RBK/GBK/BBK = component << 4 (retail func_800491FC) */
+int bfm_psyq_SetBackColor(uint32_t *r) {
+    GTE_BEGIN();
+    CTC2(A(0) << 4, 13);
+    CTC2(A(1) << 4, 14);
+    CTC2(A(2) << 4, 15);
+    GTE_END(0);
+    return 1;
+}
+
+/* GsSetAmbient(r, g, b) = SetBackColor(r >> 4, g >> 4, b >> 4) */
+int bfm_psyq_GsSetAmbient(uint32_t *r) {
+    GTE_BEGIN();
+    CTC2((uint32_t)(((int32_t)A(0) >> 4) << 4), 13);
+    CTC2((uint32_t)(((int32_t)A(1) >> 4) << 4), 14);
+    CTC2((uint32_t)(((int32_t)A(2) >> 4) << 4), 15);
+    GTE_END(0);
+    return 1;
+}

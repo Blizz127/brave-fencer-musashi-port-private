@@ -111,6 +111,10 @@ def gte_shape_names(words_by_addr):
             out[addr] = "SetTransMatrix"
         elif sorted(rds) == [8, 9, 10, 11, 12] and pure:
             out[addr] = "SetLightMatrix"
+        elif rds == [13, 14, 15] and sum(1 for w in words if (w >> 26) == 0 and (w & 0x3F) == 0 and w) == 3 \
+                and all(w == 0 or (w >> 21) == 0x246 or w == 0x03E00008 or ((w >> 26) == 0 and (w & 0x3F) == 0)
+                        for w in words):
+            out[addr] = "SetBackColor"                        # sll 4 x3 + ctc2 13..15
         elif sorted(rds) == [16, 17, 18, 19, 20] and pure:
             out[addr] = "SetColorMatrix"
     return out

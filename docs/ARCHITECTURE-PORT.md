@@ -739,9 +739,44 @@ static const MusashiNativeLaneEntry psyq_entries[] = {
 - **Callbacks** (DrawSyncCallback, VSyncCallback, DMACallback…) call guest
   code and stay with port-int's IRQ HLE and `musashi_native_guest_call`.
 
+**libgs** (`psyq/bfm_psyq_libgs.c`, and the GTE ones in `psyq_psycross.c`).
+libgs's 2D sort calls build GPU packets in the packet area whose pointer is
+at GsOUT_PACKET_P (`0x800A5E60`), add the draw-buffer offset (`0x800A6548`/
+`0x800A654A`), and link the packets into a guest GsOT. The HLE does exactly
+that, so the packets render in OT order at DrawOTag, through the HLE packet
+decoder or the interpreter's GPU path, interleaved correctly with every
+other primitive in the OT. The field arithmetic follows the game's
+decompiled C of each entry.
+- **HLE:**
+  - GsSortLine (E1 + LINE_F2, 882 call sites) and GsSortFastSprite (E1 +
+    SPRT, 253 sites), each linked with libgs's OT link: slot =
+    `org + (pri − offset)·4`, where the retail code reads offset and point
+    as one word
+  - GsInitCoordinate2, GsMapModelingData (in-place TMD relocation, once),
+    GsSetLightMode
+- **Through the GTE bridge:** GsSetLsMatrix, GsSetProjection, GsSetAmbient,
+  and SetBackColor (now named by its `sll 4 + ctc2 13..15` shape).
+- **Still stub, with reasons in the report:**
+  - GsSortSprite: scaled/rotated corners need libgs's exact rsin/rcos
+    rounding; next after GsSortFastSprite
+  - GsSortFastBg / GsSortBg: GsBG cell-map walkers, the second with
+    scaling and rotation
+  - GsGetLw / GsGetLs / GsGetLws: the coordinate-hierarchy walk with
+    libgs's flag cache, which must match exactly or cached matrices go
+    stale
+  - GsSetRefView2L
+  - the TMD object preset and sort routines (GsLinkObject5, GsPresetObject,
+    OBJT/OBJT2/PRESET2): large per-primitive GTE transform and lighting
+    code, with 2 call sites each
+  - GsInitGraph and the clip/offset setters: libgs globals, 1–4 call sites
+  - GsSwapDispBuff, GsDrawOt and GsClearOt are not called by the game; it
+    runs its own double buffer through libgpu (PutDrawEnv/PutDispEnv,
+    ClearOTagR, DrawOTag, which are HLE).
+
 **Next:**
 - name the 96 unnamed entries (their Psy-Q objects are listed in the
   report)
+- libgs: GsSortSprite, GsSortFastBg, then GsGetLw/GsGetLs
 - HLE the libgte functions PsyCross lacks (Square0/12, VectorNormalSS,
   ApplyTransposeMatrixLV, csqrt…) on the same bank through the bridge
 - SetDrawEnv (DR_ENV packets) and printf (guest varargs)
@@ -762,7 +797,8 @@ add_library(bfm_plat STATIC
     pc_port/platform/bfm_plat_events.c   pc_port/platform/bfm_plat_hook_sites.c
     pc_port/platform/bfm_plat_image.c    pc_port/platform/bfm_plat_font.c
     pc_port/platform/bfm_plat_widescreen.c
-    pc_port/platform/psyq/bfm_psyq_compat.c)        # + psyq/psyq_psycross.c with PsyCross
+    pc_port/platform/psyq/bfm_psyq_compat.c
+    pc_port/platform/psyq/bfm_psyq_libgs.c)         # + psyq/psyq_psycross.c with PsyCross
 target_include_directories(bfm_plat PUBLIC pc_port/platform)
 target_link_libraries(bfm_plat PUBLIC ${CMAKE_DL_LIBS} m)
 
