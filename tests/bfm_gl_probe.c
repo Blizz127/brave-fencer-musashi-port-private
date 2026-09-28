@@ -260,9 +260,13 @@ static void test_batch(void) {
     p[1].tpage = tp(0, 2, 640, 0);
     p[1].clut = clut_of(0, 480);
     tris = bfm_gl_batch_add(&b, p, 2);
-    CHECK(tris == 3 && b.nc == 3);
-    CHECK(b.c[1].blend == 1 && !b.c[1].split_stp);
-    CHECK(b.c[2].blend == 2 && b.c[2].split_stp);
+    /* opaque and semi mode 1 share a draw (dual-source factors per
+     * fragment); mode 2 needs its own, split by STP when textured */
+    CHECK(tris == 3 && b.nc == 2);
+    CHECK(b.c[0].blend == BFM_GL_BLEND_DUAL && b.c[0].count == 12 && !b.c[0].split_stp);
+    CHECK(b.v[9].flags == (BFM_GLV_SEMI | (1u << BFM_GLV_MODE_SHIFT)));
+    CHECK(!(b.v[0].flags & BFM_GLV_SEMI));
+    CHECK(b.c[1].blend == 2 && b.c[1].split_stp);
     CHECK((b.v[9 + 3].flags & BFM_GLV_TEXTURED) && (b.v[9 + 3].flags & BFM_GLV_DITHER));
     CHECK(b.v[12].tpage == p[1].tpage && b.v[12].clut == p[1].clut);
 
@@ -273,7 +277,7 @@ static void test_batch(void) {
     p[0].w = 16; p[0].h = 8;
     bfm_gl_batch_add(&b, p, 1);
     v = &b.v[b.nv - 6];
-    CHECK(b.c[b.nc - 1].blend == -1 && b.c[b.nc - 1].count == 6);
+    CHECK(b.c[b.nc - 1].blend == BFM_GL_BLEND_DUAL && b.c[b.nc - 1].count == 6);
     CHECK(v[0].x == 105 && v[0].y == 56 && v[0].u == 10 && v[0].v == 20);
     CHECK(v[1].x == 121 && v[1].u == 26 && v[2].y == 64 && v[2].v == 28);
     CHECK((v[0].flags & BFM_GLV_RAW) && !(v[0].flags & BFM_GLV_DITHER));
@@ -440,7 +444,8 @@ static void test_replacements(void) {
     p.flags = BFM_PRIM_FLAG_SEMI_TRANS;
     p.w = 64; p.h = 64;
     bfm_gl_batch_add(&b, &p, 1);
-    CHECK(b.nc == 1 && b.c[0].repl == 1 && !b.c[0].split_stp && b.c[0].blend == 0);
+    CHECK(b.nc == 1 && b.c[0].repl == 1 && !b.c[0].split_stp &&
+          b.c[0].blend == BFM_GL_BLEND_DUAL && (b.v[0].flags & BFM_GLV_SEMI));
     CHECK(b.v[0].repl == 1 && b.v[1].s == 1.0f && b.v[2].t == 1.0f);
     bfm_gl_batch_free(&b);
 
@@ -618,7 +623,8 @@ static void test_font_overlay(void) {
     b.overlay = 1;
     bfm_gl_batch_set_display(&b, &disp, 0);
     bfm_gl_batch_add(&b, prims, n);
-    CHECK(b.nc >= 2 && b.c[0].target == BFM_GL_TARGET_WINDOW && b.c[0].blend == 0);
+    CHECK(b.nc >= 1 && b.c[0].target == BFM_GL_TARGET_WINDOW &&
+          b.c[0].blend == BFM_GL_BLEND_DUAL && (b.v[0].flags & BFM_GLV_SEMI));
     CHECK(bfm_gl_batch_scene_at(&b, 0, 0) < 0);   /* overlay owns no buffers */
     bfm_gl_batch_free(&b);
 }
@@ -1096,6 +1102,12 @@ static void exec_mask(int scale) {
     p = spr(64, 300, 32, 32, t15m2, 0, 0, 0, RAW | SEMI | MS, 0, 0, 0); both(&p);
     p = spr(60, 330, 32, 32, t15, 0, 0, 0, MC, 100, 200, 50);   both(&p);  /* modulated */
     p = tile(70, 320, 8, 30, 31, 31, 0, MC, 0);             both(&p);
+    /* with the stencil live: an untextured semi tile and a textured sprite
+     * in one command (each fragment must be drawn once and write its own
+     * bit), then a check over both */
+    p = tile(0, 350, 30, 10, 5, 5, 5, SEMI, tp(2, 1, 0, 0)); both(&p);
+    p = spr(30, 350, 16, 10, t15, 0, 0, 0, RAW, 0, 0, 0);   both(&p);
+    p = tile(0, 352, 50, 4, 31, 0, 31, MC, 0);              both(&p);
     masked = compare_ref(scale == 1 ? "mask 1x" : "mask 3x", 0, 300, 96, 64);
     CHECK(masked > 500 && masked < 96 * 64);
 }

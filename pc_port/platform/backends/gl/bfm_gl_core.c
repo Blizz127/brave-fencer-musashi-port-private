@@ -779,10 +779,12 @@ static BfmGlCmd *draw_cmd(BfmGlBatch *b, const DrawKey *k, const BfmPlatRect *sc
         c = &b->c[b->nc - 1];
         if (c->kind == BFM_GL_CMD_DRAW && c->target == k->target && c->blend == k->blend &&
             c->split_stp == k->split && c->repl == k->repl && c->copy == k->copy &&
-            c->mask_set == k->mask_set && c->mask_check == k->mask_check &&
+            (!k->split || c->mask_set == k->mask_set) && c->mask_check == k->mask_check &&
             c->snap == k->snap && rect_same(&c->rect, sc) && rect_same(&c->win, win) &&
             c->first + c->count == b->nv) {
             c->dither |= (uint8_t)k->dither;   /* vertex flags decide per prim */
+            c->mask_set |= (uint8_t)k->mask_set;
+            c->mask_clear |= (uint8_t)!k->mask_set;
             return c;
         }
     }
@@ -795,6 +797,7 @@ static BfmGlCmd *draw_cmd(BfmGlBatch *b, const DrawKey *k, const BfmPlatRect *sc
     c->dither = (uint8_t)k->dither;
     c->copy = (uint8_t)k->copy;
     c->mask_set = (uint8_t)k->mask_set;
+    c->mask_clear = (uint8_t)!k->mask_set;
     c->mask_check = (uint8_t)k->mask_check;
     c->snap = (uint16_t)k->snap;
     c->rect = *sc;
@@ -975,7 +978,7 @@ size_t bfm_gl_batch_add(BfmGlBatch *b, const BfmPlatPrim *prims, size_t n) {
         Src src;
         Corner k[4];
         BfmGlCmd *c;
-        int nk;
+        int nk, abr;
 
         if (kind == BFM_PRIM_FILL) {
             BfmPlatRect r;
@@ -991,8 +994,9 @@ size_t bfm_gl_batch_add(BfmGlBatch *b, const BfmPlatPrim *prims, size_t n) {
         src.snap = textured && src.repl < 0 && !b->overlay ? feedback(b, p, &src.sv) : 0;
         memset(&key, 0, sizeof key);
         key.target = b->target;
-        key.blend = semi ? bfm_gl_decode_tpage(p->tpage).abr : -1;
-        key.split = textured && semi && src.repl < 0;
+        abr = bfm_gl_decode_tpage(p->tpage).abr;
+        key.blend = semi && abr == 2 ? 2 : BFM_GL_BLEND_DUAL;
+        key.split = textured && semi && abr == 2 && src.repl < 0;
         key.repl = src.repl + 1;
         key.snap = src.snap;
         key.dither = b->env.dither && !rect_kind && (is_gouraud(kind) || (textured && !raw));
@@ -1000,7 +1004,8 @@ size_t bfm_gl_batch_add(BfmGlBatch *b, const BfmPlatPrim *prims, size_t n) {
         key.mask_check = (p->flags & BFM_PRIM_FLAG_MASK_CHECK) != 0;
         flags = (uint16_t)((textured ? BFM_GLV_TEXTURED : 0) | (raw ? BFM_GLV_RAW : 0) |
                            (key.dither ? BFM_GLV_DITHER : 0) |
-                           (src.snap ? BFM_GLV_SNAP : 0) | (mset ? BFM_GLV_MASKSET : 0));
+                           (src.snap ? BFM_GLV_SNAP : 0) | (mset ? BFM_GLV_MASKSET : 0) |
+                           (semi ? BFM_GLV_SEMI | (abr << BFM_GLV_MODE_SHIFT) : 0));
         if (!(c = draw_cmd(b, &key, &b->scissor))) break;
         c->textured |= (uint8_t)textured;
         if (nk == 3) {

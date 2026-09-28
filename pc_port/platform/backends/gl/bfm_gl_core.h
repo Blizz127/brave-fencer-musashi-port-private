@@ -148,6 +148,17 @@ typedef struct BfmGlVertex {
 #define BFM_GLV_ABS      0x08u   /* 15-bit copy from absolute VRAM coords */
 #define BFM_GLV_SNAP     0x10u   /* sample the command's render snapshot */
 #define BFM_GLV_MASKSET  0x20u   /* E6 set-mask: written pixels get bit 15 */
+#define BFM_GLV_SEMI     0x40u   /* semi-transparent prim; mode in bits 8-9 */
+#define BFM_GLV_MODE_SHIFT 8
+
+/* DRAW command blending (BfmGlCmd.blend):
+ *   -1                opaque, blending off (uploads copied into targets)
+ *   BFM_GL_BLEND_DUAL the fragment decides: opaque, or semi mode 0/1/3,
+ *                     through dual-source factors (src * sf + dst * df),
+ *                     so opaque and semi prims share draws in PS1 order
+ *   2                 mode 2 (B - F) needs FUNC_REVERSE_SUBTRACT: own
+ *                     draws; textured ones split opaque/STP (split_stp) */
+#define BFM_GL_BLEND_DUAL 4
 
 typedef enum BfmGlCmdKind {
     BFM_GL_CMD_DRAW = 1,         /* triangles [first, first + count) */
@@ -177,13 +188,15 @@ typedef enum BfmGlCmdKind {
 typedef struct BfmGlCmd {
     uint8_t kind;
     uint8_t target;
-    int8_t blend;                /* -1 opaque, 0..3 semi mode */
-    uint8_t split_stp;           /* textured semi: only STP texels blend */
+    int8_t blend;                /* see BFM_GL_BLEND_DUAL */
+    uint8_t split_stp;           /* textured mode 2: only STP texels blend */
     uint32_t first, count;       /* vertices (DRAW) */
     uint16_t repl;               /* slot + 1 for the whole batch, 0 = none */
     uint8_t dither;              /* batch may dither (vertex flag decides) */
     uint8_t copy;                /* an upload copied into the target */
-    uint8_t mask_set, mask_check;/* E6 state of the batch */
+    uint8_t mask_set, mask_check;/* E6: some prim sets / all check */
+    uint8_t mask_clear;          /* some prim does not set (mask_set is
+                                  * uniform in split_stp commands) */
     uint8_t textured;            /* some prim samples a texture */
     uint16_t snap;               /* DRAW/SNAPSHOT: snapshot index + 1 */
     BfmPlatRect vrect;           /* SNAPSHOT/RESOLVE: the VRAM rect */

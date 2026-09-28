@@ -98,8 +98,11 @@ struct BfmGlExec {
     Snapshot snap[BFM_GL_MAX_SNAPSHOTS];
     GLuint snap_fbo;
     int scale;
-    GLint u_size, u_flip, u_pass, u_dither, u_scale, u_win, u_vram, u_repl;
+    GLint u_size, u_flip, u_pass, u_pass_bit, u_dither, u_scale, u_win, u_vram, u_repl;
     GLint b_src, b_tex, b_alpha;
+    /* redundant-state filter for run_cmds (-2 = unknown) */
+    int cur_blend, cur_pass, cur_dither;
+    BfmPlatRect cur_win;
     unsigned err;
 };
 
@@ -133,10 +136,12 @@ static const char *fs_src =
     "uniform usampler2D u_vram;\n"
     "uniform sampler2D u_repl;\n"
     "uniform int u_pass;\n"
+    "uniform int u_pass_bit;\n"
     "uniform int u_dither;\n"
     "uniform int u_scale;\n"
     "uniform ivec4 u_win;\n"
-    "out vec4 o_color;\n"
+    "layout(location = 0, index = 0) out vec4 o_color;\n"
+    "layout(location = 0, index = 1) out vec4 o_factor;\n"
     "const int dm[16] = int[16](-4, 0, -3, 1, 2, -2, 3, -1, -3, 1, -4, 0, 3, -1, 2, -2);\n"
     "uint vr(int x, int y) { return texelFetch(u_vram, ivec2(x & 1023, y & 511), 0).r; }\n"
     "int wnd(int u, int off, int size) {\n"
@@ -183,8 +188,7 @@ static const char *fs_src =
     "            stp = (p & 0x8000u) != 0u;\n"
     "            t = vec3(float(p & 31u), float((p >> 5) & 31u), float((p >> 10) & 31u)) / 31.0;\n"
     "        }\n"
-    "        if (u_pass == 1 && stp) discard;\n"
-    "        if (u_pass == 2 && !stp) discard;\n"
+
     "        rgb = (flags & 2u) != 0u ? t : min(t * v_color.rgb * (255.0 / 128.0), vec3(1.0));\n"
     "    }\n"
     "    if (u_dither != 0 && (flags & 4u) != 0u) {\n"
@@ -193,8 +197,28 @@ static const char *fs_src =
     "        vec3 c8 = clamp(floor(rgb * 255.0 + 0.5) + d, 0.0, 255.0);\n"
     "        rgb = floor(c8 / 8.0) / 31.0;\n"
     "    }\n"
+    "    /* two-pass draws: pass 1 keeps fragments whose bit is 0, pass 2 those\n"
+    "     * whose bit is 1; the bit is STP (mode-2 split) or the written bit 15\n"
+    "     * (stencil upkeep). Untextured fragments have STP 0. */\n"
+    "    {\n"
+    "        bool bit = u_pass_bit != 0 ? (stp || (flags & 32u) != 0u) : stp;\n"
+    "        if (u_pass == 1 && bit) discard;\n"
+    "        if (u_pass == 2 && !bit) discard;\n"
+    "    }\n"
+    "    /* semi-transparency per fragment (dual-source): untextured pixels,\n"
+    "     * STP texels and replacement texels blend; the rest are opaque.\n"
+    "     * Factors are bfm_gl_blend_state's; mode 2 draws use a\n"
+    "     * reverse-subtract equation and ignore o_factor. */\n"
+    "    float sf = 1.0, df = 0.0;\n"
+    "    if ((flags & 64u) != 0u && ((flags & 1u) == 0u || stp || v_info.w != 0u)) {\n"
+    "        uint mode = (flags >> 8) & 3u;\n"
+    "        df = 1.0;\n"
+    "        if (mode == 0u) { sf = 0.5; df = 0.5; }\n"
+    "        else if (mode == 3u) sf = 0.25;\n"
+    "    }\n"
     "    /* alpha carries the PS1 mask bit (bit 15) of the written pixel */\n"
-    "    o_color = vec4(rgb, (stp || (flags & 32u) != 0u) ? 1.0 : 0.0);\n"
+    "    o_color = vec4(rgb * sf, (stp || (flags & 32u) != 0u) ? 1.0 : 0.0);\n"
+    "    o_factor = vec4(df, df, df, 0.0);\n"
     "}\n";
 
 static const char *blit_vs =
@@ -344,6 +368,7 @@ BfmGlExec *bfm_gl_exec_create(BfmGlGetProc gp, int scale, char *err, size_t n) {
     x->u_size = x->GetUniformLocation(x->prog, "u_size");
     x->u_flip = x->GetUniformLocation(x->prog, "u_flip");
     x->u_pass = x->GetUniformLocation(x->prog, "u_pass");
+    x->u_pass_bit = x->GetUniformLocation(x->prog, "u_pass_bit");
     x->u_dither = x->GetUniformLocation(x->prog, "u_dither");
     x->u_scale = x->GetUniformLocation(x->prog, "u_scale");
     x->u_win = x->GetUniformLocation(x->prog, "u_win");
@@ -456,26 +481,40 @@ static Target *target_for(BfmGlExec *x, const BfmGlBatch *b, int target) {
 }
 
 static void set_blend(BfmGlExec *x, int mode) {
-    BfmGlBlendState s;
+    if (mode == x->cur_blend) return;
+    x->cur_blend = mode;
     if (mode < 0) {
         x->Disable(GL_BLEND);
         return;
     }
-    s = bfm_gl_blend_state(mode);
     x->Enable(GL_BLEND);
-    /* colour blends; alpha (the mask bit) is written as the fragment's */
-    x->BlendEquationSeparate(s.equation == BFM_GL_FUNC_REVERSE_SUBTRACT
-                                 ? GL_FUNC_REVERSE_SUBTRACT : GL_FUNC_ADD,
-                             GL_FUNC_ADD);
-    x->BlendFuncSeparate(s.src == BFM_GL_CONSTANT_COLOR ? GL_CONSTANT_COLOR : GL_ONE,
-                         s.dst == BFM_GL_CONSTANT_COLOR ? GL_CONSTANT_COLOR : GL_ONE,
-                         GL_ONE, GL_ZERO);
-    x->BlendColor(s.constant, s.constant, s.constant, s.constant);
+    if (mode == BFM_GL_BLEND_DUAL) {
+        /* dst * src1 + src (the shader premultiplies by the src factor);
+         * alpha = the fragment's mask bit (src1.a = 0) */
+        x->BlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD);
+        x->BlendFuncSeparate(GL_ONE, GL_SRC1_COLOR, GL_ONE, GL_SRC1_ALPHA);
+        return;
+    }
+    {
+        BfmGlBlendState st = bfm_gl_blend_state(mode);
+        /* colour blends; alpha (the mask bit) is written as the fragment's */
+        x->BlendEquationSeparate(st.equation == BFM_GL_FUNC_REVERSE_SUBTRACT
+                                     ? GL_FUNC_REVERSE_SUBTRACT : GL_FUNC_ADD,
+                                 GL_FUNC_ADD);
+        x->BlendFuncSeparate(st.src == BFM_GL_CONSTANT_COLOR ? GL_CONSTANT_COLOR : GL_ONE,
+                             st.dst == BFM_GL_CONSTANT_COLOR ? GL_CONSTANT_COLOR : GL_ONE,
+                             GL_ONE, GL_ZERO);
+        x->BlendColor(st.constant, st.constant, st.constant, st.constant);
+    }
 }
 
 /* Binds the draw program and its fixed state (after anything that changed
  * the program, VAO or texture units). */
 static void draw_state(BfmGlExec *x) {
+    x->cur_blend = -2;
+    x->cur_pass = -2;
+    x->cur_dither = -2;
+    x->cur_win.w = -1;
     x->UseProgram(x->prog);
     x->Uniform1i(x->u_vram, 0);
     x->Uniform1i(x->u_repl, 1);
@@ -574,6 +613,16 @@ static void take_snapshot(BfmGlExec *x, Target *t, const BfmGlCmd *c) {
                        (c->rect.y + c->rect.h) * s, 0, 0, w, h, GL_COLOR_BUFFER_BIT,
                        GL_NEAREST);
     x->BindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+/* pass: 0 all fragments, 1 bit clear, 2 bit set; by_written: the bit is
+ * the written bit 15 instead of STP */
+static void set_pass(BfmGlExec *x, int pass, int by_written) {
+    int v = pass | (by_written << 4);
+    if (v == x->cur_pass) return;
+    x->cur_pass = v;
+    x->Uniform1i(x->u_pass, pass);
+    x->Uniform1i(x->u_pass_bit, by_written);
 }
 
 static void stencil_pass(BfmGlExec *x, int check, int ref) {
@@ -682,23 +731,38 @@ static void run_cmds(BfmGlExec *x, const BfmGlBatch *b, int dither,
                 bound_repl = want;
             }
         }
-        x->Uniform4i(x->u_win, c->win.x, c->win.y, c->win.w, c->win.h);
-        x->Uniform1i(x->u_dither, dither && c->dither);
-        /* Two passes (texels without STP, then with) when STP decides the
-         * blending, or when the stencil must learn each texel's bit. */
-        if (c->split_stp || (stencil && c->textured && !c->mask_set)) {
-            set_blend(x, c->split_stp ? -1 : c->blend);
+        if (memcmp(&x->cur_win, &c->win, sizeof c->win) != 0) {
+            x->Uniform4i(x->u_win, c->win.x, c->win.y, c->win.w, c->win.h);
+            x->cur_win = c->win;
+        }
+        if (x->cur_dither != (dither && c->dither)) {
+            x->cur_dither = dither && c->dither;
+            x->Uniform1i(x->u_dither, x->cur_dither);
+        }
+        if (c->split_stp) {
+            /* mode 2 textured: texels without STP opaque, then STP texels
+             * subtracted; the command's prims all share mask_set */
+            set_blend(x, -1);
             if (stencil) stencil_pass(x, c->mask_check, c->mask_set);
-            x->Uniform1i(x->u_pass, 1);
+            set_pass(x, 1, 0);
             x->DrawArrays(GL_TRIANGLES, (GLint)c->first, (GLsizei)c->count);
             set_blend(x, c->blend);
             if (stencil) stencil_pass(x, c->mask_check, 1);
-            x->Uniform1i(x->u_pass, 2);
+            set_pass(x, 2, 0);
+            x->DrawArrays(GL_TRIANGLES, (GLint)c->first, (GLsizei)c->count);
+        } else if (stencil && (c->textured || (c->mask_set && c->mask_clear))) {
+            /* stencil upkeep: each fragment writes its bit 15 */
+            set_blend(x, c->blend);
+            stencil_pass(x, c->mask_check, 0);
+            set_pass(x, 1, 1);
+            x->DrawArrays(GL_TRIANGLES, (GLint)c->first, (GLsizei)c->count);
+            stencil_pass(x, c->mask_check, 1);
+            set_pass(x, 2, 1);
             x->DrawArrays(GL_TRIANGLES, (GLint)c->first, (GLsizei)c->count);
         } else {
             set_blend(x, c->blend);
             if (stencil) stencil_pass(x, c->mask_check, c->mask_set);
-            x->Uniform1i(x->u_pass, 0);
+            set_pass(x, 0, 0);
             x->DrawArrays(GL_TRIANGLES, (GLint)c->first, (GLsizei)c->count);
         }
     }
