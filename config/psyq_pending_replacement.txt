@@ -4,8 +4,6 @@
 # entries are only ever removed.
 src/main/800426fc.c libetc
 src/main/800427f4.c libetc
-src/main/80042ce8.c libetc
-src/main/80042e08.c libetc
 src/main/8005bd7c.c libgpu2
 src/main/8005c1c0.c libgpu2
 src/main/800616d0.c libmcrd1

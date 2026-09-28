@@ -41,7 +41,8 @@ class NativeVblankTests(unittest.TestCase):
             "-DMUSASHI_NATIVE_VBLANK=1", "-DMUSASHI_NATIVE_CALLBACK_HANDLER=1",
             "-I", str(ROOT / "include"), "-I", str(ROOT / "pc_port/include"),
             *[str(ROOT / "src/main" / (name + ".c")) for name in
-              ("800616d0", "8006291c", "80062988", "80042ce8")],
+              ("800616d0", "8006291c", "80062988")],
+            str(ROOT / "pc_port/libetc_vsync_handler.c"),
             str(ROOT / "pc_port/vblank_bindings.c"), str(ROOT / "pc_port/boot_memory.c"),
             "-lcrypto", "-o", str(library),
         ], check=True, stdin=subprocess.DEVNULL, timeout=60, capture_output=True)

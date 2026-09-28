@@ -39,8 +39,7 @@ def test_cd_irq_stream_source(tmp_path, variant):
         *[str(ROOT/'pc_port'/f'{name}.c') for name in ('boot_memory',
           'spu_cd_audio','cd_controller','cd_dma3','dma_controller','disc_media','bios_events','irq_controller','irq_scheduler','cpu_status','vblank_bindings')],
         *[str(ROOT/'src/main'/f'{name}.c') for name in
-          ('800427f4','80042ce8','8001096c','80042e08',
-           '800616d0','8006291c','80062988')],str(ROOT/'pc_port/libetc_dma_registration.c'),
+          ('800427f4','8001096c','800616d0','8006291c','80062988')],str(ROOT/'pc_port/libetc_dma_irq.c'),str(ROOT/'pc_port/libetc_vsync_handler.c'),str(ROOT/'pc_port/libetc_dma_registration.c'),
         '-lcrypto',*flags,'-o',str(exe)]
     subprocess.run(command, check=True, timeout=40)
     _sync_code_image(generated)
