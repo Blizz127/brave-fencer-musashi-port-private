@@ -148,9 +148,6 @@ def strip_empty_asm(text):
 # here without it, i.e. the matched body).
 INTRINSIC_PCS = {0x80016714, 0x8001903C, 0x80029044, 0x8002906C, 0x80029094, 0x80029218}
 
-# Local register pinning in matched C: `register ... name __asm__("$N")`.
-REGISTER_PIN = re.compile(r'(\bregister\b[^;(){}]*?)\s*__asm__\s*\(\s*"\$\d+"\s*\)')
-
 CFLAGS = [
     f"--target={HOST_TARGET}", "-std=gnu89", "-fPIE", "-fwrapv",
     "-fno-strict-aliasing", "-fno-builtin", "-ffreestanding",
@@ -520,7 +517,7 @@ def check_optimized(ir, module_internal):
                 raise Reject("ub", "unreachable")
             m = DEF_RE.match(line)
             rhs = m.group(2) if m else s
-            if re.search(r"\basm\b", rhs):
+            if re.search(r"\basm\b", rhs) and not empty_asm_identity(rhs):
                 raise Reject("calls", "inline asm")
             if rhs.startswith(("atomicrmw", "cmpxchg", "fence")) or " atomic " in rhs:
                 raise Reject("memory", "atomic operation")
@@ -574,6 +571,8 @@ def check_optimized(ir, module_internal):
                 elif int(amount) >= int(sm.group(2)[1:]):
                     raise Reject("arith", "oversized constant shift")
             cm = re.search(r"\b(?:tail |musttail |notail )?call\b(.*)$", rhs)
+            if cm and empty_asm_identity(rhs):
+                continue  # emits nothing; outputs are the tied inputs
             if cm:
                 call = cm.group(1)
                 target = re.search(r"(@[\w.$]+|%[\w.\"$]+)\(", call)
@@ -593,7 +592,7 @@ def check_optimized(ir, module_internal):
                     continue
                 if name in module_internal:
                     continue
-                if not name.startswith(("lane_func_", "lane_call_func_")):
+                if not name.startswith(("lane_func_", "lane_call_func_", "lane_icall__")):
                     raise Reject("calls", f"call to {name}")
                 if refs_host(args):
                     raise Reject("escape", f"host address passed to {name}")
@@ -624,6 +623,58 @@ def loop_walks_memory(body):
         if m and m.group(1) in tainted:
             return True
     return False
+
+
+ICALL_RE = re.compile(r"^(\s*(?:%[\w.\"$]+ = )?)((?:tail |musttail |notail )?call )"
+                      r"((?:[\w]+ )*?)(void|i8|i16|i32|ptr) (%[\w.\"$]+)\((.*)\)(\s*#\d+)?\s*$")
+ARG_TYPES = ("i8", "i16", "i32", "ptr")
+
+
+def rewrite_indirect_calls(ir):
+    """Route calls through function pointers to the interpreter, as jalr does.
+
+    A guest function pointer holds a guest address (a zero-extended 32-bit
+    value). `call T %fp(args)` becomes `call T @lane_icall__<sig>(i32 addr,
+    args)`, whose generated stub runs musashi_native_guest_call(addr, ...);
+    the interpreter then dispatches the target (natively again when the lane
+    admits it). Returns (ir, {symbol: (ret, rext, params)}). A call with an
+    argument type the guest ABI cannot carry is left alone, and the checker
+    refuses it as before."""
+    out, icalls, n = [], {}, 0
+    for line in ir.splitlines():
+        m = ICALL_RE.match(line)
+        if not m or " asm " in line:
+            out.append(line)
+            continue
+        lead, call, rattrs, ret, fp, args, attrs = m.groups()
+        params = []
+        ok = True
+        for a in split_top(args):
+            toks = a.split()
+            if not toks or toks[0] not in ARG_TYPES:
+                ok = False
+                break
+            params.append((toks[0], ("signext" in toks[1:-1], "zeroext" in toks[1:-1])))
+        if not ok or len(params) > 8:
+            out.append(line)
+            continue
+        rext = ("signext" in rattrs.split(), "zeroext" in rattrs.split())
+        sig = (ret, rext, tuple(params))
+        sym = "lane_icall__" + sig_code((ret, rext, params))
+        icalls[sym] = sig
+        indent = re.match(r"^\s*", line).group(0) or "  "
+        out.append(f"{indent}%icall.{n} = ptrtoint ptr {fp} to i64")
+        out.append(f"{indent}%icall.{n}.t = trunc i64 %icall.{n} to i32")
+        new_args = ", ".join([f"i32 %icall.{n}.t"] + split_top(args))
+        out.append(f"{lead}{call}{rattrs}{ret} @{sym}({new_args}){attrs or ''}")
+        n += 1
+    for sym, (ret, rext, params) in sorted(icalls.items()):
+        def t(ty, e):
+            return ty + (" signext" if e[0] else " zeroext" if e[1] else "")
+        plist = ", ".join(["i32"] + [t(ty, e) for ty, e in params])
+        rdecl = ("signext " if rext[0] else "zeroext " if rext[1] else "") + ret
+        out.append(f"declare {rdecl} @{sym}({plist})")
+    return "\n".join(out) + "\n", icalls
 
 
 def check_polling_loops(ir):
@@ -716,12 +767,51 @@ def parse_return(decl, name):
     return ret, ("signext" in pre, "zeroext" in pre)
 
 
+ASM_CALL_RE = re.compile(r'\basm\s+(?:sideeffect\s+)?(?:alignstack\s+)?(?:inteldialect\s+)?"([^"]*)",\s*"([^"]*)"')
+
+
+def empty_asm_identity(rhs):
+    """An empty asm template ("") emits no instruction. It is an identity
+    when each output is tied to an input ("=r,0"); decomp C uses these as
+    scheduling barriers for gcc-2.7.2 matching. An untied output would be
+    an undefined value, so it is still refused."""
+    m = ASM_CALL_RE.search(rhs)
+    if not m or m.group(1).strip():
+        return False
+    cons = [c for c in m.group(2).split(",") if c]
+    outs = [c for c in cons if c.startswith("=")]
+    ins = [c for c in cons if not c.startswith(("=", "~"))]
+    tied = {int(c) for c in ins if c.isdigit()}
+    return all(i in tied for i in range(len(outs)))
+
+
+# `register int x asm("$5")` pins a MIPS register for matching; C semantics
+# are unchanged, and the host compiler rejects the MIPS name.
+REG_PIN_RE = re.compile(r'(\bregister\b[^;={}]*?)\s*(?:__asm__|asm)\s*\(\s*"\$\w+"\s*\)')
+
+
+def host_source(text):
+    return REG_PIN_RE.sub(r"\1", text)
+
+
+# Admissible by every rule, but held out until a differential covers them:
+# with the probe's generic inputs none of their cases was comparable.
+DENY = {
+    0x80015498: "no comparable differential case yet (mirror faults on generic inputs)",
+    0x80016638: "no comparable differential case yet (not comparable / mirror faults)",
+    0x800167F0: "no comparable differential case yet (mirror faults on generic inputs)",
+    0x8002FF0C: "no comparable differential case yet (interpreter refused every case)",
+}
+
+
 def build_one(entry, out, symbols, hooks, clang):
     vram, size, src = entry["vram"], entry["size"], ROOT / entry["source"]
     name = entry["name"]
     tag = f"{vram:08x}"
     work = out / "ir"
     try:
+        if vram in DENY:
+            raise Reject("deny", DENY[vram])
         for pc in hooks:
             if vram <= pc < vram + size and not (pc == vram and vram in INTRINSIC_PCS):
                 raise Reject("hooks", f"port references {pc:08x}")
@@ -734,7 +824,7 @@ def build_one(entry, out, symbols, hooks, clang):
         o0 = work / f"{tag}.O0.ll"
         compile_src = src
         raw = src.read_text(errors="replace")
-        host = host_long(REGISTER_PIN.sub(r"\1", raw))
+        host = host_long(host_source(raw))
         # `register T x __asm__("$5")` pins a local to a MIPS register for the
         # byte match only; it has no meaning on the host. Empty asm statements
         # that are identities go too; any other inline asm is still refused
@@ -763,7 +853,7 @@ def build_one(entry, out, symbols, hooks, clang):
                  "-S", "-emit-llvm", "-w", str(sub), "-o", str(opt)])
         if r.returncode:
             raise Reject("compile", "optimize: " + (r.stderr.strip().splitlines() or ["?"])[0][:160])
-        optir = opt.read_text()
+        optir, icalls = rewrite_indirect_calls(opt.read_text())
         internal = set(re.findall(r"^define internal [^@]*@([\w.$]+)\(", optir, flags=re.M))
         check_optimized(optir, internal)
         check_polling_loops(optir)
@@ -784,11 +874,11 @@ def build_one(entry, out, symbols, hooks, clang):
             raise Reject("compile", "object: " + (r.stderr.strip().splitlines() or ["?"])[0][:160])
         undefined = run(["nm", "-u", str(obj)]).stdout.split()
         for u in undefined:
-            if u != "U" and not u.startswith(("lane_call_func_", "lane_func_")) and \
-                    u not in MEMORY_FNS and u not in LANE_HELPERS:
+            if u != "U" and not u.startswith(("lane_call_func_", "lane_func_", "lane_icall__")) \
+                    and u not in MEMORY_FNS and u not in LANE_HELPERS:
                 raise Reject("symbols", f"object still references {u}")
         return dict(name=name, vram=vram, size=size, source=entry["source"], admitted=True,
-                    obj=str(obj), defs=sigs, stubs=stubs)
+                    obj=str(obj), defs=sigs, stubs=stubs, icalls=icalls)
     except Reject as e:
         return dict(name=name, vram=vram, size=size, source=entry["source"], admitted=False,
                     rule=e.rule, detail=e.detail)
@@ -905,6 +995,27 @@ def emit_table(admitted, out):
                 lines.append(f"    (void){call};")
             else:
                 lines.append(f"    return {from_guest(call, ret, rext)};")
+        lines.append("}")
+    icalls = {}
+    for a in admitted:
+        icalls.update(a.get("icalls", {}))
+    if icalls:
+        lines += ["", "/* Calls through guest function pointers: the pointer holds the guest",
+                  " * address, and the interpreter dispatches it exactly as jalr does. */"]
+    for sym, (ret, rext, params) in sorted(icalls.items()):
+        rtype = "void" if ret == "void" else c_type(ret, rext)
+        plist = ", ".join(["uint32_t target"] + [f"{c_type(t, e)} a{i}" for i, (t, e) in enumerate(params)])
+        regs = [to_guest(f"a{i}", t, e) for i, (t, e) in enumerate(params)]
+        lines.append(f"{rtype} {sym}({plist}) {{")
+        if params:
+            lines.append(f"    const uint32_t args[{len(params)}] = {{{', '.join(regs)}}};")
+            call = f"musashi_native_guest_call(target, {len(params)}u, args, NULL)"
+        else:
+            call = "musashi_native_guest_call(target, 0u, NULL, NULL)"
+        if ret == "void":
+            lines.append(f"    (void){call};")
+        else:
+            lines.append(f"    return {from_guest(call, ret, rext)};")
         lines.append("}")
     lines.append("")
     entries = []

@@ -1492,7 +1492,8 @@ static int group_psyq(int argc, char **argv) {
 
     /* ClearOTagR + AddPrim + SetPolyFT4 + CatPrim */
     CHECK(call("ClearOTagR", 0x80010000, 4, 0, 0) && R[2] == 0x80010000);
-    CHECK(r32(0x80010000) == 0x00FFFFFF && r32(0x8001000C) == 0x00010008);
+    /* retail relinks ot[0] to the static terminator prim at 0x80072844 */
+    CHECK(r32(0x80010000) == 0x00072844 && r32(0x8001000C) == 0x00010008);
     CHECK(call("SetPolyFT4", 0x80020000, 0, 0, 0));
     CHECK(ram[0x20003] == 9 && ram[0x20007] == 0x2C);
     CHECK(call("SetSemiTrans", 0x80020000, 1, 0, 0) && ram[0x20007] == 0x2E);

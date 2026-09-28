@@ -21,7 +21,7 @@ EXPECT = {
     0x8001C044: (True, None),        # calls a bespoke-binding callee (thunk)
     0x800141F0: (False, "hooks"),    # STARTUP_ENTRY: host-sequenced (enum-named PC)
     0x8001903C: (True, None),        # STARTUP_RECORD_CLEAR: a host intrinsic the lane may run
-    0x80015498: (True, None),        # register-pinned locals (`__asm__("$N")`), no asm
+    0x80015498: (False, "deny"),     # admissible, held out on DENY until a targeted probe covers it
     0x80015208: (True, None),        # register-pinned, only tied empty asm
     0x80015B6C: (False, "calls"),    # empty asm with an untied output
     0x80014CF8: (True, None),        # tied empty asm ("" : "=r"(x) : "0"(x)) is an identity
