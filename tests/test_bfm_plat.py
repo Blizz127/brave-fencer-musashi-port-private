@@ -970,7 +970,10 @@ bfm.on("frame_end", function() if seen.late == nil then
             str(psyc / "src/psx/INLINE_C.C")], "inline_c.o")
         cc(["g++", "-c", "-O1", "-w", *inc, str(psyc / "src/gte/PsyX_GTE.cpp")], "gte.o")
         cc(["g++", "-c", "-O1", "-w", *inc, str(psyc / "src/gte/half_float.cpp")], "half.o")
+        # BFM_PSYQ_PSYCROSS_ROTMATRIX: the probe also checks the table-backed
+        # PsyCross wrappers the shipped build leaves to the retail code.
         cc(["gcc", "-c", "-std=gnu11", "-Wall", "-Wextra", "-Werror", "-DBFM_PLAT_WITH_PSYCROSS",
+            "-DBFM_PSYQ_PSYCROSS_ROTMATRIX",
             "-include", "assert.h", "-I", str(PLAT), "-I", str(psyc / "include"),
             str(PLAT / "psyq/psyq_psycross.c")], "psyq_psycross.o")
         # only the compat table sees BFM_PLAT_WITH_PSYCROSS (the core would also try to

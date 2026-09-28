@@ -1163,6 +1163,7 @@ static int draw_line(MusashiGpuController *controller,
 
 static int prim_commit(MusashiGpuController *controller) {
     uint32_t opcode = controller->prim_data[0] >> 24;
+    if (controller->raster_disabled) return 1;   /* drawn by the bfm_plat bridge */
     /* Bit 1 of every polygon/line/rectangle command selects semi-
      * transparency. Textured polygons carry their own texpage (abr in bits
      * 5-6); lines, rectangles and untextured polygons use the draw mode. */
@@ -1535,6 +1536,9 @@ int musashi_gpu_controller_write32(MusashiGpuController *controller,
         return 0;
     }
     if (!backend_bound(controller) || controller->faulted) return 0;
+    if (controller->tap &&
+        (address == MUSASHI_GPU_GPUREAD || address == MUSASHI_GPU_GPUSTAT))
+        (void)controller->tap(controller->tap_userdata, address, value);
     if (address == MUSASHI_GPU_GPUREAD) {
         opcode = value >> 24;
         /* An open packet owns every following GP0 word. Pixel payloads may

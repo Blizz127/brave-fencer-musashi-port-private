@@ -102,6 +102,10 @@ if(MUSASHI_BUILD_PC_PORT AND MUSASHI_WITH_PSYCROSS)
     # transforms yet, and with PGXP on a primitive without a cache entry has
     # its positions zeroed rather than left alone. Revisit when 3D lands.
     target_compile_definitions(psycross_static PUBLIC USE_EXTENDED_PRIM_POINTERS=1 USE_PGXP=0)
+    # Per-function sections so an executable links only the PsyCross code it
+    # calls: LIBGTE's rsin/rcos table equals the game's own, and must not be
+    # carried unless something uses it (retail_content_guard).
+    target_compile_options(psycross_static PRIVATE -ffunction-sections -fdata-sections)
     # Two Linux/GCC build breaks in upstream, corrected here rather than by
     # patching the ignored checkout. Upstream is built with MSVC, where neither
     # surfaces.
@@ -342,6 +346,7 @@ if(MUSASHI_BUILD_PC_PORT)
             ${CMAKE_CURRENT_SOURCE_DIR}/pc_port/include)
         target_link_libraries(musashi_x11_nograb PRIVATE ${CMAKE_DL_LIBS})
         add_executable(musashi_native_boot pc_port/native_boot.c)
+        target_link_options(musashi_native_boot PRIVATE -Wl,--gc-sections)
         target_compile_features(musashi_native_boot PRIVATE c_std_99)
         target_link_libraries(musashi_native_boot PRIVATE musashi_pc_port musashi_x11_nograb ${CMAKE_DL_LIBS})
 
@@ -474,18 +479,10 @@ if(MUSASHI_BUILD_PC_PORT)
     # Platform layer (pc_port/platform, from port/platform-layer): game-facing
     # bfm_plat_* interfaces, backends, mods/plugins, PsyQ compat for the lane.
     # Core: C99, no dependencies. dlopen for native plugins.
-    add_library(bfm_plat STATIC
-        pc_port/platform/bfm_plat.c          pc_port/platform/bfm_plat_backends.c
-        pc_port/platform/bfm_plat_ini.c      pc_port/platform/bfm_plat_config.c
-        pc_port/platform/bfm_plat_renderer.c pc_port/platform/bfm_plat_audio.c
-        pc_port/platform/bfm_plat_input.c    pc_port/platform/bfm_plat_storage.c
-        pc_port/platform/bfm_plat_timing.c   pc_port/platform/bfm_plat_mods.c
-        pc_port/platform/bfm_plat_console.c  pc_port/platform/bfm_plat_console_ui.c
-        pc_port/platform/bfm_plat_events.c   pc_port/platform/bfm_plat_hook_sites.c
-        pc_port/platform/bfm_plat_image.c    pc_port/platform/bfm_plat_font.c
-        pc_port/platform/bfm_plat_widescreen.c
-        pc_port/platform/bfm_plat_disc_check.c pc_port/platform/bfm_plat_sha256.c
-        pc_port/platform/bfm_plat_watch.c
+    # Core list tracks pc_port/platform/bfm_plat*.c (ARCHITECTURE-PORT.md).
+    file(GLOB BFM_PLAT_CORE_SOURCES CONFIGURE_DEPENDS
+        ${CMAKE_CURRENT_SOURCE_DIR}/pc_port/platform/bfm_plat*.c)
+    add_library(bfm_plat STATIC ${BFM_PLAT_CORE_SOURCES}
         pc_port/platform/psyq/bfm_psyq_compat.c
         pc_port/platform/psyq/bfm_psyq_libgs.c
         pc_port/platform/psyq/bfm_psyq_libgte.c)        # + psyq/psyq_psycross.c with PsyCross
@@ -496,9 +493,11 @@ if(MUSASHI_BUILD_PC_PORT)
         target_sources(bfm_plat PRIVATE
             pc_port/platform/backends/renderer_psycross.c
             pc_port/platform/backends/audio_sdl.c
-            pc_port/platform/backends/input_sdl.c)
-        # renderer_psycross.c needs C11 (PsyCross headers use static_assert)
+            pc_port/platform/backends/input_sdl.c
+            pc_port/platform/psyq/psyq_psycross.c)   # PsyQ compat wrappers on PsyCross
+        # PsyCross headers need C11 (static_assert)
         set_source_files_properties(pc_port/platform/backends/renderer_psycross.c
+            pc_port/platform/psyq/psyq_psycross.c
             PROPERTIES COMPILE_OPTIONS "-std=gnu11;-include;assert.h")
         target_include_directories(bfm_plat PRIVATE
             ${MUSASHI_PSYCROSS_DIR}/include pc_port/include)

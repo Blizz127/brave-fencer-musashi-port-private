@@ -44,10 +44,16 @@ static void put32(uint32_t addr, int32_t v) {
 
 /* ---- stateless ---- */
 
+/* PsyCross's ratan2 carries its own copy of the game's arctangent table
+ * (retail_content_guard); same switch as the RotMatrix* wrappers below. */
+#ifdef BFM_PSYQ_PSYCROSS_ROTMATRIX
 int bfm_psyq_ratan2(uint32_t *r) {
     r[2] = (uint32_t)ratan2((int)(int32_t)A(0), (int)(int32_t)A(1));
     return 1;
 }
+#else
+int bfm_psyq_ratan2(uint32_t *r) { (void)r; return 0; }
+#endif
 
 #define ROT1(fn, name)                                                   \
     int name(uint32_t *r) {                                              \
@@ -57,6 +63,12 @@ int bfm_psyq_ratan2(uint32_t *r) {
         r[2] = A(1);                                                     \
         return 1;                                                        \
     }
+/* PsyCross's RotMatrix* read its own copy of the sin/cos table, which is
+ * the game's data: linking them puts retail bytes in the port binary
+ * (retail_content_guard), and RotMatrixYXZ differs from the retail result
+ * (native_lane_probe). Off unless BFM_PSYQ_PSYCROSS_ROTMATRIX: the wrappers
+ * refuse and the interpreter runs the retail code on the game's own table. */
+#ifdef BFM_PSYQ_PSYCROSS_ROTMATRIX
 ROT1(RotMatrixX, bfm_psyq_RotMatrixX)
 ROT1(RotMatrixY, bfm_psyq_RotMatrixY)
 ROT1(RotMatrixZ, bfm_psyq_RotMatrixZ)
@@ -69,6 +81,12 @@ int bfm_psyq_RotMatrixYXZ(uint32_t *r) {
     r[2] = A(1);
     return 1;
 }
+#else
+int bfm_psyq_RotMatrixX(uint32_t *r) { (void)r; return 0; }
+int bfm_psyq_RotMatrixY(uint32_t *r) { (void)r; return 0; }
+int bfm_psyq_RotMatrixZ(uint32_t *r) { (void)r; return 0; }
+int bfm_psyq_RotMatrixYXZ(uint32_t *r) { (void)r; return 0; }
+#endif
 
 /* ---- GTE state (bridge) ---- */
 

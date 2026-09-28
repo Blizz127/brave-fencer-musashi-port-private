@@ -71,7 +71,9 @@ class Controller(C.Structure):
                 ("copy_dst", UINT32), ("copy_words", C.c_uint8),
                 ("copied_pixels", C.c_uint64), ("completed_copies", C.c_uint64),
                 ("prim_needed", C.c_uint8), ("prim_got", C.c_uint8),
-                ("prim_data", UINT32 * 12), ("drawn_pixels", C.c_uint64),
+                ("prim_data", UINT32 * 12),
+                ("tap", C.c_void_p), ("tap_userdata", C.c_void_p),
+                ("raster_disabled", C.c_int), ("drawn_pixels", C.c_uint64),
                 ("semi", C.c_uint8), ("semi_mode", C.c_uint8),
                 ("semi_textured", C.c_uint8)]
 
