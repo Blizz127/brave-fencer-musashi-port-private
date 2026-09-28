@@ -5,37 +5,29 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8012BE98 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL from m2c draft of func_8012BE98 (main_0012.s): NOT
- * verified against retail. C89-gated only; promotion requires an
- * oracle MATCH. NOTE: func_8004CFEC is declared (s32, s32) per
- * the func_8012B77C evidence. Fully grounded from raw asm: both stack triples force their middle half to 0 (sh zero at +0x12/+0x1A); all other halves are lhu loads. The 800132BC result is unused (void function); 800132BC is declared s32 because func_8012AF0C uses its result. */
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern s32 func_800132BC(s32 a0, s32 a1);
 
-struct src_8012BE98 {
-    u8 pad[6];
-    u16 unk6;
-    u8 pad2[6];
-    u16 unkE;
-};
-
-struct triple_8012BE98 {
-    u16 unk0;
-    u16 unk2;
-    u16 unk4;
-};
-
-extern s32 func_800132BC(u16 *arg0, u16 *arg1);
-
-void func_8012BE98(struct src_8012BE98 *arg0, struct triple_8012BE98 *arg1) {
-    u16 t1[3];
-    u16 t2[3];
-
-    t1[0] = arg0->unk6;
-    t1[1] = 0;
-    t1[2] = arg0->unkE;
-    t2[0] = arg1->unk0;
-    t2[1] = 0;
-    t2[2] = arg1->unk4;
-    func_800132BC(t1, t2);
+void func_8012BE98(s32 arg0, u16 * arg1)
+{
+    s16 a[3];
+    s16 b[3];
+    a[0] = *(u16 *)((u8 *)arg0 + 0x6);
+    a[1] = 0;
+    a[2] = *(u16 *)((u8 *)arg0 + 0xE);
+    b[0] = *(u16 *)((u8 *)arg1 + 0x0);
+    b[1] = 0;
+    b[2] = *(u16 *)((u8 *)arg1 + 0x4);
+    func_800132BC((s32)a, (s32)b);
 }

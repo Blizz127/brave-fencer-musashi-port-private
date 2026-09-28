@@ -5,88 +5,67 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8013AA24 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* GTE/cop2 mnemonic overlay: ordinary C cannot emit coprocessor ops.
- * Verified by tools/match_function.py. */
-__asm__(
-    ".set noreorder\n"
-    ".globl func_8013AA24\n"
-    ".type func_8013AA24, @function\n"
-    "func_8013AA24:\n"
-    "addiu $sp, $sp, -0x108\n"
-    "sw $s0, 0xF0($sp)\n"
-    "addu $s0, $a1, $zero\n"
-    "sw $ra, 0x100($sp)\n"
-    "sw $s3, 0xFC($sp)\n"
-    "sw $s2, 0xF8($sp)\n"
-    "sw $s1, 0xF4($sp)\n"
-    "lhu $v0, 0x8($s0)\n"
-    "addu $s2, $a0, $zero\n"
-    "sh $zero, 0x12($sp)\n"
-    "sh $zero, 0x14($sp)\n"
-    "sh $zero, 0x16($sp)\n"
-    "sh $v0, 0x10($sp)\n"
-    "lhu $v1, 0xA($s0)\n"
-    "addiu $v0, $zero, 0x1000\n"
-    "sh $zero, 0x1A($sp)\n"
-    "sh $zero, 0x1C($sp)\n"
-    "sh $zero, 0x1E($sp)\n"
-    "sh $v0, 0x20($sp)\n"
-    "sh $v1, 0x18($sp)\n"
-    "lh $v0, 0x24($s2)\n"
-    "nop\n"
-    "sw $v0, 0x24($sp)\n"
-    "lh $v0, 0x26($s2)\n"
-    "sw $zero, 0x2C($sp)\n"
-    "sw $v0, 0x28($sp)\n"
-    "addiu $v0, $sp, 0x10\n"
-    "lw $t4, 0x0($v0)\n"
-    "lw $t5, 0x4($v0)\n"
-    "ctc2 $t4, $0\n"
-    "ctc2 $t5, $1\n"
-    "lw $t4, 0x8($v0)\n"
-    "lw $t5, 0xC($v0)\n"
-    "lw $t6, 0x10($v0)\n"
-    "ctc2 $t4, $2\n"
-    "ctc2 $t5, $3\n"
-    "ctc2 $t6, $4\n"
-    "lw $t4, 0x14($v0)\n"
-    "lw $t5, 0x18($v0)\n"
-    "ctc2 $t4, $5\n"
-    "lw $t6, 0x1C($v0)\n"
-    "ctc2 $t5, $6\n"
-    "ctc2 $t6, $7\n"
-    "addiu $a0, $s0, 0x8\n"
-    "addiu $s3, $sp, 0x30\n"
-    "addu $a2, $s3, $zero\n"
-    "addiu $s1, $sp, 0xB0\n"
-    "lh $a1, 0xC($s0)\n"
-    "addu $a3, $s1, $zero\n"
-    "addu $a0, $s2, $zero\n"
-    "addu $a1, $s0, $zero\n"
-    "addiu $a1, $s2, 0x24\n"
-    "addu $a2, $s3, $zero\n"
-    "addu $a3, $s1, $zero\n"
-    "lui $v1, %hi(D_800B9A02)\n"
-    "lhu $v1, %lo(D_800B9A02)($v1)\n"
-    "lhu $a0, 0x1A($s2)\n"
-    "sll $v0, $v1, 2\n"
-    "addu $v0, $v0, $v1\n"
-    "sll $v0, $v0, 2\n"
-    "lui $at, %hi(D_800A651C)\n"
-    "addu $at, $at, $v0\n"
-    "lw $v0, %lo(D_800A651C)($at)\n"
-    "sll $a0, $a0, 2\n"
-    "addu $a0, $v0, $a0\n"
-    "lw $ra, 0x100($sp)\n"
-    "lw $s3, 0xFC($sp)\n"
-    "lw $s2, 0xF8($sp)\n"
-    "lw $s1, 0xF4($sp)\n"
-    "lw $s0, 0xF0($sp)\n"
-    "addiu $sp, $sp, 0x108\n"
-    "jr $ra\n"
-    "nop\n"
-    ".size func_8013AA24, .-func_8013AA24\n"
-    ".set reorder\n"
-);
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern void func_8013AD38(void *a0, s32 a1, void *a2, void *a3);
+extern void func_8013B204(s32 a0, s32 a1);
+extern void func_8013AF20();
+extern short D_800B9A02;
+extern s32 D_800A651C;
+
+void func_8013AA24(s32 a0, s32 a1) {
+    s32 s2 = a0;
+    s32 s0 = a1;
+    u8 buf[0xE0];          /* spans 0x10 .. 0xF0 */
+    s16 m00 = *(u16 *)(s0 + 8);
+    s16 m11;
+    *(s16 *)(buf + 0x02) = 0;                       /* 0x12 */
+    *(s16 *)(buf + 0x04) = 0;                       /* 0x14 */
+    *(s16 *)(buf + 0x06) = 0;                       /* 0x16 */
+    *(s16 *)(buf + 0x00) = m00;                     /* 0x10 */
+    m11 = *(u16 *)(s0 + 0xA);
+    *(s16 *)(buf + 0x0A) = 0;                       /* 0x1A */
+    *(s16 *)(buf + 0x0C) = 0;                       /* 0x1C */
+    *(s16 *)(buf + 0x0E) = 0;                       /* 0x1E */
+    *(s16 *)(buf + 0x10) = 0x1000;                  /* 0x20 */
+    *(s16 *)(buf + 0x08) = m11;                     /* 0x18 */
+    *(s32 *)(buf + 0x14) = *(s16 *)(s2 + 0x24);    /* 0x24 */
+    *(s32 *)(buf + 0x18) = *(s16 *)(s2 + 0x26);    /* 0x28 */
+    *(s32 *)(buf + 0x1C) = 0;                       /* 0x2C */
+    {
+        register s32 *p __asm__("$2") = (s32 *)(buf + 0x00);
+        __asm__ __volatile__(
+            "lw $12, 0(%0)\n"
+            "lw $13, 4(%0)\n"
+            "ctc2 $12, $0\n"
+            "ctc2 $13, $1\n"
+            "lw $12, 8(%0)\n"
+            "lw $13, 12(%0)\n"
+            "lw $14, 16(%0)\n"
+            "ctc2 $12, $2\n"
+            "ctc2 $13, $3\n"
+            "ctc2 $14, $4\n"
+            "lw $12, 20(%0)\n"
+            "lw $13, 24(%0)\n"
+            "ctc2 $12, $5\n"
+            "lw $14, 28(%0)\n"
+            "ctc2 $13, $6\n"
+            "ctc2 $14, $7\n"
+            : : "r"(p) : "$12", "$13", "$14", "memory");
+    }
+    func_8013AD38((void *)(s0 + 8), *(s16 *)(s0 + 0xC), buf + 0x20, buf + 0xA0);
+    func_8013B204(s2, s0);
+    func_8013AF20(*(s32 *)((u8 *)&D_800A651C + (u16)D_800B9A02 * 20) +
+                      *(u16 *)(s2 + 0x1A) * 4,
+                  s2 + 0x24, buf + 0x20, buf + 0xA0);
+}

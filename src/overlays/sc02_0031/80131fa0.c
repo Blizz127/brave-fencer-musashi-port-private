@@ -4,26 +4,20 @@
  * Member-0012 C shape retargeted to this member: D_8017E900->D_801851F0.
  * Oracle MATCH re-earned against the resident image; Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80131FA0 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL of func_80131FA0 (main_0012.s), decoded manually from raw
- * asm (fully visible; NOT verified against retail; C89-gated
- * only, promotion requires an oracle MATCH): indirect tail
- * dispatcher, 0x18 frame, s32 result. Calls the code pointer at
- * D_801851F0[(u16)arg0[1]] (lhu + sll-2 + lw) via jalr with a0 still
- * live (no a-reg writes precede it) and returns its . Table
- * contents unstaged; the s32(void*)-typed view matches the
- * func_80042580 callback precedent. */
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern void (*D_801851F0[])(void);
 
-struct h_80131FA0 {
-    u16 unk0;
-    u16 unk2;
-};
-
-typedef s32 (*tgt_80131FA0)(struct h_80131FA0 *);
-
-extern tgt_80131FA0 D_801851F0[];
-
-s32 func_80131FA0(struct h_80131FA0 *arg0) {
-    return D_801851F0[arg0->unk2](arg0);
+void func_80131FA0(void *a0) {
+    D_801851F0[*(u16 *)((s32)a0 + 0x2)]();
 }

@@ -5,41 +5,47 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80130650 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-void func_801319E0();
-s32 func_8012BEE8();
-s32 func_8012CBF4();
-s32 func_80131D68();
-void func_80131C78();
-void func_80131CA8();
-typedef struct Inner { u8 pad[0x10]; s16 u10; } Inner;
-typedef struct {
-    u8 pad[0xA]; s16 uA;
-    u8 padC[0x14]; Inner *inner;
-    u8 pad24[0x90]; s32 uB4;
-    u8 padB8[0xC]; s32 uC4;
-} T;
-void func_80130650(T *p) {
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern void func_801319E0(s32 a0);
+extern s32 func_8012BEE8(s32 a0);
+extern void func_8012CBF4(s32);
+extern s32 func_80131D68(s32 a0, s32 a1);
+extern void func_80131C78(s32 a0);
+extern void func_80131CA8(int a0, int a1);
+
+void func_80130650(s32 a0) {
     s32 s1;
-    if (p->uB4 & 0x1000) {
-        if (p->uA >= 0x10) {
-            func_801319E0(p);
+    if (*(s32 *)(a0 + 0xB4) & 0x1000) {
+        if (*(s16 *)(a0 + 0xA) >= 0x10) {
+            func_801319E0(a0);
             return;
         }
-        if (func_8012BEE8(p)) {
-            func_801319E0(p);
+        if (func_8012BEE8(a0) != 0) {
+            func_801319E0(a0);
             return;
         }
-        if (p->uC4 & 4) {
-            p->inner->u10 -= 0x100;
+        if (*(s32 *)(a0 + 0xC4) & 0x4) {
+            s32 v1 = *(s32 *)(a0 + 0x20);
+            *(s16 *)(v1 + 0x10) = *(u16 *)(v1 + 0x10) - 0x100;
         }
-        s1 = func_8012CBF4(p);
-        if (func_80131D68(p, s1) == 1) {
+        s1 = ((s32 (*)(s32))func_8012CBF4)(a0);
+        if (func_80131D68(a0, s1) == 1) {
             return;
         }
         if (s1 & 0x2000) {
-            func_80131C78(p);
+            func_80131C78(a0);
         }
     }
-    func_80131CA8(p, 0x23);
+    func_80131CA8(a0, 0x23);
 }

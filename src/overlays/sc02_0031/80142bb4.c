@@ -5,52 +5,44 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80142BB4 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-extern void func_801439C0(void *arg0);
-extern void func_8012AD44(void *arg0, s32 arg1);
-extern void func_8012C218(void *arg0);
-extern void func_8012C098(void *arg0);
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern void func_801439C0(u8 *a0);
+extern void func_8012AD44(s32 *a0, s16 a1);
+extern void func_8012C218(void *a0);
+extern void func_8012C098(void);
 
-/* HAND MODEL of func_80142BB4 (main_0012.s), decoded manually from
- * raw asm (fully visible; NOT verified against retail; C89-gated
- * only, promotion requires an oracle MATCH): void (u8 *, s32,
- * s32), 0x20 frame. s1 = a2 via the first bne delay slot. When
- * lh(s0+0xFC) == 1: a nonzero a1, or a zero lh(s0+0x100), takes
- * the 42BF0 path (mask lhu(s0+0x5C) &= ~0x101, set bit 31 of
- * [[s0+0x20]+4], run 801439C0([s0+0xCC]), then 8012AD44(s0,
- * sext(s1))); otherwise returns via 42C64. When != 1: a nonzero
- * a1 or a zero lh(s0+0x100) runs 8012C218(s0), else 8012C098(s0);
- * both join 42C64. Callee decls provisional. */
-void func_80142BB4(u8 *arg0, s32 arg1, s32 arg2)
+void func_80142BB4(s32 * param_1, s32 param_2, s32 param_3)
 {
-    u8 *s0 = arg0;
-    s32 s1 = arg2;
-
-    if (*(s16 *)(s0 + 0xFC) == 1) {
-        if (arg1 == 0 && *(s16 *)(s0 + 0x100) != 0) {
-            return;
-        }
-        *(u16 *)(s0 + 0x5C) = (u16)(*(u16 *)(s0 + 0x5C) & 0xFEFE);
-        *(u32 *)(*(u8 **)(s0 + 0x20) + 4) |= 0x80000000;
-        func_801439C0(*(void **)(s0 + 0xCC));
-        func_8012AD44(s0, (s1 << 16) >> 16);
-        return;
+  void *new_var;
+  new_var = param_1;
+  if ((*((s16 *) (new_var + 0xfc))) == 1)
+  {
+    if ((param_2 != ((char) 0)) || ((*((s16 *) (new_var + 0x100))) == 0))
+    {
+      *((u16 *) (new_var + 0x5c)) = (*((u16 *) (new_var + 0x5c))) & 0xfefe;
+      *((u32 *) ((*((s32 *) (new_var + 0x20))) + 4)) = (*((u32 *) ((*((s32 *) (new_var + 0x20))) + 4))) | 0x80000000;
+      func_801439C0(*((u8 **) (new_var + 0xcc)));
+      func_8012AD44((s32 *) new_var, param_3);
     }
-    if (arg1 != 0 || *(s16 *)(s0 + 0x100) == 0) {
-        func_8012C218(s0);
-        return;
-    }
-    func_8012C098(s0);
-}
-
-/* HAND MODEL of func_80142C84 (main_0012.s): void (u8 *), leaf.
- * Stores 0xFFF40000 to a0+0x14, 0x20000 to a0+0x48, and zero to
- * a0+0x102 (the sh is the jr delay slot, i.e. before the
- * return). */
-void func_80142C84(u8 *arg0)
-{
-    *(u32 *)(arg0 + 0x14) = 0xFFF40000;
-    *(u32 *)(arg0 + 0x48) = 0x20000;
-    *(u16 *)(arg0 + 0x102) = 0;
+  }
+  else
+    if ((param_2 != 0) || ((*((s16 *) (new_var + 0x100))) == 0))
+  {
+ do { func_8012C218(new_var = (void *) new_var); } while (0);
+  }
+  else
+  {
+    ((void (*)(void *)) func_8012C098)((void *) new_var);
+  }
 }

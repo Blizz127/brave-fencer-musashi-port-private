@@ -4,16 +4,28 @@
  * Member-0012 C shape retargeted to this member: D_8017FA7C->D_8018636C.
  * Oracle MATCH re-earned against the resident image; Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80142A10 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-typedef void (*CB)();
-extern CB D_8018636C[];
-extern s16 D_801270C0;
-void func_80142A80();
-typedef struct { u16 a, idx; u8 pad[0xF8]; s16 unkFC; } T;
-void func_80142A10(T *p) {
-    if (D_801270C0 != 3) {
-        D_8018636C[p->idx]();
-        if (p->unkFC)
-            func_80142A80(p);
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+extern u16 D_801270C0;
+extern void func_80142A80(void);
+
+void func_80142A10(int param_1)
+{
+
+    extern void (*D_8018636C[])();
+    if (*(s16 *)&D_801270C0 != 3) {
+        D_8018636C[*(u16 *)(param_1 + 2)]();
+        if (*(s16 *)(param_1 + 0xFC) != 0) {
+            ((void (*)(int))func_80142A80)(param_1);
+        }
     }
 }

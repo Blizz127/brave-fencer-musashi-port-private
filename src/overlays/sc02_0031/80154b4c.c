@@ -5,11 +5,21 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80154B4C - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-void func_80154B7C();
-typedef struct { u8 pad[0xD0]; s32 d0; } T;
-void func_80154B4C(T *p, s32 a1) {
-    if (p->d0 != a1) {
-        func_80154B7C(p, a1);
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+extern void func_80154B7C(u8 *a0, s32 a1);
+
+void func_80154B4C(u8 *a0, s32 a1) {
+    if (*(s32 *)(a0 + 0xD0) != a1) {
+        func_80154B7C(a0, a1);
     }
 }

@@ -5,22 +5,20 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80129374 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL from m2c draft of func_80129374 (main_0012.s): NOT
- * verified against retail. C89-gated only; promotion requires an
- * oracle MATCH. Three-word copy (lw/sw x3). Body is m2c's verbatim with types
- * filled in. */
 
-struct data_80129374 {
-    u8 pad[0x10];
-    s32 unk10;
-    s32 unk14;
-    s32 unk18;
-};
-
-void func_80129374(struct data_80129374 *arg0, struct data_80129374 *arg1) {
-    arg0->unk10 = (s32) arg1->unk10;
-    arg0->unk14 = (s32) arg1->unk14;
-    arg0->unk18 = (s32) arg1->unk18;
+void func_80129374(s32 a0, s32 a1) {
+    *(s32 *)(a0 + 0x10) = *(s32 *)(a1 + 0x10);
+    *(s32 *)(a0 + 0x14) = *(s32 *)(a1 + 0x14);
+    *(s32 *)(a0 + 0x18) = *(s32 *)(a1 + 0x18);
 }

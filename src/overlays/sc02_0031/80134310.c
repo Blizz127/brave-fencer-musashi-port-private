@@ -5,17 +5,20 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80134310 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL of func_80134310 (main_0012.s), decoded manually from
- * raw asm (fully visible; NOT verified against retail; C89-gated
- * only, promotion requires an oracle MATCH): frameless 3-arg s32
- * leaf. Returns arg0[0]*arg1[0] + arg0[1]*arg1[1] + arg0[2]*arg1[2]
- * + arg2 (three mult/mflo lows summed with the bias in the jr
- * delay slot): a signed-halfword 3-dot-product plus bias. s16
- * products are exact; the final sum wraps mod 2^32 exactly as the
- * addu chain. */
+typedef struct { s16 x, y, z; } Vec3s;
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
 
-s32 func_80134310(s16 *arg0, s16 *arg1, s32 arg2) {
-    return arg0[0] * arg1[0] + arg0[1] * arg1[1] + arg0[2] * arg1[2] + arg2;
+s32 func_80134310(Vec3s *a0, Vec3s *a1, s32 a2) {
+    return a0->x * a1->x + a0->y * a1->y + a0->z * a1->z + a2;
 }

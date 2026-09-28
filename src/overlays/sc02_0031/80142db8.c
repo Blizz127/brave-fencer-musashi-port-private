@@ -5,11 +5,19 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
-/* Decompiled by m2c from main.s, then verified byte-exact
- * against retail by tools/match_function.py. Types and signatures are
- * whatever reproduces the bytes; they are not evidence of the
- * original declaration. */
-
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80142DB8 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-typedef struct { u8 pad[0x5C]; u16 flags; } T;
-u16 func_80142DB8(T *p) { return p->flags & 1; }
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+
+s32 func_80142DB8(s32 *a0) {
+    return *(u16*)((s32)a0 + 0x5C) & 0x1;
+}

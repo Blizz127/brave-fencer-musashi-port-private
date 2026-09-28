@@ -5,26 +5,24 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8012F87C - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL of func_8012F87C (main_0012.s), decoded manually from
- * raw asm (NOT verified against retail; C89-gated only,
- * promotion requires an oracle MATCH): when word unkB4 & 8 calls
- * 80131340(obj) (a0 still holds obj at the jal with a nop delay
- * slot: pass-through arg, m2c showed none); ends with
- * 31CA8(obj, 0xA). */
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern void func_80131340(s32 a0);
+extern void func_80131CA8(int a0, int a1);
 
-struct obj_8012F87C {
-    u8 pad[0xB4];
-    s32 unkB4;
-};
-
-extern void func_80131340(void *arg0);
-extern void func_80131CA8(void *arg0, s32 arg1);
-
-void func_8012F87C(struct obj_8012F87C *arg0) {
-    if (arg0->unkB4 & 8) {
-        func_80131340(arg0);
+void func_8012F87C(s32 a0) {
+    if (*(s32 *)(a0 + 0xB4) & 0x8) {
+        func_80131340(a0);
     }
-    func_80131CA8(arg0, 0xA);
+    func_80131CA8(a0, 0xA);
 }

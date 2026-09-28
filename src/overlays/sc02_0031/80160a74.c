@@ -5,23 +5,27 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80160A74 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* Decompiled by m2c from main_0012.s, then verified byte-exact
- * against retail by tools/match_function.py. Types and signatures are
- * whatever reproduces the bytes; they are not evidence of the
- * original declaration. */
-
-void func_80147078(s32, s32);                            /* static */
-void func_80159B70(s32);                               /* static */
-void func_80160B00();                                  /* static */
+extern void func_80160B00();
+extern void func_80147078(s32 *a0, s16 a1);
+extern void func_80159B70(void *a0);
 extern u8 D_80078EBF;
 
-void func_80160A74(s32 arg0) {
+void func_80160A74(s32 *a0) {
     if (D_80078EBF == 0x80) {
         func_80160B00();
-        return;
+    } else {
+        func_80147078(a0, 0);
+        func_80159B70(a0);
     }
-    func_80147078(arg0, 0);
-    func_80159B70(arg0);
 }

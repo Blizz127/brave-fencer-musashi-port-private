@@ -5,14 +5,20 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8012D38C - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL from m2c draft of func_8012D38C (main_0012.s): NOT
- * verified against retail. C89-gated only; promotion requires an
- * oracle MATCH. Raw shows a0 untouched (only a1 = 0 in the jal delay slot), so the object pointer passes through: true signature takes it. (Trailing double jr is dead padding.) */
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern void func_8012D098();
 
-void func_8012D098(void *arg0, s32 arg1);
-
-void func_8012D38C(void *arg0) {
-    func_8012D098(arg0, 0);
+void func_8012D38C(int a0) {
+    func_8012D098(a0, 0);
 }

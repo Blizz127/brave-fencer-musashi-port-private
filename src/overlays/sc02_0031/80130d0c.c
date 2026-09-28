@@ -4,28 +4,20 @@
  * Member-0012 C shape retargeted to this member: D_8017E710->D_80185000.
  * Oracle MATCH re-earned against the resident image; Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80130D0C - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL of func_80130D0C (main_0012.s), decoded manually from
- * raw asm (fully visible; NOT verified against retail; C89-gated
- * only, promotion requires an oracle MATCH): dispatches through
- * D_80185000[u8 arg0->unkC1] (word table; index 0 holds 0x80000,
- * handlers start at 1) via jalr with a nop delay slot, so both
- * live regs pass through. Modelled as a uniform 2-arg indirect
- * call: the table mixes 1-arg and 2-arg handlers, but on MIPS o32
- * the extra register is simply ignored by 1-arg targets, exactly
- * as retail. Returns the handler's v0 residue. Sole raw caller is
- * the 80178540 range (no hand model yet); it sets only a0. */
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern void (*D_80185000[])(void);
 
-struct obj_80130D0C {
-    u8 pad[0xC1];
-    u8 unkC1;
-};
-
-typedef s32 (*handler_80130D0C)(void *arg0, s32 arg1);
-
-extern handler_80130D0C D_80185000[];
-
-s32 func_80130D0C(struct obj_80130D0C *arg0, s32 arg1) {
-    return D_80185000[arg0->unkC1](arg0, arg1);
+void func_80130D0C(void *a0) {
+    D_80185000[*(u8 *)((s32)a0 + 0xC1)]();
 }

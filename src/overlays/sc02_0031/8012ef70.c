@@ -5,32 +5,33 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8012EF70 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* GTE/cop2 mnemonic overlay: ordinary C cannot emit coprocessor ops.
- * Verified by tools/match_function.py. */
-__asm__(
-    ".set noreorder\n"
-    ".globl func_8012EF70\n"
-    ".type func_8012EF70, @function\n"
-    "func_8012EF70:\n"
-    "addiu $sp, $sp, -0x20\n"
-    "sw $s0, 0x18($sp)\n"
-    "sw $ra, 0x1C($sp)\n"
-    "addu $s0, $a1, $zero\n"
-    "addiu $v1, $sp, 0x10\n"
-    "mfc2 $t4, $19\n"
-    "nop\n"
-    "sra $t4, $t4, 2\n"
-    "sw $t4, 0x0($v1)\n"
-    "lw $v1, 0x10($sp)\n"
-    "nop\n"
-    "sh $v1, 0x4($s0)\n"
-    "lw $ra, 0x1C($sp)\n"
-    "lw $s0, 0x18($sp)\n"
-    "addiu $sp, $sp, 0x20\n"
-    "jr $ra\n"
-    "nop\n"
-    ".size func_8012EF70, .-func_8012EF70\n"
-    ".set reorder\n"
-);
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern void func_8012EFB8(s32 a0);
+
+void func_8012EF70(s32 a0, s32 a1) {
+    s32 sp10;
+    register s32 v1 __asm__("$3");
+    func_8012EFB8(a0);
+    {
+        register s32 *p __asm__("$3") = &sp10;
+        __asm__ __volatile__(
+            "mfc2 $12, $19\n"
+            "nop\n"
+            "sra $12, $12, 2\n"
+            "sw $12, 0(%0)\n"
+            : : "r"(p) : "memory", "$12");
+    }
+    v1 = sp10;
+    *(s16 *)(a1 + 4) = v1;
+}

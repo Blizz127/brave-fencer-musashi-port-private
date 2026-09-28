@@ -4,48 +4,43 @@
  * Member-0012 C shape retargeted to this member: D_8017E980->D_80185270.
  * Oracle MATCH re-earned against the resident image; Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80137D08 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL of func_80137D08 (main_0012.s), decoded manually from
- * raw asm (fully visible; NOT verified against retail; C89-gated
- * only, promotion requires an oracle MATCH): s32 result, 0x28
- * frame. s0 = a1 (opaque forward), s1 = &D_801269F0.
- * D_800A5E60 = a0; D_80126A0A = (u16)a2;
- * func_801392FC(s1, D_80126A0E, s0). If (D_801269F4[0] == 7):
- * func_80137DD4(s1, {0x39,0xFF,0x71}-buf, s0) (third byte rides
- * the jal delay slot); else if (== 3 and (D_80185270 & 4)):
- * func_80139680(s1, s0) (a1 set in the jal delay slot).
- * Returns the reloaded D_800A5E60 (the sole retail caller adds
- * $v0 onward, pinning the s32 return; the word is not clobbered
- * in-function). Callee decls are all-pointer views local to
- * this TU (s0/s1 never dereferenced here). */
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern unsigned char D_80126A0E;
+extern short D_80126A0A;
+extern s16 D_801269F4;
+extern int D_800A5E60;
+extern int D_80185270;
+extern int D_801269F0;
+extern void func_801392FC();
+extern void func_80137DD4(s32 a0, u8 *a1, u8 *a2);
+extern void func_80139680(s32 a0, u8 *a1);
 
-extern u8 D_801269F0[];
-extern s32 D_800A5E60;
-extern u16 D_80126A0A;
-extern u8 D_80126A0E;
-extern s16 D_801269F4[];
-extern s32 D_80185270;
-extern void func_801392FC(void *arg0, s32 arg1, void *arg2);
-extern void func_80137DD4(void *arg0, void *arg1, void *arg2);
-extern void func_80139680(void *arg0, void *arg1);
+int func_80137D08(int arg0, int arg1, short arg2)
+{
+    unsigned char buf[3];
 
-s32 func_80137D08(s32 arg0, void *arg1, s32 arg2) {
-    void *s1v;
-    u8 buf[3];
-
-    s1v = D_801269F0;
     D_800A5E60 = arg0;
-    D_80126A0A = (u16) arg2;
-    func_801392FC(s1v, D_80126A0E, arg1);
-    if (D_801269F4[0] == 7) {
+    D_80126A0A = arg2;
+    ((void (*)(void *, int, int))func_801392FC)(&D_801269F0, D_80126A0E, arg1);
+    if ((*(short *)&D_801269F4) == 7) {
         buf[0] = 0x39;
         buf[1] = 0xFF;
         buf[2] = 0x71;
-        func_80137DD4(s1v, buf, arg1);
-    } else if (D_801269F4[0] == 3) {
-        if ((D_80185270 & 4) != 0) {
-            func_80139680(s1v, arg1);
+        ((void (*)(void *, void *, int))func_80137DD4)(&D_801269F0, buf, arg1);
+    } else if ((*(short *)&D_801269F4) == 3) {
+        if (D_80185270 & 4) {
+            ((void (*)(void *, int))func_80139680)(&D_801269F0, arg1);
         }
     }
     return D_800A5E60;

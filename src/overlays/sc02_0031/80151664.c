@@ -5,38 +5,44 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80151664 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-void func_80154A74();
-void func_801553C0();
-void func_801470AC();
-void func_801472B4();
-void func_801477E8();
-void func_80153C18();
-typedef struct Inner { u8 pad[0x10]; s16 unk10; } Inner;
-typedef struct {
-    u8 pad[0x20];
-    Inner *inner;
-    u8 pad24[0x18];
-    u16 f3C, f3E, f40, f42;
-    u8 pad44[0x1C];
-    s16 f60, f62, f64;
-    u8 pad66[0xDD-0x66];
-    u8 fDD;
-} T;
-void func_80151664(T *p) {
-    func_80154A74(p, 0x11);
-    func_801553C0(p);
-    func_801470AC(p);
-    func_801472B4(p);
-    p->f3E = 0;
-    p->f40 = 0;
-    p->f42 = 0;
-    p->fDD = 0;
-    p->f3C &= 0xFFFE;
-    p->inner->unk10 = 0;
-    p->f60 = 0x1000;
-    p->f62 = 0x1000;
-    p->f64 = 0x1000;
-    func_801477E8(p, 0);
-    func_80153C18(p);
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+extern void func_80154A74(s32 a0, s32 a1);
+extern void func_801553C0(s32 a0);
+extern void func_801470AC(s32 *a0);
+extern void func_801472B4(void *a0);
+extern void func_801477E8(s32 *a0, s32 a1);
+extern void func_80153C18();
+
+void func_80151664(void) {
+    register s32 a0v __asm__("$4");
+    s32 s0;
+    s32 v1;
+
+    s0 = a0v;
+    func_80154A74(s0, 0x11);
+    func_801553C0(s0);
+    func_801470AC((s32 *)s0);
+    func_801472B4((void *)s0);
+    v1 = *(s32 *)(s0 + 0x20);
+    *(s16 *)(s0 + 0x3E) = 0;
+    *(s16 *)(s0 + 0x40) = 0;
+    *(s16 *)(s0 + 0x42) = 0;
+    *(s8 *)(s0 + 0xDD) = 0;
+    *(s16 *)(s0 + 0x3C) = *(u16 *)(s0 + 0x3C) & 0xFFFE;
+    *(s16 *)(v1 + 0x10) = 0;
+    *(s16 *)(s0 + 0x60) = 0x1000;
+    *(s16 *)(s0 + 0x62) = 0x1000;
+    *(s16 *)(s0 + 0x64) = 0x1000;
+    func_801477E8((s32 *)s0, 0);
+    func_80153C18(s0);
 }

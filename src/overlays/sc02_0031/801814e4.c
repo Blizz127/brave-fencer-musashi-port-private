@@ -1,41 +1,62 @@
 /* Complete SC02 camera calculation [801814E4,801816C0). */
-#define H(o) (*(short *)(state+(o)))
-#define W(o) (*(int *)(state+(o)))
-extern unsigned char D_80126B58[];
-extern short D_80188DD4[];
-extern int func_80148800(void *);
-extern short func_80012C6C(short,short,int);
-extern short func_80012ABC(short,short,int);
-extern void func_80049CAC(void *,void *);
-extern void func_8012F14C(void *,void *,void *);
-void func_801814E4(unsigned char *state, short *position)
-{
-    struct { short m[3][3]; short pad; int t[3]; } matrix;
-    short vector[4],result[4];
-    if (func_80148800(D_80126B58) & 3) {
-        state[5] = (state[5]+1)&1;
-        W(0x14) = D_80188DD4[state[5]];
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_801814E4 - byte-exact against retail at -O2 (tools/register_match.py). */
+#include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+extern s32 D_80126B58;
+extern void func_8012A568(void (*a0)(void));
+typedef struct { s16 m[3][3]; s32 t[3]; } MATRIX_8017D5C8_801814E4;
+typedef struct { s16 vx, vy, vz, pad; } SVECTOR_8017D5C8_801814E4;
+extern u16 func_80148800(s32 *a0);
+extern s32 func_80012C6C(s32 a0, s32 a1, s32 a2);
+extern s32 func_80012ABC(s32 a0, s32 a1, s32 a2);
+extern void func_80049CAC(s32 a0, s32 a1);
+extern void func_8012F14C(s32 a0, s32 a1, s32 a2);
+
+void func_801814E4(s32 param_1, s16 *param_2) {
+
+    extern s16 D_80188DD4[];
+    MATRIX_8017D5C8_801814E4 m1;
+    SVECTOR_8017D5C8_801814E4 svec_in;
+    SVECTOR_8017D5C8_801814E4 svec_out;
+    u8 t;
+
+    if (func_80148800(&D_80126B58) & 3) {
+        t = (*(u8 *)(param_1 + 5) + 1) & 1;
+        *(u8 *)(param_1 + 5) = t;
+        *(s32 *)(param_1 + 0x14) = D_80188DD4[t];
     }
-    W(8) = func_80012C6C(H(8),H(12),4);
-    W(16) = func_80012C6C(H(16),H(20),4);
-    H(24) = func_80012ABC(H(24),H(32),4);
-    H(26) = func_80012ABC(H(26),H(34),4);
-    H(28) = func_80012ABC(H(28),H(36),4);
-    H(40) = func_80012C6C(H(40),H(46),16);
-    H(42) = func_80012C6C(H(42),H(48),16);
-    H(44) = func_80012C6C(H(44),H(50),16);
-    W(72) = H(40)+position[0];
-    W(76) = H(42)+position[1];
-    W(80) = H(44)+position[2];
-    func_80049CAC(state+24,&matrix);
-    matrix.t[0] = H(40)+position[0];
-    matrix.t[1] = H(42)+position[1];
-    matrix.t[2] = H(44)+position[2];
-    vector[0] = 0;
-    vector[1] = 0;
-    vector[2] = W(16);
-    func_8012F14C(&matrix,vector,result);
-    W(60) = result[0];
-    W(64) = result[1];
-    W(68) = result[2];
+
+    *(s32 *)(param_1 + 0x8)  = (s16)func_80012C6C((s32)*(s16 *)(param_1 + 0x8),  (s32)*(s16 *)(param_1 + 0xC),  4);
+    *(s32 *)(param_1 + 0x10) = (s16)func_80012C6C((s32)*(s16 *)(param_1 + 0x10), (s32)*(s16 *)(param_1 + 0x14), 4);
+    *(s16 *)(param_1 + 0x18) = func_80012ABC((s32)*(s16 *)(param_1 + 0x18), (s32)*(s16 *)(param_1 + 0x20), 4);
+    *(s16 *)(param_1 + 0x1A) = func_80012ABC((s32)*(s16 *)(param_1 + 0x1A), (s32)*(s16 *)(param_1 + 0x22), 4);
+    *(s16 *)(param_1 + 0x1C) = func_80012ABC((s32)*(s16 *)(param_1 + 0x1C), (s32)*(s16 *)(param_1 + 0x24), 4);
+    *(s16 *)(param_1 + 0x28) = func_80012C6C((s32)*(s16 *)(param_1 + 0x28), (s32)*(s16 *)(param_1 + 0x2E), 0x10);
+    *(s16 *)(param_1 + 0x2A) = func_80012C6C((s32)*(s16 *)(param_1 + 0x2A), (s32)*(s16 *)(param_1 + 0x30), 0x10);
+    *(s16 *)(param_1 + 0x2C) = func_80012C6C((s32)*(s16 *)(param_1 + 0x2C), (s32)*(s16 *)(param_1 + 0x32), 0x10);
+
+    *(s32 *)(param_1 + 0x48) = (s32)*(s16 *)(param_1 + 0x28) + (s32)param_2[0];
+    *(s32 *)(param_1 + 0x4C) = (s32)*(s16 *)(param_1 + 0x2A) + (s32)param_2[1];
+    *(s32 *)(param_1 + 0x50) = (s32)*(s16 *)(param_1 + 0x2C) + (s32)param_2[2];
+    func_80049CAC(param_1 + 0x18, (s32)&m1);
+
+    m1.t[0] = *(s16 *)(param_1 + 0x28) + param_2[0];
+    m1.t[1] = *(s16 *)(param_1 + 0x2A) + param_2[1];
+    m1.t[2] = *(s16 *)(param_1 + 0x2C) + param_2[2];
+    svec_in.vx = 0;
+    svec_in.vy = 0;
+    svec_in.vz = *(s32 *)(param_1 + 0x10);
+    ((void (*)(s32, s32, s32))func_8012F14C)((s32)&m1, (s32)&svec_in, (s32)&svec_out);
+
+    *(s32 *)(param_1 + 0x3C) = (s32)svec_out.vx;
+    *(s32 *)(param_1 + 0x40) = (s32)svec_out.vy;
+    *(s32 *)(param_1 + 0x44) = (s32)svec_out.vz;
 }

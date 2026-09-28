@@ -1,0 +1,97 @@
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80167DBC - byte-exact against retail at -O2 (tools/register_match.py). */
+#include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+extern s32 func_80029178(s32 arg);
+extern s32  func_80017758(void *a0, void *a1);
+extern void func_80168070(s32 a0, s16 *a1, s16 *a2, void *a3);
+extern u16  D_800B99DA;
+extern u8   D_8018023C[];
+extern u8   D_80180250[];
+
+s32 func_80167DBC(s32 arg0, s32 arg1, s32 arg2) {
+    u8 buf[0x54];
+    u8 *p;
+    s16 i;
+
+    func_80168070(arg0, ((s16 *)arg1), ((s16 *)arg2), buf);
+
+    *(s16 *)(buf + 0x3C) = 0;
+    *(s16 *)(buf + 0x34) = 0;
+    *(s16 *)(buf + 0x24) = 0;
+    *(s16 *)(buf + 0x2C) = 0;
+    *(s16 *)(buf + 0x2A) = 0;
+    *(s16 *)(buf + 0x28) = 0;
+    if (D_800B99DA & 1) {
+        buf[0x46] = 0x58;
+    } else {
+        buf[0x46] = 0x48;
+    }
+    buf[0x45] = buf[0x46] >> 2;
+    buf[0x44] = buf[0x45];
+    if (((u8 (*)(s32))func_80029178)(0x81) != 0) {
+        buf[0x45] = buf[0x45] << 2;
+        buf[0x46] = buf[0x46] >> 1;
+    }
+
+    p = D_8018023C;
+    buf[0x42] = 0;
+    buf[0x41] = 0;
+    buf[0x40] = 0;
+    buf[0x4A] = 0;
+    buf[0x49] = 0;
+    buf[0x48] = 0;
+    buf[0x4E] = 0;
+    buf[0x4D] = 0;
+    buf[0x4C] = 0;
+    *(s32 *)(buf + 0x50) = 0x50000000;
+
+    for (i = 0; i < 4; i++) {
+        *(s16 *)(buf + 0x20) = (s8)*p++;
+        *(s16 *)(buf + 0x22) = (s8)*p++;
+        *(s16 *)(buf + 0x30) = (s8)*p++;
+        *(s16 *)(buf + 0x32) = (s8)*p++;
+        *(s16 *)(buf + 0x38) = (s8)*p++;
+        *(s16 *)(buf + 0x3A) = (s8)*p--;
+        func_80017758(buf + 0x20, buf);
+    }
+
+    p = D_80180250;
+    *(s16 *)(buf + 0x2C) = -0x12;
+    *(s16 *)(buf + 0x3A) = 0;
+    *(s16 *)(buf + 0x32) = 0;
+    *(s16 *)(buf + 0x22) = 0;
+    *(s16 *)(buf + 0x2A) = 0;
+    *(s16 *)(buf + 0x28) = 0;
+    buf[0x46] = buf[0x46] << 1;
+    buf[0x44] = buf[0x45] = buf[0x45] << 1;
+
+    for (i = 0; i < 4; i++) {
+        *(s16 *)(buf + 0x20) = (s8)*p++;
+        *(s16 *)(buf + 0x24) = (s8)*p++;
+        *(s16 *)(buf + 0x30) = (s8)*p++;
+        *(s16 *)(buf + 0x34) = (s8)*p++;
+        *(s16 *)(buf + 0x38) = (s8)*p++;
+        *(s16 *)(buf + 0x3C) = (s8)*p--;
+        if (i == 2) {
+            buf[0x4E] = buf[0x46];
+            buf[0x4D] = buf[0x44];
+            buf[0x4C] = buf[0x4D];
+        } else if (i == 3) {
+            buf[0x4E] = 0;
+            buf[0x4D] = 0;
+            buf[0x4C] = buf[0x4D];
+            buf[0x42] = buf[0x46];
+            buf[0x41] = buf[0x44];
+            buf[0x40] = buf[0x44];
+        }
+        func_80017758(buf + 0x20, buf);
+    }
+}

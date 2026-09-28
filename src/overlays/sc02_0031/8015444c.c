@@ -6,41 +6,47 @@
  * already match this member, and the switch lowers to 0x801B5ACC via
  * --rodata-base. Oracle MATCH 363/363. Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8015444C - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
+typedef struct actor4c {
+    u8 pad00[0x20];
+    struct actor4c *unk20;  /* 0x20 */
+    u8 pad24[0x44 - 0x24];
+    u32 unk44;              /* 0x44 */
+    u8 pad48[0xB4 - 0x48];
+    s32 *unkB4;             /* 0xB4  command-stream pointer */
+    s16 unkB8;              /* 0xB8  countdown timer */
+    s16 unkBA;              /* 0xBA */
+    u8 unkBC;               /* 0xBC  program counter */
+    u8 unkBD;               /* 0xBD */
+    u8 padBE[0xDC - 0xBE];
+    u8 unkDC;               /* 0xDC */
+    u8 padDD[0x1A8 - 0xDD];
+    u8 unk1A8;              /* 0x1A8 */
+} Actor4C;
+extern void func_80059A1C(s32, void *);
+extern void func_80154A74(s32 a0, s32 a1);
+extern void func_801553C0(s32 a0);
+extern void func_80155440(s32 *a0);
+extern s32 func_801549F8(s32 a0, s32 a1, s32 a2);
+extern void func_80154B4C(u8 *a0, s32 a1);
+extern s32 func_80155394(s32 *a0);
+extern void func_801553A8(s32 *a0);
 extern u8 D_80126738;
 extern u8 D_80126748;
 extern u8 D_80126838;
 extern u8 D_80126848;
-void func_801549F8(s32 a0);
-void func_80154B4C(s32 a0, s32 a1);
-void func_80154A74(s32 a0, s32 a1);
-void func_801553C0(s32 a0);
-void func_80155440(s32 *a0);
-void func_80155394(s32 *a0);
-void func_801553A8(s32 *a0);
-void func_80059A1C(s32 a0, void *a1);
 
-void func_8015444C(void* a0v, s32* arg1x, s32* arg2x, s32* arg3x)
-{
-    /* BLOCK-SCOPE type — see header note. */
-    typedef struct actor4c_8015444C {
-        u8 pad00[0x20];
-        struct actor4c_8015444C *unk20;  /* 0x20 */
-        u8 pad24[0x44 - 0x24];
-        u32 unk44;              /* 0x44 */
-        u8 pad48[0xB4 - 0x48];
-        s32 *unkB4;             /* 0xB4  command-stream pointer */
-        s16 unkB8;              /* 0xB8  countdown timer */
-        s16 unkBA;              /* 0xBA */
-        u8 unkBC;               /* 0xBC  program counter */
-        u8 unkBD;               /* 0xBD */
-        u8 padBE[0xDC - 0xBE];
-        u8 unkDC;               /* 0xDC */
-        u8 padDD[0x1A8 - 0xDD];
-        u8 unk1A8;              /* 0x1A8 */
-    } Actor4C;
-
+void func_8015444C(void *a0v, s32 *arg1x, s32 *arg2x, s32 *arg3x) {
     Actor4C *arg0 = a0v;
     s32 *arg1 = arg1x;
     s32 *arg2 = arg2x;
@@ -55,7 +61,7 @@ void func_8015444C(void* a0v, s32* arg1x, s32* arg2x, s32* arg3x)
     s32 w;
     u8 *img;
 
-    if (p != 0) {
+    if (p != NULL) {
         t = *(u8 *)&arg0->unkB8;
         if (t != 0) {
             if (*arg1 == 0) {
@@ -198,7 +204,7 @@ void func_8015444C(void* a0v, s32* arg1x, s32* arg2x, s32* arg3x)
                     if (*arg3 == 0) {
                         arg0->unk1A8 ^= 1;
                     }
-                    arg0->unkB8 =  1;
+                    arg0->unkB8 = 1;
                     arg0->unkBC = arg0->unkBC + 1;
                     arg0->unkBD = arg0->unkBD + 1;
                     func_8015444C(arg0, arg1, arg2, arg3);

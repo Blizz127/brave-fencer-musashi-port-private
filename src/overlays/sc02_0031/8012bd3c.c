@@ -5,28 +5,34 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8012BD3C - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL from m2c draft of func_8012BD3C (main_0012.s): NOT
- * verified against retail. C89-gated only; promotion requires an
- * oracle MATCH. Single function with entry at 0x8012BD3C (same prefix-fallthrough shape as func_8012A328: lh D_80126CBA with no jr, falling into the body range labelled func_8012BD44, which is a mid-function label with no separate file). No direct callers found in main_0012; reached via table or another overlay. Second BDBC argument is a sign-extended half (sll/sra pair in raw). */
-
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern s32 func_80013478(s32 a0, s32 a1);
+extern s32 func_8012BDBC(s32 a0, s32 a1);
 extern s16 D_80126CBA;
-extern u8 D_80126CB4;
+extern s16 D_80126CB4;
 
-extern s32 func_80013478(void *arg0, void *arg1);
-extern s32 func_8012BDBC(s32 arg0, s16 arg1);
-
-s32 func_8012BD3C(s32 arg0, s16 arg1, s32 arg2) {
+s32 func_8012BD3C(s32 a0, s32 a1, s32 a2) {
     s32 v;
-
+    s32 hp;
+    hp = a1;
     if (D_80126CBA != 0) {
         v = 0x7FFFFFFF;
     } else {
-        v = func_80013478((void *) (arg0 + 4), &D_80126CB4);
+        v = func_80013478(a0 + 4, (s32)&D_80126CB4);
     }
-    if (arg2 < v) {
+    if (a2 < v) {
         return 0;
     }
-    return func_8012BDBC(arg0, arg1);
+    return func_8012BDBC(a0, (s16)hp);
 }

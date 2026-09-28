@@ -1,0 +1,70 @@
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8016BFD0 - byte-exact against retail at -O2 (tools/register_match.py). */
+#include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+typedef struct {
+    s16 m[9];    /* 0x00 */
+    s16 pad;     /* 0x12 */
+    s32 t[3];    /* 0x14, 0x18, 0x1c */
+    s32 rest[8]; /* 0x20..0x3f */
+} Mtx_8016BFD0;
+typedef struct { s16 x, y, z; } Vec3_8016BFD0;
+typedef struct { char b[4]; } W_8016BFD0;
+extern void func_80013F3C(s32 a0);
+extern void func_800123F0(s32 a0, s32 a1);
+extern void func_8012F14C(s32 a0, s32 a1, s32 a2);
+extern void func_80020F34(s32 a0, s32 a1);
+extern void func_8012EFB8(s32 a0);
+extern void func_8012A568(void (*a0)(void));
+
+void func_8016BFD0(s32 a0, s32 a1, s32 a2, s32 a3, void *a4) {
+    extern void func_80017714();
+    extern s32 D_80180548;
+    extern s32 D_80180550;
+    extern s32 D_80180558;
+    extern s32 D_80180560;
+
+    Mtx_8016BFD0 buf;
+    Vec3_8016BFD0 v1;
+    Vec3_8016BFD0 v2;
+    s32 iVar5 = *(s32 *)(a0 + 0x20);
+
+    *(u32 *)((s32)a4 + 0x30) = 0x50000000;
+    *(W_8016BFD0 *)((s32)a4 + 0x20) = *(W_8016BFD0 *)a1;
+    *(W_8016BFD0 *)((s32)a4 + 0x24) = *(W_8016BFD0 *)a1;
+    *(W_8016BFD0 *)((s32)a4 + 0x28) = *(W_8016BFD0 *)a2;
+    *(W_8016BFD0 *)((s32)a4 + 0x2c) = *(W_8016BFD0 *)a2;
+
+    v1.x = *(u16 *)(a0 + 6);
+    v1.y = *(u16 *)(a0 + 0xa);
+    v1.z = *(u16 *)(a0 + 0xe);
+    ((void(*)())func_8012EFB8)(&v1, &v1);
+    ((void(*)())func_80013F3C)(&buf);
+    ((void(*)())func_800123F0)(&buf, (s32)*(s16 *)(iVar5 + 0x12));
+
+    v2.x = *(u16 *)(a3 + 0);
+    v2.y = *(u16 *)(a3 + 2);
+    v2.z = *(u16 *)(a3 + 4);
+    ((void(*)())func_80020F34)(&buf, &v2);
+
+    buf.t[0] = v1.x;
+    buf.t[1] = v1.y;
+    buf.t[2] = v1.z;
+    ((void(*)())func_8012F14C)(&buf, &D_80180548, (s32)a4);
+    ((void(*)())func_8012F14C)(&buf, &D_80180550, (s32)a4 + 8);
+    ((void(*)())func_8012F14C)(&buf, &D_80180558, (s32)a4 + 0x10);
+    ((void(*)())func_8012F14C)(&buf, &D_80180560, (s32)a4 + 0x18);
+
+    *(s16 *)((s32)a4 + 4) = 0;
+    *(s16 *)((s32)a4 + 0xc) = 0;
+    *(s16 *)((s32)a4 + 0x14) = 0;
+    *(s16 *)((s32)a4 + 0x1c) = 0;
+    func_80017714(a4);
+}

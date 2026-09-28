@@ -5,398 +5,217 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80132784 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-
-/* GTE/cop2 mnemonic overlay: ordinary C cannot emit coprocessor ops.
- * Verified by tools/match_function.py. */
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+/* GTE instruction macros (vendor/bfm-decomp/include/gte_macros.inc) for GNU as. */
 __asm__(
-    ".set noreorder\n"
-    ".globl func_80132784\n"
-    ".type func_80132784, @function\n"
-    "func_80132784:\n"
-    "addiu $sp, $sp, -0xF8\n"
-    "sw $s7, 0xEC($sp)\n"
-    "addu $s7, $a0, $zero\n"
-    "sw $s0, 0xD0($sp)\n"
-    "addu $s0, $a1, $zero\n"
-    "sw $ra, 0xF0($sp)\n"
-    "sw $s6, 0xE8($sp)\n"
-    "sw $s5, 0xE4($sp)\n"
-    "sw $s4, 0xE0($sp)\n"
-    "sw $s3, 0xDC($sp)\n"
-    "sw $s2, 0xD8($sp)\n"
-    "sw $s1, 0xD4($sp)\n"
-    "lw $v0, 0x20($s7)\n"
-    "nop\n"
-    "addu $s2, $a2, $zero\n"
-    "lw $v0, 0x20($s0)\n"
-    "nop\n"
-    "nop\n"
-    ".L801327D4:\n"
-    "lw $s6, 0x20($s0)\n"
-    "nop\n"
-    "lw $s1, 0x20($s6)\n"
-    "nop\n"
-    "nop\n"
-    "lw $v0, 0x78($s6)\n"
-    "sw $zero, 0x10($sp)\n"
-    "sw $v0, 0x58($sp)\n"
-    "lhu $v0, 0x2C($s6)\n"
-    "nop\n"
-    "andi $v0, $v0, 0x1\n"
-    "addiu $a0, $s6, 0x10\n"
-    "lw $v0, 0x34($s6)\n"
-    "lw $v1, 0x38($s6)\n"
-    "lw $a0, 0x3C($s6)\n"
-    "lw $a1, 0x40($s6)\n"
-    "sw $v0, 0x14($sp)\n"
-    "sw $v1, 0x18($sp)\n"
-    "sw $a0, 0x1C($sp)\n"
-    "sw $a1, 0x20($sp)\n"
-    "lw $v0, 0x44($s6)\n"
-    "lw $v1, 0x48($s6)\n"
-    "lw $a0, 0x4C($s6)\n"
-    "lw $a1, 0x50($s6)\n"
-    "sw $v0, 0x24($sp)\n"
-    "sw $v1, 0x28($sp)\n"
-    "sw $a0, 0x2C($sp)\n"
-    "sw $a1, 0x30($sp)\n"
-    "nop\n"
-    ".L80132854:\n"
-    "addiu $a1, $sp, 0x14\n"
-    "lhu $v0, 0x6($s0)\n"
-    "lhu $v1, 0x50($s0)\n"
-    "nop\n"
-    "addu $v0, $v0, $v1\n"
-    "sh $v0, 0x8($s6)\n"
-    "sll $v0, $v0, 16\n"
-    "sra $v0, $v0, 16\n"
-    "sw $v0, 0x28($sp)\n"
-    "lhu $v0, 0xA($s0)\n"
-    "lhu $v1, 0x52($s0)\n"
-    "nop\n"
-    "addu $v0, $v0, $v1\n"
-    "sh $v0, 0xA($s6)\n"
-    "sll $v0, $v0, 16\n"
-    "sra $v0, $v0, 16\n"
-    "sw $v0, 0x2C($sp)\n"
-    "lhu $v0, 0xE($s0)\n"
-    "lhu $v1, 0x54($s0)\n"
-    "nop\n"
-    "addu $v0, $v0, $v1\n"
-    "sh $v0, 0xC($s6)\n"
-    "sll $v0, $v0, 16\n"
-    "sra $v0, $v0, 16\n"
-    "sw $v0, 0x30($sp)\n"
-    "lw $v0, 0x14($sp)\n"
-    "lw $v1, 0x18($sp)\n"
-    "lw $a0, 0x1C($sp)\n"
-    "lw $a1, 0x20($sp)\n"
-    "sw $v0, 0x34($s6)\n"
-    "sw $v1, 0x38($s6)\n"
-    "sw $a0, 0x3C($s6)\n"
-    "sw $a1, 0x40($s6)\n"
-    "lw $v0, 0x24($sp)\n"
-    "lw $v1, 0x28($sp)\n"
-    "lw $a0, 0x2C($sp)\n"
-    "lw $a1, 0x30($sp)\n"
-    "sw $v0, 0x44($s6)\n"
-    "sw $v1, 0x48($s6)\n"
-    "sw $a0, 0x4C($s6)\n"
-    "sw $a1, 0x50($s6)\n"
-    "lhu $v0, 0x2C($s6)\n"
-    "nop\n"
-    "ori $v0, $v0, 0x1\n"
-    "sh $v0, 0x2C($s6)\n"
-    "lhu $v0, 0x2C($s6)\n"
-    "nop\n"
-    "andi $v0, $v0, 0x10\n"
-    "addiu $a0, $sp, 0x14\n"
-    "addiu $a1, $s6, 0x18\n"
-    ".L80132928:\n"
-    "addiu $a0, $sp, 0x10\n"
-    "addiu $a1, $sp, 0x60\n"
-    "lui $v0, (0x1000000 >> 16)\n"
-    "and $v0, $s1, $v0\n"
-    "lui $s0, (0xFEFFFFFF >> 16)\n"
-    "lhu $v0, 0x2C($s6)\n"
-    "nop\n"
-    "andi $v0, $v0, 0x40\n"
-    "ori $s0, $s0, (0xFEFFFFFF & 0xFFFF)\n"
-    "andi $v1, $s2, 0xFFFF\n"
-    "sll $v0, $v1, 1\n"
-    "addu $v0, $v0, $v1\n"
-    "sll $v0, $v0, 2\n"
-    "addu $s1, $s1, $v0\n"
-    "addiu $a0, $s1, 0x6\n"
-    "addiu $a1, $sp, 0x80\n"
-    "lh $v0, 0x0($s1)\n"
-    "nop\n"
-    "sw $v0, 0x94($sp)\n"
-    "lh $v0, 0x2($s1)\n"
-    "nop\n"
-    "sw $v0, 0x98($sp)\n"
-    "lh $v0, 0x4($s1)\n"
-    "sw $v0, 0x9C($sp)\n"
-    ".L8013299C:\n"
-    "ori $s0, $s0, (0xFEFFFFFF & 0xFFFF)\n"
-    ".L801329A0:\n"
-    "and $s0, $s1, $s0\n"
-    "andi $v0, $s2, 0xFFFF\n"
-    "sll $v0, $v0, 3\n"
-    "addu $s0, $s0, $v0\n"
-    "addiu $a0, $sp, 0xC0\n"
-    "lhu $v0, 0x6($s0)\n"
-    "addiu $a1, $sp, 0x80\n"
-    "sh $v0, 0xC0($sp)\n"
-    "lw $a2, 0x0($s0)\n"
-    "lbu $v1, 0x1($s0)\n"
-    "andi $v0, $a2, 0xF\n"
-    "sll $v0, $v0, 8\n"
-    "or $v1, $v1, $v0\n"
-    "srl $v0, $a2, 16\n"
-    "andi $v0, $v0, 0xFF\n"
-    "andi $a2, $a2, 0xF0\n"
-    "sll $a2, $a2, 4\n"
-    "or $v0, $v0, $a2\n"
-    "sh $v1, 0xC2($sp)\n"
-    "sh $v0, 0xC4($sp)\n"
-    "lb $v0, 0x3($s0)\n"
-    "nop\n"
-    "sw $v0, 0x94($sp)\n"
-    "lb $v0, 0x4($s0)\n"
-    "nop\n"
-    "sw $v0, 0x98($sp)\n"
-    "lb $v0, 0x5($s0)\n"
-    "nop\n"
-    "sw $v0, 0x9C($sp)\n"
-    "addiu $s1, $sp, 0x60\n"
-    "lw $t4, 0x0($s1)\n"
-    "lw $t5, 0x4($s1)\n"
-    "ctc2 $t4, $0\n"
-    "ctc2 $t5, $1\n"
-    "lw $t4, 0x8($s1)\n"
-    "lw $t5, 0xC($s1)\n"
-    "lw $t6, 0x10($s1)\n"
-    "ctc2 $t4, $2\n"
-    "ctc2 $t5, $3\n"
-    "ctc2 $t6, $4\n"
-    "addiu $s0, $sp, 0x80\n"
-    "lhu $t4, 0x0($s0)\n"
-    "lhu $t5, 0x6($s0)\n"
-    "lhu $t6, 0xC($s0)\n"
-    "mtc2 $t4, $9\n"
-    "mtc2 $t5, $10\n"
-    "mtc2 $t6, $11\n"
-    "nop\n"
-    "nop\n"
-    "addiu $s2, $sp, 0xA0\n"
-    "mfc2 $t4, $9\n"
-    "mfc2 $t5, $10\n"
-    "mfc2 $t6, $11\n"
-    "sh $t4, 0x0($s2)\n"
-    "sh $t5, 0x6($s2)\n"
-    "sh $t6, 0xC($s2)\n"
-    "addiu $s5, $sp, 0x82\n"
-    "lhu $t4, 0x0($s5)\n"
-    "lhu $t5, 0x6($s5)\n"
-    "lhu $t6, 0xC($s5)\n"
-    "mtc2 $t4, $9\n"
-    "mtc2 $t5, $10\n"
-    "mtc2 $t6, $11\n"
-    "nop\n"
-    "nop\n"
-    "addiu $v0, $sp, 0xA2\n"
-    "mfc2 $t4, $9\n"
-    "mfc2 $t5, $10\n"
-    "mfc2 $t6, $11\n"
-    "sh $t4, 0x0($v0)\n"
-    "sh $t5, 0x6($v0)\n"
-    "sh $t6, 0xC($v0)\n"
-    "addiu $s4, $sp, 0x84\n"
-    "lhu $t4, 0x0($s4)\n"
-    "lhu $t5, 0x6($s4)\n"
-    "lhu $t6, 0xC($s4)\n"
-    "mtc2 $t4, $9\n"
-    "mtc2 $t5, $10\n"
-    "mtc2 $t6, $11\n"
-    "nop\n"
-    "nop\n"
-    "addiu $v0, $sp, 0xA4\n"
-    "mfc2 $t4, $9\n"
-    "mfc2 $t5, $10\n"
-    "mfc2 $t6, $11\n"
-    "sh $t4, 0x0($v0)\n"
-    "sh $t5, 0x6($v0)\n"
-    "sh $t6, 0xC($v0)\n"
-    "lw $t4, 0x14($s1)\n"
-    "lw $t5, 0x18($s1)\n"
-    "ctc2 $t4, $5\n"
-    "lw $t6, 0x1C($s1)\n"
-    "ctc2 $t5, $6\n"
-    "ctc2 $t6, $7\n"
-    "addiu $s3, $sp, 0x94\n"
-    "lhu $t5, 0x4($s3)\n"
-    "lhu $t4, 0x0($s3)\n"
-    "sll $t5, $t5, 16\n"
-    "or $t4, $t4, $t5\n"
-    "mtc2 $t4, $0\n"
-    "lwc2 $1, 0x8($s3)\n"
-    "nop\n"
-    "nop\n"
-    "addiu $v0, $sp, 0xB4\n"
-    "swc2 $25, 0x0($v0)\n"
-    "swc2 $26, 0x4($v0)\n"
-    "swc2 $27, 0x8($v0)\n"
-    "lw $s6, 0x20($s7)\n"
-    "addu $a1, $s0, $zero\n"
-    "addiu $a0, $s6, 0x10\n"
-    "lhu $v0, 0x6($s7)\n"
-    "lhu $v1, 0x50($s7)\n"
-    "nop\n"
-    "addu $v0, $v0, $v1\n"
-    "sh $v0, 0x8($s6)\n"
-    "sll $v0, $v0, 16\n"
-    "sra $v0, $v0, 16\n"
-    "sw $v0, 0x94($sp)\n"
-    "lhu $v0, 0xA($s7)\n"
-    "lhu $v1, 0x52($s7)\n"
-    "nop\n"
-    "addu $v0, $v0, $v1\n"
-    "sh $v0, 0xA($s6)\n"
-    "sll $v0, $v0, 16\n"
-    "sra $v0, $v0, 16\n"
-    "sw $v0, 0x98($sp)\n"
-    "lhu $v0, 0xE($s7)\n"
-    "lhu $v1, 0x54($s7)\n"
-    "nop\n"
-    "addu $v0, $v0, $v1\n"
-    "sh $v0, 0xC($s6)\n"
-    "sll $v0, $v0, 16\n"
-    "sra $v0, $v0, 16\n"
-    "sw $v0, 0x9C($sp)\n"
-    "lw $t4, 0x0($s2)\n"
-    "lw $t5, 0x4($s2)\n"
-    "ctc2 $t4, $0\n"
-    "ctc2 $t5, $1\n"
-    "lw $t4, 0x8($s2)\n"
-    "lw $t5, 0xC($s2)\n"
-    "lw $t6, 0x10($s2)\n"
-    "ctc2 $t4, $2\n"
-    "ctc2 $t5, $3\n"
-    "ctc2 $t6, $4\n"
-    "lhu $t4, 0x0($s0)\n"
-    "lhu $t5, 0x6($s0)\n"
-    "lhu $t6, 0xC($s0)\n"
-    "mtc2 $t4, $9\n"
-    "mtc2 $t5, $10\n"
-    "mtc2 $t6, $11\n"
-    "nop\n"
-    "nop\n"
-    "mfc2 $t4, $9\n"
-    "mfc2 $t5, $10\n"
-    "mfc2 $t6, $11\n"
-    "sh $t4, 0x0($s1)\n"
-    "sh $t5, 0x6($s1)\n"
-    "sh $t6, 0xC($s1)\n"
-    "lhu $t4, 0x0($s5)\n"
-    "lhu $t5, 0x6($s5)\n"
-    "lhu $t6, 0xC($s5)\n"
-    "mtc2 $t4, $9\n"
-    "mtc2 $t5, $10\n"
-    "mtc2 $t6, $11\n"
-    "nop\n"
-    "nop\n"
-    "addiu $v0, $sp, 0x62\n"
-    "mfc2 $t4, $9\n"
-    "mfc2 $t5, $10\n"
-    "mfc2 $t6, $11\n"
-    "sh $t4, 0x0($v0)\n"
-    "sh $t5, 0x6($v0)\n"
-    "sh $t6, 0xC($v0)\n"
-    "lhu $t4, 0x0($s4)\n"
-    "lhu $t5, 0x6($s4)\n"
-    "lhu $t6, 0xC($s4)\n"
-    "mtc2 $t4, $9\n"
-    "mtc2 $t5, $10\n"
-    "mtc2 $t6, $11\n"
-    "nop\n"
-    "nop\n"
-    "addiu $v0, $sp, 0x64\n"
-    "mfc2 $t4, $9\n"
-    "mfc2 $t5, $10\n"
-    "mfc2 $t6, $11\n"
-    "sh $t4, 0x0($v0)\n"
-    "sh $t5, 0x6($v0)\n"
-    "sh $t6, 0xC($v0)\n"
-    "lw $t4, 0x14($s2)\n"
-    "lw $t5, 0x18($s2)\n"
-    "ctc2 $t4, $5\n"
-    "lw $t6, 0x1C($s2)\n"
-    "ctc2 $t5, $6\n"
-    "ctc2 $t6, $7\n"
-    "lhu $t5, 0x4($s3)\n"
-    "lhu $t4, 0x0($s3)\n"
-    "sll $t5, $t5, 16\n"
-    "or $t4, $t4, $t5\n"
-    "mtc2 $t4, $0\n"
-    "lwc2 $1, 0x8($s3)\n"
-    "nop\n"
-    "nop\n"
-    "addiu $v0, $sp, 0x74\n"
-    "swc2 $25, 0x0($v0)\n"
-    "swc2 $26, 0x4($v0)\n"
-    "swc2 $27, 0x8($v0)\n"
-    "lw $v0, 0x60($sp)\n"
-    "lw $v1, 0x64($sp)\n"
-    "lw $a0, 0x68($sp)\n"
-    "lw $a1, 0x6C($sp)\n"
-    "sw $v0, 0x34($s6)\n"
-    "sw $v1, 0x38($s6)\n"
-    "sw $a0, 0x3C($s6)\n"
-    "sw $a1, 0x40($s6)\n"
-    "lw $v0, 0x70($sp)\n"
-    "lw $v1, 0x74($sp)\n"
-    "lw $a0, 0x78($sp)\n"
-    "lw $a1, 0x7C($sp)\n"
-    "sw $v0, 0x44($s6)\n"
-    "sw $v1, 0x48($s6)\n"
-    "sw $a0, 0x4C($s6)\n"
-    "sw $a1, 0x50($s6)\n"
-    "lw $v0, 0x60($sp)\n"
-    "lw $v1, 0x64($sp)\n"
-    "lw $a0, 0x68($sp)\n"
-    "lw $a1, 0x6C($sp)\n"
-    "sw $v0, 0x54($s6)\n"
-    "sw $v1, 0x58($s6)\n"
-    "sw $a0, 0x5C($s6)\n"
-    "sw $a1, 0x60($s6)\n"
-    "lw $v0, 0x70($sp)\n"
-    "lw $v1, 0x74($sp)\n"
-    "lw $a0, 0x78($sp)\n"
-    "lw $a1, 0x7C($sp)\n"
-    "sw $v0, 0x64($s6)\n"
-    "sw $v1, 0x68($s6)\n"
-    "sw $a0, 0x6C($s6)\n"
-    "sw $a1, 0x70($s6)\n"
-    "lhu $v0, 0x2C($s6)\n"
-    "addiu $v1, $zero, 0x1\n"
-    "sw $v1, 0x30($s6)\n"
-    "ori $v0, $v0, 0x1\n"
-    "sh $v0, 0x2C($s6)\n"
-    ".L80132D94:\n"
-    "lw $ra, 0xF0($sp)\n"
-    "lw $s7, 0xEC($sp)\n"
-    "lw $s6, 0xE8($sp)\n"
-    "lw $s5, 0xE4($sp)\n"
-    "lw $s4, 0xE0($sp)\n"
-    "lw $s3, 0xDC($sp)\n"
-    "lw $s2, 0xD8($sp)\n"
-    "lw $s1, 0xD4($sp)\n"
-    "lw $s0, 0xD0($sp)\n"
-    "addiu $sp, $sp, 0xF8\n"
-    "jr $ra\n"
-    "nop\n"
-    ".size func_80132784, .-func_80132784\n"
-    ".set reorder\n"
+    ".macro cop2op fake_op, op, gbg = 0, sf = 1, mx = 0, v = 0, cv = 0, lm = 0\n"
+    "    cop2 \\fake_op << 20 | \\gbg << 20 | \\sf << 19 | \\mx << 17 | \\v << 15 | \\cv << 13 | \\lm << 10 | \\op\n"
+    ".endm\n"
+    ".macro mvmva sf, mx, v, cv, lm\n"
+    "    cop2op 0x04, 0x12, sf = \\sf, mx = \\mx, v = \\v, cv = \\cv, lm = \\lm\n"
+    ".endm\n"
+    ".macro op sf\n"
+    "    cop2op 0x17, 0x0C, sf = \\sf\n"
+    ".endm\n"
 );
+
+typedef struct { u32 a, b, c, d; } Blk16;
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern void func_80049CAC(s32 a0, s32 a1);
+extern void func_80020F34(s32 a0, s32 a1);
+extern void func_80054514(s32 a0, s32 a1);
+
+void func_80132784(s32 a0, s32 a1, u32 a2)
+{
+  s32 s7 = a0;
+  s32 s0p = a1;
+  u32 s2v = a2;
+  s32 s6;
+  s32 s1m;
+  s16 sVar1;
+  u8 buf[0xC0];
+  if (((*((s32 *) (s7 + 0x20))) != 0) || ((*((s32 *) (s0p + 0x20))) != 0))
+  {
+    s6 = *((s32 *) (s0p + 0x20));
+    s1m = *((s32 *) (s6 + 0x20));
+    if (s1m != 0)
+    {
+      *((s32 *) (buf + 0x48)) = *((s32 *) (s6 + 0x78));
+      *((s32 *) (buf + 0x00)) = 0;
+      if (((*((u16 *) (s6 + 0x2C))) & 1) != 0)
+      {
+        *((Blk16 *) (buf + 0x04)) = *((Blk16 *) (s6 + 0x34));
+        *((Blk16 *) (buf + 0x14)) = *((Blk16 *) (s6 + 0x44));
+      }
+      else
+      {
+        func_80049CAC(s6 + 0x10, (s32) (buf + 0x04));
+        sVar1 = (*((s16 *) (s0p + 6))) + (*((s16 *) (s0p + 0x50)));
+        *((s16 *) (s6 + 8)) = sVar1;
+        *((s32 *) (buf + 0x18)) = (s32) sVar1;
+        sVar1 = (*((s16 *) (s0p + 0xA))) + (*((s16 *) (s0p + 0x52)));
+        *((s16 *) (s6 + 0xA)) = sVar1;
+        *((s32 *) (buf + 0x1C)) = (s32) sVar1;
+        sVar1 = (*((s16 *) (s0p + 0xE))) + (*((s16 *) (s0p + 0x54)));
+        *((s16 *) (s6 + 0xC)) = sVar1;
+        *((s32 *) (buf + 0x20)) = (s32) sVar1;
+        *((Blk16 *) (s6 + 0x34)) = *((Blk16 *) (buf + 0x04));
+        *((Blk16 *) (s6 + 0x44)) = *((Blk16 *) (buf + 0x14));
+        *((u16 *) (s6 + 0x2C)) = (*((u16 *) (s6 + 0x2C))) | 1;
+      }
+      if (((*((u16 *) (s6 + 0x2C))) & 0x10) != 0)
+      {
+        func_80020F34((s32) (buf + 0x04), s6 + 0x18);
+      }
+      func_80054514((s32) (buf + 0x00), (s32) (buf + 0x50));
+      if (((s1m & 0x1000000) == 0) && (((*((u16 *) (s6 + 0x2C))) & 0x40) == 0))
+      {
+        s1m = s1m + ((s2v & 0xFFFF) * 0xC);
+        func_80049CAC(s1m + 6, (s32) (buf + 0x70));
+        *((s32 *) (buf + 0x84)) = (s32) (*((s16 *) (s1m + 0)));
+        *((s32 *) (buf + 0x88)) = (s32) (*((s16 *) (s1m + 2)));
+        *((s32 *) (buf + 0x8C)) = (s32) (*((s16 *) (s1m + 4)));
+      }
+      else
+      {
+        u32 *pu = (u32 *) ((s1m & 0xFEFFFFFF) + ((s2v & 0xFFFF) * 8));
+        u32 w;
+        *((u16 *) (buf + 0xB0)) = *((u16 *) (((s32) pu) + 6));
+        w = *pu;
+        *((u16 *) (buf + 0xB2)) = ((u16) (*((u8 *) (((s32) pu) + 1)))) | ((u16) ((w & 0xF) << 8));
+        *((u16 *) (buf + 0xB4)) = ((u16) (w >> 0x10)) & 0xFF;
+        *((u16 *) (buf + 0xB4)) = (*((u16 *) (buf + 0xB4))) | ((u16) ((w & 0xF0) << 4));
+        func_80049CAC((s32) (buf + 0xB0), (s32) (buf + 0x70));
+        *((s32 *) (buf + 0x84)) = (s32) (*((s8 *) (((s32) pu) + 3)));
+        *((s32 *) (buf + 0x88)) = (s32) ((s8) pu[1]);
+        *((s32 *) (buf + 0x8C)) = (s32) (*((s8 *) (((s32) pu) + 5)));
+      }
+      {
+__asm__ __volatile__(
+                    "lw $12, 0(%0)\n" "lw $13, 4(%0)\n"
+                    "ctc2 $12, $0\n" "ctc2 $13, $1\n"
+                    "lw $12, 8(%0)\n" "lw $13, 12(%0)\n" "lw $14, 16(%0)\n"
+                    "ctc2 $12, $2\n" "ctc2 $13, $3\n" "ctc2 $14, $4\n"
+                    : : "r"((s32 *)(buf + 0x50)) : "$12", "$13", "$14", "memory");
+__asm__ __volatile__(
+                    "lhu $12, 0(%0)\n" "lhu $13, 6(%0)\n" "lhu $14, 12(%0)\n"
+                    "mtc2 $12, $9\n" "mtc2 $13, $10\n" "mtc2 $14, $11\n"
+                    "nop\n" "nop\n" "mvmva 1, 0, 3, 3, 0\n"
+                    : : "r"((s16 *)(buf + 0x70)) : "$12", "$13", "$14", "memory");
+__asm__ __volatile__(
+                    "mfc2 $12, $9\n" "mfc2 $13, $10\n" "mfc2 $14, $11\n"
+                    "sh $12, 0(%0)\n" "sh $13, 6(%0)\n" "sh $14, 12(%0)\n"
+                    : : "r"((s16 *)(buf + 0x90)) : "$12", "$13", "$14", "memory");
+__asm__ __volatile__(
+                    "lhu $12, 0(%0)\n" "lhu $13, 6(%0)\n" "lhu $14, 12(%0)\n"
+                    "mtc2 $12, $9\n" "mtc2 $13, $10\n" "mtc2 $14, $11\n"
+                    "nop\n" "nop\n" "mvmva 1, 0, 3, 3, 0\n"
+                    : : "r"((s16 *)(buf + 0x72)) : "$12", "$13", "$14", "memory");
+__asm__ __volatile__(
+                    "mfc2 $12, $9\n" "mfc2 $13, $10\n" "mfc2 $14, $11\n"
+                    "sh $12, 0(%0)\n" "sh $13, 6(%0)\n" "sh $14, 12(%0)\n"
+                    : : "r"((s16 *)(buf + 0x92)) : "$12", "$13", "$14", "memory");
+__asm__ __volatile__(
+                    "lhu $12, 0(%0)\n" "lhu $13, 6(%0)\n" "lhu $14, 12(%0)\n"
+                    "mtc2 $12, $9\n" "mtc2 $13, $10\n" "mtc2 $14, $11\n"
+                    "nop\n" "nop\n" "mvmva 1, 0, 3, 3, 0\n"
+                    : : "r"((s16 *)(buf + 0x74)) : "$12", "$13", "$14", "memory");
+__asm__ __volatile__(
+                    "mfc2 $12, $9\n" "mfc2 $13, $10\n" "mfc2 $14, $11\n"
+                    "sh $12, 0(%0)\n" "sh $13, 6(%0)\n" "sh $14, 12(%0)\n"
+                    : : "r"((s16 *)(buf + 0x94)) : "$12", "$13", "$14", "memory");
+__asm__ __volatile__(
+                    "lw $12, 20(%0)\n" "lw $13, 24(%0)\n"
+                    "ctc2 $12, $5\n" "lw $14, 28(%0)\n"
+                    "ctc2 $13, $6\n" "ctc2 $14, $7\n"
+                    : : "r"((s32 *)(buf + 0x50)) : "$12", "$13", "$14", "memory");
+__asm__ __volatile__(
+                    "lhu $13, 4(%0)\n" "lhu $12, 0(%0)\n"
+                    "sll $13, $13, 16\n" "or $12, $12, $13\n"
+                    "mtc2 $12, $0\n" "lwc2 $1, 8(%0)\n"
+                    "nop\n" "nop\n" "mvmva 1, 0, 0, 0, 0\n"
+                    : : "r"((s16 *)(buf + 0x84)) : "$12", "$13", "memory");
+__asm__ __volatile__(
+                    "swc2 $25, 0(%0)\n" "swc2 $26, 4(%0)\n" "swc2 $27, 8(%0)\n"
+                    : : "r"((s32 *)(buf + 0xA4)) : "memory");
+      }
+      s6 = *((s32 *) (s7 + 0x20));
+      func_80049CAC(s6 + 0x10, (s32) (buf + 0x70));
+      sVar1 = (*((s16 *) (s7 + 6))) + (*((s16 *) (s7 + 0x50)));
+      *((s16 *) (s6 + 8)) = sVar1;
+      *((s32 *) (buf + 0x84)) = (s32) sVar1;
+      sVar1 = (*((s16 *) (s7 + 0xA))) + (*((s16 *) (s7 + 0x52)));
+      *((s16 *) (s6 + 0xA)) = sVar1;
+      *((s32 *) (buf + 0x88)) = (s32) sVar1;
+      sVar1 = (*((s16 *) (s7 + 0xE))) + (*((s16 *) (s7 + 0x54)));
+      *((s16 *) (s6 + 0xC)) = sVar1;
+      *((s32 *) (buf + 0x8C)) = (s32) sVar1;
+      {
+__asm__ __volatile__(
+                    "lw $12, 0(%0)\n" "lw $13, 4(%0)\n"
+                    "ctc2 $12, $0\n" "ctc2 $13, $1\n"
+                    "lw $12, 8(%0)\n" "lw $13, 12(%0)\n" "lw $14, 16(%0)\n"
+                    "ctc2 $12, $2\n" "ctc2 $13, $3\n" "ctc2 $14, $4\n"
+                    : : "r"((s32 *)(buf + 0x90)) : "$12", "$13", "$14", "memory");
+__asm__ __volatile__(
+                    "lhu $12, 0(%0)\n" "lhu $13, 6(%0)\n" "lhu $14, 12(%0)\n"
+                    "mtc2 $12, $9\n" "mtc2 $13, $10\n" "mtc2 $14, $11\n"
+                    "nop\n" "nop\n" "mvmva 1, 0, 3, 3, 0\n"
+                    : : "r"((s16 *)(buf + 0x70)) : "$12", "$13", "$14", "memory");
+__asm__ __volatile__(
+                    "mfc2 $12, $9\n" "mfc2 $13, $10\n" "mfc2 $14, $11\n"
+                    "sh $12, 0(%0)\n" "sh $13, 6(%0)\n" "sh $14, 12(%0)\n"
+                    : : "r"((s16 *)(buf + 0x50)) : "$12", "$13", "$14", "memory");
+__asm__ __volatile__(
+                    "lhu $12, 0(%0)\n" "lhu $13, 6(%0)\n" "lhu $14, 12(%0)\n"
+                    "mtc2 $12, $9\n" "mtc2 $13, $10\n" "mtc2 $14, $11\n"
+                    "nop\n" "nop\n" "mvmva 1, 0, 3, 3, 0\n"
+                    : : "r"((s16 *)(buf + 0x72)) : "$12", "$13", "$14", "memory");
+__asm__ __volatile__(
+                    "mfc2 $12, $9\n" "mfc2 $13, $10\n" "mfc2 $14, $11\n"
+                    "sh $12, 0(%0)\n" "sh $13, 6(%0)\n" "sh $14, 12(%0)\n"
+                    : : "r"((s16 *)(buf + 0x52)) : "$12", "$13", "$14", "memory");
+__asm__ __volatile__(
+                    "lhu $12, 0(%0)\n" "lhu $13, 6(%0)\n" "lhu $14, 12(%0)\n"
+                    "mtc2 $12, $9\n" "mtc2 $13, $10\n" "mtc2 $14, $11\n"
+                    "nop\n" "nop\n" "mvmva 1, 0, 3, 3, 0\n"
+                    : : "r"((s16 *)(buf + 0x74)) : "$12", "$13", "$14", "memory");
+__asm__ __volatile__(
+                    "mfc2 $12, $9\n" "mfc2 $13, $10\n" "mfc2 $14, $11\n"
+                    "sh $12, 0(%0)\n" "sh $13, 6(%0)\n" "sh $14, 12(%0)\n"
+                    : : "r"((s16 *)(buf + 0x54)) : "$12", "$13", "$14", "memory");
+__asm__ __volatile__(
+                    "lw $12, 20(%0)\n" "lw $13, 24(%0)\n"
+                    "ctc2 $12, $5\n" "lw $14, 28(%0)\n"
+                    "ctc2 $13, $6\n" "ctc2 $14, $7\n"
+                    : : "r"((s32 *)(buf + 0x90)) : "$12", "$13", "$14", "memory");
+__asm__ __volatile__(
+                    "lhu $13, 4(%0)\n" "lhu $12, 0(%0)\n"
+                    "sll $13, $13, 16\n" "or $12, $12, $13\n"
+                    "mtc2 $12, $0\n" "lwc2 $1, 8(%0)\n"
+                    "nop\n" "nop\n" "mvmva 1, 0, 0, 0, 0\n"
+                    : : "r"((s16 *)(buf + 0x84)) : "$12", "$13", "memory");
+__asm__ __volatile__(
+                    "swc2 $25, 0(%0)\n" "swc2 $26, 4(%0)\n" "swc2 $27, 8(%0)\n"
+                    : : "r"((s32 *)(buf + 0x64)) : "memory");
+      }
+      *((Blk16 *) (s6 + 0x34)) = *((Blk16 *) (buf + 0x50));
+      *((Blk16 *) (s6 + 0x44)) = *((Blk16 *) (buf + 0x60));
+      s0p = 0x30;
+      *((Blk16 *) (s6 + 0x54)) = *((Blk16 *) (buf + 0x50));
+      *((Blk16 *) (s6 + 0x64)) = *((Blk16 *) (buf + 0x60));
+      *((s32 *) (s6 + s0p)) = 1;
+      *((u16 *) (s6 + 0x2C)) = (*((u16 *) (s6 + 0x2C))) | 1;
+    }
+  }
+  return;
+}

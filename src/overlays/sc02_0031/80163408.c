@@ -1,15 +1,13 @@
-/* SC02 resident retail span [80163408,8016345C). Offset 0x3B2B0 at base 80128158.
- * SHA256(span)=e58869e3b16cad90e28cc306a4d5f82e1a6b4db33668a8cf1e726e61ab746143.
- * Words are the guest's loaded image (artifacts/sc02-resident-20260910).
- * Member-0012 C shape retargeted to this member: D_8018393C->D_801B5D48.
- * Oracle MATCH re-earned against the resident image; Not MAIN10.
- */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-typedef struct { u8 b[8]; } S;
-extern S D_801B5D48;
-void func_8016345C();
-void func_80163408(s32 a0, s32 a1, s32 a2, s32 a3) {
-    S tmp;
-    tmp = D_801B5D48;
-    func_8016345C(a0, a1 & 0xFFFF, a2, a3 & 0xFFFF, &tmp);
+/* func_80163408 - byte-exact against retail at -O2 (tools/register_match.py). */
+extern void *memcpy(void *dst, const void *src, u32 n);
+
+s32 func_80163408(s32 param_1, s32 param_2, s32 param_3, s32 param_4) {
+    extern int func_8016345C(int, unsigned short, int, unsigned short, void *);
+    extern unsigned char D_801B5D48[8];
+
+    unsigned char sp18[8];
+    memcpy(sp18, D_801B5D48, 8);
+    return func_8016345C(((int)param_1), ((int)param_2), ((int)param_3), ((int)param_4), sp18);
 }

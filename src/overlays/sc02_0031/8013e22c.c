@@ -5,27 +5,39 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8013E22C - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-extern void func_800492FC(s32 *arg0, s32 *arg1);
+struct VecA {
+    s16 unk0;
+    s16 unk2;  /* x */
+    s16 unk4;
+    s16 unk6;  /* y */
+    s16 unk8;
+    s16 unkA;  /* z */
+};
+struct VecB {
+    s16 unk0;  /* x */
+    s16 unk2;  /* y */
+    s16 unk4;  /* z */
+};
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern void func_800492FC(s32 *a0, s32 *a1);
 
-/* HAND MODEL of func_8013E22C (main_0012.s), decoded manually from
- * raw asm (fully visible; NOT verified against retail; C89-gated
- * only, promotion requires an oracle MATCH): u32 (s16 *, s16 *),
- * 0x38 frame. Integer sibling of the BLOCKED sqr trio (same
- * staggered half pairing as func_8013E0FC: arg0[1,3,5] minus
- * arg1[0,1,2], subu): spills the three diffs to the stack (the
- * third rides the jal delay slot, so it lands before the callee
- * runs), calls func_800492FC(diffs, out) (provisional decl), and
- * returns out[0] + out[1] + out[2] (addu wrap). */
-u32 func_8013E22C(s16 *arg0, s16 *arg1)
-{
-    s32 diffs[3];
-    s32 out[3];
-
-    diffs[0] = (s32)arg0[1] - (s32)arg1[0];
-    diffs[1] = (s32)arg0[3] - (s32)arg1[1];
-    diffs[2] = (s32)arg0[5] - (s32)arg1[2];
-    func_800492FC(diffs, out);
-    return (u32)out[0] + (u32)out[1] + (u32)out[2];
+s32 func_8013E22C(struct VecA *a0, struct VecB *a1) {
+    s32 d[3];
+    s32 sq[3];
+    d[0] = a0->unk2 - a1->unk0;
+    d[1] = a0->unk6 - a1->unk2;
+    d[2] = a0->unkA - a1->unk4;
+    func_800492FC(d, sq);
+    return sq[0] + sq[1] + sq[2];
 }

@@ -4,10 +4,19 @@
  * the C is the Druthulu shared/ov func_8016F1C4 shape (the two published variants differ only in the table symbol) retargeted to this member (D_8018804C table, D_800B9A08 location, D_80126B58 base); oracle MATCH 35/35.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8016F1C4 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-extern s32 D_80126B58[];
 extern s32 D_8018804C;
+extern s32 D_80126B58;
 extern s16 D_800B9A08;
 
 s32 func_8016F1C4(void) {
@@ -15,7 +24,7 @@ s32 func_8016F1C4(void) {
     s32 cur;
     s32 loc;
     s32 v;
-    s32 *base = D_80126B58;
+    s32 *base = &D_80126B58;
 
     p = &D_8018804C;
     cur = *p;

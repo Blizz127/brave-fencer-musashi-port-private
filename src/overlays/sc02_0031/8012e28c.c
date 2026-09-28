@@ -5,24 +5,33 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8012E28C - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-void *func_80010A08();
-s32 func_80058B40();
-void func_8005A600();
-void func_80058C6C();
-extern u16 D_800B9A02;
-typedef struct { u8 *p; u8 pad[16]; } Slot;
-extern Slot D_800A651C[];
-void func_8012E28C(s32 n, void *src) {
-    u8 *slot;
-    void *tmp;
-    s32 v;
-    if (n <= 0) {
-        return;
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+extern s32 func_80058C6C(s32, void *);
+extern void *func_80010A08(s32);
+extern s32 func_80058B40(s32, s32, s32, s32);
+extern s32 func_8005A600(s32, s32, s32, s32, s32);
+extern s32 D_800A651C;
+extern s16 D_800B9A02;
+
+void func_8012E28C(s32 arg0, s32 arg1) {
+    void *temp_v0;
+    s32 temp_v1;
+    s32 base;
+    if (arg0 > 0) {
+        base = *(s32 *)((s8 *)&D_800A651C + ((u16)D_800B9A02 * 0x14)) + (arg0 * 4);
+        temp_v0 = func_80010A08(0xC);
+        temp_v1 = func_80058B40(0, arg1, 0, 0);
+        func_8005A600((s32)temp_v0, 0, 0, (u16)temp_v1, 0);
+        func_80058C6C(base, temp_v0);
     }
-    slot = D_800A651C[D_800B9A02].p + n * 4;
-    tmp = func_80010A08(0xC);
-    v = func_80058B40(0, src, 0, 0);
-    func_8005A600(tmp, 0, 0, (u16)v, 0);
-    func_80058C6C(slot, tmp);
 }

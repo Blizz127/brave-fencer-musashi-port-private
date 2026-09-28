@@ -5,23 +5,20 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_801375EC - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL of func_801375EC (main_0012.s), decoded manually from
- * raw asm (fully visible; NOT verified against retail; C89-gated
- * only, promotion requires an oracle MATCH): dead tail-call
- * adapter, 0x18 frame. Returns func_80137614(a0, (s16)a1, 0)
- * (a0 live, a1 half-signed via sll/sra, a2 = 0 in the jal delay
- * slot). No callers in visible asm; the pointer result flows
- * straight through per the callee's model. */
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern void func_80137614(s32 a0, s32 a1, s32 a2);
 
-struct opq_801375EC {
-    u8 pad[0x1C];
-    u16 h1C;
-};
-
-extern struct opq_801375EC *func_80137614(void *arg0, s32 arg1, s32 arg2);
-
-struct opq_801375EC *func_801375EC(void *arg0, s32 arg1) {
-    return func_80137614(arg0, (s16) arg1, 0);
+void func_801375EC(s32 a0, s16 a1) {
+    func_80137614(a0, a1, 0);
 }

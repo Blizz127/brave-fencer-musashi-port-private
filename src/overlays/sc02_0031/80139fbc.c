@@ -5,29 +5,28 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80139FBC - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL of func_80139FBC (main_0012.s), decoded manually from
- * raw asm (fully visible; NOT verified against retail; C89-gated
- * only, promotion requires an oracle MATCH): void (struct *),
- * no frame, leaf. If ((w08 & 0x800) == 0) return; else
- * w08 &= ~0x800 (-0x801 mask); h04 = 2; return. (Mirrors
- * func_80138C30's else arm as a standalone.) Void: no
- * direct jal/j callers in the overlay (jalr- or
- * cross-overlay-reached); the v0 = 2 leftover is
- * incidental. */
-
-struct st_80139FBC {
-    u8 pad00[4];
-    s16 h04;
-    u8 pad06[2];
-    u32 w08;
+struct obj {
+    u8 pad0[0x4];
+    s16 unk4;
+    u8 pad6[0x2];
+    s32 unk8;
 };
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
 
-void func_80139FBC(struct st_80139FBC *arg0) {
-    if ((arg0->w08 & 0x800) == 0) {
-        return;
+void func_80139FBC(struct obj *a0) {
+    if (a0->unk8 & 0x800) {
+        a0->unk8 &= ~0x800;
+        a0->unk4 = 2;
     }
-    arg0->w08 &= ~0x800;
-    arg0->h04 = 2;
 }

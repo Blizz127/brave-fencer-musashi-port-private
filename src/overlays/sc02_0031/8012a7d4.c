@@ -5,35 +5,26 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8012A7D4 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL from m2c draft of func_8012A7D4 (main_0012.s): NOT
- * verified against retail. C89-gated only; promotion requires an
- * oracle MATCH. Widths grounded from raw asm: six lw loads from the pointer block, six sh stores into the two out structs. */
+extern s32 D_801151D4;
 
-struct src_8012A7D4 {
-    u8 pad[0x3C];
-    s32 unk3C;
-    s32 unk40;
-    s32 unk44;
-    s32 unk48;
-    s32 unk4C;
-    s32 unk50;
-};
-
-struct pair_8012A7D4 {
-    s16 unk0;
-    s16 unk2;
-    s16 unk4;
-};
-
-extern struct src_8012A7D4 *D_801151D4;
-
-void func_8012A7D4(struct pair_8012A7D4 *arg0, struct pair_8012A7D4 *arg1) {
-    arg0->unk0 = D_801151D4->unk3C;
-    arg0->unk2 = D_801151D4->unk40;
-    arg0->unk4 = D_801151D4->unk44;
-    arg1->unk0 = D_801151D4->unk48;
-    arg1->unk2 = D_801151D4->unk4C;
-    arg1->unk4 = D_801151D4->unk50;
+void func_8012A7D4(void *arg0, void *arg1) {
+    s32 p;
+    p = D_801151D4;
+    *(s16 *)((u8 *)arg0 + 0x0) = *(s32 *)(p + 0x3C);
+    *(s16 *)((u8 *)arg0 + 0x2) = *(s32 *)(p + 0x40);
+    *(s16 *)((u8 *)arg0 + 0x4) = *(s32 *)(p + 0x44);
+    *(s16 *)((u8 *)arg1 + 0x0) = *(s32 *)(p + 0x48);
+    *(s16 *)((u8 *)arg1 + 0x2) = *(s32 *)(p + 0x4C);
+    *(s16 *)((u8 *)arg1 + 0x4) = *(s32 *)(p + 0x50);
 }

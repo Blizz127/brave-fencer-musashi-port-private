@@ -5,20 +5,23 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8014168C - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
 extern u8 D_80115148[];
 extern u8 D_80115149[];
 extern u8 D_80115158[];
 
-/* HAND MODEL of func_8014168C (main_0012.s), decoded manually from
- * raw asm (fully visible; NOT verified against retail; C89-gated
- * only, promotion requires an oracle MATCH): s32 (s32), leaf.
- * Returns sext(lbu(115148[i]) + lbu(115149[i])*lbu(115158[i]))
- * with i = sext(a0)*2 (the (a0<<16)>>15 shift pair). */
-s32 func_8014168C(s32 arg0)
-{
-    s32 i = ((arg0 << 16) >> 16) * 2;
-
-    return ((s32)(D_80115148[i] + D_80115149[i] * D_80115158[i]) << 16) >> 16;
+s16 func_8014168C(s16 a0) {
+    s32 i = a0 * 2;
+    return D_80115148[i] + D_80115149[i] * D_80115158[i];
 }

@@ -2,7 +2,16 @@
  * Ahead leaf.
  * Words from pinned SC02.CD member31 PAC0 decode (live-guest identity).
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80145B24 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
 extern s32 func_80029504(void);
 extern s32 func_800291DC(s32);
@@ -15,11 +24,12 @@ extern u8 D_800AF630[];
 extern u8 D_80078EC0;
 extern s32 D_80126B58;
 
-void func_80145B24(void) {
+void func_80145B24(void)
+{
     s32 iVar1;
     s32 uVar2;
-    u8 *p = D_800AF630;
-
+    register u8 *p __asm__("$17");
+    p = &D_800AF630;
     iVar1 = func_80029504();
     uVar2 = func_800291DC(8);
     if ((uVar2 & 0x8000) != 0) {

@@ -5,14 +5,24 @@
  *   *(s16*)(a0+0xD6/D4)=1; *(s8*)(a0+0xD8/D9)=0; *(s32*)(a0+0xD0)=v1 in jr delay).
  * NOT MAIN10; NOT in parked PAC0 hole 8014E934…80153C8C; later SC02 text near jr_80154C24 / shared OV body.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80154AB4 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-void func_80154AB4(s32 arg0, s32 arg1) {
-    s32 *base = *(s32 **)(arg0 + 0xCC);
-    s32 v1 = base[arg1];
-    *(s16 *)(arg0 + 0xD6) = 1;
-    *(s16 *)(arg0 + 0xD4) = 1;
-    *(s8 *)(arg0 + 0xD8) = 0;
-    *(s8 *)(arg0 + 0xD9) = 0;
-    *(s32 *)(arg0 + 0xD0) = v1;
+
+void func_80154AB4(s32 a0, s32 a1) {
+    s32 *base = *(s32 **)(a0 + 0xCC);
+    s32 v1 = base[a1];
+    *(s16 *)(a0 + 0xD6) = 1;
+    *(s16 *)(a0 + 0xD4) = 1;
+    *(s8 *)(a0 + 0xD8) = 0;
+    *(s8 *)(a0 + 0xD9) = 0;
+    *(s32 *)(a0 + 0xD0) = v1;
 }

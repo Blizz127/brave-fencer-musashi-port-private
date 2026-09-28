@@ -5,52 +5,36 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80130A18 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL of func_80130A18 (main_0012.s), decoded manually from
- * raw asm (fully visible; NOT verified against retail; C89-gated
- * only, promotion requires an oracle MATCH): s0->unk5C &= ~1 (jal
- * delay slot, lands before the call); if func_80131CA8(s0, 0x34)
- * != 0 (a0 = 0x11 set in the branch delay slot, dead), done. Else
- * builds two u16 triples (second triple's last half stored in the
- * jal delay slot) and calls func_80133784(0x11, t1, t2) -- a0 is
- * the 0x11 constant left by the earlier branch delay slot, not
- * s0. If the result & 0x6000, s0->unkC1 = 0x11, s0->unkAC = 0x78.
- * Returns void. */
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern void func_80131CA8(int, int);
+extern s32 func_80133784(s32 a0, void *a1, s32 a2);
 
-struct obj_80130A18 {
-    u8 pad[0x6];
-    u16 unk6;
-    u16 pad6;
-    u16 unkA;
-    u16 padA;
-    u16 unkE;
-    u8 pad2[0x5C - 0x10];
-    u16 unk5C;
-    u8 pad3[0xAC - 0x5E];
-    u16 unkAC;
-    u8 pad4[0xC1 - 0xAE];
-    u8 unkC1;
-};
-
-extern s32 func_80131CA8(void *arg0, s32 arg1);
-extern s32 func_80133784(s32 arg0, void *arg1, void *arg2);
-
-void func_80130A18(struct obj_80130A18 *arg0) {
-    u16 t1[3];
-    u16 t2[3];
-
-    arg0->unk5C &= ~1;
-    if (func_80131CA8(arg0, 0x34) == 0) {
-        t1[0] = arg0->unk6;
-        t1[1] = arg0->unkA - 0x10;
-        t1[2] = arg0->unkE;
-        t2[0] = arg0->unk6;
-        t2[1] = arg0->unkA + 8;
-        t2[2] = arg0->unkE;
-        if (func_80133784(0x11, t1, t2) & 0x6000) {
-            arg0->unkC1 = 0x11;
-            arg0->unkAC = 0x78;
-        }
+void func_80130A18(u8 *a0) {
+    s16 b1[4];
+    s16 b2[4];
+    *(u16 *)(a0 + 0x5C) = *(u16 *)(a0 + 0x5C) & 0xFFFE;
+    if (((s32 (*)(int, int))func_80131CA8)((int)a0, 0x34) != 0) {
+        return;
+    }
+    b1[0] = *(u16 *)(a0 + 6);
+    b1[1] = *(u16 *)(a0 + 0xA) - 0x10;
+    b1[2] = *(u16 *)(a0 + 0xE);
+    b2[0] = *(u16 *)(a0 + 6);
+    b2[1] = *(u16 *)(a0 + 0xA) + 8;
+    b2[2] = *(u16 *)(a0 + 0xE);
+    if ((func_80133784(0x11, b1, (s32)b2) & 0x6000) != 0) {
+        *(s8 *)(a0 + 0xC1) = 0x11;
+        *(s16 *)(a0 + 0xAC) = 0x78;
     }
 }

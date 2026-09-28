@@ -5,27 +5,36 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8015D57C - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-void func_80154150();
-void func_801553A8();
-void func_80155440();
-void func_80146CA0();
-void func_801746DC();
-typedef struct { u16 u0; u8 pad2[0xFA]; u16 uFC; } Q;
-typedef struct {
-    u8 pad[0x178]; Q *u178;
-    u8 pad17C[0xB8]; s32 u234;
-} T;
-void func_8015D57C(T *p) {
-    Q *q;
-    func_80154150(p, 0x19);
-    func_801553A8(p);
-    func_80155440(p);
-    func_80146CA0(p);
-    p->u234 = 0;
-    q = p->u178;
-    if (q && q->u0 == 0x1F8) {
-        q->uFC = 1;
-        func_801746DC(q);
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+extern void func_80154150(s32 a0, s32 a1);
+extern void func_801553A8(s32 *a0);
+extern void func_80155440(s32 *a0);
+extern void func_80146CA0(void *a0);
+extern void func_801746DC(void);
+
+void func_8015D57C(s32 arg0)
+{
+    s16 *p;
+    func_80154150((s32)arg0, 0x19);
+    func_801553A8(arg0);
+    func_80155440(arg0);
+    func_80146CA0(arg0);
+    *(s32 *)((s8 *)arg0 + 0x234) = 0;
+    p = *(s16 **)((s8 *)arg0 + 0x178);
+    if (p != 0) {
+        if (*(u16 *)p == 0x1F8) {
+            *(s16 *)((s8 *)p + 0xFC) = 1;
+            func_801746DC();
+        }
     }
 }

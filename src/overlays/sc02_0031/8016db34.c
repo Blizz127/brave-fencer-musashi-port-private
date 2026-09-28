@@ -5,35 +5,32 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8016DB34 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-s32 func_80128ED8();
-void func_80146C3C();
-typedef struct Inner {
-    u8 pad[8]; s32 u8;
-    u8 padC[0xB]; u8 u27;
-    u8 pad28[0xF0]; /* unused */
-    u8 pad18off[0];
-} Inner;
-typedef struct Inner2 {
-    u8 pad[0x18]; s16 u18, u1A;
-    u8 pad1C[0xB]; u8 u27;
-} I;
-typedef struct {
-    u8 pad[8]; s32 u8;
-    u8 padC[4]; s32 u10, u14;
-    u8 pad18[8]; I *inner;
-    u8 pad24[4]; u8 u28;
-} T;
-void func_8016DB34(T *p) {
-    I *in = p->inner;
-    if (func_80128ED8(in, (u8 *)p + 0x24)) {
-        func_80146C3C(p);
-        return;
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+extern s32 func_80128ED8(s32 param_1, s32 *param_2);
+extern void func_80146C3C();
+
+void func_8016DB34(s32 param_1)
+{
+    s32 iVar2;
+    iVar2 = *(s32 *)(param_1 + 0x20);
+    if (((s32 (*)(s32, s32))func_80128ED8)(iVar2, param_1 + 0x24) != 0) {
+        ((void (*)(s32))func_80146C3C)(param_1);
+    } else {
+        *(s8 *)(iVar2 + 0x27) = *(u8 *)(param_1 + 0x28) - 0x70;
+        *(s32 *)(param_1 + 0x10) = *(s32 *)(param_1 + 0x10) - 0x60000;
+        *(s32 *)(param_1 + 0x14) = *(s32 *)(param_1 + 0x14) + *(s32 *)(param_1 + 0x10);
+        *(s32 *)(param_1 + 0x8) = *(s32 *)(param_1 + 0x8) + *(s32 *)(param_1 + 0x14);
+        *(s16 *)(iVar2 + 0x18) = *(s16 *)(iVar2 + 0x18) - 0x500;
+        *(s16 *)(iVar2 + 0x1a) = *(s16 *)(iVar2 + 0x1a) - 0x300;
     }
-    in->u27 = p->u28 - 0x70;
-    p->u10 += 0xFFFA0000;
-    p->u14 += p->u10;
-    p->u8 += p->u14;
-    in->u18 -= 0x500;
-    in->u1A -= 0x300;
 }

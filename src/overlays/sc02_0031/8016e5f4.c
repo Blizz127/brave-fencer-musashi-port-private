@@ -5,23 +5,34 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8016E5F4 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-void func_80015978();
-s32 func_8012EFB8();
-void func_80146C3C();
-void func_80015954();
-typedef struct { u8 pad[2]; u16 u2; u8 pad4[0xC]; s16 u10, u12, u14, u16; } T;
-void func_8016E5F4(T *p) {
-    s16 tmp[4];
-    func_80015978((u8 *)p + 4, tmp);
-    if (func_8012EFB8(tmp, tmp) & ~0x1000) {
-        func_80146C3C(p);
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+extern void func_80015978(s32 a0, s32 *a1);
+extern void func_8012EFB8(s32 a0);
+extern void func_80146C3C();
+extern void func_80015954(s32 a0, s32 a1);
+extern void func_8012A568(void (*a0)(void));
+
+void func_8016E5F4(s32 arg0) {
+    s32 sp10;
+    func_80015978(arg0 + 4, &sp10);
+    if ((((s32 (*)(s32, s32))func_8012EFB8)((s32)&sp10, (s32)&sp10) & 0xFFFFEFFF) != 0) {
+        ((void (*)(s32))func_80146C3C)(arg0);
     } else {
-        func_80015954(tmp, (u8 *)p + 4);
-        p->u10 = 0x100;
-        p->u12 = 0;
-        p->u14 = 0;
-        p->u16 = 0x80;
-        p->u2++;
+        func_80015954((s32)&sp10, arg0 + 4);
+        *(s16 *)((u8 *)arg0 + 0x10) = 0x100;
+        *(s16 *)((u8 *)arg0 + 0x12) = 0;
+        *(s16 *)((u8 *)arg0 + 0x14) = 0;
+        *(s16 *)((u8 *)arg0 + 0x16) = 0x80;
+        *(s16 *)((u8 *)arg0 + 2) = *(u16 *)((u8 *)arg0 + 2) + 1;
     }
 }

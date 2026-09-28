@@ -5,38 +5,21 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8012CBF4 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL from m2c draft of func_8012CBF4 (main_0012.s): NOT
- * verified against retail. C89-gated only; promotion requires an
- * oracle MATCH. Passthrough wrapper: object in a0, mode 0x11 in the delay slot, &D_800D3918 in a2. */
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern u8 D_800D3918[];
+extern s32 func_8012CC88();
 
-struct obj_8012CC88 {
-    u8 pad[4];
-    s32 unk4;
-    u16 unk6;
-    s32 unk8;
-    u16 unkA;
-    s32 unkC;
-    u16 unkE;
-    s32 unk10;
-    s32 unk14;
-    s32 unk18;
-    u8 pad2[0x1E];
-    u16 unk3A;
-    u16 pad3;
-    u16 unk3E;
-    u16 pad4;
-    u16 unk42;
-    s32 unk44;
-    s32 unk48;
-    s32 unk4C;
-};
-
-extern u16 D_800D3918[];
-
-void func_8012CC88(struct obj_8012CC88 *arg0, s32 arg1, u16 *arg2);
-
-void func_8012CBF4(struct obj_8012CC88 *arg0) {
-    func_8012CC88(arg0, 0x11, D_800D3918);
+void func_8012CBF4(s32 a0) {
+    func_8012CC88(a0, 0x11, (s32)D_800D3918);
 }

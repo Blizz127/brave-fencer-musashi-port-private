@@ -1,58 +1,84 @@
 /* Complete SC02 retail span [8017742C,801775E0); mixed C independently matched. */
-typedef struct { unsigned int tag; unsigned char r,g,b,code; short x,y,w,h; int pad; } Packet;
-extern unsigned char D_8011F837, D_8011F7AB;
-extern unsigned char D_8011F7F0[];
-Packet *func_8017742C(Packet *input, int xin, int y)
-{
-    register Packet *next __asm__("$7") = input;
-    register Packet *p __asm__("$8") = next;
-    register int x __asm__("$9");
-    unsigned int selected;
-    int height;
-    unsigned char *cycle;
-    register unsigned char *values __asm__("$10") ;
-    unsigned short bottom;
-    __asm__ volatile("" : "=r"(p) : "0"(p));
-    next->tag = (((unsigned int)next - 20) & 0xFFFFFF) | 0x03000000;
-    next->code = 0x60;
-    selected = D_8011F837;
-    __asm__ volatile("" : "=r"(selected) : "0"(selected));
-    values = D_8011F7F0;
-    __asm__ volatile("" : "=r"(values) : "0"(values), "r"(next));
-    x = xin;
-    if (selected < 128) {
-        next->r = 255;
-        next->g = next->b = 16;
-    } else if (selected == 128) {
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8017742C - byte-exact against retail at -O2 (tools/register_match.py). */
+#include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+extern u8 D_8011F837;
+extern u8 D_8011F7F0;
+extern u8 D_8011F7AB;
+
+u32 *func_8017742C(u32 *param_1, s32 param_2, s32 param_3) {
+    s16 sVar1;
+    u32 uVar2;
+    s32 a3 = (s32)param_1;
+    register s32 t1 __asm__("$9") = param_2;
+    s32 t0 = a3;
+    u8 *base = &D_8011F7F0;
+    *(u32 *)a3 = (a3 - 0x14) & 0xffffff | 0x3000000;
+    *(u8 *)(a3 + 7) = 0x60;
+    if (D_8011F837 < 0x80) {
+        *(u8 *)(a3 + 4) = 0xff;
+        *(u8 *)(a3 + 6) = 0x10;
+        *(u8 *)(a3 + 5) = 0x10;
+    } else if (D_8011F837 == 0x80) {
         switch (D_8011F7AB) {
-        default: D_8011F7AB = 0;
-        case 0: p->r = 255; p->g = p->b = 48; break;
-        case 1: next->g = 255; next->r = next->b = 48; break;
-        case 2: next->b = 255; next->r = next->g = 48; break;
+        default:
+            D_8011F7AB = 0;
+        case 0:
+            *(u8 *)(t0 + 4) = 0xff;
+            *(u8 *)(t0 + 6) = 0x30;
+            *(u8 *)(t0 + 5) = 0x30;
+            break;
+        case 1:
+            *(u8 *)(a3 + 5) = 0xff;
+            *(u8 *)(a3 + 6) = 0x30;
+            *(u8 *)(a3 + 4) = 0x30;
+            break;
+        case 2:
+            *(u8 *)(a3 + 6) = 0xff;
+            *(u8 *)(a3 + 5) = 0x30;
+            *(u8 *)(a3 + 4) = 0x30;
+            break;
         }
-        cycle = &D_8011F7AB;
-        __asm__ volatile("" : "=r"(cycle) : "0"(cycle));
-        (*cycle)++;
+        {
+            u8 *p = &D_8011F7AB;
+            *p = *p + 1;
+        }
     } else {
-        next->g = 255;
-        next->r = next->b = 16;
+        *(u8 *)(a3 + 5) = 0xff;
+        *(u8 *)(a3 + 6) = 0x10;
+        *(u8 *)(a3 + 4) = 0x10;
     }
-    next++;
-    p->x = x;
-    height = (values[0x47] * 3) >> 3;
-    p->w = 8;
-    bottom = y + 72;
-    p->y = bottom - height;
-    p->h = height;
-    next->tag = (((unsigned int)next - 20) & 0xFFFFFF) | 0x03000000;
-    next->code = 0x60;
-    next->r = next->g = 64;
-    p = next;
-    if (values[0x47]) next->b = 160; else next->b = 64;
-    __asm__ volatile("" : "=r"(p) : "0"(p));
-    p->w = 8;
-    p->h = 72;
-    p->x = x;
-    p->y = y;
-    return next + 1;
+    a3 += 0x14;
+    *(u16 *)(t0 + 8) = t1;
+    uVar2 = (u32)base[0x47];
+    *(u16 *)(t0 + 0xc) = 8;
+    sVar1 = (s16)((s32)(uVar2 * 3) >> 3);
+    {
+        s32 d = param_3 + 0x48;
+        *(s16 *)(t0 + 0xa) = d - sVar1;
+    }
+    *(s16 *)(t0 + 0xe) = sVar1;
+    *(u32 *)a3 = (a3 - 0x14) & 0xffffff | 0x3000000;
+    *(u8 *)(a3 + 7) = 0x60;
+    *(u8 *)(a3 + 5) = 0x40;
+    *(u8 *)(a3 + 4) = 0x40;
+    t0 = a3;
+    if (base[0x47] != 0) {
+        *(u8 *)(a3 + 6) = 0xa0;
+    } else {
+        *(u8 *)(a3 + 6) = 0x40;
+    }
+    *(u16 *)(t0 + 0xc) = 8;
+    *(u16 *)(t0 + 0xe) = 0x48;
+    *(u16 *)(t0 + 8) = t1;
+    *(s16 *)(t0 + 0xa) = param_3;
+    return (u32 *)(a3 + 0x14);
 }

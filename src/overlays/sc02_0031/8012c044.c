@@ -5,26 +5,27 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8012C044 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL from m2c draft of func_8012C044 (main_0012.s): NOT
- * verified against retail. C89-gated only; promotion requires an
- * oracle MATCH. Prefix-fallthrough pair #4 (same shape as func_8012A328): func_8012C044 loads the hook pointer D_801274D4 with no jr and falls into the range labelled func_8012C04C, which calls it indirectly (jalr, no arg setup beyond the live registers) or runs the 80013478 default path returning (t >= D_801274E0) via slt+xori. func_8012C04C is a mid-function label with no separate file. Entry takes only arg0; the indirect callee sees the live registers, modelled by passing arg0. */
-
-extern void *D_801274D4;
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern s32 D_801274D4;
+extern s16 D_80126CAC;
 extern s32 D_801274E0;
-extern u8 D_80126CAC;
+extern s32 func_80013478(s32 a0, s32 a1);
 
-extern s32 func_80013478(void *arg0, void *arg1);
-
-s32 func_8012C044(s32 arg0) {
-    s32 (*hook)(s32);
-    s32 t;
-
-    hook = (s32 (*)(s32)) D_801274D4;
-    if (hook != 0) {
-        return hook(arg0);
+s32 func_8012C044(s32 a0) {
+    s32 (*fp)(void) = (s32 (*)(void))D_801274D4;
+    if (fp != 0) {
+        return fp();
     }
-    t = func_80013478((void *) (arg0 + 4), &D_80126CAC);
-    return t >= D_801274E0;
+    return func_80013478(a0 + 4, (s32)&D_80126CAC) >= D_801274E0;
 }

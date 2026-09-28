@@ -5,35 +5,36 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_801395D4 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL of func_801395D4 (main_0012.s), decoded manually from
- * raw asm (fully visible; NOT verified against retail; C89-gated
- * only, promotion requires an oracle MATCH): void (struct *),
- * 0x20 frame. tmp (sp+0x10) = [h38, h3A + h12*12, 0x38,
- * 0xC] (the tmp[1] store rides the jal delay slot, landing
- * before the call); func_80059888(tmp, 0, 0, 0); return.
- * Void: the sole caller (func_801392C8) ignores $v0, and so
- * does the second 59888 site (80139668); main.s sites noted
- * for 59888's own staging. 59888 decl: void 4-arg here,
- * re-verify at staging. */
+typedef struct {
+    s16 f0;
+    s16 f2;
+    s16 f4;
+    s16 f6;
+} Stk801395D4;
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern void func_80059888(void *a0, s32 a1, s32 a2, s32 a3);
 
-struct st_801395D4 {
-    u8 pad00[0x12];
-    u16 h12;
-    u8 pad14[0x24];
-    u16 h38;
-    u16 h3A;
-};
-
-extern void func_80059888(void *arg0, s32 arg1, s32 arg2, s32 arg3);
-
-void func_801395D4(struct st_801395D4 *arg0) {
-    u16 tmp[4];
-
-    tmp[0] = arg0->h38;
-    tmp[1] = (u16)(arg0->h3A + (arg0->h12 * 12));
-    tmp[2] = 0x38;
-    tmp[3] = 0xC;
-    func_80059888(tmp, 0, 0, 0);
+void func_801395D4(void * a0)
+{
+    Stk801395D4 sp10;
+    u16 mul;
+    u16 base;
+    sp10.f0 = *(u16 *)(a0 + 0x38);
+    mul = *(u16 *)(a0 + 0x12);
+    base = *(u16 *)(a0 + 0x3A);
+    sp10.f4 = 0x38;
+    sp10.f6 = 0xC;
+    sp10.f2 = base + mul * 12;
+    func_80059888(&sp10, 0, 0, 0);
 }

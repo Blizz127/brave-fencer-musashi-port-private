@@ -4,58 +4,62 @@
  * Member-0012 C shape retargeted to this member: D_80180C60->D_80187550.
  * Oracle MATCH re-earned against the resident image; Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8015D5E8 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-s32 func_80161B18();
-s32 func_80161B84();
-void func_80154A74();
-s32 func_80161208();
-void func_80154150();
-void func_80146CA0();
-void func_80149374();
-extern s8 D_80187550[];
-typedef struct Inner { u8 pad[0xC]; u16 c, e, ten; } Inner;
-typedef struct {
-    u8 pad[6]; s16 u6; u8 pad8[2]; s16 uA; u8 padC[2]; s16 uE;
-    u8 pad10[0x68]; Inner *p78;
-} U;
-typedef struct {
-    u8 pad[0xB8]; u16 b8;
-    u8 padBA[0xBE]; U *u178;
-    u8 pad17C[0xB8]; s32 u234;
-} T;
-void func_8015D5E8(T *p) {
-    U *q;
-    s32 i;
-    if (func_80161B18(p)) {
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+extern s32 func_80161B18(void *a0);
+extern s32 func_80161B84(void *a0);
+extern void func_80154A74(int, int);
+extern s32 func_80161208();
+extern void func_80154150(int, int);
+extern void func_80146CA0(void *a0);
+extern void func_80149374(int, int);
+extern unsigned char D_80187550[];
+
+void func_8015D5E8(int param_1)
+{
+    int iVar1;
+    int iVar2;
+
+    if (((int (*)(void))func_80161B18)() != 0)
         return;
-    }
-    if (func_80161B84(p)) {
+    if (((int (*)(int))func_80161B84)(param_1) != 0)
         return;
-    }
-    if (p->b8 & 0x4000) {
-        func_80154A74(p, 0x17);
-    }
-    if (func_80161208(p)) {
+    if ((*(unsigned short *)(param_1 + 0xb8) & 0x4000) != 0)
+        func_80154A74(param_1, 0x17);
+    if (((int (*)(int))func_80161208)(param_1) != 0)
         return;
+    if (*(unsigned short *)(param_1 + 0xb8) == 0x8000) {
+        *(int *)(param_1 + 0x234) = *(int *)(param_1 + 0x234) + -3;
+        func_80154150(param_1, 0x1a);
+        ((void (*)(int))func_80146CA0)(param_1);
+    } else {
+        iVar1 = *(int *)(param_1 + 0x178);
+        if (iVar1 != 0) {
+            iVar2 = *(int *)(param_1 + 0x234);
+            *(int *)(param_1 + 0x234) = iVar2 + 1;
+            *(short *)(iVar1 + 6) =
+                (short)((signed char)D_80187550[iVar2] +
+                        *(unsigned short *)(*(int *)(iVar1 + 0x78) + 0xc));
+            iVar2 = *(int *)(param_1 + 0x234);
+            *(int *)(param_1 + 0x234) = iVar2 + 1;
+            *(short *)(iVar1 + 10) =
+                (short)((signed char)D_80187550[iVar2] +
+                        *(unsigned short *)(*(int *)(iVar1 + 0x78) + 0xe));
+            iVar2 = *(int *)(param_1 + 0x234);
+            *(int *)(param_1 + 0x234) = iVar2 + 1;
+            *(short *)(iVar1 + 0xe) =
+                (short)((signed char)D_80187550[iVar2] +
+                        *(unsigned short *)(*(int *)(iVar1 + 0x78) + 0x10));
+            func_80149374(param_1, iVar1 + 4);
+        }
     }
-    if (p->b8 == 0x8000) {
-        p->u234 -= 3;
-        func_80154150(p, 0x1A);
-        func_80146CA0(p);
-        return;
-    }
-    q = p->u178;
-    if (q == 0) {
-        return;
-    }
-    i = p->u234;
-    p->u234 = i + 1;
-    q->u6 = D_80187550[i] + q->p78->c;
-    i = p->u234;
-    p->u234 = i + 1;
-    q->uA = D_80187550[i] + q->p78->e;
-    i = p->u234;
-    p->u234 = i + 1;
-    q->uE = D_80187550[i] + q->p78->ten;
-    func_80149374(p, (u8 *)q + 4);
 }

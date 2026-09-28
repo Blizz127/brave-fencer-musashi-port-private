@@ -5,51 +5,51 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8015E714 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-s32 func_80133784();
-void func_80015978();
-void func_8014C4AC();
-void func_801553C0();
-void func_80155440();
-void func_80154A74();
-typedef struct {
-    u8 pad[6]; s16 u6; u8 pad8[2]; s16 uA; u8 padC[2]; s16 uE;
-} Q;
-typedef struct Inner { u8 pad[0x12]; s16 u12; } Inner;
-typedef struct {
-    u8 pad[6]; s16 u6; u8 pad8[2]; s16 uA; u8 padC[2]; s16 uE;
-    u8 pad10[0x10]; Inner *inner;
-    u8 pad24[0x20]; s32 flags;
-    u8 pad48[0x144]; Q *u18C;
-    u8 pad190[0xA4]; s32 u234;
-} T;
-void func_8015E714(T *p) {
-    s16 a[4];
-    s16 b[4];
-    Q *q;
-    if (p->u234 == 0) {
-        q = p->u18C;
-        if (q) {
-            a[0] = p->u6;
-            a[1] = p->uA - 0x14;
-            a[2] = p->uE;
-            b[0] = q->u6;
-            b[1] = q->uA;
-            b[2] = q->uE;
-            if (func_80133784(0, a, b)) {
-                q->u6 = b[0];
-                q->uA = b[1];
-                q->uE = b[2];
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+extern s32 func_80133784(s32 a0, void *a1, s32 a2);
+extern void func_80015978(s32 a0, s32 *a1);
+extern void func_8014C4AC(s32 a0, s32 a1, s32 a2, s16 *a3, s32 a4);
+extern void func_801553C0(s32 a0);
+extern void func_80155440(s32 *a0);
+extern void func_80154A74(s32 a0, s32 a1);
+
+void func_8015E714(s32 *a0) {
+    s16 sp18[4];
+    s16 sp20[4];
+    s32 s0;
+    if (*(s32 *)((s32)a0 + 0x234) == 0) {
+        s0 = *(s32 *)((s32)a0 + 0x18C);
+        if (s0 != 0) {
+            sp18[0] = *(u16 *)((s32)a0 + 0x6);
+            sp18[1] = *(u16 *)((s32)a0 + 0xA) - 0x14;
+            sp18[2] = *(u16 *)((s32)a0 + 0xE);
+            sp20[0] = *(u16 *)(s0 + 0x6);
+            sp20[1] = *(u16 *)(s0 + 0xA);
+            sp20[2] = *(u16 *)(s0 + 0xE);
+            if (func_80133784(0, sp18, (s32)sp20) != 0) {
+                *(s16 *)(s0 + 0x6) = sp20[0];
+                *(s16 *)(s0 + 0xA) = sp20[1];
+                *(s16 *)(s0 + 0xE) = sp20[2];
             }
-            func_80015978((u8 *)q + 4, a);
-            a[3] = 0;
-            func_8014C4AC(q, 0x1C, 0, a, p->inner->u12);
-            p->u18C = 0;
+            func_80015978(s0 + 0x4, (s32 *)sp18);
+            sp18[3] = 0;
+            func_8014C4AC(s0, 0x1C, 0, sp18, *(s16 *)(*(s32 *)((s32)a0 + 0x20) + 0x12));
+            *(s32 *)((s32)a0 + 0x18C) = 0;
         }
     }
-    func_801553C0(p);
-    func_80155440(p);
-    p->flags &= -3;
-    func_80154A74(p, 0x11);
-    p->flags &= -3;
+    func_801553C0((s32)a0);
+    func_80155440(a0);
+    *(s32 *)((s32)a0 + 0x44) = *(s32 *)((s32)a0 + 0x44) & -3;
+    func_80154A74((s32)a0, 0x11);
+    *(s32 *)((s32)a0 + 0x44) = *(s32 *)((s32)a0 + 0x44) & -3;
 }

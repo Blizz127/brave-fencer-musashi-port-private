@@ -5,54 +5,31 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8012F2E8 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL of func_8012F2E8 (main_0012.s), decoded manually from
- * raw asm (0x8C bytes; NOT verified against retail; C89-gated
- * only, promotion requires an oracle MATCH): F038-variant keyed
- * off the target words: builds an s32 triple of (s16)arg1[0/2/4]
- * minus target words +0x48/+0x4C/+0x50 (lh/lw/subu), runs
- * func_8004D504(unk20 + 0x34, in, out) (a0 = unk20 + 0x34 in the
- * jal delay slot; 8004D504 writes results through a2), and
- * stores the three result words as halfwords to out[0/2/4]. */
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern void func_8004D504(void *a0, void *a1, void *a2);
 
-struct obj_8012F2E8 {
-    u8 pad[0x20];
-    void *unk20;
-};
-
-struct tgt_8012F2E8 {
-    u8 pad[0x48];
-    s32 unk48;
-    s32 unk4C;
-    s32 unk50;
-};
-
-struct u16in_8012F2E8 {
-    s16 unk0;
-    s16 unk2;
-    s16 unk4;
-};
-
-struct out_8012F2E8 {
-    s16 unk0;
-    s16 unk2;
-    s16 unk4;
-};
-
-extern void func_8004D504(void *arg0, s32 *arg1, s32 *arg2);
-
-void func_8012F2E8(struct obj_8012F2E8 *arg0, struct u16in_8012F2E8 *arg1, struct out_8012F2E8 *arg2) {
-    struct tgt_8012F2E8 *t;
+void func_8012F2E8(s32 a0, s32 a1, s32 a2) {
+    s32 s0 = a2;
     s32 in[3];
     s32 out[3];
-
-    t = (struct tgt_8012F2E8 *) arg0->unk20;
-    in[0] = arg1->unk0 - t->unk48;
-    in[1] = arg1->unk2 - t->unk4C;
-    in[2] = arg1->unk4 - t->unk50;
-    func_8004D504((u8 *) t + 0x34, in, out);
-    arg2->unk0 = (s16) out[0];
-    arg2->unk2 = (s16) out[1];
-    arg2->unk4 = (s16) out[2];
+    s32 mtx;
+    mtx = *(s32 *)(a0 + 0x20);
+    in[0] = *(s16 *)(a1 + 0x0) - *(s32 *)(mtx + 0x48);
+    in[1] = *(s16 *)(a1 + 0x2) - *(s32 *)(mtx + 0x4C);
+    in[2] = *(s16 *)(a1 + 0x4) - *(s32 *)(mtx + 0x50);
+    func_8004D504((void *)(mtx + 0x34), in, out);
+    *(s16 *)(s0 + 0x0) = out[0];
+    *(s16 *)(s0 + 0x2) = out[1];
+    *(s16 *)(s0 + 0x4) = out[2];
 }

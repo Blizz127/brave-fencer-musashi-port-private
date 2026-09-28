@@ -539,8 +539,8 @@ into a binary.
 - **Overlay identity.** SC01/SC02 member selection compares an FNV-1a 64
   digest of the loaded 178-word entry span with the carved member's digest.
 - **CMake** no longer extracts anything at configure time (the 17k-line
-  `extract_asm_words.py` block and the SC01.CD member extraction are gone);
-  no `*_words.inc` exists. `pc_port/800cf02c_overlay_words.inc` is deleted.
+  `extract_asm_words.py` block and the SC01.CD member extraction are gone,
+  and the tool itself is deleted); no `*_words.inc` exists. `pc_port/800cf02c_overlay_words.inc` is deleted.
 - **First-run disc check.** A wrong or missing EXE prints which release is
   needed (Brave Fencer Musashi (USA), SLUS-00726), the expected SHA-256
   (`provenance/exe_identity.json`) and what was found; a wrong disc image

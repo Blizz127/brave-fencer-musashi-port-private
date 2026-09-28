@@ -4,32 +4,38 @@
  * Member-0012 C shape retargeted to this member: D_801819F8->D_801882E8.
  * Oracle MATCH re-earned against the resident image; Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80174BF4 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-typedef void (*CB)();
-extern CB D_801882E8[];
-typedef struct {
-    u8 pad[4];
-    u8 idx;
-    u8 pad5[7];
-    s32 unkC;
-    u8 pad10[4];
-    s32 unk14;
-    u8 pad18[8];
-    s16 unk20, unk22, unk24;
-    u8 pad26[8];
-    s16 unk2E, unk30, unk32;
-    u8 pad34[0x20];
-    s32 unk54;
-} T;
-void func_80174BF4(T *p) {
-    p->unkC = 0x12C;
-    p->unk14 = 0x12C;
-    p->unk20 = 0x155;
-    p->unk22 = 0x800;
-    p->unk24 = 0;
-    p->unk2E = 0;
-    p->unk30 = -0x28;
-    p->unk32 = 0;
-    p->unk54 = 0;
-    D_801882E8[p->idx]();
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+/* m2c compat (vendor/bfm-decomp/include/common.h). */
+typedef s32 M2C_UNK;
+typedef s8 M2C_UNK8;
+typedef s16 M2C_UNK16;
+typedef s32 M2C_UNK32;
+typedef s64 M2C_UNK64;
+#define M2C_FIELD(expr, type_ptr, offset) (*(type_ptr)((s8 *)(expr) + (offset)))
+#define M2C_BITWISE(type, expr) ((type)(expr))
+
+extern void (*D_801882E8[])();
+
+void func_80174BF4(void * arg0)
+{
+    M2C_FIELD(arg0, s32 *, 0xC) = 0x12C;
+    M2C_FIELD(arg0, s32 *, 0x14) = 0x12C;
+    M2C_FIELD(arg0, s16 *, 0x20) = 0x155;
+    M2C_FIELD(arg0, s16 *, 0x22) = 0x800;
+    M2C_FIELD(arg0, s16 *, 0x24) = 0;
+    M2C_FIELD(arg0, s16 *, 0x2E) = 0;
+    M2C_FIELD(arg0, s16 *, 0x30) = -0x28;
+    M2C_FIELD(arg0, s16 *, 0x32) = 0;
+    M2C_FIELD(arg0, s32 *, 0x54) = 0;
+    D_801882E8[M2C_FIELD(arg0, u8 *, 4)]();
 }

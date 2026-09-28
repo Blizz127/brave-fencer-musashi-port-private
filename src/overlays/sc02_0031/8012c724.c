@@ -5,27 +5,21 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8012C724 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL from m2c draft of func_8012C724 (main_0012.s): NOT
- * verified against retail. C89-gated only; promotion requires an
- * oracle MATCH. func_8012C890 is declared here as an s32 value-flow view (opaque word in, opaque word out); the true (src, dst, ctx) prototype lives in staging/hand/func_8012C890.c. Takes two arguments (m2c missed the second): the destination pointer passes through untouched in a1 while a2 is explicitly zeroed, so the context is NULL. */
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern s32 func_8012C890(s32 a0, s32 a1, s32 a2);
 
-struct src_8012C724 {
-    u16 unk0;
-    u16 unk2;
-    u16 unk4;
-    u16 unk6;
-    u16 unk8;
-    u16 unkA;
-    u16 unkC;
-    u16 unkE;
-    s32 unk10;
-};
-
-extern s32 func_8012C890(void *arg0, void *arg1, void *arg2);
-
-void func_8012C724(struct src_8012C724 *arg0, void *arg1) {
-    arg0->unkA |= 0x8000;
-    func_8012C890(arg0, arg1, 0);
+void func_8012C724(s32 a0, s32 a1) {
+    *(u16 *)((s32)a0 + 0xA) |= 0x8000;
+    func_8012C890(a0, a1, 0);
 }

@@ -4,20 +4,23 @@
  * Member-0012 C shape retargeted to this member: D_8017F6D4->D_80185FC4.
  * Oracle MATCH re-earned against the resident image; Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80141C0C - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-extern void func_8002D4C8(s32 arg0, s32 arg1);
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
 extern u16 D_80115110;
-extern u16 D_80185FC4[];
+extern u8 D_80185FC4;
+extern void func_8002D4C8(s32 a0, s32 a1);
 
-/* HAND MODEL of func_80141C0C (main_0012.s), decoded manually from
- * raw asm (fully visible; NOT verified against retail; C89-gated
- * only, promotion requires an oracle MATCH): void (s32), 0x18
- * frame. Runs 8002D4C8(lhu(F6D4[sext(a0)*2 + lhu(115110)]), 0)
- * (the (a0<<16)>>15 pair is sext(a0)*2; the final <<1 makes it a
- * byte offset = u16 element index). 2D4C8 decl matches the
- * provisional (s32, s32) shape used verbatim across staging. */
-void func_80141C0C(s32 arg0)
+void func_80141C0C(s32 param_1)
 {
-    func_8002D4C8(D_80185FC4[((arg0 << 16) >> 16) * 2 + D_80115110], 0);
+    func_8002D4C8(*(u16 *)(&D_80185FC4 + (((param_1 << 16) >> 15) + (u32)D_80115110) * 2), 0);
 }

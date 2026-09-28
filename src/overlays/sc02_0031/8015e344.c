@@ -4,39 +4,40 @@
  * Member-0012 C shape retargeted to this member: D_80180A1C->D_8018730C.
  * Oracle MATCH re-earned against the resident image; Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8015E344 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-typedef void (*CB)();
-extern CB D_8018730C[];
-void func_8015E40C();
-s32 func_80161B18();
-s32 func_80161B84();
-s32 func_80161208();
-void func_8015E5B0();
-void func_80147078();
-void func_80159BE4();
-typedef struct {
-    u16 idx;
-    u8 pad2[0xB6]; u16 b8;
-    u8 padBA[0x17A]; s32 u234;
-} T;
-void func_8015E344(T *p) {
-    func_8015E40C(p);
-    if (func_80161B18(p)) {
-        return;
-    }
-    if (func_80161B84(p)) {
-        return;
-    }
-    if (func_80161208(p)) {
-        return;
-    }
-    if (p->b8 & 0x4000) {
-        func_8015E5B0(p);
-        p->u234 = 1;
-    }
-    if (p->b8 & 0x8000) {
-        D_8018730C[p->idx](p);
-        func_80147078(p, 0);
-        func_80159BE4(p);
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+extern void func_8015E40C(s32 a0);
+extern s32 func_80161B18(void *a0);
+extern s32 func_80161B84(void *a0);
+extern s32 func_80161208();
+extern void func_8015E5B0(u8*);
+extern void func_80147078(s32 *a0, s16 a1);
+extern void func_80159BE4(s32 arg0);
+extern void (*D_8018730C[])(void*);
+
+void func_8015E344(u16 *param_1)
+{
+    ((s32 (*)(void))func_8015E40C)();
+    if (((s32 (*)(u16 *))func_80161B18)(param_1) == 0 &&
+        ((s32 (*)(u16 *))func_80161B84)(param_1) == 0 &&
+        ((s32 (*)(u16 *))func_80161208)(param_1) == 0) {
+        if ((param_1[0x5c] & 0x4000) != 0) {
+            ((void (*)(u16 *))func_8015E5B0)(param_1);
+            *(s32 *)((char *)param_1 + 0x234) = 1;
+        }
+        if ((param_1[0x5c] & 0x8000) != 0) {
+            ((void (**)(u16*))D_8018730C)[param_1[0]](param_1);
+            ((s32 (*)(u16 *, s32))func_80147078)(param_1, 0);
+            ((s32 (*)(u16 *))func_80159BE4)(param_1);
+        }
     }
 }

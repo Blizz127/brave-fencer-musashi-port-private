@@ -1,24 +1,50 @@
 /* SC02.CD member31 [80145EE8,80146014); exact word export. */
-/* SC02 member31 [80145EE8,80146014): gated mode0 and unconditional mode1 setup. */
-extern unsigned char func_80029178(int);
-extern void func_80146014(void *);
-extern unsigned char D_80186630[],D_80186660[],D_801866B0[],D_801866E0[],D_80186710[];
-void func_80145EE8(int mode)
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80145EE8 - byte-exact against retail at -O2 (tools/register_match.py). */
+#include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+extern s32 func_80029178(s32 arg);
+extern void func_80146014(s32 a0);
+extern unsigned char D_80186630[];
+extern unsigned char D_80186660[];
+extern unsigned char D_801866B0[];
+extern unsigned char D_801866E0[];
+extern unsigned char D_80186710[];
+
+void func_80145EE8(s32 param_1)
 {
-    switch(mode) {
+    switch (param_1) {
     case 0:
-        if (func_80029178(0x1F)) func_80146014(D_80186630);
-        if (func_80029178(0x21)) func_80146014(D_80186660);
-        if (func_80029178(0x1E)) func_80146014(D_801866B0);
-        if (func_80029178(0x1D)) func_80146014(D_801866E0);
-        if (func_80029178(0x20)) func_80146014(D_80186710);
+        if (((unsigned char (*)(int))func_80029178)(0x1F) != 0) {
+            ((void (*)(void *))func_80146014)(D_80186630);
+        }
+        if (((unsigned char (*)(int))func_80029178)(0x21) != 0) {
+            ((void (*)(void *))func_80146014)(D_80186660);
+        }
+        if (((unsigned char (*)(int))func_80029178)(0x1E) != 0) {
+            ((void (*)(void *))func_80146014)(D_801866B0);
+        }
+        if (((unsigned char (*)(int))func_80029178)(0x1D) != 0) {
+            ((void (*)(void *))func_80146014)(D_801866E0);
+        }
+        if (((unsigned char (*)(int))func_80029178)(0x20) == 0) {
+            return;
+        }
+        ((void (*)(void *))func_80146014)(D_80186710);
         break;
     case 1:
-        func_80146014(D_80186630);
-        func_80146014(D_80186660);
-        func_80146014(D_801866B0);
-        func_80146014(D_801866E0);
-        func_80146014(D_80186710);
+        ((void (*)(void *))func_80146014)(D_80186630);
+        ((void (*)(void *))func_80146014)(D_80186660);
+        ((void (*)(void *))func_80146014)(D_801866B0);
+        ((void (*)(void *))func_80146014)(D_801866E0);
+        ((void (*)(void *))func_80146014)(D_80186710);
         break;
     }
 }
