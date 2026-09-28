@@ -667,13 +667,26 @@ of the call ranking.
 | `SDL_VIDEODRIVER=offscreen`, Mesa EGL via a vendor JSON, `EGL_PLATFORM=surfaceless` | real GL 3.3 context without a display (llvmpipe) | environment |
 | `LIBGL_ALWAYS_SOFTWARE` unset | setting it segfaults Mesa 25.0's EGL inside `SDL_CreateWindow` | Mesa bug; Mesa falls back to llvmpipe by itself |
 | ALSA `null` PCM (`ALSA_CONFIG_PATH`, `SDL_AUDIODRIVER=alsa`) | native_boot's audio gate refuses SDL's `dummy`/`disk` drivers on purpose | **workaround that papers over a real issue**: the gate is meant to require a real device, and a null PCM satisfies it with no audio. An explicit, logged headless audio mode is the honest fix (port-int) |
-| `MUSASHI_CODE_IMAGE=<EXE>` | instructions are fetched from the user's EXE | required. Without it the run refuses at `80010000` **and prints no reason**; the missing reason is a real issue (port-int) |
+| `MUSASHI_CODE_IMAGE=<EXE>` | instructions are fetched from the user's EXE | needed on main@ac0ec2dd1: without it the run refused at `80010000` with no reason printed. That was a run-off-disc bug, fixed on port/native-lane in 7d483a31b (guest memory bound at run entry), after which it isn't needed. Setting it stays harmless |
 | `MUSASHI_GUEST_CLOCK=1` (default; `--host-clock` to compare) | guest time advances with executed cycles | the host-paced clock, on a loaded host, ends in a silent IRQ-dispatch refusal in the SPU poll loop (`8003b118`); real issue (port-int) |
 | `LD_PRELOAD` of Mesa `libEGL`/`libEGL_mesa`/`libgallium` (`--no-preload` skips) | keeps Mesa mapped for PsyCross's shutdown | **workaround**: `GR_Shutdown` calls GL after the EGL libraries were unloaded and segfaults on every exit, losing `trace.counts`; shutdown ordering is the fix (port-int) |
 | `tools/headless/bfm_swap_capture.c` (`LD_PRELOAD`, `BFM_CAPTURE_*`) | hooks `SDL_GL_SwapWindow` | observation only. It reads the back buffer before the real swap, and optionally PsyCross's `vram` array, found by `nm` offset. PNGs use `bfm_plat_png_write` |
 
 Frames here are PsyCross presents, which only happen when native_boot
 flushes the display. They are not guest VBlanks.
+
+Diagnostics, none of which change the run:
+- `BFM_CAPTURE_OT_HEADS` / `BFM_CAPTURE_OT_FRAMES`: display-list walks in
+  guest RAM.
+- `BFM_CAPTURE_GPU`: the controller's committed prims (`prims.log`), via a
+  forwarding wrapper on its `store_vram` callback. The offsets come from
+  `offsetof()` against the same build.
+- `tools/headless/bfm_ot_replay.c`: replays a captured frame through
+  `bfm_gl_ref_draw` and the gl renderer, plus an opaque variant.
+- `tools/headless/gpu_semi_repro.c`: an 8-case semi-transparency repro
+  against native-lane's `gpu_controller.c`, which draws all four semi
+  modes as opaque. This caused the headless boot's white and grey fades:
+  the game fades with a subtractive (abr 2) full-screen `0x2A` quad.
 
 ### Packaging (no game data)
 
