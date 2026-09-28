@@ -104,6 +104,15 @@ void bfm_plat_guest_memory_bind(const BfmPlatGuestMemory *memory);
 int bfm_plat_guest_read(uint32_t address, void *out, uint32_t size);
 int bfm_plat_guest_write(uint32_t address, const void *data, uint32_t size);
 
+/* Guest CPU registers (r0..r31 by number), bound by the runtime so hook
+ * fills can read call arguments ($a0 = 4, $a1 = 5, ...). */
+typedef struct BfmPlatGuestRegs {
+    int (*read)(void *user, unsigned reg, uint32_t *out);
+    void *user;
+} BfmPlatGuestRegs;
+void bfm_plat_guest_regs_bind(const BfmPlatGuestRegs *regs);
+int bfm_plat_guest_reg(unsigned reg, uint32_t *out);
+
 /* Asset replacement. */
 uint64_t bfm_plat_hash64(const void *data, size_t size);
 uint64_t bfm_plat_texture_hash(const BfmPlatRect *rect, const uint16_t *px);

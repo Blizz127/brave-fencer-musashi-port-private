@@ -178,6 +178,20 @@ int bfm_plat_guest_write(uint32_t a, const void *data, uint32_t n) {
     return guest.write(guest.user, a, data, n);
 }
 
+static BfmPlatGuestRegs guest_regs;
+
+void bfm_plat_guest_regs_bind(const BfmPlatGuestRegs *r) {
+    if (r && r->read) guest_regs = *r;
+    else memset(&guest_regs, 0, sizeof guest_regs);
+}
+
+int bfm_plat_guest_reg(unsigned reg, uint32_t *out) {
+    if (!guest_regs.read) return BFM_PLAT_NOT_READY;
+    if (reg > 31 || !out) return BFM_PLAT_INVALID;
+    if (reg == 0) { *out = 0; return BFM_PLAT_OK; }
+    return guest_regs.read(guest_regs.user, reg, out);
+}
+
 /* ------------------------------------------------------------- hashing */
 
 uint64_t bfm_plat_hash64(const void *data, size_t size) {
@@ -874,6 +888,7 @@ void bfm_plat_mods_reset(void) {
     decoder_count = 0;
     runtime_count = 0;
     bfm_plat_guest_memory_bind(NULL);
+    bfm_plat_guest_regs_bind(NULL);
     log_fn = NULL;
     config_getter = NULL;
     dump_textures = 0;

@@ -1,7 +1,7 @@
 #include "bfm_plat_events.h"
-#include "bfm_plat_console.h"
-#include "bfm_plat_mods.h"
+#include "bfm_plat.h"
 
+#include <ctype.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -47,7 +47,8 @@ int bfm_plat_hooks_register(const BfmPlatHookSite *in, size_t n) {
     size_t i;
     if (n && !in) return BFM_PLAT_INVALID;
     for (i = 0; i < n; i++)
-        if ((unsigned)in[i].event >= BFM_EVENT_COUNT || (in[i].guest_pc & 3u))
+        if ((unsigned)in[i].event >= BFM_EVENT_COUNT || (in[i].guest_pc & 3u) ||
+            (in[i].guest_pc >= BFM_PLAT_OVERLAY_WINDOW && !in[i].overlay))
             return BFM_PLAT_INVALID;
     if (site_count + n > BFM_PLAT_HOOK_SITES_MAX) return BFM_PLAT_NO_SPACE;
     for (i = 0; i < n; i++) {
@@ -80,16 +81,41 @@ int bfm_plat_hooks_has(uint32_t pc) {
     return i < site_count && sites[i].guest_pc == pc;
 }
 
+static char current_overlay[32];
+static int have_overlay;
+
+void bfm_plat_hooks_set_overlay(const char *name) {
+    have_overlay = name && *name;
+    snprintf(current_overlay, sizeof current_overlay, "%s", have_overlay ? name : "");
+}
+
+const char *bfm_plat_hooks_overlay(void) { return have_overlay ? current_overlay : NULL; }
+
+int bfm_plat_overlay_matches(const char *pat, const char *name) {
+    size_t i;
+    if (!pat) return 1;
+    if (!name) return 0;
+    for (i = 0; pat[i]; i++) {
+        if (pat[i] == '*' && pat[i + 1] == '\0') return 1;
+        if (tolower((unsigned char)pat[i]) != tolower((unsigned char)name[i])) return 0;
+    }
+    return name[i] == '\0';
+}
+
 int bfm_plat_hooks_at(uint32_t pc) {
     size_t i;
     int fired = 0;
     for (i = lower_bound(pc); i < site_count && sites[i].guest_pc == pc; i++) {
         BfmPlatEventPayload payload;
+        if (!bfm_plat_overlay_matches(sites[i].overlay, bfm_plat_hooks_overlay()))
+            continue;
         memset(&payload, 0, sizeof payload);
         if (sites[i].fill && sites[i].fill(sites[i].user, sites[i].event, &payload) != 0)
             continue;
         site_hits[i]++;
-        bfm_plat_mods_emit(sites[i].event, &payload);
+        if (sites[i].event == BFM_EVENT_FRAME_BEGIN) bfm_plat_frame_wait();
+        else if (sites[i].event == BFM_EVENT_FRAME_END) bfm_plat_frame_hook_end();
+        else bfm_plat_mods_emit(sites[i].event, &payload);
         fired++;
     }
     return fired;
@@ -99,6 +125,8 @@ size_t bfm_plat_hooks_count(void) { return site_count; }
 
 void bfm_plat_hooks_reset(void) {
     site_count = 0;
+    have_overlay = 0;
+    current_overlay[0] = '\0';
     memset(site_hits, 0, sizeof site_hits);
 }
 
@@ -117,8 +145,10 @@ static int cmd_events(void *u, int argc, const char *const *argv, char *out,
     }
     for (i = 0; i < site_count; i++) {
         len = strlen(out);
-        snprintf(out + len, n - len, "site %08x %s %s hits=%llu\n",
-                 (unsigned)sites[i].guest_pc, bfm_plat_event_name(sites[i].event),
+        snprintf(out + len, n - len, "site %08x%s%s %s %s hits=%llu\n",
+                 (unsigned)sites[i].guest_pc, sites[i].overlay ? "@" : "",
+                 sites[i].overlay ? sites[i].overlay : "",
+                 bfm_plat_event_name(sites[i].event),
                  sites[i].label ? sites[i].label : "",
                  (unsigned long long)site_hits[i]);
     }

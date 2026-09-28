@@ -53,12 +53,23 @@ typedef struct BfmPlatHookSite {
     const char *label;         /* e.g. "func_80012345 room loader" */
     BfmPlatHookFill fill;      /* NULL: fire with a zeroed payload */
     void *user;
+    /* Which binary the pc belongs to. NULL = main exe or resident (fixed
+     * addresses). Pcs in the location-overlay window (>= 0x80128158) mean
+     * different code per overlay and MUST name one: "SC02_031" exact, or a
+     * prefix pattern ending in '*' ("SC*"). Case-insensitive. */
+    const char *overlay;
 } BfmPlatHookSite;
 
 #define BFM_PLAT_HOOK_SITES_MAX 64
+#define BFM_PLAT_OVERLAY_WINDOW 0x80128158u
 
-/* Registers sites (copied; label must outlive the registration). A pc may
- * carry several events. */
+/* Frame sites are actions, not just events: a FRAME_BEGIN site runs
+ * bfm_plat_frame_begin() (input poll, hotkeys, pause) and a FRAME_END site
+ * runs bfm_plat_frame_hook_end() (FRAME_END hook = cheats, overlays; no
+ * present/pacing, since the game's own VSync path does that). */
+
+/* Registers sites (copied; label/overlay must outlive the registration).
+ * A pc may carry several events. */
 int bfm_plat_hooks_register(const BfmPlatHookSite *sites, size_t count);
 /* Cheap check for the dispatcher's hot path. */
 int bfm_plat_hooks_has(uint32_t guest_pc);
@@ -66,6 +77,40 @@ int bfm_plat_hooks_has(uint32_t guest_pc);
 int bfm_plat_hooks_at(uint32_t guest_pc);
 size_t bfm_plat_hooks_count(void);
 void bfm_plat_hooks_reset(void);
+
+/* The native lane reports which location overlay is loaded ("SC02_031",
+ * or NULL for none). Overlay-qualified sites only fire while it matches. */
+void bfm_plat_hooks_set_overlay(const char *name);
+const char *bfm_plat_hooks_overlay(void);
+int bfm_plat_overlay_matches(const char *pattern, const char *name);
+
+/* ---- Known retail hook sites (SLUS-00726) ------------------------------
+ * Evidence-backed guest sites for the hook points, with their payload
+ * fills. Evidence cites vendor/bfm-decomp (Druthulu's cleaned decomp of
+ * the same build) and this repository's runtime notes. No retail bytes are
+ * involved: these are addresses and field offsets only. */
+#define BFM_GUEST_STATE_BASE   0x800AF630u  /* D_800AF630 main state block */
+#define BFM_GUEST_MAJOR_MODE   0x800B99F0u  /* u16 base+0xA3C0 (func_80011B7C arg) */
+#define BFM_GUEST_SCENE_PHASE  0x800B99F6u  /* u16 base+0xA3C6 = D_800B99F6 */
+#define BFM_GUEST_CARD_STATE   0x800760ACu  /* s32 D_800760AC memcard state */
+#define BFM_GUEST_REG_A0 4u
+#define BFM_GUEST_REG_A1 5u
+
+typedef struct BfmPlatKnownSite {
+    uint32_t guest_pc;
+    const char *overlay;       /* NULL / "SC*" */
+    BfmEvent event;
+    const char *symbol;        /* function name at guest_pc */
+    const char *evidence;      /* file:line references */
+    const char *confidence;    /* "high" / "medium" / "low" + why */
+    BfmPlatHookFill fill;
+} BfmPlatKnownSite;
+
+size_t bfm_plat_known_sites(const BfmPlatKnownSite **out);
+/* Registers every known site (resets the fills' edge state). */
+int bfm_plat_hooks_register_known(void);
+/* Events with no evidence-backed site yet (battle, item get). */
+size_t bfm_plat_unsited_events(const BfmEvent **out);
 
 /* Registers the `events` console command (list events + counts + sites). */
 void bfm_plat_events_register_console(void);
