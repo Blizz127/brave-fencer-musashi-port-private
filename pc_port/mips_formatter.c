@@ -12129,6 +12129,10 @@ static void trace_dump(void) {
     if (g_trace_file) fflush(g_trace_file);
 }
 
+void musashi_trace_function_flush(void) {
+    if (g_trace_state > 0) trace_dump();
+}
+
 static int trace_enabled(void) {
     if (g_trace_state == 0) {
         const char *path = getenv("MUSASHI_TRACE_FUNCS");

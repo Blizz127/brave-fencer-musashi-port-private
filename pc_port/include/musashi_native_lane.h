@@ -78,6 +78,8 @@ int musashi_native_lane_reference_call(MusashiBootMemory *memory, uint32_t targe
  * for jal/jalr targets and CPU dispatch entries; exposed for host routers
  * that enter guest code without a jal. kind: 'j' jal, 'r' jalr, 'd' entry. */
 void musashi_trace_function_entry(uint32_t target, uint32_t caller, char kind);
+/* Write <path>.counts now (it is also written at exit). */
+void musashi_trace_function_flush(void);
 
 /* Guest function-entry hook for the platform layer (bfm_plat hook sites,
  * mods): called once when execution reaches a jal/jalr target, after the

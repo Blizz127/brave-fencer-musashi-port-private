@@ -29,6 +29,7 @@
 #include "musashi_disc_media.h"
 #include "musashi_cd_controller.h"
 #include "musashi_audio_sdl.h"
+#include "musashi_native_lane.h"
 
 #include <SDL.h>
 #include <stdio.h>
@@ -4071,6 +4072,7 @@ int main(int argc, char **argv) {
         if (boot.bios.events.records[index].status) event_used++;
     /* A returned bounded prefix is still a stop. Unhook before releasing
      * source registration and this owner's lifetime. */
+    musashi_trace_function_flush(); /* keep the ranking even if teardown faults */
     fprintf(stderr,
         "native_boot: STOP status=%d pc=%08x target=%08x IRQ_installed=%d "
         "I_STAT=%04x I_MASK=%04x DPCR=%08x DICR=%08x TIMER1_MODE=%04x "
