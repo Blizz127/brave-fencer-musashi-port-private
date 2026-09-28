@@ -151,17 +151,27 @@ int musashi_psycross_irq_scheduler_set_enabled(
 /* Acquire the owner dispatch lease without consuming source metadata. */
 static int scheduler_begin_dispatch(MusashiPsyCrossIrqScheduler *scheduler,
                                      const void *continuation) {
-    if (!scheduler_is_owner(scheduler) || !continuation || scheduler->pumping ||
-        scheduler->collecting || scheduler->faulted || !scheduler_lock()) return 0;
+    if (!scheduler_is_owner(scheduler)) { scheduler->fault_reason = "not-owner-thread"; return 0; }
+    if (!continuation) { scheduler->fault_reason = "no-continuation"; return 0; }
+    if (scheduler->pumping || scheduler->collecting) { scheduler->fault_reason = "reentered"; return 0; }
+    if (scheduler->faulted) {
+        if (!scheduler->fault_reason) scheduler->fault_reason = "already-faulted";
+        return 0;
+    }
+    if (!scheduler_lock()) { scheduler->fault_reason = "lock"; return 0; }
     if (active_scheduler != scheduler || !scheduler->installed ||
         vsync_callback != scheduler_vblank) {
         scheduler_unlock();
+        scheduler->fault_reason = "not-installed";
         return 0;
     }
     if (scheduler->source_overflow) {
         scheduler_unlock();
         scheduler->faulted = 1;
         scheduler->last_result = 0;
+        /* The VBlank source queued more edges than the CPU thread consumed:
+         * with host-paced time a starved CPU thread falls behind real time. */
+        scheduler->fault_reason = "source-overflow";
         return 0;
     }
     scheduler->pumping = 1;
@@ -175,27 +185,28 @@ static int scheduler_dispatch(MusashiPsyCrossIrqScheduler *scheduler,
     MusashiIrqDispatchDevice dispatch_device;
     MusashiCpuContext context = {0};
     MusashiCpuStatusSnapshot state;
+    const char *why = "dispatch";
     uint16_t status, mask;
     int enabled;
     if (scheduler->faulted ||
         !musashi_cpu_status_irq_eligible(scheduler->cpu_status, &enabled) ||
         !scheduler->device->read16(scheduler->device->userdata, 0x1f801070u, &status) ||
         !scheduler->device->read16(scheduler->device->userdata, 0x1f801074u, &mask) || scheduler->faulted)
-        goto fault;
+        { why = "irq-status-read"; goto fault; }
     if (!enabled || !(status & mask)) {
         scheduler->pumping = 0;
         return 1;
     }
     if (!scheduler->context_provider || !scheduler->before_dispatch ||
         !scheduler->context_provider(scheduler->context_userdata, continuation, &context) ||
-        context.identity != continuation || scheduler->faulted) goto fault;
+        context.identity != continuation || scheduler->faulted) { why = "no-cpu-context"; goto fault; }
     if (context.provenance == MUSASHI_CPU_CONTEXT_SOURCE &&
         ((context.instruction >> 24) & 0xfeu) == 0x4au) {
         scheduler->pumping = 0;
         return 1;
     }
     if (!musashi_cpu_status_begin(scheduler->cpu_status, MUSASHI_CPU_EXCEPTION_IRQ,
-            &context, 0x400u, &scheduler->active_exception)) goto fault;
+            &context, 0x400u, &scheduler->active_exception)) { why = "exception-begin"; goto fault; }
     scheduler->active_continuation = continuation;
     scheduler->delivering = 1;
     scheduler->return_consumed = 0;
@@ -205,9 +216,9 @@ static int scheduler_dispatch(MusashiPsyCrossIrqScheduler *scheduler,
         state.faulted || !state.kernel_entered ||
         !scheduler->device->read16(scheduler->device->userdata, 0x1f801070u, &status) ||
         !scheduler->device->read16(scheduler->device->userdata, 0x1f801074u, &mask) || scheduler->faulted)
-        goto fault;
+        { why = "kernel-entry"; goto fault; }
     if (!(status & mask)) goto finish;
-    if (scheduler->deliveries == UINT32_MAX) goto fault;
+    if (scheduler->deliveries == UINT32_MAX) { why = "delivery-count"; goto fault; }
     dispatch_device = (MusashiIrqDispatchDevice){
         scheduler, scheduler_read16, scheduler_write16, scheduler_execute,
         scheduler_diagnostic, scheduler_return_from_exception
@@ -216,9 +227,9 @@ static int scheduler_dispatch(MusashiPsyCrossIrqScheduler *scheduler,
     scheduler->deliveries++;
     if (scheduler->faulted ||
         scheduler->last_result != MUSASHI_IRQ_CONTEXT_RETURN_DELEGATED ||
-        !scheduler->return_consumed) goto fault;
+        !scheduler->return_consumed) { why = "dispatcher-return"; goto fault; }
 finish:
-    if (!musashi_cpu_status_finish(scheduler->cpu_status, &scheduler->active_exception)) goto fault;
+    if (!musashi_cpu_status_finish(scheduler->cpu_status, &scheduler->active_exception)) { why = "exception-finish"; goto fault; }
     memset(&scheduler->active_exception, 0, sizeof scheduler->active_exception);
     scheduler->active_continuation = NULL;
     scheduler->delivering = 0;
@@ -233,6 +244,7 @@ fault:
     scheduler->pumping = 0;
     scheduler->last_result = 0;
     scheduler->faulted = 1;
+    scheduler->fault_reason = why;
     return 0;
 }
 

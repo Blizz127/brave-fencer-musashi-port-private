@@ -16,6 +16,7 @@
 #include "musashi_source_clock.h"
 #include "musashi_timer2.h"
 #include "musashi_device_epoch.h"
+void musashi_psyx_shutdown(void); /* pc_port/psyx_shutdown.cpp: GL teardown before window */
 
 extern SDL_mutex *g_intrMutex;
 
@@ -284,7 +285,7 @@ int main(int argc, char **argv) {
     assert(GetVideoMode() == MODE_NTSC);
     if (!SDL_GL_GetCurrentWindow() || !g_intrMutex) {
         fputs("input_irq_live: PsyCross unavailable\n", stderr);
-        PsyX_Shutdown();
+        musashi_psyx_shutdown();
         return 77;
     }
     assert(musashi_boot_write16(&f.memory, 0x8006bafcu, 1));
@@ -418,7 +419,7 @@ int main(int argc, char **argv) {
     assert(musashi_bios_input_shutdown(&f.input));
     assert(musashi_bios_card_shutdown(&f.card));
     assert(musashi_device_epoch_shutdown(&f.epoch));
-    PsyX_Shutdown();
+    musashi_psyx_shutdown();
     puts("LIVE INPUT IRQ FIXTURE: timestamped real source -> complete digital packet and absent-port2 timeout -> BIOS SIO -> custom tick2 -> same continuation; next source provider refusal retains effects and stops later handlers");
     return 0;
 }

@@ -17,6 +17,7 @@
 #include <string.h>
 
 #include "PsyX/PsyX_public.h"
+void musashi_psyx_shutdown(void); /* pc_port/psyx_shutdown.cpp: GL teardown before window */
 
 extern SDL_mutex *g_intrMutex;
 
@@ -237,7 +238,7 @@ int main(void) {
     assert(musashi_psycross_irq_scheduler_uninstall(&runtime.scheduler));
     assert(musashi_psycross_irq_runtime_close(&runtime));
     assert(musashi_bios_card_shutdown(&card));
-    PsyX_Shutdown();
+    musashi_psyx_shutdown();
     puts("LIVE CARD IRQ OBSERVED: PsyCross edge -> card policy/maintenance -> owner pump -> game callback");
     return 0;
 }

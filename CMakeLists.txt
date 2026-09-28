@@ -259,6 +259,7 @@ if(MUSASHI_BUILD_PC_PORT)
     target_link_libraries(musashi_pc_port PUBLIC musashi_shared PRIVATE OpenSSL::Crypto)
     if(MUSASHI_WITH_PSYCROSS)
         target_sources(musashi_pc_port PRIVATE
+            pc_port/psyx_shutdown.cpp
             pc_port/psyq_probe.c
             pc_port/irq_scheduler.c
             pc_port/gpu_psycross.c

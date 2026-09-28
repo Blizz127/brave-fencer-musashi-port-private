@@ -30,6 +30,8 @@
 #include "musashi_cd_controller.h"
 #include "musashi_audio_sdl.h"
 #include "musashi_native_lane.h"
+/* Ordered PsyCross shutdown (pc_port/psyx_shutdown.cpp). */
+void musashi_psyx_shutdown(void);
 
 #include <SDL.h>
 #include <stdio.h>
@@ -2004,12 +2006,19 @@ static int vsync_wait_raise_tick(NativeBoot *boot, const void *continuation) {
 /* Opt-in refusal trace, off unless MUSASHI_TRACE_REFUSAL is set. Prints only:
  * the checkpoint's accept/refuse decision is unchanged either way. */
 static int checkpoint_refuse(const void *continuation, const char *why) {
+    /* A checkpoint refusal ends the run, so its reason is always printed
+     * (once); MUSASHI_TRACE_REFUSAL adds every later one. */
+    static int reported;
     MusashiCpuContext context;
     const char *trace = getenv("MUSASHI_TRACE_REFUSAL");
-    if (continuation &&
-        trace && trace[0] && trace[0] != '0' &&
-        musashi_boot_cpu_context(continuation, MUSASHI_CPU_CONTEXT_SOURCE, &context))
-        fprintf(stderr, "native_boot: CHECKPOINT_REFUSED pc=%08x why=%s\n", context.pc, why);
+    int verbose = trace && trace[0] && trace[0] != '0';
+    if (!reported++ || verbose) {
+        if (continuation &&
+            musashi_boot_cpu_context(continuation, MUSASHI_CPU_CONTEXT_SOURCE, &context))
+            fprintf(stderr, "native_boot: CHECKPOINT_REFUSED pc=%08x why=%s\n", context.pc, why);
+        else
+            fprintf(stderr, "native_boot: CHECKPOINT_REFUSED pc=unknown why=%s\n", why);
+    }
     return 0;
 }
 
@@ -2147,11 +2156,29 @@ static int checkpoint(void *userdata, const void *continuation) {
             !musashi_gte_owner_init(&boot->gte,boot->irq.cpu_status,epoch_owner,boot,context.identity))
             return checkpoint_refuse(continuation, "gte-init");
     }
-    if (!epoch_sync_flushed(boot)) return checkpoint_refuse(continuation, "epoch-sync");
+    if (!epoch_sync_flushed(boot)) {
+        static int reported;
+        if (!reported++)
+            fprintf(stderr, "native_boot: EPOCH_SYNC_REFUSED reason=%s clock=%s%s\n",
+                    boot->epoch.fault_reason ? boot->epoch.fault_reason : "unknown",
+                    boot->guest_clock ? "GUEST" : "HOST_PACED",
+                    boot->guest_clock ? "" : " hint=MUSASHI_GUEST_CLOCK=1 for loaded or headless hosts");
+        return checkpoint_refuse(continuation, "epoch-sync");
+    }
     if (!boot->irq.scheduler.installed) return 1;
     if (boot->irq.scheduler.pumping || boot->irq.scheduler.delivering) return 1;
     if (!vsync_wait_raise_tick(boot, continuation)) return checkpoint_refuse(continuation, "vsync-wait");
-    return musashi_psycross_irq_scheduler_dispatch_pending(&boot->irq.scheduler, continuation);
+    if (!musashi_psycross_irq_scheduler_dispatch_pending(&boot->irq.scheduler, continuation)) {
+        /* Always name the reason: this refusal ends the run. */
+        static int reported;
+        if (!reported++)
+            fprintf(stderr, "native_boot: IRQ_DISPATCH_REFUSED reason=%s clock=%s%s\n",
+                    boot->irq.scheduler.fault_reason ? boot->irq.scheduler.fault_reason : "unknown",
+                    boot->guest_clock ? "GUEST" : "HOST_PACED",
+                    boot->guest_clock ? "" : " hint=MUSASHI_GUEST_CLOCK=1 for loaded or headless hosts");
+        return checkpoint_refuse(continuation, "irq-dispatch");
+    }
+    return 1;
 }
 
 static int run_backup_unit(void *userdata, int32_t *guest_result) {
@@ -3573,7 +3600,7 @@ int main(int argc, char **argv) {
     if (!SDL_GL_GetCurrentWindow() || !g_intrMutex) {
         fputs("native_boot: PsyCross display unavailable; startup not observed\n", stderr);
         native_devices_shutdown(&boot);
-        PsyX_Shutdown();
+        musashi_psyx_shutdown();
         return 77;
     }
     host_window_inspect(SDL_GL_GetCurrentWindow());
@@ -3585,21 +3612,21 @@ int main(int argc, char **argv) {
     boot.trace_cd_timing = getenv("MUSASHI_NATIVE_CD_TIMING") != NULL;
     if (!musashi_bios_heap_init(&boot.heap,&boot.memory,&boot,epoch_owner)) {
         native_devices_shutdown(&boot);
-        PsyX_Shutdown();
+        musashi_psyx_shutdown();
         return 2;
     }
     boot.heap_device=(MusashiHeapDevice){&boot,init_heap};
     boot.gpu_io=(MusashiGpuIoDevice){&boot,gpu_io_read32,gpu_io_write32};
     if (!musashi_psycross_irq_runtime_init(&boot.irq, &boot.memory, NULL)) {
         native_devices_shutdown(&boot);
-        PsyX_Shutdown();
+        musashi_psyx_shutdown();
         return 2;
     }
     if (!musashi_bios_exception_init_selected(&boot.exception_image,&boot.memory,&boot.bios,boot.irq.cpu_status) ||
         !musashi_psycross_irq_scheduler_bind_context(&boot.irq.scheduler,native_cpu_context,&boot)) {
         fputs("native_boot: CPU/image ownership refused before CRT\n",stderr);
         native_devices_shutdown(&boot);
-        PsyX_Shutdown();
+        musashi_psyx_shutdown();
         return 2;
     }
     boot.cpu_transfer=(MusashiCpuTransferDevice){
@@ -3615,7 +3642,7 @@ int main(int argc, char **argv) {
         if (boot.gpu_renderer.initialized)
             musashi_gpu_psycross_shutdown(&boot.gpu_renderer);
         native_devices_shutdown(&boot);
-        PsyX_Shutdown();
+        musashi_psyx_shutdown();
         return 2;
     }
     (void)musashi_gpu_psycross_present(&boot.gpu_renderer);
@@ -3630,7 +3657,7 @@ int main(int argc, char **argv) {
             fputs("native_boot: owned CD initialization refused before CRT\n", stderr);
             musashi_gpu_psycross_shutdown(&boot.gpu_renderer);
             native_devices_shutdown(&boot);
-            PsyX_Shutdown();
+            musashi_psyx_shutdown();
             return 2;
         }
         boot.cd_registers = (MusashiCdRegisterDevice){.userdata=&boot,.read8=cd_read8,.write8=cd_write8};
@@ -3642,11 +3669,11 @@ int main(int argc, char **argv) {
             fputs("native_boot: real audio owner unavailable before CRT; startup NOT_RUN\n", stderr);
             native_devices_shutdown(&boot);
             musashi_gpu_psycross_shutdown(&boot.gpu_renderer);
-            PsyX_Shutdown();
+            musashi_psyx_shutdown();
             return 77;
         }
         if (!musashi_cd_owned_set_xa_sink(boot.cd_drive,submit_xa_pcm,&boot)) {
-            native_devices_shutdown(&boot);PsyX_Shutdown();return 2;
+            native_devices_shutdown(&boot);musashi_psyx_shutdown();return 2;
         }
         boot.cd_spu = (MusashiCdSpuDevice){&boot, spu_read16, spu_write16};
     }
@@ -3656,7 +3683,7 @@ int main(int argc, char **argv) {
             fputs("native_boot: fresh digital pad binding refused\n", stderr);
             musashi_gpu_psycross_shutdown(&boot.gpu_renderer);
             native_devices_shutdown(&boot);
-            PsyX_Shutdown();
+            musashi_psyx_shutdown();
             return 2;
         }
     }
@@ -3680,13 +3707,13 @@ int main(int argc, char **argv) {
     if (!musashi_bios_card_bind_start_device(&boot.card, &boot.card_device)) {
         fputs("native_boot: card device binding refused\n", stderr);
         native_devices_shutdown(&boot);
-        PsyX_Shutdown();
+        musashi_psyx_shutdown();
         return 2;
     }
     if (!musashi_bios_backup_unit_init(&boot.backup_unit, &boot.bios, &boot.card)) {
         fputs("native_boot: backup-unit ownership refused\n", stderr);
         native_devices_shutdown(&boot);
-        PsyX_Shutdown();
+        musashi_psyx_shutdown();
         return 2;
     }
     boot.irq.scheduler.raise_vblank = raise_vblank;
@@ -3707,7 +3734,7 @@ int main(int argc, char **argv) {
         fputs("native_boot: DMA interrupt owner binding refused before CRT\n", stderr);
         native_devices_shutdown(&boot);
         musashi_gpu_psycross_shutdown(&boot.gpu_renderer);
-        PsyX_Shutdown();
+        musashi_psyx_shutdown();
         return 2;
     }
     {
@@ -3717,7 +3744,7 @@ int main(int argc, char **argv) {
             fputs("native_boot: GPU DMA2 owner initialization refused before CRT\n",stderr);
             native_devices_shutdown(&boot);
             musashi_gpu_psycross_shutdown(&boot.gpu_renderer);
-            PsyX_Shutdown();
+            musashi_psyx_shutdown();
             return 2;
         }
         {
@@ -3727,7 +3754,7 @@ int main(int argc, char **argv) {
                 fputs("native_boot: DMA6 OTC owner initialization refused before CRT\n",stderr);
                 native_devices_shutdown(&boot);
                 musashi_gpu_psycross_shutdown(&boot.gpu_renderer);
-                PsyX_Shutdown();
+                musashi_psyx_shutdown();
                 return 2;
             }
         }
@@ -3740,7 +3767,7 @@ int main(int argc, char **argv) {
             fputs("native_boot: CD DMA3 owner initialization refused before CRT\n",stderr);
             native_devices_shutdown(&boot);
             musashi_gpu_psycross_shutdown(&boot.gpu_renderer);
-            PsyX_Shutdown();
+            musashi_psyx_shutdown();
             return 2;
         }
         boot.cd_registers.read32=cd_read32;
@@ -3790,7 +3817,7 @@ int main(int argc, char **argv) {
     if (!musashi_scanline_timer_init_paced(&boot.timer1, 0)) {
         native_devices_shutdown(&boot);
         musashi_gpu_psycross_shutdown(&boot.gpu_renderer);
-        PsyX_Shutdown();
+        musashi_psyx_shutdown();
         return 2;
     }
     boot.execution_clock.userdata = &boot;
@@ -3806,7 +3833,7 @@ int main(int argc, char **argv) {
         fputs("native_boot: CD interrupt owner binding refused before CRT\n", stderr);
         native_devices_shutdown(&boot);
         musashi_gpu_psycross_shutdown(&boot.gpu_renderer);
-        PsyX_Shutdown();
+        musashi_psyx_shutdown();
         return 2;
     }
     boot.input.clock = &boot.execution_clock;
@@ -3817,7 +3844,7 @@ int main(int argc, char **argv) {
                                 &boot.card, &boot.bios_input_device)) {
         fputs("native_boot: input ownership initialization refused\n", stderr);
         native_devices_shutdown(&boot);
-        PsyX_Shutdown();
+        musashi_psyx_shutdown();
         return 2;
     }
     {
@@ -3830,7 +3857,7 @@ int main(int argc, char **argv) {
         if (!musashi_device_epoch_init(&boot.epoch, &adapter)) {
             fputs("native_boot: fresh device epoch refused before CRT\n", stderr);
             native_devices_shutdown(&boot);
-            PsyX_Shutdown();
+            musashi_psyx_shutdown();
             return 2;
         }
     }
@@ -3853,7 +3880,7 @@ int main(int argc, char **argv) {
         fputs("native_boot: source IRQ execute binding refused before CRT\n", stderr);
         native_devices_shutdown(&boot);
         musashi_gpu_psycross_shutdown(&boot.gpu_renderer);
-        PsyX_Shutdown();
+        musashi_psyx_shutdown();
         return 2;
     }
     status = musashi_boot_run_entry_with_devices(&boot.memory, 0, &boot.startup_devices,
@@ -4301,7 +4328,7 @@ int main(int argc, char **argv) {
         fprintf(stderr, "native_boot: OWNED_DEVICES removed=%d\n", devices_removed);
         if (!devices_removed) cleanup_ok = 0;
     }
-    PsyX_Shutdown();
+    musashi_psyx_shutdown();
     if (!cleanup_ok)
         fputs("native_boot: scheduler removal refused\n", stderr);
     /* The CPU path is proven to stop at the refusal boundary, so no menu was
