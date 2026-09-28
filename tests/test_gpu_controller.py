@@ -965,11 +965,25 @@ class GpuControllerTests(unittest.TestCase):
     def test_gp0_gouraud_polyline_terminator_in_colour_slot(self):
         # 0x58: c0|cmd, v0, c1, v1, c2, v2, terminator (colour position).
         # A vertex that looks like a terminator is still a vertex.
+        # Its segments are 1024+ wide and not drawn (psx-spx), so the only
+        # pixels come from the last in-range segment (16,16)-(0,16).
         stored = self._polyline([0x580000F8, 0x00000000, 0x0000F800, 0x50005000,
-                                 0x00F80000, 0x00100010, 0x50005000])
+                                 0x00F80000, 0x00100010, 0x000000F8, 0x00100000,
+                                 0x50005000])
         self.assertFalse(self.controller.poly_active)
-        self.assertGreater(len(stored), 0)
+        self.assertEqual({(x, y) for x, y, _ in stored}, {(x, 16) for x in range(17)})
         self.assertEqual(self.write(0xE1000000), 1)
+
+    def test_gp0_line_clipped_to_drawing_area(self):
+        # E3/E4 = (0,0)-(4,4): the (0,2)-(10,2) line keeps x 0..4 only.
+        stored = []
+        self.store_cb = STORE(lambda _, x, y, p: stored.append((x, y, p)) or 1)
+        self.controller.backend.store_vram = self.store_cb
+        self.assertEqual(self.write(0xE3000000), 1)
+        self.assertEqual(self.write(0xE4001004), 1)
+        for w in (0x400000F8, 0x00020000, 0x0002000A):
+            self.assertEqual(self.write(w), 1)
+        self.assertEqual({(x, y) for x, y, _ in stored}, {(x, 2) for x in range(5)})
 
     def test_gp0_polyline_reset_by_gp1(self):
         self._polyline([0x480000F8, 0x00000000])

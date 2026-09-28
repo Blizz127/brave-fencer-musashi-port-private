@@ -1159,8 +1159,14 @@ static int draw_line(MusashiGpuController *controller,
     int sx = x0 < x1 ? 1 : -1;
     int sy = y0 < y1 ? 1 : -1;
     int err = dx - dy, e2;
+    int left = 0, top = 0, right = 1023, bottom = 511;
+    /* The GPU skips a line whose extent is 1024+ horizontally or 512+
+     * vertically (psx-spx), and clips to the drawing area like polygons. */
+    if (dx >= 1024 || dy >= 512) return 1;
+    if (!clip_box(controller, &left, &top, &right, &bottom)) return 1;
     for (;;) {
-        if (!plot_drawn(controller, x0, y0, color)) return 0;
+        if (x0 >= left && x0 <= right && y0 >= top && y0 <= bottom &&
+            !plot_drawn(controller, x0, y0, color)) return 0;
         if (x0 == x1 && y0 == y1) break;
         e2 = 2 * err;
         if (e2 > -dy) { err -= dy; x0 += sx; }
