@@ -676,10 +676,13 @@ headless, so what each one covered for is not yet observed.
 they write pad words (player `+0xAA/AC/AE`, `80078DCA/DD2`) and `800AE658`
 straight into guest RAM in gameplay, and print a `DIVERGENCE` line when set.
 
-The `+0xA9` cause is a hypothesis, unproven until a gameplay run: the
-formatter's non-retail `8005F704` PadInfo getter (removed) made
-PadGetState read the wrong record, so the pad record never took the ID
-byte and the game never wrote 0x41 itself.
+What the `+0xA9` poke covered for is unproven until a gameplay run. The
+game writes 0x41 itself when the port-1 pad record takes the buffer's ID
+byte (status 0, PadGetState reporting a pad). The removed non-retail
+`8005F704` PadInfo getter differed from the retail code only for port 2
+(`a0 & 0xF0` nonzero), so it does not by itself explain a wrong port-1
+type; the proof is a lane-on gameplay run without forcing where `+0xA9`
+reads 0x41 from the game.
 
 ## Native lane: running matched decomp C on the host (2026-09-28)
 
