@@ -436,7 +436,14 @@ static BfmPlatTextureDecoder decoder_for(const char *path) {
 }
 
 int bfm_plat_mods_register_decoder(const char *ext, BfmPlatTextureDecoder fn) {
+    unsigned i;
     if (!ext || ext[0] != '.' || strlen(ext) >= 16 || !fn) return BFM_PLAT_INVALID;
+    for (i = 0; i < decoder_count; i++) {
+        if (strcmp(decoders[i].ext, ext) == 0) {   /* re-register replaces */
+            decoders[i].fn = fn;
+            return BFM_PLAT_OK;
+        }
+    }
     if (decoder_count >= MAX_DECODERS) return BFM_PLAT_NO_SPACE;
     copy_str(decoders[decoder_count].ext, sizeof decoders[0].ext, ext);
     decoders[decoder_count++].fn = fn;
