@@ -2,351 +2,486 @@
  * SHA256(span)=ec0335578cbe480057ff6aa1171521852cca361a6dcfd46eae6ba6676985cabd.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_800226C0 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* Typedefs copied from vendor src/800.c (func_80021D38 block). */
+typedef struct { u16 vx, vy; } DVec_80021D38;              /* 4 bytes, align 2 */
+typedef struct { s16 vx, vy, vz, pad; } SVec_80021D38;     /* 8 bytes */
+typedef struct { s16 m[3][3]; s32 t[3]; } Mtx_80021D38;    /* 32 bytes */
 
-extern s32 *D_800A5E60;
+typedef struct {
+    /* 0x00 */ s32 unk00;
+    /* 0x04 */ u32 flags;
+    /* 0x08 */ SVec_80021D38 pos;
+    /* 0x10 */ s32 unk10;
+    /* 0x14 */ s32 unk14;
+    /* 0x18 */ u16 sx;
+    /* 0x1A */ u16 sy;
+    /* 0x1C */ s32 unk1C;
+    /* 0x20 */ u8 *pts;
+    /* 0x24 */ s32 unk24;
+    /* 0x28 */ s32 unk28;
+    /* 0x2C */ u16 depth;
+    /* 0x2E */ u16 unk2E;
+} Obj_80021D38;
 
-void func_800226C0(void *arg0, void *arg1, void *arg2, s32 *arg3) {
-    s16 temp_v1_4;
-    s16 temp_v1_5;
-    s32 *temp_a0_4;
-    s32 *temp_a0_6;
-    s32 *temp_a0_8;
-    s32 *temp_v1;
-    s32 *temp_v1_10;
-    s32 *temp_v1_12;
-    s32 *temp_v1_3;
-    s32 *var_a1;
-    s32 *var_a1_7;
-    s32 *var_a1_8;
-    s32 *var_t0;
-    s32 *var_t0_2;
-    s32 *var_t2;
-    s32 *var_v0;
-    s32 temp_a0;
-    s32 temp_a0_9;
-    s32 temp_lo;
-    s32 temp_t9;
-    s32 temp_v0;
-    s32 temp_v1_11;
-    s32 temp_v1_2;
-    s32 temp_v1_9;
-    s32 var_s1;
-    s32 var_t3;
-    s32 var_t3_2;
-    s32 var_t3_3;
-    s32 var_t3_4;
-    s32 var_t3_5;
-    s32 var_t3_6;
-    s32 var_t3_7;
-    s32 var_t5_2;
-    s32 var_t6;
-    s32 var_t6_2;
-    s32 var_v0_2;
-    s8 var_t8;
-    u32 temp_s3;
-    void *temp_a0_10;
-    void *temp_a0_2;
-    void *temp_a0_3;
-    void *temp_a0_5;
-    void *temp_a0_7;
-    void *temp_v1_6;
-    void *temp_v1_7;
-    void *temp_v1_8;
-    void *var_a0;
-    void *var_a1_2;
-    void *var_a1_3;
-    void *var_a1_4;
-    void *var_a1_5;
-    void *var_a1_6;
-    void *var_a2;
-    void *var_t2_2;
-    void *var_t2_3;
-    void *var_t4;
-    void *var_t5;
+/* func_800226C0 (main, src/800.c) — emit the 12-segment POLY_G4 strip for one Obj_80021D38
+ * (plus the E1 draw-mode prims around it) into the D_800A5E60 bump allocator.
+ *
+ * Levers that closed it (S76y, from the S75 pinned draft at closeness 545 -> MATCH):
+ *  - `t` is ONE plain `s16` local, read UNINITIALISED at the top (`sll $v0,$s2,16; beqz` =
+ *    an HImode pseudo whose nonzero-bits are unknown before its set) and later assigned from
+ *    the s32 `tt`; the `addu $v0,$s2,$zero; beqz $v0; addu $t2,$v0,$zero` chain at 228E4 is
+ *    the sign-extension of that HImode pseudo folded to a copy (combine get_last_value) and
+ *    then reused by cse2 for the loop's hoisted multiplier -- a pinned $18 can never do it
+ *    (hard regs have no nonzero-bits).  `mul` must stay an unpinned pseudo (global alloc never
+ *    coalesces a pseudo copy; a $10 pin swallows the $v0 temp).
+ *  - `o`, `col`, `sh23`, `abr` unpinned: gcc's own param copies give the prologue order and the
+ *    t/flags callee-saved order (density tie); the `or $v0,$v1,$v0` tie needs `abr` as a pseudo.
+ *  - The !useIdx single-prim block at 850 is the inline addPrim form with block-local temps:
+ *    a pinned `$a1` mask has reg_n_sets != 1 -> no birthing boost -> placed first in the block.
+ * Symbols: only D_800A5E60 (14 %hi/%lo pairs in the .s) -- verified against the relocations.
+ * The two struct typedefs are copies of src/800.c:12191-12209 for the standalone compile; the
+ * harvest strips them (cdecl.typedef_names above the splice point).
+ */
 
-    var_a2 = arg2;
-    temp_s3 = arg0->unk4;
-    temp_t9 = arg0->unk1E & 0x8000;
-    var_s1 = 0;
-    if (temp_s3 & 0x800000) {
-        var_t0 = D_800A5E60;
-        var_s1 = 1;
-        if (temp_t9 != 0) {
-            if ((saved_reg_s2 << 0x10) != 0) {
-                D_800A5E60 = var_t0 + 0x60;
-                var_t3 = 0;
-                var_a1 = var_t0 + 4;
+
+extern u8 *D_800A5E60;
+
+void func_800226C0(Obj_80021D38 *arg0, u8 *col, DVec_80021D38 *pts, u8 *ot)
+{
+    s16 t;
+    s16 work[24];
+    u32 flags;
+    u16 f16;
+    s32 tt;
+    s32 uu;
+    s32 tsh;
+    u32 sh23;
+
+    u8 *p;
+    u8 *s;
+    u8 *w;
+    u8 *e;
+    s32 k;
+    s32 m;
+    s32 h;
+    u32 x;
+    u32 y;
+    register u32 useIdx __asm__("$25");
+    register u8 code __asm__("$24");
+    register s32 i __asm__("$11");
+    register s32 shadow __asm__("$17");
+    register s32 *zp __asm__("$4");
+
+    f16 = *(u16 *)((u8 *)arg0 + 0x1E);
+    flags = arg0->flags;
+    useIdx = f16 & 0x8000;
+    shadow = 0;
+    if (flags & 0x800000) {
+        p = D_800A5E60;
+        shadow = 1;
+        if (useIdx) {
+            if (t) {
+                register u8 *q __asm__("$5");
+                register u32 e1 __asm__("$13");
+                register u8 one __asm__("$14");
+                register u32 maskAddr __asm__("$10");
+                register u32 maskLen __asm__("$12");
+
+                D_800A5E60 = p + 0x60;
+                i = 0;
+                one = 1;
+                e1 = 0xE1000000;
+                maskAddr = 0x00FFFFFF;
+                maskLen = 0xFF000000;
+                q = p + 4;
                 do {
-                    temp_a0 = var_t3 >> 1;
-                    var_t3 += 1;
-                    temp_a0_2 = (temp_a0 * 4) + var_a2;
-                    var_a1->unk-1 = 1;
-                    var_a1->unk0 = 0xE1000000;
-                    var_a1 += 8;
-                    *var_t0 = (*var_t0 & 0xFF000000) | (*((temp_a0_2->unk34 * 4) + arg3) & 0xFFFFFF);
-                    temp_v1 = (temp_a0_2->unk34 * 4) + arg3;
-                    *temp_v1 = (*temp_v1 & 0xFF000000) | ((s32) var_t0 & 0xFFFFFF);
-                    var_t0 += 8;
-                } while (var_t3 < 0xC);
+                    h = i >> 1;
+                    i++;
+                    zp = (s32 *)((h << 2) + (u32)((u8 *)pts));
+                    q[-1] = one;
+                    *(u32 *)q = e1;
+                    q += 8;
+                    x = *(u32 *)p;
+                    y = ((u32 *)ot)[zp[13]];
+                    x &= maskLen;
+                    y &= maskAddr;
+                    x |= y;
+                    *(u32 *)p = x;
+                    ((u32 *)ot)[zp[13]] = (((u32 *)ot)[zp[13]] & maskLen) | ((u32)p & maskAddr);
+                    p += 8;
+                } while (i < 12);
             } else {
-                D_800A5E60 = var_t0 + 0x30;
-                var_t3_2 = 0;
-                var_t2 = var_t0 + 4;
-                var_a1_2 = var_a2;
+                register u8 *q __asm__("$10");
+                register s32 *zq __asm__("$5");
+                register u32 e1 __asm__("$14");
+                register u8 one __asm__("$15");
+                register u32 maskAddr __asm__("$12");
+                register u32 maskLen __asm__("$13");
+
+                D_800A5E60 = p + 0x30;
+                i = 0;
+                one = 1;
+                e1 = 0xE1000000;
+                maskAddr = 0x00FFFFFF;
+                maskLen = 0xFF000000;
+                q = p + 4;
+                zq = (s32 *)((u8 *)pts);
                 do {
-                    var_t3_2 += 1;
-                    var_t2->unk-1 = 1;
-                    var_t2->unk0 = 0xE1000000;
-                    var_t2 += 8;
-                    *var_t0 = (*var_t0 & 0xFF000000) | (*((var_a1_2->unk34 * 4) + arg3) & 0xFFFFFF);
-                    temp_v1_2 = var_a1_2->unk34;
-                    var_a1_2 += 4;
-                    temp_v1_3 = (temp_v1_2 * 4) + arg3;
-                    *temp_v1_3 = (*temp_v1_3 & 0xFF000000) | ((s32) var_t0 & 0xFFFFFF);
-                    var_t0 += 8;
-                } while (var_t3_2 < 6);
+                    i++;
+                    q[-1] = one;
+                    *(u32 *)q = e1;
+                    q += 8;
+                    x = *(u32 *)p;
+                    y = ((u32 *)ot)[zq[13]];
+                    x &= maskLen;
+                    y &= maskAddr;
+                    x |= y;
+                    *(u32 *)p = x;
+                    ((u32 *)ot)[zq[13]] = (((u32 *)ot)[zq[13]] & maskLen) | ((u32)p & maskAddr);
+                    zq = (s32 *)((u8 *)zq + 4);
+                    p += 8;
+                } while (i < 6);
             }
         } else {
-            D_800A5E60 = var_t0 + 8;
-            var_t0->unk3 = 1;
-            var_t0->unk4 = 0xE1000000;
-            var_t0->unk0 = (var_t0->unk0 & 0xFF000000) | (*arg3 & 0xFFFFFF);
-            *arg3 = (*arg3 & 0xFF000000) | ((s32) var_t0 & 0xFFFFFF);
+            D_800A5E60 = p + 8;
+            p[3] = 1;
+            *(u32 *)(p + 4) = 0xE1000000;
+            *(u32 *)p = (*(u32 *)p & 0xFF000000) | (((u32 *)ot)[0] & 0x00FFFFFF);
+            ((u32 *)ot)[0] = (((u32 *)ot)[0] & 0xFF000000) | ((u32)p & 0x00FFFFFF);
         }
     }
-    var_t0_2 = D_800A5E60;
-    temp_v0 = arg0->unk1E & 0x1FFF;
-    if (temp_v0 != 0) {
-        var_v0 = var_t0_2 + 0x1B0;
-    } else {
-        var_v0 = var_t0_2 + 0xD8;
-    }
-    D_800A5E60 = var_v0;
-    var_t8 = 0x38;
-    if (temp_s3 & 0x40000000) {
-        var_t8 = 0x3A;
-    }
-    var_t3_3 = 0;
-    if (temp_v0 != 0) {
-        var_a1_3 = sp;
-        var_a0 = var_a2;
-        do {
-            temp_v1_4 = var_a2->unk0;
-            var_a1_3->unk0 = (s16) (temp_v1_4 + ((s32) ((var_a0->unk4 - temp_v1_4) * temp_v0) >> 0xC));
-            temp_v1_5 = var_a2->unk2;
-            temp_lo = (var_a0->unk6 - temp_v1_5) * temp_v0;
-            var_t3_3 += 1;
-            var_a0 += 4;
-            var_a1_3->unk2 = (s16) (temp_v1_5 + (temp_lo >> 0xC));
-            var_a1_3 += 4;
-        } while (var_t3_3 < 0xC);
-        var_t3_4 = 0;
-        var_a1_4 = var_t0_2 + 0x22;
-        var_t6 = 4;
-        var_t5 = sp;
-        var_t2_2 = var_a2;
-        do {
-            var_a1_4->unk-1F = 8;
-            var_a1_4->unk-1B = var_t8;
-            var_a1_4->unk-1E = (u8) arg1->unk4;
-            var_a1_4->unk-1D = (u8) arg1->unk5;
-            var_a1_4->unk-1C = (u8) arg1->unk6;
-            var_a1_4->unk-16 = (u8) arg1->unk4;
-            var_a1_4->unk-15 = (u8) arg1->unk5;
-            var_a1_4->unk-14 = (u8) arg1->unk6;
-            var_a1_4->unk-E = (u8) arg1->unk0;
-            var_a1_4->unk-D = (u8) arg1->unk1;
-            var_a1_4->unk-C = (u8) arg1->unk2;
-            var_a1_4->unk-6 = (u8) arg1->unk0;
-            var_a1_4->unk-5 = (u8) arg1->unk1;
-            var_a1_4->unk-4 = (u8) arg1->unk2;
-            var_a1_4->unk-1A = (u16) var_t2_2->unk4;
-            var_a1_4->unk-18 = (u16) var_t2_2->unk6;
-            var_a1_4->unk-12 = (u16) var_t2_2->unk8;
-            var_a1_4->unk-10 = (u16) var_t2_2->unkA;
-            var_a1_4->unk-A = (u16) var_t5->unk0;
-            temp_v1_6 = sp + var_t6;
-            var_a1_4->unk-8 = (u16) var_t5->unk2;
-            var_a1_4->unk-2 = (u16) temp_v1_6->unk0;
-            var_a1_4->unk0 = (u16) temp_v1_6->unk2;
-            if (temp_t9 != 0) {
-                temp_a0_3 = ((var_t3_4 >> 1) * 4) + var_a2;
-                *var_t0_2 = (*var_t0_2 & 0xFF000000) | (*((temp_a0_3->unk34 * 4) + arg3) & 0xFFFFFF);
-                temp_a0_4 = (temp_a0_3->unk34 * 4) + arg3;
-                *temp_a0_4 = (*temp_a0_4 & 0xFF000000) | ((s32) var_t0_2 & 0xFFFFFF);
-            } else {
-                *var_t0_2 = (*var_t0_2 & 0xFF000000) | (*arg3 & 0xFFFFFF);
-                *arg3 = (*arg3 & 0xFF000000) | ((s32) var_t0_2 & 0xFFFFFF);
-            }
-            var_t6 += 4;
-            var_t5 += 4;
-            var_t2_2 += 4;
-            var_t3_4 += 1;
-            var_a1_4 += 0x24;
-            var_t0_2 += 0x24;
-        } while (var_t3_4 < 0xC);
-        var_t0_2->unk-14 = (u16) var_a2->unk4;
-        var_t0_2->unk-12 = (u16) var_a2->unk6;
-        var_t0_2->unk-4 = sp0;
-        var_t0_2->unk-2 = sp2;
-        if (arg0->unk1E & 0x4000) {
-            var_t3_5 = 0;
-            var_t6_2 = 8;
-            var_t5_2 = 4;
-            var_t0_2 = D_800A5E60;
-            var_t4 = sp;
-            var_a1_5 = var_t0_2 + 0x22;
-            D_800A5E60 = var_t0_2 + 0xD8;
+
+    f16 = *(u16 *)((u8 *)arg0 + 0x1E);
+    p = D_800A5E60;
+    tt = f16 & 0x1FFF;
+    t = tt;
+    D_800A5E60 = tt ? p + 0x1B0 : p + 0xD8;
+    code = (flags & 0x40000000) ? 0x3A : 0x38;
+
+    if (t) {
+        {
+            s32 mul;
+            register s16 *dst __asm__("$5");
+            register s16 *src __asm__("$4");
+
+            i = 0;
+            mul = t;
+            dst = work;
+            src = (s16 *)((u8 *)pts);
             do {
-                var_a1_5->unk-1F = 8;
-                var_a1_5->unk-1B = var_t8;
-                var_a1_5->unk-1E = (u8) arg1->unkC;
-                var_a1_5->unk-1D = (u8) arg1->unkD;
-                var_a1_5->unk-1C = (u8) arg1->unkE;
-                var_a1_5->unk-16 = (u8) arg1->unkC;
-                var_a1_5->unk-15 = (u8) arg1->unkD;
-                var_a1_5->unk-14 = (u8) arg1->unkE;
-                var_a1_5->unk-E = (u8) arg1->unk8;
-                var_a1_5->unk-D = (u8) arg1->unk9;
-                var_a1_5->unk-C = (u8) arg1->unkA;
-                var_a1_5->unk-6 = (u8) arg1->unkC;
-                var_a1_5->unk-5 = (u8) arg1->unkD;
-                var_a1_5->unk-4 = (u8) arg1->unkE;
-                var_a1_5->unk-1A = (u16) var_t4->unk0;
-                temp_v1_7 = sp + var_t5_2;
-                var_a1_5->unk-18 = (u16) var_t4->unk2;
-                var_a1_5->unk-12 = (u16) temp_v1_7->unk0;
-                var_a1_5->unk-10 = (u16) temp_v1_7->unk2;
-                var_a1_5->unk-A = (u16) var_a2->unk0;
-                temp_v1_8 = sp + var_t6_2;
-                var_a1_5->unk-8 = (u16) var_a2->unk2;
-                var_a1_5->unk-2 = (u16) temp_v1_8->unk0;
-                var_a1_5->unk0 = (u16) temp_v1_8->unk2;
-                if (temp_t9 != 0) {
-                    temp_a0_5 = ((var_t3_5 >> 1) * 4) + sp;
-                    *var_t0_2 = (*var_t0_2 & 0xFF000000) | (*((temp_a0_5->unk34 * 4) + arg3) & 0xFFFFFF);
-                    temp_a0_6 = (temp_a0_5->unk34 * 4) + arg3;
-                    *temp_a0_6 = (*temp_a0_6 & 0xFF000000) | ((s32) var_t0_2 & 0xFFFFFF);
+                *dst = *(s16 *)((u8 *)pts) + (((src[2] - *(s16 *)((u8 *)pts)) * mul) >> 12);
+                dst[1] = *(s16 *)(((u8 *)pts) + 2) + (((src[3] - *(s16 *)(((u8 *)pts) + 2)) * mul) >> 12);
+                i++;
+                src += 2;
+                dst += 2;
+            } while (i < 12);
+        }
+        {
+            register u32 maskAddr __asm__("$12");
+            register u32 maskLen __asm__("$15");
+            register s32 kk __asm__("$14");
+            register u8 *ww __asm__("$13");
+            register u8 *ss __asm__("$10");
+            register u8 *d __asm__("$5");
+
+            i = 0;
+            maskAddr = 0x00FFFFFF;
+            maskLen = 0xFF000000;
+            d = p + 0x22;
+            kk = 4;
+            ww = (u8 *)work;
+            ss = ((u8 *)pts);
+            do {
+                d[-0x1F] = 8;
+                d[-0x1B] = code;
+                d[-0x1E] = col[4];
+                d[-0x1D] = col[5];
+                d[-0x1C] = col[6];
+                d[-0x16] = col[4];
+                d[-0x15] = col[5];
+                d[-0x14] = col[6];
+                d[-0x0E] = col[0];
+                d[-0x0D] = col[1];
+                d[-0x0C] = col[2];
+                d[-0x06] = col[0];
+                d[-0x05] = col[1];
+                d[-0x04] = col[2];
+                *(u16 *)(d - 0x1A) = *(u16 *)(ss + 4);
+                *(u16 *)(d - 0x18) = *(u16 *)(ss + 6);
+                *(u16 *)(d - 0x12) = *(u16 *)(ss + 8);
+                *(u16 *)(d - 0x10) = *(u16 *)(ss + 0xA);
+                *(u16 *)(d - 0x0A) = *(u16 *)(ww);
+                *(u16 *)(d - 0x08) = *(u16 *)(ww + 2);
+                e = (u8 *)work + kk;
+                *(u16 *)(d - 0x02) = *(u16 *)e;
+                *(u16 *)(d) = *(u16 *)(e + 2);
+                if (useIdx) {
+                    h = i >> 1;
+                    zp = (s32 *)((h << 2) + (u32)((u8 *)pts));
+                    x = *(u32 *)p;
+                    y = ((u32 *)ot)[zp[13]];
+                    x &= maskLen;
+                    y &= maskAddr;
+                    x |= y;
+                    *(u32 *)p = x;
+                    ((u32 *)ot)[zp[13]] = (((u32 *)ot)[zp[13]] & maskLen) | ((u32)p & maskAddr);
                 } else {
-                    *var_t0_2 = (*var_t0_2 & 0xFF000000) | (*arg3 & 0xFFFFFF);
-                    *arg3 = (*arg3 & 0xFF000000) | ((s32) var_t0_2 & 0xFFFFFF);
+                    x = *(u32 *)p;
+                    y = ((u32 *)ot)[0];
+                    x &= maskLen;
+                    y &= maskAddr;
+                    x |= y;
+                    *(u32 *)p = x;
+                    ((u32 *)ot)[0] = (((u32 *)ot)[0] & maskLen) | ((u32)p & maskAddr);
                 }
-                var_t6_2 += 8;
-                var_t5_2 += 8;
-                var_t4 += 8;
-                var_t3_5 += 2;
-                var_a1_5 += 0x24;
-                var_t0_2 += 0x24;
-            } while (var_t3_5 < 0xC);
-            var_t0_2->unk-4 = sp0;
-            var_t0_2->unk-2 = sp2;
+                kk += 4;
+                ww += 4;
+                ss += 4;
+                i++;
+                d += 0x24;
+                p += 0x24;
+            } while (i < 12);
+        }
+
+        *(u16 *)(p - 0x14) = *(u16 *)(((u8 *)pts) + 4);
+        *(u16 *)(p - 0x12) = *(u16 *)(((u8 *)pts) + 6);
+        *(u16 *)(p - 0x04) = *(u16 *)work;
+        *(u16 *)(p - 0x02) = *(u16 *)((u8 *)work + 2);
+
+        if (*(u16 *)((u8 *)arg0 + 0x1E) & 0x4000) {
+            register u32 maskAddr __asm__("$10");
+            register u32 maskLen __asm__("$15");
+            register s32 mm __asm__("$14");
+            register s32 kk __asm__("$13");
+            register u8 *ww __asm__("$12");
+            register u8 *d __asm__("$5");
+
+            i = 0;
+            maskAddr = 0x00FFFFFF;
+            maskLen = 0xFF000000;
+            mm = 8;
+            kk = 4;
+            p = D_800A5E60;
+            ww = (u8 *)work;
+            d = p + 0x22;
+            D_800A5E60 = p + 0xD8;
+            do {
+                d[-0x1F] = 8;
+                d[-0x1B] = code;
+                d[-0x1E] = col[0x0C];
+                d[-0x1D] = col[0x0D];
+                d[-0x1C] = col[0x0E];
+                d[-0x16] = col[0x0C];
+                d[-0x15] = col[0x0D];
+                d[-0x14] = col[0x0E];
+                d[-0x0E] = col[0x08];
+                d[-0x0D] = col[0x09];
+                d[-0x0C] = col[0x0A];
+                d[-0x06] = col[0x0C];
+                d[-0x05] = col[0x0D];
+                d[-0x04] = col[0x0E];
+                *(u16 *)(d - 0x1A) = *(u16 *)(ww);
+                *(u16 *)(d - 0x18) = *(u16 *)(ww + 2);
+                e = (u8 *)work + kk;
+                *(u16 *)(d - 0x12) = *(u16 *)e;
+                *(u16 *)(d - 0x10) = *(u16 *)(e + 2);
+                *(u16 *)(d - 0x0A) = *(u16 *)(((u8 *)pts));
+                *(u16 *)(d - 0x08) = *(u16 *)(((u8 *)pts) + 2);
+                e = (u8 *)work + mm;
+                *(u16 *)(d - 0x02) = *(u16 *)e;
+                *(u16 *)(d) = *(u16 *)(e + 2);
+                if (useIdx) {
+                    h = i >> 1;
+                    zp = (s32 *)((h << 2) + (u32)work);
+                    x = *(u32 *)p;
+                    y = ((u32 *)ot)[zp[13]];
+                    x &= maskLen;
+                    y &= maskAddr;
+                    x |= y;
+                    *(u32 *)p = x;
+                    ((u32 *)ot)[zp[13]] = (((u32 *)ot)[zp[13]] & maskLen) | ((u32)p & maskAddr);
+                } else {
+                    x = *(u32 *)p;
+                    y = ((u32 *)ot)[0];
+                    x &= maskLen;
+                    y &= maskAddr;
+                    x |= y;
+                    *(u32 *)p = x;
+                    ((u32 *)ot)[0] = (((u32 *)ot)[0] & maskLen) | ((u32)p & maskAddr);
+                }
+                mm += 8;
+                kk += 8;
+                ww += 8;
+                i += 2;
+                d += 0x24;
+                p += 0x24;
+            } while (i < 12);
+
+            *(u16 *)(p - 0x04) = *(u16 *)work;
+            *(u16 *)(p - 0x02) = *(u16 *)((u8 *)work + 2);
         }
     } else {
-        var_t3_6 = 1;
-        var_a1_6 = var_t0_2 + 0x22;
-        var_t2_3 = var_a2 + 4;
+        register u32 maskAddr __asm__("$12");
+        register u32 maskLen __asm__("$13");
+        register u8 *ss __asm__("$10");
+        register u8 *d __asm__("$5");
+
+        i = 1;
+        maskAddr = 0x00FFFFFF;
+        maskLen = 0xFF000000;
+        d = p + 0x22;
+        ss = ((u8 *)pts) + 4;
         do {
-            var_a1_6->unk-1F = 8;
-            var_a1_6->unk-1B = var_t8;
-            var_a1_6->unk-1E = (u8) arg1->unk4;
-            var_a1_6->unk-1D = (u8) arg1->unk5;
-            var_a1_6->unk-1C = (u8) arg1->unk6;
-            var_a1_6->unk-16 = (u8) arg1->unk4;
-            var_a1_6->unk-15 = (u8) arg1->unk5;
-            var_a1_6->unk-14 = (u8) arg1->unk6;
-            var_a1_6->unk-E = (u8) arg1->unk0;
-            var_a1_6->unk-D = (u8) arg1->unk1;
-            var_a1_6->unk-C = (u8) arg1->unk2;
-            var_a1_6->unk-6 = (u8) arg1->unk4;
-            var_a1_6->unk-5 = (u8) arg1->unk5;
-            var_a1_6->unk-4 = (u8) arg1->unk6;
-            var_a1_6->unk-1A = (u16) var_t2_3->unk0;
-            var_a1_6->unk-18 = (u16) var_t2_3->unk2;
-            var_a1_6->unk-12 = (u16) var_t2_3->unk4;
-            var_a1_6->unk-10 = (u16) var_t2_3->unk6;
-            var_a1_6->unk-A = (u16) var_a2->unk0;
-            var_a1_6->unk-8 = (u16) var_a2->unk2;
-            var_a1_6->unk-2 = (u16) var_t2_3->unk8;
-            var_a1_6->unk0 = (u16) var_t2_3->unkA;
-            if (temp_t9 != 0) {
-                temp_a0_7 = ((var_t3_6 >> 1) * 4) + var_a2;
-                *var_t0_2 = (*var_t0_2 & 0xFF000000) | (*((temp_a0_7->unk34 * 4) + arg3) & 0xFFFFFF);
-                temp_a0_8 = (temp_a0_7->unk34 * 4) + arg3;
-                *temp_a0_8 = (*temp_a0_8 & 0xFF000000) | ((s32) var_t0_2 & 0xFFFFFF);
+            d[-0x1F] = 8;
+            d[-0x1B] = code;
+            d[-0x1E] = col[4];
+            d[-0x1D] = col[5];
+            d[-0x1C] = col[6];
+            d[-0x16] = col[4];
+            d[-0x15] = col[5];
+            d[-0x14] = col[6];
+            d[-0x0E] = col[0];
+            d[-0x0D] = col[1];
+            d[-0x0C] = col[2];
+            d[-0x06] = col[4];
+            d[-0x05] = col[5];
+            d[-0x04] = col[6];
+            *(u16 *)(d - 0x1A) = *(u16 *)(ss);
+            *(u16 *)(d - 0x18) = *(u16 *)(ss + 2);
+            *(u16 *)(d - 0x12) = *(u16 *)(ss + 4);
+            *(u16 *)(d - 0x10) = *(u16 *)(ss + 6);
+            *(u16 *)(d - 0x0A) = *(u16 *)(((u8 *)pts));
+            *(u16 *)(d - 0x08) = *(u16 *)(((u8 *)pts) + 2);
+            *(u16 *)(d - 0x02) = *(u16 *)(ss + 8);
+            *(u16 *)(d) = *(u16 *)(ss + 0x0A);
+            if (useIdx) {
+                h = i >> 1;
+                zp = (s32 *)((h << 2) + (u32)((u8 *)pts));
+                x = *(u32 *)p;
+                y = ((u32 *)ot)[zp[13]];
+                x &= maskLen;
+                y &= maskAddr;
+                x |= y;
+                *(u32 *)p = x;
+                ((u32 *)ot)[zp[13]] = (((u32 *)ot)[zp[13]] & maskLen) | ((u32)p & maskAddr);
             } else {
-                *var_t0_2 = (*var_t0_2 & 0xFF000000) | (*arg3 & 0xFFFFFF);
-                *arg3 = (*arg3 & 0xFF000000) | ((s32) var_t0_2 & 0xFFFFFF);
+                x = *(u32 *)p;
+                y = ((u32 *)ot)[0];
+                x &= maskLen;
+                y &= maskAddr;
+                x |= y;
+                *(u32 *)p = x;
+                ((u32 *)ot)[0] = (((u32 *)ot)[0] & maskLen) | ((u32)p & maskAddr);
             }
-            var_t2_3 += 8;
-            var_t3_6 += 2;
-            var_a1_6 += 0x24;
-            var_t0_2 += 0x24;
-        } while (var_t3_6 < 0xD);
-        var_t0_2->unk-4 = (u16) var_a2->unk4;
-        var_t0_2->unk-2 = (u16) var_a2->unk6;
+            ss += 8;
+            i += 2;
+            d += 0x24;
+            p += 0x24;
+        } while (i < 13);
+
+        *(u16 *)(p - 0x04) = *(u16 *)(((u8 *)pts) + 4);
+        *(u16 *)(p - 0x02) = *(u16 *)(((u8 *)pts) + 6);
     }
-    if (temp_s3 & 0x40000000) {
-        temp_v1_9 = (temp_s3 >> 0x17) & 0x60;
-        if (temp_t9 != 0) {
-            var_t3_7 = 0;
-            if (temp_v0 != 0) {
-                var_a1_7 = var_t0_2 + 4;
-                D_800A5E60 += 0x60;
+
+    if (flags & 0x40000000) {
+        u32 abr;
+
+        sh23 = flags >> 23;
+        abr = sh23 & 0x60;
+        if (useIdx) {
+            i = 0;
+            if (t) {
+                register u8 *q __asm__("$5");
+                u32 e1s;
+                u32 e1n;
+                register u8 one __asm__("$14");
+                register u32 maskAddr __asm__("$9");
+                register u32 maskLen __asm__("$10");
+
+                one = 1;
+                e1s = abr | 0xE1000200;
+                e1n = abr | 0xE1000000;
+                maskAddr = 0x00FFFFFF;
+                maskLen = 0xFF000000;
+                q = p + 4;
+                D_800A5E60 = D_800A5E60 + 0x60;
                 do {
-                    var_a1_7->unk-1 = 1;
-                    if (var_s1 != 0) {
-                        var_a1_7->unk0 = temp_v1_9 | 0xE1000200;
+                    q[-1] = one;
+                    if (shadow) {
+                        *(u32 *)q = e1s;
                     } else {
-                        var_a1_7->unk0 = temp_v1_9 | 0xE1000000;
+                        *(u32 *)q = e1n;
                     }
-                    temp_a0_9 = var_t3_7 >> 1;
-                    var_t3_7 += 1;
-                    temp_a0_10 = (temp_a0_9 * 4) + var_a2;
-                    var_a1_7 += 8;
-                    *var_t0_2 = (*var_t0_2 & 0xFF000000) | (*((temp_a0_10->unk34 * 4) + arg3) & 0xFFFFFF);
-                    temp_v1_10 = (temp_a0_10->unk34 * 4) + arg3;
-                    *temp_v1_10 = (*temp_v1_10 & 0xFF000000) | ((s32) var_t0_2 & 0xFFFFFF);
-                    var_t0_2 += 8;
-                } while (var_t3_7 < 0xC);
-                return;
+                    h = i >> 1;
+                    i++;
+                    zp = (s32 *)((h << 2) + (u32)((u8 *)pts));
+                    q += 8;
+                    x = *(u32 *)p;
+                    y = ((u32 *)ot)[zp[13]];
+                    x &= maskLen;
+                    y &= maskAddr;
+                    x |= y;
+                    *(u32 *)p = x;
+                    ((u32 *)ot)[zp[13]] = (((u32 *)ot)[zp[13]] & maskLen) | ((u32)p & maskAddr);
+                    p += 8;
+                } while (i < 12);
+            } else {
+                register u8 *q __asm__("$5");
+                u32 e1s;
+                u32 e1n;
+                register u8 one __asm__("$14");
+                register u32 maskAddr __asm__("$9");
+                register u32 maskLen __asm__("$10");
+                register s32 *zq __asm__("$6");
+
+                one = 1;
+                e1s = abr | 0xE1000200;
+                e1n = abr | 0xE1000000;
+                maskAddr = 0x00FFFFFF;
+                maskLen = 0xFF000000;
+                q = p + 4;
+                D_800A5E60 = D_800A5E60 + 0x30;
+                zq = (s32 *)((u8 *)pts);
+                do {
+                    q[-1] = one;
+                    if (shadow) {
+                        *(u32 *)q = e1s;
+                    } else {
+                        *(u32 *)q = e1n;
+                    }
+                    i++;
+                    q += 8;
+                    x = *(u32 *)p;
+                    y = ((u32 *)ot)[zq[13]];
+                    x &= maskLen;
+                    y &= maskAddr;
+                    x |= y;
+                    *(u32 *)p = x;
+                    ((u32 *)ot)[zq[13]] = (((u32 *)ot)[zq[13]] & maskLen) | ((u32)p & maskAddr);
+                    zq = (s32 *)((u8 *)zq + 4);
+                    p += 8;
+                } while (i < 6);
             }
-            var_a1_8 = var_t0_2 + 4;
-            D_800A5E60 += 0x30;
-            do {
-                var_a1_8->unk-1 = 1;
-                if (var_s1 != 0) {
-                    var_a1_8->unk0 = temp_v1_9 | 0xE1000200;
-                } else {
-                    var_a1_8->unk0 = temp_v1_9 | 0xE1000000;
-                }
-                var_t3_7 += 1;
-                var_a1_8 += 8;
-                *var_t0_2 = (*var_t0_2 & 0xFF000000) | (*((var_a2->unk34 * 4) + arg3) & 0xFFFFFF);
-                temp_v1_11 = var_a2->unk34;
-                var_a2 += 4;
-                temp_v1_12 = (temp_v1_11 * 4) + arg3;
-                *temp_v1_12 = (*temp_v1_12 & 0xFF000000) | ((s32) var_t0_2 & 0xFFFFFF);
-                var_t0_2 += 8;
-            } while (var_t3_7 < 6);
-            return;
-        }
-        D_800A5E60 += 8;
-        var_t0_2->unk3 = 1;
-        if (var_s1 != 0) {
-            var_v0_2 = 0xE1000200;
         } else {
-            var_v0_2 = 0xE1000000;
+            register u32 maskAddr __asm__("$4");
+            register u32 maskLen __asm__("$5");
+
+            D_800A5E60 = D_800A5E60 + 8;
+            p[3] = 1;
+            *(u32 *)(p + 4) = abr | (shadow ? 0xE1000200 : 0xE1000000);
+            maskAddr = 0x00FFFFFF;
+            maskLen = 0xFF000000;
+            x = *(u32 *)p;
+            y = ((u32 *)ot)[0];
+            x &= maskLen;
+            y &= maskAddr;
+            x |= y;
+            *(u32 *)p = x;
+            ((u32 *)ot)[0] = (((u32 *)ot)[0] & maskLen) | ((u32)p & maskAddr);
         }
-        var_t0_2->unk4 = (s32) (temp_v1_9 | var_v0_2);
-        var_t0_2->unk0 = (var_t0_2->unk0 & 0xFF000000) | (*arg3 & 0xFFFFFF);
-        *arg3 = (*arg3 & 0xFF000000) | ((s32) var_t0_2 & 0xFFFFFF);
     }
 }

@@ -1,274 +1,122 @@
 /* Exact retail word export for [8001A114,8001A338); EXE and assembly verified. */
-#if defined(__mips__)
-__asm__(
-    ".set	noreorder
-"
-    ".globl	func_8001A114
-"
-    ".ent	func_8001A114
-"
-    ".type	func_8001A114, @function
-"
-    "func_8001A114:
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-    ".end	func_8001A114
-"
-    ".size	func_8001A114, .-func_8001A114
-"
-);
-#else
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8001A114 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-#include "m2c_macros.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+typedef struct {
+    u8 minute; /* +0x00 */
+    u8 second; /* +0x01 */
+    u8 sector; /* +0x02 */
+    u8 track;  /* +0x03 */
+} CdlLOC;
+typedef struct {
+    CdlLOC pos;      /* +0x00  file func_80010000 location */
+    u32    size;     /* +0x04  file size in bytes   */
+    char   name[16]; /* +0x08  file name            */
+} CdlFILE;
+extern CdlFILE *func_80045374(CdlFILE *fp, char *name);
+extern void func_800434BC(void);
+extern int  func_80043830(int com, u8 *param, u8 *result);
+extern int  func_80046630(int mode);
+extern int  func_8004674C(void);
+extern s32     D_800AE6F4;
+extern u8      D_800AE738;
+extern u8      D_800AE740;
+extern int     D_800AE750;
+extern CdlFILE D_80063028;
 
-extern s32 D_80063028;
-void func_800434BC();                            /* static */
-s32 func_80043830(s32, void *, u8 *);        /* static */
-s32 func_80045374(s32 (*)(), void *);           /* static */
-s32 func_80046630();                         /* static */
-s32 func_8004674C();                                /* static */
-extern u32 D_800AE6F4;
-extern u8 D_800AE738;
-extern s32 *D_800AE740;
-extern s32 D_800AE750;
+int func_8001A114(void) {
+    int ret;
+    u8 *p;
+    int r;
+    int i;
+    CdlFILE *fp;
+    int *rp;
+    s32 *sp;
+    int c0;
+    int c1;
 
-s32 func_8001A114(void) {
-    s32 temp_v0;
-    s32 temp_v0_2;
-    s32 temp_v0_3;
-    s32 temp_v0_4;
-    s32 var_s0;
-    s32 var_s3;
-    s32 var_v0;
-    u32 var_v0_2;
-    u32 var_v0_3;
-
-    var_s3 = 0;
+    ret = 0;
     switch (D_800AE6F4) {
     case 0:
         func_800434BC();
-        func_80043830(1, 0, &D_800AE738);
-        var_v0 = 0;
-        if (!(D_800AE738 & 0x10)) {
-            D_800AE6F4 += 1;
-        case 1:
-            temp_v0 = func_80046630(0);
-            if (temp_v0 != 2) {
-                var_v0 = 0;
-                if (temp_v0 == 0x10) {
-block_6:
-                    D_800AE6F4 = 0;
-                    return 0;
-                }
-                /* Duplicate return node #26. Try simplifying control flow for better match */
-                return var_v0;
-            }
-block_18:
-            D_800AE6F4 += 1;
-        default:
-block_25:
-            var_v0 = var_s3;
-            /* Duplicate return node #26. Try simplifying control flow for better match */
-            return var_v0;
+        c0 = 1;
+        __asm__ __volatile__("" : "=r"(c0) : "0"(c0));
+        c1 = 0;
+        __asm__ __volatile__("" : "=r"(c1) : "0"(c1));
+        p = &D_800AE738;
+        func_80043830(c0, (u8 *)c1, p);
+        if ((*p & 0x10) != 0) {
+            break;
         }
-        return var_v0;
+        D_800AE6F4 = D_800AE6F4 + 1;
+        /* fallthrough */
+    case 1:
+        r = func_80046630(0);
+        if (r == 2) {
+            goto bump;
+        }
+        if (r != 0x10) {
+            break;
+        }
+    reset:
+        D_800AE6F4 = 0;
+        break;
     case 2:
-        M2C_FIELD(&D_800AE740, s8 *, 0) = 0x80;
-        var_v0 = 0;
-        if (func_80043830(0xE, &D_800AE740, &D_800AE740 - 8) != 0) {
-            if (!(M2C_FIELD(&D_800AE740, u8 *, -8) & 0x10)) {
-                D_800AE750 = 0;
-                var_v0_2 = D_800AE6F4 + 1;
-block_12:
-                D_800AE6F4 = var_v0_2;
-                return 0;
-            }
-            goto block_6;
+        p = &D_800AE740;
+        *p = 0x80;
+        if (func_80043830(0xE, p, p - 8) == 0) {
+            break;
         }
-        /* Duplicate return node #26. Try simplifying control flow for better match */
-        return var_v0;
+        if ((p[-8] & 0x10) != 0) {
+            goto reset;
+        }
+        D_800AE750 = 0;
+        D_800AE6F4 = D_800AE6F4 + 1;
+        break;
     case 3:
-        temp_v0_2 = D_800AE750 + 1;
-        D_800AE750 = temp_v0_2;
-        var_v0 = 0;
-        if (temp_v0_2 >= 3) {
-            D_800AE750 = 0;
-            var_v0_2 = D_800AE6F4 + 1;
-            goto block_12;
+        rp = &D_800AE750;
+        *rp = *rp + 1;
+        if (*rp < 3) {
+            break;
         }
-        /* Duplicate return node #26. Try simplifying control flow for better match */
-        return var_v0;
+        *rp = 0;
+        D_800AE6F4 = D_800AE6F4 + 1;
+        break;
     case 4:
-        temp_v0_3 = func_8004674C();
-        if ((temp_v0_3 == 1) || (temp_v0_3 == 0x10) || (temp_v0_3 == 0)) {
+        r = func_8004674C();
+        if ((r == 1) || (r == 0x10) || (r == 0)) {
             D_800AE6F4 = 0;
         }
-        var_v0 = 0;
-        if (temp_v0_3 == 2) {
-            goto block_18;
+        if (r != 2) {
+            break;
         }
-        /* Duplicate return node #26. Try simplifying control flow for better match */
-        return var_v0;
+    bump:
+        sp = &D_800AE6F4;
+        *sp = *sp + 1;
+        break;
     case 5:
-        var_s0 = 0;
-loop_20:
-        temp_v0_4 = func_80045374(D_80063028, D_80063028 - 0x14);
-        var_v0_3 = temp_v0_4 + 1;
-        if (temp_v0_4 == -1) {
-            var_s0 += 1;
-            if (var_s0 >= 0x10) {
-                var_v0_3 = temp_v0_4 + 1;
-            } else {
-                goto loop_20;
+        i = 0;
+        fp = &D_80063028;
+        do {
+            r = (int)func_80045374(fp, (char *)fp - 0x14);
+            if (r != -1) {
+                break;
             }
+            i = i + 1;
+        } while (i < 0x10);
+        if ((u32)(r + 1) < 2) {
+            goto reset;
         }
-        if (var_v0_3 >= 2U) {
-            var_s3 = 1;
-            goto block_25;
-        }
-        goto block_6;
+        ret = 1;
+        break;
     }
+    return ret;
 }
-#endif
-

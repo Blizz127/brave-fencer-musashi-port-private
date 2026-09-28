@@ -596,8 +596,10 @@
       "size": 360,
       "region": "main",
       "source": "src/main/800123f0.c",
-      "recovery": "assembly",
-      "extent": "function"
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80012558",
@@ -606,7 +608,8 @@
       "region": "main",
       "source": "src/main/80012558.c",
       "recovery": "assembly",
-      "extent": "function"
+      "extent": "function",
+      "optimization": "-O2"
     },
     {
       "name": "func_800126C4",
@@ -615,7 +618,8 @@
       "region": "main",
       "source": "src/main/800126c4.c",
       "recovery": "assembly",
-      "extent": "function"
+      "extent": "function",
+      "optimization": "-O2"
     },
     {
       "name": "func_8001282C",
@@ -917,8 +921,10 @@
       "size": 132,
       "region": "main",
       "source": "src/main/80013478.c",
-      "recovery": "assembly",
-      "extent": "function"
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_800134FC",
@@ -927,7 +933,8 @@
       "region": "main",
       "source": "src/main/800134fc.c",
       "recovery": "assembly",
-      "extent": "function"
+      "extent": "function",
+      "optimization": "-O2"
     },
     {
       "name": "func_80013694",
@@ -935,8 +942,10 @@
       "size": 408,
       "region": "main",
       "source": "src/main/80013694.c",
-      "recovery": "assembly",
-      "extent": "function"
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8001382C",
@@ -945,7 +954,8 @@
       "region": "main",
       "source": "src/main/8001382c.c",
       "recovery": "assembly",
-      "extent": "function"
+      "extent": "function",
+      "optimization": "-O2"
     },
     {
       "name": "func_800139C8",
@@ -953,8 +963,10 @@
       "size": 412,
       "region": "main",
       "source": "src/main/800139c8.c",
-      "recovery": "assembly",
-      "extent": "function"
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80013B64",
@@ -963,7 +975,8 @@
       "region": "main",
       "source": "src/main/80013b64.c",
       "recovery": "assembly",
-      "extent": "function"
+      "extent": "function",
+      "optimization": "-O2"
     },
     {
       "name": "func_80013CFC",
@@ -971,8 +984,10 @@
       "size": 408,
       "region": "main",
       "source": "src/main/80013cfc.c",
-      "recovery": "assembly",
-      "extent": "function"
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80013E94",
@@ -1100,8 +1115,10 @@
       "size": 112,
       "region": "main",
       "source": "src/main/800140b8.c",
-      "recovery": "assembly",
-      "extent": "function"
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80014128",
@@ -1265,9 +1282,10 @@
       "size": 196,
       "region": "main",
       "source": "src/main/800145ec.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_800146B0",
@@ -1324,9 +1342,10 @@
       "size": 72,
       "region": "main",
       "source": "src/main/80014998.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_800149E0",
@@ -1334,9 +1353,10 @@
       "size": 304,
       "region": "main",
       "source": "src/main/800149e0.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80014B10",
@@ -1469,9 +1489,10 @@
       "size": 324,
       "region": "main",
       "source": "src/main/80014ed4.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80015018",
@@ -1479,9 +1500,10 @@
       "size": 256,
       "region": "main",
       "source": "src/main/80015018.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80015118",
@@ -1507,9 +1529,10 @@
       "size": 196,
       "region": "main",
       "source": "src/main/80015144.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80015208",
@@ -1517,9 +1540,10 @@
       "size": 236,
       "region": "main",
       "source": "src/main/80015208.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_800152F4",
@@ -1547,9 +1571,10 @@
       "size": 88,
       "region": "main",
       "source": "src/main/8001534c.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_800153A4",
@@ -1567,9 +1592,10 @@
       "size": 88,
       "region": "main",
       "source": "src/main/800153cc.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80015424",
@@ -1587,9 +1613,10 @@
       "size": 76,
       "region": "main",
       "source": "src/main/8001544c.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80015498",
@@ -1597,9 +1624,10 @@
       "size": 368,
       "region": "main",
       "source": "src/main/80015498.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80015608",
@@ -1607,9 +1635,10 @@
       "size": 344,
       "region": "main",
       "source": "src/main/80015608.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80015760",
@@ -1617,9 +1646,10 @@
       "size": 424,
       "region": "main",
       "source": "src/main/80015760.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80015908",
@@ -1627,9 +1657,10 @@
       "size": 76,
       "region": "main",
       "source": "src/main/80015908.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80015954",
@@ -1717,9 +1748,10 @@
       "size": 92,
       "region": "main",
       "source": "src/main/80015a74.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80015AD0",
@@ -1737,9 +1769,10 @@
       "size": 480,
       "region": "main",
       "source": "src/main/80015b6c.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80015D4C",
@@ -1747,9 +1780,10 @@
       "size": 440,
       "region": "main",
       "source": "src/main/80015d4c.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80015F04",
@@ -1757,9 +1791,10 @@
       "size": 524,
       "region": "main",
       "source": "src/main/80015f04.c",
+      "recovery": "mixed",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80016110",
@@ -1767,9 +1802,10 @@
       "size": 276,
       "region": "main",
       "source": "src/main/80016110.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80016224",
@@ -1777,9 +1813,10 @@
       "size": 556,
       "region": "main",
       "source": "src/main/80016224.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80016450",
@@ -1787,9 +1824,10 @@
       "size": 488,
       "region": "main",
       "source": "src/main/80016450.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80016638",
@@ -1797,9 +1835,10 @@
       "size": 176,
       "region": "main",
       "source": "src/main/80016638.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_800166E8",
@@ -1837,9 +1876,10 @@
       "size": 196,
       "region": "main",
       "source": "src/main/800167f0.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_800168B4",
@@ -1856,9 +1896,10 @@
       "size": 124,
       "region": "main",
       "source": "src/main/800168c4.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80016940",
@@ -1876,9 +1917,10 @@
       "size": 196,
       "region": "main",
       "source": "src/main/80016978.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80016A3C",
@@ -1905,9 +1947,10 @@
       "size": 228,
       "region": "main",
       "source": "src/main/80016a7c.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80016B60",
@@ -1925,8 +1968,10 @@
       "size": 336,
       "region": "main",
       "source": "src/main/80016c28.c",
-      "recovery": "assembly",
-      "extent": "function"
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80016D78",
@@ -1974,8 +2019,10 @@
       "size": 592,
       "region": "main",
       "source": "src/main/80016f18.c",
-      "recovery": "assembly",
-      "extent": "function"
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80017168",
@@ -1983,9 +2030,10 @@
       "size": 236,
       "region": "main",
       "source": "src/main/80017168.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80017254",
@@ -2012,9 +2060,10 @@
       "size": 264,
       "region": "main",
       "source": "src/main/80017294.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8001739C",
@@ -2041,9 +2090,10 @@
       "size": 256,
       "region": "main",
       "source": "src/main/800173dc.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_800174DC",
@@ -2070,8 +2120,10 @@
       "size": 468,
       "region": "main",
       "source": "src/main/8001751c.c",
-      "recovery": "assembly",
-      "extent": "function"
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_800176F0",
@@ -2119,9 +2171,10 @@
       "size": 336,
       "region": "main",
       "source": "src/main/80017778.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_800178C8",
@@ -2159,8 +2212,10 @@
       "size": 616,
       "region": "main",
       "source": "src/main/80017930.c",
-      "recovery": "assembly",
-      "extent": "function"
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80017B98",
@@ -2168,9 +2223,10 @@
       "size": 512,
       "region": "main",
       "source": "src/main/80017b98.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80017D98",
@@ -2238,9 +2294,10 @@
       "size": 384,
       "region": "main",
       "source": "src/main/80017f14.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80018094",
@@ -2248,9 +2305,10 @@
       "size": 256,
       "region": "main",
       "source": "src/main/80018094.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80018194",
@@ -2258,9 +2316,10 @@
       "size": 120,
       "region": "main",
       "source": "src/main/80018194.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8001820C",
@@ -2268,9 +2327,10 @@
       "size": 376,
       "region": "main",
       "source": "src/main/8001820c.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80018384",
@@ -2278,9 +2338,10 @@
       "size": 92,
       "region": "main",
       "source": "src/main/80018384.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_800183E0",
@@ -2298,9 +2359,10 @@
       "size": 160,
       "region": "main",
       "source": "src/main/80018450.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_800184F0",
@@ -2308,9 +2370,10 @@
       "size": 548,
       "region": "main",
       "source": "src/main/800184f0.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80018714",
@@ -2327,9 +2390,11 @@
       "size": 488,
       "region": "main",
       "source": "src/main/80018730.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "rodata_base": 2147953208,
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80018918",
@@ -2356,9 +2421,10 @@
       "size": 580,
       "region": "main",
       "source": "src/main/80018a20.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80018C64",
@@ -2366,9 +2432,10 @@
       "size": 132,
       "region": "main",
       "source": "src/main/80018c64.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80018CE8",
@@ -2376,9 +2443,10 @@
       "size": 400,
       "region": "main",
       "source": "src/main/80018ce8.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80018E78",
@@ -2406,9 +2474,10 @@
       "size": 104,
       "region": "main",
       "source": "src/main/80018f20.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80018F88",
@@ -2473,9 +2542,10 @@
       "size": 236,
       "region": "main",
       "source": "src/main/800190ac.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80019198",
@@ -2510,9 +2580,10 @@
       "size": 104,
       "region": "main",
       "source": "src/main/800191d4.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8001923C",
@@ -2520,9 +2591,10 @@
       "size": 224,
       "region": "main",
       "source": "src/main/8001923c.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8001931C",
@@ -2576,9 +2648,10 @@
       "size": 868,
       "region": "main",
       "source": "src/main/800193b8.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8001971C",
@@ -2625,9 +2698,10 @@
       "size": 212,
       "region": "main",
       "source": "src/main/80019a24.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80019AF8",
@@ -2635,9 +2709,11 @@
       "size": 1540,
       "region": "main",
       "source": "src/main/80019af8.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "rodata_base": 2147953228,
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8001A0FC",
@@ -2654,9 +2730,11 @@
       "size": 548,
       "region": "main",
       "source": "src/main/8001a114.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "rodata_base": 2147953276,
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8001A338",
@@ -2664,9 +2742,11 @@
       "size": 1696,
       "region": "main",
       "source": "src/main/8001a338.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "rodata_base": 2147953300,
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8001A9D8",
@@ -2683,9 +2763,10 @@
       "size": 128,
       "region": "main",
       "source": "src/main/8001a9f8.c",
+      "recovery": "c",
+      "extent": "function",
       "optimization": "-O2",
-      "recovery": "assembly",
-      "extent": "function"
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8001AA78",
@@ -3365,7 +3446,8 @@
       "region": "main",
       "source": "src/main/8001d70c.c",
       "recovery": "assembly",
-      "extent": "function"
+      "extent": "function",
+      "optimization": "-O2"
     },
     {
       "name": "func_8001D8C4",
@@ -3373,8 +3455,10 @@
       "size": 368,
       "region": "main",
       "source": "src/main/8001d8c4.c",
-      "recovery": "assembly",
-      "extent": "function"
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8001DA34",
@@ -3382,8 +3466,10 @@
       "size": 1632,
       "region": "main",
       "source": "src/main/8001da34.c",
-      "recovery": "assembly",
-      "extent": "function"
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8001E094",
@@ -3391,8 +3477,10 @@
       "size": 740,
       "region": "main",
       "source": "src/main/8001e094.c",
-      "recovery": "assembly",
-      "extent": "function"
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8001E378",
@@ -3401,7 +3489,8 @@
       "region": "main",
       "source": "src/main/8001e378.c",
       "recovery": "assembly",
-      "extent": "function"
+      "extent": "function",
+      "optimization": "-O2"
     },
     {
       "name": "func_8001E668",
@@ -3409,8 +3498,10 @@
       "size": 376,
       "region": "main",
       "source": "src/main/8001e668.c",
-      "recovery": "assembly",
-      "extent": "function"
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8001EA14",
@@ -3418,8 +3509,10 @@
       "size": 1484,
       "region": "main",
       "source": "src/main/8001ea14.c",
-      "recovery": "assembly",
-      "extent": "function"
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8001EFE0",
@@ -3427,8 +3520,10 @@
       "size": 1872,
       "region": "main",
       "source": "src/main/8001efe0.c",
-      "recovery": "assembly",
-      "extent": "function"
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8001F730",
@@ -3436,8 +3531,10 @@
       "size": 580,
       "region": "main",
       "source": "src/main/8001f730.c",
-      "recovery": "assembly",
-      "extent": "function"
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8001F974",
@@ -3474,8 +3571,10 @@
       "size": 1168,
       "region": "main",
       "source": "src/main/80020598.c",
-      "recovery": "assembly",
-      "extent": "function"
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80020A6C",
@@ -3493,7 +3592,8 @@
       "region": "main",
       "source": "src/main/80020f34.c",
       "recovery": "assembly",
-      "extent": "function"
+      "extent": "function",
+      "optimization": "-O2"
     },
     {
       "name": "func_80021008",
@@ -3542,7 +3642,8 @@
       "region": "main",
       "source": "src/main/80021174.c",
       "recovery": "assembly",
-      "extent": "function"
+      "extent": "function",
+      "optimization": "-O2"
     },
     {
       "name": "func_80021284",
@@ -3550,8 +3651,10 @@
       "size": 880,
       "region": "main",
       "source": "src/main/80021284.c",
-      "recovery": "assembly",
-      "extent": "function"
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_800215F4",
@@ -3559,8 +3662,10 @@
       "size": 1860,
       "region": "main",
       "source": "src/main/800215f4.c",
-      "recovery": "assembly",
-      "extent": "function"
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80021D38",
@@ -3568,8 +3673,10 @@
       "size": 1136,
       "region": "main",
       "source": "src/main/80021d38.c",
-      "recovery": "assembly",
-      "extent": "function"
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_800221A8",
@@ -3577,8 +3684,10 @@
       "size": 1304,
       "region": "main",
       "source": "src/main/800221a8.c",
-      "recovery": "assembly",
-      "extent": "function"
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80023BF0",
@@ -3586,8 +3695,10 @@
       "size": 1124,
       "region": "main",
       "source": "src/main/80023bf0.c",
-      "recovery": "assembly",
-      "extent": "function"
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80024054",
@@ -3624,8 +3735,10 @@
       "size": 552,
       "region": "main",
       "source": "src/main/80024bc0.c",
-      "recovery": "assembly",
-      "extent": "function"
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80024DE8",
@@ -3633,8 +3746,10 @@
       "size": 536,
       "region": "main",
       "source": "src/main/80024de8.c",
-      "recovery": "assembly",
-      "extent": "function"
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80025000",
@@ -3642,8 +3757,10 @@
       "size": 652,
       "region": "main",
       "source": "src/main/80025000.c",
-      "recovery": "assembly",
-      "extent": "function"
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8002528C",
@@ -3651,8 +3768,10 @@
       "size": 632,
       "region": "main",
       "source": "src/main/8002528c.c",
-      "recovery": "assembly",
-      "extent": "function"
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80025504",
@@ -3660,8 +3779,10 @@
       "size": 788,
       "region": "main",
       "source": "src/main/80025504.c",
-      "recovery": "assembly",
-      "extent": "function"
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80025818",
@@ -3669,8 +3790,10 @@
       "size": 536,
       "region": "main",
       "source": "src/main/80025818.c",
-      "recovery": "assembly",
-      "extent": "function"
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80025A30",
@@ -3678,8 +3801,10 @@
       "size": 652,
       "region": "main",
       "source": "src/main/80025a30.c",
-      "recovery": "assembly",
-      "extent": "function"
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80025CBC",
@@ -3688,7 +3813,8 @@
       "region": "main",
       "source": "src/main/80025cbc.c",
       "recovery": "assembly",
-      "extent": "function"
+      "extent": "function",
+      "optimization": "-O2"
     },
     {
       "name": "func_80025EB8",
@@ -3696,8 +3822,10 @@
       "size": 624,
       "region": "main",
       "source": "src/main/80025eb8.c",
-      "recovery": "assembly",
-      "extent": "function"
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80026128",
@@ -3705,8 +3833,10 @@
       "size": 432,
       "region": "main",
       "source": "src/main/80026128.c",
-      "recovery": "assembly",
-      "extent": "function"
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_800262D8",
@@ -3714,8 +3844,10 @@
       "size": 572,
       "region": "main",
       "source": "src/main/800262d8.c",
-      "recovery": "assembly",
-      "extent": "function"
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80026514",
@@ -3724,7 +3856,8 @@
       "region": "main",
       "source": "src/main/80026514.c",
       "recovery": "assembly",
-      "extent": "function"
+      "extent": "function",
+      "optimization": "-O2"
     },
     {
       "name": "func_800268D0",
@@ -3733,7 +3866,8 @@
       "region": "main",
       "source": "src/main/800268d0.c",
       "recovery": "assembly",
-      "extent": "function"
+      "extent": "function",
+      "optimization": "-O2"
     },
     {
       "name": "func_80027058",
@@ -3759,8 +3893,10 @@
       "size": 456,
       "region": "main",
       "source": "src/main/800273f4.c",
-      "recovery": "assembly",
-      "extent": "function"
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_800275BC",
@@ -3768,8 +3904,10 @@
       "size": 544,
       "region": "main",
       "source": "src/main/800275bc.c",
-      "recovery": "assembly",
-      "extent": "function"
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_800277DC",
@@ -3777,8 +3915,10 @@
       "size": 464,
       "region": "main",
       "source": "src/main/800277dc.c",
-      "recovery": "assembly",
-      "extent": "function"
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_800279AC",
@@ -3786,8 +3926,10 @@
       "size": 580,
       "region": "main",
       "source": "src/main/800279ac.c",
-      "recovery": "assembly",
-      "extent": "function"
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80027BF0",
@@ -3804,8 +3946,10 @@
       "size": 556,
       "region": "main",
       "source": "src/main/80027d20.c",
-      "recovery": "assembly",
-      "extent": "function"
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80027F4C",
@@ -3813,8 +3957,10 @@
       "size": 692,
       "region": "main",
       "source": "src/main/80027f4c.c",
-      "recovery": "assembly",
-      "extent": "function"
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80028200",
@@ -33154,6 +33300,240 @@
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_800363CC",
+      "vram": 2147705804,
+      "size": 1836,
+      "region": "main",
+      "source": "src/main/800363cc.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "rodata_base": 2147955640,
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80029274",
+      "vram": 2147652212,
+      "size": 168,
+      "region": "main",
+      "source": "src/main/80029274.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80029344",
+      "vram": 2147652420,
+      "size": 216,
+      "region": "main",
+      "source": "src/main/80029344.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8002992C",
+      "vram": 2147653932,
+      "size": 300,
+      "region": "main",
+      "source": "src/main/8002992c.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80027C10",
+      "vram": 2147646480,
+      "size": 272,
+      "region": "main",
+      "source": "src/main/80027c10.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8001AAD0",
+      "vram": 2147592912,
+      "size": 228,
+      "region": "main",
+      "source": "src/main/8001aad0.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "rodata_base": 2147953372,
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80026D64",
+      "vram": 2147642724,
+      "size": 756,
+      "region": "main",
+      "source": "src/main/80026d64.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "rodata_base": 2147953660,
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80024448",
+      "vram": 2147632200,
+      "size": 1448,
+      "region": "main",
+      "source": "src/main/80024448.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "rodata_base": 2147953544,
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8001AF34",
+      "vram": 2147594036,
+      "size": 416,
+      "region": "main",
+      "source": "src/main/8001af34.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "rodata_base": 2147953420,
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8001B0D4",
+      "vram": 2147594452,
+      "size": 344,
+      "region": "main",
+      "source": "src/main/8001b0d4.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "rodata_base": 2147953444,
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80020248",
+      "vram": 2147615304,
+      "size": 848,
+      "region": "main",
+      "source": "src/main/80020248.c",
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80020A28",
+      "vram": 2147617320,
+      "size": 892,
+      "region": "main",
+      "source": "src/main/80020a28.c",
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_800391D4",
+      "vram": 2147717588,
+      "size": 300,
+      "region": "main",
+      "source": "src/main/800391d4.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80029774",
+      "vram": 2147653492,
+      "size": 328,
+      "region": "main",
+      "source": "src/main/80029774.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_800226C0",
+      "vram": 2147624640,
+      "size": 2680,
+      "region": "main",
+      "source": "src/main/800226c0.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8001B3C4",
+      "vram": 2147595204,
+      "size": 844,
+      "region": "main",
+      "source": "src/main/8001b3c4.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8005D6A0",
+      "vram": 2147866272,
+      "size": 44,
+      "region": "main",
+      "source": "src/main/8005d6a0.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O1",
+      "origin": "vendor-referenced (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8005F6CC",
+      "vram": 2147874508,
+      "size": 56,
+      "region": "main",
+      "source": "src/main/8005f6cc.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-referenced (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8005C43C",
+      "vram": 2147861564,
+      "size": 48,
+      "region": "main",
+      "source": "src/main/8005c43c.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2"
+    },
+    {
+      "name": "func_8005C46C",
+      "vram": 2147861612,
+      "size": 48,
+      "region": "main",
+      "source": "src/main/8005c46c.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2"
+    },
+    {
+      "name": "func_8005B684",
+      "vram": 2147858052,
+      "size": 40,
+      "region": "main",
+      "source": "src/main/8005b684.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2"
     }
   ]
 }

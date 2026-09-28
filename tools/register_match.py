@@ -28,6 +28,7 @@ REPO = Path(__file__).resolve().parents[1]
 ASM_BY_REGION = {
     "main": REPO / "asm/main.s",
     "main_0007": REPO / "asm/overlays/main_0007/main_0007.s",
+    "main_0010": REPO / "asm/overlays/main_0010/main_0010.s",
     "main_0012": REPO / "asm/overlays/main_0012/main_0012.s",
 }
 
@@ -100,6 +101,15 @@ def main(argv: list[str] | None = None) -> int:
                 raise RetailError(f"--size 0x{args.size:X} is shorter than the splat range 0x{size:X} "
                                   "and does not end at a `jr $ra` + delay slot")
             size = args.size
+        # A piece of a function that is already registered is not a
+        # function of its own; covering earlier fragments is allowed.
+        for e in entries:
+            if e["region"] != args.region or int(e["vram"]) == args.vram:
+                continue
+            start, end = int(e["vram"]), int(e["vram"]) + int(e["size"])
+            if start <= args.vram and args.vram + size <= end:
+                raise RetailError(f"0x{args.vram:08X}+0x{size:X} lies inside registered {e['name']} "
+                                  f"[0x{start:08X},0x{end:08X})")
         source = args.source.resolve().relative_to(REPO)
         entry = {
             "name": name,

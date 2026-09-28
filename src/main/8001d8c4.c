@@ -2,103 +2,95 @@
  * SHA256(span)=ae7895e7417620cde0800f4bd491de57a44101a826025ecddb45a3765f7cc71c.
  * Word export for the native seam; the body below is kept
  * byte-identical (wrap only, no rewrite). */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8001D8C4 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-
-/* GTE/cop2 mnemonic overlay: ordinary C cannot emit coprocessor ops.
- * Verified by tools/match_function.py. */
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+/* GTE instruction macros (vendor/bfm-decomp/include/gte_macros.inc) for GNU as. */
 __asm__(
-    ".set noreorder\n"
-    ".globl func_8001D8C4\n"
-    ".type func_8001D8C4, @function\n"
-    "func_8001D8C4:\n"
-    "addiu $sp, $sp, -0x30\n"
-    "lhu $v1, 0x2E($a0)\n"
-    "lhu $v0, 0x8($a1)\n"
-    "lhu $a3, 0x30($a0)\n"
-    "lhu $t0, 0xA($a1)\n"
-    "addu $v1, $v1, $v0\n"
-    "addu $v0, $v1, $zero\n"
-    "addu $a3, $a3, $t0\n"
-    "sh $v0, 0x10($sp)\n"
-    "sh $v0, 0x0($sp)\n"
-    "addu $v0, $a3, $zero\n"
-    "sh $v0, 0xA($sp)\n"
-    "sh $v0, 0x2($sp)\n"
-    "lbu $v0, 0x2($a1)\n"
-    "nop\n"
-    "addu $v0, $v0, $v1\n"
-    "sh $v0, 0x18($sp)\n"
-    "sh $v0, 0x8($sp)\n"
-    "lbu $v0, 0x3($a1)\n"
-    "nop\n"
-    "addu $v0, $v0, $a3\n"
-    "sh $v0, 0x1A($sp)\n"
-    "sh $v0, 0x12($sp)\n"
-    "lhu $v0, 0x32($a0)\n"
-    "nop\n"
-    "sh $v0, 0x1C($sp)\n"
-    "sh $v0, 0x14($sp)\n"
-    "sh $v0, 0xC($sp)\n"
-    "sh $v0, 0x4($sp)\n"
-    "lwc2 $0, 0x0($sp)\n"
-    "lwc2 $1, 0x4($sp)\n"
-    "nop\n"
-    "nop\n"
-    "addiu $v1, $sp, 0x20\n"
-    "swc2 $25, 0x0($v1)\n"
-    "swc2 $26, 0x4($v1)\n"
-    "swc2 $27, 0x8($v1)\n"
-    "lw $v0, 0x20($sp)\n"
-    "nop\n"
-    "sh $v0, 0x8($a2)\n"
-    "lw $v0, 0x24($sp)\n"
-    "nop\n"
-    "sh $v0, 0xA($a2)\n"
-    "addiu $v0, $sp, 0x8\n"
-    "lwc2 $0, 0x0($v0)\n"
-    "lwc2 $1, 0x4($v0)\n"
-    "nop\n"
-    "nop\n"
-    "swc2 $25, 0x0($v1)\n"
-    "swc2 $26, 0x4($v1)\n"
-    "swc2 $27, 0x8($v1)\n"
-    "lw $v0, 0x20($sp)\n"
-    "nop\n"
-    "sh $v0, 0x10($a2)\n"
-    "lw $v0, 0x24($sp)\n"
-    "nop\n"
-    "sh $v0, 0x12($a2)\n"
-    "addiu $v0, $sp, 0x10\n"
-    "lwc2 $0, 0x0($v0)\n"
-    "lwc2 $1, 0x4($v0)\n"
-    "nop\n"
-    "nop\n"
-    "swc2 $25, 0x0($v1)\n"
-    "swc2 $26, 0x4($v1)\n"
-    "swc2 $27, 0x8($v1)\n"
-    "lw $v0, 0x20($sp)\n"
-    "nop\n"
-    "sh $v0, 0x18($a2)\n"
-    "lw $v0, 0x24($sp)\n"
-    "nop\n"
-    "sh $v0, 0x1A($a2)\n"
-    "addiu $v0, $sp, 0x18\n"
-    "lwc2 $0, 0x0($v0)\n"
-    "lwc2 $1, 0x4($v0)\n"
-    "nop\n"
-    "nop\n"
-    "swc2 $25, 0x0($v1)\n"
-    "swc2 $26, 0x4($v1)\n"
-    "swc2 $27, 0x8($v1)\n"
-    "lw $v0, 0x20($sp)\n"
-    "nop\n"
-    "sh $v0, 0x20($a2)\n"
-    "lw $v0, 0x24($sp)\n"
-    "nop\n"
-    "sh $v0, 0x22($a2)\n"
-    "addiu $sp, $sp, 0x30\n"
-    "jr $ra\n"
-    "nop\n"
-    ".size func_8001D8C4, .-func_8001D8C4\n"
-    ".set reorder\n"
+    ".macro cop2op fake_op, op, gbg = 0, sf = 1, mx = 0, v = 0, cv = 0, lm = 0\n"
+    "    cop2 \\fake_op << 20 | \\gbg << 20 | \\sf << 19 | \\mx << 17 | \\v << 15 | \\cv << 13 | \\lm << 10 | \\op\n"
+    ".endm\n"
+    ".macro mvmva sf, mx, v, cv, lm\n"
+    "    cop2op 0x04, 0x12, sf = \\sf, mx = \\mx, v = \\v, cv = \\cv, lm = \\lm\n"
+    ".endm\n"
+    ".macro op sf\n"
+    "    cop2op 0x17, 0x0C, sf = \\sf\n"
+    ".endm\n"
 );
+
+#define LDV0_8001D8C4(r0) __asm__ volatile (             \
+    "lwc2 $0, 0( %0 );"                                  \
+    "lwc2 $1, 4( %0 )"                                   \
+    :                                                    \
+    : "r"( r0 )                                          \
+    : "memory" )
+#define MVMVA_8001D8C4() __asm__ volatile (              \
+    "nop;"                                               \
+    "nop;"                                               \
+    "mvmva 1, 0, 0, 0, 0"                                \
+    : : : "memory" )
+#define STMAC123_8001D8C4(r0) __asm__ volatile (         \
+    "swc2 $25, 0( %0 );"                                 \
+    "swc2 $26, 4( %0 );"                                 \
+    "swc2 $27, 8( %0 )"                                  \
+    :                                                    \
+    : "r"( r0 )                                          \
+    : "memory" )
+
+void func_8001D8C4(s32 a0, u8 * a1_p, u8 * a2_p) {
+    s32 a1 = (s32)a1_p;
+    s32 a2 = (s32)a2_p;
+    s16 sv[4][4];   /* 4 SVECTORs: sp+0x00..0x1F */
+    s32 out[4];     /* MAC1/2/3 scratch: sp+0x20..0x2F */
+    s32 cx, cy, dx, dy, z;
+
+    cx = *(u16 *)(a0 + 0x2E) + *(u16 *)(a1 + 0x08);
+    cy = *(u16 *)(a0 + 0x30) + *(u16 *)(a1 + 0x0A);
+    sv[0][0] = sv[2][0] = cx;
+    sv[0][1] = sv[1][1] = cy;
+
+    dx = *(u8 *)(a1 + 0x02) + cx;
+    sv[3][0] = dx;
+    sv[1][0] = dx;
+
+    dy = *(u8 *)(a1 + 0x03) + cy;
+    sv[3][1] = dy;
+    sv[2][1] = dy;
+
+    z = *(u16 *)(a0 + 0x32);
+    sv[3][2] = z;
+    sv[2][2] = z;
+    sv[1][2] = z;
+    sv[0][2] = z;
+
+    LDV0_8001D8C4(sv[0]);
+    MVMVA_8001D8C4();
+    STMAC123_8001D8C4(out);
+    *(s16 *)(a2 + 0x08) = out[0];
+    *(s16 *)(a2 + 0x0A) = out[1];
+
+    LDV0_8001D8C4(sv[1]);
+    MVMVA_8001D8C4();
+    STMAC123_8001D8C4(out);
+    *(s16 *)(a2 + 0x10) = out[0];
+    *(s16 *)(a2 + 0x12) = out[1];
+
+    LDV0_8001D8C4(sv[2]);
+    MVMVA_8001D8C4();
+    STMAC123_8001D8C4(out);
+    *(s16 *)(a2 + 0x18) = out[0];
+    *(s16 *)(a2 + 0x1A) = out[1];
+
+    LDV0_8001D8C4(sv[3]);
+    MVMVA_8001D8C4();
+    STMAC123_8001D8C4(out);
+    *(s16 *)(a2 + 0x20) = out[0];
+    *(s16 *)(a2 + 0x22) = out[1];
+}
