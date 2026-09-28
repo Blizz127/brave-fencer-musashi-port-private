@@ -617,6 +617,23 @@ words the user's own disc provides, which ship with nothing.
 | clang/LLVM | native-lane compiler (build tool) | Apache-2.0 with LLVM exception |
 | decompals old-gcc, maspsx, m2c | matching toolchain (dev only, not linked) | GPL / MIT / GPL |
 
+## Platform layer wiring (2026-09-28)
+
+`bfm_plat` (pc_port/platform, from port/platform-layer; design in
+docs/ARCHITECTURE-PORT.md) is a CMake target linked into
+`musashi_native_boot` (`MUSASHI_WITH_BFM_PLAT`). At startup, after the EXE
+identity check, native_boot brings it up with the `null` renderer, audio
+and input backends (native_boot still owns PsyCross/SDL until the game-facing
+calls are routed through `bfm_plat_*`), binds guest RAM and, during a hook,
+the live guest registers, and registers the known hook sites (12 today).
+The formatter reports every guest function entry (a `jal`/`jalr` target,
+after its delay slot, before the native lane) through
+`musashi_formatter_set_entry_hook`, which calls `bfm_plat_hooks_at` for
+registered sites, and reports the selected overlay member (`SC02_031`,
+`SC01_000/001`, `MAIN_0004/0007/0010`) through
+`musashi_formatter_set_overlay_hook` → `bfm_plat_hooks_set_overlay`.
+`MUSASHI_BFM_PLAT=0` turns the layer off.
+
 ## Native lane: running matched decomp C on the host (2026-09-28)
 
 Goal: the port executes byte-matched decomp C (`src/main/<vram>.c`, the

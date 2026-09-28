@@ -470,6 +470,81 @@ if(MUSASHI_BUILD_PC_PORT)
         endif()
     endif()
 
+    # Platform layer (pc_port/platform, from port/platform-layer): game-facing
+    # bfm_plat_* interfaces, backends, mods/plugins, PsyQ compat for the lane.
+    # Core: C99, no dependencies. dlopen for native plugins.
+    add_library(bfm_plat STATIC
+        pc_port/platform/bfm_plat.c          pc_port/platform/bfm_plat_backends.c
+        pc_port/platform/bfm_plat_ini.c      pc_port/platform/bfm_plat_config.c
+        pc_port/platform/bfm_plat_renderer.c pc_port/platform/bfm_plat_audio.c
+        pc_port/platform/bfm_plat_input.c    pc_port/platform/bfm_plat_storage.c
+        pc_port/platform/bfm_plat_timing.c   pc_port/platform/bfm_plat_mods.c
+        pc_port/platform/bfm_plat_console.c  pc_port/platform/bfm_plat_console_ui.c
+        pc_port/platform/bfm_plat_events.c   pc_port/platform/bfm_plat_hook_sites.c
+        pc_port/platform/bfm_plat_image.c    pc_port/platform/bfm_plat_font.c
+        pc_port/platform/bfm_plat_widescreen.c
+        pc_port/platform/bfm_plat_disc_check.c pc_port/platform/bfm_plat_sha256.c
+        pc_port/platform/bfm_plat_watch.c
+        pc_port/platform/psyq/bfm_psyq_compat.c
+        pc_port/platform/psyq/bfm_psyq_libgs.c
+        pc_port/platform/psyq/bfm_psyq_libgte.c)        # + psyq/psyq_psycross.c with PsyCross
+    target_include_directories(bfm_plat PUBLIC pc_port/platform)
+    target_link_libraries(bfm_plat PUBLIC ${CMAKE_DL_LIBS} m)
+
+    if(MUSASHI_WITH_PSYCROSS)   # SDL2 / OpenAL / GL already found above
+        target_sources(bfm_plat PRIVATE
+            pc_port/platform/backends/renderer_psycross.c
+            pc_port/platform/backends/audio_sdl.c
+            pc_port/platform/backends/input_sdl.c)
+        # renderer_psycross.c needs C11 (PsyCross headers use static_assert)
+        set_source_files_properties(pc_port/platform/backends/renderer_psycross.c
+            PROPERTIES COMPILE_OPTIONS "-std=gnu11;-include;assert.h")
+        target_include_directories(bfm_plat PRIVATE
+            ${MUSASHI_PSYCROSS_DIR}/include pc_port/include)
+        target_compile_definitions(bfm_plat PRIVATE BFM_PLAT_WITH_PSYCROSS
+            BFM_PLAT_WITH_SDL_AUDIO BFM_PLAT_WITH_SDL_INPUT)
+        target_link_libraries(bfm_plat PRIVATE SDL2::SDL2 musashi_pc_port)
+    endif()
+
+    find_package(ZLIB)          # optional: .png texture replacements
+    if(ZLIB_FOUND)
+        target_sources(bfm_plat PRIVATE pc_port/platform/backends/texture_png.c)
+        target_compile_definitions(bfm_plat PRIVATE BFM_PLAT_WITH_PNG)
+        target_link_libraries(bfm_plat PRIVATE ZLIB::ZLIB)
+    endif()
+    # Optional Lua (after tools/fetch_lua.sh): all of tools/third_party/lua/src/*.c
+    # except lua.c and luac.c, as a separate C target without -Werror.
+    set(BFM_LUA_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tools/third_party/lua/src)
+    if(EXISTS ${BFM_LUA_DIR}/lua.h)
+        file(GLOB BFM_LUA_SOURCES ${BFM_LUA_DIR}/*.c)
+        list(FILTER BFM_LUA_SOURCES EXCLUDE REGEX "/(lua|luac)\\.c$")
+        add_library(bfm_lua STATIC ${BFM_LUA_SOURCES})
+        target_include_directories(bfm_lua PUBLIC ${BFM_LUA_DIR})
+        target_sources(bfm_plat PRIVATE pc_port/platform/backends/script_lua.c)
+        target_compile_definitions(bfm_plat PRIVATE BFM_PLAT_WITH_LUA)
+        target_link_libraries(bfm_plat PRIVATE bfm_lua)
+    endif()
+    # Optional: pc_port/platform/backends/disc_pinned.c + BFM_PLAT_WITH_PINNED_DISC
+    # (links disc_media.c / OpenSSL::Crypto, already in musashi_pc_port).
+
+    # Optional gl renderer: needs SDL2 and the Khronos GL headers only (entry
+    # points come from SDL_GL_GetProcAddress; do not link libGL or a loader).
+    find_path(BFM_GLCOREARB_DIR GL/glcorearb.h)
+    if(TARGET SDL2::SDL2 AND BFM_GLCOREARB_DIR)
+        target_sources(bfm_plat PRIVATE
+            pc_port/platform/backends/renderer_gl.c
+            pc_port/platform/backends/gl/bfm_gl_core.c
+            pc_port/platform/backends/gl/bfm_gl_exec.c)
+        target_include_directories(bfm_plat PRIVATE ${BFM_GLCOREARB_DIR})
+        target_compile_definitions(bfm_plat PRIVATE BFM_PLAT_WITH_GL)
+        target_link_libraries(bfm_plat PRIVATE SDL2::SDL2)
+    endif()
+
+    if(TARGET musashi_native_boot)
+        target_link_libraries(musashi_native_boot PRIVATE bfm_plat)
+        target_compile_definitions(musashi_native_boot PRIVATE MUSASHI_WITH_BFM_PLAT=1)
+    endif()
+
     if(MUSASHI_NATIVE_LANE)
         find_program(MUSASHI_CLANG NAMES clang REQUIRED)
         find_package(Python3 COMPONENTS Interpreter REQUIRED)

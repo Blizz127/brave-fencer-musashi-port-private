@@ -79,6 +79,19 @@ int musashi_native_lane_reference_call(MusashiBootMemory *memory, uint32_t targe
  * that enter guest code without a jal. kind: 'j' jal, 'r' jalr, 'd' entry. */
 void musashi_trace_function_entry(uint32_t target, uint32_t caller, char kind);
 
+/* Guest function-entry hook for the platform layer (bfm_plat hook sites,
+ * mods): called once when execution reaches a jal/jalr target, after the
+ * delay slot (a0-a3 final) and before the native lane. regs is the live
+ * guest register file, valid only during the call. NULL disables it. */
+typedef void (*MusashiEntryHook)(void *userdata, uint32_t pc, const uint32_t *regs);
+void musashi_formatter_set_entry_hook(MusashiEntryHook hook, void *userdata);
+
+/* Overlay selection notice for the platform layer: name is the selected
+ * member ("SC02_031", "SC01_000", "SC01_001", "MAIN_0004", "MAIN_0007",
+ * "MAIN_0010") or NULL when none is selected. Called on changes only. */
+typedef void (*MusashiOverlayHook)(void *userdata, const char *name);
+void musashi_formatter_set_overlay_hook(MusashiOverlayHook hook, void *userdata);
+
 #ifdef __cplusplus
 }
 #endif

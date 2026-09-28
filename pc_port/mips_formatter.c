@@ -576,6 +576,7 @@ _Static_assert(sizeof(kOverlay800CF02CWords) / sizeof(uint32_t) == 2259,
 static int g_overlay_0004_words;
 static int g_overlay_0007_words;
 static int g_overlay_0010_words;
+static void overlay_changed(void);
 static const uint32_t kOverlay0010_800CEDFCWords[194]; /* shape only: 194 words, fetched from guest RAM */
 _Static_assert(sizeof(kOverlay0010_800CEDFCWords) / sizeof(uint32_t) == 194,
                "overlay 0010 800CEDFC source span changed");
@@ -2790,16 +2791,19 @@ _Static_assert(sizeof(kOverlay0012_8017C008Words) / sizeof(uint32_t) == 30,
 void musashi_boot_select_overlay_0004_words(int enable) {
     g_overlay_0004_words = enable ? 1 : 0;
     if (enable) g_overlay_0007_words = g_overlay_0010_words = 0;
+    overlay_changed();
 }
 
 void musashi_boot_select_overlay_0007_words(int enable) {
     g_overlay_0007_words = enable ? 1 : 0;
     if (enable) g_overlay_0010_words = g_overlay_0004_words = 0;
+    overlay_changed();
 }
 
 void musashi_boot_select_overlay_0010_words(int enable) {
     g_overlay_0010_words = enable ? 1 : 0;
     if (enable) g_overlay_0007_words = g_overlay_0004_words = 0;
+    overlay_changed();
 }
 static const uint32_t kOverlay800CEE40Words[49]; /* shape only: 49 words, fetched from guest RAM */
 _Static_assert(sizeof(kOverlay800CEE40Words) / sizeof(uint32_t) == 49,
@@ -11690,6 +11694,40 @@ void musashi_trace_function_entry(uint32_t target, uint32_t caller, char kind) {
  * run_startup_cpu loop (host-handled PCs, checkpoints and IRQ delivery
  * included), with guest stack arguments at sp+0x10. */
 static MusashiNativeLaneEntry *g_lane;
+static MusashiOverlayHook g_overlay_hook;
+static void *g_overlay_hook_user;
+static const char *g_overlay_reported;
+
+void musashi_formatter_set_overlay_hook(MusashiOverlayHook hook, void *userdata) {
+    g_overlay_hook = hook;
+    g_overlay_hook_user = userdata;
+    g_overlay_reported = NULL;
+    overlay_changed();
+}
+
+static void overlay_changed(void) {
+    const char *name = NULL;
+    if (!g_overlay_hook) return;
+    if (g_overlay_sc02_0031_words) name = "SC02_031";
+    else if (g_overlay_sc01_0000_words)
+        name = g_sc01_code == kOverlaySc01_CodeWords ? "SC01_000" : "SC01_001";
+    else if (g_overlay_0004_words) name = "MAIN_0004";
+    else if (g_overlay_0007_words) name = "MAIN_0007";
+    else if (g_overlay_0010_words) name = "MAIN_0010";
+    if (name == g_overlay_reported) return;
+    g_overlay_reported = name;
+    g_overlay_hook(g_overlay_hook_user, name);
+}
+
+static MusashiEntryHook g_entry_hook;
+static void *g_entry_hook_user;
+static uint32_t g_entry_pending = 1u; /* never a word-aligned PC */
+
+void musashi_formatter_set_entry_hook(MusashiEntryHook hook, void *userdata) {
+    g_entry_hook = hook;
+    g_entry_hook_user = userdata;
+    g_entry_pending = 1u;
+}
 static size_t g_lane_count;
 static uint32_t g_lane_min = UINT32_MAX, g_lane_max;
 static int g_lane_env = -1;
@@ -11897,6 +11935,10 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
     uint8_t scheduled_merge_reg = 0;
     if ((cpu->pc & 3u) || !spu_source_guard(memory, cpu))
         return formatter_refuse0(__LINE__, cpu->pc);
+    if (g_entry_hook && cpu->pc == g_entry_pending) {
+        g_entry_pending = 1u;
+        g_entry_hook(g_entry_hook_user, cpu->pc, cpu->r);
+    }
     if (g_lane_count) {
         int lane = lane_try(memory, cpu);
         if (lane > 0) return 1;
@@ -11916,6 +11958,7 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
     if (cpu->pc == 0x80128158u) {
         g_overlay_sc02_0031_words = sc02_entry_matches(memory);
         g_overlay_sc01_0000_words = sc01_entry_matches(memory);
+        overlay_changed();
     }
     g_fetch_memory = memory;
     if (!formatter_fetch(memory, cpu, &instruction)) return formatter_refuse0(__LINE__, cpu->pc);
@@ -12426,6 +12469,7 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
         case 8: target_npc = cpu->r[rs]; break;
         case 9: cpu->r[rd] = cpu->pc + 8u; target_npc = cpu->r[rs];
             if (g_trace_state >= 0) musashi_trace_function_entry(target_npc, cpu->pc, 'r');
+            if (g_entry_hook) g_entry_pending = target_npc;
             break;
         case 13: return formatter_refuse0(__LINE__, cpu->pc);
         case 16: cpu->r[rd] = cpu->hi; break;
@@ -12504,6 +12548,7 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
     case 2: target_npc = (cpu->pc + 4u & 0xf0000000u) | ((instruction & 0x03ffffffu) << 2); break;
     case 3: cpu->r[31] = cpu->pc + 8u; target_npc = (cpu->pc + 4u & 0xf0000000u) | ((instruction & 0x03ffffffu) << 2);
         if (g_trace_state >= 0) musashi_trace_function_entry(target_npc, cpu->pc, 'j');
+        if (g_entry_hook) g_entry_pending = target_npc;
         break;
     case 4: if (cpu->r[rs] == cpu->r[rt]) target_npc = cpu->pc + 4u + (uint32_t)((int32_t)signed_immediate * 4); break;
     case 5: if (cpu->r[rs] != cpu->r[rt]) target_npc = cpu->pc + 4u + (uint32_t)((int32_t)signed_immediate * 4); break;

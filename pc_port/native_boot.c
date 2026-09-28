@@ -3373,6 +3373,83 @@ static NativeBoot *native_boot_owner(NativeBoot *fallback) {
 static NativeBoot *native_boot_owner(NativeBoot *fallback) { return fallback; }
 #endif
 
+#ifdef MUSASHI_WITH_BFM_PLAT
+/* Platform layer (pc_port/platform, docs/ARCHITECTURE-PORT.md): mods,
+ * cheats and hook-site events see guest RAM and, at a hook, the live guest
+ * registers. native_boot still owns PsyCross/SDL, so bfm_plat runs with its
+ * null renderer/audio/input backends until the game-facing calls are
+ * routed through bfm_plat_*. */
+#include "bfm_plat.h"
+#include "bfm_plat_events.h"
+#include "musashi_native_lane.h"
+
+static const uint32_t *g_plat_hook_regs;
+
+static int plat_ram_read(void *user, uint32_t address, void *out, uint32_t size) {
+    const uint8_t *span = musashi_boot_ram_span(user, address, size);
+    if (!span) return -1;
+    memcpy(out, span, size);
+    return 0;
+}
+
+static int plat_ram_write(void *user, uint32_t address, const void *data, uint32_t size) {
+    uint8_t *span = musashi_boot_ram_span(user, address, size);
+    if (!span) return -1;
+    memcpy(span, data, size);
+    return 0;
+}
+
+static int plat_reg_read(void *user, unsigned reg, uint32_t *out) {
+    (void)user;
+    if (!g_plat_hook_regs || reg >= 32u) return -1;
+    *out = g_plat_hook_regs[reg];
+    return 0;
+}
+
+static void plat_entry_hook(void *user, uint32_t pc, const uint32_t *regs) {
+    (void)user;
+    if (!bfm_plat_hooks_has(pc)) return;
+    g_plat_hook_regs = regs;
+    (void)bfm_plat_hooks_at(pc);
+    g_plat_hook_regs = NULL;
+}
+
+static void plat_overlay_hook(void *user, const char *name) {
+    (void)user;
+    bfm_plat_hooks_set_overlay(name);
+}
+
+static void plat_start(MusashiBootMemory *memory) {
+    static BfmPlatGuestMemory ram;
+    static BfmPlatGuestRegs regs;
+    BfmPlatConfig cfg;
+    const char *off = getenv("MUSASHI_BFM_PLAT");
+    if (off && off[0] == '0') return;
+    bfm_plat_config_defaults(&cfg);
+    snprintf(cfg.renderer, sizeof cfg.renderer, "null");
+    snprintf(cfg.audio, sizeof cfg.audio, "null");
+    snprintf(cfg.input, sizeof cfg.input, "null");
+    cfg.disc_path[0] = 0;      /* native_boot owns the disc and its identity check */
+    cfg.disc_search[0] = 0;
+    if (bfm_plat_init(&cfg) != 0) {
+        fprintf(stderr, "native_boot: BFM_PLAT init refused; platform layer off\n");
+        return;
+    }
+    ram.read = plat_ram_read;
+    ram.write = plat_ram_write;
+    ram.user = memory;
+    regs.read = plat_reg_read;
+    regs.user = NULL;
+    bfm_plat_guest_memory_bind(&ram);
+    bfm_plat_guest_regs_bind(&regs);
+    if (bfm_plat_hooks_register_known() != 0)
+        fprintf(stderr, "native_boot: BFM_PLAT hook sites refused\n");
+    fprintf(stderr, "native_boot: BFM_PLAT up hook_sites=%u\n", (unsigned)bfm_plat_hooks_count());
+    musashi_formatter_set_entry_hook(plat_entry_hook, NULL);
+    musashi_formatter_set_overlay_hook(plat_overlay_hook, NULL);
+}
+#endif
+
 int main(int argc, char **argv) {
     static NativeBoot boot_storage; /* One stable, zero-initialized owner. */
     NativeBoot *const boot_owner = native_boot_owner(&boot_storage);
@@ -3443,6 +3520,9 @@ int main(int argc, char **argv) {
         fputs("native_boot: pinned retail EXE rejected before startup\n", stderr);
         return 2;
     }
+#ifdef MUSASHI_WITH_BFM_PLAT
+    plat_start(&boot.memory);
+#endif
     if (cue_path && bin_path) {
         boot.media = musashi_disc_media_open_pinned(cue_path, bin_path);
         if (!boot.media) {
