@@ -521,6 +521,147 @@ Those values were read off the built library rather than assumed. PS1 fixed
 point uses 4096 for 1.0 and 4096 units for a full turn, so cosine falls to zero
 exactly where sine reaches one.
 
+## Native lane: running matched decomp C on the host (2026-09-28)
+
+Goal: the port executes byte-matched decomp C (`src/main/<vram>.c`, the
+`#else` branch) instead of word-stepping the retail MIPS for those
+functions, without losing the interpreter as the fallback.
+
+### Executed-path tracer
+
+`MUSASHI_TRACE_FUNCS=<path>` makes the formatter record every guest
+function entry it takes: `jal`/`jalr` targets (`j`/`r`) and router entries
+(`d`: run_startup_cpu, nested source execution, CD IRQ, BIOS event and
+fixed-entry routers). `<path>` gets one line per first-seen entry as it
+happens (`seq target kind caller`, flushed, so a killed run keeps it);
+`<path>.counts` gets every entry with its call count, first kind/caller and
+whether the lane ran it (`native`/`interp`), sorted by count, at exit. With
+the variable unset the cost is one predictable branch per `jal`, and guest
+state is never touched (the heap-continuation probe's byte-identical-CPU
+assertion holds with tracing on).
+
+`tools/native_lane_gen.py --only <path>.counts` restricts the lane to the
+traced PCs, so integration can follow what a boot really runs. **Not yet
+done on this box:** the live native boot needs an X display (PsyCross opens
+a GL window; there is no xvfb here), so only the headless probes have been
+traced (`entry_cpu`, `heap_continuation`, `callback_registration`).
+
+### Generic native lane
+
+`formatter_step` consults one guest-PC keyed table (`musashi_native_lane.h`)
+before it fetches a word, so the startup loop, the IRQ routers and nested
+source execution all take the same lane. An entry runs only at a clean call
+boundary (no pending delayed load or LWL/LWR merge, not in a delay slot,
+sequential npc) and only when guest RAM is host-mapped at `0x80000000`;
+otherwise the interpreter steps the words exactly as before. The adapter is
+the o32 register ABI: a0-a3, further arguments at guest `sp+0x10`, v0/v1,
+return to ra. Each entry charges `2 x words` cycles to the execution clock
+once per call (PCSX-Redux's BIAS=2 without the memory surcharge): an
+estimate, since a native loop has no per-iteration cost.
+
+`musashi_native_guest_call` is the interpreter thunk for unported callees:
+it runs the callee on the *same* `FormatterCpu`, re-entering the enclosing
+`run_startup_cpu` loop when there is one (so host-handled PCs, checkpoints
+and IRQ delivery behave as for interpreted code, and the checkpoint sees
+the same continuation identity), with the 16-byte o32 home area and stack
+arguments written below the caller's guest sp. A refusal inside the callee,
+or a host stop request, `longjmp`s back to the lane and refuses the step;
+guest writes the native code already made are not undone, which is the same
+fail-closed stop the interpreter gives.
+
+The existing bespoke bindings (`MUSASHI_NATIVE_*` defines) are unchanged;
+their files are excluded from the table.
+
+### Memory model: guest RAM at host 0x80000000 (design (a))
+
+Two designs were evaluated:
+
+- **(a)** Map guest RAM at host virtual `0x80000000` on the 64-bit host and
+  admit only functions an automatic checker proves pointer-width safe.
+- **(b)** A 32-bit host build (`-m32`) where all decomp C has PS1 data
+  layout. This needs i386 SDL2/OpenAL/GL (the owner would install them), a
+  32-bit PsyCross build, and it still needs the guest RAM window, because
+  host addresses of host objects are no more guest addresses at 32 bits.
+
+**Decision: (a).** Measured on the current tree, (b) would only rescue the
+`layout` rejects (25 functions using structs or arrays holding pointers).
+Every other rejection below is about the host not being a PS1 (inline MIPS
+register asm, MMIO through pointer cells, IRQ-dependent polling, host stack
+locals whose address reaches guest code, trap-on-divide, port hooks) and
+applies to a 32-bit build equally. (a) runs today with the libraries the
+port already uses, and the checker makes the admitted set a proof rather
+than a guess.
+
+How (a) works:
+
+- `musashi_native_boot` (built with `MUSASHI_NATIVE_LANE`) `mmap`s its boot
+  owner with `MAP_FIXED_NOREPLACE` at `0x80000000`; guest RAM is its first
+  member (static-asserted), so `memory.bytes == 0x80000000`. If the window is
+  taken or `MUSASHI_NATIVE_LANE=0`, the static owner is used and the lane
+  stays off.
+- The generator compiles each candidate with clang for x86-64
+  (`-fwrapv -fno-strict-aliasing -ftrivial-auto-var-init=zero`), and before
+  optimisation rewrites every guest data symbol (`D_XXXXXXXX`, asm-label
+  aliases such as `"D_80078E7C+1"`, named symbols from `config/*sym*.txt`)
+  into its absolute guest address, every address-taken guest function into
+  its guest code address, every pointer-typed load/store to non-local memory
+  into a 32-bit access (guest pointer cells are 32-bit), and every
+  int-to-pointer conversion into a zero extension of the 32-bit value.
+- Candidates: registry entries in `main` with recovery `c` whose source has a
+  native word export (so the interpreter can always run them) and no bespoke
+  binding: 870 today.
+- Rules, each rejection naming the first that failed (`report.json`):
+  `source` (no `long`/`sizeof`), `compile`, `symbols` (resolve into
+  `[0x80010000,0x80200000)`; no mutable TU data), `layout` (no pointer-bearing
+  aggregate or pointer-element indexing, checked before optimisation, when
+  struct GEPs are still typed), `memory` (no pointer load/store left to guest
+  memory, no atomics, no volatile: decomp C marks device access volatile),
+  `escape` (no host stack/data address stored, converted, returned or passed
+  to guest code), `inttoptr`, `calls` (only direct calls; no inline asm, no
+  indirect calls), `arith` (no variable or trapping divisor, variable shifts
+  masked to 5 bits), `ub` (no undef/poison/unreachable), `irq` (no loop that
+  neither stores nor calls), `abi` (8/16/32-bit and pointer parameters; a
+  direct call may not pass fewer arguments than the callee reads, because a
+  MIPS callee then sees whatever the caller left in a1-a3), `hooks` (no PC
+  the port compares against — pc/ra/continuation checks — inside the
+  function, since native execution would bypass the hook).
+- Guest calls from native code go through per-signature stubs that convert
+  each value to and from the 32-bit register the MIPS ABI carries (so
+  mismatched prototypes behave as on the PS1): a direct call when the callee
+  is admitted, otherwise the interpreter thunk.
+
+Current tree: **603 of 870 admitted**; rejected hooks 84, compile 52 (MIPS
+register asm and similar), escape 44, layout 25, calls 21, memory 13,
+arith 9, irq 8, ub 4, abi 3, inttoptr 2, source 2. Stubs: 179 direct,
+270 thunks.
+
+Known model gaps (documented, not checked): native code cannot reach the
+RAM mirrors (KUSEG `0x00000000`, KSEG1 `0xA0000000`, the 2-8 MB repeats)
+or the scratchpad, and its address arithmetic does not wrap at 32 bits; a
+wild or mirror pointer faults the host instead of aliasing. A native call
+runs without IRQ delivery or per-instruction clock charging between its
+own instructions (IRQs are delivered in thunked callees and after return).
+
+### Verification
+
+`native_lane_differential` (CTest, built with `MUSASHI_NATIVE_LANE=ON`)
+maps guest RAM at `0x80000000`, loads the pinned EXE, and for every entry
+and three argument patterns runs the function on the interpreter only and
+then through the lane (forked child each), comparing v0 and all guest RAM
+outside the callee's frame. Result on this tree: **1297 comparable cases
+identical, 0 different, 0 native failures; 500 of 603 functions verified**.
+381 cases were not comparable (the interpreter itself refused: a device,
+BIOS call or unsupported pointer), 129 hit the mirror gap and 2 the
+wraparound gap, both from the probe's deliberately absurd arguments. The
+probe found the two real hazards the `memory`/volatile and `abi`/arity rules
+now close (`func_8003B08C` writes DMA through the pointer cell `D_8006B560`;
+`func_80046ABC` passes 1 of 3 arguments to `func_80046CFC`).
+`tests/test_native_lane.py` pins those decisions.
+
+Build it with `-DMUSASHI_NATIVE_LANE=ON` (needs clang). The option stays
+**OFF** until the live boot (`native_startup_boundary`, needs xvfb) has
+been run with it on.
+
 ## Building
 
 Native builds also require OpenSSL development headers and `libcrypto` for

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-test_root="$(mktemp -d /tmp/musashi-m0-tests.XXXXXX)"
+test_root="$(mktemp -d "${TMPDIR:-/tmp}/musashi-m0-tests.XXXXXX")"
 trap 'rm -rf -- "$test_root"' EXIT
 
 cd "$repo_root"
