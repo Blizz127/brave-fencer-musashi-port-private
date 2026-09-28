@@ -68,6 +68,7 @@ class PortMatchedRatio(unittest.TestCase):
                             "--lane-report", str(Path(d) / "rep.json"),
                             "--registry", str(Path(d) / "reg.json"), "--psyq-def", str(Path(d) / "p.def"),
                             "--formatter", str(Path(d) / "none.c"), "--idle", "80020048",
+                            "--config-dir", str(Path(d) / "noconfig"),
                             "--json", str(out), *extra], capture_output=True, text=True)
         self.assertEqual(p.returncode, 0, p.stderr)
         return json.loads(out.read_text()), p.stderr
@@ -138,6 +139,30 @@ class ResidentMember(unittest.TestCase):
         self.assertEqual(reg.find(0x800D0010)["name"], "a_fn")    # entered, fewer hits
         self.assertEqual(reg.find(0x800D0200)["name"], "b_big")   # only b covers it
         self.assertIsNone(reg.find(0x800E0000))
+
+
+class MemberMap(unittest.TestCase):
+    def test_asm_only_routine_attributed_to_its_member(self):
+        sys.path.insert(0, str(ROOT / "tools"))
+        import port_matched_ratio as pmr
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / "overlay_main_0003.yaml").write_text(
+                "segments:\n  - name: main_0003\n    type: code\n    start: 0x0\n    vram: 0x800D0000\n"
+                "    subsegments:\n      - [0x0, asm, main_0003]\n      - [0x100, data, w]\n"
+                "      - [0x104, asm, main_0003_mdec]\n      - [0x200, data, tail]\n  - [0x300]\n")
+            (Path(d) / "symbol_addrs.main_0003.auto.txt").write_text(
+                "func_800D0000 = 0x800D0000; // type:func\nfunc_800D0104 = 0x800D0104; // type:func\n")
+            members = pmr.load_members(d)
+        self.assertEqual(members["main_0003"][0], [(0x800D0000, 0x800D0100), (0x800D0104, 0x800D0200)])
+        matches = [
+            {"name": "c_fn", "vram": 0x800D0000, "size": 0x100, "region": "main_0003", "recovery": "c"},
+            {"name": "other", "vram": 0x800D0100, "size": 0x200, "region": "main_0010", "recovery": "c"},
+        ]
+        reg = pmr.Registry(matches, {0x800D0000, 0x800D0104, 0x800D0100}, (), members)
+        f = reg.find(0x800D0150)   # inside the asm-only routine, entered
+        self.assertEqual((f["region"], f["vram"], f.get("unregistered")), ("main_0003", 0x800D0104, True))
+        self.assertEqual(reg.find(0x800D0010)["name"], "c_fn")
+        self.assertIsNone(reg.find(0x800D0100 - 0x1000))
 
 
 if __name__ == "__main__":

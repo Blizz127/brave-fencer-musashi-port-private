@@ -85,6 +85,38 @@ def load_formatter_ranges(path):
                   for m in pat.finditer(Path(path).read_text(errors="replace")))
 
 
+SUBSEG_RE = re.compile(r"^\s*-\s*\[\s*(0x[0-9A-Fa-f]+)\s*(?:,\s*(\w+)\s*(?:,\s*([\w.]+))?)?\s*\]", re.M)
+SYM_FUNC_RE = re.compile(r"^\s*(\w+)\s*=\s*(0x[0-9A-Fa-f]+)\s*;.*type:func", re.M)
+
+
+def load_members(config_dir):
+    """Code map of each overlay member from its splat config (local analysis
+    input): {region: (code ranges [(lo, hi)], sorted function starts)}.
+    Code = asm/c/hasm subsegments; starts come from symbol_addrs.<member>
+    (.auto).txt. Members without a config are absent (registry fallback)."""
+    members = {}
+    d = Path(config_dir)
+    for y in sorted(d.glob("overlay_*.yaml")):
+        text = y.read_text(errors="replace")
+        seg = re.search(r"-\s*name:\s*(\w+)\s*\n\s*type:\s*code\s*\n\s*start:\s*(0x[0-9A-Fa-f]+)"
+                        r"\s*\n\s*vram:\s*(0x[0-9A-Fa-f]+)", text)
+        if not seg:
+            continue
+        name, start, vram = seg.group(1), int(seg.group(2), 16), int(seg.group(3), 16)
+        subs = [(int(m.group(1), 16), m.group(2)) for m in SUBSEG_RE.finditer(text)]
+        ranges = []
+        for (off, kind), nxt in zip(subs, subs[1:]):
+            if kind in ("asm", "c", "hasm"):
+                ranges.append((vram + off - start, vram + nxt[0] - start))
+        starts = set()
+        for f in (d / f"symbol_addrs.{name}.auto.txt", d / f"symbol_addrs.{name}.txt"):
+            if f.exists():
+                starts |= {int(m.group(2), 16) for m in SYM_FUNC_RE.finditer(f.read_text(errors="replace"))}
+        if ranges:
+            members[name] = (ranges, sorted(starts))
+    return members
+
+
 class Registry:
     """Function lookup by guest PC. Main is unambiguous. Overlay members
     (MAIN.CD members main_NNNN, scene overlays scNN_NNNN) share load
@@ -96,7 +128,7 @@ class Registry:
     Registry gaps inside the main EXE are filled from the formatter's code
     ranges (reported as unregistered); overlay addresses never are."""
 
-    def __init__(self, matches, traced_targets, ranges=()):
+    def __init__(self, matches, traced_targets, ranges=(), members=None):
         main = [m for m in matches if m["region"] == "main"]
         lo_main = min(m["vram"] for m in main) if main else 0
         hi_main = max(m["vram"] + max(m.get("size") or 4, 4) for m in main) if main else 0
@@ -118,16 +150,41 @@ class Registry:
         for m in matches:
             if m["region"] != "main":
                 by_region[m["region"]].append(m)
+        # Each member's functions: from its code map when a config exists
+        # (every start, registered or not, extent to the next start or the
+        # end of its code range), else its registry entries.
+        funcs_by = {}
+        for region in set(by_region) | set(members or {}):
+            reg_at = {m["vram"]: m for m in by_region.get(region, [])}
+            if members and region in members:
+                ranges_m, starts = members[region]
+                starts = sorted(set(starts) | {v for v in reg_at
+                                               if any(lo <= v < hi for lo, hi in ranges_m)})
+                fl = []
+                for lo, hi in ranges_m:
+                    ss = [x for x in starts if lo <= x < hi]
+                    if not ss or ss[0] != lo:
+                        ss = [lo] + ss
+                    for a, b in zip(ss, ss[1:] + [hi]):
+                        m = reg_at.get(a)
+                        fl.append(dict(m, size=b - a) if m else
+                                  {"name": "func_%08X" % a, "vram": a, "size": b - a, "region": region,
+                                   "recovery": None, "unregistered": True})
+                funcs_by[region] = fl
+            else:
+                funcs_by[region] = list(by_region[region])
         self.hits = {}
-        for region, ms in by_region.items():
+        for region, ms in funcs_by.items():
             n = sum(1 for m in ms if m["vram"] in traced_targets)
             if n:
                 self.hits[region] = n
         self.regions = {}
-        for region in self.hits:
-            ms = sorted(by_region[region], key=lambda m: m["vram"])
+        self.ambiguous = collections.Counter()
+        for region in sorted(self.hits):
+            ms = sorted(funcs_by[region], key=lambda m: m["vram"])
             self.regions[region] = (ms, [m["vram"] for m in ms])
         self.used = collections.Counter()
+        self.last_by_hits = False
 
     def find(self, pc):
         i = bisect.bisect_right(self.main_starts, pc) - 1
@@ -135,14 +192,20 @@ class Registry:
             return self.main[i]
         if self.main_span[0] <= pc < self.main_span[1]:
             return None
-        best, score = None, None
+        best, score, entered = None, None, 0
         for region, (ms, starts) in self.regions.items():
             k = bisect.bisect_right(starts, pc) - 1
             if k < 0 or pc >= ms[k]["vram"] + max(ms[k].get("size") or 4, 4):
                 continue
             sc = (ms[k]["vram"] in self.traced, self.hits[region])
+            entered += sc[0]
             if score is None or sc > score:
-                best, score = ms[k], sc
+                best, score, tie = ms[k], sc, False
+            elif sc == score:
+                tie = True  # first member by name keeps it; counted below
+        if best is not None and tie:
+            self.ambiguous[best["region"]] += 1
+        self.last_by_hits = entered > 1  # several members entered here: global hits decided
         return best
 
 
@@ -159,6 +222,9 @@ def main(argv=None):
                     help="MUSASHI_PSYQ_LANE of the configuration being classified")
     ap.add_argument("--formatter", default=str(ROOT / "pc_port/mips_formatter.c"),
                     help="source of the interpreter's code ranges (extents for registry gaps)")
+    ap.add_argument("--config-dir", default=str(ROOT / "config"),
+                    help="splat overlay configs + symbol_addrs (.auto) files for member code maps "
+                         "(the .auto files are local, ignored analysis inputs)")
     ap.add_argument("--idle", default="800424e4",
                     help="comma-separated function PCs that are idle waits (VSync polling); "
                          "shares are also given without them")
@@ -189,7 +255,8 @@ def main(argv=None):
         psyq_manifest, psyq_ranges = None, None
     traced = {r["pc"]: r for r in counts}
     fr = Path(a.formatter)
-    reg = Registry(matches, set(traced), load_formatter_ranges(fr) if fr.exists() else ())
+    members = load_members(a.config_dir) if Path(a.config_dir).is_dir() else {}
+    reg = Registry(matches, set(traced), load_formatter_ranges(fr) if fr.exists() else (), members)
 
     # Functions: every traced entry, plus any registry function that stepped
     # without a traced entry (reached by a jump or fall-through).
@@ -200,12 +267,15 @@ def main(argv=None):
         funcs[(m["region"] if m else None, r["pc"])] = {"pc": r["pc"], "calls": r["calls"], "steps": 0, "reg": m,
                           "lane_column": r["lane"]}
     unattributed_steps = 0
+    by_hits = collections.Counter()
     if steps is not None:
         for pc, n in steps.items():
             m = reg.find(pc)
             key = (m["region"], m["vram"]) if m else None
             if m is not None and m["region"] != "main":
                 reg.used[m["region"]] += n
+                if reg.last_by_hits:
+                    by_hits[m["region"]] += n
             if key is None:
                 unattributed_steps += n
                 continue
@@ -297,8 +367,13 @@ def main(argv=None):
     for dom in ("game", "psyq", "bios"):
         fs = [f for f in funcs.values() if f.get("domain") == dom]
         busy_d = sum(f[key] for f in fs if f["pc"] not in idle)
+        reg_c = sum(f[key] for f in fs if f["pc"] not in idle and f["reg"] is not None
+                    and f["reg"]["vram"] == f["pc"] and f["reg"].get("recovery") == "c")
         d = {"functions": len(fs), "instructions": sum(f[key] for f in fs),
-             "instructions_excluding_idle": busy_d}
+             "instructions_excluding_idle": busy_d,
+             # byte-matched C EXISTS in the registry (whether or not the port runs it)
+             "matched_c_exists_excluding_idle": reg_c,
+             "matched_c_exists_share_excluding_idle": round(reg_c / busy_d, 4) if busy_d else 0}
         for cls in ("matched_c", "port_shim", "interpreted"):
             cs = [f for f in fs if f["class"] == cls]
             b = sum(f[key] for f in cs if f["pc"] not in idle)
@@ -348,6 +423,10 @@ def main(argv=None):
                       "then the member with most traced entries (the trace does not record residency)",
             "entry_hits": dict(sorted(reg.hits.items(), key=lambda kv: -kv[1])),
             "instructions_by_member": dict(reg.used.most_common()),
+            "ambiguous_lookups_by_member": dict(reg.ambiguous.most_common()),
+            # instructions where more than one member's containing function
+            # was entered, so the global entry-hit count chose the member
+            "instructions_decided_by_global_hits": dict(by_hits.most_common()),
         },
         "shadowed_executed": shadows,
         "shadowed_static": static_shadows,
