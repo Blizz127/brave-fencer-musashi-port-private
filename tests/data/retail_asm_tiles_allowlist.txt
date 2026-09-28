@@ -7,3 +7,4 @@ src/main/80025a30.c
 src/main/800275bc.c
 src/main/800279ac.c
 src/main/80027d20.c
+src/overlays/sc02_0039/8017e024.c
