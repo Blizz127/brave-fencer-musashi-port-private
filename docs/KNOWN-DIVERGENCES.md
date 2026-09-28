@@ -37,9 +37,12 @@ was not reached**, so these figures describe boot and the intro only.
   library ranges out: 81 functions. 67% of the non-idle instructions are
   in PsyQ library code with no registry entry (libcd, libpad, libetc,
   libgpu), plus the startup code at 0x80010000.
-- 31 active PsyQ shims shadow a registered matched-C function, 24 of
-  them executed in this run. 17 host-skipped functions also have matched
-  C.
+- 31 active PsyQ shims shadow a registered matched-C function, and 9 of
+  them were executed in this run: memcpy, CdIntToPos, ClearOTagR,
+  CatPrim, CdPosToInt, memset, SetDefDispEnv, GsInitCoordinate2 and
+  GsSetLightMode. A further 15 guest functions with matched C are skipped
+  by the host, for example 80016714 (startup environment clear) and
+  8005C388 (console putchar).
 
 ## Game logic and state
 
