@@ -12,12 +12,14 @@
  * Status: compile-checked against the PsyCross headers; first run waits for
  * the SDL2/OpenAL/GL dev libs. */
 #include "../bfm_plat.h"
+#include "../bfm_plat_font.h"
 
 #include <psx/types.h>
 #include <psx/libgte.h>
 #include <psx/libgpu.h>
 #include <PsyX/PsyX_public.h>
 
+#include <stdlib.h>
 #include <string.h>
 
 typedef struct PsyCrossRenderer {
@@ -203,10 +205,32 @@ static int pc_present(void *self) {
     return BFM_PLAT_OK;
 }
 
+/* Overlay text (console, cheat menu, "PAUSED"): the built-in 5x7 font as
+ * TILE runs over a semi-transparent backing tile, drawn straight into the
+ * current draw buffer before present. Coordinates are relative to the
+ * current draw environment's clip origin, so the text lands on the frame
+ * being shown whichever buffer the game draws into. Uses no VRAM texture
+ * (FntLoad would overwrite game VRAM). */
+static int pc_overlay_text(void *self, int x, int y, const char *text) {
+    BfmPlatPrim stack[512];
+    BfmPlatPrim *prims = stack;
+    size_t need = bfm_plat_font_text_prims(x, y, text, 1, 255, 255, 255, 1, NULL, 0);
+    size_t i;
+    (void)self;
+    if (need > sizeof stack / sizeof stack[0]) {
+        prims = (BfmPlatPrim *)malloc(need * sizeof *prims);
+        if (!prims) return BFM_PLAT_ERROR;
+    }
+    bfm_plat_font_text_prims(x, y, text, 1, 255, 255, 255, 1, prims, need);
+    for (i = 0; i < need; i++) draw_one(&prims[i]);
+    if (prims != stack) free(prims);
+    return BFM_PLAT_OK;
+}
+
 static const BfmPlatRendererBackend psycross_backend = {
     "psycross", pc_init, pc_shutdown, pc_output, pc_begin, pc_draw_env,
-    pc_disp_env, pc_submit, pc_upload, NULL, pc_download, pc_present, NULL,
-    &state
+    pc_disp_env, pc_submit, pc_upload, NULL, pc_download, pc_present,
+    pc_overlay_text, &state
 };
 
 int bfm_plat_backend_psycross_register(void);
