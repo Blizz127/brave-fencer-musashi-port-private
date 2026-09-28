@@ -82,13 +82,8 @@ int main(void) {
     bfm_psyq_set_ram(ram, sizeof ram);
     R[29] = 0x801FFE00;
 
-    /* stateless: no bridge needed */
-    CHECK(call("ratan2", 1, 1, 0, 0) && R[2] == 512);
-    /* (RotMatrixYXZ is exact HLE over the guest table now: bfm_plat_probe libgte) */
-    /* RotMatrixZ multiplies m by the rotation (it doesn't overwrite it) */
-    put_matrix(0x80001200, ident, t1000);
-    CHECK(call("RotMatrixZ", 1024, 0x80001200, 0, 0) && r16(0x80001200) == 0 && r16(0x80001208) == 0 &&
-          r16(0x80001210) == 4096);
+    /* ratan2 and RotMatrixX/Y/Z/YXZ are exact HLE over the guest tables
+     * now (no PsyCross): bfm_plat_probe libgte checks them */
 
     /* GTE state without a bridge: refuse and change nothing */
     put_matrix(0x80002000, ident, t1000);

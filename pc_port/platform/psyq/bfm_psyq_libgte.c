@@ -8,6 +8,8 @@
  * MATRIX in guest RAM: short m[3][3] (+0..+0x11), pad (+0x12), int t[3] (+0x14). */
 #include "bfm_psyq_compat.h"
 
+#include <stdint.h>
+
 #include <string.h>
 
 #define RCOSSIN_TABLE 0x8006DF1Cu
@@ -73,6 +75,62 @@ void bfm_psyq_transmatrix(uint8_t *m, const int32_t v[3]) {
     w32(m + 0x14, v[0]);
     w32(m + 0x18, v[1]);
     w32(m + 0x1C, v[2]);
+}
+
+/* RotMatrixX/Y/Z(long angle, MATRIX *m) -> m: retail func_80049F3C /
+ * func_8004A0DC / func_8004A27C multiply m in place by one axis rotation:
+ * rows (p, q) become ((c*p - t*q) >> 12, (t*p + c*q) >> 12) from the
+ * original values, the subtraction before the shift. t is the sine (X, Z)
+ * or its negation (Y). */
+static int rot_axis(uint32_t *r, int row_p, int row_q, int negate_sin) {
+    uint8_t *m = (uint8_t *)bfm_psyq_ptr(A(1), 32);
+    int32_t s, c, t, p[3], q[3];
+    int j;
+    if (!m || !sincos((int32_t)A(0), &s, &c)) return 0;
+    t = negate_sin ? -s : s;
+    for (j = 0; j < 3; j++) {
+        p[j] = s16at(m + row_p * 6 + 2 * j);
+        q[j] = s16at(m + row_q * 6 + 2 * j);
+    }
+    for (j = 0; j < 3; j++) {
+        uint32_t cp = (uint32_t)c * (uint32_t)p[j], tq = (uint32_t)t * (uint32_t)q[j];
+        uint32_t tp = (uint32_t)t * (uint32_t)p[j], cq = (uint32_t)c * (uint32_t)q[j];
+        w16(m + row_p * 6 + 2 * j, (int32_t)(cp - tq) >> 12);
+        w16(m + row_q * 6 + 2 * j, (int32_t)(tp + cq) >> 12);
+    }
+    r[2] = A(1);
+    return 1;
+}
+
+int bfm_psyq_RotMatrixX(uint32_t *r) { return rot_axis(r, 1, 2, 0); }
+int bfm_psyq_RotMatrixY(uint32_t *r) { return rot_axis(r, 0, 2, 1); }
+int bfm_psyq_RotMatrixZ(uint32_t *r) { return rot_axis(r, 0, 1, 0); }
+
+/* ratan2(y, x): retail func_8004CFEC over the game's atan table D_80071F1C
+ * (1026 halfwords, 0x400 = 90 degrees). INT_MIN inputs refuse (the retail
+ * negu leaves them negative). */
+#define RATAN_TABLE 0x80071F1Cu
+int bfm_psyq_ratan2(uint32_t *r) {
+    int32_t y = (int32_t)A(0), x = (int32_t)A(1), idx, v;
+    int nx = 0, ny = 0;
+    const uint8_t *tbl = (const uint8_t *)bfm_psyq_ptr(RATAN_TABLE, 1026u * 2u);
+    if (!tbl || x == INT32_MIN || y == INT32_MIN) return 0;
+    if (x < 0) { nx = 1; x = -x; }
+    if (y < 0) { ny = 1; y = -y; }
+    if (x == 0 && y == 0) { r[2] = 0; return 1; }
+    if (y < x) {
+        idx = (y & 0x7FE00000) ? y / (x >> 10) : (int32_t)((uint32_t)y << 10) / x;
+        if (idx < 0 || idx > 1025) return 0;
+        v = s16at(tbl + 2 * idx);
+    } else {
+        idx = (x & 0x7FE00000) ? x / (y >> 10) : (int32_t)((uint32_t)x << 10) / y;
+        if (idx < 0 || idx > 1025) return 0;
+        v = 0x400 - s16at(tbl + 2 * idx);
+    }
+    if (nx) v = 0x800 - v;
+    if (ny) v = -v;
+    r[2] = (uint32_t)v;
+    return 1;
 }
 
 /* RotMatrixYXZ(SVECTOR *r, MATRIX *m) -> m: retail func_80049A1C term by
