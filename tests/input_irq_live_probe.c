@@ -123,23 +123,49 @@ static uint64_t epoch_owner(void *userdata) {
     (void)userdata;
     return (uint64_t)SDL_ThreadID();
 }
+/* Guest-cycle device time, as native_boot's MUSASHI_GUEST_CLOCK. Every
+ * VBlank edge still comes only from the PsyCross worker; it is placed on the
+ * next guest frame boundary (the CPU idled until VBlank), and otherwise
+ * device time is exactly the cycles charged to guest execution. With
+ * host-paced time the pad's ACK (1088 cycles after a byte) raced the retail
+ * I_STAT pre-clear in func_8005E0AC whenever the host interpreted the ~20
+ * instructions between them slower than 32 us, so the exchange timed out
+ * (-2) after the first byte; the packet counts below are only exact on a
+ * guest timeline. */
+#define PROBE_FRAME_CYCLES ((MUSASHI_DEVICE_CLOCK_HZ / (60u * 263u)) * 263u)
+static uint64_t guest_tick, guest_sequence;
+static uint32_t deferred_edges;
 static int epoch_collect(void *userdata, MusashiIrqSourceBatch *batch) {
     InputLiveFixture *x = userdata;
-    if (x->runtime.scheduler.installed)
-        return musashi_psycross_irq_scheduler_collect_source(&x->runtime.scheduler, batch);
-    if (x->runtime.scheduler.source_sequence) return 0;
-    memset(batch, 0, sizeof(*batch));
-    batch->frequency = SDL_GetPerformanceFrequency();
-    batch->cut_tick = SDL_GetPerformanceCounter();
-    return batch->frequency != 0;
+    MusashiIrqSourceBatch host;
+    batch->count = 0;
+    batch->frequency = MUSASHI_DEVICE_CLOCK_HZ;
+    if (x->runtime.scheduler.installed) {
+        if (!musashi_psycross_irq_scheduler_collect_source(&x->runtime.scheduler, &host))
+            return 0;
+        deferred_edges += host.count;
+        /* A host edge published while a delivery runs (a loaded host) waits
+         * for it to finish: moving guest time to a frame boundary inside the
+         * handler would expire the source's own ACK timeout. */
+        if (x->runtime.scheduler.delivering) {
+            batch->cut_tick = guest_tick;
+            return 1;
+        }
+        for (; deferred_edges; --deferred_edges) {
+            if (batch->count >= MUSASHI_IRQ_SOURCE_CAPACITY) return 0;
+            guest_tick = (guest_tick / PROBE_FRAME_CYCLES + 1u) * PROBE_FRAME_CYCLES;
+            batch->edges[batch->count++] = (MusashiIrqSourceEdge){++guest_sequence, guest_tick};
+        }
+    } else if (x->runtime.scheduler.source_sequence) {
+        return 0;
+    }
+    batch->cut_tick = guest_tick;
+    return 1;
 }
 static int epoch_wait(void *userdata, uint64_t target) {
-    Uint32 started = SDL_GetTicks();
     (void)userdata;
-    while (SDL_GetPerformanceCounter() < target) {
-        if ((Uint32)(SDL_GetTicks() - started) >= 1000) return 0;
-        SDL_Delay(0);
-    }
+    if (target < guest_tick) return 0;
+    guest_tick = target;
     return 1;
 }
 static int epoch_devices(void *userdata, uint64_t cycle) {
