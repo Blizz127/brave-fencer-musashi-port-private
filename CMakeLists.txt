@@ -559,6 +559,7 @@ if(MUSASHI_BUILD_PC_PORT)
     if(TARGET musashi_native_boot)
         target_link_libraries(musashi_native_boot PRIVATE bfm_plat)
         target_compile_definitions(musashi_native_boot PRIVATE MUSASHI_WITH_BFM_PLAT=1)
+        target_sources(musashi_native_boot PRIVATE pc_port/plat_audio_sink.c)
     endif()
 
     if(MUSASHI_NATIVE_LANE)

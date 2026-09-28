@@ -66,6 +66,7 @@ static int log_sample(uint64_t *counter, uint64_t first, uint64_t stride) {
 #include "bfm_plat_input.h"
 #include "bfm_plat_timing.h"
 #include "bfm_plat_audio.h"
+#include "musashi_plat_audio_sink.h"
 /* MUSASHI_GPU=bfm_plat: GP0/GP1 are teed into the bfm_plat GPU bridge and
  * drawn by the bfm_plat renderer (MUSASHI_RENDERER, default psycross); the
  * controller keeps the port protocol with its rasteriser off. Default cpu. */
@@ -81,52 +82,12 @@ static int g_plat_started;
 static int g_plat_timing_on;
 
 /* MUSASHI_AUDIO=bfm_plat: the SPU core's output goes to bfm_plat_audio
- * (backend MUSASHI_AUDIO_BACKEND, default "openal") through this adapter,
- * which also counts what the sink received (AUDIO_SINK at STOP). */
-typedef struct PlatAudioSink {
-    MusashiSpuCdAudioBackend backend;
-    uint64_t owner, frames, nonsilent;
-    int peak, faulted;
-    char name[32];
-} PlatAudioSink;
-static PlatAudioSink g_plat_audio;
-
-static int plat_audio_ready(void *user) {
-    PlatAudioSink *a = user;
-    return a && !a->faulted && a->owner == (uint64_t)SDL_ThreadID() &&
-           bfm_plat_audio_active() != NULL;
-}
-static uint64_t plat_audio_token(void *user) { (void)user; return (uint64_t)SDL_ThreadID(); }
-static int plat_audio_status(void *user, size_t *queued, int *playing) {
-    PlatAudioSink *a = user;
-    BfmPlatAudioStatus st;
-    if (!plat_audio_ready(a) || !queued || !playing || bfm_plat_audio_status(&st) != BFM_PLAT_OK ||
-        st.faulted) {
-        if (a) a->faulted = 1;
-        return 0;
-    }
-    *queued = st.queued_frames[BFM_AUDIO_STREAM_MAIN];
-    *playing = 1;   /* a paused bfm_plat device still accepts PCM */
-    return 1;
-}
-static int plat_audio_queue(void *user, const int16_t *pcm, size_t frames) {
-    PlatAudioSink *a = user;
-    size_t i;
-    if (!plat_audio_ready(a) || !pcm) return 0;
-    for (i = 0; i < frames; i++) {
-        int l = pcm[2 * i], r = pcm[2 * i + 1];
-        int m = l < 0 ? -l : l, n = r < 0 ? -r : r;
-        if (l || r) a->nonsilent++;
-        if (m > a->peak) a->peak = m;
-        if (n > a->peak) a->peak = n;
-    }
-    if (bfm_plat_audio_queue(BFM_AUDIO_STREAM_MAIN, pcm, frames) != BFM_PLAT_OK) {
-        a->faulted = 1;
-        return 0;
-    }
-    a->frames += frames;
-    return 1;
-}
+ * (backend MUSASHI_AUDIO_BACKEND, default "openal") through
+ * pc_port/plat_audio_sink.c, which also counts what the sink received
+ * (AUDIO_SINK at STOP). */
+static MusashiPlatAudioSink g_plat_audio;
+static char g_plat_audio_name[32];
+static uint64_t plat_audio_thread(void *user) { (void)user; return (uint64_t)SDL_ThreadID(); }
 
 /* Opens the bfm_plat audio backend for the SPU; NULL keeps native audio. */
 static const MusashiSpuCdAudioBackend *plat_audio_attach(void) {
@@ -145,13 +106,9 @@ static const MusashiSpuCdAudioBackend *plat_audio_attach(void) {
     /* bfm_plat_audio_open falls back to null when the backend cannot open. */
     if (strcmp(selected, backend) != 0)
         fprintf(stderr, "native_boot: AUDIO bfm_plat %s unavailable, using %s\n", backend, selected);
-    memset(&g_plat_audio, 0, sizeof g_plat_audio);
-    snprintf(g_plat_audio.name, sizeof g_plat_audio.name, "%s", selected);
-    g_plat_audio.owner = (uint64_t)SDL_ThreadID();
-    g_plat_audio.backend = (MusashiSpuCdAudioBackend){&g_plat_audio, plat_audio_ready,
-        plat_audio_token, plat_audio_status, plat_audio_queue};
+    snprintf(g_plat_audio_name, sizeof g_plat_audio_name, "%s", selected);
     fprintf(stderr, "native_boot: AUDIO backend=bfm_plat:%s\n", selected);
-    return &g_plat_audio.backend;
+    return musashi_plat_audio_sink_init(&g_plat_audio, plat_audio_thread, NULL);
 }
 #endif
 
@@ -4344,7 +4301,7 @@ int main(int argc, char **argv) {
 #ifdef MUSASHI_WITH_BFM_PLAT
     if (g_plat_audio.backend.queue)
         fprintf(stderr, "native_boot: AUDIO_SINK backend=bfm_plat:%s frames=%llu nonsilent=%llu "
-                "peak=%d faulted=%d\n", g_plat_audio.name,
+                "peak=%d faulted=%d\n", g_plat_audio_name,
                 (unsigned long long)g_plat_audio.frames,
                 (unsigned long long)g_plat_audio.nonsilent, g_plat_audio.peak,
                 g_plat_audio.faulted);

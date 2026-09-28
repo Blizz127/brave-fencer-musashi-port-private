@@ -1,7 +1,9 @@
 """bfm_plat audio sinks (MUSASHI_AUDIO=bfm_plat): the null backend drains at
 the platform clock's audio rate, so a queue-paced SPU never faults on it;
 the OpenAL backend (when the OpenAL headers and library are present) plays
-through OpenAL Soft's null driver and drains in real time."""
+through OpenAL Soft's null driver and drains in real time; and the whole
+SPU core -> plat_audio_sink -> bfm_plat path turns a CD tone into non-silent
+frames at the sink while the BIOS mute stays silent."""
 import os
 import shutil
 import subprocess
@@ -45,6 +47,39 @@ class AudioSinkTests(unittest.TestCase):
             run = subprocess.run([str(probe)], capture_output=True, text=True, timeout=60, env=env)
             self.assertEqual(run.returncode, 0, run.stderr)
             self.assertIn("OK null", run.stdout)
+            self.assertTrue("OK openal" in run.stdout or "SKIP openal" in run.stdout, run.stdout)
+
+
+class SpuToSinkTests(unittest.TestCase):
+    """The native_boot MUSASHI_AUDIO=bfm_plat path without the game."""
+
+    def build(self, out, *extra):
+        subprocess.run(["cc", *CFLAGS, "-I", str(PLAT), "-I", str(ROOT / "pc_port/include"),
+                        "-I", str(ROOT / "include"), *sources(),
+                        str(ROOT / "pc_port/spu_cd_audio.c"), str(ROOT / "pc_port/plat_audio_sink.c"),
+                        str(ROOT / "tests/plat_audio_sink_probe.c"), *extra,
+                        "-o", str(out), "-ldl", "-lm"],
+                       check=True, stdin=subprocess.DEVNULL, timeout=180)
+
+    @unittest.skipUnless(shutil.which("cc"), "cc unavailable")
+    def test_cd_tone_reaches_the_null_sink(self):
+        with tempfile.TemporaryDirectory(prefix="bfm-audio-") as d:
+            probe = Path(d) / "probe"
+            self.build(probe)
+            run = subprocess.run([str(probe)], capture_output=True, text=True, timeout=60)
+            self.assertEqual(run.returncode, 0, run.stderr)
+            self.assertIn("OK null frames=5145 nonsilent=4410", run.stdout)
+
+    @unittest.skipUnless(shutil.which("cc") and Path("/usr/include/AL/al.h").is_file(),
+                         "OpenAL headers unavailable")
+    def test_cd_tone_reaches_openal(self):
+        with tempfile.TemporaryDirectory(prefix="bfm-audio-") as d:
+            probe = Path(d) / "probe"
+            self.build(probe, "-DPROBE_OPENAL", str(PLAT / "backends/audio_openal.c"), "-lopenal")
+            env = dict(os.environ, ALSOFT_DRIVERS="null")
+            run = subprocess.run([str(probe), "openal"], capture_output=True, text=True,
+                                 timeout=60, env=env)
+            self.assertEqual(run.returncode, 0, run.stderr)
             self.assertTrue("OK openal" in run.stdout or "SKIP openal" in run.stdout, run.stdout)
 
 
