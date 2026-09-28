@@ -151,11 +151,16 @@ build, fetched separately) unless marked "repo".
 | `load` | `0x8002B0B4` | same | states 17/32 read that block, `src/800_b.c:486-488` | fires on the edge into state 17 or 32; slot = `$a1` | medium |
 | `projection` | `0x8004923C` | `func_8004923C` = libgte `SetGeomScreen` (`ctc2 $a0, $26`, repo `src/main/8004923c.c`) | game init `func_80014444` runs InitGeom (`func_80047CB4`), then `func_8004923C(0x3E8)`, storing 0x3E8 in `D_80126950` (`src/800.c:1787`) | h = `$a0 & 0xFFFF` | high (exact instruction shape) |
 | `projection` | `0x8004921C` | `func_8004921C` = libgte `SetGeomOffset` (`sll 16; ctc2 $24/$25`, repo `src/main/8004921c.c`) | called per draw buffer by the libgs offset routine `func_80052BEC` (repo) and by overlay camera code (`src/shared/ov/func_8017C530.h:14`) | ofx/ofy = `(int16)$a0/$a1` | high |
-| `battle_start` / `battle_end` / `item_get` | TBD | none | see "Unsited events" below | none | needs runtime tracing |
+| `damage` | `0x8014BC80` in the 141 overlays of `config/dedup.us.yaml` `E_func_8014BC80` | `func_8014BC80(obj, amount)`, the shared lethal player-HP subtract (`src/shared/ov/func_8014BC80.h`: HP -= amount, or HP = 0 and `D_800B9A17 = 0`); instant kills reach it via `func_8014BC44` | exact membership list compiled into `bfm_plat_hook_sites.c` and checked against dedup.us.yaml | previous/value/max from HP and `$a1` | high. Non-lethal `func_8014BCC0` is not hooked, so its drops arrive as derived `damage` |
+| `bp_use` | `0x8014BD60`, same overlays | `func_8014BD60`, BP subtract with clamp | dedup `E_func_8014BD60` | from BP and `$a1` | high |
+| `item_get` | `0x800D0F0C` (resident) | `func_800D0F0C(slot_var, item)` stores the item in an inventory slot and stamps its time (`src/resident/resident_jr_800D00E4.c:965`); shops call it after payment (`ov_SC03_124_jr_80188544.c:3526`) | free-slot scan `func_800D0EC4` over vars 0x2F..0x3A (`:950`) | item = `$a1`, kind inventory | high for adds through it. Other paths arrive as derived `item_get` from the slot watch |
+| `item_use` | `0x800D128C` (resident) | `func_800D128C(item, age)`, the item-effect switch over ids 1..119 (`src/resident/resident_jr_800D128C.c:242`); the inventory use path `func_800D11F0` calls it, then empties the slot (`resident_jr_800D00E4.c:1197`) | heals through `func_8014BB24`, BP through `func_8014BD24` | item = `$a0` | high |
+| `battle_start` / `battle_end` | TBD | none | see "Unsited events" below | none | needs runtime tracing |
 
 **Unsited events: what was searched (2026-09-28).** Since then, `damage`,
-`bp_use`, `money` and figure `item_get` are derived from the live state
-(below). Battle boundaries and the general inventory are still open. There is no symbol,
+`bp_use`, `item_get` and `item_use` have code sites (above), and `money`
+plus figure and inventory `item_get` are also derived from the live state
+(below). Only battle boundaries are still open. There is no symbol,
 comment or runtime note for battles or items in `vendor/bfm-decomp`
 (ov_MAIN_012, resident/, shared/ov, md_*, the main-exe TUs) or in this
 repository's docs. Candidates looked at and rejected:
@@ -230,9 +235,14 @@ vendor/bfm-decomp, and `tests/test_bfm_plat.py` pins every cited line.
 | action figures | vars `0x63`..`0x8D` (43) | u8: low nibble price trend, 0x80 unlocked, 0x40 owned | shop purchase: pay `func_8018957C(-price)`, then set 0x40 (`ov_SC03_124_jr_80188544.c:3442`, `:3447`); "all owned" check over 0x2B entries (`src/800.c:22268`); unlock `func_8002AC00` | high |
 | figure prices | `0x800A6588` | u16[64] | drift between a base and 4× in `func_8002AC98`; the shop charges `D_800A6586[i]` (= entry i-1) | high |
 
-Still unknown: the general item inventory (consumables and key items).
-It is not one of the snapshot arrays above, apart from the figures. Also
-unknown: which of `D_800BA2B8`'s 0x60 bytes mean what.
+| inventory slots | script vars `0x2F`..`0x3A` (`0x800BA1E7`..`0x800BA1F2`) | u8 item id, 0 = empty (12 slots) | add `func_800D0F0C`, free-slot scan `func_800D0EC4` (`for (i = 0x2F; i < 0x3B; ...)`, `resident_jr_800D00E4.c:950-953`), find-by-item `func_800D0F8C`, use `func_800D11F0` | high |
+| slot times | halfword vars `0x14 + 2*slot` | u16 game clock when acquired | `func_800D0F0C` stamps `D_80078EAC`; `func_800D10EC` swaps an item for its aged form when `clock - time >= table[item*12]` (spoiling/maturing) | high |
+| game clock | `0x80078EAC` | s16 (live struct +0x34) | the value stamped into slots and compared in `func_800D10EC` | high (meaning as a clock: medium) |
+
+Item ids 1..119 are the cases of `func_800D128C`. The id-to-name table
+isn't needed by the platform, and its strings are retail data. Still
+unknown: what `D_800BA2B8`'s 0x60 bytes mean. It's saved with the state,
+so it may hold key items or equipment.
 
 ### Memory watches and derived events
 
@@ -262,6 +272,12 @@ changes, not from a code site, and carry `BFM_EVENT_FLAG_DERIVED`:
 | `bp_use` (17) | gauge-2 current drops | `BfmEventStat` |
 | `money` (18) | money word changes | `BfmEventStat` (max 99999) |
 | `item_get` (12) | a figure's owned bit sets | `BfmEventItem {item = figure index, count = 1, kind = BFM_ITEM_KIND_FIGURE, flags}` |
+| `item_get` (12) | an inventory slot goes from 0 to an item | `BfmEventItem {item = id, count = 1, kind = BFM_ITEM_KIND_INVENTORY, flags}` |
+
+When a code site (damage, bp_use, item_get) reports a change, the platform
+suppresses the matching derived event for that change. Consumers get
+exactly one event, with `flags = 0` from the code site or
+`BFM_EVENT_FLAG_DERIVED` from the watch.
 
 Caveats: a gauge drop is not always combat damage (scripted drains count
 too). In poll mode several changes within one frame collapse into one
@@ -362,6 +378,62 @@ whatever its pixel width.
 - Tests: `test_widescreen_projection_maths` checks every aspect, display
   width (256-640) and a range of SX values against exact fractions, plus
   the config keys and the projection hook sites.
+
+### First-run disc check
+
+`bfm_plat_disc_check.h` is the single disc check. The native lane calls
+it too, rather than keeping its own.
+- **Source:** `[disc] path` or `--disc PATH`. When that's empty, the
+  first run looks in `[disc] search` (default `disc`, next to the binary),
+  preferring a `.cue`, then `.iso`/`.img`, then `.bin`.
+- **Check:** the image opens through the `image` backend, SYSTEM.CNF's BOOT
+  line names the executable, and that executable is read straight from the
+  sectors (never through mod file replacement) and hashed with the in-house
+  SHA-256. It must be `SLUS_007.26` with SHA-256
+  `66371c3a7517e9eabd7cb6cf0c5abffe7296bd4bac29c85b8bf7bb9db349714a`.
+- **Result:** `[disc] validate = 1` (the default) makes `bfm_plat_init`
+  refuse a failing disc and log one user-facing message.
+
+| Status | When | Message (short) |
+|---|---|---|
+| `no_path` | nothing configured or found | put your US dump in `disc/`, set `[disc] path`, or `--disc` |
+| `unreadable` | missing file, size not a whole number of sectors, sector 16 not Mode 2 | the image is incomplete or not a dump |
+| `missing_tracks` | a `.cue` names a file that isn't there (named in the detail) | keep the .cue next to all its .bin files |
+| `unsupported_format` | `.chd` or an unknown extension | CHD isn't supported yet: `chdman extractcd` |
+| `not_ps1` | no ISO9660 volume, no SYSTEM.CNF, no BOOT line | not a PlayStation disc |
+| `wrong_region` | the BOOT names a Japanese/Asian or PAL serial | the port needs SLUS-00726 |
+| `wrong_disc` | another US serial | a different game |
+| `bad_dump` | SLUS_007.26 with a different hash | damaged or modified dump; re-dump |
+
+CHD: libchdr (BSD-3-Clause) is the candidate reader. It needs zlib, LZMA,
+zstd and FLAC decoders, so it's left as a later storage backend, and `.chd`
+gets the conversion hint.
+
+### Packaging (no game data)
+
+`tools/package_port.sh --binary BIN --exe <your SLUS_007.26> --extracted
+<your extracted disc> [--lib LIB ...]` stages:
+- the binary
+- the open-source libraries you pass
+- license texts (LICENSE-NOTES, PsyCross, Lua, a THIRD-PARTY list)
+- the docs, the plugin SDK headers, and the sample mods (as source)
+- a README that tells users to supply their own US disc
+
+It then runs `tools/retail_guard.py`, and writes the tarball only if the
+guard passes. The guard fails on:
+- disc-image, boot-executable, save-file or SYSTEM.CNF names
+- any file identical (SHA-256) to the user's EXE or an extracted disc file
+- any file containing 64 or more consecutive EXE bytes. The EXE is indexed
+  with aligned 32-byte windows, so any 63-byte common run is caught. Each
+  hit is extended to its full length, and low-entropy stretches such as
+  padding are ignored.
+
+The `--exe`/`--extracted` files stay on the user's machine; nothing from
+them is copied. Tests: `tests/test_package_port.py` uses a synthetic random
+"retail" EXE, including the exact 64/63-byte threshold. Run on this box
+against the real EXE, the guard found one 65-byte run (a table of guest
+code addresses) in the current `libmusashi_pc_port.a` from port/native-lane.
+That has been reported to port-int.
 
 ### Pause, screenshot, quit
 
