@@ -165,6 +165,12 @@ def main(argv=None):
             return False
         return a.psyq_lane == "all" or p["name"] not in DEVICE
 
+    try:
+        sys.path.insert(0, str(ROOT / "tools"))
+        import psyq_manifest
+        psyq_ranges = psyq_manifest.ranges()
+    except Exception:  # the split is informative only
+        psyq_manifest, psyq_ranges = None, None
     traced = {r["pc"]: r for r in counts}
     fr = Path(a.formatter)
     reg = Registry(matches, set(traced), load_formatter_ranges(fr) if fr.exists() else ())
@@ -211,6 +217,8 @@ def main(argv=None):
                     why = "matched_c_unused: lane rule " + lane_fn[pc]["rule"]
                 elif pc in psyq:
                     why = "matched_c_unused: psyq entry " + psyq[pc]["status"].lower()
+                elif psyq_ranges is not None and psyq_manifest.psyq_segment(pc, psyq_ranges):
+                    why = "matched_c_unused: PsyQ library range (lane policy excludes)"
                 else:
                     why = "matched_c_unused: not a lane candidate"
             elif rec in ("assembly", "mixed"):
@@ -294,6 +302,10 @@ def main(argv=None):
         "shadowed_executed": shadows,
         "shadowed_static": static_shadows,
         "port_shims_executed": shims,
+        "matched_c_unused_by_reason": {w: {"functions": sum(1 for u in unused if u["why"] == w),
+                                           "instructions": sum(u["instructions"] for u in unused
+                                                               if u["why"] == w)}
+                                       for w in sorted({u["why"] for u in unused})},
         "matched_c_unused_top": unused[:60],
         "lane_column_disagreements": lane_disagree,
     }

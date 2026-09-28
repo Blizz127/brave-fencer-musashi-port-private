@@ -20,6 +20,27 @@ Seeded 2026-09-28 by reading the code on `port/platform-layer` (merged
 `port/native-lane` 24d270872 and `main` f0299da37). Run the measurement
 with `tools/port_matched_ratio.py`.
 
+## Measured share (2026-09-28)
+
+`tools/port_matched_ratio.py` was run on a headless boot: a lane-ON build
+with the trace taken lane off, the guest clock and exact per-PC counts. The
+run covers the first 488 presented frames (1800 s wall); **the title screen
+was not reached**, so these figures describe boot and the intro only.
+- 390 distinct guest functions and 131.7 M interpreted instructions. 120.7 M
+  of those are the VSync wait loop (func_800424E4). The shares below are
+  given with that idle loop excluded.
+- **Byte-matched C (native lane): 2.1%** of instructions, 50 functions.
+- **Hand-written port code: 1.2%**, 42 functions: 9 PsyQ HLE, 4
+  PsyCross, and 29 guest functions the host skips or intercepts.
+- **Interpreted retail: 96.6%**, 298 functions. 196 of them have matched C
+  that isn't run natively. In most cases the lane policy keeps PsyQ
+  library ranges out: 81 functions. 67% of the non-idle instructions are
+  in PsyQ library code with no registry entry (libcd, libpad, libetc,
+  libgpu), plus the startup code at 0x80010000.
+- 31 active PsyQ shims shadow a registered matched-C function, 24 of
+  them executed in this run. 17 host-skipped functions also have matched
+  C.
+
 ## Game logic and state
 
 | ID | Divergence | Where | Why | Status |
