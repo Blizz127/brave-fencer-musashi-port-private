@@ -3800,6 +3800,14 @@ int main(int argc, char **argv) {
             else if (!bin_path) bin_path = argv[i];
         }
     }
+    {
+        /* Opt-in scripted test driver: writes pad words (player +0xAA/AC/AE,
+         * 80078DCA/DD2) and 800AE658 straight into guest RAM in gameplay. */
+        const char *action = getenv("MUSASHI_GAMEPLAY_ACTION");
+        if (action && action[0])
+            fprintf(stderr, "native_boot: DIVERGENCE MUSASHI_GAMEPLAY_ACTION=%s: scripted "
+                            "guest-RAM pad writes in gameplay (test driver, not 1:1)\n", action);
+    }
 
     if (!exe_path) {
         if (access("extracted/disc/files/SLUS_007.26", R_OK) == 0) {

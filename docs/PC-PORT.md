@@ -672,7 +672,14 @@ following pokes run only with `MUSASHI_DEBUG_FORCE=1`, print a
 A headless no-force boot reaches the title (8 `TITLE_LOAD`s, no
 refusals); gameplay, where the pokes would act, is not yet reached
 headless, so what each one covered for is not yet observed.
-`MUSASHI_GAMEPLAY_ACTION` scripted inputs are separate opt-in test drivers.
+`MUSASHI_GAMEPLAY_ACTION` scripted inputs are separate opt-in test drivers:
+they write pad words (player `+0xAA/AC/AE`, `80078DCA/DD2`) and `800AE658`
+straight into guest RAM in gameplay, and print a `DIVERGENCE` line when set.
+
+The `+0xA9` cause is a hypothesis, unproven until a gameplay run: the
+formatter's non-retail `8005F704` PadInfo getter (removed) made
+PadGetState read the wrong record, so the pad record never took the ID
+byte and the game never wrote 0x41 itself.
 
 ## Native lane: running matched decomp C on the host (2026-09-28)
 
