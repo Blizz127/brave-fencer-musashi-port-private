@@ -103,3 +103,6 @@ vendor/
 
 # Local agent session transcripts: keep local, never publish
 /codex-session-*.md
+
+# register_match.py write lock
+/provenance/matches.json.lock
