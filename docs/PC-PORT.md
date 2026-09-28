@@ -699,6 +699,38 @@ fail-closed stop the interpreter gives.
 The existing bespoke bindings (`MUSASHI_NATIVE_*` defines) are unchanged;
 their files are excluded from the table.
 
+**Host-sequenced PCs stay interpreted.** native_boot drives startup and
+observes the game at specific guest PCs (`run_startup_cpu_loop`'s
+observer list, the formatter's `cpu->pc ==` gates and named ranges such as
+`STARTUP_ENTRY`). A function whose body holds one of those PCs is refused
+by the generator (`hooks` rule, which resolves enum names too), and PsyQ
+entries whose body holds one are listed in `musashi_native_lane_hooked_psyq`
+and skipped. The IRQ dispatcher suspends the lane
+(`musashi_native_lane_suspend`), so IRQ callbacks are always interpreted.
+
+**PsyQ entries (port-plat's compat table).** `pc_port/native_lane_psyq.c`
+installs the non-STUB rows of `pc_port/platform/psyq/bfm_psyq_compat.def`
+next to the generated entries and binds guest RAM, the scratchpad and the
+GTE bridge (`musashi_gte_owner_native_begin/_end`, which take the cop2 lease
+for the call). `MUSASHI_PSYQ_LANE` selects the classes:
+
+| value | installed |
+|---|---|
+| unset, `pure` | libc, packet helpers, OT clear, CD position maths, GTE-state libgte |
+| `all` | pure + VSync, DrawSync, DrawOTag, Load/Store/MoveImage, Put{Draw,Disp}Env, SetDispMask, CdSearchFile, putchar; only with `MUSASHI_GPU=bfm_plat` (otherwise pure) |
+| `0` | none |
+
+Rows the differential probe found to differ from the retail code are held
+back by PC (`kHeldBack`, with the reason). A wrapper that refuses leaves the
+interpreter to run the retail code, as does every table-backed PsyCross
+wrapper (ratan2, RotMatrixX/Y/Z/YXZ) unless `BFM_PSYQ_PSYCROSS_ROTMATRIX`:
+PsyCross's tables equal the game's, and linking them would put retail bytes
+in the binary.
+
+Bisecting: `MUSASHI_NATIVE_LANE_RANGE=lo-hi` (hex, hi exclusive) keeps only
+those guest PCs, and `MUSASHI_NATIVE_LANE_DENY=pc,pc,...` drops PCs. The
+tracer (`MUSASHI_TRACE_FUNCS`) marks each entry `native` or `interp`.
+
 ### Memory model: guest RAM at host 0x80000000 (design (a))
 
 Two designs were evaluated:
