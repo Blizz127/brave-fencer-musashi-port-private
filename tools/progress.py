@@ -23,19 +23,81 @@ RECOVERY_KINDS = ("c", "assembly", "mixed", "unclassified")
 EXTENTS = ("function", "partial", "unclassified")
 QUALIFYING_RECOVERIES = frozenset({"c", "assembly"})
 
-# Identified split code: SLUS_007.26 t_size + MAIN.CD member 0003's code
+# Identified split code: SLUS_007.26 t_size + MAIN.CD members 0001 [0x800CEDFC,
+# 0x800CF3E8), 0008 [0x800CEDFC, 0x800CF0FC), 0009 [0x800CD384, 0x800CDD08)
+# + member 0003's code
 # [0x800CEED0, 0x800D3574) (including two handwritten MDEC routines) + member
 # 0007 + member 0010's code [0x800CEDFC, 0x800D3408) + member 0011's code
-# [0x800CEE74, 0x800D31F8) + member 0012's code chunk [0x28000, 0x86000). Overlay members not yet shown to be code are outside
+# [0x800CEE74, 0x800D31F8) + member 0012's code chunk [0x28000, 0x86000)
+# + the md members 0013-0047 and the SC md scene modules listed below. Overlay members not yet shown to be code are outside
 # this denominator, and so are their registered ranges: a region only counts
 # toward coverage once its code size is part of the denominator.
 IDENTIFIED_REGION_BYTES = {
     "main": 411648,
+    "main_0001": 1516,
     "main_0003": 18084,
     "main_0007": 9600,
+    "main_0008": 768,
+    "main_0009": 2436,
     "main_0010": 17932,
     "main_0011": 17284,
     "main_0012": 385024,
+    # MAIN.CD md members 0013-0047: each member's code range, from after
+    # the payload's leading data word to its last function (see each
+    # config/overlay_main_NNNN.yaml).
+    "main_0013": 2596,
+    "main_0014": 1968,
+    "main_0015": 3252,
+    "main_0016": 1808,
+    "main_0017": 1292,
+    "main_0018": 2012,
+    "main_0019": 4512,
+    "main_0020": 1000,
+    "main_0021": 1776,
+    "main_0022": 3716,
+    "main_0023": 308,
+    "main_0024": 252,
+    "main_0025": 3696,
+    "main_0026": 3332,
+    "main_0027": 4904,
+    "main_0028": 4232,
+    "main_0029": 1680,
+    "main_0030": 1612,
+    "main_0031": 4400,
+    "main_0032": 1120,
+    "main_0033": 2636,
+    "main_0034": 7008,
+    "main_0035": 1132,
+    "main_0036": 4488,
+    "main_0037": 1992,
+    "main_0038": 3384,
+    "main_0039": 4128,
+    "main_0040": 2748,
+    "main_0041": 2504,
+    "main_0042": 628,
+    "main_0043": 3004,
+    "main_0044": 5828,
+    "main_0045": 2888,
+    "main_0046": 5360,
+    "main_0047": 2984,
+    # SC04/SC05/SC07 md scene modules (uncompressed): code ranges from each
+    # config/overlay_<region>.yaml.
+    "sc04_0024": 2596,
+    "sc04_0025": 2764,
+    "sc04_0026": 3940,
+    "sc04_0027": 13120,
+    "sc04_0028": 3052,
+    "sc04_0029": 2420,
+    "sc04_0030": 2712,
+    "sc05_0023": 2636,
+    "sc05_0024": 2804,
+    "sc05_0025": 3980,
+    "sc05_0026": 13160,
+    "sc05_0027": 3092,
+    "sc05_0028": 2460,
+    "sc05_0029": 2752,
+    "sc07_0003": 25064,
+    "sc07_0004": 63552,
 }
 IDENTIFIED_CODE_BYTES = sum(IDENTIFIED_REGION_BYTES.values())
 # ceil(30% of 806272) = 241882 unique qualifying bytes.

@@ -2,44 +2,25 @@
  * SHA256(span)=313b5eea33364601805618768eeebb9b89b12e51c5c28924b994c4d6d3bb166b.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Sony PsyQ library routine (vendor/bfm-decomp keeps it as INCLUDE_ASM); C written from the retail disassembly. */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_8003EAB4 - byte-exact against retail at -O2 (tools/register_match.py). */
 
-extern s32 *D_800C73D8;
+typedef struct { u8 *read; u8 *f4; u8 pad8[0x14 - 8]; u8 f14; u8 pad15[0x20 - 0x15]; u8 f20; u8 f21; u8 pad22[0x98 - 0x22]; u32 f98; u8 pad9C[0xB0 - 0x9C]; } SndSeq;
+extern SndSeq *D_800C73D8[];
+void func_8003EAB4(s16 sep, s16 seq)
+{
+    SndSeq *p = &D_800C73D8[sep][seq];
 
-void func_8003EAB4(s32 arg0, s16 arg1) {
-    s32 *temp_a0;
-    s32 temp_a2;
-    void *temp_a2_2;
-    void *temp_a3;
-    void *temp_v1;
-    void *temp_v1_2;
-    void *temp_v1_3;
-    void *temp_v1_4;
-    void *temp_v1_5;
-
-    temp_a0 = ((s32) (arg0 << 0x10) >> 0xE) + &D_800C73D8;
-    temp_a2 = arg1 * 0xB0;
-    temp_a3 = *temp_a0 + temp_a2;
-    M2C_FIELD(temp_a3, s8 *, 0x20) = 1;
-    M2C_FIELD(temp_a3, s8 *, 0x21) = 0;
-    temp_v1 = temp_a2 + *temp_a0;
-    M2C_FIELD(temp_v1, s32 *, 0x98) = (s32) (M2C_FIELD(temp_v1, s32 *, 0x98) & ~0x100);
-    temp_v1_2 = temp_a2 + *temp_a0;
-    M2C_FIELD(temp_v1_2, s32 *, 0x98) = (s32) (M2C_FIELD(temp_v1_2, s32 *, 0x98) & ~8);
-    temp_v1_3 = temp_a2 + *temp_a0;
-    M2C_FIELD(temp_v1_3, s32 *, 0x98) = (s32) (M2C_FIELD(temp_v1_3, s32 *, 0x98) & ~2);
-    temp_v1_4 = temp_a2 + *temp_a0;
-    M2C_FIELD(temp_v1_4, s32 *, 0x98) = (s32) (M2C_FIELD(temp_v1_4, s32 *, 0x98) & ~4);
-    temp_v1_5 = temp_a2 + *temp_a0;
-    M2C_FIELD(temp_v1_5, s32 *, 0x98) = (s32) (M2C_FIELD(temp_v1_5, s32 *, 0x98) & ~0x200);
-    M2C_FIELD(temp_a3, s8 *, 0x14) = 1;
-    M2C_FIELD(temp_a3, s32 *, 0) = (s32) M2C_FIELD(temp_a3, s32 *, 4);
-    temp_a2_2 = temp_a2 + *temp_a0;
-    M2C_FIELD(temp_a2_2, s32 *, 0x98) = (s32) (M2C_FIELD(temp_a2_2, s32 *, 0x98) | 1);
+    p->f20 = 1;
+    p->f21 = 0;
+    D_800C73D8[sep][seq].f98 &= ~0x100;
+    D_800C73D8[sep][seq].f98 &= ~8;
+    D_800C73D8[sep][seq].f98 &= ~2;
+    D_800C73D8[sep][seq].f98 &= ~4;
+    D_800C73D8[sep][seq].f98 &= ~0x200;
+    p->read = p->f4;
+    p->f14 = 1;
+    D_800C73D8[sep][seq].f98 |= 1;
 }

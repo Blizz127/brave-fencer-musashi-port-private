@@ -11,15 +11,18 @@
 It also reports unique qualifying coverage: the overlap-union of complete
 functions (`extent` `function`) recovered as reviewed `c` or `assembly`,
 counted once per region, against the identified split-code denominator
-(SLUS_007.26 `t_size` 411648 + MAIN.CD member 0007 9600 + member 0010 code
-`[0x800CEDFC, 0x800D3408)` 17932 + member 0012 code chunk `[0x28000, 0x86000)`
-385024 = 824204 bytes). The 30% bar is 247262 unique qualifying bytes.
+(the per-region code sizes in `IDENTIFIED_REGION_BYTES` in `tools/progress.py`:
+SLUS_007.26 `t_size`, the identified code ranges of the MAIN.CD members that
+have a splat disassembly, and the SC scene modules set up so far; the tool
+prints the current total). The 30% bar is 30% of that total.
 `partial`/`unclassified`/`mixed` rows and non-function extents are excluded
 from that numerator, and so are rows in regions that are not yet part of the
 denominator: a region's matches count only once its code size is added.
-(Member 0010 was added on 2026-09-28 once it had a splat disassembly; before
-that its registered ranges were counted against a denominator that omitted
-it, which slightly overstated coverage.)
+Adding a region grows the denominator, so the percentage can fall while the
+registered bytes rise; compare byte counts across changes. (Member 0010 was
+added on 2026-09-28 once it had a splat disassembly; before that its
+registered ranges were counted against a denominator that omitted it, which
+slightly overstated coverage.)
 
 Alongside it, always reported and never alone, is the portable C-only
 subset: the same overlap-union restricted to reviewed `c` functions. Only
@@ -79,7 +82,7 @@ two size buckets only. The command-line output uses those accurate labels.
 
 ## The function ceiling: why the meter cannot reach 100%
 
-The denominator (824204 bytes) is identified *code-segment* bytes, not
+The denominator is identified *code-segment* bytes, not
 function bytes: the flat SLUS `.text`, all of member 0007, and member
 0012's code chunk all embed data-in-text (jump tables, pointer tables,
 globals, string/const pools) plus alignment padding. Those bytes can never
