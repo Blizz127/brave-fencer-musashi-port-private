@@ -18,10 +18,13 @@ static const BfmPlatEventInfo catalog[BFM_EVENT_COUNT] = {
     {BFM_EVENT_ROOM_EXIT, "room_exit", "BfmEventRoom", "scene-loop exit (bfm_plat_hook_sites.c)", "the current room is being left"},
     {BFM_EVENT_BATTLE_START, "battle_start", "BfmEventBattle", "native lane: boss/scripted fight setup (guest site TBD)", "a boss or scripted fight began"},
     {BFM_EVENT_BATTLE_END, "battle_end", "BfmEventBattle", "native lane: fight resolution (guest site TBD)", "that fight ended (result: 1 won, 0 lost/fled)"},
-    {BFM_EVENT_ITEM_GET, "item_get", "BfmEventItem", "native lane: inventory add (guest site TBD)", "an item was added to the inventory"},
+    {BFM_EVENT_ITEM_GET, "item_get", "BfmEventItem", "derived: figure owned bit (script vars 0x63..0x8D); other items TBD", "an item was added to the inventory"},
     {BFM_EVENT_SAVE, "save", "BfmEventSave", "memory-card state machine (bfm_plat_hook_sites.c)", "the game saved to a slot"},
     {BFM_EVENT_LOAD, "load", "BfmEventSave", "native lane: memory-card load", "the game loaded from a slot"},
     {BFM_EVENT_PROJECTION, "projection", "BfmEventProjection", "native lane: libgte SetGeomScreen/SetGeomOffset", "the game changed GTE H or OFX/OFY"},
+    {BFM_EVENT_DAMAGE, "damage", "BfmEventStat", "derived: watch on gauge-1 (HP) current 0x80078EB4", "HP went down"},
+    {BFM_EVENT_BP_USE, "bp_use", "BfmEventStat", "derived: watch on gauge-2 (BP) current 0x80078EB8", "BP went down"},
+    {BFM_EVENT_MONEY, "money", "BfmEventStat", "derived: watch on money 0x80078E8C", "money changed"},
 };
 
 const BfmPlatEventInfo *bfm_plat_event_info(BfmEvent e) {

@@ -36,6 +36,8 @@ void bfm_plat_config_defaults(BfmPlatConfig *cfg) {
     cfg->mods_enabled = 1;
     copy_str(cfg->mod_dirs, sizeof cfg->mod_dirs, "mods");
     copy_str(cfg->dump_dir, sizeof cfg->dump_dir, "dump");
+    cfg->watch_poll = 1;
+    cfg->derived_events = 1;
     cfg->console = 1;
     cfg->log_level = 2;
 }
@@ -165,6 +167,8 @@ int bfm_plat_config_set(BfmPlatConfig *cfg, const char *key,
     else if (strcmp(key, "mods.dirs") == 0) r = set_path(cfg->mod_dirs, sizeof cfg->mod_dirs, value);
     else if (strcmp(key, "mods.dump_textures") == 0) r = set_bool(&cfg->dump_textures, value);
     else if (strcmp(key, "mods.dump_dir") == 0) r = set_path(cfg->dump_dir, sizeof cfg->dump_dir, value);
+    else if (strcmp(key, "mods.watch_poll") == 0) r = set_bool(&cfg->watch_poll, value);
+    else if (strcmp(key, "mods.derived_events") == 0) r = set_bool(&cfg->derived_events, value);
     else if (strcmp(key, "debug.console") == 0) r = set_bool(&cfg->console, value);
     else if (strcmp(key, "debug.log_level") == 0) r = set_int(&cfg->log_level, value, 0, 4);
     if (r != BFM_PLAT_OK) cfg->rejected_values++;
@@ -314,8 +318,9 @@ int bfm_plat_config_save_file(const BfmPlatConfig *c, const char *path) {
     fprintf(f, "[disc]\npath = %s\n\n[storage]\nsave_dir = %s\n\n",
             c->disc_path, c->save_dir);
     fprintf(f, "[mods]\nenabled = %d\ndirs = %s\ndump_textures = %d\n"
-               "dump_dir = %s\n\n",
-            c->mods_enabled, c->mod_dirs, c->dump_textures, c->dump_dir);
+               "dump_dir = %s\nwatch_poll = %d\nderived_events = %d\n\n",
+            c->mods_enabled, c->mod_dirs, c->dump_textures, c->dump_dir,
+            c->watch_poll, c->derived_events);
     fprintf(f, "[debug]\nconsole = %d\nlog_level = %d\n", c->console,
             c->log_level);
     for (i = 0; i < c->entry_count; i++) {

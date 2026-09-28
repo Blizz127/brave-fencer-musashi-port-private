@@ -23,6 +23,7 @@ static void reset_all(void) {
     bfm_plat_hooks_reset();
     bfm_plat_console_ui_reset();
     bfm_plat_projection_reset();
+    bfm_plat_watch_reset();
 }
 
 /* ------------------------------------------------------------ guest RAM */
@@ -1139,6 +1140,173 @@ static int group_widescreen(void) {
 }
 
 
+
+/* ------------------------------------------------------------- watches */
+static unsigned w_hits;
+static uint8_t w_old[8], w_new[8];
+static uint32_t w_addr;
+static void w_rec(void *u, uint32_t a, uint32_t len, const uint8_t *o, const uint8_t *n) {
+    (void)u;
+    w_hits++;
+    w_addr = a;
+    memcpy(w_old, o, len);
+    memcpy(w_new, n, len);
+}
+static BfmEventStat last_stat[BFM_EVENT_COUNT];
+static BfmEventItem last_item;
+static unsigned stat_n[BFM_EVENT_COUNT], item_n;
+static void stat_rec(void *u, BfmEvent e, void *p) {
+    (void)u;
+    if (e == BFM_EVENT_ITEM_GET) { item_n++; last_item = *(BfmEventItem *)p; return; }
+    stat_n[e]++;
+    last_stat[e] = *(BfmEventStat *)p;
+}
+static int watch_plugin_id;
+static int watch_plugin_init(const BfmPluginHost *h, BfmPluginInfo *info) {
+    info->abi_version = BFM_PLUGIN_ABI_VERSION;
+    CHECK(h->abi_version >= 2 && h->watch_add && h->watch_remove);
+    watch_plugin_id = h->watch_add(0x80005000, 4, w_rec, NULL);
+    return watch_plugin_id > 0 ? 0 : -1;
+}
+
+static int group_watch(int argc, char **argv) {
+    uint8_t o[4] = {1, 2, 3, 4}, n[4] = {1, 9, 3, 4};
+    BfmPlatConfig c;
+    BfmPlatClock fake;
+    int id;
+    CHECK(argc >= 1);
+    reset_all();
+    bind_ram();
+    memset(ram, 0, sizeof ram);
+    CHECK(bfm_plat_watch_add(0x80001000, 0, w_rec, NULL) == BFM_PLAT_INVALID);
+    CHECK(bfm_plat_watch_add(0x80001000, 65, w_rec, NULL) == BFM_PLAT_INVALID);
+    id = bfm_plat_watch_add(0x80001000, 4, w_rec, NULL);
+    CHECK(id > 0);
+    CHECK(bfm_plat_watch_hit(0x80001002, 1) && bfm_plat_watch_hit(0xA0001000, 4));   /* KSEG1 mirror */
+    CHECK(bfm_plat_watch_hit(0x00000FFE, 4));           /* straddles the start */
+    CHECK(!bfm_plat_watch_hit(0x80000FFC, 4) && !bfm_plat_watch_hit(0x80001004, 2));
+    CHECK(!bfm_plat_watch_hit(0x80101000, 4));
+    /* write hook: a 1-byte store in the middle */
+    ram[0x1001] = 2;
+    bfm_plat_watch_resync();
+    bfm_plat_watch_on_write(0x80001001, 1, &o[1], &n[1]);
+    CHECK(w_hits == 1 && w_addr == 0x80001000 && w_old[1] == 2 && w_new[1] == 9 && w_new[0] == 0);
+    bfm_plat_watch_on_write(0x80001001, 1, &n[1], &n[1]);      /* no change: no fire */
+    CHECK(w_hits == 1);
+    bfm_plat_watch_on_write(0x80002000, 4, o, n);               /* elsewhere */
+    CHECK(w_hits == 1);
+    /* poll: sees RAM changes made without the hook */
+    ram[0x1003] = 0x77;
+    CHECK(bfm_plat_watch_poll() == 1 && w_hits == 2 && w_new[3] == 0x77);
+    CHECK(bfm_plat_watch_poll() == 0);
+    CHECK(bfm_plat_watch_remove(id) == BFM_PLAT_OK && bfm_plat_watch_remove(id) == BFM_PLAT_NOT_FOUND);
+    CHECK(!bfm_plat_watch_hit(0x80001000, 4));
+
+    /* derived events through the platform, poll mode */
+    put16(BFM_GUEST_HP_MAX, 250); put16(BFM_GUEST_HP, 250);
+    put16(BFM_GUEST_BP_MAX, 300); put16(BFM_GUEST_BP, 120);
+    put32g(BFM_GUEST_MONEY, 100);
+    bfm_plat_config_defaults(&c);
+    snprintf(c.mod_dirs, sizeof c.mod_dirs, "%s", argv[0]);
+    strcpy(c.renderer, "null");
+    CHECK(bfm_plat_mods_register_static_plugin("watcher", watch_plugin_init, NULL) == BFM_PLAT_OK);
+    CHECK(bfm_plat_init(&c) == BFM_PLAT_OK);
+    fake.now_ns = probe_now; fake.sleep_ns = probe_sleep; fake.user = NULL;
+    bfm_plat_timing_set_clock(&fake);
+    CHECK(bfm_plat_watch_count() == 5);                 /* 4 derived + the plugin's */
+    bfm_plat_mods_subscribe(BFM_EVENT_DAMAGE, stat_rec, NULL);
+    bfm_plat_mods_subscribe(BFM_EVENT_BP_USE, stat_rec, NULL);
+    bfm_plat_mods_subscribe(BFM_EVENT_MONEY, stat_rec, NULL);
+    bfm_plat_mods_subscribe(BFM_EVENT_ITEM_GET, stat_rec, NULL);
+    bfm_plat_frame_end(1);
+    CHECK(stat_n[BFM_EVENT_DAMAGE] == 0 && stat_n[BFM_EVENT_MONEY] == 0);
+    put16(BFM_GUEST_HP, 200);
+    put16(BFM_GUEST_BP, 100);
+    put32g(BFM_GUEST_MONEY, 40);
+    ram[(BFM_GUEST_SCRIPT_VARS & 0x1FFFFF) + BFM_GUEST_FIGURE_VAR0 + 5] = BFM_GUEST_FIGURE_UNLOCK | BFM_GUEST_FIGURE_OWNED;
+    bfm_plat_frame_end(1);
+    CHECK(stat_n[BFM_EVENT_DAMAGE] == 1 && last_stat[BFM_EVENT_DAMAGE].value == 200 &&
+          last_stat[BFM_EVENT_DAMAGE].previous == 250 && last_stat[BFM_EVENT_DAMAGE].max == 250 &&
+          last_stat[BFM_EVENT_DAMAGE].flags == BFM_EVENT_FLAG_DERIVED);
+    CHECK(stat_n[BFM_EVENT_BP_USE] == 1 && last_stat[BFM_EVENT_BP_USE].max == 300);
+    CHECK(stat_n[BFM_EVENT_MONEY] == 1 && last_stat[BFM_EVENT_MONEY].value == 40 &&
+          last_stat[BFM_EVENT_MONEY].previous == 100);
+    CHECK(item_n == 1 && last_item.item == 5 && last_item.kind == BFM_ITEM_KIND_FIGURE &&
+          last_item.count == 1 && last_item.flags == BFM_EVENT_FLAG_DERIVED);
+    /* heal: no damage event; write-hook path fires immediately */
+    put16(BFM_GUEST_HP, 250);
+    bfm_plat_frame_end(1);
+    CHECK(stat_n[BFM_EVENT_DAMAGE] == 1);
+    {
+        uint8_t ov[2] = {250, 0}, nv[2] = {10, 0};
+        put16(BFM_GUEST_HP, 10);
+        bfm_plat_watch_on_write(BFM_GUEST_HP, 2, ov, nv);
+        CHECK(stat_n[BFM_EVENT_DAMAGE] == 2 && last_stat[BFM_EVENT_DAMAGE].value == 10);
+        bfm_plat_frame_end(1);                          /* poll sees no further change */
+        CHECK(stat_n[BFM_EVENT_DAMAGE] == 2);
+    }
+    /* paused frames don't poll */
+    bfm_plat_pause(1);
+    put32g(BFM_GUEST_MONEY, 41);
+    bfm_plat_frame_end(1);
+    CHECK(stat_n[BFM_EVENT_MONEY] == 1);
+    bfm_plat_pause(0);
+    bfm_plat_frame_end(1);
+    CHECK(stat_n[BFM_EVENT_MONEY] == 2);
+    /* the plugin's watch is dropped with the mods, the derived ones stay */
+    bfm_plat_mods_shutdown();
+    CHECK(bfm_plat_watch_count() == 4);
+    bfm_plat_shutdown();
+    CHECK(bfm_plat_watch_count() == 0);
+    /* derived_events = 0 */
+    c.derived_events = 0;
+    c.mods_enabled = 0;
+    CHECK(bfm_plat_init(&c) == BFM_PLAT_OK && bfm_plat_watch_count() == 0);
+    return 0;
+}
+
+/* cheat_pack DIR: DIR holds a copy of pc_port/mods/examples/cheat_pack. */
+static int group_cheat_pack(int argc, char **argv) {
+    BfmPlatConfig c;
+    BfmPlatClock fake;
+    char out[2048];
+    unsigned i;
+    CHECK(argc >= 1);
+    reset_all();
+    bind_ram();
+    memset(ram, 0, sizeof ram);
+    bfm_plat_config_defaults(&c);
+    snprintf(c.mod_dirs, sizeof c.mod_dirs, "%s", argv[0]);
+    strcpy(c.renderer, "null");
+    CHECK(bfm_plat_init(&c) == BFM_PLAT_OK);
+    fake.now_ns = probe_now; fake.sleep_ns = probe_sleep; fake.user = NULL;
+    bfm_plat_timing_set_clock(&fake);
+    CHECK(bfm_plat_cheat_count() == 4);
+    for (i = 0; i < 4; i++) CHECK(!bfm_plat_cheat_get(i)->enabled);   /* off by default */
+    put16(BFM_GUEST_HP_MAX, 300); put16(BFM_GUEST_HP, 10);
+    put16(BFM_GUEST_BP_MAX, 400); put16(BFM_GUEST_BP, 5);
+    put32g(BFM_GUEST_MONEY, 12);
+    bfm_plat_frame_end(1);
+    CHECK(ram[0x78EB4] == 10 && ram[0x78E8C] == 12);            /* nothing applied */
+    CHECK(bfm_plat_console_exec("cheat infinite_hp on", out, sizeof out) == 0);
+    CHECK(bfm_plat_console_exec("cheat infinite_bp on", out, sizeof out) == 0);
+    CHECK(bfm_plat_console_exec("cheat max_money on", out, sizeof out) == 0);
+    bfm_plat_frame_end(1);
+    CHECK(ram[0x78EB4] == 44 && ram[0x78EB5] == 1);             /* 300 */
+    CHECK(ram[0x78EB8] == 0x90 && ram[0x78EB9] == 1);           /* 400 */
+    CHECK(ram[0x78E8C] == 0x9F && ram[0x78E8D] == 0x86 && ram[0x78E8E] == 1);   /* 99999 */
+    put16(BFM_GUEST_HP, 1);                                     /* take damage */
+    bfm_plat_frame_end(1);
+    CHECK(ram[0x78EB4] == 44 && ram[0x78EB5] == 1);
+    CHECK(bfm_plat_console_exec("cheat max_hp_gauge on", out, sizeof out) == 0);
+    bfm_plat_frame_end(1);
+    bfm_plat_frame_end(1);
+    CHECK(ram[0x78EB2] == 0xF4 && ram[0x78EB3] == 1 && ram[0x78EB4] == 0xF4);  /* 500 */
+    CHECK(bfm_plat_console_exec("cheats", out, sizeof out) == 0);
+    printf("%s", out);
+    return 0;
+}
+
 #ifdef BFM_PLAT_WITH_LUA
 /* lua MODSDIR: the pytest writes lua_hello + test mods there. */
 static int group_lua(int argc, char **argv) {
@@ -1256,6 +1424,8 @@ int main(int argc, char **argv) {
     else if (strcmp(g, "pause_screenshot") == 0) r = group_pause_screenshot(argc - 2, argv + 2);
     else if (strcmp(g, "font") == 0) r = group_font();
     else if (strcmp(g, "widescreen") == 0) r = group_widescreen();
+    else if (strcmp(g, "watch") == 0) r = group_watch(argc - 2, argv + 2);
+    else if (strcmp(g, "cheat_pack") == 0) r = group_cheat_pack(argc - 2, argv + 2);
 #ifdef BFM_PLAT_WITH_LUA
     else if (strcmp(g, "lua") == 0) r = group_lua(argc - 2, argv + 2);
 #endif

@@ -4,6 +4,10 @@
 #include "bfm_plat_mods.h"
 #include "bfm_plat_console.h"
 #include "bfm_plat_ini.h"
+#include "bfm_plat_watch.h"
+
+int bfm_plat_watch_drop_from(int first_id);
+int bfm_plat_watch_next_id(void);
 
 #include <ctype.h>
 #include <stdio.h>
@@ -97,6 +101,22 @@ static int loading_mod = -1;
 /* Subscriptions with ids >= this were made by mods and are dropped on
  * shutdown (their code may be unloaded). */
 static int first_mod_sub_id = 1;
+static int first_mod_watch_id = 1;
+
+/* cheats.ini copy cheats: copy `width` bytes from src to address each frame. */
+typedef struct CopyCheat {
+    uint32_t src, dst;
+    uint8_t width;
+} CopyCheat;
+static CopyCheat copy_cheats[BFM_PLAT_CHEATS_MAX];
+static unsigned copy_cheat_count;
+
+static void copy_cheat_apply(void *user) {
+    CopyCheat *c = (CopyCheat *)user;
+    uint8_t b[4];
+    if (bfm_plat_guest_read(c->src, b, c->width) == BFM_PLAT_OK)
+        bfm_plat_guest_write(c->dst, b, c->width);
+}
 
 /* ---------------------------------------------------------------- log */
 
@@ -569,12 +589,23 @@ typedef struct CheatParse {
     char desc[128];
     int enabled;
     int have;
+    int has_copy;
+    uint32_t copy_from;
 } CheatParse;
 
 static void flush_cheat(CheatParse *p) {
     if (!p->have) return;
     p->cheat.name = p->name;
     p->cheat.description = p->desc;
+    if (p->has_copy && (p->cheat.width == 1 || p->cheat.width == 2 || p->cheat.width == 4) &&
+        copy_cheat_count < BFM_PLAT_CHEATS_MAX) {
+        CopyCheat *c = &copy_cheats[copy_cheat_count++];
+        c->src = p->copy_from;
+        c->dst = p->cheat.address;
+        c->width = p->cheat.width;
+        p->cheat.apply = copy_cheat_apply;
+        p->cheat.user = c;
+    }
     if (p->cheat.width == 1 || p->cheat.width == 2 || p->cheat.width == 4) {
         if (bfm_plat_cheat_register_copy(&p->cheat, p->mod) == BFM_PLAT_OK) {
             mods[p->mod].cheats++;
@@ -601,6 +632,8 @@ static int cheat_cb(void *user, const char *section, const char *key,
             p->desc[0] = '\0';
             p->enabled = 0;
             p->have = 1;
+            p->has_copy = 0;
+            p->copy_from = 0;
         }
     }
     if (!p->have) return 1;
@@ -608,6 +641,10 @@ static int cheat_cb(void *user, const char *section, const char *key,
         p->cheat.address = (uint32_t)v;
     else if (strcmp(key, "value") == 0 && bfm_plat_ini_long(value, &v))
         p->cheat.value = (uint32_t)v;
+    else if (strcmp(key, "copy_from") == 0 && bfm_plat_ini_long(value, &v)) {
+        p->copy_from = (uint32_t)v;
+        p->has_copy = 1;
+    }
     else if (strcmp(key, "width") == 0 && bfm_plat_ini_long(value, &v))
         p->cheat.width = (uint8_t)v;
     else if (strcmp(key, "description") == 0)
@@ -660,6 +697,8 @@ static void init_host(unsigned i) {
     h->set_cheat = bfm_plat_cheat_set;
     h->register_command = host_register_command;
     h->config_get = host_config_get;
+    h->watch_add = bfm_plat_watch_add;
+    h->watch_remove = bfm_plat_watch_remove;
 }
 
 const BfmPluginHost *bfm_plat_mods_host(unsigned i) {
@@ -820,6 +859,8 @@ int bfm_plat_mods_init(const BfmPlatModsOptions *opt) {
     mod_count = 0;
     initialized = 1;
     first_mod_sub_id = next_sub_id;
+    first_mod_watch_id = bfm_plat_watch_next_id();
+    copy_cheat_count = 0;
     copy_str(dirs, sizeof dirs, opt && opt->dirs ? opt->dirs : "mods");
     for (tok = dirs; tok && *tok; tok = rest) {
         ScanCtx ctx;
@@ -873,6 +914,7 @@ void bfm_plat_mods_shutdown(void) {
         if (subs[i].id >= first_mod_sub_id) subs[i].fn = NULL;
     bfm_plat_cheat_drop_owned();
     bfm_plat_console_drop_owned();
+    bfm_plat_watch_drop_from(first_mod_watch_id);
     for (i = 0; i < asset_count; i++) free(assets[i].data);
     free(assets);
     assets = NULL;

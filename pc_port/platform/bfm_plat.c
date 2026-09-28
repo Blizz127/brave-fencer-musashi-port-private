@@ -93,6 +93,8 @@ int bfm_plat_init(const BfmPlatConfig *cfg) {
 #ifdef BFM_PLAT_WITH_LUA
     bfm_plat_script_lua_register();
 #endif
+    bfm_plat_watch_reset();
+    if (cfg_copy.derived_events) bfm_plat_derived_events_enable();
     bfm_plat_console_init(&cfg_copy);
     bfm_plat_events_register_console();
     bfm_plat_console_register("pause", "pause - toggle pause", cmd_pause, NULL);
@@ -120,6 +122,7 @@ void bfm_plat_shutdown(void) {
     bfm_plat_mods_shutdown();
     bfm_plat_console_shutdown();
     bfm_plat_console_ui_open(0);
+    bfm_plat_watch_reset();
     bfm_plat_disc_close();
     bfm_plat_input_close();
     bfm_plat_audio_close();
@@ -269,6 +272,7 @@ static void take_pending_screenshot(void) {
 
 int bfm_plat_frame_hook_end(void) {
     if (!up) return BFM_PLAT_NOT_READY;
+    if (cfg_copy.watch_poll && !paused) bfm_plat_watch_poll();
     take_pending_screenshot();
     if (!paused) bfm_plat_mods_emit(BFM_EVENT_FRAME_END, NULL);
     draw_overlays();
@@ -279,6 +283,7 @@ int bfm_plat_frame_hook_end(void) {
 int bfm_plat_frame_end(unsigned fields) {
     int r;
     if (!up) return BFM_PLAT_NOT_READY;
+    if (cfg_copy.watch_poll && !paused) bfm_plat_watch_poll();
     take_pending_screenshot();
     if (!paused) bfm_plat_mods_emit(BFM_EVENT_FRAME_END, NULL);
     draw_overlays();

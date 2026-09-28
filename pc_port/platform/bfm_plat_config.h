@@ -16,7 +16,8 @@
  *   [backends] renderer, audio, input, storage   (backend names)
  *   [disc]     path       (the user's own disc image: .cue, .bin or .iso)
  *   [storage]  save_dir   (memory card files)
- *   [mods]     enabled, dirs (';'-separated), dump_textures, dump_dir
+ *   [mods]     enabled, dirs (';'-separated), dump_textures, dump_dir,
+ *              watch_poll, derived_events
  *   [debug]    console, log_level
  *
  * Command line: --config PATH, --set section.key=value, --widescreen,
@@ -68,6 +69,8 @@ typedef struct BfmPlatConfig {
     char mod_dirs[BFM_PLAT_PATH_MAX];
     int dump_textures;
     char dump_dir[BFM_PLAT_PATH_MAX];
+    int watch_poll;          /* poll guest-memory watches each frame */
+    int derived_events;      /* damage/bp_use/money/item_get from watches */
     /* debug */
     int console;
     int log_level;

@@ -94,6 +94,24 @@ int bfm_plat_overlay_matches(const char *pattern, const char *name);
 #define BFM_GUEST_MAJOR_MODE   0x800B99F0u  /* u16 base+0xA3C0 (func_80011B7C arg) */
 #define BFM_GUEST_SCENE_PHASE  0x800B99F6u  /* u16 base+0xA3C6 = D_800B99F6 */
 #define BFM_GUEST_CARD_STATE   0x800760ACu  /* s32 D_800760AC memcard state */
+/* Live game state (the 0x98-byte struct D_80078E78 and friends that
+ * func_80029774 snapshots into each 0x2DC-byte save record; see
+ * docs/ARCHITECTURE-PORT.md "Live game state" for the evidence). */
+#define BFM_GUEST_LIVE_STRUCT   0x80078E78u  /* 0x98 bytes */
+#define BFM_GUEST_PLAY_TIME     0x80078E7Cu  /* u8 frames(/30), s, min, h (<=99:59:59) */
+#define BFM_GUEST_MONEY         0x80078E8Cu  /* s32, 0..99999 */
+#define BFM_GUEST_HP_MAX        0x80078EB2u  /* u16 gauge 1 max, <= 500 */
+#define BFM_GUEST_HP            0x80078EB4u  /* s16 gauge 1 current */
+#define BFM_GUEST_BP_MAX        0x80078EB6u  /* u16 gauge 2 max, <= 0x662 */
+#define BFM_GUEST_BP            0x80078EB8u  /* s16 gauge 2 current */
+#define BFM_GUEST_STORY_FLAGS   0x800AE648u  /* 64 bytes = 512 bit flags */
+#define BFM_GUEST_SCRIPT_VARS   0x800BA1B8u  /* 256 bytes, byte/halfword vars */
+#define BFM_GUEST_FIGURE_VAR0   0x63u        /* var index of figure 0 (43 of them) */
+#define BFM_GUEST_FIGURE_COUNT  43u
+#define BFM_GUEST_FIGURE_OWNED  0x40u        /* var bit: bought */
+#define BFM_GUEST_FIGURE_UNLOCK 0x80u        /* var bit: in the shop */
+#define BFM_GUEST_FIGURE_PRICES 0x800A6588u  /* u16[64]; figure n at [n] */
+
 #define BFM_GUEST_REG_A0 4u
 #define BFM_GUEST_REG_A1 5u
 

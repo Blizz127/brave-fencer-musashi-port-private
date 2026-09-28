@@ -17,6 +17,7 @@
  *   bfm.set_cheat(name, on)
  *   bfm.command(name, help, fn)   fn(arg1, ...) returns the reply string
  *   bfm.config(key)               "section.key" or nil
+ *   id = bfm.watch(addr, len, fn(addr, old, new)), bfm.unwatch(id)
  *   bfm.PAD_* / bfm.HOTKEY_*      button and hotkey masks
  *
  * The "input" payload is {pads = {{buttons=, lx=, ly=, rx=, ry=,
@@ -72,7 +73,8 @@ static unsigned hook_count;
 static const char *const event_names[BFM_EVENT_COUNT] = {
     "boot", "shutdown", "frame_begin", "frame_end", "vsync", "input",
     "before_present", "after_present", "room_enter", "room_exit",
-    "battle_start", "battle_end", "item_get", "save", "load", "projection"
+    "battle_start", "battle_end", "item_get", "save", "load", "projection",
+    "damage", "bp_use", "money"
 };
 
 static LuaMod *self_of(lua_State *L) {
@@ -157,6 +159,16 @@ static void push_payload(lua_State *L, BfmEvent e, void *p) {
     case BFM_EVENT_ITEM_GET:
         set_int(L, "item", ((BfmEventItem *)p)->item);
         set_int(L, "count", ((BfmEventItem *)p)->count);
+        set_int(L, "kind", ((BfmEventItem *)p)->kind);
+        set_int(L, "derived", (((BfmEventItem *)p)->flags & BFM_EVENT_FLAG_DERIVED) != 0);
+        break;
+    case BFM_EVENT_DAMAGE:
+    case BFM_EVENT_BP_USE:
+    case BFM_EVENT_MONEY:
+        set_int(L, "value", ((BfmEventStat *)p)->value);
+        set_int(L, "previous", ((BfmEventStat *)p)->previous);
+        set_int(L, "max", ((BfmEventStat *)p)->max);
+        set_int(L, "derived", (((BfmEventStat *)p)->flags & BFM_EVENT_FLAG_DERIVED) != 0);
         break;
     case BFM_EVENT_SAVE:
     case BFM_EVENT_LOAD:
@@ -420,6 +432,43 @@ static int l_command(lua_State *L) {
     return 0;
 }
 
+static void on_watch(void *user, uint32_t addr, uint32_t len,
+                     const uint8_t *o, const uint8_t *n) {
+    LuaHook *h = (LuaHook *)user;
+    lua_State *L = h->mod->L;
+    if (!L) return;
+    lua_rawgeti(L, LUA_REGISTRYINDEX, h->ref);
+    lua_pushinteger(L, (lua_Integer)addr);
+    lua_pushlstring(L, (const char *)o, len);
+    lua_pushlstring(L, (const char *)n, len);
+    call(h->mod, 3, 0, "watch");
+}
+
+/* id = bfm.watch(addr, len, fn(addr, old, new)) -- old/new are byte strings */
+static int l_watch(lua_State *L) {
+    LuaMod *m = self_of(L);
+    uint32_t addr = (uint32_t)luaL_checkinteger(L, 1);
+    lua_Integer len = luaL_checkinteger(L, 2);
+    LuaHook *h;
+    int id;
+    luaL_checktype(L, 3, LUA_TFUNCTION);
+    if (m->host->abi_version < 2 || !m->host->watch_add) return luaL_error(L, "no watch support");
+    h = new_hook(m, 4);
+    if (!h) return luaL_error(L, "too many hooks");
+    lua_pushvalue(L, 3);
+    h->ref = luaL_ref(L, LUA_REGISTRYINDEX);
+    id = m->host->watch_add(addr, (uint32_t)len, on_watch, h);
+    if (id <= 0) return luaL_error(L, "watch refused");
+    lua_pushinteger(L, id);
+    return 1;
+}
+
+static int l_unwatch(lua_State *L) {
+    LuaMod *m = self_of(L);
+    lua_pushboolean(L, m->host->watch_remove((int)luaL_checkinteger(L, 1)) == BFM_PLAT_OK);
+    return 1;
+}
+
 static int l_config(lua_State *L) {
     LuaMod *m = self_of(L);
     const char *v = m->host->config_get(luaL_checkstring(L, 1));
@@ -455,6 +504,7 @@ static void push_api(lua_State *L, LuaMod *m) {
         {"write8", l_write8}, {"write16", l_write16}, {"write32", l_write32},
         {"read", l_read}, {"write", l_write}, {"cheat", l_cheat},
         {"set_cheat", l_set_cheat}, {"command", l_command}, {"config", l_config},
+        {"watch", l_watch}, {"unwatch", l_unwatch},
         {NULL, NULL}
     };
     static const struct { const char *name; lua_Integer v; } consts[] = {

@@ -21,7 +21,7 @@
 #include "bfm_plat_types.h"
 #include "bfm_plat_input.h"
 
-#define BFM_PLUGIN_ABI_VERSION 1u
+#define BFM_PLUGIN_ABI_VERSION 2u   /* 2: watch_add/watch_remove, derived events */
 
 #if defined(_WIN32)
 #define BFM_PLUGIN_EXPORT __declspec(dllexport)
@@ -48,6 +48,9 @@ typedef enum BfmEvent {
     BFM_EVENT_SAVE = 13,          /* [BfmEventSave] */
     BFM_EVENT_LOAD = 14,          /* [BfmEventSave] */
     BFM_EVENT_PROJECTION = 15,    /* [BfmEventProjection] GTE H/OFX/OFY set */
+    BFM_EVENT_DAMAGE = 16,        /* [BfmEventStat] derived: HP went down */
+    BFM_EVENT_BP_USE = 17,        /* [BfmEventStat] derived: BP went down */
+    BFM_EVENT_MONEY = 18,         /* [BfmEventStat] derived: money changed */
     BFM_EVENT_COUNT
 } BfmEvent;
 
@@ -66,10 +69,27 @@ typedef struct BfmEventBattle {
     int32_t result;               /* END: 1 won, 0 lost/fled; START: 0 */
 } BfmEventBattle;
 
+/* Set in a payload's flags when the event is derived from a data change
+ * (bfm_plat_watch.h) rather than fired at a code site. */
+#define BFM_EVENT_FLAG_DERIVED 0x1u
+
+#define BFM_ITEM_KIND_UNKNOWN 0u
+#define BFM_ITEM_KIND_FIGURE 1u       /* toy-shop action figure, item = index */
+
 typedef struct BfmEventItem {
     uint32_t item;
     int32_t count;
+    /* ABI 2 */
+    uint32_t kind;                /* BFM_ITEM_KIND_* */
+    uint32_t flags;               /* BFM_EVENT_FLAG_* */
 } BfmEventItem;
+
+typedef struct BfmEventStat {
+    int32_t value;                /* new value */
+    int32_t previous;
+    int32_t max;                  /* current maximum, or 0 */
+    uint32_t flags;               /* BFM_EVENT_FLAG_DERIVED */
+} BfmEventStat;
 
 typedef struct BfmEventSave {
     uint32_t slot;
@@ -125,6 +145,14 @@ typedef struct BfmPluginHost {
 
     /* "section.key" from the user config; plugins use "[mod.<name>]". */
     const char *(*config_get)(const char *key);
+
+    /* ABI 2: guest-memory watches (bfm_plat_watch.h). fn(user, address,
+     * len, old_bytes, new_bytes). Dropped when the mod unloads. */
+    int (*watch_add)(uint32_t address, uint32_t len,
+                     void (*fn)(void *user, uint32_t address, uint32_t len,
+                                const uint8_t *old_bytes, const uint8_t *new_bytes),
+                     void *user);
+    int (*watch_remove)(int id);
 } BfmPluginHost;
 
 typedef struct BfmPluginInfo {

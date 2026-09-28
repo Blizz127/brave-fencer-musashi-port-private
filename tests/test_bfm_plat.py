@@ -248,9 +248,36 @@ VENDOR_EVIDENCE = [
     ("src/800_b.c", 488, "func_80060404(D_80075CC0, idx * 0x300 + 0x480, 0x300);"),
     ("src/800.c", 1787, "func_8004923C(0x3E8);"),
     ("src/shared/ov/func_8017C530.h", 14, "func_8004921C(ofx, ofy);"),
+    # live game state (bfm_plat_events.h BFM_GUEST_*)
+    ("src/800.c", 21115, "void func_800295D4(void)"),
+    ("src/800.c", 21116, "D_80078EB4 = 0xFA;"),
+    ("src/800.c", 21117, "D_80078EB2 = 0xFA;"),
+    ("src/800.c", 21118, "D_80078EB8 = 0xFA;"),
+    ("src/800.c", 21119, "D_80078EB6 = 0xFA;"),
+    ("src/800.c", 21125, "D_80078E8C = 0x64;"),
+    ("src/800.c", 21037, "void func_80029444(void)"),
+    ("src/800.c", 21053, "D_80078E7C_w = 0x633B3B00;"),
+    ("src/800.c", 21190, "*(Blk98_80029274 *)(dst + 0x24) = D_80078E78;"),
+    ("src/800.c", 20881, "void func_80029124(s32 arg0, s32 arg1)"),
+    ("src/800.c", 22268, "func_800291B4((s16)i + 0x63) & 0x40"),
+    ("src/shared/ov/func_8014BC0C.h", 6, "(u16)D_80078EB2 >= 0x1F5"),
+    ("src/shared/ov/func_8014BCEC.h", 9, "v >= 0x663"),
+    ("src/shared/ov/func_8014BB0C.h", 6, "D_80078EB4 = D_80078EB2;"),
+    ("src/shared/ov/func_8014BDC8.h", 6, "D_80078EB8 = D_80078EB6;"),
+    ("src/ov_SC03_124/ov_SC03_124_jr_80188544.c", 3740, "var = D_80078E8C + a0;"),
+    ("src/ov_SC03_124/ov_SC03_124_jr_80188544.c", 3741, "if (var > 99999)"),
+    ("src/ov_SC03_124/ov_SC03_124_jr_80188544.c", 3442, "func_8018957C(-D_800A6586[i13])"),
+    ("src/ov_SC03_124/ov_SC03_124_jr_80188544.c", 3447, "func_800291A0(c13, f13 | 0x40);"),
+    ("src/ov_MAIN_012/ov_MAIN_012_jr_8017CF3C.c", 4103, "a = p[7];"),
+    ("src/ov_MAIN_012/ov_MAIN_012_jr_8017CF3C.c", 4142, "a = *(u16 *)(p + 0x3C);"),
+    ("src/ov_MAIN_012/ov_MAIN_012_jr_8017CF3C.c", 4157, "a = *(u16 *)(p + 0x40);"),
+    ("src/ov_MAIN_012/ov_MAIN_012_jr_8017CF3C.c", 4172, "a = *(u32 *)(p + 0x14);"),
     ("config/symbols.us.txt", 14, "main                             = 0x80010178; // func"),
     ("config/symbols.us.txt", None, "GameModeDispatch                 = 0x80010B40;"),
 ]
+
+
+SITE_EVIDENCE_COUNT = 19   # the entries above "live game state" are cited by hook sites
 
 
 def vendor_root():
@@ -492,7 +519,7 @@ class BfmPlatTests(unittest.TestCase):
         unsited = [l.split()[1] for l in out.splitlines() if l.startswith("unsited ")]
         self.assertEqual(unsited, UNSITED)
         evidence = " ".join(l for l in out.splitlines() if l.startswith("evidence "))
-        for path, line, _ in VENDOR_EVIDENCE:
+        for path, line, _ in VENDOR_EVIDENCE[:SITE_EVIDENCE_COUNT]:
             if line is not None and path.startswith("src/"):
                 self.assertIn(f"{path}:{line}" if path != "src/800_b.c" or line not in (486, 487, 488)
                               else "src/800_b.c:486-488", evidence)
@@ -628,6 +655,35 @@ bfm.on("frame_end", function() if seen.late == nil then
         self.assertIn("ram efbeadde poke 5a", out)
         self.assertIn("turbo 2", out)
         self.assertIn("boom luaboom: script error", out)
+
+    def test_memory_watches_and_derived_events(self):
+        d = self.fresh("watchmods")
+        (d / "w").mkdir()
+        (d / "w/mod.ini").write_text("[mod]\nname = w\nplugin = watcher\n")
+        self.run_probe("watch", d)
+
+    def test_cheat_pack_sample(self):
+        d = self.fresh("cheatpack")
+        shutil.copytree(ROOT / "pc_port/mods/examples/cheat_pack", d / "cheat_pack")
+        ini = (d / "cheat_pack/cheats.ini").read_text()
+        self.assertEqual(ini.count("enabled = 0"), 4)
+        self.assertNotIn("enabled = 1", ini)
+        out = self.run_probe("cheat_pack", d)
+        for name in ("infinite_hp", "infinite_bp", "max_money", "max_hp_gauge"):
+            self.assertIn(f"[on]  {name}", out)
+
+    def test_live_state_constants_match_documented_addresses(self):
+        header = (PLAT / "bfm_plat_events.h").read_text()
+        want = {"BFM_GUEST_LIVE_STRUCT": "0x80078E78u", "BFM_GUEST_PLAY_TIME": "0x80078E7Cu",
+                "BFM_GUEST_MONEY": "0x80078E8Cu", "BFM_GUEST_HP_MAX": "0x80078EB2u",
+                "BFM_GUEST_HP": "0x80078EB4u", "BFM_GUEST_BP_MAX": "0x80078EB6u",
+                "BFM_GUEST_BP": "0x80078EB8u", "BFM_GUEST_STORY_FLAGS": "0x800AE648u",
+                "BFM_GUEST_SCRIPT_VARS": "0x800BA1B8u", "BFM_GUEST_FIGURE_PRICES": "0x800A6588u"}
+        for name, value in want.items():
+            self.assertRegex(header, rf"#define {name}\s+{value}")
+        pack = (ROOT / "pc_port/mods/examples/cheat_pack/cheats.ini").read_text()
+        for addr in ("0x80078EB4", "0x80078EB2", "0x80078EB8", "0x80078EB6", "0x80078E8C"):
+            self.assertIn(addr, pack)
 
     def test_overlay_font(self):
         self.run_probe("font")
