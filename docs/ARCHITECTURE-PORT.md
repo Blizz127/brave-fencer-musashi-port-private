@@ -1044,7 +1044,8 @@ add_library(bfm_plat STATIC
     pc_port/platform/bfm_plat_console.c  pc_port/platform/bfm_plat_console_ui.c
     pc_port/platform/bfm_plat_events.c   pc_port/platform/bfm_plat_hook_sites.c
     pc_port/platform/bfm_plat_image.c    pc_port/platform/bfm_plat_font.c
-    pc_port/platform/bfm_plat_widescreen.c
+    pc_port/platform/bfm_plat_widescreen.c   pc_port/platform/bfm_plat_watch.c
+    pc_port/platform/bfm_plat_disc_check.c   pc_port/platform/bfm_plat_sha256.c
     pc_port/platform/psyq/bfm_psyq_compat.c
     pc_port/platform/psyq/bfm_psyq_libgs.c
     pc_port/platform/psyq/bfm_psyq_libgte.c)        # + psyq/psyq_psycross.c with PsyCross
@@ -1102,6 +1103,9 @@ endif()
 ```
 
 Notes:
+- The core list must match `pc_port/platform/bfm_plat*.c` exactly. A
+  `file(GLOB ... pc_port/platform/bfm_plat*.c)` keeps it in step as files
+  are added.
 - `bfm_plat.c` must be compiled with the same `BFM_PLAT_WITH_PNG` define as
   `texture_png.c`. Keep the definitions on the target, not per source.
 - `musashi_audio_sdl_*` comes from `pc_port/audio_sdl.c`. Link whichever
