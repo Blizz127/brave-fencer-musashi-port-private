@@ -1,8 +1,10 @@
 #include "musashi_boot_memory.h"
 #include "musashi_callback_registration.h"
 #include "musashi_mips_div.h"
+#include "musashi_native_lane.h"
 
 #include <limits.h>
+#include <setjmp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18891,6 +18893,327 @@ static int access_refuse0(uint32_t pc, uint32_t address, unsigned width, int sto
     return 0;
 }
 
+/* ---- Executed-path tracer (MUSASHI_TRACE_FUNCS=path) -------------------
+ * Records every guest function entry the CPU really takes: jal/jalr targets
+ * and fresh-CPU dispatch entries (IRQ handlers, nested source execution).
+ * <path> gets one line per first-seen entry as it happens (it survives a
+ * crash or a killed run); <path>.counts gets per-entry call counts, sorted,
+ * at exit. Off (one predictable branch per jal) unless the variable is set;
+ * it never changes guest state. */
+enum { TRACE_RAM_WORDS = MUSASHI_RAM_SIZE / 4u, TRACE_OTHER_MAX = 512 };
+typedef struct TraceOther { uint32_t target, caller, count; char kind; } TraceOther;
+static int g_trace_state; /* 0 unknown, 1 on, -1 off */
+static FILE *g_trace_file;
+static char *g_trace_counts_path;
+static uint32_t *g_trace_counts;
+static uint32_t *g_trace_caller;
+static char *g_trace_kind;
+static unsigned long g_trace_seq;
+static TraceOther g_trace_other[TRACE_OTHER_MAX];
+static unsigned g_trace_other_n;
+static const MusashiNativeLaneEntry *lane_find(uint32_t pc);
+
+typedef struct TraceRow { uint32_t target, caller, count; char kind; } TraceRow;
+static int trace_row_cmp(const void *a, const void *b) {
+    const TraceRow *x = a, *y = b;
+    if (x->count != y->count) return x->count < y->count ? 1 : -1;
+    return x->target < y->target ? -1 : x->target > y->target;
+}
+
+static void trace_dump(void) {
+    FILE *out;
+    TraceRow *rows;
+    size_t n = 0, i;
+    if (!g_trace_counts || !g_trace_counts_path) return;
+    rows = malloc(sizeof(*rows) * (TRACE_RAM_WORDS + TRACE_OTHER_MAX));
+    if (!rows) return;
+    for (i = 0; i < TRACE_RAM_WORDS; ++i)
+        if (g_trace_counts[i]) {
+            rows[n].target = 0x80000000u + (uint32_t)i * 4u;
+            rows[n].caller = g_trace_caller[i];
+            rows[n].count = g_trace_counts[i];
+            rows[n].kind = g_trace_kind[i];
+            ++n;
+        }
+    for (i = 0; i < g_trace_other_n; ++i) {
+        rows[n].target = g_trace_other[i].target;
+        rows[n].caller = g_trace_other[i].caller;
+        rows[n].count = g_trace_other[i].count;
+        rows[n].kind = g_trace_other[i].kind;
+        ++n;
+    }
+    qsort(rows, n, sizeof(*rows), trace_row_cmp);
+    out = fopen(g_trace_counts_path, "w");
+    if (out) {
+        fprintf(out, "# target count first_kind first_caller lane\n");
+        for (i = 0; i < n; ++i)
+            fprintf(out, "%08x %u %c %08x %s\n", rows[i].target, rows[i].count,
+                    rows[i].kind, rows[i].caller,
+                    lane_find(rows[i].target) ? "native" : "interp");
+        fclose(out);
+    }
+    free(rows);
+    if (g_trace_file) fflush(g_trace_file);
+}
+
+static int trace_enabled(void) {
+    if (g_trace_state == 0) {
+        const char *path = getenv("MUSASHI_TRACE_FUNCS");
+        g_trace_state = -1;
+        if (path && path[0]) {
+            size_t length = strlen(path);
+            g_trace_file = fopen(path, "w");
+            g_trace_counts = calloc(TRACE_RAM_WORDS, sizeof(*g_trace_counts));
+            g_trace_caller = calloc(TRACE_RAM_WORDS, sizeof(*g_trace_caller));
+            g_trace_kind = calloc(TRACE_RAM_WORDS, 1);
+            g_trace_counts_path = malloc(length + sizeof(".counts"));
+            if (g_trace_file && g_trace_counts && g_trace_caller && g_trace_kind &&
+                g_trace_counts_path) {
+                memcpy(g_trace_counts_path, path, length);
+                memcpy(g_trace_counts_path + length, ".counts", sizeof(".counts"));
+                fprintf(g_trace_file, "# seq target kind caller (j=jal r=jalr d=entry)\n");
+                atexit(trace_dump);
+                g_trace_state = 1;
+            } else {
+                fprintf(stderr, "native_boot: MUSASHI_TRACE_FUNCS unavailable (%s)\n", path);
+            }
+        }
+    }
+    return g_trace_state > 0;
+}
+
+void musashi_trace_function_entry(uint32_t target, uint32_t caller, char kind) {
+    uint32_t segment = target >> 29;
+    if (!trace_enabled()) return;
+    if ((segment == 0u || segment == 4u || segment == 5u) &&
+        (target & 0x1fffffffu) < MUSASHI_RAM_SIZE && !(target & 3u)) {
+        uint32_t index = (target & 0x1fffffffu) / 4u;
+        if (!g_trace_counts[index]) {
+            g_trace_caller[index] = caller;
+            g_trace_kind[index] = kind;
+            fprintf(g_trace_file, "%lu %08x %c %08x\n", g_trace_seq++, target, kind, caller);
+            fflush(g_trace_file);
+        }
+        if (g_trace_counts[index] != UINT32_MAX) ++g_trace_counts[index];
+        return;
+    }
+    {
+        unsigned i;
+        for (i = 0; i < g_trace_other_n; ++i)
+            if (g_trace_other[i].target == target) {
+                if (g_trace_other[i].count != UINT32_MAX) ++g_trace_other[i].count;
+                return;
+            }
+        if (g_trace_other_n < TRACE_OTHER_MAX) {
+            TraceOther *slot = &g_trace_other[g_trace_other_n++];
+            slot->target = target;
+            slot->caller = caller;
+            slot->count = 1;
+            slot->kind = kind;
+            fprintf(g_trace_file, "%lu %08x %c %08x\n", g_trace_seq++, target, kind, caller);
+            fflush(g_trace_file);
+        }
+    }
+}
+
+/* ---- Generic native lane ------------------------------------------------
+ * One guest-PC keyed table of host functions (see musashi_native_lane.h).
+ * formatter_step consults it before fetching, so every router that steps a
+ * FormatterCpu (startup, IRQ, nested source execution) takes the same lane.
+ * An entry runs only at a clean call boundary: no pending delayed load, no
+ * branch delay slot, sequential npc. Unported guest callees reached from
+ * native code run on the same CPU and, when available, the same
+ * run_startup_cpu loop (host-handled PCs, checkpoints and IRQ delivery
+ * included), with guest stack arguments at sp+0x10. */
+static MusashiNativeLaneEntry *g_lane;
+static size_t g_lane_count;
+static uint32_t g_lane_min = UINT32_MAX, g_lane_max;
+static int g_lane_env = -1;
+
+typedef struct LaneRunFrame {
+    struct LaneRunFrame *prev;
+    FormatterCpu *cpu;
+    MusashiConsoleSink sink;
+    void *userdata;
+    MusashiResetGraphPrefixStop *stop;
+    MusashiEntryRunStop *entry_stop;
+    MusashiEntryObserver observer;
+    void *observer_userdata;
+} LaneRunFrame;
+
+typedef struct LaneActive {
+    struct LaneActive *prev;
+    MusashiBootMemory *memory;
+    FormatterCpu *cpu;
+    jmp_buf abort;
+} LaneActive;
+
+/* The owner thread runs one CPU loop at a time; frames nest by recursion. */
+static LaneRunFrame *g_lane_run_frames;
+static LaneActive *g_lane_active;
+
+static MusashiResetGraphPrefixStatus run_startup_cpu(
+    MusashiBootMemory *memory, FormatterCpu *cpu,
+    MusashiConsoleSink sink, void *userdata, int32_t *result,
+    MusashiResetGraphPrefixStop *stop, MusashiEntryRunStop *entry_stop,
+    MusashiEntryObserver observer, void *observer_userdata);
+static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu);
+
+static int lane_entry_cmp(const void *a, const void *b) {
+    const MusashiNativeLaneEntry *x = a, *y = b;
+    return x->guest_pc < y->guest_pc ? -1 : x->guest_pc > y->guest_pc;
+}
+
+int musashi_native_lane_install(const MusashiNativeLaneEntry *entries, size_t count) {
+    MusashiNativeLaneEntry *copy = NULL;
+    size_t i;
+    if (count && !entries) return -1;
+    if (count) {
+        copy = malloc(sizeof(*copy) * count);
+        if (!copy) return -1;
+        memcpy(copy, entries, sizeof(*copy) * count);
+        qsort(copy, count, sizeof(*copy), lane_entry_cmp);
+        for (i = 0; i < count; ++i)
+            if ((copy[i].guest_pc & 3u) || !copy[i].fn ||
+                (i && copy[i].guest_pc == copy[i - 1].guest_pc)) {
+                free(copy);
+                return -1;
+            }
+    }
+    free(g_lane);
+    g_lane = copy;
+    g_lane_count = count;
+    g_lane_min = count ? copy[0].guest_pc : UINT32_MAX;
+    g_lane_max = count ? copy[count - 1].guest_pc : 0;
+    return (int)count;
+}
+
+static const MusashiNativeLaneEntry *lane_find(uint32_t pc) {
+    size_t lo = 0, hi = g_lane_count;
+    if (pc < g_lane_min || pc > g_lane_max) return NULL;
+    while (lo < hi) {
+        size_t mid = lo + (hi - lo) / 2u;
+        if (g_lane[mid].guest_pc == pc) return &g_lane[mid];
+        if (g_lane[mid].guest_pc < pc) lo = mid + 1u; else hi = mid;
+    }
+    return NULL;
+}
+
+int musashi_native_lane_usable(const MusashiBootMemory *memory) {
+    if (g_lane_env < 0) {
+        const char *value = getenv("MUSASHI_NATIVE_LANE");
+        g_lane_env = !(value && value[0] == '0');
+    }
+    return g_lane_env && memory &&
+        (uintptr_t)memory->bytes == (uintptr_t)MUSASHI_NATIVE_LANE_GUEST_BASE;
+}
+
+uint32_t musashi_native_lane_arg(const MusashiNativeLaneCall *call, unsigned n) {
+    uint32_t value = 0;
+    if (n < 4u) return call->r[4u + n];
+    if (!musashi_boot_read32(call->memory, call->r[29] + 0x10u + (n - 4u) * 4u, &value)) {
+        if (g_lane_active) longjmp(g_lane_active->abort, 2);
+    }
+    return value;
+}
+
+uint32_t musashi_native_guest_call(uint32_t target, unsigned argc,
+                                   const uint32_t *args, uint32_t *v1) {
+    LaneActive *active = g_lane_active;
+    FormatterCpu *cpu;
+    LaneRunFrame *frame;
+    uint32_t saved_pc, saved_npc, saved_ra, saved_sp, sp, v0;
+    unsigned i, extra;
+    if (!active) {
+        fprintf(stderr, "native_boot: NATIVE_GUEST_CALL outside a lane call target=%08x\n", target);
+        abort();
+    }
+    cpu = active->cpu;
+    if ((target & 3u) || argc > 16u) longjmp(active->abort, 3);
+    saved_pc = cpu->pc; saved_npc = cpu->npc;
+    saved_ra = cpu->r[31]; saved_sp = cpu->r[29];
+    extra = argc > 4u ? argc - 4u : 0u;
+    /* o32: the callee owns a 16-byte home area above its own frame. */
+    sp = (saved_sp - 0x10u - extra * 4u) & ~7u;
+    for (i = 0; i < argc; ++i) {
+        if (i < 4u) cpu->r[4u + i] = args[i];
+        else if (!musashi_boot_write32(active->memory, sp + 0x10u + (i - 4u) * 4u, args[i]))
+            longjmp(active->abort, 3);
+    }
+    cpu->r[29] = sp;
+    cpu->r[31] = UINT_MAX;
+    cpu->pc = target;
+    cpu->npc = target + 4u;
+    cpu->delay_slot = 0;
+    cpu->branch_pc = 0;
+    musashi_trace_function_entry(target, saved_pc, 'j');
+    for (frame = g_lane_run_frames; frame && frame->cpu != cpu; frame = frame->prev) {}
+    if (frame) {
+        int32_t result = 0;
+        MusashiResetGraphPrefixStatus status = run_startup_cpu(active->memory, cpu,
+            frame->sink, frame->userdata, &result, frame->stop, frame->entry_stop,
+            frame->observer, frame->observer_userdata);
+        if (status != MUSASHI_RESETGRAPH_PREFIX_COMPLETE) longjmp(active->abort, 4);
+    } else {
+        unsigned long step;
+        for (step = 0; cpu->pc != UINT_MAX; ++step)
+            if (step >= FORMATTER_STEP_LIMIT || !formatter_step(active->memory, cpu))
+                longjmp(active->abort, 4);
+    }
+    /* A host stop request parks both pc and npc at UINT_MAX; a real return
+     * leaves npc just past the sentinel. Do not swallow the stop. */
+    if (cpu->npc == UINT_MAX) longjmp(active->abort, 5);
+    v0 = cpu->r[2];
+    if (v1) *v1 = cpu->r[3];
+    cpu->r[29] = saved_sp;
+    cpu->r[31] = saved_ra;
+    cpu->pc = saved_pc;
+    cpu->npc = saved_npc;
+    return v0;
+}
+
+/* 1: the lane ran the call and returned to ra; 0: not a lane call here
+ * (the interpreter proceeds); -1: the native call aborted (refuse). */
+static int lane_try(MusashiBootMemory *memory, FormatterCpu *cpu) {
+    const MusashiNativeLaneEntry *entry;
+    LaneActive active;
+    LaneRunFrame *saved_frames = g_lane_run_frames;
+    MusashiNativeLaneCall call;
+    uint32_t ra, sp;
+    volatile int outcome;
+    if (!g_lane_count || !(entry = lane_find(cpu->pc))) return 0;
+    if (cpu->merge_pending || cpu->gte_load_pending || cpu->delay_slot ||
+        cpu->npc != cpu->pc + 4u || !musashi_native_lane_usable(memory))
+        return 0;
+    ra = cpu->r[31];
+    sp = cpu->r[29];
+    active.prev = g_lane_active;
+    active.memory = memory;
+    active.cpu = cpu;
+    call.memory = memory;
+    call.r = cpu->r;
+    g_lane_active = &active;
+    if (setjmp(active.abort) == 0)
+        outcome = entry->fn(&call) ? 1 : 0;
+    else
+        outcome = -1;
+    g_lane_active = active.prev;
+    g_lane_run_frames = saved_frames;
+    if (outcome < 0) {
+        fprintf(stderr, "native_boot: NATIVE_LANE_ABORT pc=%08x fn=%s\n",
+                entry->guest_pc, entry->name ? entry->name : "?");
+        return -1;
+    }
+    if (!outcome) return 0;
+    cpu->r[0] = 0;
+    cpu->r[29] = sp;
+    cpu->r[31] = ra;
+    if (cpu->clock && entry->cost_cycles &&
+        (!cpu->clock->advance || !cpu->clock->advance(cpu->clock->userdata, entry->cost_cycles)))
+        return -1;
+    return formatter_return(cpu) ? 1 : -1;
+}
+
 static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
     uint32_t instruction, opcode, rs, rt, rd, immediate, old_npc;
     uint32_t target_npc;
@@ -18908,6 +19231,11 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
     uint8_t scheduled_merge_reg = 0;
     if ((cpu->pc & 3u) || !spu_source_guard(memory, cpu))
         return formatter_refuse0(__LINE__, cpu->pc);
+    if (g_lane_count) {
+        int lane = lane_try(memory, cpu);
+        if (lane > 0) return 1;
+        if (lane < 0) return formatter_refuse0(__LINE__, cpu->pc);
+    }
     /* 8005F704 words still return 80088A48+(a0&0xF0). After 8005F0C8,
      * D_80072990 is the InitPAD PadInfo (80078A48); PadGetState jalrs
      * this getter. Use the live record (identity when 72990==80088A48). */
@@ -19440,7 +19768,9 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
             break;
         }
         case 8: target_npc = cpu->r[rs]; break;
-        case 9: cpu->r[rd] = cpu->pc + 8u; target_npc = cpu->r[rs]; break;
+        case 9: cpu->r[rd] = cpu->pc + 8u; target_npc = cpu->r[rs];
+            if (g_trace_state >= 0) musashi_trace_function_entry(target_npc, cpu->pc, 'r');
+            break;
         case 13: return formatter_refuse0(__LINE__, cpu->pc);
         case 16: cpu->r[rd] = cpu->hi; break;
         case 18: cpu->r[rd] = cpu->lo; break;
@@ -19516,7 +19846,9 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
         else return formatter_refuse0(__LINE__, cpu->pc);
         break;
     case 2: target_npc = (cpu->pc + 4u & 0xf0000000u) | ((instruction & 0x03ffffffu) << 2); break;
-    case 3: cpu->r[31] = cpu->pc + 8u; target_npc = (cpu->pc + 4u & 0xf0000000u) | ((instruction & 0x03ffffffu) << 2); break;
+    case 3: cpu->r[31] = cpu->pc + 8u; target_npc = (cpu->pc + 4u & 0xf0000000u) | ((instruction & 0x03ffffffu) << 2);
+        if (g_trace_state >= 0) musashi_trace_function_entry(target_npc, cpu->pc, 'j');
+        break;
     case 4: if (cpu->r[rs] == cpu->r[rt]) target_npc = cpu->pc + 4u + (uint32_t)((int32_t)signed_immediate * 4); break;
     case 5: if (cpu->r[rs] != cpu->r[rt]) target_npc = cpu->pc + 4u + (uint32_t)((int32_t)signed_immediate * 4); break;
     case 6: if ((int32_t)cpu->r[rs] <= 0) target_npc = cpu->pc + 4u + (uint32_t)((int32_t)signed_immediate * 4); break;
@@ -20036,7 +20368,38 @@ static void entry_snapshot(const FormatterCpu *cpu, MusashiEntryCpuSnapshot *out
     out->npc = cpu->npc;
 }
 
+static MusashiResetGraphPrefixStatus run_startup_cpu_loop(
+    MusashiBootMemory *memory, FormatterCpu *cpu,
+    MusashiConsoleSink sink, void *userdata, int32_t *result,
+    MusashiResetGraphPrefixStop *stop, MusashiEntryRunStop *entry_stop,
+    MusashiEntryObserver observer, void *observer_userdata);
+
+/* Publishes this loop so a native-lane guest call made on the same CPU
+ * re-enters it (host-handled PCs, checkpoints) rather than a bare stepper. */
 static MusashiResetGraphPrefixStatus run_startup_cpu(
+    MusashiBootMemory *memory, FormatterCpu *cpu,
+    MusashiConsoleSink sink, void *userdata, int32_t *result,
+    MusashiResetGraphPrefixStop *stop, MusashiEntryRunStop *entry_stop,
+    MusashiEntryObserver observer, void *observer_userdata) {
+    LaneRunFrame frame;
+    MusashiResetGraphPrefixStatus status;
+    frame.prev = g_lane_run_frames;
+    frame.cpu = cpu;
+    frame.sink = sink;
+    frame.userdata = userdata;
+    frame.stop = stop;
+    frame.entry_stop = entry_stop;
+    frame.observer = observer;
+    frame.observer_userdata = observer_userdata;
+    g_lane_run_frames = &frame;
+    if (g_trace_state >= 0) musashi_trace_function_entry(cpu->pc, cpu->r[31], 'd');
+    status = run_startup_cpu_loop(memory, cpu, sink, userdata, result, stop,
+                                  entry_stop, observer, observer_userdata);
+    g_lane_run_frames = frame.prev;
+    return status;
+}
+
+static MusashiResetGraphPrefixStatus run_startup_cpu_loop(
     MusashiBootMemory *memory, FormatterCpu *cpu,
     MusashiConsoleSink sink, void *userdata, int32_t *result,
     MusashiResetGraphPrefixStop *stop, MusashiEntryRunStop *entry_stop,
@@ -20582,6 +20945,7 @@ int musashi_boot_execute_input_bios_callback(MusashiBootMemory *memory,
     cpu.input_device = device;
     cpu.clock = device->clock;
     cpu.pc = target; cpu.npc = target + 4;
+    if (g_trace_state >= 0) musashi_trace_function_entry(cpu.pc, 0, 'd');
     cpu.r[4] = (uint32_t)argument;
     cpu.r[28] = 0xf450u;
     cpu.r[29] = cpu.r[30] = MUSASHI_BIOS_CALLBACK_STACK_TOP;
@@ -21277,6 +21641,7 @@ int musashi_boot_execute_cd_irq_with_services(MusashiBootMemory *memory,
         !cd_irq_pointers(memory)) goto fault;
     if (services) selected = *services;
     cpu.pc = target; cpu.npc = target+4u;
+    if (g_trace_state >= 0) musashi_trace_function_entry(cpu.pc, 0, 'd');
     cpu.r[29] = saved_sp-0x28u;
     cpu.r[31] = UINT_MAX;
     cpu.cd_register_device = device;
@@ -21614,6 +21979,7 @@ int musashi_boot_execute_bios_event(void *userdata, uint32_t callback) {
     /* BIOS callback frame: these exact leaves only use v0/at/ra. No live
      * startup CPU, checkpoint, interrupt return or guest snapshot is reused. */
     cpu.pc = callback;
+    if (g_trace_state >= 0) musashi_trace_function_entry(cpu.pc, 0, 'd');
     cpu.npc = callback + 4u;
     cpu.r[31] = UINT_MAX;
     for (step = 0; step < 5; ++step)
@@ -22348,6 +22714,7 @@ static MusashiResetGraphPrefixStatus run_80044124_poll_with_tick(
         return MUSASHI_RESETGRAPH_PREFIX_INVALID_INPUT;
     memset(&cpu, 0, sizeof(cpu));
     cpu.pc = entry;
+    if (g_trace_state >= 0) musashi_trace_function_entry(cpu.pc, 0, 'd');
     cpu.cd_register_device = register_device;
     cpu.npc = entry + 4u;
     cpu.r[4] = (uint32_t)command;
