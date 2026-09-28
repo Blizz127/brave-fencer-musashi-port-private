@@ -1069,6 +1069,10 @@ void bfm_gl_batch_add_copy(BfmGlBatch *b, const BfmPlatRect *r) {
 
 /* ---- CPU reference rasteriser ------------------------------------------- */
 
+static int ref_ps1_modulation;
+
+void bfm_gl_ref_set_ps1_modulation(int on) { ref_ps1_modulation = on != 0; }
+
 static uint16_t *ref_px(BfmGlVram *v, int x, int y) {
     return &v->px[(size_t)y * BFM_GL_VRAM_W + x];
 }
@@ -1110,9 +1114,19 @@ int bfm_gl_ref_draw(BfmGlVram *v, const BfmPlatDrawEnv *env, const BfmPlatPrim *
                 uint8_t m[3];
                 if (t == 0) continue;
                 stp = (uint16_t)(t & 0x8000u);
-                bfm_gl_modulate(t, p->v[0].r, p->v[0].g, p->v[0].b,
-                                (p->flags & BFM_PRIM_FLAG_RAW_TEXTURE) != 0, m);
-                front = (uint16_t)((m[0] >> 3) | ((m[1] >> 3) << 5) | ((m[2] >> 3) << 10));
+                if (ref_ps1_modulation && !(p->flags & BFM_PRIM_FLAG_RAW_TEXTURE)) {
+                    const int c[3] = {p->v[0].r, p->v[0].g, p->v[0].b};
+                    int ch;
+                    front = 0;
+                    for (ch = 0; ch < 3; ch++) {
+                        int o = (((t >> (5 * ch)) & 31) * c[ch]) >> 7;
+                        front |= (uint16_t)((o > 31 ? 31 : o) << (5 * ch));
+                    }
+                } else {
+                    bfm_gl_modulate(t, p->v[0].r, p->v[0].g, p->v[0].b,
+                                    (p->flags & BFM_PRIM_FLAG_RAW_TEXTURE) != 0, m);
+                    front = (uint16_t)((m[0] >> 3) | ((m[1] >> 3) << 5) | ((m[2] >> 3) << 10));
+                }
             } else {
                 front = (uint16_t)((p->v[0].r >> 3) | ((p->v[0].g >> 3) << 5) |
                                    ((p->v[0].b >> 3) << 10));

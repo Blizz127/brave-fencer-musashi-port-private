@@ -267,5 +267,10 @@ void bfm_gl_batch_target_size(const BfmGlBatch *b, int target, int *w, int *h);
  * of written pixels = texel STP | mask-set, fills clear bit 15. Returns the
  * number of pixels written. */
 int bfm_gl_ref_draw(BfmGlVram *v, const BfmPlatDrawEnv *env, const BfmPlatPrim *p);
+/* Texture modulation in bfm_gl_ref_draw: 0 (default) = the gl renderer's
+ * 8-bit path (bfm_gl_modulate >> 3, what the GL tests compare against);
+ * 1 = the PS1 integer formula min(31, (t * c) >> 7), for comparing with a
+ * PS1-exact GPU model. They differ by at most one 5-bit step. */
+void bfm_gl_ref_set_ps1_modulation(int on);
 
 #endif
