@@ -747,11 +747,20 @@ def emit_table(admitted, out):
     return direct, thunk
 
 
-def candidates(only=None):
+def candidates(only=None, excluded=None):
+    """Game-code candidates. Sony PsyQ library ranges (config/psyq_ranges.txt)
+    never enter the lane: their entry points belong to PsyCross/HLE."""
+    sys.path.insert(0, str(ROOT / "tools"))
+    import psyq_manifest
+    psyq = psyq_manifest.ranges()
     registry = json.loads((ROOT / "provenance/matches.json").read_text())["matches"]
     picked = []
     for m in registry:
         if m["region"] != "main" or m.get("recovery") != "c":
+            continue
+        if psyq_manifest.psyq_segment(m["vram"], psyq):
+            if excluded is not None:
+                excluded.append(m["vram"])
             continue
         src = ROOT / m["source"]
         if not src.exists():
@@ -787,7 +796,8 @@ def main():
     exclude = pcs(args.exclude) if args.exclude else set()
     symbols = load_symbol_addrs()
     hooks = hooked_pcs()
-    todo = [m for m in candidates(only) if m["vram"] not in exclude]
+    psyq_excluded = []
+    todo = [m for m in candidates(only, psyq_excluded) if m["vram"] not in exclude]
     with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, args.jobs)) as pool:
         results = list(pool.map(lambda m: build_one(m, out, symbols, hooks, args.clang), todo))
     admitted = [r for r in results if r["admitted"]]
@@ -830,11 +840,13 @@ def main():
         if not r["admitted"]:
             rules[r["rule"]] = rules.get(r["rule"], 0) + 1
     report = dict(candidates=len(results), admitted=len(admitted), rejected_by_rule=rules,
+                  psyq_excluded=len(psyq_excluded),
                   call_stubs=dict(direct=direct, interpreter_thunk=thunk),
                   functions=[{k: v for k, v in r.items() if k not in ("obj", "defs", "stubs")}
                              for r in sorted(results, key=lambda r: r["vram"])])
     (out / "report.json").write_text(json.dumps(report, indent=1) + "\n")
-    print(f"native lane: {len(admitted)}/{len(results)} admitted; rejected {rules}; "
+    print(f"native lane: {len(admitted)}/{len(results)} game functions admitted "
+          f"({len(psyq_excluded)} PsyQ-range candidates excluded); rejected {rules}; "
           f"call stubs direct={direct} thunk={thunk}")
     return 0
 

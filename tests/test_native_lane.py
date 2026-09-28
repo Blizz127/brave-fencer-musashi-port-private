@@ -18,11 +18,13 @@ GEN = ROOT / "tools/native_lane_gen.py"
 # Each decision is pinned to the rule that must make it.
 EXPECT = {
     0x8001903C: (True, None),        # leaf call into an unported callee (thunk)
-    0x80046CFC: (True, None),        # three stores to guest globals
-    0x8003B08C: (False, "memory"),   # volatile MMIO pointer cell D_8006B560
-    0x80046ABC: (False, "abi"),      # passes 1 of 3 arguments to func_80046CFC
-    0x8005CCC8: (False, "irq"),      # loop with no store or call
+    0x80015310: (False, "memory"),   # volatile device access
+    0x8002A088: (False, "abi"),      # passes 0 of 1 arguments to func_8002A108
+    0x8001CFDC: (False, "irq"),      # loop with no store or call
 }
+# Sony PsyQ entry points never enter the lane (config/psyq_ranges.txt).
+PSYQ = (0x800425B0, 0x8003B08C, 0x80046ABC)
+CALLEES = (0x8002A108,)  # the arity rule needs the admitted callee present
 
 
 
@@ -35,7 +37,7 @@ class NativeLaneGeneratorTest(unittest.TestCase):
         cls._tmp = tempfile.TemporaryDirectory(prefix="musashi-lane-")
         cls.out = Path(cls._tmp.name)
         only = cls.out / "only.txt"
-        only.write_text("".join(f"{pc:08x}\n" for pc in EXPECT))
+        only.write_text("".join(f"{pc:08x}\n" for pc in (*EXPECT, *PSYQ, *CALLEES)))
         subprocess.run([sys.executable, str(GEN), "--out", str(cls.out), "--clang", cls.clang,
                         "--jobs", "2", "--only", str(only)], check=True, timeout=300,
                        capture_output=True)
@@ -53,6 +55,9 @@ class NativeLaneGeneratorTest(unittest.TestCase):
             self.assertEqual(entry["admitted"], admitted, (hex(pc), entry))
             if not admitted:
                 self.assertEqual(entry["rule"], rule, (hex(pc), entry))
+        for pc in PSYQ:
+            self.assertNotIn(pc, got)
+        self.assertGreaterEqual(self.report["psyq_excluded"], 1)
 
     def test_table_shape(self):
         # Admitted entry, marshalled through the register ABI.

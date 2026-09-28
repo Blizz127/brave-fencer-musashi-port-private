@@ -521,6 +521,78 @@ Those values were read off the built library rather than assumed. PS1 fixed
 point uses 4096 for 1.0 and 4096 units for a full turn, so cosine falls to zero
 exactly where sine reaches one.
 
+## Shipping model: run off the disc (2026-09-28)
+
+The distributed port contains only our code (decompiled game C, our own
+runtime/HLE, the native-lane glue) and open-source dependencies. Everything
+from the game (code words, overlays, tables, assets) is read from the
+user's own SLUS-00726 disc image at run time, or extracted from it in a
+local, gitignored step (`extracted/`). Nothing retail is committed or built
+into a binary.
+
+- **Instruction fetch.** `formatter_fetch`, `input_callback_word` and
+  `cd_irq_word` admit a PC by address range and read the word from guest
+  RAM: the EXE that `musashi_boot_map_exe` mapped (SHA-256 checked) and the
+  overlays the guest loaded from the disc. The 3,649 `k*Words` arrays keep
+  only their shape (`static const uint32_t kX[N];`, zero, never read for
+  words); 489,496 retail words left the build.
+- **Overlay identity.** SC01/SC02 member selection compares an FNV-1a 64
+  digest of the loaded 178-word entry span with the carved member's digest.
+- **CMake** no longer extracts anything at configure time (the 17k-line
+  `extract_asm_words.py` block and the SC01.CD member extraction are gone);
+  no `*_words.inc` exists. `pc_port/800cf02c_overlay_words.inc` is deleted.
+- **First-run disc check.** A wrong or missing EXE prints which release is
+  needed (Brave Fencer Musashi (USA), SLUS-00726), the expected SHA-256
+  (`provenance/exe_identity.json`) and what was found; a wrong disc image
+  (cue SHA-256 and bin size, `pc_port/disc_media.c`) gets the matching
+  message. The original `... rejected before startup` lines remain.
+- **Tests.** Probes that seed synthetic RAM fetch main-exe words from the
+  developer's own extract through `MUSASHI_CODE_IMAGE` (size and digest
+  checked; set by `tools/run_tests.sh`, CTest and `tests/conftest.py`).
+  The shipped port never sets it. The shared helper regenerates
+  `<addr>_words.inc` from the local EXE using
+  `tests/data/formatter_word_ranges.txt` (addresses and counts only), and
+  mutation tests push edits through `_sync_code_image`
+  (`MUSASHI_CODE_IMAGE_MUTANT=1`, test-only).
+
+Still carrying retail words (follow-up): about 1.5k per-site admission
+pairs (pc plus exact word) for merge/GTE/DIV sites and about 100
+`instruction == 0x...` guards in `mips_formatter.c`, redundant now that the
+words come from the hash-checked image; and 21 BIOS-kernel words in
+`bios_exception.c`. Pytest-only white-box probes that seeded RAM from the
+compiled overlay tables (`carve_site`, `pvd_merge`, `gte_transform`,
+`input_digital_irq`, `file_loader_entry`, `overlay_identity`, `sc02_entry`)
+still need their overlay words from the local disc extract.
+
+## PsyQ exclusion (2026-09-28)
+
+No Sony PsyQ code is compiled or linked into the port: neither SDK objects
+nor decompiled PsyQ C. `config/psyq_ranges.txt` lists the 71 PsyQ code
+ranges of the EXE (snd*, lib*, apicard*, gap segments of the vendor splat
+layout; the `sgap_*` islands are game code), built by
+`tools/psyq_manifest.py build`. CMake runs `tools/psyq_manifest.py check`
+over every `src/main` source of every target and fails configuration on any
+PsyQ-range source, except the bindings listed in
+`config/psyq_pending_replacement.txt` (19 today: libetc callback/IRQ/DMA,
+libgpu device ops, libc2 console/string, libmcrd VBlank), which are being
+replaced and are only ever removed from that list. The native lane never
+admits a PsyQ-range function: **469 of 655 game functions** are admitted
+(240 PsyQ candidates excluded); interpreted game code still runs the PsyQ
+words the user's own disc provides, which ship with nothing.
+
+## Third-party components and licenses
+
+| component | use | license |
+| --- | --- | --- |
+| PsyCross (REDRIVER2 project), `tools/third_party/psycross` | PsyQ API layer, GPU/GTE/audio backends | MIT |
+| SDL2 | window, input, audio | zlib |
+| OpenAL Soft | audio (PsyCross) | LGPL-2.1 (dynamic) |
+| OpenGL / Mesa | rendering | system library |
+| OpenSSL libcrypto | SHA-256 identity checks | Apache-2.0 |
+| mkpsxiso (dumpsxiso), `tools/third_party/mkpsxiso` | local disc extraction tool, not linked | GPL-2.0 |
+| clang/LLVM | native-lane compiler (build tool) | Apache-2.0 with LLVM exception |
+| decompals old-gcc, maspsx, m2c | matching toolchain (dev only, not linked) | GPL / MIT / GPL |
+
 ## Native lane: running matched decomp C on the host (2026-09-28)
 
 Goal: the port executes byte-matched decomp C (`src/main/<vram>.c`, the

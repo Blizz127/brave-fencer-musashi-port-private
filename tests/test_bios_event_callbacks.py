@@ -104,10 +104,12 @@ def _exe_word(exe, address):
 
 
 def _write_words(path, words):
-    path.write_text("".join(f"0x{w:08x}u,\n" for w in words))
+    # Same layout tools/extract_asm_words.py used: one header line, then words.
+    path.write_text("/* Generated from the local extracted EXE; do not edit. */\n" +
+                    "".join(f"0x{w:08x}u,\n" for w in words))
 
 
-def _generate_formatter_includes(output):
+def _generate_formatter_includes(output, pac=False):
     """Materialize <stem>_words.inc for every admitted main-exe range from the
     developer's own extracted EXE (never from src/ word exports). The port no
     longer compiles these; tests that assert or mutate words read them here
@@ -115,8 +117,8 @@ def _generate_formatter_includes(output):
     exe = _exe_bytes()
     for stem, addresses in _word_ranges().items():
         _write_words(output / f"{stem}_words.inc", [_exe_word(exe, a) for a in addresses])
-    for name in PAC_INCLUDES:
-        # SC01 PAC members stay on the disc; tests needing them extract them.
+    for name in PAC_INCLUDES if pac else ():
+        # SC01 PAC members stay on the disc; only tests that ask extract them.
         member, words, sha = PAC_INCLUDES[name]
         archive = ROOT / "extracted/disc/files/SC01.CD"
         if not archive.is_file():

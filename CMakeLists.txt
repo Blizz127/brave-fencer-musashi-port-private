@@ -558,6 +558,36 @@ if(MUSASHI_BUILD_PC_PORT)
         endforeach()
     endif()
 
+    # No Sony PsyQ code in the port: fail configuration when a decomp source
+    # in a PsyQ range (config/psyq_ranges.txt) is compiled into any target,
+    # except the listed bindings still pending PsyCross/HLE replacement.
+    get_property(MUSASHI_PSYQ_TARGETS DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
+    set(MUSASHI_PSYQ_SOURCES)
+    foreach(MUSASHI_TARGET IN LISTS MUSASHI_PSYQ_TARGETS)
+        get_target_property(MUSASHI_TARGET_TYPE ${MUSASHI_TARGET} TYPE)
+        if(MUSASHI_TARGET_TYPE STREQUAL "INTERFACE_LIBRARY")
+            continue()
+        endif()
+        get_target_property(MUSASHI_TARGET_SOURCES ${MUSASHI_TARGET} SOURCES)
+        if(MUSASHI_TARGET_SOURCES)
+            foreach(MUSASHI_SOURCE IN LISTS MUSASHI_TARGET_SOURCES)
+                if(MUSASHI_SOURCE MATCHES "src/main/")
+                    list(APPEND MUSASHI_PSYQ_SOURCES ${MUSASHI_SOURCE})
+                endif()
+            endforeach()
+        endif()
+    endforeach()
+    list(REMOVE_DUPLICATES MUSASHI_PSYQ_SOURCES)
+    execute_process(
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/psyq_manifest.py check
+                --allow ${CMAKE_CURRENT_SOURCE_DIR}/config/psyq_pending_replacement.txt
+                ${MUSASHI_PSYQ_SOURCES}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        RESULT_VARIABLE MUSASHI_PSYQ_RESULT)
+    if(NOT MUSASHI_PSYQ_RESULT EQUAL 0)
+        message(FATAL_ERROR "Sony PsyQ code would be compiled into the port (see above)")
+    endif()
+
     # Every CTest probe states its expectations as assert(). CMake puts -DNDEBUG
     # in the Release/RelWithDebInfo/MinSizeRel flags, which compiles all of them
     # out: the probe then runs to completion and exits 0 having checked nothing,

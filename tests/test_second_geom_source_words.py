@@ -565,8 +565,9 @@ def test_overlay_800cedfc_matches_main_cd_member0000():
     words2 = struct.unpack_from("<49I", overlay, 0x848)
     assert "kOverlay800CEE40Words" in fmt
     assert _range_in_fmt(fmt, 0x800cee40, 0x800cef04)
-    for word in words2:
-        assert f"0x{word:08x}u" in fmt.lower()
+    # Run off the disc: the formatter keeps the stream's shape, not its words.
+    assert re.search(rf"kOverlay800CEE40Words\[{len(words2)}\];", fmt)
+    assert f"0x{words2[0]:08x}u" not in fmt.lower()
     overlay_funcs = [
         ("800cef54.c", 0x800CEF54, 21, 0x95C),
         ("800cefa8.c", 0x800CEFA8, 19, 0x9B0),

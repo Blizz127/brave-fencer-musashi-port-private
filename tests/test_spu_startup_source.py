@@ -26,9 +26,10 @@ def test_spu_startup_source_fixture():
         # exports) to the pinned EXE. This fixture exercises the first two
         # calls; the common-attributes fixture covers the next caller prefix.
         formatter = (ROOT / "pc_port/mips_formatter.c").read_text()
-        streams = re.findall(
-            r"static const uint32_t kSpu[0-9A-F]+Words\[\] = \{\s*"
-            r'#include "([0-9a-f]{8})_words.inc"', formatter)
+        # The formatter keeps only each stream's shape; its words come from
+        # guest RAM (the helper regenerates them from the local EXE).
+        streams = [a.lower() for a in re.findall(
+            r"static const uint32_t kSpu([0-9A-F]{8})Words\[\d+\];", formatter)]
         assert len(streams) == 39
         for address in streams:
             text = (generated / f"{address}_words.inc").read_text()
