@@ -648,6 +648,13 @@ registered sites, and reports the selected overlay member (`SC02_031`,
 `musashi_formatter_set_overlay_hook` → `bfm_plat_hooks_set_overlay`.
 `MUSASHI_BFM_PLAT=0` turns the layer off.
 
+Routed through `bfm_plat_*` (opt-in; the defaults keep native_boot's own paths):
+
+| switch | effect |
+|---|---|
+| `MUSASHI_GPU=bfm_plat` | GP0/GP1 are teed into port-plat's GPU bridge and drawn by `MUSASHI_RENDERER` (default `psycross`); the controller keeps FIFO/DMA/GPUSTAT with its rasteriser off. Currently refuses the retail VRAM clear after TITLE_LOAD (PsyCross scene state shared with the VRAM backend; port-plat). |
+| `MUSASHI_INPUT=bfm_plat` | the SIO digital pad samples `bfm_plat_input_pad(0)` from the backend `MUSASHI_INPUT_BACKEND` (default `sdl`, bindings from `[input]`; `null` is the scripted pad mods drive). Polled once per VBlank, where native_boot already pumps SDL events. `MUSASHI_HOLD_*`/scripted test overrides still apply on top. |
+
 ## Native lane: running matched decomp C on the host (2026-09-28)
 
 Goal: the port executes byte-matched decomp C (`src/main/<vram>.c`, the

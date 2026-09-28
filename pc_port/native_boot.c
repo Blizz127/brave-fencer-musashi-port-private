@@ -63,11 +63,16 @@ static int log_sample(uint64_t *counter, uint64_t first, uint64_t stride) {
 
 #ifdef MUSASHI_WITH_BFM_PLAT
 #include "bfm_plat_gpu_bridge.h"
+#include "bfm_plat_input.h"
 /* MUSASHI_GPU=bfm_plat: GP0/GP1 are teed into the bfm_plat GPU bridge and
  * drawn by the bfm_plat renderer (MUSASHI_RENDERER, default psycross); the
  * controller keeps the port protocol with its rasteriser off. Default cpu. */
 static BfmGpuBridge g_gpu_bridge;
 static int g_gpu_bridge_on;
+/* MUSASHI_INPUT=bfm_plat: the SIO pad samples bfm_plat_input (default: the
+ * native keyboard/GameController sampler below). */
+static int g_plat_input_on;
+static int g_plat_started;
 #endif
 
 typedef struct NativeBoot {
@@ -962,78 +967,93 @@ static int sample_keyboard_pad(void *userdata, uint16_t *buttons) {
         return 1;
     /* Do not PumpEvents here: on Xwayland that re-asserts XSetInputFocus
      * from TAP/SIO and steals the desktop keyboard. HOLD_* env is enough. */
-    keys = SDL_GetKeyboardState(&count);
-    if (!keys) return 1;
-    for (i = 0; i < sizeof(mapping) / sizeof(mapping[0]); ++i) {
-        if ((int)mapping[i].key >= count) return 0;
-        if (keys[mapping[i].key]) sampled &= (uint16_t)~(1u << mapping[i].bit);
-    }
-    if ((SDL_GetModState() & KMOD_RSHIFT) != 0)
-        sampled &= (uint16_t)~(1u << 11);
-
-    /* Gamepad / GameController support */
+#ifdef MUSASHI_WITH_BFM_PLAT
+    if (g_plat_input_on) {
+        /* MUSASHI_INPUT=bfm_plat: the platform layer's bindings (keyboard,
+         * GameController, scripted pads), polled once per VBlank. */
+        BfmPlatPad pad;
+        if (bfm_plat_input_pad(0, &pad) == 0 && pad.connected) {
+            sampled = (uint16_t)~pad.buttons;
+            stick_lx = pad.lx; stick_ly = pad.ly;
+            stick_rx = pad.rx; stick_ry = pad.ry;
+        }
+    } else
+#endif
     {
-        static SDL_GameController *s_gamepad = NULL;
-        static int s_gamepad_searched = 0;
-        if (!s_gamepad_searched) {
-            s_gamepad_searched = 1;
-            if (!SDL_WasInit(SDL_INIT_GAMECONTROLLER))
-                SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER);
-            for (int c = 0; c < SDL_NumJoysticks(); ++c) {
-                if (SDL_IsGameController(c)) {
-                    s_gamepad = SDL_GameControllerOpen(c);
-                    if (s_gamepad) {
-                        fprintf(stderr, "native_boot: GameController attached: %s\n",
-                                SDL_GameControllerName(s_gamepad));
-                        break;
+        keys = SDL_GetKeyboardState(&count);
+        if (!keys) return 1;
+        for (i = 0; i < sizeof(mapping) / sizeof(mapping[0]); ++i) {
+            if ((int)mapping[i].key >= count) return 0;
+            if (keys[mapping[i].key]) sampled &= (uint16_t)~(1u << mapping[i].bit);
+        }
+        if ((SDL_GetModState() & KMOD_RSHIFT) != 0)
+            sampled &= (uint16_t)~(1u << 11);
+
+        /* Gamepad / GameController support */
+        {
+            static SDL_GameController *s_gamepad = NULL;
+            static int s_gamepad_searched = 0;
+            if (!s_gamepad_searched) {
+                s_gamepad_searched = 1;
+                if (!SDL_WasInit(SDL_INIT_GAMECONTROLLER))
+                    SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER);
+                for (int c = 0; c < SDL_NumJoysticks(); ++c) {
+                    if (SDL_IsGameController(c)) {
+                        s_gamepad = SDL_GameControllerOpen(c);
+                        if (s_gamepad) {
+                            fprintf(stderr, "native_boot: GameController attached: %s\n",
+                                    SDL_GameControllerName(s_gamepad));
+                            break;
+                        }
                     }
                 }
             }
-        }
-        if (s_gamepad && SDL_GameControllerGetAttached(s_gamepad)) {
-            if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_DPAD_UP))
-                sampled &= (uint16_t)~(1u << 4);
-            if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_DPAD_RIGHT))
-                sampled &= (uint16_t)~(1u << 5);
-            if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_DPAD_DOWN))
-                sampled &= (uint16_t)~(1u << 6);
-            if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_DPAD_LEFT))
-                sampled &= (uint16_t)~(1u << 7);
-            if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_A))
-                sampled &= (uint16_t)~(1u << 14); /* Cross / Jump */
-            if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_X))
-                sampled &= (uint16_t)~(1u << 15); /* Square / Attack */
-            if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_B))
-                sampled &= (uint16_t)~(1u << 13); /* Circle / Secondary */
-            if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_Y))
-                sampled &= (uint16_t)~(1u << 12); /* Triangle */
-            if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_START))
-                sampled &= (uint16_t)~(1u << 3);
-            if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_BACK))
-                sampled &= (uint16_t)~(1u << 0);
-            if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_LEFTSHOULDER))
-                sampled &= (uint16_t)~(1u << 10); /* L1 */
-            if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_RIGHTSHOULDER))
-                sampled &= (uint16_t)~(1u << 11); /* R1 */
+            if (s_gamepad && SDL_GameControllerGetAttached(s_gamepad)) {
+                if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_DPAD_UP))
+                    sampled &= (uint16_t)~(1u << 4);
+                if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_DPAD_RIGHT))
+                    sampled &= (uint16_t)~(1u << 5);
+                if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_DPAD_DOWN))
+                    sampled &= (uint16_t)~(1u << 6);
+                if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_DPAD_LEFT))
+                    sampled &= (uint16_t)~(1u << 7);
+                if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_A))
+                    sampled &= (uint16_t)~(1u << 14); /* Cross / Jump */
+                if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_X))
+                    sampled &= (uint16_t)~(1u << 15); /* Square / Attack */
+                if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_B))
+                    sampled &= (uint16_t)~(1u << 13); /* Circle / Secondary */
+                if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_Y))
+                    sampled &= (uint16_t)~(1u << 12); /* Triangle */
+                if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_START))
+                    sampled &= (uint16_t)~(1u << 3);
+                if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_BACK))
+                    sampled &= (uint16_t)~(1u << 0);
+                if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_LEFTSHOULDER))
+                    sampled &= (uint16_t)~(1u << 10); /* L1 */
+                if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_RIGHTSHOULDER))
+                    sampled &= (uint16_t)~(1u << 11); /* R1 */
 
-            int16_t axis_x = SDL_GameControllerGetAxis(s_gamepad, SDL_CONTROLLER_AXIS_LEFTX);
-            int16_t axis_y = SDL_GameControllerGetAxis(s_gamepad, SDL_CONTROLLER_AXIS_LEFTY);
-            int16_t axis_rx = SDL_GameControllerGetAxis(s_gamepad, SDL_CONTROLLER_AXIS_RIGHTX);
-            int16_t axis_ry = SDL_GameControllerGetAxis(s_gamepad, SDL_CONTROLLER_AXIS_RIGHTY);
-            if (axis_x < -10000) sampled &= (uint16_t)~(1u << 7); /* Left */
-            if (axis_x > 10000) sampled &= (uint16_t)~(1u << 5);  /* Right */
-            if (axis_y < -10000) sampled &= (uint16_t)~(1u << 4); /* Up */
-            if (axis_y > 10000) sampled &= (uint16_t)~(1u << 6);  /* Down */
+                int16_t axis_x = SDL_GameControllerGetAxis(s_gamepad, SDL_CONTROLLER_AXIS_LEFTX);
+                int16_t axis_y = SDL_GameControllerGetAxis(s_gamepad, SDL_CONTROLLER_AXIS_LEFTY);
+                int16_t axis_rx = SDL_GameControllerGetAxis(s_gamepad, SDL_CONTROLLER_AXIS_RIGHTX);
+                int16_t axis_ry = SDL_GameControllerGetAxis(s_gamepad, SDL_CONTROLLER_AXIS_RIGHTY);
+                if (axis_x < -10000) sampled &= (uint16_t)~(1u << 7); /* Left */
+                if (axis_x > 10000) sampled &= (uint16_t)~(1u << 5);  /* Right */
+                if (axis_y < -10000) sampled &= (uint16_t)~(1u << 4); /* Up */
+                if (axis_y > 10000) sampled &= (uint16_t)~(1u << 6);  /* Down */
 
-            if (axis_x < -3000 || axis_x > 3000)
-                stick_lx = (uint8_t)(((axis_x >> 8) + 128) & 0xff);
-            if (axis_y < -3000 || axis_y > 3000)
-                stick_ly = (uint8_t)(((axis_y >> 8) + 128) & 0xff);
-            if (axis_rx < -3000 || axis_rx > 3000)
-                stick_rx = (uint8_t)(((axis_rx >> 8) + 128) & 0xff);
-            if (axis_ry < -3000 || axis_ry > 3000)
-                stick_ry = (uint8_t)(((axis_ry >> 8) + 128) & 0xff);
+                if (axis_x < -3000 || axis_x > 3000)
+                    stick_lx = (uint8_t)(((axis_x >> 8) + 128) & 0xff);
+                if (axis_y < -3000 || axis_y > 3000)
+                    stick_ly = (uint8_t)(((axis_y >> 8) + 128) & 0xff);
+                if (axis_rx < -3000 || axis_rx > 3000)
+                    stick_rx = (uint8_t)(((axis_rx >> 8) + 128) & 0xff);
+                if (axis_ry < -3000 || axis_ry > 3000)
+                    stick_ry = (uint8_t)(((axis_ry >> 8) + 128) & 0xff);
+            }
         }
+
     }
 
     /* Host hold: xdotool/Xwayland often never reaches SDL_GetKeyboardState.
@@ -1440,6 +1460,9 @@ static int epoch_video_edge(void *userdata, uint64_t sequence, uint64_t cycle) {
             if (ev.type == SDL_QUIT)
                 host_stop_signal = SIGTERM;
         }
+#ifdef MUSASHI_WITH_BFM_PLAT
+        if (g_plat_input_on) (void)bfm_plat_input_poll();
+#endif
         if (boot->gpu_renderer.window && boot->gpu_renderer.context) {
             if (SDL_GL_GetCurrentContext() != boot->gpu_renderer.context)
                 SDL_GL_MakeCurrent((SDL_Window *)boot->gpu_renderer.window, boot->gpu_renderer.context);
@@ -3529,6 +3552,7 @@ static void plat_start(MusashiBootMemory *memory) {
     bfm_plat_guest_regs_bind(&regs);
     if (bfm_plat_hooks_register_known() != 0)
         fprintf(stderr, "native_boot: BFM_PLAT hook sites refused\n");
+    g_plat_started = 1;
     fprintf(stderr, "native_boot: BFM_PLAT up hook_sites=%u\n", (unsigned)bfm_plat_hooks_count());
 
     musashi_formatter_set_entry_hook(plat_entry_hook, NULL);
@@ -3563,6 +3587,28 @@ static void gpu_bridge_attach(MusashiGpuController *gpu) {
     gpu->raster_disabled = 1;
     g_gpu_bridge_on = 1;
     fprintf(stderr, "native_boot: GPU_PATH bfm_plat renderer=%s\n", selected);
+}
+
+/* MUSASHI_INPUT=bfm_plat, once SDL video is up: open the bfm_plat input
+ * backend MUSASHI_INPUT_BACKEND (default "sdl"; bindings from [input]) and let the SIO pad
+ * sample it. Any refusal keeps the native sampler. */
+static void plat_input_attach(void) {
+    const char *want = getenv("MUSASHI_INPUT"), *selected = NULL;
+    if (!want || strcmp(want, "bfm_plat") != 0) return;
+    if (!g_plat_started) {
+        fprintf(stderr, "native_boot: INPUT bfm_plat refused: platform layer off; native\n");
+        return;
+    }
+    const char *backend = getenv("MUSASHI_INPUT_BACKEND");     /* sdl | scripted | ... */
+    if (!backend || !backend[0]) backend = "sdl";
+    if (bfm_plat_input_open(backend, &selected) != 0 || !selected || strcmp(selected, backend) != 0) {
+        fprintf(stderr, "native_boot: INPUT bfm_plat refused: %s backend unavailable; native\n",
+                backend);
+        (void)bfm_plat_input_open("null", NULL);
+        return;
+    }
+    g_plat_input_on = 1;
+    fprintf(stderr, "native_boot: INPUT bfm_plat backend=%s\n", selected);
 }
 #endif
 
@@ -3724,6 +3770,7 @@ int main(int argc, char **argv) {
     }
 #ifdef MUSASHI_WITH_BFM_PLAT
     gpu_bridge_attach(&boot.gpu);
+    plat_input_attach();
 #endif
     (void)present_frame(&boot);
     if (boot.media) {
