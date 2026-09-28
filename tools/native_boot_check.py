@@ -31,6 +31,9 @@ def main():
         env["SDL_VIDEODRIVER"] = "x11"
         env["XDG_RUNTIME_DIR"] = str(cwd)
         env["MUSASHI_NATIVE_GPU_TRACE"] = "1"
+        # Guest-cycle device time: host-paced time refuses under load
+        # (IRQ source-overflow) and makes the stop state depend on host speed.
+        env["MUSASHI_GUEST_CLOCK"] = "1"
         run = subprocess.run([xvfb, "-a", str(binary), str(exe)], cwd=cwd,
                              env=env, stdin=subprocess.DEVNULL, capture_output=True,
                              text=True, timeout=30)
