@@ -22,26 +22,41 @@ with `tools/port_matched_ratio.py`.
 
 ## Measured share (2026-09-28)
 
-`tools/port_matched_ratio.py` was run on a headless boot: a lane-ON build
-with the trace taken lane off, the guest clock and exact per-PC counts. The
-run covers the first 488 presented frames (1800 s wall); **the title screen
-was not reached**, so these figures describe boot and the intro only.
-- 390 distinct guest functions and 131.7 M interpreted instructions. 120.7 M
-  of those are the VSync wait loop (func_800424E4). The shares below are
-  given with that idle loop excluded.
-- **Byte-matched C (native lane): 2.1%** of instructions, 50 functions.
-- **Hand-written port code: 1.2%**, 42 functions: 9 PsyQ HLE, 4
+`tools/port_matched_ratio.py` was run on a headless boot to the title
+screen:
+- The build was lane-ON; the trace was taken with the lane off (so it is
+  complete), on the guest clock, with exact per-PC counts from
+  `tools/patches/trace-insns.patch`.
+- It stopped at the naturally rendered Press Start prompt
+  (`MUSASHI_PAUSE_AT_START_SCREEN`): 1109 frames, about 3500 s wall.
+- 455 distinct guest functions ran, for 295.4 M interpreted instructions.
+  195.0 M of those are the VSync wait loop (func_800424E4). Shares are
+  given with that idle loop excluded (100.3 M instructions).
+
+The shares:
+- **Byte-matched C (native lane): 0.5%** of instructions, 62 functions.
+- **Hand-written port code: 0.2%**, 42 functions: 9 PsyQ HLE, 4
   PsyCross, and 29 guest functions the host skips or intercepts.
-- **Interpreted retail: 96.6%**, 298 functions. 196 of them have matched C
-  that isn't run natively. In most cases the lane policy keeps PsyQ
-  library ranges out: 81 functions. 67% of the non-idle instructions are
-  in PsyQ library code with no registry entry (libcd, libpad, libetc,
-  libgpu), plus the startup code at 0x80010000.
-- 31 active PsyQ shims shadow a registered matched-C function, and 9 of
-  them were executed in this run: memcpy, CdIntToPos, ClearOTagR,
-  CatPrim, CdPosToInt, memset, SetDefDispEnv, GsInitCoordinate2 and
-  GsSetLightMode. A further 15 guest functions with matched C are skipped
-  by the host, for example 80016714 (startup environment clear) and
+- **Interpreted retail: 99.3%**, 351 functions. 212 of them have matched C
+  that isn't run natively:
+  - 86 are in PsyQ library ranges, which the lane policy keeps out even
+    when matched;
+  - 47 fail the lane's hooks rule;
+  - 46 are PsyQ stub entries;
+  - the rest fail other lane rules.
+- 93.1 M instructions (93% of the non-idle total) are in code with no
+  registry entry:
+  - libcd 46 M (a single sector-copy loop at 80046C38 alone is 43 M);
+  - overlay code at 800CFxxx-800D3xxx, 37 M (the title/movie overlay,
+    unregistered);
+  - libpad 6.4 M, libetc 2.2 M, libgpu 1.2 M.
+
+Shadowing:
+- 31 active PsyQ shims shadow a registered matched-C function. 9 of
+  them ran: memcpy, ClearOTagR, CdIntToPos, CdPosToInt, CatPrim, memset,
+  SetDefDispEnv, GsInitCoordinate2 and GsSetLightMode.
+- A further 15 guest functions with matched C are skipped by the host,
+  for example 80016714 (startup environment clear, 3008 calls) and
   8005C388 (console putchar).
 
 ## Game logic and state
