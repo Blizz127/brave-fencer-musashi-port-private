@@ -44,6 +44,11 @@ DEVICE = {"VSync", "DrawSync", "DrawOTag", "LoadImage", "StoreImage", "MoveImage
 BIOS = {0xA0, 0xB0, 0xC0}
 
 
+def is_bios(pc):
+    """BIOS call vectors (A0/B0/C0, any segment) and kernel RAM below the EXE."""
+    return (pc & 0x1FFFFFFF) in BIOS or (pc & 0x1FFFFFFF) < 0x10000
+
+
 def load_counts(path):
     rows = []
     for line in Path(path).read_text().splitlines():
@@ -199,7 +204,7 @@ def main(argv=None):
         pc, m = f["pc"], f["reg"]
         exact = m is not None and m["vram"] == pc
         rec = m["recovery"] if exact else None
-        if pc in BIOS:
+        if is_bios(pc):
             cls, why = "port_shim", "bios_hle"
         elif pc in admitted:
             cls, why = "matched_c", "native lane"
@@ -230,6 +235,12 @@ def main(argv=None):
             else:
                 why = "unregistered"
         f["class"], f["why"] = cls, why
+        if is_bios(pc) or (pc >> 28) != 8:
+            f["domain"] = "bios"
+        elif pc in psyq or (psyq_ranges is not None and psyq_manifest.psyq_segment(pc, psyq_ranges)):
+            f["domain"] = "psyq"
+        else:
+            f["domain"] = "game"
         size = (m.get("size") or 4) if exact else 4
         f["est_steps"] = f["calls"] * size // 4
 
@@ -265,6 +276,19 @@ def main(argv=None):
                                     if f["class"] == cls and f["pc"] in idle)
         c["instructions_share_excluding_idle"] = round(s / busy, 4) if busy else 0
 
+    domains = {}
+    for dom in ("game", "psyq", "bios"):
+        fs = [f for f in funcs.values() if f.get("domain") == dom]
+        busy_d = sum(f[key] for f in fs if f["pc"] not in idle)
+        d = {"functions": len(fs), "instructions": sum(f[key] for f in fs),
+             "instructions_excluding_idle": busy_d}
+        for cls in ("matched_c", "port_shim", "interpreted"):
+            cs = [f for f in fs if f["class"] == cls]
+            b = sum(f[key] for f in cs if f["pc"] not in idle)
+            d[cls] = {"functions": len(cs), "instructions_excluding_idle": b,
+                      "share_excluding_idle": round(b / busy_d, 4) if busy_d else 0}
+        domains[dom] = d
+
     def row(f):
         m = f["reg"]
         return {"pc": "%08x" % f["pc"], "name": m["name"] if m and m["vram"] == f["pc"] else None,
@@ -298,6 +322,7 @@ def main(argv=None):
                    "idle_instructions": idle_s,
                    "unattributed_instructions": unattributed_steps},
         "classes": classes,
+        "by_domain": domains,
         "overlay_regions_inferred": dict(sorted(reg.hits.items(), key=lambda kv: -kv[1])[:12]),
         "shadowed_executed": shadows,
         "shadowed_static": static_shadows,
@@ -320,12 +345,16 @@ def main(argv=None):
                                                100 * c[cls]["instructions_share_excluding_idle"])
     print("port_matched_ratio: %s: of instructions, matched C %s [%d/%d functions], "
           "port shims %s [%d], interpreted retail %s [%d, %d with unused matched C]; "
-          "%d shims shadow matched C (%d executed)%s" % (
+          "%d shims shadow matched C (%d executed); game code: matched C %.1f%% [%d/%d functions], "
+          "PsyQ: shims %.1f%%%s" % (
               a.label, pct("matched_c"), c["matched_c"]["functions"], tot_f,
               pct("port_shim"), c["port_shim"]["functions"],
               pct("interpreted"), c["interpreted"]["functions"],
               c["interpreted"]["by_reason"].get("matched_c_unused", {}).get("functions", 0),
               len(static_shadows), len(shadows),
+              100 * domains["game"]["matched_c"]["share_excluding_idle"],
+              domains["game"]["matched_c"]["functions"], domains["game"]["functions"],
+              100 * domains["psyq"]["port_shim"]["share_excluding_idle"],
               "" if steps is not None else " [instruction share ESTIMATED]"), file=sys.stderr)
     return 0
 

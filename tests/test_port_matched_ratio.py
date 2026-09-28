@@ -103,6 +103,10 @@ class PortMatchedRatio(unittest.TestCase):
         self.assertEqual(r["overlay_regions_inferred"], {"sc01_0000": 1, "sc09_0001": 1})
         self.assertEqual([s["pc"] for s in r["shadowed_executed"]], ["80020010", "80020040"])
         self.assertEqual(r["shadowed_static"], ["80020010 memcpy"])
+        dom = r["by_domain"]
+        self.assertEqual(dom["game"]["matched_c"]["functions"], 1)
+        self.assertEqual(dom["psyq"]["port_shim"]["functions"], 1)   # memcpy
+        self.assertEqual(dom["bios"]["port_shim"]["functions"], 1)   # A0
         self.assertIn("exact", r["instructions_basis"])
         self.assertIn("matched C", summary)
 
