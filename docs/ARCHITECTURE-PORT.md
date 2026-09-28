@@ -443,18 +443,26 @@ How it works:
   - Interpolation is affine (`noperspective`), like the PS1.
   - Texels are sampled nearest at native texel size, so higher internal
     scales sharpen the geometry, not the art.
-- **Semi-transparency.** All four modes use fixed-function blending:
-  | Mode | Formula | GL blend |
+- **Semi-transparency.** The formulas are `bfm_gl_blend_state`'s:
+  | Mode | Formula | Factors (src / dst) |
   |---|---|---|
-  | 0 | B/2 + F/2 | `CONSTANT_COLOR` 0.5 / 0.5 |
-  | 1 | B + F | `ONE` / `ONE` |
-  | 2 | B − F | `ONE` / `ONE` with `FUNC_REVERSE_SUBTRACT` |
-  | 3 | B + F/4 | `CONSTANT_COLOR` 0.25 / `ONE` |
-  A textured semi primitive is drawn in two passes: texels without STP
-  opaque, then texels with STP blended. Modes 1 and 2 are bit-exact
-  against the PS1 formula. Modes 0 and 3 keep the fraction the PS1
-  truncates, so a channel can come out one 5-bit step higher. The target
-  holds 8 bits per channel; this is intended on the HD path.
+  | 0 | B/2 + F/2 | 0.5 / 0.5 |
+  | 1 | B + F | 1 / 1 |
+  | 2 | B − F | 1 / 1, reverse subtract |
+  | 3 | B + F/4 | 0.25 / 1 |
+  - Opaque prims and modes 0, 1 and 3 use GL 3.3 core **dual-source
+    blending**: the shader outputs `rgb * sf` and a second colour `df`,
+    with blend `ONE, SRC1_COLOR`. Each fragment picks its own factors:
+    opaque, or blended when the pixel is untextured, an STP texel or a
+    replacement texel. Opaque and semi prims therefore share draws in PS1
+    order, and textured semi prims need no second pass.
+  - Mode 2 needs `FUNC_REVERSE_SUBTRACT`, so it gets its own draws.
+    Textured mode 2 is drawn in two passes: texels without STP opaque,
+    then STP texels subtracted.
+  - Accuracy: modes 1 and 2 are bit-exact against the PS1 formula. Modes 0
+    and 3 keep the fraction the PS1 truncates, so a channel can come out
+    one 5-bit step higher. The target holds 8 bits per channel; this is
+    intended on the HD path.
 - **Dither.** The PS1 4x4 matrix is applied at native pixel granularity
   (`gl_FragCoord / S`), and only to primitives the PS1 dithers: gouraud or
   modulated-texture polys and lines, never rects. `video.dither = auto |
@@ -485,10 +493,13 @@ How it works:
     first time it sees a check, and it is built once from alpha. A
     temporary copy is used for that, because GL 3.3 can't sample a bound
     target.
-  - After that, every draw keeps the stencil in step. Textured draws run
-    two passes, texels without STP then with, so each fragment writes its
-    own bit. A test for "pixel bit 0" with REPLACE of the written bit is
-    `EQUAL 0` or `GREATER 1`.
+  - After that, every draw keeps the stencil in step. A command whose
+    fragments can write both values runs two passes: written bit 0, then
+    written bit 1, where the written bit is STP | set-mask. Each fragment
+    is drawn once and writes its own bit. A test for "pixel bit 0" with
+    REPLACE of the written bit is `EQUAL 0` or `GREATER 1`.
+  - Only mask-check commands break batches, plus set-mask in textured
+    mode-2 commands.
   - Readback returns bit 15 from alpha, so StoreImage sees mask bits.
   - LoadImage ignores the mask settings; on the PS1 transfers honour them.
 - **Render feedback**: textures sampling pixels the GPU drew.
@@ -521,6 +532,40 @@ Known limits:
 - Replacements ignore the texture window and the CLUT, so palette swaps of
   one texture share its replacement. Semi-transparent replacements blend
   every texel.
+
+Benchmark (`tools/gl_bench/run.sh [--prims N] [--frames N] [--scales 1,4]
+[--feedback] [--mask] [--opaque]`) runs on OSMesa, headless.
+- **Frame:** double-buffered 320x240 hor+ 16:9 with 4000 prims: half
+  gouraud-textured 4-bit quads, plus 8-bit triangles, flat and gouraud
+  polys, semi-transparent 15-bit quads, sprites, lines and semi tiles.
+  That is about 0.25 Mpx of fill at 1x. It is heavy for a PS1 scene but
+  within what the PS1 GPU drew at 30 fps.
+- **Options:** `--feedback` adds 4 off-screen render-to-texture panels per
+  frame; `--mask` puts set/check on 10% of the prims.
+- **Columns:** CPU batching, GPU execute, present, fps, process CPU time,
+  ns per rasterised pixel, and command/draw counts.
+
+Results on llvmpipe (Mesa 25.0.7, LLVM 19, 12 cores), with the host at
+load average 42–60 from other jobs. Wall-clock numbers there are
+contention-bound, so compare them relatively:
+
+| frame | scale | batch ms | gpu ms | present ms | fps | draws |
+|---|---|---|---|---|---|---|
+| default | 1x | 1.0 | 49 | 18 | 14.7 | 1 |
+| default | 4x | 1.5 | 257 | 26 | 3.5 | 1 |
+| --feedback | 1x | 1.0 | 43 | 17 | 16.2 | 6 |
+| --feedback | 4x | 1.2 | 263 | 25 | 3.5 | 6 |
+| --mask | 1x | 1.0 | 157 | 28 | 5.4 | 430 |
+| --mask | 4x | 1.0 | 597 | 57 | 1.5 | 430 |
+
+What the numbers say:
+- Batching is about 0.25 µs per prim on the CPU, independent of scale.
+- Dual-source blending took the default frame from 1,039 draws to 1, and
+  from 188 to 49 ms GPU at 1x on the same host.
+- Mask-check frames are about 3x the cost. Check prims break batches, and
+  the stencil upkeep doubles fragment work.
+- llvmpipe is a software floor: a desktop GPU does these frames in well
+  under a millisecond. Use the bench to compare changes on one host.
 
 Tests (`tests/test_bfm_gl.py`, `tests/bfm_gl_probe.c`,
 `tests/bfm_gl_sdl_smoke.c`):
@@ -558,6 +603,8 @@ Tests (`tests/test_bfm_gl.py`, `tests/bfm_gl_probe.c`,
   - hor+ margins and present letterboxing;
   - overlay placement;
   - 24-bit image present.
+- **bench** builds `tools/gl_bench` at -O2 -Werror and runs 2 frames
+  with feedback and mask.
 - **sdl** drives the whole backend through `bfm_plat_renderer_*` on SDL's
   offscreen driver with Mesa EGL: double-buffered hor+ frames, StoreImage
   readback, HD replacement, 24-bit mode, and a scale change.
