@@ -2,6 +2,7 @@
  * tests/test_bfm_plat.py: `bfm_plat_probe GROUP [ARGS...]` prints
  * "ok GROUP" on success, or "FAIL file:line: expr" and exits 1. */
 #include "bfm_plat.h"
+#include "bfm_plat_font.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -804,6 +805,255 @@ static int group_hooks(void) {
     return 0;
 }
 
+
+/* ------------------------------------------------------ known hook sites */
+static uint32_t regs[32];
+static int reg_read(void *u, unsigned r, uint32_t *out) { (void)u; *out = regs[r]; return BFM_PLAT_OK; }
+static void bind_regs(void) {
+    BfmPlatGuestRegs g;
+    g.read = reg_read;
+    g.user = NULL;
+    bfm_plat_guest_regs_bind(&g);
+}
+static void put16(uint32_t a, uint16_t v) { ram[a & 0x1FFFFF] = (uint8_t)v; ram[(a & 0x1FFFFF) + 1] = (uint8_t)(v >> 8); }
+static void put32g(uint32_t a, uint32_t v) { put16(a, (uint16_t)v); put16(a + 2, (uint16_t)(v >> 16)); }
+
+static BfmEventRoom seen_room;
+static BfmEventSave seen_save;
+static unsigned n_enter, n_exit, n_save, n_load;
+static void ev_rec(void *u, BfmEvent e, void *p) {
+    (void)u;
+    if (e == BFM_EVENT_ROOM_ENTER) { n_enter++; seen_room = *(BfmEventRoom *)p; }
+    if (e == BFM_EVENT_ROOM_EXIT) { n_exit++; seen_room = *(BfmEventRoom *)p; }
+    if (e == BFM_EVENT_SAVE) { n_save++; seen_save = *(BfmEventSave *)p; }
+    if (e == BFM_EVENT_LOAD) { n_load++; seen_save = *(BfmEventSave *)p; }
+}
+
+static int group_sites(void) {
+    const BfmPlatKnownSite *k;
+    const BfmEvent *u;
+    size_t n = bfm_plat_known_sites(&k), i, m = bfm_plat_unsited_events(&u);
+    for (i = 0; i < n; i++)
+        printf("site %08x %s %s %s %.*s\n", (unsigned)k[i].guest_pc,
+               k[i].overlay ? k[i].overlay : "-", bfm_plat_event_name(k[i].event),
+               k[i].symbol, (int)strcspn(k[i].confidence, ":"), k[i].confidence);
+    for (i = 0; i < m; i++) printf("unsited %s\n", bfm_plat_event_name(u[i]));
+    for (i = 0; i < n; i++) printf("evidence %08x %s\n", (unsigned)k[i].guest_pc, k[i].evidence);
+    return 0;
+}
+
+static unsigned polls_until_unpause;
+static void unpause_later(void *u, BfmEvent e, void *p) {
+    BfmEventInput *in = (BfmEventInput *)p;
+    (void)u; (void)e;
+    if (polls_until_unpause && --polls_until_unpause == 0) *in->hotkeys |= BFM_HOTKEY_PAUSE;
+}
+
+static int group_hook_fills(void) {
+    BfmPlatConfig c;
+    BfmPlatClock fake;
+    BfmPlatHookSite bad;
+    BfmPlatRendererStats st;
+    reset_all();
+    bind_ram();
+    bind_regs();
+    memset(ram, 0, sizeof ram);
+    memset(&bad, 0, sizeof bad);
+    bad.guest_pc = 0x80128158;
+    bad.event = BFM_EVENT_ROOM_ENTER;
+    CHECK(bfm_plat_hooks_register(&bad, 1) == BFM_PLAT_INVALID);  /* overlay pc, no overlay */
+    CHECK(bfm_plat_overlay_matches("SC*", "sc02_031") && !bfm_plat_overlay_matches("SC*", "MAIN_012"));
+    CHECK(bfm_plat_overlay_matches("SC02_031", "sc02_031") && !bfm_plat_overlay_matches("SC02", "SC02_031"));
+    CHECK(!bfm_plat_overlay_matches("SC*", NULL) && bfm_plat_overlay_matches(NULL, NULL));
+
+    bfm_plat_config_defaults(&c);
+    c.mods_enabled = 0;
+    CHECK(bfm_plat_init(&c) == BFM_PLAT_OK);
+    fake.now_ns = probe_now; fake.sleep_ns = probe_sleep; fake.user = NULL;
+    bfm_plat_timing_set_clock(&fake);
+    CHECK(bfm_plat_hooks_register_known() == BFM_PLAT_OK);
+    CHECK(bfm_plat_hooks_count() == bfm_plat_known_sites(NULL));
+    bfm_plat_mods_subscribe(BFM_EVENT_ROOM_ENTER, ev_rec, NULL);
+    bfm_plat_mods_subscribe(BFM_EVENT_ROOM_EXIT, ev_rec, NULL);
+    bfm_plat_mods_subscribe(BFM_EVENT_SAVE, ev_rec, NULL);
+    bfm_plat_mods_subscribe(BFM_EVENT_LOAD, ev_rec, NULL);
+
+    /* room enter: overlay-qualified, edge into phase 0 */
+    put16(BFM_GUEST_SCENE_PHASE, 0);
+    CHECK(bfm_plat_hooks_at(0x80128158) == 0 && n_enter == 0);   /* no overlay selected */
+    bfm_plat_hooks_set_overlay("MAIN_012");
+    CHECK(bfm_plat_hooks_at(0x80128158) == 0);
+    bfm_plat_hooks_set_overlay("SC02_031");
+    CHECK(bfm_plat_hooks_at(0x80128158) == 1 && n_enter == 1);
+    CHECK(seen_room.area == 2 && seen_room.room == 31);
+    CHECK(bfm_plat_hooks_at(0x80128158) == 0);                  /* still phase 0 */
+    put16(BFM_GUEST_SCENE_PHASE, 1);
+    CHECK(bfm_plat_hooks_at(0x80128158) == 0);
+    put16(BFM_GUEST_SCENE_PHASE, 0);
+    CHECK(bfm_plat_hooks_at(0x80128158) == 1 && n_enter == 2);
+    bfm_plat_hooks_set_overlay("sc03_0053");
+    CHECK(bfm_plat_hooks_at(0x80128158) == 1 && seen_room.area == 3 && seen_room.room == 53);
+
+    /* room exit: func_80011B7C(8) with a location overlay */
+    regs[4] = 0;
+    CHECK(bfm_plat_hooks_at(0x80011B7C) == 0);
+    regs[4] = 8;
+    CHECK(bfm_plat_hooks_at(0x80011B7C) == 1 && n_exit == 1 && seen_room.room == 53);
+    bfm_plat_hooks_set_overlay(NULL);
+    CHECK(bfm_plat_hooks_at(0x80011B7C) == 0);
+
+    /* save / load: edges on the card state machine */
+    regs[5] = 2;
+    put32g(BFM_GUEST_CARD_STATE, 12);
+    CHECK(bfm_plat_hooks_at(0x8002B0B4) == 0);
+    put32g(BFM_GUEST_CARD_STATE, 13);
+    CHECK(bfm_plat_hooks_at(0x8002B0B4) == 1 && n_save == 1 && seen_save.slot == 2);
+    CHECK(bfm_plat_hooks_at(0x8002B0B4) == 0);
+    put32g(BFM_GUEST_CARD_STATE, 17);
+    regs[5] = 1;
+    CHECK(bfm_plat_hooks_at(0x8002B0B4) == 1 && n_load == 1 && seen_save.slot == 1);
+    put32g(BFM_GUEST_CARD_STATE, 32);
+    CHECK(bfm_plat_hooks_at(0x8002B0B4) == 1 && n_load == 2);
+    put32g(BFM_GUEST_CARD_STATE, 13);
+    CHECK(bfm_plat_hooks_at(0x8002B0B4) == 1 && n_save == 2);
+
+    /* frame sites are actions */
+    CHECK(bfm_plat_hooks_at(0x800189A8) == 1);
+    CHECK(bfm_plat_mods_event_count(BFM_EVENT_FRAME_BEGIN) == 1);
+    CHECK(bfm_plat_hooks_at(0x800184F0) == 1);
+    CHECK(bfm_plat_mods_event_count(BFM_EVENT_FRAME_END) == 1);
+    bfm_plat_renderer_stats(&st);
+    CHECK(st.frames == 0);        /* hook end does not present */
+
+    /* pause at the FRAME_BEGIN site blocks until unpaused (3 polls later) */
+    bfm_plat_mods_subscribe(BFM_EVENT_INPUT, unpause_later, NULL);
+    bfm_plat_pause(1);
+    polls_until_unpause = 4;
+    bfm_plat_input_scripted_hotkeys(0);
+    CHECK(bfm_plat_hooks_at(0x800189A8) == 1);
+    CHECK(!bfm_plat_is_paused());
+    bfm_plat_renderer_stats(&st);
+    CHECK(st.frames == 3);        /* three paused frames presented */
+    CHECK(bfm_plat_mods_event_count(BFM_EVENT_FRAME_END) == 1);
+    CHECK(bfm_plat_mods_event_count(BFM_EVENT_FRAME_BEGIN) == 2);
+    return 0;
+}
+
+/* ------------------------------------------------- pause + screenshot */
+static int group_pause_screenshot(int argc, char **argv) {
+    BfmPlatConfig c;
+    BfmPlatClock fake;
+    BfmPlatDispEnv d;
+    BfmPlatRect r = {0, 0, 4, 2};
+    uint16_t px[8] = {0x001F, 0x03E0, 0x7C00, 0x7FFF, 0x0000, 0x4210, 0x0421, 0x8000};
+    BfmPlatAudioStatus as;
+    char out[256];
+    CHECK(argc >= 1);
+    reset_all();
+    CHECK(bfm_plat_renderer_register(&capture_backend) == BFM_PLAT_OK);
+    bfm_plat_config_defaults(&c);
+    c.mods_enabled = 0;
+    strcpy(c.renderer, "null");
+    snprintf(c.screenshot_dir, sizeof c.screenshot_dir, "%s", argv[0]);
+    CHECK(bfm_plat_init(&c) == BFM_PLAT_OK);
+    fake.now_ns = probe_now; fake.sleep_ns = probe_sleep; fake.user = NULL;
+    bfm_plat_timing_set_clock(&fake);
+    CHECK(bfm_plat_renderer_upload_vram(&r, px) == BFM_PLAT_OK);
+    memset(&d, 0, sizeof d);
+    d.disp = r;
+    CHECK(bfm_plat_renderer_set_disp_env(&d) == BFM_PLAT_OK);
+
+    /* screenshot hotkey -> PNG at next frame end */
+    bfm_plat_input_scripted_hotkeys(BFM_HOTKEY_SCREENSHOT);
+    CHECK(bfm_plat_frame_begin() == BFM_PLAT_OK);
+    CHECK(bfm_plat_frame_end(1) == BFM_PLAT_OK);
+    CHECK(bfm_plat_last_screenshot() != NULL);
+    printf("shot %s\n", bfm_plat_last_screenshot());
+    bfm_plat_input_scripted_hotkeys(0);
+    bfm_plat_frame_begin();
+    bfm_plat_frame_end(1);
+    /* console command with explicit path; 24-bit mode */
+    d.rgb24 = 1;
+    d.disp.w = 2;          /* 2 pixels * 3 bytes = 3 halfwords per row */
+    CHECK(bfm_plat_renderer_set_disp_env(&d) == BFM_PLAT_OK);
+    {
+        char line[256];
+        snprintf(line, sizeof line, "screenshot %s/rgb24.png", argv[0]);
+        CHECK(bfm_plat_console_exec(line, out, sizeof out) == 0);
+        CHECK(strstr(out, "rgb24.png") != NULL);
+    }
+    printf("shot24 %s\n", bfm_plat_last_screenshot());
+    CHECK(bfm_plat_console_exec("screenshot /nonexistent-dir/x.png", out, sizeof out) != 0);
+
+    /* pause hotkey: frame_begin reports PAUSED, no FRAME_BEGIN/END, audio paused */
+    bfm_plat_input_scripted_hotkeys(BFM_HOTKEY_PAUSE);
+    CHECK(bfm_plat_frame_begin() == BFM_PLAT_PAUSED);
+    CHECK(bfm_plat_is_paused());
+    CHECK(bfm_plat_audio_status(&as) == BFM_PLAT_OK && as.playing == 0);
+    {
+        uint64_t b = bfm_plat_mods_event_count(BFM_EVENT_FRAME_BEGIN);
+        uint64_t e = bfm_plat_mods_event_count(BFM_EVENT_FRAME_END);
+        bfm_plat_input_scripted_hotkeys(0);
+        CHECK(bfm_plat_frame_end(1) == BFM_PLAT_OK);
+        CHECK(bfm_plat_frame_begin() == BFM_PLAT_PAUSED);
+        CHECK(bfm_plat_frame_end(1) == BFM_PLAT_OK);
+        CHECK(bfm_plat_mods_event_count(BFM_EVENT_FRAME_BEGIN) == b);
+        CHECK(bfm_plat_mods_event_count(BFM_EVENT_FRAME_END) == e);
+    }
+    bfm_plat_input_scripted_hotkeys(BFM_HOTKEY_PAUSE);
+    CHECK(bfm_plat_frame_begin() == BFM_PLAT_OK);
+    CHECK(bfm_plat_audio_status(&as) == BFM_PLAT_OK && as.playing == 1);
+    CHECK(bfm_plat_console_exec("pause", out, sizeof out) == 0 && strcmp(out, "paused") == 0);
+    CHECK(bfm_plat_console_exec("pause", out, sizeof out) == 0 && strcmp(out, "running") == 0);
+
+    /* "PAUSED" overlay reaches overlay_text */
+    bfm_plat_shutdown();
+    strcpy(c.renderer, "capture");
+    CHECK(bfm_plat_init(&c) == BFM_PLAT_OK);
+    bfm_plat_timing_set_clock(&fake);
+    bfm_plat_pause(1);
+    overlay_n = 0;
+    bfm_plat_frame_end(1);
+    CHECK(overlay_n == 1 && strcmp(overlay[0], "PAUSED") == 0);
+    bfm_plat_pause(0);
+
+    /* quit */
+    CHECK(!bfm_plat_quit_requested());
+    bfm_plat_input_scripted_hotkeys(BFM_HOTKEY_QUIT);
+    bfm_plat_frame_begin();
+    CHECK(bfm_plat_quit_requested());
+    return 0;
+}
+
+/* --------------------------------------------------------------- font */
+static int group_font(void) {
+    BfmPlatPrim p[64];
+    const uint8_t *g = bfm_plat_font_glyph('I');
+    size_t n;
+    unsigned c;
+    CHECK(g[0] == 0x0E && g[3] == 0x04 && g[6] == 0x0E);
+    CHECK(bfm_plat_font_glyph('\x01') == bfm_plat_font_glyph('?'));
+    for (c = 33; c < 127; c++) {
+        const uint8_t *q = bfm_plat_font_glyph((char)c);
+        unsigned any = 0, r;
+        for (r = 0; r < 7; r++) { any |= q[r]; CHECK(q[r] < 0x20); }
+        CHECK(any != 0);          /* every printable glyph draws something */
+    }
+    /* 'I': rows 0 and 6 are one 3-px run, rows 1-5 one 1-px run = 7 runs */
+    n = bfm_plat_font_text_prims(10, 20, "I", 1, 255, 255, 255, 0, p, 64);
+    CHECK(n == 7);
+    CHECK(p[0].kind == BFM_PRIM_TILE && p[0].v[0].x == 11 && p[0].v[0].y == 20 && p[0].w == 3 && p[0].h == 1);
+    CHECK(p[3].v[0].x == 12 && p[3].w == 1);
+    /* scale 2 + backing: backing first, runs doubled */
+    n = bfm_plat_font_text_prims(0, 0, "II", 2, 1, 2, 3, 1, p, 64);
+    CHECK(n == 15);
+    CHECK(p[0].flags == BFM_PRIM_FLAG_SEMI_TRANS && p[0].w == 2 * 6 * 2 + 2 && p[0].h == 18);
+    CHECK(p[1].w == 6 && p[1].h == 2 && p[1].v[0].x == 2 && p[8].v[0].x == 12 + 2);
+    CHECK(bfm_plat_font_text_prims(0, 0, "Hello, world!", 1, 0, 0, 0, 1, NULL, 0) > 20);
+    CHECK(bfm_plat_font_text_prims(0, 0, "abc", 1, 0, 0, 0, 0, p, 2) > 2);  /* sizing */
+    return 0;
+}
+
 #ifdef BFM_PLAT_WITH_PNG
 int bfm_plat_texture_png_decode_memory(const uint8_t *, size_t, uint32_t *,
                                        uint32_t *, uint8_t **);
@@ -853,6 +1103,10 @@ int main(int argc, char **argv) {
     else if (strcmp(g, "bindings") == 0) r = group_bindings();
     else if (strcmp(g, "console_ui") == 0) r = group_console_ui();
     else if (strcmp(g, "hooks") == 0) r = group_hooks();
+    else if (strcmp(g, "sites") == 0) r = group_sites();
+    else if (strcmp(g, "hook_fills") == 0) r = group_hook_fills();
+    else if (strcmp(g, "pause_screenshot") == 0) r = group_pause_screenshot(argc - 2, argv + 2);
+    else if (strcmp(g, "font") == 0) r = group_font();
 #ifdef BFM_PLAT_WITH_PNG
     else if (strcmp(g, "png") == 0) r = group_png(argc - 2, argv + 2);
     else if (strcmp(g, "texture_png") == 0) {

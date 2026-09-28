@@ -189,6 +189,74 @@ def png_cases():
     return cases
 
 
+def read_png_rgb(path):
+    """Minimal PNG reader for the port's own screenshots (filter 0 rows)."""
+    data = Path(path).read_bytes()
+    assert data[:8] == b"\x89PNG\r\n\x1a\n"
+    pos, idat, w = 8, b"", 0
+    while pos < len(data):
+        n, t = struct.unpack(">I4s", data[pos:pos + 8])
+        body = data[pos + 8:pos + 8 + n]
+        crc = struct.unpack(">I", data[pos + 8 + n:pos + 12 + n])[0]
+        assert zlib.crc32(t + body) & 0xFFFFFFFF == crc, t
+        if t == b"IHDR":
+            w, h, depth, ctype = struct.unpack(">IIBB", body[:10])
+            assert (depth, ctype) == (8, 2)
+        elif t == b"IDAT":
+            idat += body
+        pos += 12 + n
+    raw = zlib.decompress(idat)
+    stride = w * 3
+    rows = [raw[y * (stride + 1):(y + 1) * (stride + 1)] for y in range(h)]
+    assert all(r[0] == 0 for r in rows)
+    return w, h, b"".join(r[1:] for r in rows)
+
+
+# Known hook sites pinned to their symbols. Changing a site means changing
+# this table and its evidence together.
+KNOWN_SITES = {
+    ("800189a8", "-", "frame_begin"): ("func_800189A8", "high"),
+    ("800184f0", "-", "frame_end"): ("func_800184F0", "high"),
+    ("80128158", "SC*", "room_enter"): ("func_80128158", "medium"),
+    ("80011b7c", "-", "room_exit"): ("func_80011B7C", "low"),
+    ("8002b0b4", "-", "save"): ("func_8002B0B4", "medium"),
+    ("8002b0b4", "-", "load"): ("func_8002B0B4", "medium"),
+}
+UNSITED = ["battle_start", "battle_end", "item_get"]
+
+# (vendor/bfm-decomp path, line, text that line must contain): each is
+# cited in the sites' evidence strings.
+VENDOR_EVIDENCE = [
+    ("src/boot.c", 277, "void main(void)"),
+    ("src/boot.c", 310, "func_800189A8();"),
+    ("src/boot.c", 372, "func_800184F0();"),
+    ("src/boot.c", 374, "VSync(*(s32 *)(p + 0xA3E8));"),
+    ("src/800.c", 6042, "void func_800189A8(void)"),
+    ("src/800.c", 6094, "PadGetState(chan)"),
+    ("src/800.c", 5761, "void func_800184F0(void)"),
+    ("src/md_MAIN_003/md_MAIN_003_jr_800D1E18.c", 236, "func_800189A8();"),
+    ("src/resident/resident.c", 255, "func_80128158();"),
+    ("src/resident/resident.c", 261, "func_80011B7C(8);"),
+    ("src/boot.c", 950, "void func_80011B7C(arg0)"),
+    ("src/800_b.c", 87, "s32 func_8002B0B4(s32 sel, s32 idx, u8 *out)"),
+    ("src/800_b.c", 301, "case 13:"),
+    ("src/800_b.c", 318, "func_80060614(D_80075CC0, idx * 0x300 + 0x480, 0x300);"),
+    ("src/800_b.c", 486, "case 17:"),
+    ("src/800_b.c", 487, "case 32:"),
+    ("src/800_b.c", 488, "func_80060404(D_80075CC0, idx * 0x300 + 0x480, 0x300);"),
+    ("config/symbols.us.txt", 14, "main                             = 0x80010178; // func"),
+    ("config/symbols.us.txt", None, "GameModeDispatch                 = 0x80010B40;"),
+]
+
+
+def vendor_root():
+    for base in (ROOT, Path("/home/blizz/dev/brave-fencer-musashi-decomp")):
+        v = base / "vendor/bfm-decomp"
+        if (v / "src/boot.c").is_file():
+            return v
+    return None
+
+
 class BfmPlatTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -408,6 +476,57 @@ class BfmPlatTests(unittest.TestCase):
         # Without the PNG decoder registered, .png replacements are ignored.
         out = self.run_probe("texture", d / "mods")
         self.assertIn("replaced 0", out)
+
+    def test_known_hook_sites_pinned_to_symbols(self):
+        out = self.run_probe("sites")
+        sites = {}
+        for line in out.splitlines():
+            parts = line.split()
+            if parts[:1] == ["site"]:
+                sites[(parts[1], parts[2], parts[3])] = (parts[4], parts[5])
+        self.assertEqual(sites, KNOWN_SITES)
+        unsited = [l.split()[1] for l in out.splitlines() if l.startswith("unsited ")]
+        self.assertEqual(unsited, UNSITED)
+        evidence = " ".join(l for l in out.splitlines() if l.startswith("evidence "))
+        for path, line, _ in VENDOR_EVIDENCE:
+            if line is not None and path.startswith("src/"):
+                self.assertIn(f"{path}:{line}" if path != "src/800_b.c" or line not in (486, 487, 488)
+                              else "src/800_b.c:486-488", evidence)
+        # The repository file the room-enter evidence cites.
+        disp = (ROOT / "src/overlays/main_0012/80128288.c").read_text()
+        self.assertIn("D_8017E618[D_800B99F6]();", disp)
+
+    def test_hook_site_evidence_matches_vendor_source(self):
+        v = vendor_root()
+        if v is None:
+            self.skipTest("vendor/bfm-decomp not present")
+        for path, line, text in VENDOR_EVIDENCE:
+            lines = (v / path).read_text(errors="replace").splitlines()
+            if line is None:
+                self.assertTrue(any(text in l for l in lines), (path, text))
+            else:
+                self.assertIn(text, lines[line - 1], (path, line))
+
+    def test_hook_site_fills_and_frame_actions(self):
+        self.run_probe("hook_fills")
+
+    def test_pause_screenshot_and_quit(self):
+        d = self.fresh("shots")
+        out = self.run_probe("pause_screenshot", d)
+        self.assertIn(f"shot {d}/bfm_00000.png", out)
+        w, h, rgb = read_png_rgb(d / "bfm_00000.png")
+        self.assertEqual((w, h), (4, 2))
+        self.assertEqual(rgb.hex(), "ff0000" "00ff00" "0000ff" "ffffff"
+                                    "000000" "848484" "080808" "000000")
+        w, h, rgb = read_png_rgb(d / "rgb24.png")
+        self.assertEqual((w, h), (2, 2))
+        self.assertEqual(rgb.hex(), "1f00e003007c" "000010422104")
+        # The port's own PNG decoder reads its screenshots back.
+        out = self.run_probe("png", d / "bfm_00000.png", probe=self.png_probe)
+        self.assertIn("png 4 2 ff0000ff00ff00ff", out)
+
+    def test_overlay_font(self):
+        self.run_probe("font")
 
     def test_platform_sources_include_no_host_or_psyq_headers(self):
         # Core interfaces stay dependency-free; only backends/ may include
