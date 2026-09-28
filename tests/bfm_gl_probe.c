@@ -456,6 +456,159 @@ static void test_replacements(void) {
     printf("replacements ok\n");
 }
 
+static int count_kind(const BfmGlBatch *b, int kind) {
+    size_t i;
+    int n = 0;
+    for (i = 0; i < b->nc; i++) n += b->c[i].kind == kind;
+    return n;
+}
+
+static void test_ref_mask(void) {
+    BfmPlatDrawEnv env;
+    BfmPlatPrim p = prim(BFM_PRIM_TILE);
+    uint16_t tex[4] = {0x001F, 0x83E0, 0x0000, 0xFC00};
+    BfmPlatRect tr = R(640, 0, 4, 1);
+    bfm_gl_vram_init(&vram);
+    memset(&env, 0, sizeof env);
+    env.clip = R(0, 0, 1024, 512);
+    /* mask-set tile */
+    p.v[0].x = 0; p.v[0].y = 0; p.w = 4; p.h = 1;
+    p.v[0].r = 0xF8;
+    p.flags = BFM_PRIM_FLAG_MASK_SET;
+    CHECK(bfm_gl_ref_draw(&vram, &env, &p) == 4 && vram.px[0] == 0x801F);
+    /* check: protected pixels untouched */
+    p.v[0].x = 2; p.w = 4; p.v[0].r = 0; p.v[0].g = 0xF8;
+    p.flags = BFM_PRIM_FLAG_MASK_CHECK;
+    CHECK(bfm_gl_ref_draw(&vram, &env, &p) == 2);
+    CHECK(vram.px[2] == 0x801F && vram.px[3] == 0x801F && vram.px[4] == 0x03E0);
+    /* textured semi: only STP texels blend (mode 1), 0 is transparent,
+     * written bit 15 = texel STP */
+    bfm_gl_vram_upload(&vram, &tr, tex);
+    p = prim(BFM_PRIM_SPRITE);
+    p.v[0].x = 10; p.v[0].y = 0; p.w = 4; p.h = 1;
+    p.tpage = tp(2, 1, 640, 0);
+    p.flags = BFM_PRIM_FLAG_SEMI_TRANS | BFM_PRIM_FLAG_RAW_TEXTURE;
+    vram.px[10] = vram.px[11] = vram.px[12] = vram.px[13] = rgb15(1, 1, 1);
+    CHECK(bfm_gl_ref_draw(&vram, &env, &p) == 3);
+    CHECK(vram.px[10] == 0x001F);                     /* opaque, no STP */
+    CHECK(vram.px[11] == (0x8000 | rgb15(1, 31, 1))); /* blended, STP kept */
+    CHECK(vram.px[12] == rgb15(1, 1, 1));             /* transparent */
+    CHECK(vram.px[13] == (0x8000 | rgb15(1, 1, 31)));
+    /* fills clear bit 15 */
+    p = prim(BFM_PRIM_FILL);
+    p.w = 16; p.h = 1;
+    bfm_gl_ref_draw(&vram, &env, &p);
+    CHECK(vram.px[0] == 0 && vram.px[11] == 0);
+    printf("reference rasteriser mask/STP ok\n");
+}
+
+static void test_feedback_core(void) {
+    BfmGlBatch b;
+    BfmPlatDrawEnv env;
+    BfmPlatPrim p;
+    BfmPlatRect disp = R(0, 0, 320, 240), r;
+    size_t i;
+    bfm_gl_vram_init(&vram);
+    bfm_gl_batch_init(&b);
+    b.vram = &vram;
+    memset(&env, 0, sizeof env);
+    env.clip = R(0, 0, 1024, 512);
+    bfm_gl_batch_set_env(&b, &env);
+    CHECK(bfm_gl_batch_owner(&b, 520, 260) == 0);
+    /* a tile into off-screen VRAM: its tiles now live in the VRAM target */
+    p = prim(BFM_PRIM_TILE);
+    p.v[0].x = 512; p.v[0].y = 256; p.w = 40; p.h = 20;
+    bfm_gl_batch_add(&b, &p, 1);
+    CHECK(bfm_gl_batch_owner(&b, 512, 256) == 1 + BFM_GL_TARGET_VRAM);
+    CHECK(bfm_gl_batch_owner(&b, 551, 275) == 1 && bfm_gl_batch_owner(&b, 560, 256) == 0);
+    /* 15-bit sampling of it: one SNAPSHOT (tile-aligned), reused next time */
+    p = prim(BFM_PRIM_SPRITE);
+    p.tpage = tp(2, 0, 512, 256);
+    p.v[0].u = 4; p.v[0].v = 2; p.w = 20; p.h = 10;
+    p.v[0].x = 0; p.v[0].y = 400;
+    bfm_gl_batch_add(&b, &p, 1);
+    CHECK(count_kind(&b, BFM_GL_CMD_SNAPSHOT) == 1 && b.feedback_snaps == 1);
+    for (i = 0; i < b.nc; i++)
+        if (b.c[i].kind == BFM_GL_CMD_SNAPSHOT)
+            CHECK(rect_is(&b.c[i].vrect, 512, 256, 32, 16) && b.c[i].snap == 1);
+    CHECK((b.v[b.nv - 1].flags & BFM_GLV_SNAP) && b.c[b.nc - 1].snap == 1);
+    CHECK(fabsf(b.v[b.nv - 6].s - 4.0f / 32.0f) < 1e-6f && fabsf(b.v[b.nv - 6].t - 2.0f / 16.0f) < 1e-6f);
+    p.v[0].x = 100;
+    bfm_gl_batch_add(&b, &p, 1);
+    CHECK(count_kind(&b, BFM_GL_CMD_SNAPSHOT) == 1);   /* reused */
+    /* drawing into it again invalidates the snapshot */
+    {
+        BfmPlatPrim t = prim(BFM_PRIM_TILE);
+        t.v[0].x = 512; t.v[0].y = 256; t.w = 4; t.h = 4;
+        bfm_gl_batch_add(&b, &t, 1);
+    }
+    bfm_gl_batch_add(&b, &p, 1);
+    CHECK(count_kind(&b, BFM_GL_CMD_SNAPSHOT) == 2);
+    /* 4-bit sampling needs the 16-bit words: RESOLVE, tiles become clean */
+    p.tpage = tp(0, 0, 512, 256);
+    p.clut = clut_of(0, 490);
+    bfm_gl_batch_add(&b, &p, 1);
+    CHECK(count_kind(&b, BFM_GL_CMD_RESOLVE) >= 1 && bfm_gl_batch_owner(&b, 512, 256) == 0);
+    /* a GPU-drawn CLUT is resolved too */
+    {
+        BfmPlatPrim t = prim(BFM_PRIM_TILE);
+        int before;
+        t.v[0].x = 0; t.v[0].y = 490; t.w = 16; t.h = 1;
+        bfm_gl_batch_add(&b, &t, 1);
+        before = count_kind(&b, BFM_GL_CMD_RESOLVE);
+        p.tpage = tp(0, 0, 640, 0);
+        bfm_gl_batch_add(&b, &p, 1);
+        CHECK(count_kind(&b, BFM_GL_CMD_RESOLVE) == before + 1);
+        for (i = 0; i < b.nc; i++)
+            if (b.c[i].kind == BFM_GL_CMD_RESOLVE && b.c[i].vrect.y == 480)
+                CHECK(rect_is(&b.c[i].vrect, 0, 480, 16, 16));
+    }
+    /* a texture window forces the resolve path even for 15-bit */
+    env.texture_window = R(0, 0, 16, 16);
+    bfm_gl_batch_set_env(&b, &env);
+    {
+        BfmPlatPrim t = prim(BFM_PRIM_TILE);
+        int before;
+        t.v[0].x = 768; t.v[0].y = 0; t.w = 16; t.h = 16;
+        bfm_gl_batch_add(&b, &t, 1);
+        before = b.feedback_resolves;
+        p.tpage = tp(2, 0, 768, 0);
+        p.v[0].u = 0; p.v[0].v = 0;
+        bfm_gl_batch_add(&b, &p, 1);
+        CHECK((int)b.feedback_resolves > before);
+    }
+    env.texture_window = R(0, 0, 0, 0);
+    bfm_gl_batch_set_env(&b, &env);
+    /* uploads clean the tiles they fully cover */
+    {
+        BfmPlatPrim t = prim(BFM_PRIM_TILE);
+        t.v[0].x = 0; t.v[0].y = 300; t.w = 40; t.h = 40;
+        bfm_gl_batch_add(&b, &t, 1);
+        r = R(0, 300, 40, 40);
+        bfm_gl_batch_add_copy(&b, &r);
+        CHECK(bfm_gl_batch_owner(&b, 20, 320) == 0);          /* fully covered */
+        CHECK(bfm_gl_batch_owner(&b, 0, 300) == 1);           /* tile 288..304 partial */
+    }
+    /* StoreImage: add_resolve emits per-owner runs */
+    bfm_gl_batch_clear(&b);
+    r = R(0, 288, 64, 64);
+    bfm_gl_batch_add_resolve(&b, &r);
+    CHECK(count_kind(&b, BFM_GL_CMD_RESOLVE) >= 1 && bfm_gl_batch_owner(&b, 0, 300) == 0);
+    /* scene targets: evicting a slot forgets its tiles */
+    bfm_gl_batch_set_display(&b, &disp, 0);
+    env.clip = disp;
+    bfm_gl_batch_set_env(&b, &env);
+    p = prim(BFM_PRIM_TILE);
+    p.v[0].x = 0; p.v[0].y = 0; p.w = 16; p.h = 16;
+    bfm_gl_batch_add(&b, &p, 1);
+    CHECK(bfm_gl_batch_owner(&b, 0, 0) == 1 + BFM_GL_TARGET_SCENE0);
+    disp.w = 256;
+    bfm_gl_batch_set_display(&b, &disp, 0);
+    CHECK(bfm_gl_batch_owner(&b, 0, 0) == 0);
+    bfm_gl_batch_free(&b);
+    printf("render feedback tile map ok\n");
+}
+
 static void test_font_overlay(void) {
     BfmGlBatch b;
     BfmPlatPrim prims[256];
@@ -481,6 +634,8 @@ static int run_core(void) {
     test_batch();
     test_scenes();
     test_replacements();
+    test_ref_mask();
+    test_feedback_core();
     test_font_overlay();
     return fails;
 }
@@ -600,7 +755,8 @@ static void exec_textures(int scale) {
                     want = rgb15(0x10 >> 3, 0x20 >> 3, 0x30 >> 3);
                 } else {
                     bfm_gl_modulate(texel, 90, 200, 128, i < 2, m);
-                    want = rgb15(m[0] >> 3, m[1] >> 3, m[2] >> 3);
+                    /* bit 15 of the written pixel is the texel's STP */
+                    want = (uint16_t)(rgb15(m[0] >> 3, m[1] >> 3, m[2] >> 3) | (texel & 0x8000));
                 }
                 total++;
                 if (out[v * 64 + u] != want) {
@@ -821,6 +977,227 @@ static void exec_replacement(void) {
     printf("gl HD replacement ok\n");
 }
 
+/* ---- mask bit and render feedback, bit-exact vs bfm_gl_ref_draw ---- */
+
+static BfmGlVram ref;
+static BfmPlatDrawEnv REF_ENV;
+
+/* 8-bit channel whose GL store reads back as the 5-bit value c */
+static int c8of(int c) { return (c * 255 + 15) / 31; }
+
+static void both_env(const BfmPlatDrawEnv *e) {
+    REF_ENV = *e;
+    bfm_gl_batch_set_env(&B, e);
+}
+
+static void both(const BfmPlatPrim *p) {
+    bfm_gl_batch_add(&B, p, 1);
+    bfm_gl_ref_draw(&ref, &REF_ENV, p);
+}
+
+static void both_upload(int x, int y, int w, int h, const uint16_t *px) {
+    BfmPlatRect r = R(x, y, w, h);
+    upload(x, y, w, h, px);
+    bfm_gl_vram_upload(&ref, &r, px);
+}
+
+static BfmPlatPrim tile(int x, int y, int w, int h, int r5, int g5, int b5, int flags,
+                        uint16_t tpage) {
+    BfmPlatPrim p = prim(BFM_PRIM_TILE);
+    p.v[0].x = (int16_t)x; p.v[0].y = (int16_t)y;
+    p.w = (uint16_t)w; p.h = (uint16_t)h;
+    p.v[0].r = (uint8_t)c8of(r5); p.v[0].g = (uint8_t)c8of(g5); p.v[0].b = (uint8_t)c8of(b5);
+    p.flags = (uint8_t)flags;
+    p.tpage = tpage;
+    return p;
+}
+
+static BfmPlatPrim spr(int x, int y, int w, int h, uint16_t tpage, uint16_t clut, int u,
+                       int v, int flags, int r, int g, int b) {
+    BfmPlatPrim p = prim(BFM_PRIM_SPRITE);
+    p.v[0].x = (int16_t)x; p.v[0].y = (int16_t)y;
+    p.v[0].u = (uint8_t)u; p.v[0].v = (uint8_t)v;
+    p.v[0].r = (uint8_t)r; p.v[0].g = (uint8_t)g; p.v[0].b = (uint8_t)b;
+    p.w = (uint16_t)w; p.h = (uint16_t)h;
+    p.tpage = tpage; p.clut = clut;
+    p.flags = (uint8_t)flags;
+    return p;
+}
+
+static BfmPlatPrim fillp(int x, int y, int w, int h, int r5, int g5, int b5) {
+    BfmPlatPrim p = tile(x, y, w, h, r5, g5, b5, 0, 0);
+    p.kind = BFM_PRIM_FILL;
+    return p;
+}
+
+/* Everything the GPU drew resolved into the mirror, compared with the
+ * reference over a VRAM rect, all 16 bits. */
+static int compare_ref(const char *what, int x0, int y0, int w, int h) {
+    BfmPlatRect r = R(x0, y0, w, h);
+    int x, y, bad = 0, masked = 0;
+    bfm_gl_batch_add_resolve(&B, &r);
+    flush_all();
+    for (y = y0; y < y0 + h; y++)
+        for (x = x0; x < x0 + w; x++) {
+            uint16_t g = vram.px[y * 1024 + x], e = ref.px[y * 1024 + x];
+            masked += (e & 0x8000) != 0;
+            if (g != e && bad++ < 5)
+                printf("  %s (%d,%d): gl %04x ref %04x\n", what, x, y, g, e);
+        }
+    CHECK(bad == 0);
+    printf("gl %s: %d px bit-exact vs reference (%d with bit 15)\n", what,
+           w * h - bad, masked);
+    return masked;
+}
+
+static void reset_both(int scale) {
+    BfmPlatDrawEnv env;
+    CHECK(bfm_gl_exec_set_scale(X, scale) == BFM_PLAT_OK);
+    bfm_gl_batch_free(&B);
+    bfm_gl_batch_init(&B);
+    B.vram = &vram;
+    bfm_gl_vram_init(&vram);
+    bfm_gl_vram_init(&ref);
+    memset(&env, 0, sizeof env);
+    env.clip = R(0, 0, 1024, 512);
+    both_env(&env);
+    {   /* targets start black with bit 15 clear, like the zeroed mirrors */
+        BfmPlatPrim f = fillp(0, 0, 1024, 512, 0, 0, 0);
+        both(&f);
+    }
+}
+
+static void mask_texture(void) {
+    static uint16_t tex[32 * 32];
+    int x, y;
+    for (y = 0; y < 32; y++)
+        for (x = 0; x < 32; x++)
+            tex[y * 32 + x] = x == y ? 0 : (uint16_t)(rgb15(x, y, 31 - x) |
+                                                      (((x + y) & 1) ? 0x8000 : 0));
+    both_upload(640, 0, 32, 32, tex);
+}
+
+static void exec_mask(int scale) {
+    const int MS = BFM_PRIM_FLAG_MASK_SET, MC = BFM_PRIM_FLAG_MASK_CHECK;
+    const int SEMI = BFM_PRIM_FLAG_SEMI_TRANS, RAW = BFM_PRIM_FLAG_RAW_TEXTURE;
+    uint16_t t15 = tp(2, 0, 640, 0), t15m1 = tp(2, 1, 640, 0), t15m2 = tp(2, 2, 640, 0);
+    BfmPlatPrim p;
+    int masked;
+    reset_both(scale);
+    mask_texture();
+    p = fillp(0, 300, 96, 64, 4, 8, 12);                     both(&p);
+    p = tile(0, 300, 32, 32, 31, 0, 0, MS, 0);              both(&p);   /* sets bit 15 */
+    flush_all();
+    /* first check on this target: the stencil is built from alpha */
+    p = spr(16, 316, 32, 32, t15, 0, 0, 0, RAW | MC, 0, 0, 0);  both(&p);
+    p = spr(32, 332, 32, 32, t15m1, 0, 0, 0, RAW | SEMI, 0, 0, 0); both(&p);
+    p = tile(8, 340, 40, 16, 3, 20, 9, SEMI | MC | MS, tp(2, 2, 0, 0)); both(&p);
+    p = tile(20, 310, 30, 30, 10, 10, 10, SEMI | MC, tp(2, 1, 0, 0)); both(&p);
+    p = spr(64, 300, 32, 32, t15m2, 0, 0, 0, RAW | SEMI | MS, 0, 0, 0); both(&p);
+    p = spr(60, 330, 32, 32, t15, 0, 0, 0, MC, 100, 200, 50);   both(&p);  /* modulated */
+    p = tile(70, 320, 8, 30, 31, 31, 0, MC, 0);             both(&p);
+    masked = compare_ref(scale == 1 ? "mask 1x" : "mask 3x", 0, 300, 96, 64);
+    CHECK(masked > 500 && masked < 96 * 64);
+}
+
+static void exec_feedback(int scale) {
+    const int MS = BFM_PRIM_FLAG_MASK_SET, SEMI = BFM_PRIM_FLAG_SEMI_TRANS;
+    const int RAW = BFM_PRIM_FLAG_RAW_TEXTURE;
+    BfmPlatPrim p;
+    BfmPlatDrawEnv env;
+    BfmPlatRect disp = R(0, 0, 320, 240);
+    uint32_t snaps, resolves;
+    int k;
+    reset_both(scale);
+    mask_texture();
+
+    /* (a) render into off-screen VRAM, then use it as a 15-bit texture
+     *     (semi mode 1 so the rendered bit 15 decides what blends) */
+    p = fillp(512, 256, 64, 64, 2, 4, 6);                    both(&p);
+    p = tile(512, 256, 40, 20, 30, 1, 5, MS, 0);             both(&p);
+    p = spr(520, 270, 32, 32, tp(2, 0, 640, 0), 0, 0, 0, RAW, 0, 0, 0); both(&p);
+    p = fillp(0, 400, 64, 64, 9, 9, 9);                      both(&p);
+    snaps = B.feedback_snaps;
+    p = spr(0, 400, 64, 64, tp(2, 1, 512, 256), 0, 0, 0, RAW | SEMI, 0, 0, 0); both(&p);
+    CHECK(B.feedback_snaps == snaps + 1);                     /* GPU snapshot path */
+    compare_ref("feedback 15-bit", 0, 400, 64, 64);
+
+    /* HD detail survives: a triangle edge rendered at scale S, copied 1:1
+     * through the snapshot, matches at device resolution */
+    if (scale > 1) {
+        static uint8_t a[48 * 48 * 16 * 4], c[48 * 48 * 16 * 4];
+        BfmPlatRect ra = R(704, 256, 16, 16), rc = R(704, 320, 16, 16);
+        BfmPlatPrim t3 = prim(BFM_PRIM_POLY_F3);
+        size_t n = (size_t)16 * scale * 16 * scale * 4;
+        t3.v[0].x = 704; t3.v[0].y = 256; t3.v[1].x = 720; t3.v[1].y = 259;
+        t3.v[2].x = 707; t3.v[2].y = 272; t3.v[0].r = 250; t3.v[0].g = 100;
+        bfm_gl_batch_add(&B, &t3, 1);
+        p = spr(704, 320, 16, 16, tp(2, 0, 704, 256), 0, 0, 0, RAW, 0, 0, 0);
+        bfm_gl_batch_add(&B, &p, 1);
+        flush_all();
+        CHECK(bfm_gl_exec_readback_rgba(X, &B, BFM_GL_TARGET_VRAM, &ra, a) == BFM_PLAT_OK);
+        CHECK(bfm_gl_exec_readback_rgba(X, &B, BFM_GL_TARGET_VRAM, &rc, c) == BFM_PLAT_OK);
+        {
+            size_t i, diff = 0, edge = 0;
+            for (i = 0; i < n; i += 4) {
+                diff += memcmp(a + i, c + i, 3) != 0;
+                edge += a[i] > 200;
+            }
+            CHECK(diff == 0 && edge > 0);
+            printf("gl feedback %dx: %zu device pixels copied exactly (%zu lit)\n", scale,
+                   n / 4, edge);
+        }
+        /* keep the reference in step: redo both in the reference by
+         * resolving what the GPU drew there */
+        {
+            BfmPlatRect all = R(704, 256, 16, 80);
+            uint16_t tmp[16 * 80];
+            bfm_gl_batch_add_resolve(&B, &all);
+            flush_all();
+            bfm_gl_vram_download(&vram, &all, tmp);
+            bfm_gl_vram_upload(&ref, &all, tmp);
+        }
+    }
+
+    /* (b) the GPU draws 4-bit index data and its CLUT; a sprite then
+     *     samples them (readback path) */
+    for (k = 0; k < 16; k++) {   /* index words: nibbles k, k+1, k+2, k+3 */
+        int w = (k & 15) | (((k + 1) & 15) << 4) | (((k + 2) & 15) << 8) | (((k + 3) & 7) << 12);
+        p = tile(576 + k, 256, 1, 16, w & 31, (w >> 5) & 31, (w >> 10) & 31,
+                 (k + 3) & 8 ? MS : 0, 0);
+        both(&p);
+    }
+    for (k = 0; k < 16; k++) {   /* CLUT at (0, 490); index 5 stays transparent */
+        p = tile(k, 490, 1, 1, k == 5 ? 0 : 31 - k, k * 2, 7, k & 1 ? MS : 0, 0);
+        both(&p);
+    }
+    resolves = B.feedback_resolves;
+    p = fillp(100, 400, 64, 16, 1, 2, 3);                   both(&p);
+    p = spr(100, 400, 64, 16, tp(0, 0, 576, 256), clut_of(0, 490), 0, 0, RAW, 0, 0, 0);
+    both(&p);
+    CHECK(B.feedback_resolves > resolves);
+    compare_ref("feedback 4-bit + CLUT", 100, 400, 64, 16);
+
+    /* (c) a frame buffer sampled while being drawn (hor+ scene target) */
+    bfm_gl_batch_set_display(&B, &disp, 53);
+    memset(&env, 0, sizeof env);
+    env.clip = disp;
+    both_env(&env);
+    p = fillp(0, 0, 320, 240, 0, 0, 10);                     both(&p);
+    p = tile(0, 0, 64, 64, 20, 5, 25, 0, 0);                 both(&p);
+    p = spr(8, 8, 32, 32, tp(2, 0, 640, 0), 0, 0, 0, RAW, 0, 0, 0); both(&p);
+    snaps = B.feedback_snaps;
+    p = spr(200, 100, 32, 32, tp(2, 0, 0, 0), 0, 16, 16, RAW, 0, 0, 0); both(&p);
+    CHECK(B.feedback_snaps == snaps + 1);
+    compare_ref("feedback frame buffer", 0, 0, 320, 240);
+
+    /* everything, everywhere: the resolved mirror equals the reference */
+    memset(&env, 0, sizeof env);
+    env.clip = R(0, 0, 1024, 512);
+    both_env(&env);
+    compare_ref(scale == 1 ? "whole VRAM 1x" : "whole VRAM 3x", 0, 0, 1024, 512);
+}
+
 static int run_exec(const char *lib) {
     static const int attribs[] = {0x22, 0x1908 /* FORMAT RGBA */, 0x30, 0, 0x31, 0,
                                   0x33, 0x34 /* core */, 0x36, 3, 0x37, 3, 0};
@@ -868,6 +1245,13 @@ static int run_exec(const char *lib) {
     exec_blend();
     exec_dither();
     exec_replacement();
+    exec_mask(1);
+    exec_mask(3);
+    exec_feedback(1);
+    exec_feedback(3);
+    bfm_gl_batch_free(&B);
+    bfm_gl_batch_init(&B);
+    B.vram = &vram;
     exec_scene_present();
     CHECK(bfm_gl_exec_error(X) == 0);
     bfm_gl_batch_free(&B);

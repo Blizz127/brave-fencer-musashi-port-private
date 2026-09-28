@@ -475,6 +475,39 @@ How it works:
   - Alpha < 0.5 is transparent, and vertex colour still modulates the
     image.
   - A plain upload overlapping the rect retires the replacement.
+- **Mask bit** (GP0 E6). The decoder carries E6 as the prim flags
+  `BFM_PRIM_FLAG_MASK_SET` and `_CHECK`.
+  - Every render target's alpha channel is bit 15 of its pixels: texel
+    STP | set-mask. Fills clear it, and uploads copy it in. Blending uses
+    separate functions, so alpha is always the fragment's bit and never a
+    blend.
+  - Check-mask uses a stencil. A target gets one (depth24/stencil8) the
+    first time it sees a check, and it is built once from alpha. A
+    temporary copy is used for that, because GL 3.3 can't sample a bound
+    target.
+  - After that, every draw keeps the stencil in step. Textured draws run
+    two passes, texels without STP then with, so each fragment writes its
+    own bit. A test for "pixel bit 0" with REPLACE of the written bit is
+    `EQUAL 0` or `GREATER 1`.
+  - Readback returns bit 15 from alpha, so StoreImage sees mask bits.
+  - LoadImage ignores the mask settings; on the PS1 transfers honour them.
+- **Render feedback**: textures sampling pixels the GPU drew.
+  - A 16x16-tile map in the batcher records which target holds each VRAM
+    tile's newest pixels: the VRAM target, a scene slot, or the mirror.
+  - For a textured prim whose texture or CLUT footprint covers rendered
+    tiles:
+    - *15-bit pages* without wrap or texture window, all from one target,
+      get a `SNAPSHOT`. That is a GPU blit of the tile-aligned footprint
+      at device resolution, sampled nearest. Render-to-texture effects
+      keep their HD detail: at 3x, a triangle edge copied through a
+      snapshot matches device pixel for device pixel. A snapshot is reused
+      until something writes into its rect, and a list holds at most 32.
+    - *CLUT pages*, texture windows, wraps and mixed owners get a
+      `RESOLVE`: that tile run is read back into the mirror (all 16 bits)
+      and the VRAM texture re-uploaded, mid-list. GPU-drawn index data and
+      GPU-drawn CLUTs decode exactly.
+  - StoreImage (and so MoveImage) resolves the rendered tiles it covers.
+  - Fills and uploads mark fully covered tiles clean again.
 - **24-bit display** (`DispEnv.rgb24`, used by movies): the frame is
   decoded from the mirror on the CPU and shown at 4:3.
 - **Overlay text.** The built-in font is drawn in display pixels after the
@@ -482,15 +515,12 @@ How it works:
   touches game VRAM.
 
 Known limits:
-- Mask-bit set/check (GP0 E6) is not emulated.
-- Draws into off-screen VRAM that the game samples directly, without a
-  StoreImage/MoveImage in between, don't feed back into the texture: the
-  render-to-texture case.
+- The mask settings don't apply to LoadImage/MoveImage transfers.
+- A prim that samples the pixels it is drawing over sees them as they were
+  before it started (the PS1 reads them as it writes).
 - Replacements ignore the texture window and the CLUT, so palette swaps of
   one texture share its replacement. Semi-transparent replacements blend
   every texel.
-- Frame-buffer effects that sample the previous frame need the readback
-  path.
 
 Tests (`tests/test_bfm_gl.py`, `tests/bfm_gl_probe.c`,
 `tests/bfm_gl_sdl_smoke.c`):
@@ -506,9 +536,21 @@ Tests (`tests/test_bfm_gl.py`, `tests/bfm_gl_probe.c`,
   - hor+ routing: slots, widened scissors, margins, LRU eviction, copies;
   - replacement lookup, coordinates and retirement;
   - VRAM move with overlap and wrap, and the 24-bit decode.
+- **CPU reference rasteriser** (`bfm_gl_ref_draw`): the definition of
+  exact for TILE/SPRITE/FILL. It covers clip, offset, window, CLUT,
+  transparency, modulation, semi-transparency on untextured and STP
+  pixels, mask check/set, and bit 15 of written pixels.
 - **exec** runs the real executor on an OSMesa (llvmpipe) GL 3.3 core
   context, headless, compared pixel by pixel with the CPU reference. It
   covers:
+  - mask set/check scenes, exact in all 16 bits at 1x and 3x. A mutation
+    with the stencil test disabled fails them;
+  - render feedback, exact in all 16 bits against the reference:
+    - off-screen 15-bit render-to-texture through a snapshot;
+    - GPU-drawn 4-bit index data plus a GPU-drawn CLUT through a resolve;
+    - a hor+ frame buffer sampling itself;
+    - the whole 1024x512 VRAM resolved and compared, at 1x and 3x;
+  - HD detail preserved through a snapshot at 3x;
   - 3,072 texels through 4, 8 and 15 bit at 1x and 3x, all exact;
   - every blend mode with the STP split;
   - dither at 2x;
@@ -752,9 +794,8 @@ Stubbed / next:
   top-level `CMakeLists.txt` belongs to the native-lane work).
 - The `psycross` renderer has no HD `upload_replacement` path, and
   `set_output` is a no-op. PsyCross owns window size. HD is on `gl`.
-- `gl` limits: no mask bit, no render-to-texture feedback except through
-  StoreImage or MoveImage. Not yet run against the real game (that needs
-  the native lane's libgpu shim routed through `bfm_plat_renderer_*`).
+- `gl`: not yet run against the real game. That needs the native lane's
+  libgpu shim routed through `bfm_plat_renderer_*`.
 - The SDL input backend's rebinding at runtime (`set_bindings`) has no UI.
 - Overlay text on `psycross` is compile-checked only. It draws the
   built-in 5x7 font (`bfm_plat_font.c`, original to this repo) as TILE runs

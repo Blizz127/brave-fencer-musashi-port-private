@@ -2,7 +2,8 @@
 
 Three levels, each skipped when its inputs are missing:
   core    CPU side (bfm_gl_core.c): CLUT decode, batching, PS1 blend formulas
-          vs the GL blend state, dither, hor+ routing, HD replacement lookup.
+          vs the GL blend state, dither, hor+ routing, HD replacement lookup,
+          the reference rasteriser, the render-feedback tile map.
           Always runs, no GL or display needed.
   exec    The GL 3.3 executor on a headless OSMesa (llvmpipe) context,
           compared pixel by pixel with the CPU reference. Needs the Khronos
@@ -96,6 +97,13 @@ class GlRendererTests(unittest.TestCase):
         self.assertIn("ok exec", out)
         self.assertIn("textures 4/8/15-bit: 3072 texels, 3072 exact", out)
         self.assertIn("gl blend mode 1: vs PS1 992/992 exact", out)
+        # mask bit and render feedback, all 16 bits vs the reference rasteriser
+        for line in ("gl mask 1x: 6144 px bit-exact", "gl mask 3x: 6144 px bit-exact",
+                     "gl feedback 4-bit + CLUT: 1024 px bit-exact",
+                     "gl feedback frame buffer: 76800 px bit-exact",
+                     "gl whole VRAM 1x: 524288 px bit-exact",
+                     "gl whole VRAM 3x: 524288 px bit-exact"):
+            self.assertIn(line, out)
 
     def test_sdl_backend(self):
         inc, sdl = gl_include(), sdl_include()

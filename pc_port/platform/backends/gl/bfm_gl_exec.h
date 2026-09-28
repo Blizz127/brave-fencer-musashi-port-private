@@ -7,6 +7,14 @@
  * headless test). No GL loader library, no GL headers beyond the Khronos
  * glcorearb.h at compile time.
  *
+ * Mask bits: every target's alpha channel is the PS1 bit 15 of its pixels
+ * (texel STP | E6 set-mask; fills clear it). Mask-check uses a stencil that
+ * a target gets the first time it sees a check, built from alpha, then kept
+ * in step (textured draws split by STP so each texel writes its bit).
+ * Render feedback: SNAPSHOT commands copy rendered areas at device
+ * resolution for 15-bit sampling; RESOLVE commands read them back into the
+ * mirror (the batch's vram) for CLUT/windowed sampling and StoreImage.
+ *
  * Objects: the VRAM texture (1024x512 R16UI, fed from the CPU mirror), the
  * VRAM render target (1024S x 512S RGBA8), two scene targets
  * ((disp_w + 2 margin)S x disp_h S), and replacement textures (RGBA8,
@@ -32,10 +40,17 @@ void bfm_gl_exec_sync_vram(BfmGlExec *x, BfmGlVram *v);
  * toggle; vertex/batch flags still decide per primitive. */
 int bfm_gl_exec_run(BfmGlExec *x, const BfmGlBatch *b, int dither);
 
-/* Reads a target-local 1x rect of a render target back as 15-bit pixels
- * (centre sample of each scaled pixel; STP = 0). */
+/* Reads a target-local 1x rect of a render target back as 16-bit pixels:
+ * the centre sample of each scaled pixel, bit 15 = the mask bit (alpha). */
 int bfm_gl_exec_readback(BfmGlExec *x, const BfmGlBatch *b, int target,
                          const BfmPlatRect *local, uint16_t *out);
+
+/* Full-resolution RGBA8 of a target-local 1x rect: (w*S) x (h*S) pixels,
+ * bottom row (VRAM y) first. Alpha holds the mask bit (bit 15). */
+int bfm_gl_exec_readback_rgba(BfmGlExec *x, const BfmGlBatch *b, int target,
+                              const BfmPlatRect *local, uint8_t *out);
+/* Waits until the GPU has executed everything issued (benchmarks). */
+void bfm_gl_exec_finish(BfmGlExec *x);
 
 /* Replacement texture from RGBA8888 rows; 0 on failure. */
 uint32_t bfm_gl_exec_texture(BfmGlExec *x, uint32_t w, uint32_t h,

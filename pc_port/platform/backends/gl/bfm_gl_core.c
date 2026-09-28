@@ -358,6 +358,8 @@ void bfm_gl_repl_coords(const BfmGlReplacement *r, uint16_t tpage, float u,
 
 /* ---- batching --------------------------------------------------------- */
 
+static void tiles_clean(BfmGlBatch *b, const BfmPlatRect *r);
+
 void bfm_gl_batch_init(BfmGlBatch *b) {
     memset(b, 0, sizeof *b);
     b->disp.w = 320;
@@ -365,6 +367,7 @@ void bfm_gl_batch_init(BfmGlBatch *b) {
     b->env.clip.w = BFM_GL_VRAM_W;
     b->env.clip.h = BFM_GL_VRAM_H;
     b->scissor = b->env.clip;
+    bfm_gl_batch_clear(b);
 }
 
 void bfm_gl_batch_free(BfmGlBatch *b) {
@@ -378,6 +381,16 @@ void bfm_gl_batch_free(BfmGlBatch *b) {
 void bfm_gl_batch_clear(BfmGlBatch *b) {
     b->nv = 0;
     b->nc = 0;
+    b->nsnap = 0;
+    b->last_snap = -1;
+}
+
+/* Tiles whose newest pixels lived in a scene target that is being reused. */
+static void tiles_forget(BfmGlBatch *b, int target) {
+    int tx, ty;
+    for (ty = 0; ty < BFM_GL_TILES_Y; ty++)
+        for (tx = 0; tx < BFM_GL_TILES_X; tx++)
+            if (b->owner[ty][tx] == target + 1) b->owner[ty][tx] = 0;
 }
 
 void bfm_gl_batch_target_size(const BfmGlBatch *b, int target, int *w, int *h) {
@@ -414,6 +427,7 @@ static int scene_claim(BfmGlBatch *b, int x, int y) {
         for (i = 1; i < BFM_GL_SCENE_SLOTS; i++)
             if (b->scene[i].stamp < b->scene[pick].stamp) pick = i;
     }
+    if (b->scene[pick].used) tiles_forget(b, BFM_GL_TARGET_SCENE0 + pick);
     b->scene[pick].used = 1;
     b->scene[pick].x = x;
     b->scene[pick].y = y;
@@ -424,8 +438,11 @@ static int scene_claim(BfmGlBatch *b, int x, int y) {
 void bfm_gl_batch_set_display(BfmGlBatch *b, const BfmPlatRect *disp, int margin) {
     if (!disp || disp->w <= 0 || disp->h <= 0) return;
     if (margin < 0) margin = 0;
-    if (disp->w != b->disp.w || disp->h != b->disp.h || margin != b->margin)
+    if (disp->w != b->disp.w || disp->h != b->disp.h || margin != b->margin) {
         memset(b->scene, 0, sizeof b->scene);
+        tiles_forget(b, BFM_GL_TARGET_SCENE0);
+        tiles_forget(b, BFM_GL_TARGET_SCENE1);
+    }
     b->disp = *disp;
     b->margin = margin;
     if (!b->overlay) scene_claim(b, disp->x, disp->y);
@@ -504,6 +521,7 @@ static void fill_route(BfmGlBatch *b, const BfmPlatRect *r, uint32_t rgb) {
     }
     if (b->vram) bfm_gl_vram_fill(b->vram, r, rgb_to_15(rgb));
     emit_fill(b, BFM_GL_TARGET_VRAM, r, rgb);
+    tiles_clean(b, r);
     for (i = 0; i < BFM_GL_SCENE_SLOTS; i++) {
         BfmPlatRect area, l;
         if (!b->scene[i].used) continue;
@@ -544,31 +562,241 @@ static int rect_same(const BfmPlatRect *a, const BfmPlatRect *b) {
     return rect_eq(a, b);
 }
 
+/* ---- tile map ---------------------------------------------------------- */
+
+int bfm_gl_batch_owner(const BfmGlBatch *b, int x, int y) {
+    if (x < 0 || y < 0 || x >= BFM_GL_VRAM_W || y >= BFM_GL_VRAM_H) return 0;
+    return b->owner[y / BFM_GL_TILE][x / BFM_GL_TILE];
+}
+
+/* Tiles touched by [x0,x1) x [y0,y1) now hold target's pixels. */
+static void tiles_rendered(BfmGlBatch *b, int x0, int y0, int x1, int y1, int target) {
+    int tx, ty;
+    if (x0 < 0) x0 = 0;
+    if (y0 < 0) y0 = 0;
+    if (x1 > BFM_GL_VRAM_W) x1 = BFM_GL_VRAM_W;
+    if (y1 > BFM_GL_VRAM_H) y1 = BFM_GL_VRAM_H;
+    if (x0 >= x1 || y0 >= y1) return;
+    for (ty = y0 / BFM_GL_TILE; ty <= (y1 - 1) / BFM_GL_TILE; ty++)
+        for (tx = x0 / BFM_GL_TILE; tx <= (x1 - 1) / BFM_GL_TILE; tx++)
+            b->owner[ty][tx] = (uint8_t)(target + 1);
+}
+
+/* A write to VRAM rect [x0,x1) x [y0,y1) makes the last snapshot stale if
+ * it overlaps what the snapshot copied. */
+static void snap_touch(BfmGlBatch *b, int x0, int y0, int x1, int y1) {
+    const BfmPlatRect *v;
+    if (b->last_snap < 0) return;
+    v = &b->c[b->last_snap].vrect;
+    if (x0 < v->x + v->w && v->x < x1 && y0 < v->y + v->h && v->y < y1) b->last_snap = -1;
+}
+
+/* Tiles fully inside rect were written everywhere (mirror and targets). */
+static void tiles_clean(BfmGlBatch *b, const BfmPlatRect *r) {
+    int tx, ty;
+    snap_touch(b, r->x, r->y, r->x + r->w, r->y + r->h);   /* fills, uploads */
+    int tx0 = (r->x + BFM_GL_TILE - 1) / BFM_GL_TILE, tx1 = (r->x + r->w) / BFM_GL_TILE;
+    int ty0 = (r->y + BFM_GL_TILE - 1) / BFM_GL_TILE, ty1 = (r->y + r->h) / BFM_GL_TILE;
+    if (r->x < 0 || r->y < 0) return;
+    if (tx1 > BFM_GL_TILES_X) tx1 = BFM_GL_TILES_X;
+    if (ty1 > BFM_GL_TILES_Y) ty1 = BFM_GL_TILES_Y;
+    for (ty = ty0; ty < ty1; ty++)
+        for (tx = tx0; tx < tx1; tx++) b->owner[ty][tx] = 0;
+}
+
+/* VRAM rect -> target-local rect (clipped to the slot area for scenes). */
+static int to_local(const BfmGlBatch *b, int target, const BfmPlatRect *v, BfmPlatRect *l) {
+    *l = *v;
+    if (target == BFM_GL_TARGET_SCENE0 || target == BFM_GL_TARGET_SCENE1) {
+        const BfmGlScene *s = &b->scene[target - BFM_GL_TARGET_SCENE0];
+        int x0 = v->x, y0 = v->y, x1 = v->x + v->w, y1 = v->y + v->h;
+        if (!s->used) return 0;
+        if (x0 < s->x) x0 = s->x;
+        if (y0 < s->y) y0 = s->y;
+        if (x1 > s->x + b->disp.w) x1 = s->x + b->disp.w;
+        if (y1 > s->y + b->disp.h) y1 = s->y + b->disp.h;
+        if (x0 >= x1 || y0 >= y1) return 0;
+        l->x = (int16_t)(x0 - s->x + b->margin);
+        l->y = (int16_t)(y0 - s->y);
+        l->w = (int16_t)(x1 - x0);
+        l->h = (int16_t)(y1 - y0);
+    }
+    return 1;
+}
+
+/* RESOLVE every rendered tile in [x0,x1) x [y0,y1), in per-owner runs. */
+static void resolve_area(BfmGlBatch *b, int x0, int y0, int x1, int y1) {
+    int tx, ty;
+    if (x0 < 0) x0 = 0;
+    if (y0 < 0) y0 = 0;
+    if (x1 > BFM_GL_VRAM_W) x1 = BFM_GL_VRAM_W;
+    if (y1 > BFM_GL_VRAM_H) y1 = BFM_GL_VRAM_H;
+    if (x0 >= x1 || y0 >= y1) return;
+    for (ty = y0 / BFM_GL_TILE; ty <= (y1 - 1) / BFM_GL_TILE; ty++) {
+        tx = x0 / BFM_GL_TILE;
+        while (tx <= (x1 - 1) / BFM_GL_TILE) {
+            int own = b->owner[ty][tx], end = tx;
+            BfmPlatRect v, l;
+            BfmGlCmd *c;
+            if (!own) { tx++; continue; }
+            while (end + 1 <= (x1 - 1) / BFM_GL_TILE && b->owner[ty][end + 1] == own) end++;
+            v.x = (int16_t)(tx * BFM_GL_TILE);
+            v.y = (int16_t)(ty * BFM_GL_TILE);
+            v.w = (int16_t)((end - tx + 1) * BFM_GL_TILE);
+            v.h = BFM_GL_TILE;
+            if (to_local(b, own - 1, &v, &l) && (c = push_cmd(b)) != NULL) {
+                if (l.w != v.w || l.h != v.h) {   /* clipped to the slot */
+                    v.x = (int16_t)(l.x - b->margin + b->scene[own - 1 - BFM_GL_TARGET_SCENE0].x);
+                    v.y = (int16_t)(l.y + b->scene[own - 1 - BFM_GL_TARGET_SCENE0].y);
+                    v.w = l.w; v.h = l.h;
+                }
+                c->kind = BFM_GL_CMD_RESOLVE;
+                c->target = (uint8_t)(own - 1);
+                c->blend = -1;
+                c->rect = l;
+                c->vrect = v;
+                b->feedback_resolves++;
+            }
+            for (; tx <= end; tx++) b->owner[ty][tx] = 0;
+        }
+    }
+}
+
+void bfm_gl_batch_add_resolve(BfmGlBatch *b, const BfmPlatRect *r) {
+    if (!b || !r || b->overlay) return;
+    resolve_area(b, r->x, r->y, r->x + r->w, r->y + r->h);
+}
+
+/* Page texels a textured prim spans: [umin,umax) x [vmin,vmax); 0 when it
+ * wraps inside the page. */
+static int uv_span(const BfmPlatPrim *p, int *umin, int *umax, int *vmin, int *vmax) {
+    int i;
+    if (p->kind == BFM_PRIM_SPRITE) {
+        *umin = p->v[0].u; *umax = *umin + p->w;
+        *vmin = p->v[0].v; *vmax = *vmin + p->h;
+    } else {
+        int n = prim_verts(p->kind);
+        *umin = *umax = p->v[0].u;
+        *vmin = *vmax = p->v[0].v;
+        for (i = 1; i < n; i++) {
+            if (p->v[i].u < *umin) *umin = p->v[i].u;
+            if (p->v[i].u > *umax) *umax = p->v[i].u;
+            if (p->v[i].v < *vmin) *vmin = p->v[i].v;
+            if (p->v[i].v > *vmax) *vmax = p->v[i].v;
+        }
+        if (*umax == *umin) (*umax)++;
+        if (*vmax == *vmin) (*vmax)++;
+    }
+    return *umax <= 256 && *vmax <= 256;
+}
+
+/* Render feedback for a textured prim about to be drawn. Returns the
+ * snapshot index + 1 the prim samples (its VRAM rect in *sv), or 0 when it
+ * samples the VRAM texture (after RESOLVEs if rendered tiles were in its
+ * footprint or CLUT). */
+static int feedback(BfmGlBatch *b, const BfmPlatPrim *p, BfmPlatRect *sv) {
+    BfmGlTpage t = bfm_gl_decode_tpage(p->tpage);
+    int umin, umax, vmin, vmax, f = texel_factor(p->tpage);
+    int nowrap = uv_span(p, &umin, &umax, &vmin, &vmax);
+    int x0, x1, y0, y1, cx0 = 0, cy = 0, cw = 0, tx, ty, owner = 0, mixed = 0, clean = 0;
+    if (nowrap && !b->env.texture_window.w && !b->env.texture_window.h) {
+        x0 = t.base_x + umin / f;
+        x1 = t.base_x + (umax + f - 1) / f;
+        y0 = t.base_y + vmin;
+        y1 = t.base_y + vmax;
+    } else {   /* the whole page */
+        x0 = t.base_x;
+        x1 = t.base_x + 256 / f;
+        y0 = t.base_y;
+        y1 = t.base_y + 256;
+        nowrap = 0;
+    }
+    if (x1 > BFM_GL_VRAM_W) x1 = BFM_GL_VRAM_W;
+    if (y1 > BFM_GL_VRAM_H) y1 = BFM_GL_VRAM_H;
+    for (ty = y0 / BFM_GL_TILE; ty <= (y1 - 1) / BFM_GL_TILE; ty++)
+        for (tx = x0 / BFM_GL_TILE; tx <= (x1 - 1) / BFM_GL_TILE; tx++) {
+            int o = b->owner[ty][tx];
+            if (!o) { clean = 1; continue; }
+            if (owner && o != owner) mixed = 1;
+            owner = o;
+        }
+    if (t.depth != 15) {
+        int any = 0;
+        bfm_gl_decode_clut(p->clut, &cx0, &cy);
+        cw = t.depth == 4 ? 16 : 256;
+        for (tx = cx0 / BFM_GL_TILE; tx <= (cx0 + cw - 1) / BFM_GL_TILE && tx < BFM_GL_TILES_X; tx++)
+            any |= b->owner[cy / BFM_GL_TILE][tx] != 0;
+        if (any) resolve_area(b, cx0, cy, cx0 + cw, cy + 1);
+    }
+    if (!owner) return 0;
+    if (t.depth == 15 && nowrap && !mixed &&
+        (owner - 1 == BFM_GL_TARGET_VRAM || !clean) && b->nsnap < BFM_GL_MAX_SNAPSHOTS) {
+        BfmPlatRect v, l;
+        BfmGlCmd *c;
+        int tgt = owner - 1;
+        v.x = (int16_t)(x0 & ~(BFM_GL_TILE - 1));
+        v.y = (int16_t)(y0 & ~(BFM_GL_TILE - 1));
+        v.w = (int16_t)(((x1 + BFM_GL_TILE - 1) & ~(BFM_GL_TILE - 1)) - v.x);
+        v.h = (int16_t)(((y1 + BFM_GL_TILE - 1) & ~(BFM_GL_TILE - 1)) - v.y);
+        if (b->last_snap >= 0) {
+            const BfmGlCmd *ls = &b->c[b->last_snap];
+            if (ls->target == tgt &&
+                x0 >= ls->vrect.x && x1 <= ls->vrect.x + ls->vrect.w &&
+                y0 >= ls->vrect.y && y1 <= ls->vrect.y + ls->vrect.h) {
+                *sv = ls->vrect;
+                return ls->snap;
+            }
+        }
+        if (to_local(b, tgt, &v, &l) && l.w == v.w && l.h == v.h &&
+            (c = push_cmd(b)) != NULL) {
+            c->kind = BFM_GL_CMD_SNAPSHOT;
+            c->target = (uint8_t)tgt;
+            c->blend = -1;
+            c->rect = l;
+            c->vrect = v;
+            c->snap = (uint16_t)(++b->nsnap);
+            b->last_snap = (long)(b->nc - 1);
+            b->feedback_snaps++;
+            *sv = v;
+            return c->snap;
+        }
+    }
+    resolve_area(b, x0, y0, x1, y1);
+    return 0;
+}
+
+typedef struct DrawKey {
+    int target, blend, split, repl, dither, copy, mask_set, mask_check, snap;
+} DrawKey;
+
 /* Current DRAW command for this state, reusing the last one if it matches. */
-static BfmGlCmd *draw_cmd(BfmGlBatch *b, int target, int blend, int split,
-                          int repl, int dither, const BfmPlatRect *sc, int copy) {
+static BfmGlCmd *draw_cmd(BfmGlBatch *b, const DrawKey *k, const BfmPlatRect *sc) {
     static const BfmPlatRect none = {0, 0, 0, 0};
-    const BfmPlatRect *win = target == BFM_GL_TARGET_WINDOW ? &none
-                                                            : &b->env.texture_window;
+    const BfmPlatRect *win = k->target == BFM_GL_TARGET_WINDOW ? &none
+                                                               : &b->env.texture_window;
     BfmGlCmd *c;
     if (b->nc) {
         c = &b->c[b->nc - 1];
-        if (c->kind == BFM_GL_CMD_DRAW && c->target == target && c->blend == blend &&
-            c->split_stp == split && c->repl == repl && c->copy == copy &&
-            rect_same(&c->rect, sc) && rect_same(&c->win, win) &&
+        if (c->kind == BFM_GL_CMD_DRAW && c->target == k->target && c->blend == k->blend &&
+            c->split_stp == k->split && c->repl == k->repl && c->copy == k->copy &&
+            c->mask_set == k->mask_set && c->mask_check == k->mask_check &&
+            c->snap == k->snap && rect_same(&c->rect, sc) && rect_same(&c->win, win) &&
             c->first + c->count == b->nv) {
-            c->dither |= (uint8_t)dither;   /* vertex flags decide per prim */
+            c->dither |= (uint8_t)k->dither;   /* vertex flags decide per prim */
             return c;
         }
     }
     if (!(c = push_cmd(b))) return NULL;
     c->kind = BFM_GL_CMD_DRAW;
-    c->target = (uint8_t)target;
-    c->blend = (int8_t)blend;
-    c->split_stp = (uint8_t)split;
-    c->repl = (uint16_t)repl;
-    c->dither = (uint8_t)dither;
-    c->copy = (uint8_t)copy;
+    c->target = (uint8_t)k->target;
+    c->blend = (int8_t)k->blend;
+    c->split_stp = (uint8_t)k->split;
+    c->repl = (uint16_t)k->repl;
+    c->dither = (uint8_t)k->dither;
+    c->copy = (uint8_t)k->copy;
+    c->mask_set = (uint8_t)k->mask_set;
+    c->mask_check = (uint8_t)k->mask_check;
+    c->snap = (uint16_t)k->snap;
     c->rect = *sc;
     c->win = *win;
     c->first = (uint32_t)b->nv;
@@ -594,8 +822,15 @@ typedef struct Corner {
     uint8_t r, g, bl;
 } Corner;
 
+/* How a prim's vertices sample: replacement slot, or snapshot rect. */
+typedef struct Src {
+    int repl;                    /* replacement slot or -1 */
+    int snap;                    /* snapshot index + 1 or 0 */
+    BfmPlatRect sv;              /* snapshot VRAM rect */
+} Src;
+
 static void put_tri(BfmGlBatch *b, BfmGlCmd *c, const Corner *k0, const Corner *k1,
-                    const Corner *k2, const BfmPlatPrim *p, uint16_t flags, int repl) {
+                    const Corner *k2, const BfmPlatPrim *p, uint16_t flags, const Src *src) {
     const Corner *k[3];
     BfmGlVertex *v = push_verts(b, 3);
     int i;
@@ -611,19 +846,24 @@ static void put_tri(BfmGlBatch *b, BfmGlCmd *c, const Corner *k0, const Corner *
         v[i].clut = p ? p->clut : 0;
         v[i].tpage = p ? p->tpage : 0;
         v[i].flags = flags;
-        v[i].repl = (uint16_t)(repl + 1);
-        if (repl >= 0 && b->repl && p)
-            bfm_gl_repl_coords(&b->repl->r[repl], p->tpage, k[i]->u, k[i]->v,
+        if (src && src->repl >= 0 && b->repl && p) {
+            v[i].repl = (uint16_t)(src->repl + 1);
+            bfm_gl_repl_coords(&b->repl->r[src->repl], p->tpage, k[i]->u, k[i]->v,
                                &v[i].s, &v[i].t);
+        } else if (src && src->snap && p) {
+            BfmGlTpage t = bfm_gl_decode_tpage(p->tpage);
+            v[i].s = ((float)t.base_x + k[i]->u - (float)src->sv.x) / (float)src->sv.w;
+            v[i].t = ((float)t.base_y + k[i]->v - (float)src->sv.y) / (float)src->sv.h;
+        }
     }
     c->count += 3;
 }
 
 static void put_quad(BfmGlBatch *b, BfmGlCmd *c, const Corner *k, const BfmPlatPrim *p,
-                     uint16_t flags, int repl) {
+                     uint16_t flags, const Src *src) {
     /* k in PS1 order: 0 1 / 2 3 */
-    put_tri(b, c, &k[0], &k[1], &k[2], p, flags, repl);
-    put_tri(b, c, &k[1], &k[3], &k[2], p, flags, repl);
+    put_tri(b, c, &k[0], &k[1], &k[2], p, flags, src);
+    put_tri(b, c, &k[1], &k[3], &k[2], p, flags, src);
 }
 
 static int is_gouraud(int kind) {
@@ -638,6 +878,89 @@ static void corner(Corner *k, float x, float y, const BfmPlatVertex *src,
     k->r = src->r; k->g = src->g; k->bl = src->b;
 }
 
+/* The prim's corners in target-local pixels; returns 3 (triangle) or 4
+ * (quad in PS1 order), 0 for nothing to draw. */
+static int prim_corners(const BfmGlBatch *b, const BfmPlatPrim *p, Corner *k) {
+    float ox = (float)(b->env.offset_x - b->org_x);
+    float oy = (float)(b->env.offset_y - b->org_y);
+    int kind = p->kind, j, nv;
+    switch (kind) {
+    case BFM_PRIM_TILE:
+    case BFM_PRIM_SPRITE: {
+        float x = p->v[0].x + ox, y = p->v[0].y + oy;
+        float w = p->w, h = p->h, u = p->v[0].u, v = p->v[0].v;
+        corner(&k[0], x, y, &p->v[0], u, v);
+        corner(&k[1], x + w, y, &p->v[0], u + w, v);
+        corner(&k[2], x, y + h, &p->v[0], u, v + h);
+        corner(&k[3], x + w, y + h, &p->v[0], u + w, v + h);
+        return 4;
+    }
+    case BFM_PRIM_LINE_F:
+    case BFM_PRIM_LINE_G: {
+        const BfmPlatVertex *a = &p->v[0], *e = &p->v[1];
+        const BfmPlatVertex *ca, *ce;
+        float x0, y0, x1, y1;
+        if (abs(e->x - a->x) >= abs(e->y - a->y) ? e->x < a->x : e->y < a->y) {
+            const BfmPlatVertex *t = a; a = e; e = t;
+        }
+        ca = a;
+        ce = kind == BFM_PRIM_LINE_G ? e : a;
+        if (kind == BFM_PRIM_LINE_F) ca = ce = &p->v[0];
+        x0 = a->x + ox; y0 = a->y + oy; x1 = e->x + ox; y1 = e->y + oy;
+        if (abs(e->x - a->x) >= abs(e->y - a->y)) {
+            /* x-major: one pixel tall, endpoints inclusive */
+            corner(&k[0], x0, y0, ca, 0, 0);
+            corner(&k[1], x1 + 1, y1, ce, 0, 0);
+            corner(&k[2], x0, y0 + 1, ca, 0, 0);
+            corner(&k[3], x1 + 1, y1 + 1, ce, 0, 0);
+        } else {
+            corner(&k[0], x0, y0, ca, 0, 0);
+            corner(&k[1], x0 + 1, y0, ca, 0, 0);
+            corner(&k[2], x1, y1 + 1, ce, 0, 0);
+            corner(&k[3], x1 + 1, y1 + 1, ce, 0, 0);
+        }
+        return 4;
+    }
+    default:
+        nv = prim_verts(kind);
+        if (nv < 3) return 0;
+        for (j = 0; j < nv; j++) {
+            const BfmPlatVertex *src = is_gouraud(kind) ? &p->v[j] : &p->v[0];
+            corner(&k[j], p->v[j].x + ox, p->v[j].y + oy, src, p->v[j].u, p->v[j].v);
+        }
+        return nv;
+    }
+}
+
+/* The prim's pixels (bbox of corners in the scissor) now belong to the
+ * current target. */
+static void mark_drawn(BfmGlBatch *b, const Corner *k, int nk) {
+    float x0 = k[0].x, x1 = k[0].x, y0 = k[0].y, y1 = k[0].y;
+    int i, ix0, iy0, ix1, iy1;
+    if (b->overlay) return;
+    for (i = 1; i < nk; i++) {
+        if (k[i].x < x0) x0 = k[i].x;
+        if (k[i].x > x1) x1 = k[i].x;
+        if (k[i].y < y0) y0 = k[i].y;
+        if (k[i].y > y1) y1 = k[i].y;
+    }
+    ix0 = (int)floorf(x0); iy0 = (int)floorf(y0);
+    ix1 = (int)ceilf(x1); iy1 = (int)ceilf(y1);
+    if (ix0 < b->scissor.x) ix0 = b->scissor.x;
+    if (iy0 < b->scissor.y) iy0 = b->scissor.y;
+    if (ix1 > b->scissor.x + b->scissor.w) ix1 = b->scissor.x + b->scissor.w;
+    if (iy1 > b->scissor.y + b->scissor.h) iy1 = b->scissor.y + b->scissor.h;
+    if (ix0 >= ix1 || iy0 >= iy1) return;
+    ix0 += b->org_x; ix1 += b->org_x; iy0 += b->org_y; iy1 += b->org_y;
+    if (b->target != BFM_GL_TARGET_VRAM) {   /* margins are not VRAM */
+        const BfmGlScene *s = &b->scene[b->target - BFM_GL_TARGET_SCENE0];
+        if (ix0 < s->x) ix0 = s->x;
+        if (ix1 > s->x + b->disp.w) ix1 = s->x + b->disp.w;
+    }
+    tiles_rendered(b, ix0, iy0, ix1, iy1, b->target);
+    snap_touch(b, ix0, iy0, ix1, iy1);
+}
+
 size_t bfm_gl_batch_add(BfmGlBatch *b, const BfmPlatPrim *prims, size_t n) {
     size_t i, tris = 0;
     for (i = 0; i < n; i++) {
@@ -645,19 +968,14 @@ size_t bfm_gl_batch_add(BfmGlBatch *b, const BfmPlatPrim *prims, size_t n) {
         int kind = p->kind, textured = prim_textured(kind);
         int raw = textured && (p->flags & BFM_PRIM_FLAG_RAW_TEXTURE);
         int semi = (p->flags & BFM_PRIM_FLAG_SEMI_TRANS) != 0;
-        int blend = semi ? bfm_gl_decode_tpage(p->tpage).abr : -1;
+        int mset = (p->flags & BFM_PRIM_FLAG_MASK_SET) != 0;
         int rect_kind = kind == BFM_PRIM_TILE || kind == BFM_PRIM_SPRITE;
-        int dither = b->env.dither && !rect_kind &&
-                     (is_gouraud(kind) || (textured && !raw));
-        int repl = textured && b->repl ? bfm_gl_repl_find(b->repl, p) : -1;
-        float ox = (float)(b->env.offset_x - b->org_x);
-        float oy = (float)(b->env.offset_y - b->org_y);
-        uint16_t flags = (uint16_t)((textured ? BFM_GLV_TEXTURED : 0) |
-                                    (raw ? BFM_GLV_RAW : 0) |
-                                    (dither ? BFM_GLV_DITHER : 0));
+        uint16_t flags;
+        DrawKey key;
+        Src src;
         Corner k[4];
         BfmGlCmd *c;
-        int j, nv;
+        int nk;
 
         if (kind == BFM_PRIM_FILL) {
             BfmPlatRect r;
@@ -668,66 +986,31 @@ size_t bfm_gl_batch_add(BfmGlBatch *b, const BfmPlatPrim *prims, size_t n) {
             continue;
         }
         if (kind <= 0 || kind >= BFM_PRIM_KIND_COUNT) continue;
-        c = draw_cmd(b, b->target, blend, textured && semi && repl < 0, repl + 1,
-                     dither, &b->scissor, 0);
-        if (!c) break;
-        switch (kind) {
-        case BFM_PRIM_TILE:
-        case BFM_PRIM_SPRITE: {
-            float x = p->v[0].x + ox, y = p->v[0].y + oy;
-            float w = p->w, h = p->h, u = p->v[0].u, v = p->v[0].v;
-            corner(&k[0], x, y, &p->v[0], u, v);
-            corner(&k[1], x + w, y, &p->v[0], u + w, v);
-            corner(&k[2], x, y + h, &p->v[0], u, v + h);
-            corner(&k[3], x + w, y + h, &p->v[0], u + w, v + h);
-            put_quad(b, c, k, p, flags, repl);
+        if (!(nk = prim_corners(b, p, k))) continue;
+        src.repl = textured && b->repl ? bfm_gl_repl_find(b->repl, p) : -1;
+        src.snap = textured && src.repl < 0 && !b->overlay ? feedback(b, p, &src.sv) : 0;
+        memset(&key, 0, sizeof key);
+        key.target = b->target;
+        key.blend = semi ? bfm_gl_decode_tpage(p->tpage).abr : -1;
+        key.split = textured && semi && src.repl < 0;
+        key.repl = src.repl + 1;
+        key.snap = src.snap;
+        key.dither = b->env.dither && !rect_kind && (is_gouraud(kind) || (textured && !raw));
+        key.mask_set = mset;
+        key.mask_check = (p->flags & BFM_PRIM_FLAG_MASK_CHECK) != 0;
+        flags = (uint16_t)((textured ? BFM_GLV_TEXTURED : 0) | (raw ? BFM_GLV_RAW : 0) |
+                           (key.dither ? BFM_GLV_DITHER : 0) |
+                           (src.snap ? BFM_GLV_SNAP : 0) | (mset ? BFM_GLV_MASKSET : 0));
+        if (!(c = draw_cmd(b, &key, &b->scissor))) break;
+        c->textured |= (uint8_t)textured;
+        if (nk == 3) {
+            put_tri(b, c, &k[0], &k[1], &k[2], p, flags, &src);
+            tris += 1;
+        } else {
+            put_quad(b, c, k, p, flags, &src);
             tris += 2;
-            break;
         }
-        case BFM_PRIM_LINE_F:
-        case BFM_PRIM_LINE_G: {
-            const BfmPlatVertex *a = &p->v[0], *e = &p->v[1];
-            const BfmPlatVertex *ca, *ce;
-            float x0, y0, x1, y1;
-            if (abs(e->x - a->x) >= abs(e->y - a->y) ? e->x < a->x : e->y < a->y) {
-                const BfmPlatVertex *t = a; a = e; e = t;
-            }
-            ca = a;
-            ce = kind == BFM_PRIM_LINE_G ? e : a;
-            if (kind == BFM_PRIM_LINE_F) ca = ce = &p->v[0];
-            x0 = a->x + ox; y0 = a->y + oy; x1 = e->x + ox; y1 = e->y + oy;
-            if (abs(e->x - a->x) >= abs(e->y - a->y)) {
-                /* x-major: one pixel tall, endpoints inclusive */
-                corner(&k[0], x0, y0, ca, 0, 0);
-                corner(&k[1], x1 + 1, y1, ce, 0, 0);
-                corner(&k[2], x0, y0 + 1, ca, 0, 0);
-                corner(&k[3], x1 + 1, y1 + 1, ce, 0, 0);
-            } else {
-                corner(&k[0], x0, y0, ca, 0, 0);
-                corner(&k[1], x0 + 1, y0, ca, 0, 0);
-                corner(&k[2], x1, y1 + 1, ce, 0, 0);
-                corner(&k[3], x1 + 1, y1 + 1, ce, 0, 0);
-            }
-            put_quad(b, c, k, p, flags, repl);
-            tris += 2;
-            break;
-        }
-        default:
-            nv = prim_verts(kind);
-            for (j = 0; j < nv; j++) {
-                const BfmPlatVertex *src = is_gouraud(kind) ? &p->v[j] : &p->v[0];
-                corner(&k[j], p->v[j].x + ox, p->v[j].y + oy, src, p->v[j].u,
-                       p->v[j].v);
-            }
-            if (nv == 3) {
-                put_tri(b, c, &k[0], &k[1], &k[2], p, flags, repl);
-                tris += 1;
-            } else {
-                put_quad(b, c, k, p, flags, repl);
-                tris += 2;
-            }
-            break;
-        }
+        mark_drawn(b, k, nk);
     }
     return tris;
 }
@@ -760,12 +1043,82 @@ void bfm_gl_batch_add_copy(BfmGlBatch *b, const BfmPlatRect *r) {
             sc.x = (int16_t)b->margin; sc.y = 0;
             sc.w = b->disp.w; sc.h = b->disp.h;
         }
-        if (!(c = draw_cmd(b, target, -1, 0, 0, 0, &sc, 1))) return;
+        {
+            DrawKey key;
+            memset(&key, 0, sizeof key);
+            key.target = target;
+            key.blend = -1;
+            key.copy = 1;
+            if (!(c = draw_cmd(b, &key, &sc))) return;
+            c->textured = 1;
+        }
         corner(&k[0], r->x + ox, r->y + oy, &white, r->x, r->y);
         corner(&k[1], r->x + r->w + ox, r->y + oy, &white, r->x + r->w, r->y);
         corner(&k[2], r->x + ox, r->y + r->h + oy, &white, r->x, r->y + r->h);
         corner(&k[3], r->x + r->w + ox, r->y + r->h + oy, &white, r->x + r->w,
                r->y + r->h);
-        put_quad(b, c, k, NULL, flags, -1);
+        put_quad(b, c, k, NULL, flags, NULL);
     }
+    tiles_clean(b, r);
+}
+
+/* ---- CPU reference rasteriser ------------------------------------------- */
+
+static uint16_t *ref_px(BfmGlVram *v, int x, int y) {
+    return &v->px[(size_t)y * BFM_GL_VRAM_W + x];
+}
+
+int bfm_gl_ref_draw(BfmGlVram *v, const BfmPlatDrawEnv *env, const BfmPlatPrim *p) {
+    int x0, y0, x1, y1, x, y, n = 0, textured, semi, mset, mcheck, abr;
+    int cx0, cy0, cx1, cy1;
+    if (!v || !env || !p) return 0;
+    if (p->kind == BFM_PRIM_FILL) {
+        BfmPlatRect r;
+        r.x = p->v[0].x; r.y = p->v[0].y; r.w = (int16_t)p->w; r.h = (int16_t)p->h;
+        bfm_gl_vram_fill(v, &r, rgb_to_15((uint32_t)p->v[0].r | ((uint32_t)p->v[0].g << 8) |
+                                          ((uint32_t)p->v[0].b << 16)));
+        return r.w * r.h;
+    }
+    if (p->kind != BFM_PRIM_TILE && p->kind != BFM_PRIM_SPRITE) return 0;
+    textured = p->kind == BFM_PRIM_SPRITE;
+    semi = (p->flags & BFM_PRIM_FLAG_SEMI_TRANS) != 0;
+    mset = (p->flags & BFM_PRIM_FLAG_MASK_SET) != 0;
+    mcheck = (p->flags & BFM_PRIM_FLAG_MASK_CHECK) != 0;
+    abr = bfm_gl_decode_tpage(p->tpage).abr;
+    x0 = p->v[0].x + env->offset_x;
+    y0 = p->v[0].y + env->offset_y;
+    x1 = x0 + p->w;
+    y1 = y0 + p->h;
+    cx0 = env->clip.x; cy0 = env->clip.y;
+    cx1 = env->clip.x + env->clip.w; cy1 = env->clip.y + env->clip.h;
+    for (y = y0; y < y1; y++) {
+        if (y < cy0 || y >= cy1 || y < 0 || y >= BFM_GL_VRAM_H) continue;
+        for (x = x0; x < x1; x++) {
+            uint16_t *d, front, stp = 0;
+            if (x < cx0 || x >= cx1 || x < 0 || x >= BFM_GL_VRAM_W) continue;
+            d = ref_px(v, x, y);
+            if (textured) {
+                uint16_t t = bfm_gl_sample(v, p->tpage, p->clut, p->v[0].u + (x - x0),
+                                           p->v[0].v + (y - y0),
+                                           env->texture_window.w || env->texture_window.h
+                                               ? &env->texture_window : NULL);
+                uint8_t m[3];
+                if (t == 0) continue;
+                stp = (uint16_t)(t & 0x8000u);
+                bfm_gl_modulate(t, p->v[0].r, p->v[0].g, p->v[0].b,
+                                (p->flags & BFM_PRIM_FLAG_RAW_TEXTURE) != 0, m);
+                front = (uint16_t)((m[0] >> 3) | ((m[1] >> 3) << 5) | ((m[2] >> 3) << 10));
+            } else {
+                front = (uint16_t)((p->v[0].r >> 3) | ((p->v[0].g >> 3) << 5) |
+                                   ((p->v[0].b >> 3) << 10));
+            }
+            if (mcheck && (*d & 0x8000u)) continue;
+            if (semi && (!textured || stp))
+                front = bfm_gl_blend_ref(abr, (uint16_t)(*d & 0x7FFF), front);
+            *d = (uint16_t)(front | stp | (mset ? 0x8000u : 0));
+            n++;
+        }
+    }
+    bfm_gl_vram_mark(v, x0, y0, p->w, p->h);
+    return n;
 }

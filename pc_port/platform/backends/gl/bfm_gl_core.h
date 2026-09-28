@@ -146,10 +146,19 @@ typedef struct BfmGlVertex {
 #define BFM_GLV_RAW      0x02u   /* no colour modulation */
 #define BFM_GLV_DITHER   0x04u
 #define BFM_GLV_ABS      0x08u   /* 15-bit copy from absolute VRAM coords */
+#define BFM_GLV_SNAP     0x10u   /* sample the command's render snapshot */
+#define BFM_GLV_MASKSET  0x20u   /* E6 set-mask: written pixels get bit 15 */
 
 typedef enum BfmGlCmdKind {
     BFM_GL_CMD_DRAW = 1,         /* triangles [first, first + count) */
-    BFM_GL_CMD_FILL              /* rect <- rgb, no blending */
+    BFM_GL_CMD_FILL,             /* rect <- rgb, mask bit 0, no blending */
+    /* Render feedback (textures sampling pixels the GPU drew):
+     * SNAPSHOT copies target-local rect of `target` into snapshot `snap`-1
+     * at full internal resolution (15-bit pages keep HD detail);
+     * RESOLVE reads target-local rect back into the mirror at vrect and
+     * re-uploads the VRAM texture (CLUT pages, texture windows, StoreImage). */
+    BFM_GL_CMD_SNAPSHOT,
+    BFM_GL_CMD_RESOLVE
 } BfmGlCmdKind;
 
 #define BFM_GL_TARGET_VRAM 0     /* the scaled 1024x512 target */
@@ -157,6 +166,13 @@ typedef enum BfmGlCmdKind {
 #define BFM_GL_TARGET_SCENE1 2
 #define BFM_GL_TARGET_WINDOW 3   /* overlay: display pixels on the window */
 #define BFM_GL_SCENE_SLOTS 2
+#define BFM_GL_MAX_SNAPSHOTS 32  /* per command list */
+
+/* Tile map: which render target holds the newest pixels of each 16x16
+ * VRAM tile (0 = the mirror is current, else target + 1). */
+#define BFM_GL_TILE 16
+#define BFM_GL_TILES_X (BFM_GL_VRAM_W / BFM_GL_TILE)
+#define BFM_GL_TILES_Y (BFM_GL_VRAM_H / BFM_GL_TILE)
 
 typedef struct BfmGlCmd {
     uint8_t kind;
@@ -167,6 +183,10 @@ typedef struct BfmGlCmd {
     uint16_t repl;               /* slot + 1 for the whole batch, 0 = none */
     uint8_t dither;              /* batch may dither (vertex flag decides) */
     uint8_t copy;                /* an upload copied into the target */
+    uint8_t mask_set, mask_check;/* E6 state of the batch */
+    uint8_t textured;            /* some prim samples a texture */
+    uint16_t snap;               /* DRAW/SNAPSHOT: snapshot index + 1 */
+    BfmPlatRect vrect;           /* SNAPSHOT/RESOLVE: the VRAM rect */
     BfmPlatRect rect;            /* DRAW: scissor; FILL: area (target-local) */
     BfmPlatRect win;             /* DRAW: texture window of the env */
     uint32_t rgb;                /* FILL: 0xBBGGRR */
@@ -195,6 +215,10 @@ typedef struct BfmGlBatch {
     const BfmGlReplacements *repl;
     BfmGlVram *vram;             /* fills also land in the mirror */
     int oom;
+    uint8_t owner[BFM_GL_TILES_Y][BFM_GL_TILES_X];
+    unsigned nsnap;              /* snapshots in this command list */
+    long last_snap;              /* the last SNAPSHOT cmd while still current, -1 */
+    uint32_t feedback_snaps, feedback_resolves;   /* statistics */
 } BfmGlBatch;
 
 void bfm_gl_batch_init(BfmGlBatch *b);
@@ -211,9 +235,24 @@ size_t bfm_gl_batch_add(BfmGlBatch *b, const BfmPlatPrim *p, size_t n);
 /* A VRAM upload landing in render targets: copies the rect from the VRAM
  * texture into the VRAM target and any scene slot it overlaps. */
 void bfm_gl_batch_add_copy(BfmGlBatch *b, const BfmPlatRect *rect);
+/* StoreImage support: RESOLVE commands for every rendered tile in rect,
+ * so the mirror holds what was drawn once the list has run. */
+void bfm_gl_batch_add_resolve(BfmGlBatch *b, const BfmPlatRect *rect);
+/* Target + 1 holding tile (x, y) of VRAM pixel coordinates, 0 = mirror. */
+int bfm_gl_batch_owner(const BfmGlBatch *b, int x, int y);
 /* The scene slot showing VRAM origin (x, y), or -1. */
 int bfm_gl_batch_scene_at(const BfmGlBatch *b, int x, int y);
 /* Target size in 1x pixels. */
 void bfm_gl_batch_target_size(const BfmGlBatch *b, int target, int *w, int *h);
+
+/* ---- CPU reference rasteriser (tests, and the definition of exact) ----
+ * Draws TILE / SPRITE / FILL into a VRAM image with PS1 semantics: env clip
+ * and offset, texture window, CLUT decode, transparency of 0x0000,
+ * modulation (as the GL path rounds it: bfm_gl_modulate >> 3), semi-
+ * transparency by the prim's abr on untextured pixels and STP texels,
+ * E6 mask check (skip pixels with bit 15) and set (force bit 15), bit 15
+ * of written pixels = texel STP | mask-set, fills clear bit 15. Returns the
+ * number of pixels written. */
+int bfm_gl_ref_draw(BfmGlVram *v, const BfmPlatDrawEnv *env, const BfmPlatPrim *p);
 
 #endif
