@@ -125,7 +125,13 @@ void bfm_plat_events_clear_code_marks(void);
 #define BFM_GUEST_INV_VAR0      0x2Fu        /* var index of inventory slot 0 */
 #define BFM_GUEST_INV_SLOTS     12u          /* vars 0x2F..0x3A: item id, 0 = empty */
 #define BFM_GUEST_INV_TIME_VAR0 0x14u        /* halfword vars 0x14 + 2*slot: acquired at */
-#define BFM_GUEST_CLOCK         0x80078EACu  /* u16 game clock stamped into slots */
+#define BFM_GUEST_DAY           0x80078EACu  /* u16 day counter (<= 999 shown) */
+#define BFM_GUEST_MINUTE        0x80078EB0u  /* u8 time of day: minute */
+#define BFM_GUEST_HOUR          0x80078EB1u  /* u8 time of day: hour (0..23) */
+#define BFM_GUEST_LOCATION      0x800B9A08u  /* s16 currentLocationId; region = id & 0xF000 */
+#define BFM_GUEST_REGION        0x800B9A0Au  /* u16 id & 0xF000 of the current location */
+#define BFM_GUEST_NPC_TIMES     0x800BA2B8u  /* 24 x 4 bytes; s16 at +2 = day*24+hour stamp */
+#define BFM_GUEST_CLOCK         BFM_GUEST_DAY  /* (older name) */
 
 #define BFM_GUEST_REG_A0 4u
 #define BFM_GUEST_REG_A1 5u

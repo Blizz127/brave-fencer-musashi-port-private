@@ -29,11 +29,13 @@ static int read_u32(uint32_t a, uint32_t *out) {
     return r;
 }
 
-/* "SC02_031" / "sc02_0031" -> area 2, room 31. */
+/* "SC02_031" / "sc02_0031" -> area 2, room 31; location from guest RAM. */
 static void overlay_room(BfmEventRoom *room) {
     const char *o = bfm_plat_hooks_overlay();
     const char *us;
+    uint32_t loc;
     room->area = room->room = 0;
+    room->location = read_u16(BFM_GUEST_LOCATION, &loc) == BFM_PLAT_OK ? (int16_t)(uint16_t)loc : -1;
     if (!o || (o[0] != 'S' && o[0] != 's') || (o[1] != 'C' && o[1] != 'c')) return;
     room->area = (uint32_t)strtoul(o + 2, NULL, 10);
     us = strchr(o, '_');

@@ -902,14 +902,16 @@ static int group_hook_fills(void) {
     CHECK(bfm_plat_hooks_at(0x80128158) == 0);
     bfm_plat_hooks_set_overlay("SC02_031");
     CHECK(bfm_plat_hooks_at(0x80128158) == 1 && n_enter == 1);
-    CHECK(seen_room.area == 2 && seen_room.room == 31);
+    CHECK(seen_room.area == 2 && seen_room.room == 31 && seen_room.location == 0);
     CHECK(bfm_plat_hooks_at(0x80128158) == 0);                  /* still phase 0 */
     put16(BFM_GUEST_SCENE_PHASE, 1);
     CHECK(bfm_plat_hooks_at(0x80128158) == 0);
     put16(BFM_GUEST_SCENE_PHASE, 0);
     CHECK(bfm_plat_hooks_at(0x80128158) == 1 && n_enter == 2);
     bfm_plat_hooks_set_overlay("sc03_0053");
+    put16(BFM_GUEST_LOCATION, 0x3075);
     CHECK(bfm_plat_hooks_at(0x80128158) == 1 && seen_room.area == 3 && seen_room.room == 53);
+    CHECK(seen_room.location == 0x3075);
 
     /* room exit: func_80011B7C(8) with a location overlay */
     regs[4] = 0;

@@ -284,6 +284,12 @@ VENDOR_EVIDENCE = [
     ("src/ov_SC03_124/ov_SC03_124_jr_80188544.c", 3526, "func_800D0F0C(slot, w10);"),
     ("src/shared/ov/func_8014BC80.h", None, "D_800B9A17 = 0;"),
     ("config/dedup.us.yaml", 8867, "vram: 0x8014BC80"),
+    # location, day/time, NPC stamps
+    ("config/symbols.us.txt", 1023, "currentLocationId                = 0x800B9A08; // data"),
+    ("src/resident/resident.c", 469, "s16 *cli = &currentLocationId;"),
+    ("src/resident/resident_jr_800D128C.c", 992, "currentLocationId = v0;"),
+    ("src/ov_SC03_001/ov_SC03_001_jr_801870B0.c", 3407, "= idx2 + (idx1 * 24);"),
+    ("src/ov_SC04_018/ov_SC04_018_jr_80183E6C.c", 3643, "q = t / 24;"),
     # live game state (bfm_plat_events.h BFM_GUEST_*)
     ("src/800.c", 21115, "void func_800295D4(void)"),
     ("src/800.c", 21116, "D_80078EB4 = 0xFA;"),
@@ -798,7 +804,9 @@ bfm.on("frame_end", function() if seen.late == nil then
                 "BFM_GUEST_MONEY": "0x80078E8Cu", "BFM_GUEST_HP_MAX": "0x80078EB2u",
                 "BFM_GUEST_HP": "0x80078EB4u", "BFM_GUEST_BP_MAX": "0x80078EB6u",
                 "BFM_GUEST_BP": "0x80078EB8u", "BFM_GUEST_STORY_FLAGS": "0x800AE648u",
-                "BFM_GUEST_SCRIPT_VARS": "0x800BA1B8u", "BFM_GUEST_FIGURE_PRICES": "0x800A6588u"}
+                "BFM_GUEST_SCRIPT_VARS": "0x800BA1B8u", "BFM_GUEST_FIGURE_PRICES": "0x800A6588u",
+                "BFM_GUEST_DAY": "0x80078EACu", "BFM_GUEST_HOUR": "0x80078EB1u",
+                "BFM_GUEST_LOCATION": "0x800B9A08u", "BFM_GUEST_NPC_TIMES": "0x800BA2B8u"}
         for name, value in want.items():
             self.assertRegex(header, rf"#define {name}\s+{value}")
         pack = (ROOT / "pc_port/mods/examples/cheat_pack/cheats.ini").read_text()

@@ -61,8 +61,10 @@ typedef struct BfmEventInput {
 } BfmEventInput;
 
 typedef struct BfmEventRoom {
-    uint32_t area;
-    uint32_t room;
+    uint32_t area;                /* from the overlay name: SC02_031 -> 2 */
+    uint32_t room;                /* SC02_031 -> 31 */
+    /* ABI 2 */
+    int32_t location;             /* currentLocationId (0x800B9A08), -1 if unknown */
 } BfmEventRoom;
 
 typedef struct BfmEventBattle {

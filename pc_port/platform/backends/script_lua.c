@@ -150,6 +150,7 @@ static void push_payload(lua_State *L, BfmEvent e, void *p) {
     case BFM_EVENT_ROOM_EXIT:
         set_int(L, "area", ((BfmEventRoom *)p)->area);
         set_int(L, "room", ((BfmEventRoom *)p)->room);
+        set_int(L, "location", ((BfmEventRoom *)p)->location);
         break;
     case BFM_EVENT_BATTLE_START:
     case BFM_EVENT_BATTLE_END:

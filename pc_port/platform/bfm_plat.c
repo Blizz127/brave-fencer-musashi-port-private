@@ -358,6 +358,7 @@ void bfm_plat_event_room_enter(uint32_t area, uint32_t room) {
     BfmEventRoom e;
     e.area = area;
     e.room = room;
+    e.location = -1;
     bfm_plat_mods_emit(BFM_EVENT_ROOM_ENTER, &e);
 }
 
@@ -365,6 +366,7 @@ void bfm_plat_event_room_exit(uint32_t area, uint32_t room) {
     BfmEventRoom e;
     e.area = area;
     e.room = room;
+    e.location = -1;
     bfm_plat_mods_emit(BFM_EVENT_ROOM_EXIT, &e);
 }
 
