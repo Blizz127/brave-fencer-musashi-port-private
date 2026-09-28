@@ -15000,7 +15000,25 @@ static int cd_irq_call(MusashiBootMemory *memory, const FormatterCpu *cpu,
     default: return 0;
     }
 }
+static int cd_irq_execute(MusashiBootMemory *memory,
+    const MusashiCdRegisterDevice *device, const MusashiExecutionClock *clock,
+    const MusashiCdIrqServices *services, MusashiCdIrqFrame *frame, uint32_t context, uint32_t target,
+    MusashiResetGraphPrefixStop *stop);
+
+/* The CD IRQ frame authorizes every guest call edge (cd_irq_call); natively
+ * compiled bodies would skip those checks, so the lane stays suspended. */
 int musashi_boot_execute_cd_irq_with_services(MusashiBootMemory *memory,
+    const MusashiCdRegisterDevice *device, const MusashiExecutionClock *clock,
+    const MusashiCdIrqServices *services, MusashiCdIrqFrame *frame, uint32_t context, uint32_t target,
+    MusashiResetGraphPrefixStop *stop) {
+    int result;
+    musashi_native_lane_suspend(1);
+    result = cd_irq_execute(memory, device, clock, services, frame, context, target, stop);
+    musashi_native_lane_suspend(0);
+    return result;
+}
+
+static int cd_irq_execute(MusashiBootMemory *memory,
     const MusashiCdRegisterDevice *device, const MusashiExecutionClock *clock,
     const MusashiCdIrqServices *services, MusashiCdIrqFrame *frame, uint32_t context, uint32_t target,
     MusashiResetGraphPrefixStop *stop) {

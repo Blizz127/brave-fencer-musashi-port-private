@@ -236,32 +236,61 @@ def load_symbol_addrs(member=None):
     return table
 
 
+# Where a port reference to a guest PC sits decides what it means for a native
+# body starting at that PC:
+#  - formatter_admitted: the interpreter's word-source map, not a hook;
+#  - cd_irq_call: CD IRQ frame call-edge checks; the lane is suspended in that
+#    frame (musashi_boot_execute_cd_irq_with_services), so not a hook;
+#  - the startup loop's observer list, native_boot's observe_entry and
+#    spu_source_guard run at the top of the stepping loop, before formatter_step
+#    tries the lane: a function's own entry PC stays observed. A body PC in
+#    them would be skipped, so it is still a hook.
+# Anything else (formatter_step intercepts, formatter_call, stops) is a hook.
+IGNORED_HOOK_FUNCS = {"formatter_admitted", "cd_irq_call"}
+ENTRY_OK_HOOK_FUNCS = {"run_startup_cpu_loop", "observe_entry", "spu_source_guard"}
+# Host-sequenced whatever the context: main never returns (the game loop),
+# and STARTUP_ENTRY is driven step by step by native_boot's startup.
+ALWAYS_HOOKED = {0x80010178, 0x800141F0}
+
+
 def hooked_pcs():
-    """Guest PCs the port compares against: CPU pc / ra / checkpoint
-    continuation tests and case lists. Word-table range bounds and data
-    addresses are not hooks."""
-    pcs = set()
+    """{guest PC: "hard" | "entry"} for PCs the port compares against (CPU pc /
+    ra / checkpoint continuation tests and case lists, including enum names).
+    "entry" PCs are observed only before the lane runs (see above). Word-table
+    range bounds and data addresses are not hooks."""
+    kinds = {}
     context = re.compile(r"\bpc\b|->pc|\.pc|r\[31\]|raw_cpu|_caller|\bcase ")
-    # Named guest PCs (enum STARTUP_ENTRY = 0x800141f0u, ...) compared as
-    # `cpu->pc == STARTUP_ENTRY` are hooks too.
     named = re.compile(r"\b([A-Z][A-Z0-9_]*)\s*=\s*0x(80[0-9a-fA-F]{6})u?\b")
+    func_head = re.compile(r"^(?:static\s+)?(?:inline\s+)?[A-Za-z_][\w\s\*]*?\b(\w+)\s*\([^;]*$")
     texts = [path.read_text(errors="replace") for path in (ROOT / "pc_port").glob("*.c")]
     enums = {}
     for text in texts:
         for m in named.finditer(text):
             enums.setdefault(m.group(1), int(m.group(2), 16))
-    for text in texts:
-        for line in text.splitlines():
-            if context.search(line):
-                for m in re.finditer(r"0x(80[0-9a-fA-F]{6})u?\b", line):
-                    pcs.add(int(m.group(1), 16))
-                if named.search(line):
-                    continue  # a definition, not a comparison
-                for ident in re.findall(r"\b[A-Z][A-Z0-9_]*\b", line):
-                    if ident in enums:
-                        pcs.add(enums[ident])
-    return pcs
 
+    def add(pc, kind):
+        if kinds.get(pc) != "hard":
+            kinds[pc] = kind
+
+    for text in texts:
+        func = None
+        for line in text.splitlines():
+            fm = func_head.match(line)
+            if fm and not line.startswith((" ", "\t")) and fm.group(1) not in ("if", "while", "for", "switch"):
+                func = fm.group(1)
+            if not context.search(line) or "Words" in line:
+                continue
+            if func in IGNORED_HOOK_FUNCS:
+                continue
+            kind = "entry" if func in ENTRY_OK_HOOK_FUNCS else "hard"
+            pcs = [int(m.group(1), 16) for m in re.finditer(r"0x(80[0-9a-fA-F]{6})u?\b", line)]
+            if not named.search(line):
+                pcs += [enums[i] for i in re.findall(r"\b[A-Z][A-Z0-9_]*\b", line) if i in enums]
+            for pc in pcs:
+                add(pc, kind)
+    for pc in ALWAYS_HOOKED:
+        kinds[pc] = "hard"
+    return kinds
 
 def guest_address(name, symbols):
     plus = re.fullmatch(r"(.+?)\+(\d+|0x[0-9A-Fa-f]+)", name)
@@ -869,9 +898,12 @@ def build_one(entry, out, symbols, hooks, clang, info=None):
     try:
         if vram in DENY:
             raise Reject("deny", DENY[vram])
-        for pc in hooks:
-            if vram <= pc < vram + size and not (pc == vram and vram in INTRINSIC_PCS):
-                raise Reject("hooks", f"port references {pc:08x}")
+        for pc, kind in hooks.items():
+            if not vram <= pc < vram + size:
+                continue
+            if pc == vram and (vram in INTRINSIC_PCS or kind == "entry"):
+                continue
+            raise Reject("hooks", f"port references {pc:08x}")
         text = strip_comments(src.read_text(errors="replace"))
         body = text.split("#else", 1)[1] if "#else" in text else text
         # `long long` is 64-bit on the PS1 and the host; a lone `long` is
