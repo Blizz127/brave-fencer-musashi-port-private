@@ -1,15 +1,36 @@
 #include "bfm_plat_audio.h"
 
+#include "bfm_plat_timing.h"
+
 #include <string.h>
 
 #define MAX_BACKENDS 8
-/* The null device "drains" nothing; cap its queue at one second. */
+/* The null device plays nothing, but drains its queue at the audio rate of
+ * the platform clock (bfm_plat_timing_now_ns, injectable in tests), so a
+ * caller pacing by queue depth sees a real-rate consumer; the queue is
+ * capped at one second. */
 #define NULL_QUEUE_CAP BFM_PLAT_AUDIO_RATE
 
 typedef struct NullAudio {
     BfmPlatAudioStatus st;
     int paused;
+    uint64_t drained_ns;   /* platform time up to which frames were drained */
 } NullAudio;
+
+static void null_drain(NullAudio *a) {
+    uint64_t now = bfm_plat_timing_now_ns(), frames;
+    unsigned s;
+    if (a->paused || now <= a->drained_ns) {
+        if (now > a->drained_ns) a->drained_ns = now;
+        return;
+    }
+    frames = (now - a->drained_ns) * a->st.rate / 1000000000ull;
+    if (!frames) return;
+    a->drained_ns += frames * 1000000000ull / a->st.rate;
+    for (s = 0; s < BFM_AUDIO_STREAM_COUNT; s++)
+        a->st.queued_frames[s] = frames >= a->st.queued_frames[s] ? 0
+                                 : a->st.queued_frames[s] - (size_t)frames;
+}
 
 static NullAudio null_state;
 
@@ -20,6 +41,7 @@ static int null_open(void *self, uint32_t rate) {
     a->st.channels = 2;
     a->st.playing = 1;
     a->st.master_volume = 1.0f;
+    a->drained_ns = bfm_plat_timing_now_ns();
     return BFM_PLAT_OK;
 }
 
@@ -27,6 +49,7 @@ static int null_queue(void *self, BfmPlatAudioStream s, const int16_t *pcm,
                       size_t frames) {
     NullAudio *a = (NullAudio *)self;
     (void)pcm;
+    null_drain(a);
     if (a->st.queued_frames[s] + frames > NULL_QUEUE_CAP) return BFM_PLAT_NO_SPACE;
     a->st.queued_frames[s] += frames;
     a->st.submitted_frames[s] += frames;
@@ -35,6 +58,7 @@ static int null_queue(void *self, BfmPlatAudioStream s, const int16_t *pcm,
 
 static int null_status(void *self, BfmPlatAudioStatus *out) {
     NullAudio *a = (NullAudio *)self;
+    null_drain(a);
     *out = a->st;
     out->playing = !a->paused;
     return BFM_PLAT_OK;
@@ -46,6 +70,7 @@ static int null_volume(void *self, float v) {
 }
 
 static int null_pause(void *self, int p) {
+    null_drain((NullAudio *)self);
     ((NullAudio *)self)->paused = p;
     return BFM_PLAT_OK;
 }

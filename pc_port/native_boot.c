@@ -65,6 +65,7 @@ static int log_sample(uint64_t *counter, uint64_t first, uint64_t stride) {
 #include "bfm_plat_gpu_bridge.h"
 #include "bfm_plat_input.h"
 #include "bfm_plat_timing.h"
+#include "bfm_plat_audio.h"
 /* MUSASHI_GPU=bfm_plat: GP0/GP1 are teed into the bfm_plat GPU bridge and
  * drawn by the bfm_plat renderer (MUSASHI_RENDERER, default psycross); the
  * controller keeps the port protocol with its rasteriser off. Default cpu. */
@@ -78,6 +79,80 @@ static int g_plat_started;
  * bfm_plat_timing_vsync (NTSC field rate, fast-forward, VSYNC mod events)
  * instead of guest_clock_wait's own throttle. */
 static int g_plat_timing_on;
+
+/* MUSASHI_AUDIO=bfm_plat: the SPU core's output goes to bfm_plat_audio
+ * (backend MUSASHI_AUDIO_BACKEND, default "openal") through this adapter,
+ * which also counts what the sink received (AUDIO_SINK at STOP). */
+typedef struct PlatAudioSink {
+    MusashiSpuCdAudioBackend backend;
+    uint64_t owner, frames, nonsilent;
+    int peak, faulted;
+    char name[32];
+} PlatAudioSink;
+static PlatAudioSink g_plat_audio;
+
+static int plat_audio_ready(void *user) {
+    PlatAudioSink *a = user;
+    return a && !a->faulted && a->owner == (uint64_t)SDL_ThreadID() &&
+           bfm_plat_audio_active() != NULL;
+}
+static uint64_t plat_audio_token(void *user) { (void)user; return (uint64_t)SDL_ThreadID(); }
+static int plat_audio_status(void *user, size_t *queued, int *playing) {
+    PlatAudioSink *a = user;
+    BfmPlatAudioStatus st;
+    if (!plat_audio_ready(a) || !queued || !playing || bfm_plat_audio_status(&st) != BFM_PLAT_OK ||
+        st.faulted) {
+        if (a) a->faulted = 1;
+        return 0;
+    }
+    *queued = st.queued_frames[BFM_AUDIO_STREAM_MAIN];
+    *playing = 1;   /* a paused bfm_plat device still accepts PCM */
+    return 1;
+}
+static int plat_audio_queue(void *user, const int16_t *pcm, size_t frames) {
+    PlatAudioSink *a = user;
+    size_t i;
+    if (!plat_audio_ready(a) || !pcm) return 0;
+    for (i = 0; i < frames; i++) {
+        int l = pcm[2 * i], r = pcm[2 * i + 1];
+        int m = l < 0 ? -l : l, n = r < 0 ? -r : r;
+        if (l || r) a->nonsilent++;
+        if (m > a->peak) a->peak = m;
+        if (n > a->peak) a->peak = n;
+    }
+    if (bfm_plat_audio_queue(BFM_AUDIO_STREAM_MAIN, pcm, frames) != BFM_PLAT_OK) {
+        a->faulted = 1;
+        return 0;
+    }
+    a->frames += frames;
+    return 1;
+}
+
+/* Opens the bfm_plat audio backend for the SPU; NULL keeps native audio. */
+static const MusashiSpuCdAudioBackend *plat_audio_attach(void) {
+    const char *want = getenv("MUSASHI_AUDIO"), *backend, *selected = NULL;
+    if (!want || strcmp(want, "bfm_plat") != 0) return NULL;
+    if (!g_plat_started) {
+        fprintf(stderr, "native_boot: AUDIO bfm_plat refused: platform layer off; native\n");
+        return NULL;
+    }
+    backend = getenv("MUSASHI_AUDIO_BACKEND");
+    if (!backend || !backend[0]) backend = "openal";
+    if (bfm_plat_audio_open(backend, &selected) != BFM_PLAT_OK || !selected) {
+        fprintf(stderr, "native_boot: AUDIO bfm_plat refused: %s; native\n", backend);
+        return NULL;
+    }
+    /* bfm_plat_audio_open falls back to null when the backend cannot open. */
+    if (strcmp(selected, backend) != 0)
+        fprintf(stderr, "native_boot: AUDIO bfm_plat %s unavailable, using %s\n", backend, selected);
+    memset(&g_plat_audio, 0, sizeof g_plat_audio);
+    snprintf(g_plat_audio.name, sizeof g_plat_audio.name, "%s", selected);
+    g_plat_audio.owner = (uint64_t)SDL_ThreadID();
+    g_plat_audio.backend = (MusashiSpuCdAudioBackend){&g_plat_audio, plat_audio_ready,
+        plat_audio_token, plat_audio_status, plat_audio_queue};
+    fprintf(stderr, "native_boot: AUDIO backend=bfm_plat:%s\n", selected);
+    return &g_plat_audio.backend;
+}
 #endif
 
 typedef struct NativeBoot {
@@ -236,6 +311,9 @@ static int native_devices_shutdown(NativeBoot *boot) {
         if (!musashi_audio_sdl_destroy(boot->audio)) return 0;
         boot->audio = NULL;
     }
+#ifdef MUSASHI_WITH_BFM_PLAT
+    if (g_plat_audio.backend.queue && bfm_plat_audio_active()) bfm_plat_audio_close();
+#endif
     if (boot->cd_drive) {
         if (!musashi_cd_owned_close(boot->cd_drive)) return 0;
         boot->cd_drive = NULL;
@@ -866,9 +944,16 @@ static int spu_read16(void *userdata, uint32_t address, uint16_t *value) {
     return 1;
 }
 
+/* Key-on (KON 1F801D88/8A) writes with any voice bit set: whether the
+ * retail sound driver has started a voice (STOP report). */
+static uint64_t g_spu_keyon_writes;
+
 static int spu_write16(void *userdata, uint32_t address, uint16_t value) {
     NativeBoot *boot = userdata;
     if (!musashi_spu_cd_audio_write16(boot->spu, address, value)) return 0;
+    if ((address == 0x1f801d88u || address == 0x1f801d8au) && value &&
+        g_spu_keyon_writes != UINT64_MAX)
+        ++g_spu_keyon_writes;
     {
         static uint64_t n;
         if (log_sample(&n, 16u, 4096u))
@@ -3865,11 +3950,18 @@ int main(int argc, char **argv) {
             return 2;
         }
         boot.cd_registers = (MusashiCdRegisterDevice){.userdata=&boot,.read8=cd_read8,.write8=cd_write8};
-        boot.audio = musashi_audio_sdl_create();
+        const MusashiSpuCdAudioBackend *audio_backend = NULL;
+#ifdef MUSASHI_WITH_BFM_PLAT
+        audio_backend = plat_audio_attach();
+#endif
+        if (!audio_backend) {
+            boot.audio = musashi_audio_sdl_create();
+            if (boot.audio && musashi_audio_sdl_open(boot.audio))
+                audio_backend = musashi_audio_sdl_backend(boot.audio);
+        }
         boot.spu = musashi_spu_cd_audio_create();
-        if (!boot.audio || !boot.spu || !musashi_audio_sdl_open(boot.audio) ||
-            !musashi_spu_cd_audio_init_bios_muted(boot.spu,
-                musashi_audio_sdl_backend(boot.audio), 0)) {
+        if (!audio_backend || !boot.spu ||
+            !musashi_spu_cd_audio_init_bios_muted(boot.spu, audio_backend, 0)) {
             fputs("native_boot: real audio owner unavailable before CRT; startup NOT_RUN\n", stderr);
             native_devices_shutdown(&boot);
             musashi_gpu_psycross_shutdown(&boot.gpu_renderer);
@@ -4249,6 +4341,15 @@ int main(int argc, char **argv) {
                 (unsigned long long)dma.bytes,dma.fault);
         }
     }
+#ifdef MUSASHI_WITH_BFM_PLAT
+    if (g_plat_audio.backend.queue)
+        fprintf(stderr, "native_boot: AUDIO_SINK backend=bfm_plat:%s frames=%llu nonsilent=%llu "
+                "peak=%d faulted=%d\n", g_plat_audio.name,
+                (unsigned long long)g_plat_audio.frames,
+                (unsigned long long)g_plat_audio.nonsilent, g_plat_audio.peak,
+                g_plat_audio.faulted);
+#endif
+    fprintf(stderr, "native_boot: SPU_KEYON writes=%llu\n", (unsigned long long)g_spu_keyon_writes);
     if (boot.spu) {
         MusashiSpuCdAudioSnapshot audio_state;
         if (!musashi_spu_cd_audio_snapshot(boot.spu, &audio_state)) cleanup_ok = 0;

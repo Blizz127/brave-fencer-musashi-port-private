@@ -92,7 +92,7 @@ if [ "$preload" = auto ]; then
     nm "$binary" 2>/dev/null | grep -q " musashi_psyx_shutdown$" && preload=0
 fi
 if [ "$has_null_audio" = 1 ]; then
-    audio_env="MUSASHI_AUDIO=null"
+    audio_env="MUSASHI_AUDIO=${MUSASHI_AUDIO:-null}"   # e.g. MUSASHI_AUDIO=bfm_plat
 else
     echo "run_headless_boot: this build has no MUSASHI_AUDIO; using the ALSA null PCM workaround" >&2
     audio_env="SDL_AUDIODRIVER=alsa ALSA_CONFIG_PATH=$out/alsa.conf"

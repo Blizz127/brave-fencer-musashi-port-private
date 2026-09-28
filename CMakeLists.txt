@@ -512,6 +512,13 @@ if(MUSASHI_BUILD_PC_PORT)
             ${MUSASHI_PSYCROSS_DIR}/include pc_port/include)
         target_compile_definitions(bfm_plat PRIVATE BFM_PLAT_WITH_PSYCROSS
             BFM_PLAT_WITH_SDL_AUDIO BFM_PLAT_WITH_SDL_INPUT)
+        # OpenAL output backend (found above for PsyCross): MUSASHI_AUDIO=bfm_plat
+        if(OPENAL_FOUND)
+            target_sources(bfm_plat PRIVATE pc_port/platform/backends/audio_openal.c)
+            target_include_directories(bfm_plat PRIVATE ${OPENAL_INCLUDE_DIR}/..)
+            target_compile_definitions(bfm_plat PRIVATE BFM_PLAT_WITH_OPENAL)
+            target_link_libraries(bfm_plat PRIVATE ${OPENAL_LIBRARY})
+        endif()
         target_link_libraries(bfm_plat PRIVATE SDL2::SDL2 musashi_pc_port)
     endif()
 

@@ -1,7 +1,7 @@
 /* Backends compiled into this build. The default (dependency-free) build has
  * only the built-in null/image/scripted backends. SDL/PsyCross builds define
  * BFM_PLAT_WITH_PSYCROSS / BFM_PLAT_WITH_SDL_AUDIO / BFM_PLAT_WITH_PINNED_DISC
- * / BFM_PLAT_WITH_SDL_INPUT / BFM_PLAT_WITH_GL and link the matching
+ * / BFM_PLAT_WITH_SDL_INPUT / BFM_PLAT_WITH_GL / BFM_PLAT_WITH_OPENAL and link the matching
  * backends/ file (the gl renderer also needs backends/gl/bfm_gl_core.c and
  * bfm_gl_exec.c).
  * Texture decoders (BFM_PLAT_WITH_PNG) register in bfm_plat_init, since
@@ -16,6 +16,9 @@ int bfm_plat_backend_sdl_audio_register(void);
 #endif
 #ifdef BFM_PLAT_WITH_PINNED_DISC
 int bfm_plat_backend_pinned_disc_register(void);
+#endif
+#ifdef BFM_PLAT_WITH_OPENAL
+int bfm_plat_backend_openal_audio_register(void);
 #endif
 #ifdef BFM_PLAT_WITH_SDL_INPUT
 int bfm_plat_backend_sdl_input_register(void);
@@ -37,6 +40,9 @@ int bfm_plat_register_builtin_backends(void) {
 #endif
 #ifdef BFM_PLAT_WITH_PINNED_DISC
     n += bfm_plat_backend_pinned_disc_register() == BFM_PLAT_OK;
+#endif
+#ifdef BFM_PLAT_WITH_OPENAL
+    n += bfm_plat_backend_openal_audio_register() == BFM_PLAT_OK;
 #endif
 #ifdef BFM_PLAT_WITH_SDL_INPUT
     n += bfm_plat_backend_sdl_input_register() == BFM_PLAT_OK;
