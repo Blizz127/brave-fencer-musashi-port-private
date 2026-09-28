@@ -80,6 +80,11 @@ static int group_config(int argc, char **argv) {
     CHECK(bfm_plat_config_set(&c, "video.frame_rate", "45") == BFM_PLAT_INVALID);
     CHECK(c.frame_rate == 60);
     CHECK(bfm_plat_config_set(&c, "backends.audio", "Bad Name") == BFM_PLAT_INVALID);
+    /* gl renderer dither: auto (default) | on | off */
+    CHECK(c.dither == BFM_DITHER_AUTO);
+    CHECK(bfm_plat_config_set(&c, "video.dither", "sometimes") == BFM_PLAT_INVALID);
+    CHECK(bfm_plat_config_set(&c, "video.dither", "off") == BFM_PLAT_OK && c.dither == BFM_DITHER_OFF);
+    CHECK(bfm_plat_config_set(&c, "video.dither", "on") == BFM_PLAT_OK && c.dither == BFM_DITHER_ON);
     {
         char *args[] = {"prog", "--fps", "30", "--keep-me", "--set",
                         "debug.log_level=4", "--no-mods", "--renderer", "hle"};
@@ -102,6 +107,7 @@ static int group_config(int argc, char **argv) {
         CHECK(bfm_plat_config_load_file(&r, path) == BFM_PLAT_OK);
         CHECK(r.widescreen == 1 && r.internal_scale == 3 && r.frame_rate == 30);
         CHECK(r.log_level == 4 && r.mods_enabled == 0 && r.bad_line == 0);
+        CHECK(r.dither == BFM_DITHER_ON);
         CHECK(strcmp(r.renderer, "hle") == 0);
         CHECK(strcmp(bfm_plat_config_get(&r, "mod.hello.greeting"), "hi there") == 0);
         /* --config is applied before other overrides */

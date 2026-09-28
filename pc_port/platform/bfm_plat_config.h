@@ -10,7 +10,8 @@
  *   [video]    aspect (4:3 | 16:9 | 16:10), widescreen_mode (hor+ |
  *              anamorphic), widescreen (legacy: 1 = 16:9, 0 = 4:3),
  *              internal_scale, window_width, window_height, fullscreen,
- *              frame_rate (30|60), vsync, screenshot_dir
+ *              frame_rate (30|60), vsync, screenshot_dir,
+ *              dither (auto | on | off; auto = PS1 dither at 1x only)
  *   [timing]   fast_forward_speed (x real speed, 0 = uncapped),
  *              fast_forward_toggle (0 hold / 1 toggle)
  *   [backends] renderer, audio, input, storage   (backend names)
@@ -36,7 +37,10 @@
 #define BFM_PLAT_CONFIG_EXTRA_MAX 128
 
 #define BFM_WIDESCREEN_HOR_PLUS 0     /* wider view, unstretched pixels */
-#define BFM_WIDESCREEN_ANAMORPHIC 1   /* squeeze X in projection, stretch output */
+#define BFM_WIDESCREEN_ANAMORPHIC 1
+#define BFM_DITHER_AUTO (-1)          /* dither at internal_scale 1 only */
+#define BFM_DITHER_OFF 0
+#define BFM_DITHER_ON 1   /* squeeze X in projection, stretch output */
 
 typedef struct BfmPlatConfigEntry {
     char key[64];   /* "section.key" */
@@ -54,6 +58,7 @@ typedef struct BfmPlatConfig {
     int fullscreen;
     int frame_rate;          /* 30 (retail pacing) or 60 (interpolated) */
     int vsync;
+    int dither;              /* BFM_DITHER_AUTO / _OFF / _ON (gl renderer) */
     char screenshot_dir[BFM_PLAT_PATH_MAX];
     /* timing */
     double fast_forward_speed;
