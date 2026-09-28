@@ -116,6 +116,19 @@ class PortMatchedRatio(unittest.TestCase):
         self.assertIn("exact", r["instructions_basis"])
         self.assertIn("matched C", summary)
 
+    def test_callback_context(self):
+        insns = str(Path(self.tmp.name) / "i")
+        r, summary = self.run_tool(self.tmp.name, "--trace-insns", insns)
+        rows = {x["pc"]: x for x in r["matched_c_unused_top"]}
+        self.assertEqual(rows["80020030"]["context"], "callback")    # under the 'd' root 80020048
+        g = r["by_domain"]["game"]
+        self.assertGreater(g["matched_c_exists_lane_suspended_irq_excluding_idle"], 0)
+        self.assertIn("lane is suspended", summary)
+        r2, _ = self.run_tool(self.tmp.name, "--trace-insns", insns, "--entry", "80020048")
+        rows2 = {x["pc"]: x for x in r2["matched_c_unused_top"]}
+        self.assertEqual(rows2["80020030"]["context"], "main")
+        self.assertEqual(r2["by_domain"]["game"]["matched_c_exists_lane_suspended_irq_excluding_idle"], 0)
+
     def test_estimate_is_labelled(self):
         r, summary = self.run_tool(self.tmp.name)
         self.assertIn("ESTIMATE", r["instructions_basis"])

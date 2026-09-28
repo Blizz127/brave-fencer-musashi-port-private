@@ -296,6 +296,8 @@ def main(argv=None):
                     "tools/patches/trace-resident.patch): exact resident member per overlay entry")
     ap.add_argument("--extracted-root", default=str(ROOT),
                     help="checkout holding extracted/overlays (the members' own bytes, local)")
+    ap.add_argument("--entry", default="80010000",
+                    help="program entry PC (its dispatch entry is the main context)")
     ap.add_argument("--idle", default="800424e4",
                     help="comma-separated function PCs that are idle waits (VSync polling); "
                          "shares are also given without them")
@@ -361,6 +363,45 @@ def main(argv=None):
             if f is None:
                 f = funcs[key] = {"pc": key[1], "calls": 0, "steps": 0, "reg": m, "lane_column": None}
             f["steps"] += n
+
+    # Execution context, INFERRED from first-caller chains: a function whose
+    # chain reaches a dispatch entry (kind 'd') other than the program entry
+    # ran in router/callback context (IRQ handlers, CD IRQ frame, nested
+    # source execution). The lane is suspended in IRQ and CD-IRQ dispatch,
+    # so matched C there cannot run natively even when admitted. The trace
+    # keeps only each target's first caller, hence "inferred".
+    by_target = {r["pc"]: r for r in counts}
+    entry_pc = int(a.entry, 16)
+    starts_sorted = sorted(by_target)
+
+    def owner(pc):
+        m = reg.find(pc) if pc >> 28 == 8 else None
+        if m is not None and m["vram"] in by_target:
+            return m["vram"]
+        i = bisect.bisect_right(starts_sorted, pc) - 1
+        return starts_sorted[i] if i >= 0 else None
+
+    context_cache = {}
+
+    def context(pc):
+        seen, cur = [], pc
+        while cur is not None and cur not in context_cache and cur not in seen and len(seen) < 256:
+            seen.append(cur)
+            r = by_target.get(cur)
+            if r is None:
+                cur = None
+                break
+            if r["kind"] == "d":
+                context_cache[cur] = "main" if cur == entry_pc else "callback"
+                break
+            cur = owner(r["caller"])
+        res = context_cache.get(cur, "unknown") if cur is not None else "unknown"
+        for x in seen:
+            context_cache.setdefault(x, res)
+        return context_cache.get(pc, res)
+
+    for f in funcs.values():
+        f["context"] = context(f["pc"]) if f["pc"] in by_target else context(owner(f["pc"]) or f["pc"])
 
     for f in funcs.values():
         pc, m = f["pc"], f["reg"]
@@ -455,6 +496,16 @@ def main(argv=None):
              # byte-matched C EXISTS in the registry (whether or not the port runs it)
              "matched_c_exists_excluding_idle": reg_c,
              "matched_c_exists_share_excluding_idle": round(reg_c / busy_d, 4) if busy_d else 0}
+        # "runs" vs "could run": matched C that exists but executes in
+        # callback context, where the lane is suspended (INFERRED context)
+        cb = sum(f[key] for f in fs if f["pc"] not in idle and f.get("context") == "callback"
+                 and f["reg"] is not None and f["reg"]["vram"] == f["pc"]
+                 and f["reg"].get("recovery") == "c")
+        d["matched_c_exists_lane_suspended_irq_excluding_idle"] = cb
+        d["matched_c_exists_lane_suspended_irq_share_excluding_idle"] = round(cb / busy_d, 4) if busy_d else 0
+        d["instructions_by_context_excluding_idle"] = dict(collections.Counter(
+            {c: sum(f[key] for f in fs if f["pc"] not in idle and f.get("context") == c)
+             for c in ("main", "callback", "unknown")}))
         for cls in ("matched_c", "port_shim", "interpreted"):
             cs = [f for f in fs if f["class"] == cls]
             b = sum(f[key] for f in cs if f["pc"] not in idle)
@@ -466,6 +517,7 @@ def main(argv=None):
         m = f["reg"]
         return {"pc": "%08x" % f["pc"], "name": m["name"] if m and m["vram"] == f["pc"] else None,
                 "calls": f["calls"], "instructions": f[key], "why": f["why"],
+                "context": f.get("context"),
                 "source": m.get("source") if m and m["vram"] == f["pc"] else None}
 
     shadows = [dict(row(f), shim=psyq.get(f["pc"], {}).get("name"))
@@ -540,6 +592,11 @@ def main(argv=None):
     def pct(cls):
         return "%.1f%% (%.1f%% excl. idle)" % (100 * c[cls]["instructions_share"],
                                                100 * c[cls]["instructions_share_excluding_idle"])
+    g = domains["game"]
+    print("port_matched_ratio: game code excl. idle: matched C runs %.1f%%, exists %.1f%%, of which "
+          "%.1f%% runs in callback context where the lane is suspended (IRQ; context inferred)" % (
+              100 * g["matched_c"]["share_excluding_idle"], 100 * g["matched_c_exists_share_excluding_idle"],
+              100 * g["matched_c_exists_lane_suspended_irq_share_excluding_idle"]), file=sys.stderr)
     print("port_matched_ratio: %s: of instructions, matched C %s [%d/%d functions], "
           "port shims %s [%d], interpreted retail %s [%d, %d with unused matched C]; "
           "%d shims shadow matched C (%d executed); game code: matched C %.1f%% [%d/%d functions], "
