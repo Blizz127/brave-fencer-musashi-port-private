@@ -1,3 +1,5 @@
+#include "psx_types.h"
+
 s16 func_80012E6C(s32 arg0, s32 arg1, s16 arg2, s16 arg3, s16 *arg4) {
     s16 temp_a1;
     s16 var_a0;
