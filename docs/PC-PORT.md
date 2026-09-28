@@ -555,14 +555,28 @@ into a binary.
   mutation tests push edits through `_sync_code_image`
   (`MUSASHI_CODE_IMAGE_MUTANT=1`, test-only).
 
-Still carrying retail words (follow-up): about 1.5k per-site admission
-pairs (pc plus exact word) for merge/GTE/DIV sites and about 100
-`instruction == 0x...` guards in `mips_formatter.c`, redundant now that the
-words come from the hash-checked image; and 21 BIOS-kernel words in
-`bios_exception.c`. Pytest-only white-box probes that seeded RAM from the
-compiled overlay tables (`carve_site`, `pvd_merge`, `gte_transform`,
-`input_digital_irq`, `file_loader_entry`, `overlay_identity`, `sc02_entry`)
-still need their overlay words from the local disc extract.
+No retail words remain in the port sources:
+- **Site admission** (merge/retire, GTE, DIV/SRAV and the other per-site
+  tables, 1,685 rows; 73 pc-bound guards) keeps only PCs plus a site-group
+  id. `code_site(pc, group, instruction)` admits an instruction only if it
+  equals the word the verified image holds at that PC *and* the group's
+  FNV-1a 64 digest (over the image words at the group's PCs) matches, so
+  a different overlay member or a changed word refuses exactly as the old
+  word comparison did. 203 groups (image set x 256-byte window) over
+  1,470 PCs, verified on every lookup (at most 64 words).
+- **Generic checks** (a call to a named target, `jr`/`jalr`, `syscall`,
+  a few load/store forms) use MIPS field encoders (`MIPS_JAL`, `MIPS_I`...).
+- The 16-entry **switch jump-table copy** (8003C5EC/8003C6B4) is case-body
+  arithmetic; member **signatures** in native_boot and the SC01/SC02
+  identity are digests.
+- **bios_exception.c** carries no BIOS code: the handler/continuation come
+  from the user's ROM when supplied, else zero stand-ins (exception entry is
+  serviced natively and never executes them); the game's own PATCHGTE
+  handler is recognised by digest.
+- CTest `retail_content_guard` runs `tools/retail_guard.py` over the shipped
+  outputs (native boot, port libraries, lane archive) against the local EXE
+  and every MAIN.CD member; it passes with the lane off and on and skips
+  without a disc.
 
 ## PsyQ exclusion (2026-09-28)
 
