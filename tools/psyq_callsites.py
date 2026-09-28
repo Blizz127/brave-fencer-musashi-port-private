@@ -96,6 +96,8 @@ def gte_shape_names(words_by_addr):
             cfc_only = [(w >> 11) & 31 for w in words if (w >> 21) == 0x242]
             if sorted(cfc_only) == [24, 25]:
                 out[addr] = "ReadGeomOffset"
+            elif cfc_only == [26] and len([w for w in words if w]) <= 2:
+                out[addr] = "ReadGeomScreen"
             continue
         rds = [rd for _, rd in ctc]
         cfc = [(w >> 11) & 31 for w in words if (w >> 21) == 0x242]   # cfc2

@@ -337,7 +337,8 @@ class BfmPlatTests(unittest.TestCase):
         cls.addClassCleanup(temp.cleanup)
         cls.tmp = Path(temp.name)
         cls.probe = cls.tmp / "bfm_plat_probe"
-        sources = sorted(str(p) for p in PLAT.glob("bfm_plat*.c")) + [str(PLAT / "psyq/bfm_psyq_compat.c"), str(PLAT / "psyq/bfm_psyq_libgs.c")]
+        sources = sorted(str(p) for p in PLAT.glob("bfm_plat*.c")) + [str(PLAT / "psyq/bfm_psyq_compat.c"), str(PLAT / "psyq/bfm_psyq_libgs.c"),
+                                                                    str(PLAT / "psyq/bfm_psyq_libgte.c")]
         subprocess.run(["cc", *CFLAGS, "-I", str(PLAT), *sources,
                         str(ROOT / "tests/bfm_plat_probe.c"), "-o",
                         str(cls.probe), "-ldl", "-lm"],
@@ -644,7 +645,8 @@ class BfmPlatTests(unittest.TestCase):
         subprocess.run(["cc", "-std=gnu99", "-O1", "-c", *lua_c], cwd=objdir, check=True,
                        stdin=subprocess.DEVNULL, timeout=300)
         probe = self.tmp / "bfm_plat_lua_probe"
-        sources = sorted(str(p) for p in PLAT.glob("bfm_plat*.c")) + [str(PLAT / "psyq/bfm_psyq_compat.c"), str(PLAT / "psyq/bfm_psyq_libgs.c")]
+        sources = sorted(str(p) for p in PLAT.glob("bfm_plat*.c")) + [str(PLAT / "psyq/bfm_psyq_compat.c"), str(PLAT / "psyq/bfm_psyq_libgs.c"),
+                                                                    str(PLAT / "psyq/bfm_psyq_libgte.c")]
         subprocess.run(["cc", *CFLAGS, "-DBFM_PLAT_WITH_LUA", "-I", str(PLAT), "-I", str(lua_src),
                         *sources, str(PLAT / "backends/script_lua.c"),
                         str(ROOT / "tests/bfm_plat_probe.c"), *sorted(map(str, objdir.glob("*.o"))),
@@ -824,6 +826,58 @@ bfm.on("frame_end", function() if seen.late == nil then
         out = self.run_probe("psyq", d / "g.iso")
         self.assertIn("ot packets 3 prims 7 unknown 1 (0x90)", out)
 
+    def test_libgte_hle_matches_retail_arithmetic(self):
+        import math
+
+        def s32(x):
+            x &= 0xFFFFFFFF
+            return x - (1 << 32) if x & 0x80000000 else x
+
+        def s16(x):
+            x &= 0xFFFF
+            return x - 0x10000 if x & 0x8000 else x
+
+        def mul12(a, b):
+            return s32(a * b) >> 12
+
+        table = [(int(round(4096 * math.sin(2 * math.pi * i / 4096))),
+                  int(round(4096 * math.cos(2 * math.pi * i / 4096)))) for i in range(4096)]
+
+        def sincos(a):
+            if a >= 0:
+                sn, cs = table[a & 0xFFF]
+                return sn, cs
+            sn, cs = table[(-a) & 0xFFF]
+            return -sn, cs
+
+        def rotmatrix(x, y, z):
+            sx, cx = sincos(x)
+            sy, cy = sincos(y)
+            sz, cz = sincos(z)
+            m = [0] * 9
+            m[2] = sy
+            m[5] = s32(-(cy * sx)) >> 12
+            m[8] = mul12(cy, cx)
+            m[0] = mul12(cz, cy)
+            m[1] = s32(-(sz * cy)) >> 12
+            t = mul12(cz, -sy)
+            m[3] = mul12(sz, cx) - mul12(t, sx)
+            m[6] = mul12(sz, sx) + mul12(t, cx)
+            t = mul12(sz, -sy)
+            m[4] = mul12(cz, cx) + mul12(t, sx)
+            m[7] = mul12(cz, sx) - mul12(t, cx)
+            return [s16(v) for v in m]
+
+        out = self.run_probe("libgte")
+        for ang in ((0, 0, 0), (0, 0, 1024), (512, -300, 77), (-4000, 4095, -1),
+                    (1234, 2345, 3456), (-2048, -1024, 2048)):
+            want = " ".join(str(v) for v in rotmatrix(*ang))
+            self.assertIn("rot %d %d %d: %s" % (ang[0], ang[1], ang[2], want), out)
+        m = [1000 * i - 3000 for i in range(9)]
+        v = (2048, 8192, -4096)
+        scaled = [s16(mul12(m[k], v[k % 3])) for k in range(9)]
+        self.assertIn("scale: " + " ".join(map(str, scaled)) + " word %08x" % (mul12(m[8], v[2]) & 0xFFFFFFFF), out)
+
     def test_libgs_packet_builders(self):
         self.run_probe("libgs")
 
@@ -864,7 +918,7 @@ bfm.on("frame_end", function() if seen.late == nil then
         self.assertEqual([d[0] for d in defs], [e["addr"] for e in data["entries"]])
         self.assertEqual(sorted(int(d[0], 16) for d in defs), [int(d[0], 16) for d in defs])
         impl = "".join((PLAT / "psyq" / f).read_text() for f in
-                       ("bfm_psyq_compat.c", "bfm_psyq_libgs.c", "psyq_psycross.c"))
+                       ("bfm_psyq_compat.c", "bfm_psyq_libgs.c", "bfm_psyq_libgte.c", "psyq_psycross.c"))
         counts = {"PSYCROSS": 0, "HLE": 0, "STUB": 0}
         sites = {"PSYCROSS": 0, "HLE": 0, "STUB": 0}
         by_addr = {e["addr"]: e for e in data["entries"]}
@@ -925,6 +979,8 @@ bfm.on("frame_end", function() if seen.late == nil then
             "-I", str(PLAT), str(PLAT / "psyq/bfm_psyq_compat.c")], "compat.o")
         cc(["gcc", "-c", "-std=c99", "-Wall", "-Wextra", "-Werror", "-I", str(PLAT),
             str(PLAT / "psyq/bfm_psyq_libgs.c")], "libgs.o")
+        cc(["gcc", "-c", "-std=c99", "-Wall", "-Wextra", "-Werror", "-I", str(PLAT),
+            str(PLAT / "psyq/bfm_psyq_libgte.c")], "libgte_hle.o")
         platform = sorted(str(p) for p in PLAT.glob("bfm_plat*.c"))
         probe = d / "gte_probe"
         subprocess.run(["gcc", "-std=c99", "-Wall", "-Wextra", "-Werror",
@@ -934,6 +990,9 @@ bfm.on("frame_end", function() if seen.late == nil then
         out = subprocess.run([str(probe)], capture_output=True, text=True, timeout=60)
         self.assertEqual(out.returncode, 0, out.stdout + out.stderr)
         self.assertIn("rtps sx 185 sy 132 otz 250", out.stdout)
+        self.assertIn("lw1 5 100 0 m01 -4096", out.stdout)
+        for i, (x, y) in enumerate(((264, 172), (264, 188), (256, 172), (256, 188))):
+            self.assertIn("corner %d: %d %d" % (i, x, y), out.stdout)
         self.assertIn("ok gte", out.stdout)
 
     def test_overlay_font(self):

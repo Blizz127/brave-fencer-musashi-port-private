@@ -5,6 +5,7 @@
 #include "bfm_plat_font.h"
 #include "psyq/bfm_psyq_compat.h"
 
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1711,6 +1712,56 @@ static int group_libgs(void) {
     return 0;
 }
 
+
+/* ------------------------------------------------------------ libgte HLE */
+static void fill_sincos_table(void) {
+    /* synthetic table (not the retail data): round(4096 * sin/cos) */
+    unsigned i;
+    for (i = 0; i < 4096; i++) {
+        double a = 6.283185307179586 * (double)i / 4096.0;
+        int16_t sn = (int16_t)lround(4096.0 * sin(a)), cs = (int16_t)lround(4096.0 * cos(a));
+        put32g(0x8006DF1C + 4 * i, (uint32_t)(uint16_t)sn | ((uint32_t)(uint16_t)cs << 16));
+    }
+}
+
+static int group_libgte(void) {
+    static const int16_t angles[][3] = {{0, 0, 0}, {0, 0, 1024}, {512, -300, 77}, {-4000, 4095, -1},
+                                        {1234, 2345, 3456}, {-2048, -1024, 2048}};
+    unsigned k, i;
+    reset_all();
+    memset(ram, 0, sizeof ram);
+    bfm_psyq_set_ram(ram, sizeof ram);
+    fill_sincos_table();
+    for (k = 0; k < sizeof angles / sizeof angles[0]; k++) {
+        put16(0x80001000, (uint16_t)angles[k][0]); put16(0x80001002, (uint16_t)angles[k][1]);
+        put16(0x80001004, (uint16_t)angles[k][2]);
+        for (i = 0; i < 32; i++) ram[0x1100 + i] = 0xEE;          /* t and pad must survive */
+        CHECK(call("RotMatrix", 0x80001000, 0x80001100, 0, 0) && R[2] == 0x80001100);
+        printf("rot %d %d %d:", angles[k][0], angles[k][1], angles[k][2]);
+        for (i = 0; i < 9; i++) printf(" %d", (int)(int16_t)(ram[0x1100 + 2 * i] | (ram[0x1101 + 2 * i] << 8)));
+        printf("\n");
+        CHECK(ram[0x1112] == 0xEE && r32(0x80001114) == 0xEEEEEEEE);
+    }
+    /* ScaleMatrix: column scaling; m[2][2] writes its whole word */
+    for (i = 0; i < 9; i++) put16(0x80002000 + 2 * i, (uint16_t)(int16_t)(1000 * (int)i - 3000));
+    put16(0x80002012, 0x7777);
+    g32(0x80002100, 2048); g32(0x80002104, 8192); g32(0x80002108, (uint32_t)-4096);
+    CHECK(call("ScaleMatrix", 0x80002000, 0x80002100, 0, 0) && R[2] == 0x80002000);
+    printf("scale:");
+    for (i = 0; i < 9; i++) printf(" %d", (int)(int16_t)(ram[0x2000 + 2 * i] | (ram[0x2001 + 2 * i] << 8)));
+    printf(" word %08x\n", (unsigned)r32(0x80002010));
+    /* TransMatrix */
+    {   /* TransMatrix is only called inside libgs: test the helper */
+        static const int32_t v[3] = {5, -6, 7};
+        bfm_psyq_transmatrix(ram + 0x2000, v);
+        CHECK(r32(0x80002014) == 5 && (int32_t)r32(0x80002018) == -6 && r32(0x8000201C) == 7);
+    }
+    /* no table mapped: refuse */
+    bfm_psyq_set_ram(NULL, 0);
+    CHECK(!call("RotMatrix", 0x80001000, 0x80001100, 0, 0));
+    return 0;
+}
+
 #ifdef BFM_PLAT_WITH_LUA
 /* lua MODSDIR: the pytest writes lua_hello + test mods there. */
 static int group_lua(int argc, char **argv) {
@@ -1832,6 +1883,7 @@ int main(int argc, char **argv) {
     else if (strcmp(g, "disc_check") == 0) r = group_disc_check(argc - 2, argv + 2);
     else if (strcmp(g, "disc_init") == 0) r = group_disc_init(argc - 2, argv + 2);
     else if (strcmp(g, "libgs") == 0) r = group_libgs();
+    else if (strcmp(g, "libgte") == 0) r = group_libgte();
     else if (strcmp(g, "psyq") == 0) r = group_psyq(argc - 2, argv + 2);
     else if (strcmp(g, "watch") == 0) r = group_watch(argc - 2, argv + 2);
     else if (strcmp(g, "cheat_pack") == 0) r = group_cheat_pack(argc - 2, argv + 2);

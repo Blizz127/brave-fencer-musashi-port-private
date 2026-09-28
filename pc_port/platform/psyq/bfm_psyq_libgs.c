@@ -49,7 +49,7 @@ static uint16_t u16at(const uint8_t *p) { return (uint16_t)(p[0] | (p[1] << 8));
 /* The libgs OT link (func_80051EA0): slot = org + (pri - offset)*4;
  * packet tag = old slot word with byte 3 = len; slot = packet, byte 3 = 0.
  * Returns the address after the packet (header + len words). */
-static int gs_link(uint32_t pkt, uint32_t ot, uint32_t pri, uint8_t len, uint32_t *next) {
+int bfm_psyq_gs_link(uint32_t pkt, uint32_t ot, uint32_t pri, uint8_t len, uint32_t *next) {
     uint32_t org, ofs, slot, old;
     int32_t idx;
     if (!get32(ot + 4, &org) || !get32(ot + 8, &ofs)) return 0;
@@ -84,7 +84,7 @@ int bfm_psyq_GsSortLine(uint32_t *r) {
                    ((((attr >> 29) & 2u) | 0x40u) << 24));
     put32(pkt + 12, (uint16_t)(u16at(lp + 4) + (uint16_t)ox) | ((uint32_t)(uint16_t)(u16at(lp + 6) + (uint16_t)oy) << 16));
     put32(pkt + 16, (uint16_t)(u16at(lp + 8) + (uint16_t)ox) | ((uint32_t)(uint16_t)(u16at(lp + 10) + (uint16_t)oy) << 16));
-    if (!gs_link(pkt, A(1), A(2), 4, &next)) return 0;
+    if (!bfm_psyq_gs_link(pkt, A(1), A(2), 4, &next)) return 0;
     put32(GS_OUT_PACKET_P, next);
     return 1;
 }

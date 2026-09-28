@@ -4,6 +4,7 @@
 #include "bfm_plat.h"
 #include "psyq/bfm_psyq_compat.h"
 
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -52,6 +53,25 @@ static void put_matrix(uint32_t a, const int16_t m[9], const int32_t t[3]) {
     for (i = 0; i < 9; i++) w16(a + 2u * (uint32_t)i, m[i]);
     w16(a + 18, 0);
     for (i = 0; i < 3; i++) w32(a + 20u + 4u * (uint32_t)i, t[i]);
+}
+
+static void fill_sincos_table(void) {
+    unsigned i;
+    for (i = 0; i < 4096; i++) {
+        double a = 6.283185307179586 * (double)i / 4096.0;
+        int16_t sn = (int16_t)lround(4096.0 * sin(a)), cs = (int16_t)lround(4096.0 * cos(a));
+        w32(0x8006DF1C + 4 * i, (int32_t)((uint32_t)(uint16_t)sn | ((uint32_t)(uint16_t)cs << 16)));
+    }
+}
+
+/* GsCOORDINATE2 at a: flag, local = rotation r9 (row-major shorts) + t */
+static void coord(uint32_t a, uint32_t flag, const int16_t r9[9], int32_t tx, int32_t ty, int32_t tz, uint32_t super) {
+    int i;
+    memset(ram + (a & 0x1FFFFF), 0, 0x50);
+    w32(a, (int32_t)flag);
+    for (i = 0; i < 9; i++) w16(a + 4 + 2u * (uint32_t)i, r9[i]);
+    w32(a + 0x18, tx); w32(a + 0x1C, ty); w32(a + 0x20, tz);
+    w32(a + 0x48, (int32_t)super);
 }
 
 int main(void) {
@@ -132,6 +152,111 @@ int main(void) {
     CHECK(call("GsSetProjection", 512, 0, 0, 0) && CFC2(26) == 512u);
     CHECK(call("GsSetAmbient", 0x7F, 0x80, 0xFFF, 0) && CFC2(13) == 0x70u && CFC2(14) == 0x80u && CFC2(15) == 0xFF0u);
     CHECK(call("SetBackColor", 1, 2, 3, 0) && CFC2(13) == 16u && CFC2(14) == 32u && CFC2(15) == 48u);
+
+    /* PushMatrix / PopMatrix on the guest-RAM stack */
+    {
+        static const int16_t rz90[9] = {0, -4096, 0, 4096, 0, 0, 0, 0, 4096};
+        static const int32_t t7[3] = {7, 8, 9};
+        int i;
+        w32(0x8006DC18, 0);
+        CHECK(call("SetRotMatrix", 0x80002000, 0, 0, 0) && call("SetTransMatrix", 0x80002000, 0, 0, 0));
+        CHECK(call("PushMatrix", 0, 0, 0, 0) && r32(0x8006DC18) == 0x20);
+        CHECK(r32(0x8006DC1C) == 4096 && r32(0x8006DC1C + 0x1C) == 1000);
+        put_matrix(0x80002300, rz90, t7);
+        CHECK(call("SetRotMatrix", 0x80002300, 0, 0, 0) && call("SetTransMatrix", 0x80002300, 0, 0, 0));
+        CHECK(CFC2(7) == 9u);
+        CHECK(call("PopMatrix", 0, 0, 0, 0) && r32(0x8006DC18) == 0 && CFC2(0) == 4096u && CFC2(7) == 1000u);
+        CHECK(call("PopMatrix", 0, 0, 0, 0) && r32(0x8006DC18) == 0);            /* underflow: logged */
+        for (i = 0; i < 20; i++) CHECK(call("PushMatrix", 0, 0, 0, 0));
+        CHECK(r32(0x8006DC18) == 0x280);
+        w32(0x8006DC1C + 0x280, 0x5A5A5A5A);
+        CHECK(call("PushMatrix", 0, 0, 0, 0) && r32(0x8006DC18) == 0x280 && r32(0x8006DC1C + 0x280) == 0x5A5A5A5A);
+        w32(0x8006DC18, 0);
+    }
+
+    /* GsGetLw / GsGetLs / GsGetLws: root R (rotate 90 about Z, t 10,0,0) <- A (t 100,0,0) <- B (t 0,5,0) */
+    {
+        static const int16_t rz90[9] = {0, -4096, 0, 4096, 0, 0, 0, 0, 4096};
+        const uint32_t Rt = 0x80006000, At = 0x80006100, Bt = 0x80006200, OUT = 0x80006300;
+        w32(0x800C7C70, 7);                                  /* frame counter */
+        coord(Rt, 0, rz90, 10, 0, 0, 0);
+        coord(At, 0, ident, 100, 0, 0, Rt);
+        coord(Bt, 0, ident, 0, 5, 0, At);
+        /* 1: everything dirty -> full walk; B world = R*(tA + tB) + tR = (10-5, 100, 0) */
+        CHECK(call("GsGetLw", Bt, OUT, 0, 0));
+        printf("lw1 %d %d %d m01 %d\n", r32(OUT + 20), r32(OUT + 24), r32(OUT + 28), r16(OUT + 2));
+        CHECK(r32(OUT + 20) == 5 && r32(OUT + 24) == 100 && r32(OUT + 28) == 0 && r16(OUT + 2) == -4096);
+        CHECK(r32(Rt) == 7 && r32(At) == 7 && r32(Bt) == 7);        /* all stamped */
+        CHECK(r32(At + 0x24 + 20) == 10 && r32(At + 0x24 + 24) == 100);   /* A world cached */
+        CHECK(r32(0x800C6D48) == (int32_t)Bt && r32(0x800C6D4C) == (int32_t)At && r32(0x800C6D50) == (int32_t)Rt);
+        /* 2: same frame -> B's cache, even after A's local changes */
+        w32(At + 0x18, 200);
+        CHECK(call("GsGetLw", Bt, OUT, 0, 0) && r32(OUT + 24) == 100);
+        /* 3: next frame, nothing dirty, root stamped earlier -> the input's cache is reused */
+        w32(0x800C7C70, 8);
+        CHECK(call("GsGetLw", Bt, OUT, 0, 0) && r32(OUT + 24) == 100 && r32(Bt) == 7);
+        /* 4: A dirty (flag 0) -> restart above it from R's cache: A's new t (200) shows */
+        w32(At, 0);
+        CHECK(call("GsGetLw", Bt, OUT, 0, 0));
+        CHECK(r32(OUT + 20) == 5 && r32(OUT + 24) == 200 && r32(At) == 8 && r32(Bt) == 8);
+        /* 5: root dirty -> recomputed from its local (t 50) */
+        w32(0x800C7C70, 9);
+        w32(Rt, 0); w32(Rt + 0x18, 50);
+        CHECK(call("GsGetLw", Bt, OUT, 0, 0) && r32(OUT + 20) == 45 && r32(Rt + 0x24 + 20) == 50);
+        /* GsGetLs = GsWSMATRIX (identity, t 0,0,500) (x) Lw; GsGetLws gives both */
+        put_matrix(0x800AE688, ident, t1000);
+        w32(0x800AE688 + 28, 500);
+        CHECK(call("GsGetLs", Bt, OUT, 0, 0) && r32(OUT + 20) == 45 && r32(OUT + 28) == 500 && r16(OUT + 2) == -4096);
+        CHECK(call("GsGetLws", Bt, 0x80006400, 0x80006500, 0));
+        CHECK(r32(0x80006400 + 28) == 0 && r32(0x80006500 + 28) == 500 && r32(0x80006500 + 24) == 200);
+        /* a broken chain pointer refuses without writing */
+        w32(At + 0x48, 0x801FFFF0);
+        w32(OUT + 20, 0x1234);
+        CHECK(!call("GsGetLw", Bt, OUT, 0, 0) && r32(OUT + 20) == 0x1234);
+    }
+
+    /* GsSortSprite */
+    {
+        const uint32_t SP = 0x80007000, OT = 0x80007100, ORG = 0x80007200, PKT = 0x80008000;
+        int i;
+        fill_sincos_table();
+        w32(0x800A5E60, (int32_t)PKT);
+        w16(0x800A6548, 3); w16(0x800A654A, 4);
+        w32(OT + 4, (int32_t)ORG); w32(OT + 8, 0);
+        for (i = 0; i < 4; i++) w32(ORG + 4u * (uint32_t)i, i ? (int32_t)((ORG + 4u * (uint32_t)(i - 1)) & 0xFFFFFF) : 0xFFFFFF);
+        put_matrix(0x800AE620, ident, t1000);                 /* GsIDMATRIX (t unused) */
+        memset(ram + (SP & 0x1FFFFF), 0, 0x24);
+        w16(SP + 4, 100); w16(SP + 6, 60); w16(SP + 8, 16); w16(SP + 10, 8);
+        w16(SP + 12, 7); ram[(SP & 0x1FFFFF) + 14] = 32; ram[(SP & 0x1FFFFF) + 15] = 64;
+        w16(SP + 0x18, 8); w16(SP + 0x1A, 4);                /* mx, my */
+        w32(SP + 0x1C, 0x10001000);                           /* scale 1.0, 1.0 */
+        /* plain: SPRT at (x + ofs - m) */
+        CHECK(call("GsSortSprite", SP, OT, 2, 0));
+        CHECK(r32(PKT + 8) == 0x64000000 && r32(PKT + 12) == ((60 + 4 - 4) << 16 | (100 + 3 - 8)) &&
+              r32(PKT + 20) == (8 << 16 | 16) && (r32(PKT) >> 24) == 5);
+        CHECK(r32(0x800A5E60) == (int32_t)(PKT + 24));
+        /* rotated 90 degrees, x-flip: POLY_FT4, corners hand-computed:
+         * screen = OF + (x, y) + Rz90 * corner, Rz90 (px, py) = (-py, px); OF = (160, 120), H = SZ */
+        CHECK(call("SetGeomOffset", 160, 120, 0, 0) && call("SetGeomScreen", 256, 0, 0, 0));
+        w32(SP, 0x00800000);                                  /* flip x */
+        w32(SP + 0x20, 90 * 4096);
+        CHECK(call("GsSortSprite", SP, OT, 2, 0));
+        {
+            uint32_t p = PKT + 24;
+            static const int cx[4] = {-8, 8, -8, 8}, cy[4] = {-4, -4, 4, 4};
+            for (i = 0; i < 4; i++) {
+                int32_t sxy = r32(p + 8 + 8u * (uint32_t)i);
+                int ex = 160 + 100 - cy[i], ey = 120 + 60 + cx[i];
+                printf("corner %d: %d %d (want %d %d)\n", i, (int16_t)sxy, (int16_t)(sxy >> 16), ex, ey);
+                CHECK((int16_t)sxy == ex && (int16_t)(sxy >> 16) == ey);
+            }
+            CHECK((r32(p + 4) >> 24) == 0x2C && (r32(p) >> 24) == 9);
+            CHECK((r32(p + 12) & 0xFFFF) == ((64 << 8) | (32 + 15)) && (r32(p + 20) & 0xFFFF) == ((64 << 8) | 32));
+            CHECK(((r32(p + 20) >> 16) & 0x1F) == 7);
+            CHECK((r32(p + 28) & 0xFFFF) == ((71 << 8) | 47) && (r32(p + 36) & 0xFFFF) == ((71 << 8) | 32));
+            CHECK(r32(0x800A5E60) == (int32_t)(p + 40));
+        }
+    }
 
     /* bad pointer refuses before the bridge is entered */
     {

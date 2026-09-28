@@ -9,12 +9,12 @@ and every `asm/overlays/*/*.s`); 30670 `jal`/`j` call sites into the Psy-Q range
 
 | Status | Entry points | Call sites |
 |---|---|---|
-| psycross | 28 (13.2%) | 13643 (44.5%) |
-| hle | 43 (20.3%) | 8208 (26.8%) |
-| stub-TBD | 141 (66.5%) | 8819 (28.8%) |
-| **covered (psycross + hle)** | **71 / 212 (33.5%)** | **21851 / 30670 (71.2%)** |
+| psycross | 38 (17.9%) | 15792 (51.5%) |
+| hle | 45 (21.2%) | 8360 (27.3%) |
+| stub-TBD | 129 (60.8%) | 6518 (21.3%) |
+| **covered (psycross + hle)** | **83 / 212 (39.2%)** | **24152 / 30670 (78.7%)** |
 
-Named: 129 / 212 entry points (vendor symbols, libgte instruction shape, or 23 inferred
+Named: 135 / 212 entry points (vendor symbols, libgte instruction shape, or 28 inferred
 from call context: see `INFERRED` in tools/psyq_compat_status.py). The rest are listed
 by address and Psy-Q object for later naming.
 
@@ -95,24 +95,24 @@ by address and Psy-Q object for later naming.
 | `0x8004818C` | MulMatrix0 | libgte2 |  | 14 | 13 | psycross | GTE bridge (gte_owner lease); clobbers the rotation matrix like Psy-Q |
 | `0x8004829C` | MulRotMatrix | libgte2 |  | 1 | 1 | psycross | GTE bridge (gte_owner lease) |
 | `0x8004838C` | CompMatrix | libgte3 |  | 4 | 3 | psycross | GTE bridge (gte_owner lease) |
-| `0x800484EC` | *unnamed* | libgte3 |  | 732 | 70 | stub-TBD | not in PsyCross; an HLE on the gteRegs bank via the bridge is possible |
+| `0x800484EC` | ApplyMatrixLV | libgte3 |  | 732 | 70 | psycross | GTE bridge; PsyCross's Psy-Q hi/lo split |
 | `0x8004864C` | ApplyRotMatrix | libgte3 |  | 197 | 66 | psycross | GTE bridge (gte_owner lease) |
-| `0x8004867C` | PushMatrix | libgte3 |  | 5 | 5 | stub-TBD | PsyCross keeps its matrix stack host-side, the retail one is in guest RAM: mixing would desync |
-| `0x8004871C` | PopMatrix | libgte3 |  | 5 | 5 | stub-TBD | PsyCross keeps its matrix stack host-side, the retail one is in guest RAM: mixing would desync |
+| `0x8004867C` | PushMatrix | libgte3 |  | 5 | 5 | psycross | GTE bridge; the retail guest-RAM stack (offset D_8006DC18, 20 slots at D_8006DC1C), not PsyCross's host stack |
+| `0x8004871C` | PopMatrix | libgte3 |  | 5 | 5 | psycross | GTE bridge; the retail guest-RAM stack |
 | `0x800487BC` | ReadRotMatrix | libgte3 |  | 5 | 5 | psycross | GTE bridge (gte_owner lease) |
 | `0x8004880C` | SetMulMatrix | libgte4 |  | 1 | 1 | stub-TBD | not in PsyCross; an HLE on the gteRegs bank via the bridge is possible |
 | `0x8004891C` | CompMatrixLV | libgte4 |  | 1 | 1 | psycross | GTE bridge (gte_owner lease) |
 | `0x80048B6C` | ApplyRotMatrixLV | libgte4 |  | 144 | 66 | psycross | GTE bridge (gte_owner lease) |
 | `0x80048CAC` | SetMulRotMatrix | libgte5 |  | 1 | 1 | stub-TBD | not in PsyCross; an HLE on the gteRegs bank via the bridge is possible |
-| `0x80048D9C` | *unnamed* | libgte5 |  | 74 | 72 | stub-TBD | not in PsyCross; an HLE on the gteRegs bank via the bridge is possible |
-| `0x80048EAC` | *unnamed* | libgte5 |  | 1034 | 66 | stub-TBD | not in PsyCross; an HLE on the gteRegs bank via the bridge is possible |
+| `0x80048D9C` | MulMatrix | libgte5 |  | 74 | 72 | psycross | GTE bridge; sets the rotation matrix like Psy-Q |
+| `0x80048EAC` | MulMatrix2 | libgte5 |  | 1034 | 66 | psycross | GTE bridge; sets the rotation matrix like Psy-Q |
 | `0x80048FBC` | ApplyMatrixSV | libgte5 |  | 2112 | 71 | psycross | GTE bridge (gte_owner lease); sets the rotation matrix like Psy-Q |
-| `0x8004901C` | *unnamed* | libgte5 |  | 13 | 6 | stub-TBD | not in PsyCross; an HLE on the gteRegs bank via the bridge is possible |
+| `0x8004901C` | ScaleMatrix | libgte5 |  | 13 | 6 | hle | exact retail arithmetic (m[2][2] writes its whole word) |
 | `0x8004914C` | SetRotMatrix | libgte6 |  | 1442 | 67 | psycross | GTE bridge (gte_owner lease) |
 | `0x8004917C` | SetLightMatrix | libgte6 |  | 1 | 1 | psycross | GTE bridge (gte_owner lease) |
 | `0x800491AC` | SetTransMatrix | libgte6 |  | 1374 | 67 | psycross | GTE bridge (gte_owner lease) |
 | `0x800491CC` | ReadGeomOffset | libgte6 |  | 5 | 5 | psycross | GTE bridge (gte_owner lease); reads C2_OFX/OFY |
-| `0x800491EC` | *unnamed* | libgte6 |  | 76 | 64 | stub-TBD | not in PsyCross; an HLE on the gteRegs bank via the bridge is possible |
+| `0x800491EC` | ReadGeomScreen | libgte6 |  | 76 | 64 | psycross | GTE bridge: cfc2 $26 |
 | `0x800491FC` | SetBackColor | libgte6 |  | 2 | 1 | psycross | GTE bridge: RBK/GBK/BBK = c << 4 |
 | `0x8004921C` | SetGeomOffset | libgte6 |  | 9 | 5 | psycross | GTE bridge (gte_owner lease); the hook site also records the projection |
 | `0x8004923C` | SetGeomScreen | libgte7 |  | 1 | 1 | psycross | GTE bridge (gte_owner lease); the hook site also records the projection |
@@ -126,7 +126,7 @@ by address and Psy-Q object for later naming.
 | `0x8004961C` | RotTransPers4 | libgte10 |  | 11 | 8 | psycross | GTE bridge (gte_owner lease); args 5-10 from the guest stack; long * via temporaries |
 | `0x8004969C` | RotNclip4 | libgte11 |  | 4 | 4 | stub-TBD | not in PsyCross; an HLE on the gteRegs bank via the bridge is possible |
 | `0x8004974C` | *unnamed* | libgte11 |  | 5 | 5 | stub-TBD | not in PsyCross; an HLE on the gteRegs bank via the bridge is possible |
-| `0x8004978C` | *unnamed* | libgte25 | FGO_01.o | 139 | 66 | stub-TBD | not in PsyCross; an HLE on the gteRegs bank via the bridge is possible |
+| `0x8004978C` | RotMatrix | libgte25 | FGO_01.o | 139 | 66 | hle | exact retail arithmetic over the game's own sin/cos table in guest RAM |
 | `0x80049A1C` | RotMatrixYXZ | libgte25 |  | 1938 | 76 | psycross | stateless (PsyCross rcossin table) |
 | `0x80049CAC` | *unnamed* | libgte25 | FGO_03.o | 1208 | 100 | stub-TBD | not in PsyCross; an HLE on the gteRegs bank via the bridge is possible |
 | `0x80049F3C` | RotMatrixX | libgte25 |  | 196 | 66 | psycross | stateless |
@@ -137,7 +137,7 @@ by address and Psy-Q object for later naming.
 | `0x8005080C` | GsSortBg | libgs7 |  | 64 | 64 | stub-TBD | GsBG cell-map walker with scaling and rotation: large |
 | `0x80051044` | GsSortFastBg | libgs7 |  | 64 | 64 | stub-TBD | GsBG cell-map walker (unscaled): moderate; next |
 | `0x80051DC8` | GsSortLine | libgs2 |  | 896 | 64 | hle | E1 + LINE_F2 into GsOUT_PACKET_P, linked into the guest GsOT; drawn by DrawOTag |
-| `0x80051F34` | GsSortSprite | libgs2 |  | 64 | 64 | stub-TBD | scaled/rotated sprite: POLY_FT4 corners via rsin/rcos with libgs's exact rounding; next after GsSortFastSprite |
+| `0x80051F34` | GsSortSprite | libgs2 |  | 64 | 64 | psycross | GTE bridge: SPRT, or RotMatrix (guest table) + ScaleMatrix + TransMatrix + RotTransPers4 -> POLY_FT4; linked into the guest GsOT |
 | `0x80052460` | GsSortFastSprite | libgs3 |  | 257 | 65 | hle | E1 + SPRT into GsOUT_PACKET_P, linked into the guest GsOT; drawn by DrawOTag |
 | `0x800525DC` | *unnamed* | libgs8 | GS_001.o | 1 | 1 | stub-TBD | libgs internal (TMD object sort/preset, BG and clip setup): large or rarely called; guest code for now |
 | `0x800527C4` | GsInitGraph2 | libgs8 |  | 2 | 2 | stub-TBD | display/draw init over libgs globals and libgpu: low call count |
@@ -155,9 +155,9 @@ by address and Psy-Q object for later naming.
 | `0x80053D44` | *unnamed* | libgs6 | GS_122.o | 1 | 1 | stub-TBD | libgs internal (TMD object sort/preset, BG and clip setup): large or rarely called; guest code for now |
 | `0x80053EEC` | *unnamed* | libgs6 | GS_131.o | 2 | 2 | stub-TBD | libgs internal (TMD object sort/preset, BG and clip setup): large or rarely called; guest code for now |
 | `0x80053F6C` | *unnamed* | libgs6 | GS_131.o | 1 | 1 | stub-TBD | libgs internal (TMD object sort/preset, BG and clip setup): large or rarely called; guest code for now |
-| `0x80054514` | GsGetLw | libgs6 | GS_133.o | 84 | 65 | stub-TBD | coordinate-hierarchy walk with libgs's flag cache and GTE matrix products: must match the cache semantics exactly |
-| `0x800547D8` | GsGetLs | libgs6 | GS_134.o | 74 | 64 | stub-TBD | as GsGetLw, plus the world-screen product |
-| `0x80054AAC` | GsGetLws | libgs6 | GS_135.o | 1 | 1 | stub-TBD | as GsGetLw/GsGetLs |
+| `0x80054514` | GsGetLw | libgs6 | GS_133.o | 84 | 65 | psycross | GTE bridge: the retail walk (chain in D_800C6D48, stamp D_800C7C70, dirty = flag 0) with ApplyMatrixLV + MulMatrix |
+| `0x800547D8` | GsGetLs | libgs6 | GS_134.o | 74 | 64 | psycross | GTE bridge: GsGetLw then GsWSMATRIX (x) Lw |
+| `0x80054AAC` | GsGetLws | libgs6 | GS_135.o | 1 | 1 | psycross | GTE bridge: Lw and GsWSMATRIX (x) Lw from one walk |
 | `0x80054DCC` | GsSetRefView2L | libgs6 |  | 64 | 64 | stub-TBD | view matrix from GsRVIEW2 (ratan2, rsin/rcos, matrix products): large |
 | `0x800553D8` | GsLinkObject5 | libgs6 |  | 2 | 1 | stub-TBD | TMD object packet preset (GsDOBJ5): large; 2 call sites |
 | `0x800553F4` | GsPresetObject | libgs6 |  | 2 | 1 | stub-TBD | TMD object packet preset: large; 2 call sites |

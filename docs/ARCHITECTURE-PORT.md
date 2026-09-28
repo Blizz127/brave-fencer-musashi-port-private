@@ -756,9 +756,26 @@ decompiled C of each entry.
     GsSetLightMode
 - **Through the GTE bridge:** GsSetLsMatrix, GsSetProjection, GsSetAmbient,
   and SetBackColor (now named by its `sll 4 + ctc2 13..15` shape).
+- **Coordinates and sprites (GTE bridge):**
+  - GsGetLw/GsGetLs/GsGetLws follow the retail walk exactly: the chain
+    goes into the guest array `D_800C6D48`, the cache stamp is the frame
+    counter `D_800C7C70`, flag 0 marks a node dirty, and a stale root
+    restarts above the deepest dirty node (or reuses the input's cache when
+    none is dirty). They compose with ApplyMatrixLV + MulMatrix.
+  - GsSortSprite takes either the plain SPRT path, or, when scaled or
+    rotated, RotMatrix (the game's own sin/cos table), ScaleMatrix and
+    TransMatrix to (x, y, H), then RotTransPers4 into a POLY_FT4 with
+    flip-aware UVs.
+  - PushMatrix/PopMatrix use the retail guest-RAM stack (offset
+    `D_8006DC18`, 20 slots at `D_8006DC1C`).
+  - RotMatrix and ScaleMatrix are HLE with the retail arithmetic term by
+    term. ApplyMatrixLV, MulMatrix and MulMatrix2 are named from their libgs
+    use.
+  - PsyCross's MulMatrix/MulMatrix2 overwrite the destination's translation
+    with an uninitialised temporary, while the retail ones store only the
+    rotation (pad = sign of m[2][2]). The wrappers restore `t`; the GsGetLw
+    test caught this.
 - **Still stub, with reasons in the report:**
-  - GsSortSprite: scaled/rotated corners need libgs's exact rsin/rcos
-    rounding; next after GsSortFastSprite
   - GsSortFastBg / GsSortBg: GsBG cell-map walkers, the second with
     scaling and rotation
   - GsGetLw / GsGetLs / GsGetLws: the coordinate-hierarchy walk with
@@ -776,7 +793,7 @@ decompiled C of each entry.
 **Next:**
 - name the 96 unnamed entries (their Psy-Q objects are listed in the
   report)
-- libgs: GsSortSprite, GsSortFastBg, then GsGetLw/GsGetLs
+- libgs: GsSortFastBg / GsSortBg, GsSetRefView2L
 - HLE the libgte functions PsyCross lacks (Square0/12, VectorNormalSS,
   ApplyTransposeMatrixLV, csqrt…) on the same bank through the bridge
 - SetDrawEnv (DR_ENV packets) and printf (guest varargs)
@@ -798,7 +815,8 @@ add_library(bfm_plat STATIC
     pc_port/platform/bfm_plat_image.c    pc_port/platform/bfm_plat_font.c
     pc_port/platform/bfm_plat_widescreen.c
     pc_port/platform/psyq/bfm_psyq_compat.c
-    pc_port/platform/psyq/bfm_psyq_libgs.c)         # + psyq/psyq_psycross.c with PsyCross
+    pc_port/platform/psyq/bfm_psyq_libgs.c
+    pc_port/platform/psyq/bfm_psyq_libgte.c)        # + psyq/psyq_psycross.c with PsyCross
 target_include_directories(bfm_plat PUBLIC pc_port/platform)
 target_link_libraries(bfm_plat PUBLIC ${CMAKE_DL_LIBS} m)
 
