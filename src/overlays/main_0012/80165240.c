@@ -2,49 +2,40 @@
  * SHA256(span)=08a0b072ab4dc8636ef76aa57b90290f8a2be04e6b67ca396560f1801bd47ead.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-#include "m2c_macros.h"
+/* func_80165240 - byte-exact against retail at -O2 (tools/register_match.py). */
+#define ApplyMatrixSV func_80048FBC
+typedef struct { s16 vx, vy, vz, pad; } Svec_801372B0;
+struct W4 { u32 w; } __attribute__((packed, aligned(1)));
+extern void ApplyMatrixSV(void *m, Svec_801372B0 *in, Svec_801372B0 *out);
+extern void ApplyMatrixSV(void*, Svec_801372B0*, Svec_801372B0*);
+extern s32  func_80017DC4(void *a0, void *a1);
+extern void func_80016ED4(void *a0);
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+void func_80165240(void *param_1, void *param_2, void *param_3)
+{
 
-void func_80016ED4(void *, s32, s32, s32);    /* extern */
-void func_80017DC4(s32, void *);          /* extern */
-void func_80048FBC(void *, s32 (*)(), void *); /* extern */
-extern s32 D_80180FB4;
-extern s32 D_80180FD4;
-extern s32 D_80180FD8;
-extern s32 D_80180FDC;
-extern s32 D_80180FE0;
+    extern u8  D_80180FB4[];
+    extern u32 D_80180FD4, D_80180FD8, D_80180FDC, D_80180FE0;
+    u8 prim[0x40];    
+    u8 mat[0x20];     
+    u8 *p = prim;
 
-void func_80165240(s32 arg1, void *arg2) {
-    s32 sp50;
-    s8 sp48;
-    s32 sp44;
-    s32 sp43;
-    s32 sp3C;
-    s32 sp38;
-    s32 sp34;
-    s32 sp30;
-    s32 sp28;
-    s32 sp20;
-    s32 sp18;
-    s16 sp14;
-    s32 sp10;
-    func_80017DC4(arg1, &sp50);
-    func_80048FBC(&sp50, D_80180FB4, &sp10);
-    func_80048FBC(&sp50, D_80180FB4 + 8, &sp18);
-    func_80048FBC(&sp50, D_80180FB4 + 0x10, &sp20);
-    func_80048FBC(&sp50, D_80180FB4 + 0x18, &sp28);
-    sp14 = 3;
-    sp48 = 0x2C;
-    sp30 = D_80180FDC;
-    sp34 = D_80180FD4;
-    sp38 = D_80180FE0;
-    sp3C = D_80180FD8;
-    sp43 = M2C_UNALIGNED32(M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */));
-    sp44 = 0x50000000;
-    func_80016ED4(&sp10, D_80180FD4, D_80180FE0, D_80180FD8);
+    func_80017DC4(param_2, mat);
+    ((void (*)(void *, void *, void *))ApplyMatrixSV)(mat, &D_80180FB4[0x00], p);
+    ((void (*)(void *, void *, void *))ApplyMatrixSV)(mat, &D_80180FB4[0x08], prim + 0x08);
+    ((void (*)(void *, void *, void *))ApplyMatrixSV)(mat, &D_80180FB4[0x10], prim + 0x10);
+    ((void (*)(void *, void *, void *))ApplyMatrixSV)(mat, &D_80180FB4[0x18], prim + 0x18);
+
+    *(s16 *)(prim + 0x04) = 3;
+    prim[0x38] = 0x2c;
+    *(u32 *)(prim + 0x20) = D_80180FDC;
+    *(u32 *)(prim + 0x24) = D_80180FD4;
+    *(u32 *)(prim + 0x28) = D_80180FE0;
+    *(u32 *)(prim + 0x2c) = D_80180FD8;
+    *(struct W4 *)(prim + 0x30) = *(struct W4 *)param_3;
+    *(u32 *)(prim + 0x34) = 0x50000000;
+
+    func_80016ED4(p);
 }

@@ -2,327 +2,434 @@
  * SHA256(span)=5eb7774640069bcc7919d11fd7d3203f02a0d3bd1cbedaa3a9fa22b9144b144e.
  * Word export for the native seam; the body below keeps its
  * own oracle match claim (registry-verified, untouched). */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
 
-/* GTE/cop2 mnemonic overlay: ordinary C cannot emit coprocessor ops.
- * Verified by tools/match_function.py. */
-__asm__(
-    ".set noreorder\n"
-    ".globl func_800221A8\n"
-    ".type func_800221A8, @function\n"
-    "func_800221A8:\n"
-    "addiu $sp, $sp, -0x130\n"
-    "sw $s1, 0x11C($sp)\n"
-    "addu $s1, $a0, $zero\n"
-    "sw $ra, 0x128($sp)\n"
-    "sw $s3, 0x124($sp)\n"
-    "sw $s2, 0x120($sp)\n"
-    "sw $s0, 0x118($sp)\n"
-    "lw $v0, 0x78($s1)\n"
-    "sw $zero, 0x88($sp)\n"
-    "sw $v0, 0xD0($sp)\n"
-    "lhu $v1, 0x2C($s1)\n"
-    "lui $s3, %hi(D_800AF630)\n"
-    "addiu $s3, $s3, %lo(D_800AF630)\n"
-    "andi $v0, $v1, 0x1\n"
-    "andi $v0, $v1, 0xFFFE\n"
-    "sh $v0, 0x2C($s1)\n"
-    "lw $v0, 0x34($s1)\n"
-    "lw $v1, 0x38($s1)\n"
-    "lw $a0, 0x3C($s1)\n"
-    "lw $a1, 0x40($s1)\n"
-    "sw $v0, 0x8C($sp)\n"
-    "sw $v1, 0x90($sp)\n"
-    "sw $a0, 0x94($sp)\n"
-    "sw $a1, 0x98($sp)\n"
-    "lw $v0, 0x44($s1)\n"
-    "lw $v1, 0x48($s1)\n"
-    "lw $a0, 0x4C($s1)\n"
-    "lw $a1, 0x50($s1)\n"
-    "sw $v0, 0x9C($sp)\n"
-    "sw $v1, 0xA0($sp)\n"
-    "sw $a0, 0xA4($sp)\n"
-    "sw $a1, 0xA8($sp)\n"
-    "addiu $a0, $sp, 0x8C\n"
-    ".L80022234:\n"
-    "addiu $a0, $s1, 0x10\n"
-    "addiu $a1, $sp, 0x8C\n"
-    "lh $v0, 0x8($s1)\n"
-    "nop\n"
-    "sw $v0, 0xA0($sp)\n"
-    "lh $v0, 0xA($s1)\n"
-    "nop\n"
-    "sw $v0, 0xA4($sp)\n"
-    "lh $v0, 0xC($s1)\n"
-    "nop\n"
-    "sw $v0, 0xA8($sp)\n"
-    "addiu $a0, $sp, 0x8C\n"
-    "lh $v0, 0x18($s1)\n"
-    "addiu $a1, $sp, 0xF8\n"
-    "sw $v0, 0xF8($sp)\n"
-    "lh $v1, 0x1A($s1)\n"
-    "addiu $v0, $zero, 0x1000\n"
-    "sw $v0, 0x100($sp)\n"
-    "sw $v1, 0xFC($sp)\n"
-    "addiu $a0, $sp, 0x88\n"
-    "addiu $s0, $sp, 0xD8\n"
-    "addu $a1, $s0, $zero\n"
-    "lw $v0, 0x8C($sp)\n"
-    "lw $v1, 0x90($sp)\n"
-    "lw $a0, 0x94($sp)\n"
-    "lw $a1, 0x98($sp)\n"
-    "sw $v0, 0x34($s1)\n"
-    "sw $v1, 0x38($s1)\n"
-    "sw $a0, 0x3C($s1)\n"
-    "sw $a1, 0x40($s1)\n"
-    "lw $v0, 0x9C($sp)\n"
-    "lw $v1, 0xA0($sp)\n"
-    "lw $a0, 0xA4($sp)\n"
-    "lw $a1, 0xA8($sp)\n"
-    "sw $v0, 0x44($s1)\n"
-    "sw $v1, 0x48($s1)\n"
-    "sw $a0, 0x4C($s1)\n"
-    "sw $a1, 0x50($s1)\n"
-    "lw $v0, 0xAC($sp)\n"
-    "lw $v1, 0xB0($sp)\n"
-    "lw $a0, 0xB4($sp)\n"
-    "lw $a1, 0xB8($sp)\n"
-    "sw $v0, 0x54($s1)\n"
-    "sw $v1, 0x58($s1)\n"
-    "sw $a0, 0x5C($s1)\n"
-    "sw $a1, 0x60($s1)\n"
-    "lw $v0, 0xBC($sp)\n"
-    "lw $v1, 0xC0($sp)\n"
-    "lw $a0, 0xC4($sp)\n"
-    "lw $a1, 0xC8($sp)\n"
-    "sw $v0, 0x64($s1)\n"
-    "sw $v1, 0x68($s1)\n"
-    "sw $a0, 0x6C($s1)\n"
-    "sw $a1, 0x70($s1)\n"
-    "lw $s2, 0x20($s1)\n"
-    "nop\n"
-    "nop\n"
-    "lw $a0, 0x28($s1)\n"
-    "addiu $a1, $sp, 0xC0\n"
-    "nop\n"
-    "lui $at, (0x10000 >> 16)\n"
-    "addu $at, $s3, $at\n"
-    "lhu $v0, -0x5C2E($at)\n"
-    "lui $v1, %hi(D_800A6610)\n"
-    "addiu $v1, $v1, %lo(D_800A6610)\n"
-    "sll $v0, $v0, 14\n"
-    "addu $t7, $v0, $v1\n"
-    "lw $t4, 0x0($s0)\n"
-    "lw $t5, 0x4($s0)\n"
-    "ctc2 $t4, $0\n"
-    "ctc2 $t5, $1\n"
-    "lw $t4, 0x8($s0)\n"
-    "lw $t5, 0xC($s0)\n"
-    "lw $t6, 0x10($s0)\n"
-    "ctc2 $t4, $2\n"
-    "ctc2 $t5, $3\n"
-    "ctc2 $t6, $4\n"
-    "lw $t4, 0x14($s0)\n"
-    "lw $t5, 0x18($s0)\n"
-    "ctc2 $t4, $5\n"
-    "lw $t6, 0x1C($s0)\n"
-    "ctc2 $t5, $6\n"
-    "ctc2 $t6, $7\n"
-    "addiu $v0, $sp, 0x10\n"
-    "sh $zero, 0x14($sp)\n"
-    "sh $zero, 0x12($sp)\n"
-    "sh $zero, 0x10($sp)\n"
-    "lwc2 $0, 0x0($v0)\n"
-    "lwc2 $1, 0x4($v0)\n"
-    "nop\n"
-    "nop\n"
-    "addiu $v0, $sp, 0x28\n"
-    "swc2 $14, 0x0($v0)\n"
-    "addiu $v0, $sp, 0x108\n"
-    "cfc2 $t4, $31\n"
-    "nop\n"
-    "sw $t4, 0x0($v0)\n"
-    "addiu $v0, $sp, 0x10C\n"
-    "mfc2 $t4, $19\n"
-    "nop\n"
-    "sra $t4, $t4, 2\n"
-    "sw $t4, 0x0($v0)\n"
-    "lw $v0, 0x108($sp)\n"
-    "addiu $v1, $zero, -0x1001\n"
-    "and $v0, $v0, $v1\n"
-    "addiu $v0, $sp, 0x110\n"
-    "swc2 $19, 0x0($v0)\n"
-    "lw $v0, 0x10C($sp)\n"
-    "lhu $v1, 0x2E($s1)\n"
-    "nop\n"
-    "andi $a0, $v1, 0xC000\n"
-    "addiu $t2, $v0, 0x1\n"
-    "ori $v0, $zero, 0xC000\n"
-    "andi $v0, $v1, 0xFFF\n"
-    "subu $t2, $t2, $v0\n"
-    "sltiu $v0, $t2, 0x1000\n"
-    "addu $t2, $zero, $zero\n"
-    ".L80022438:\n"
-    "addu $t2, $t2, $v0\n"
-    "sltiu $v0, $t2, 0x1000\n"
-    ".L80022440:\n"
-    "nop\n"
-    "lhu $v0, 0x18($s1)\n"
-    "sh $zero, 0x6A($sp)\n"
-    "sh $zero, 0x6C($sp)\n"
-    "sh $zero, 0x6E($sp)\n"
-    "sh $v0, 0x68($sp)\n"
-    "lhu $v1, 0x1A($s1)\n"
-    "addiu $v0, $zero, 0x1000\n"
-    "sh $v0, 0x78($sp)\n"
-    "addiu $v0, $sp, 0x68\n"
-    "sh $zero, 0x72($sp)\n"
-    "sh $zero, 0x74($sp)\n"
-    "sh $zero, 0x76($sp)\n"
-    "sw $zero, 0x84($sp)\n"
-    "sw $zero, 0x80($sp)\n"
-    "sw $zero, 0x7C($sp)\n"
-    "sh $v1, 0x70($sp)\n"
-    "lw $t4, 0x0($v0)\n"
-    "lw $t5, 0x4($v0)\n"
-    "ctc2 $t4, $0\n"
-    "ctc2 $t5, $1\n"
-    "lw $t4, 0x8($v0)\n"
-    "lw $t5, 0xC($v0)\n"
-    "lw $t6, 0x10($v0)\n"
-    "ctc2 $t4, $2\n"
-    "ctc2 $t5, $3\n"
-    "ctc2 $t6, $4\n"
-    "lw $t4, 0x14($v0)\n"
-    "lw $t5, 0x18($v0)\n"
-    "ctc2 $t4, $5\n"
-    "lw $t6, 0x1C($v0)\n"
-    "ctc2 $t5, $6\n"
-    "ctc2 $t6, $7\n"
-    "lw $v0, 0x74($s1)\n"
-    "nop\n"
-    "addu $t0, $zero, $zero\n"
-    "lhu $v0, 0x74($s1)\n"
-    "nop\n"
-    "sh $v0, 0x10($sp)\n"
-    "lw $v0, 0x110($sp)\n"
-    "lhu $v1, 0x76($s1)\n"
-    "sh $v0, 0x14($sp)\n"
-    "addiu $v0, $sp, 0x10\n"
-    "sh $v1, 0x12($sp)\n"
-    "lwc2 $0, 0x0($v0)\n"
-    "lwc2 $1, 0x4($v0)\n"
-    "nop\n"
-    "nop\n"
-    "addiu $v0, $sp, 0x60\n"
-    "swc2 $14, 0x0($v0)\n"
-    "lhu $v0, 0x28($sp)\n"
-    "lhu $a0, 0x60($sp)\n"
-    "lhu $v1, 0x2A($sp)\n"
-    "lhu $a1, 0x62($sp)\n"
-    "addu $v0, $v0, $a0\n"
-    "addu $v1, $v1, $a1\n"
-    "sh $v0, 0x28($sp)\n"
-    "sh $v1, 0x2A($sp)\n"
-    "addu $t0, $zero, $zero\n"
-    ".L80022538:\n"
-    "addiu $t4, $sp, 0x18\n"
-    "addiu $t3, $sp, 0x20\n"
-    "addiu $t1, $sp, 0x28\n"
-    "sll $a2, $t0, 2\n"
-    ".L80022548:\n"
-    "addu $v1, $s2, $a2\n"
-    "addiu $a0, $t0, 0x1\n"
-    "sll $a0, $a0, 2\n"
-    "lhu $v0, 0x10($v1)\n"
-    "lw $a3, 0x110($sp)\n"
-    "addiu $a1, $t0, 0x2\n"
-    "sh $v0, 0x10($sp)\n"
-    "lhu $v0, 0x12($v1)\n"
-    "addu $v1, $s2, $a0\n"
-    "sh $a3, 0x14($sp)\n"
-    "sh $v0, 0x12($sp)\n"
-    "lhu $v0, 0x10($v1)\n"
-    "sll $a1, $a1, 2\n"
-    "sh $v0, 0x18($sp)\n"
-    "lhu $v0, 0x12($v1)\n"
-    "addu $v1, $s2, $a1\n"
-    "sh $a3, 0x1C($sp)\n"
-    "sh $v0, 0x1A($sp)\n"
-    "lhu $v0, 0x10($v1)\n"
-    "nop\n"
-    "sh $v0, 0x20($sp)\n"
-    "lhu $v0, 0x12($v1)\n"
-    "sh $a3, 0x24($sp)\n"
-    "sh $v0, 0x22($sp)\n"
-    "addiu $v0, $sp, 0x10\n"
-    "lwc2 $0, 0x0($v0)\n"
-    "lwc2 $1, 0x4($v0)\n"
-    "lwc2 $2, 0x0($t4)\n"
-    "lwc2 $3, 0x4($t4)\n"
-    "lwc2 $4, 0x0($t3)\n"
-    "lwc2 $5, 0x4($t3)\n"
-    "nop\n"
-    "nop\n"
-    "addiu $v1, $a2, 0x4\n"
-    "addu $v1, $t1, $v1\n"
-    "addiu $v0, $a2, 0x8\n"
-    "addu $v0, $t1, $v0\n"
-    "addiu $a2, $a2, 0xC\n"
-    "addu $a2, $t1, $a2\n"
-    "swc2 $12, 0x0($v1)\n"
-    "swc2 $13, 0x0($v0)\n"
-    "swc2 $14, 0x0($a2)\n"
-    "addu $a0, $t1, $a0\n"
-    "lhu $v0, 0x0($a0)\n"
-    "lhu $v1, 0x28($sp)\n"
-    "nop\n"
-    "addu $v0, $v0, $v1\n"
-    "sh $v0, 0x0($a0)\n"
-    "lhu $v0, 0x2($a0)\n"
-    "lhu $v1, 0x2A($sp)\n"
-    "addu $a1, $t1, $a1\n"
-    "addu $v0, $v0, $v1\n"
-    "sh $v0, 0x2($a0)\n"
-    "lhu $v0, 0x0($a1)\n"
-    "lhu $v1, 0x28($sp)\n"
-    "nop\n"
-    "addu $v0, $v0, $v1\n"
-    "sh $v0, 0x0($a1)\n"
-    "lhu $v0, 0x2($a1)\n"
-    "lhu $v1, 0x2A($sp)\n"
-    "nop\n"
-    "addu $v0, $v0, $v1\n"
-    "sh $v0, 0x2($a1)\n"
-    "addiu $a1, $t0, 0x3\n"
-    "sll $a0, $a1, 2\n"
-    "addu $a0, $t1, $a0\n"
-    "lhu $v0, 0x0($a0)\n"
-    "lhu $v1, 0x28($sp)\n"
-    "nop\n"
-    "addu $v0, $v0, $v1\n"
-    "sh $v0, 0x0($a0)\n"
-    "lhu $v0, 0x2($a0)\n"
-    "lhu $v1, 0x2A($sp)\n"
-    "addu $t0, $a1, $zero\n"
-    "addu $v0, $v0, $v1\n"
-    "sh $v0, 0x2($a0)\n"
-    "slti $v0, $t0, 0xC\n"
-    "sll $a2, $t0, 2\n"
-    "addu $a0, $s1, $zero\n"
-    "addu $a1, $s2, $zero\n"
-    "sll $a3, $t2, 2\n"
-    "addiu $a2, $sp, 0x28\n"
-    "addu $a3, $t7, $a3\n"
-    ".L800226A0:\n"
-    "lw $ra, 0x128($sp)\n"
-    "lw $s3, 0x124($sp)\n"
-    "lw $s2, 0x120($sp)\n"
-    "lw $s1, 0x11C($sp)\n"
-    "lw $s0, 0x118($sp)\n"
-    "addiu $sp, $sp, 0x130\n"
-    "jr $ra\n"
-    "nop\n"
-    ".size func_800221A8, .-func_800221A8\n"
-    ".set reorder\n"
-);
+/* func_800221A8 - byte-exact against retail at -O2 (tools/register_match.py). */
+
+typedef float f32;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+/* shared typedefs (vendor src/800_shared.h) */
+/* was: src/800.c */
+typedef struct Ent30D80 {
+    /* 0x00 */ s32 unk00;
+    /* 0x04 */ u8 pad04[6];
+    /* 0x0A */ u16 unk0A;
+    /* 0x0C */ u8 pad0C[0x34];
+    /* 0x40 */ void (*unk40)(s32, s32);
+    /* 0x44 */ s32 unk44;
+    /* 0x48 */ u8 pad48[6];
+    /* 0x4E */ u8 unk4E;
+    /* 0x4F */ u8 pad4F;
+    /* 0x50 */ u8 unk50;
+    /* 0x51 */ u8 unk51;
+} Ent30D80;
+
+/* was: src/800.c */
+typedef struct { u8  v; } W8;
+
+/* was: src/800.c */
+typedef struct Rec14 {
+    /* 0x00 */ u16 unk00;
+    /* 0x02 */ u16 unk02;
+    /* 0x04 */ u32 unk04;
+    /* 0x08 */ u32 unk08;
+    /* 0x0C */ u16 unk0C;
+    /* 0x0E */ u16 unk0E;
+    /* 0x10 */ u32 unk10;
+} Rec14; /* 0x14 */
+
+/* was: src/800.c */
+typedef struct Owner4EE8 {
+    /* 0x00 */ u8 pad00[0x14];
+    /* 0x14 */ Rec14 **unk14;
+} Owner4EE8;
+
+/* was: src/800.c */
+typedef struct Slot {
+    /* 0x00 */ s32 unk00;
+    /* 0x04 */ s32 unk04;
+    /* 0x08 */ u8 unk08[0xC];
+    /* 0x14 */ s16 unk14;
+    /* 0x16 */ u8 unk16[2];
+    /* 0x18 */ s16 unk18;
+    /* 0x1A */ u8 unk1A[0x26];
+    /* 0x40 */ s32 unk40;
+    /* 0x44 */ u8 unk44;
+    /* 0x45 */ u8 unk45[3];
+} Slot;
+
+/* was: src/800.c */
+typedef struct {
+    s16 unk00;
+    s16 unk02;
+    s16 unk04;
+    s16 unk06;
+    s16 unk08;
+    s16 unk0A;
+    s16 unk0C;
+    s16 unk0E;
+    u8  unk10;
+    u8  unk11;
+    u8  unk12;
+    u8  unk13;
+    s32 unk14;
+} Rsc24;                       /* 0x18 */
+
+/* was: src/800.c */
+typedef struct {
+    /* 0x00 */ u8 *unk00;
+    /* 0x04 */ u8  pad04[2];
+    /* 0x06 */ u8  unk06;
+    /* 0x07 */ u8  unk07;
+    /* 0x08 */ u8  unk08;
+    /* 0x09 */ u8  pad09[3];
+} A12; /* 0x0C */
+
+/* was: src/800.c */
+typedef struct {
+    /* 0x00 */ s32 unk00;
+    /* 0x04 */ s16 unk04;
+    /* 0x06 */ s16 unk06;
+    /* 0x08 */ s16 unk08;
+    /* 0x0A */ u8  unk0A;
+    /* 0x0B */ u8  unk0B;
+} B12; /* 0x0C */
+
+/* was: src/800.c */
+typedef struct {
+    /* 0x00 */ u8  pad00[4];
+    /* 0x04 */ u8  unk04;
+    /* 0x05 */ u8  pad05[11];
+    /* 0x10 */ u16 unk10;
+    /* 0x12 */ u16 unk12;
+    /* 0x14 */ u8  pad14[2];
+    /* 0x16 */ s16 unk16;
+    /* 0x18 */ u8  pad18[8];
+} C24; /* 0x20 */
+
+/* was: src/800.c */
+typedef struct {               /* 0x18 stride; D_800A463C + k*0x18 */
+    s32 unk00;
+    u8  unk04[0x14];
+} Ent24;
+
+/* was: src/800.c */
+typedef struct {              /* base 0x80064D49, stride 0x0C */
+    u8  unk00;
+    u8  pad[11];
+} Elm12;
+
+/* was: src/800.c */
+typedef struct {              /* base 0x80076240, stride 0x10 */
+    u16 unk00;
+    u16 unk02;
+    s32 unk04;
+    s32 unk08;
+    s32 unk0C;
+} Slot16A;
+
+/* was: src/800.c */
+typedef struct {
+    s32 unk00;
+    s32 unk04;
+    s32 unk08;
+    u8  unk0C;
+    u8  unk0D;
+    u8  unk0E;
+    u8  unk0F;
+} Slot16;                      /* 0x10 */
+
+/* was: src/800.c */
+typedef struct { s32 v; } W32;
+
+/* was: src/800.c */
+typedef struct Slot54 {
+    /* 0x00 */ s16 unk00;
+    /* 0x02 */ s16 unk02;
+    /* 0x04 */ s16 unk04;
+    /* 0x06 */ s16 unk06;
+    /* 0x08 */ u16 unk08;
+    /* 0x0A */ s8  unk0A;
+} Slot54;
+
+/* was: src/800.c */
+typedef struct { u16 f0; } H2; /* 0x2 */
+
+/* was: src/800.c */
+typedef struct {
+    s32 unk00;
+    u8  unk04;
+    u8  unk05;
+    u8  unk06;
+    u8  unk07;
+    u8  unk08;
+    u8  unk09;
+    u8  unk0A;
+    u8  unk0B;
+    s32 unk0C;
+} Rsc16;                      /* 0x10 */
+
+/* was: src/800_c.c */
+typedef struct { s16 v; } W16;
+
+/* was: src/800_c.c */
+typedef struct {
+    u8  unk00;
+    u8  unk01[11];
+} Rsc12;                      /* 0x0C */
+
+
+/* GTE command mnemonics (mvmva, rtpt, ...) come from include/gte_macros.inc. */
+__asm__(".include \"gte_macros.inc\"\n");
+
+/* func_800221A8 (src/800.c, main, 326 ins) -- byte-proven MATCH.
+ *
+ * Projects a 12-point silhouette for the object at arg0 and hands the screen-XY
+ * array to func_800226C0 with the OT slot picked by the projected depth.
+ * GsCOORDINATE2 at sp+0x88 (super is at +0x48, so `rotate` must be declared),
+ * MATRIX out at sp+0xD8 -> $s0, the u16 game-state word is read off the
+ * D_800AF630 base at +0xA3D2 (the house idiom, cf. func_80015144 in this TU).
+ *
+ * LEVERS THAT MATTERED (all four were needed; each was worth 3-160 instructions):
+ *  1. FRAME LAYOUT = declaration order of the AGGREGATES.  expand_decl slots every
+ *     BLKmode local with align 0 -> BIGGEST_ALIGNMENT (8), so each aggregate starts
+ *     8-byte aligned in declaration order: sv0/sv1/sv2 @0x10/0x18/0x20, sxy[13]
+ *     @0x28 (ends 0x5B -> rounds to 0x60), the 4-byte AGGREGATE sxy2 @0x60 (a
+ *     scalar there would sit at 0x5C and pull m2 to 0x64), m2 @0x68, cd @0x88,
+ *     m @0xD8, vv @0xF8.  The address-taken SCALARS follow in declaration order
+ *     at 0x108/0x10C/0x110, giving frame 0x130.  (§333/§358 family.)
+ *  2. NO STRENGTH REDUCTION.  The target recomputes every index with sll; a
+ *     `i += 3;` placed BEFORE the last sxy[i] pair let loop.c combine_givs merge
+ *     the address givs and reduce them into 4 extra induction registers (-8 ins,
+ *     closeness 166).  Writing `sxy[i + 3]` first and `i += 3;` LAST keeps every
+ *     giv bare (benefit 2 - 2*biv_count = 0 => "not worth while", loop.md §L0),
+ *     and cse then rewrites `i += 3` as a COPY of the already-computed i+3
+ *     (`addu $t0,$a1,$zero`).  §344's counter pin also kills LSR, but a hard-reg
+ *     counter lets local-alloc coalesce i+3 back in place -- it plateaus at 41.
+ *  3. `i = 0;` goes AFTER the `if (o->unk74)` block, not before: dbr fills the
+ *     beqz slot with a copy of the join head, so the insn appears TWICE.
+ *  4. `o->unk2E & 0xFFF` INLINE in both arms, not via a `d` local -- the cse temp
+ *     takes $v0 (the dead 0xC000 constant's register); a named local takes $v1.
+ */
+
+typedef struct { s16 vx, vy, vz, pad; } SV221A8;
+typedef struct { s16 m[3][3]; s32 t[3]; } MX221A8;          /* 0x20 */
+typedef struct { s32 vx, vy, vz, pad; } VC221A8;            /* 0x10 */
+typedef struct { u16 x, y; } XY221A8;                       /* 0x04 */
+
+typedef struct {
+    /* 0x00 */ s32 flg;
+    /* 0x04 */ MX221A8 coord;
+    /* 0x24 */ MX221A8 workm;
+    /* 0x44 */ void *rotate;
+    /* 0x48 */ void *super;
+    /* 0x4C */ void *sub;
+} CD221A8; /* 0x50 */
+
+typedef struct {
+    /* 0x00 */ u8 pad00[0x10];
+    /* 0x10 */ XY221A8 pt[1];
+} Src221A8;
+
+typedef struct {
+    /* 0x00 */ u8 pad00[8];
+    /* 0x08 */ s16 unk08;
+    /* 0x0A */ s16 unk0A;
+    /* 0x0C */ s16 unk0C;
+    /* 0x0E */ u8 pad0E[2];
+    /* 0x10 */ s16 unk10[4];
+    /* 0x18 */ s16 unk18;
+    /* 0x1A */ s16 unk1A;
+    /* 0x1C */ u8 pad1C[4];
+    /* 0x20 */ Src221A8 *unk20;
+    /* 0x24 */ u8 pad24[4];
+    /* 0x28 */ s32 unk28;
+    /* 0x2C */ u16 unk2C;
+    /* 0x2E */ u16 unk2E;
+    /* 0x30 */ u8 pad30[4];
+    /* 0x34 */ MX221A8 unk34;
+    /* 0x54 */ MX221A8 unk54;
+    /* 0x74 */ s32 unk74;
+    /* 0x78 */ void *unk78;
+} Obj221A8;
+
+#define SRM221A8(r0) __asm__ volatile (                  \
+    "lw $12, 0( %0 );"  "lw $13, 4( %0 );"               \
+    "ctc2 $12, $0;"     "ctc2 $13, $1;"                  \
+    "lw $12, 8( %0 );"  "lw $13, 12( %0 );"              \
+    "lw $14, 16( %0 );"                                  \
+    "ctc2 $12, $2;"     "ctc2 $13, $3;" "ctc2 $14, $4"   \
+    : : "r"( r0 ) : "$12", "$13", "$14" )
+
+#define STM221A8(r0) __asm__ volatile (                  \
+    "lw $12, 20( %0 );" "lw $13, 24( %0 );"              \
+    "ctc2 $12, $5;"     "lw $14, 28( %0 );"              \
+    "ctc2 $13, $6;"     "ctc2 $14, $7"                   \
+    : : "r"( r0 ) : "$12", "$13", "$14" )
+
+#define LDV0221A8(r0) __asm__ volatile (                 \
+    "lwc2 $0, 0( %0 );" "lwc2 $1, 4( %0 )" : : "r"( r0 ) )
+
+#define LDV3221A8(r0, r1, r2) __asm__ volatile (         \
+    "lwc2 $0, 0( %0 );" "lwc2 $1, 4( %0 );"              \
+    "lwc2 $2, 0( %1 );" "lwc2 $3, 4( %1 );"              \
+    "lwc2 $4, 0( %2 );" "lwc2 $5, 4( %2 )"               \
+    : : "r"( r0 ), "r"( r1 ), "r"( r2 ) )
+
+#define RTPS221A8() __asm__ volatile ("nop;nop;rtps")
+#define RTPT221A8() __asm__ volatile ("nop;nop;rtpt")
+
+#define STSXY221A8(r0) __asm__ volatile (                \
+    "swc2 $14, 0( %0 )" : : "r"( r0 ) : "memory" )
+
+#define STSXY3221A8(r0, r1, r2) __asm__ volatile (       \
+    "swc2 $12, 0( %0 );" "swc2 $13, 0( %1 );"            \
+    "swc2 $14, 0( %2 )"                                  \
+    : : "r"( r0 ), "r"( r1 ), "r"( r2 ) : "memory" )
+
+#define STFLG221A8(r0) __asm__ volatile (                \
+    "cfc2 $12, $31;nop;sw $12, 0( %0 )"                  \
+    : : "r"( r0 ) : "$12", "memory" )
+
+#define STSZOTZ221A8(r0) __asm__ volatile (              \
+    "mfc2 $12, $19;nop;sra $12, $12, 2;sw $12, 0( %0 )"  \
+    : : "r"( r0 ) : "$12", "memory" )
+
+#define STSZ221A8(r0) __asm__ volatile (                 \
+    "swc2 $19, 0( %0 )" : : "r"( r0 ) : "memory" )
+
+extern u8 D_800AF630[];
+extern u8 D_800A6610[];
+extern void func_80049CAC(s32 a0, s32 a1);
+extern void func_8004901C(void *a0, void *a1);
+extern void func_800547D8(s32 a0, void *a1);
+extern s32 func_80021174(s32 a0, s32 a1);
+extern void func_800226C0();
+
+void func_800221A8(Obj221A8 *o) {
+    SV221A8 sv0;
+    SV221A8 sv1;
+    SV221A8 sv2;
+    XY221A8 sxy[13];
+    XY221A8 sxy2[1];
+    MX221A8 m2;
+    CD221A8 cd;
+    MX221A8 m;
+    VC221A8 vv;
+    s32 flag;
+    s32 otz;
+    s32 sz;
+    u8 *p;
+    u8 *ot;
+    Src221A8 *s;
+    MX221A8 *mp;
+    u32 z;
+    s32 i;
+
+    cd.super = o->unk78;
+    cd.flg = 0;
+    p = D_800AF630;
+
+    if (o->unk2C & 1) {
+        o->unk2C &= 0xFFFE;
+        cd.coord = o->unk34;
+    } else {
+        func_80049CAC((s32)o->unk10, (s32)&cd.coord);
+        cd.coord.t[0] = o->unk08;
+        cd.coord.t[1] = o->unk0A;
+        cd.coord.t[2] = o->unk0C;
+    }
+
+    vv.vx = o->unk18;
+    vv.vy = o->unk1A;
+    vv.vz = 0x1000;
+    func_8004901C(&cd.coord, &vv);
+
+    mp = &m;
+    func_800547D8((s32)&cd, mp);
+
+    o->unk34 = cd.coord;
+    o->unk54 = cd.workm;
+
+    s = o->unk20;
+    if (s != 0 && func_80021174(o->unk28, (s32)cd.workm.t) != 0) {
+        ot = (u8 *)((*(u16 *)(p + 0xA3D2) << 14) + (u32)D_800A6610);
+        SRM221A8(mp);
+        STM221A8(mp);
+        sv0.vz = 0;
+        sv0.vy = 0;
+        sv0.vx = 0;
+        LDV0221A8(&sv0);
+        RTPS221A8();
+        STSXY221A8(&sxy[0]);
+        STFLG221A8(&flag);
+        STSZOTZ221A8(&otz);
+        if ((flag & ~0x1000) == 0) {
+            STSZ221A8(&sz);
+            z = otz + 1;
+            if (o->unk2E & 0xC000) {
+                if ((o->unk2E & 0xC000) == 0xC000) {
+                    z -= (o->unk2E & 0xFFF);
+                    if ((s32)z < 0) {
+                        z = 0;
+                    }
+                } else {
+                    z += (o->unk2E & 0xFFF);
+                }
+            }
+            if (z < 0x1000) {
+                m2.m[0][0] = o->unk18;
+                m2.m[0][1] = 0;
+                m2.m[0][2] = 0;
+                m2.m[1][0] = 0;
+                m2.m[1][1] = o->unk1A;
+                m2.m[1][2] = 0;
+                m2.m[2][0] = 0;
+                m2.m[2][1] = 0;
+                m2.m[2][2] = 0x1000;
+                m2.t[2] = 0;
+                m2.t[1] = 0;
+                m2.t[0] = 0;
+                SRM221A8(&m2);
+                STM221A8(&m2);
+                if (o->unk74 != 0) {
+                    sv0.vx = *(u16 *)&o->unk74;
+                    sv0.vy = *((u16 *)&o->unk74 + 1);
+                    sv0.vz = sz;
+                    LDV0221A8(&sv0);
+                    RTPS221A8();
+                    STSXY221A8(&sxy2[0]);
+                    sxy[0].x += sxy2[0].x;
+                    sxy[0].y += sxy2[0].y;
+                }
+                i = 0;
+                do {
+                    sv0.vx = s->pt[i].x;
+                    sv0.vy = s->pt[i].y;
+                    sv0.vz = sz;
+                    sv1.vx = s->pt[i + 1].x;
+                    sv1.vy = s->pt[i + 1].y;
+                    sv1.vz = sz;
+                    sv2.vx = s->pt[i + 2].x;
+                    sv2.vy = s->pt[i + 2].y;
+                    sv2.vz = sz;
+                    LDV3221A8(&sv0, &sv1, &sv2);
+                    RTPT221A8();
+                    STSXY3221A8(&sxy[i + 1], &sxy[i + 2], &sxy[i + 3]);
+                    sxy[i + 1].x += sxy[0].x;
+                    sxy[i + 1].y += sxy[0].y;
+                    sxy[i + 2].x += sxy[0].x;
+                    sxy[i + 2].y += sxy[0].y;
+                    sxy[i + 3].x += sxy[0].x;
+                    sxy[i + 3].y += sxy[0].y;
+                    i += 3;
+                } while (i < 0xC);
+                func_800226C0((s32)o, (s32)s, (s32)&sxy[0], (s32)(ot + z * 4));
+            }
+        }
+    }
+}

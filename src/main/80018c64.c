@@ -1,92 +1,38 @@
 /* Exact retail word export for [80018C64,80018CE8); EXE and assembly verified. */
-#if defined(__mips__)
-__asm__(
-    ".set	noreorder
-"
-    ".globl	func_80018C64
-"
-    ".ent	func_80018C64
-"
-    ".type	func_80018C64, @function
-"
-    "func_80018C64:
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-    ".end	func_80018C64
-"
-    ".size	func_80018C64, .-func_80018C64
-"
-);
-#else
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80018C64 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-#include "m2c_macros.h"
-
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-void func_80018F88();                     /* static */
-
-void func_80018C64(void *arg0) {
-    s32 var_a1;
-    s32 var_a1_2;
-    s8 *var_v1;
-    u8 temp_v0;
-    void *var_v0;
-
-    var_a1 = 0;
-    if (M2C_FIELD(arg0, u8 *, 8) != 0) {
-        func_80018F88(0);
-        return;
-    }
-    var_v1 = arg0 + 0x2B;
-    M2C_FIELD(arg0, u8 *, 0) = (u8) M2C_FIELD(arg0, u8 *, 9);
-    do {
-        temp_v0 = M2C_FIELD((arg0 + var_a1), u8 *, 0xA);
-        var_a1 += 1;
-        *var_v1 = ~temp_v0;
-        var_v1 -= 1;
-    } while (var_a1 < 2);
-    var_a1_2 = 2;
-    var_v0 = arg0 + 2;
-    do {
-        var_a1_2 += 1;
-        M2C_FIELD(var_v0, u8 *, 0x2A) = (u8) M2C_FIELD(var_v0, u8 *, 0xA);
-        var_v0 = arg0 + var_a1_2;
-    } while (var_a1_2 < 6);
-}
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
 #endif
 
+extern void func_80018F88(void*);
+
+void func_80018C64(void *a0)
+{
+    s32 i;
+    u8 *q;
+    u8 *p = (u8 *)a0;
+
+    if (p[8] != 0) {
+        func_80018F88(a0);
+        return;
+    }
+    p[0] = p[9];
+    i = 0;
+    q = &p[0x2B];
+    while (i < 2) {
+        *q = ~*(p + i + 10);
+        i++;
+        q--;
+    }
+    i = 2;
+    while (i < 6) {
+        *(p + i + 0x2A) = *(p + i + 10);
+        i++;
+    }
+}

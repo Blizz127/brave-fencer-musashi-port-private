@@ -5,28 +5,22 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_801392C8 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL of func_801392C8 (main_0012.s), decoded manually from
- * raw asm (fully visible; NOT verified against retail; C89-gated
- * only, promotion requires an oracle MATCH): void (struct *),
- * 0x18 frame. func_801395D4(a0) (s0 = a0 rides the jal delay
- * slot, so a0 flows untouched); b1E = 0; h04 = 5; return.
- * Void: the sole caller (func_80139220+0x88) overwrites $v0
- * with 1 right after the jal. 395D4 decl inferred (ahead;
- * its return is ignored here, re-verify at staging). */
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern void func_801395D4(void *);
 
-struct st_801392C8 {
-    u8 pad00[4];
-    s16 h04;
-    u8 pad06[0x18];
-    u8 b1E;
-};
-
-extern void func_801395D4(void *arg0);
-
-void func_801392C8(struct st_801392C8 *arg0) {
-    func_801395D4(arg0);
-    arg0->b1E = 0;
-    arg0->h04 = 5;
+void func_801392C8(void *a0) {
+    func_801395D4(a0);
+    *(s8 *)((s32)a0 + 0x1E) = 0;
+    *(s16 *)((s32)a0 + 0x4) = 5;
 }

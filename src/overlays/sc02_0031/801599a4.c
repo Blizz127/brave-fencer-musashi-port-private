@@ -5,10 +5,20 @@
  * Donor shape: Druthulu shared/ov/func_801599A4.h (jump table D_8018730C[*a0]).
  * NOT MAIN10; NOT in parked PAC0 hole 8014E934…80153C8C; later SC02 text near jr_80159C84 / shared OV body.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_801599A4 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-extern void (*D_8018730C[])(void);
 
-void func_801599A4(u16 *arg0) {
-    D_8018730C[*arg0]();
+void func_801599A4(void *a0) {
+
+    extern void (*D_8018730C[])(void);
+    D_8018730C[*(u16 *)((s32)a0 + 0x0)]();
 }

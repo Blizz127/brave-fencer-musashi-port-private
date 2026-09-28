@@ -2,63 +2,68 @@
  * SHA256(span)=3af959dee1dd4e8d3750c7db2a92c96942ac8502c02c0ba51e61929b26836abf.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80164930 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* File-scope declarations from the vendor translation unit. */
+typedef struct {
+    u16 f0;
+    u8 pad0[0x4e];
+    int f50;
+    u8 pad1[0x14];
+} Ent_80164930;
 
-extern s32 D_80180F7E;
-extern s32 D_80180F80;
-void func_80162CCC(void *);                   /* static */
-void func_80164ACC(void *);                   /* static */
-extern s32 *D_8011F9D0;
-extern s16 D_80180F7C;
+extern void func_80162CCC();
+extern void func_80164ACC();
 
-void func_80164930(void *arg0) {
-    void *var_s0;
-    s16 temp_v0_2;
-    s32 var_s1;
-    u16 temp_v0;
-    u16 temp_v0_3;
-    u16 temp_v1;
-    void *temp_a0;
+// @class: regalloc-order — wave-3 real-TU crack (§42a); cracked at Max.
+// Fix: D_80180F80 read needs direct-addressed `lhu` (u16). Cannot use `*(u16*)&D_80180F80`
+// (forces &sym into a held reg -> drift) NOR a block-scoped `extern u16` (conflicting-types
+// ERROR vs the ambient s16, cc1 exit 33). Solution: flip the file-scope decl (5802) to u16 —
+// byte-neutral to the only other user (func_801647A4 store-only) — and reference directly.
 
-    temp_a0 = M2C_FIELD(arg0, void **, 0x20);
-    if (M2C_FIELD(arg0, s32 *, 0x50) == 0) {
-        temp_v0 = M2C_FIELD(temp_a0, u16 *, 0x1C) + 0x100;
-        M2C_FIELD(temp_a0, u16 *, 0x1C) = temp_v0;
-        M2C_FIELD(temp_a0, u16 *, 0x18) = temp_v0;
-        M2C_FIELD(temp_a0, u16 *, 0x12) = (u16) (M2C_FIELD(temp_a0, u16 *, 0x12) + 0x71);
-        temp_v0_2 = D_80180F80 - 8;
-        D_80180F80 = (u16) temp_v0_2;
-        D_80180F7E = temp_v0_2;
-        D_80180F7C = temp_v0_2;
-        var_s1 = 0;
-        if (temp_v0_2 < -0x80) {
-            var_s0 = &D_8011F9D0;
-            do {
-                if ((M2C_FIELD(var_s0, u16 *, 0) == 0x19) && (M2C_FIELD(var_s0, s32 *, 0x50) != 0)) {
-                    func_80162CCC(var_s0);
+
+void func_80164930(s32 param_1) {
+
+    extern s32 D_8011F9D0;
+    extern s16 D_80180F7C;
+    extern s16 D_80180F7E;
+    extern u16 D_80180F80;
+    int iVar3 = *(int *)(((int)param_1) + 0x20);
+    if (*(int *)(((int)param_1) + 0x50) == 0) {
+        short sVar1 = *(u16 *)(iVar3 + 0x1c) + 0x100;
+        short nv;
+        *(short *)(iVar3 + 0x1c) = sVar1;
+        *(short *)(iVar3 + 0x18) = sVar1;
+        *(short *)(iVar3 + 0x12) = *(u16 *)(iVar3 + 0x12) + 0x71;
+        nv = D_80180F80 - 8;
+        D_80180F80 = nv;
+        D_80180F7E = nv;
+        D_80180F7C = nv;
+        if (nv < -0x80) {
+            int i, lim;
+            Ent_80164930 *p;
+            for (i = 0, lim = 0x19, p = ((Ent_80164930 *)&D_8011F9D0); i < 0x14; i++) {
+                if (p->f0 == lim && p->f50 != 0) {
+                    ((void(*)(Ent_80164930 *))func_80162CCC)(p);
                 }
-                var_s1 += 1;
-                var_s0 += 0x68;
-            } while (var_s1 < 0x14);
-            func_80162CCC(arg0);
-            return;
+                p++;
+            }
+            ((void(*)(Ent_80164930 *))func_80162CCC)((Ent_80164930 *)((int)param_1));
+        } else {
+            ((void(*)(int))func_80164ACC)(((int)param_1));
         }
-        func_80164ACC(arg0);
-        return;
+    } else {
+        short sVar1 = *(u16 *)(iVar3 + 0x1c) + 0x40;
+        u16 uVar2;
+        *(short *)(iVar3 + 0x1c) = sVar1;
+        *(short *)(iVar3 + 0x18) = sVar1;
+        uVar2 = *(u16 *)(iVar3 + 0x1a) - 0x200;
+        *(u16 *)(iVar3 + 0x1a) = uVar2;
+        if ((int)((unsigned)uVar2 << 0x10) < 0) {
+            *(short *)(iVar3 + 0x1a) = 0;
+        }
+        *(short *)(iVar3 + 0x12) = *(u16 *)(iVar3 + 0x12) - 0x71;
     }
-    temp_v0_3 = M2C_FIELD(temp_a0, u16 *, 0x1C) + 0x40;
-    temp_v1 = M2C_FIELD(temp_a0, u16 *, 0x1A) - 0x200;
-    M2C_FIELD(temp_a0, u16 *, 0x1A) = temp_v1;
-    M2C_FIELD(temp_a0, u16 *, 0x1C) = temp_v0_3;
-    M2C_FIELD(temp_a0, u16 *, 0x18) = temp_v0_3;
-    if (temp_v1 & 0x8000) {
-        M2C_FIELD(temp_a0, u16 *, 0x1A) = 0U;
-    }
-    M2C_FIELD(temp_a0, u16 *, 0x12) = (u16) (M2C_FIELD(temp_a0, u16 *, 0x12) - 0x71);
 }

@@ -1,44 +1,61 @@
 /* Complete SC02 retail span [801770E0,80177340); independently matched mixed C. */
-typedef unsigned char u8;
-typedef unsigned int u32;
-extern unsigned short D_8011F830, D_8011F82E;
-extern u8 *func_80177784(u8 *,u32,u32);
-extern int func_801783D0(int,int);
-extern u8 *func_801777BC(u8 *,short,short,short,int,int,int);
-#define W(p,o) (*(u32 *)((p)+(o)))
-#define XY(x,y) (((u32)(y)<<16)|(unsigned short)(x))
-u8 *func_801770E0(u8 *packet, int x, short y)
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_801770E0 - byte-exact against retail at -O2 (tools/register_match.py). */
+#include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+extern void func_8012A568(void (*a0)(void));
+extern void *func_80177784(void *a0, s32 a1, s32 a2, s32 a3);
+extern u32 func_801783D0(s32 a0, s32 a1);
+extern void *func_801777BC();
+extern u16 D_8011F830;
+extern u16 D_8011F82E;
+
+u32 *func_801770E0(void *param_1, u32 param_2, s16 param_3_)
 {
-    int digits, width, maximum;
-    u32 position;
-    register u8 *end __asm__("$2");
-    packet = func_80177784(packet,XY(x,y),0x6E165010);
-    packet = func_80177784(packet,XY(x+8,y),0x6E165808);
-    packet = func_80177784(packet,XY(x+16,y),0x6E164060);
-    packet = func_80177784(packet,XY(x+48,y),0x6E163858);
-    digits = func_801783D0(D_8011F830,4);
-    packet = func_801777BC(packet,digits,x+24,y,3,184,255);
-    digits = func_801783D0(D_8011F82E,4);
-    __asm__ volatile("" : "=r"(x) : "0"(x));
-    packet = func_801777BC(packet,digits,x+56,y,3,184,255);
-    width = D_8011F830;
-    W(packet,0) = (((u32)packet-20)&0xFFFFFF)|0x03000000;
-    W(packet,4) = 0x6055FF00;
-    position = XY(x+1,y-4);
-    W(packet,8) = position;
-    W(packet,12) = ((int)(width * 20710U) >> 16) | 0x20000;
-    maximum = D_8011F82E;
-    W(packet,20) = ((u32)packet&0xFFFFFF)|0x03000000;
-    W(packet,40) = (((u32)packet+20)&0xFFFFFF)|0x03000000;
-    W(packet,24) = 0x60FF3214;
-    end = packet+60;
-    W(packet,28) = position;
-    W(packet,44) = 0x60000000;
-    W(packet,48) = XY(x,y-5);
-    { int scaled = (int)(maximum * 20710U) >> 16;
-    W(packet,32) = scaled | 0x20000;
-    W(packet,52) = (scaled+2) | 0x40000;
-    }
-    __asm__ volatile("" : "=r"(end) : "0"(end));
-    return end;
+    register s32 c3  __asm__("$21") = 3;     /* $s5 */
+    register s32 cb8 __asm__("$20") = 0xb8;  /* $s4 */
+    register s32 cff __asm__("$19") = 0xff;  /* $s3 */
+    s32 iVar6 = (s16)param_3_;               /* -> $s1 */
+    u32 uVar5 = iVar6 << 16;                 /* -> $s0 */
+    void *uVar2;
+    void *u4, *u5;                           /* fresh single-set save vars (S2 boost) */
+    u32 *puVar3;
+    s16 sVar1;
+    u32 uVar4;
+    u32 dl;                                  /* multi-set D-load var (2 sets, no boost) */
+    s32 t;
+    uVar2 = ((void * (*)(void *, s32, s32))func_80177784)(param_1, uVar5 | (u16)param_2, 0x6e165010);
+    uVar2 = ((void * (*)(void *, s32, s32))func_80177784)(uVar2, uVar5 | ((param_2 + 8) & 0xffff), 0x6e165808);
+    uVar2 = ((void * (*)(void *, s32, s32))func_80177784)(uVar2, uVar5 | ((param_2 + 0x10) & 0xffff), 0x6e164060);
+    u4 = ((void * (*)(void *, s32, s32))func_80177784)(uVar2, uVar5 | ((param_2 + 0x30) & 0xffff), 0x6e163858);
+    sVar1 = (s16)func_801783D0(D_8011F830, 4);
+    u5 = func_801777BC(u4, sVar1, (s32)((param_2 + 0x18) << 16) >> 16, iVar6, c3, cb8, cff);
+    sVar1 = (s16)func_801783D0(D_8011F82E, 4);
+    puVar3 = (u32 *)func_801777BC(u5, sVar1, (s32)((param_2 + 0x38) << 16) >> 16, iVar6, c3, cb8, cff);
+    dl = ((struct { u16 h; } *)&D_8011F830)->h;
+    { u32 v0m = ((u32)(puVar3 - 5) & 0xffffff) | 0x3000000;
+      register u32 c6055 __asm__("$6") = 0x6055ff00;
+      puVar3[1] = c6055;
+      *puVar3 = v0m; }
+    uVar4 = ((iVar6 - 4) << 16) | ((param_2 + 1) & 0xffff);
+    puVar3[2] = uVar4;
+    puVar3[3] = ((s32)(dl * 0x50e6) >> 16) | 0x20000;
+    dl = ((struct { u16 h; } *)&D_8011F82E)->h;
+    puVar3[5] = ((u32)puVar3 & 0xffffff) | 0x3000000;
+    puVar3[10] = ((u32)(puVar3 + 5) & 0xffffff) | 0x3000000;
+    puVar3[6] = 0x60ff3214;
+    puVar3[7] = uVar4;
+    puVar3[0xb] = 0x60000000;
+    puVar3[0xc] = ((iVar6 - 5) << 16) | (param_2 & 0xffff);
+    t = (s32)(dl * 0x50e6) >> 16;
+    puVar3[8] = t | 0x20000;
+    puVar3[0xd] = (t + 2) | 0x40000;
+    return puVar3 + 0xf;
 }

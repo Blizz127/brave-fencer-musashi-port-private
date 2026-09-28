@@ -5,26 +5,36 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80130974 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-s32 func_8012BEE8();
-void func_80166244();
-void func_801319E0();
-void func_80131CA8();
-typedef struct Inner { u8 pad[0x18]; s16 u18; u8 pad1A[2]; u16 u1C; } Inner;
-typedef struct { u8 pad[0x20]; Inner *inner; u8 pad24[0x90]; s32 uB4; } T;
-void func_80130974(T *p) {
-    Inner *q;
-    if (p->uB4 & 0x8000) {
-        q = p->inner;
-        if (q->u18 < 0x1000) {
-            q->u18 += 0x400;
-            p->inner->u1C += 0x400;
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+extern int func_8012BEE8(int);
+extern void func_80166244();
+extern void func_801319E0(int);
+extern void func_80131CA8(int, int);
+
+void func_80130974(int param_1) {
+    short sVar1;
+    if ((*(unsigned int *)(param_1 + 0xb4) & 0x8000) != 0) {
+        sVar1 = *(short *)(*(int *)(param_1 + 0x20) + 0x18);
+        if (sVar1 < 0x1000) {
+            *(short *)(*(int *)(param_1 + 0x20) + 0x18) = sVar1 + 0x400;
+            *(short *)(*(int *)(param_1 + 0x20) + 0x1c) =
+                *(unsigned short *)(*(int *)(param_1 + 0x20) + 0x1c) + 0x400;
         }
-        if (func_8012BEE8(p)) {
-            func_80166244(p);
-            func_801319E0(p);
+        if (func_8012BEE8(param_1) != 0) {
+            ((void (*)(int))func_80166244)(param_1);
+            func_801319E0(param_1);
             return;
         }
     }
-    func_80131CA8(p, 0x2B);
+    func_80131CA8(param_1, 0x2b);
 }

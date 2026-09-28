@@ -4,27 +4,38 @@
  * Member-0012 C shape retargeted to this member: D_8018066C->D_80186F5C.
  * Oracle MATCH re-earned against the resident image; Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_801578C0 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-extern s32 D_800D5128;
-extern s32 D_80186F5C;
-void func_80156648();
-void func_80154274();
-void func_80154A74();
-void func_80147324();
-void func_80146DB8();
-void func_80146994();
-void func_80146CA0();
-void func_801725A4();
-typedef struct { u8 pad[0x1AA]; u8 f1AA; } T;
-void func_801578C0(T *p) {
-    func_80156648(p);
-    p->f1AA = 9;
-    func_80154274(p, &D_800D5128);
-    func_80154A74(p, 0x15);
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+extern void func_80156648(s32 *a0);
+extern void func_80154274(s32 *a0, s32 a1);
+extern void func_80154A74(s32 a0, s32 a1);
+extern void func_80147324(s32 arg0);
+extern void func_80146DB8(s32 *a0, s32 *a1);
+extern s32 func_80146994(s32 a0, s32 a1, s32 a2, s32 a3);
+extern void func_80146CA0(void *a0);
+extern s32 func_801725A4(u8 *a0);
+extern u8 D_800D5128;
+extern u8 D_80186F5C;
+
+void func_801578C0(s32 param_1)
+{
+    ((void (*)(void))func_80156648)();
+    *(u8 *)(param_1 + 0x1AA) = 9;
+    func_80154274((s32 *)param_1, (s32)&D_800D5128);
+    ((void (*)(s32 *, s32))func_80154A74)((s32 *)param_1, 0x15);
     func_80147324(0xC20);
-    func_80146DB8(p, &D_80186F5C);
-    func_80146994(4, p, 7, 0);
-    func_80146994(5, p, 9, 0);
-    func_80146CA0(p);
-    func_801725A4(p);
+    ((void (*)(s32 *, s32))func_80146DB8)((s32 *)param_1, (s32)&D_80186F5C);
+    ((void (*)(s32, s32 *, s32, s32))func_80146994)(4, (s32 *)param_1, 7, 0);
+    ((void (*)(s32, s32 *, s32, s32))func_80146994)(5, (s32 *)param_1, 9, 0);
+    ((void (*)(s32 *))func_80146CA0)((s32 *)param_1);
+    ((void (*)(s32 *))func_801725A4)((s32 *)param_1);
 }

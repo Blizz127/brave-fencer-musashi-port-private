@@ -1,10 +1,6 @@
-/* Complete SC02 retail span [80146128,80146360).
- * Ahead leaf.
- * Words from pinned SC02.CD member31 PAC0 decode (live-guest identity).
- */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-
-
+/* func_80146128 - byte-exact against retail at -O2 (tools/register_match.py). */
 extern s32 D_80126B58;
 extern s32 *D_80126B78;
 extern u8 D_80078EC1;
@@ -20,8 +16,8 @@ extern void func_80146FC4(s32 a0);
 extern void func_80150A70(s32 a0);
 extern void func_80147098(s32 *a0);
 extern void func_8014A638(s32 arg0);
-extern s32 func_80155458(s32 a0);
-extern s32 func_80029104(void);
+extern s32  func_80155458(s32 a0);
+extern s32  func_80029104(void);
 extern void func_80029344(void);
 extern void func_8014ADE0(s32 a0);
 extern void func_8014B350(s32 a0);
@@ -48,16 +44,16 @@ extern void func_80172588(s32 *a0);
 extern void func_801473DC(s32 *a0);
 extern void func_80015978(s32 a0, s32 *a1);
 
-s32 func_80146128(void) {
-    s32 base;
-    s32 *p;
-
+s32 func_80146128(void)
+{
+    register s32 base __asm__("$16");
+    register s32 *p   __asm__("$17");
     p = D_80126B78;
     base = (s32)&D_80126B58;
     func_80146FC4(base);
     memcpy((void *)D_801150F0, (void *)D_80126BE0, 8);
     func_80150A70(base);
-    func_80147098((s32 *)base);
+    ((void (*)(s32))func_80147098)(base);
     func_8014A638(base);
     D_8011F730 = 0;
     D_801152B8 = 0;
@@ -76,32 +72,32 @@ s32 func_80146128(void) {
         if ((func_80029104() & 0xFF) != 0) {
             func_8014ADE0(base);
             func_8014B350(base);
-            func_8014B7A4((s16 *)base);
-            func_80161D58(base);
+            ((void (*)(s32))func_8014B7A4)(base);
+            ((void (*)(s32))func_80161D58)(base);
         }
         func_80029344();
         func_80161A90(base);
-        func_8014B504((u16 *)base);
+        ((void (*)(s32))func_8014B504)(base);
         func_80149BEC(base);
-        func_8014B5D0((s32 *)base);
-        func_8014C99C((u8 *)base);
+        ((void (*)(s32))func_8014B5D0)(base);
+        ((void (*)(s32))func_8014C99C)(base);
         func_8014B190(base);
         func_80148648(base, 0);
-        func_80149228(base);
+        ((void (*)(s32))func_80149228)(base);
         func_8014A59C(base);
-        func_8016F14C((void *)base);
-        func_80154418((void *)base);
+        ((void (*)(s32))func_8016F14C)(base);
+        ((void (*)(s32))func_80154418)(base);
         func_80154BE4(base);
         func_80165694(base);
         func_801654A8(base);
         func_8014A680(base);
         func_8014A6A8(base);
         func_8014A71C(base);
-        func_80172588((s32 *)base);
-        func_801473DC((s32 *)base);
-        func_80015978(base + 4, (s32 *)(base + 0x98));
+        ((void (*)(s32))func_80172588)(base);
+        ((void (*)(s32))func_801473DC)(base);
+        ((void (*)(s32, s32))func_80015978)(base + 4, base + 0x98);
         return 1;
     }
-    func_80015978(base + 4, (s32 *)(base + 0x98));
+    ((void (*)(s32, s32))func_80015978)(base + 4, base + 0x98);
     return 0;
 }

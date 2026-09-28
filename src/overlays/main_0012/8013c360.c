@@ -2,31 +2,17 @@
  * SHA256(span)=d316a8fa8c3995a3cc79f34cc0b1b667bcd56fbdbb5d92b9d8ab33e3a18a7921.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-#include "m2c_macros.h"
+/* func_8013C360 - byte-exact against retail at -O0 (tools/register_match.py). */
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
 
-void func_8013C400(void *);                      /* static */
-
-void func_8013C360(void *arg0) {
-    u32 sp4;
-    void *sp0;
-    void *var_a0;
-
-    var_a0 = arg0;
-    sp0 = arg0 + 0x10;
-    sp4 = 0;
-loop_1:
-    if (sp4 < (u32) M2C_FIELD(arg0, u32 *, 8)) {
-        var_a0 = M2C_FIELD(sp0, void **, 4);
-        *M2C_FIELD(sp0, void ***, 0) = var_a0;
-        sp0 += 0xC;
-        sp4 += 1;
-        goto loop_1;
+void func_8013C360(s32 a0) {
+    s32 *p;
+    u32 i;
+    p = (s32 *)(a0 + 0x10);
+    for (i = 0; i < *(u32 *)(a0 + 8); i++) {
+        *(s32 *)(*(s32 *)p) = *(s32 *)((s32)p + 4);
+        p = (s32 *)((s32)p + 0xC);
     }
-    func_8013C400(var_a0);
 }

@@ -1,113 +1,51 @@
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-
-/* GTE/cop2 mnemonic overlay: ordinary C cannot emit coprocessor ops.
- * Verified by tools/match_function.py. */
+/* GTE mnemonic macros, copied from vendor/bfm-decomp/include/gte_macros.inc (assembler-only, emit no code). */
 __asm__(
-    ".set noreorder\n"
-    ".globl func_801330E0\n"
-    ".type func_801330E0, @function\n"
-    "func_801330E0:\n"
-    "addiu $sp,$sp,-0x40\n"
-    "sw $s0,0x38($sp)\n"
-    "addu $s0,$a1,$zero\n"
-    "lui $a3,%hi(D_800AF648)\n"
-    "addiu $a3,$a3,%lo(D_800AF648)\n"
-    "sw $ra,0x3C($sp)\n"
-    "lw $t4,0x14($a3)\n"
-    "lw $t5,0x18($a3)\n"
-    "ctc2 $t4,$5\n"
-    "lw $t6,0x1C($a3)\n"
-    "ctc2 $t5,$6\n"
-    "ctc2 $t6,$7\n"
-    "lw $t4,0x0($a3)\n"
-    "lw $t5,0x4($a3)\n"
-    "ctc2 $t4,$0\n"
-    "ctc2 $t5,$1\n"
-    "lw $t4,0x8($a3)\n"
-    "lw $t5,0xC($a3)\n"
-    "lw $t6,0x10($a3)\n"
-    "ctc2 $t4,$2\n"
-    "ctc2 $t5,$3\n"
-    "ctc2 $t6,$4\n"
-    "lwc2 $0,0x0($a0)\n"
-    "lwc2 $1,0x4($a0)\n"
-    "nop\n"
-    "nop\n"
-    "addiu $v0,$sp,0x10\n"
-    "swc2 $25,0x0($v0)\n"
-    "swc2 $26,0x4($v0)\n"
-    "swc2 $27,0x8($v0)\n"
-    "addiu $v0,$sp,0x30\n"
-    "cfc2 $t4,$31\n"
-    "nop\n"
-    "sw $t4,0x0($v0)\n"
-    "sll $a2,$a2,16\n"
-    "lw $a1,0x18($sp)\n"
-    "sra $a2,$a2,16\n"
-    "addu $a0,$a1,$a2\n"
-    "sw $a0,0x28($sp)\n"
-    "lw $v0,0x10($sp)\n"
-    "nop\n"
-    "mult $v0,$a0\n"
-    "mflo $v0\n"
-    "nop\n"
-    "nop\n"
-    "div $zero,$v0,$a1\n"
-    "nop\n"
-    ".L801331AC:\n"
-    "addiu $at,$zero,-0x1\n"
-    "lui $at,0x8000\n"
-    "nop\n"
-    ".L801331C4:\n"
-    "mflo $v1\n"
-    "lw $v0,0x14($sp)\n"
-    "nop\n"
-    "mult $v0,$a0\n"
-    "mflo $v0\n"
-    "nop\n"
-    "nop\n"
-    "div $zero,$v0,$a1\n"
-    "nop\n"
-    ".L801331F0:\n"
-    "addiu $at,$zero,-0x1\n"
-    "lui $at,0x8000\n"
-    "nop\n"
-    ".L80133208:\n"
-    "mflo $v0\n"
-    "sw $v1,0x20($sp)\n"
-    "sw $v0,0x24($sp)\n"
-    ".L80133218:\n"
-    "sw $zero,0x24($sp)\n"
-    "sw $zero,0x20($sp)\n"
-    "lw $v0,0x20($sp)\n"
-    "lw $v1,0x14($a3)\n"
-    "addiu $a2,$sp,0x10\n"
-    "subu $v0,$v0,$v1\n"
-    "sw $v0,0x20($sp)\n"
-    "lw $v0,0x24($sp)\n"
-    "lw $a0,0x18($a3)\n"
-    "lw $v1,0x28($sp)\n"
-    "lw $a1,0x1C($a3)\n"
-    "subu $v0,$v0,$a0\n"
-    "subu $v1,$v1,$a1\n"
-    "addu $a0,$a3,$zero\n"
-    "addiu $a1,$sp,0x20\n"
-    "sw $v0,0x24($sp)\n"
-    "sw $v1,0x28($sp)\n"
-    "lw $v0,0x10($sp)\n"
-    "nop\n"
-    "sh $v0,0x0($s0)\n"
-    "lw $v0,0x14($sp)\n"
-    "nop\n"
-    "sh $v0,0x2($s0)\n"
-    "lw $v0,0x18($sp)\n"
-    "nop\n"
-    "sh $v0,0x4($s0)\n"
-    "lw $ra,0x3C($sp)\n"
-    "lw $s0,0x38($sp)\n"
-    "addiu $sp,$sp,0x40\n"
-    "jr $ra\n"
-    "nop\n"
-    ".size func_801330E0, .-func_801330E0\n"
-    ".set reorder\n"
+".macro cop2op fake_op, op, gbg = 0, sf = 1, mx = 0, v = 0, cv = 0, lm = 0\n"
+"    cop2 \\fake_op << 20 | \\gbg << 20 | \\sf << 19 | \\mx << 17 | \\v << 15 | \\cv << 13 | \\lm << 10 | \\op\n"
+".endm\n"
+".macro mvmva sf, mx, v, cv, lm\n"
+"    cop2op 0x04, 0x12, sf = \\sf, mx = \\mx, v = \\v, cv = \\cv, lm = \\lm\n"
+".endm\n"
 );
+/* func_801330E0 - byte-exact against retail at -O2 (tools/register_match.py). */
+#define ApplyTransposeMatrixLV func_8004D504
+extern u8 D_800AF648;
+extern void ApplyTransposeMatrixLV(void *a0, void *a1, void *a2);
+
+void func_801330E0(param_1, param_2, param_3)
+    void *param_1;
+    s16 *param_2;
+    s16 param_3;
+{
+    extern u8 D_800AF648;
+    s32 *m;
+    s32 sxyz[4];
+    s32 pos[4];
+    s32 flag;
+    s32 z;
+    m = (s32 *)&D_800AF648;
+    __asm__ volatile ( "lw $12, 20( %0 );" "lw $13, 24( %0 );" "ctc2 $12, $5;" "lw $14, 28( %0 );" "ctc2 $13, $6;" "ctc2 $14, $7" : : "r"(  m  ) : "$12", "$13", "$14" ) ;
+    __asm__ volatile ( "lw $12, 0( %0 );" "lw $13, 4( %0 );" "ctc2 $12, $0;" "ctc2 $13, $1;" "lw $12, 8( %0 );" "lw $13, 12( %0 );" "lw $14, 16( %0 );" "ctc2 $12, $2;" "ctc2 $13, $3;" "ctc2 $14, $4" : : "r"(  m  ) : "$12", "$13", "$14" ) ;
+    __asm__ volatile ( "lwc2 $0, 0( %0 );" "lwc2 $1, 4( %0 )" : : "r"(  param_1  ) ) ;
+    __asm__ volatile ( "nop;" "nop;" "mvmva 1, 0, 0, 0, 0" : : : "memory" ) ;
+    __asm__ volatile ( "swc2 $25, 0( %0 );" "swc2 $26, 4( %0 );" "swc2 $27, 8( %0 )" : : "r"(  sxyz  ) : "memory" ) ;
+    __asm__ volatile ( "cfc2 $12, $31;" "nop;" "sw $12, 0( %0 )" : : "r"(  &flag  ) : "$12", "memory" ) ;
+    z = sxyz[2];
+    pos[2] = z + param_3;
+    if (z != 0) {
+        pos[0] = sxyz[0] * pos[2] / z;
+        pos[1] = sxyz[1] * pos[2] / z;
+    } else {
+        pos[1] = 0;
+        pos[0] = 0;
+    }
+    pos[0] -= m[5];
+    pos[1] -= m[6];
+    pos[2] -= m[7];
+    ApplyTransposeMatrixLV(m, pos, sxyz);
+    param_2[0] = sxyz[0];
+    param_2[1] = sxyz[1];
+    param_2[2] = sxyz[2];
+}

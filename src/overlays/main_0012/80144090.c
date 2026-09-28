@@ -2,85 +2,88 @@
  * SHA256(span)=3ceaf924bdc07e13c227b275c40bfb05a4a657c45c024fefc4f5f77468c7b688.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80144090 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* Vendor names mapped to address-named symbols for the link-by-address harness. */
+#define AddPrim func_80058C6C
+#define RotTransPers func_8004955C
 
-s32 func_80010A08();                               /* extern */
-s32 func_8004787C(s32);                             /* extern */
-s32 func_80047948(s32);                             /* extern */
-void func_8004914C(void *, s32);                          /* extern */
-void func_800491AC(void *);                               /* extern */
-s32 func_8004955C(u16 *, u16 *, void *, void *);          /* extern */
-void func_80058C6C(s32, s32, s32, s32);                /* extern */
-extern s32 *D_800A651C;
-extern s32 *D_800AF648;
-extern u16 D_800B9A02;
+/* File-scope declarations from the vendor translation unit. */
+typedef struct { s32 a; s32 b[4]; } OtBlk;
+extern s32 D_800A651C;
+extern s16 D_800B9A02;
 
-void func_80144090(void *arg0) {
-    s32 sp20;
-    s32 sp1C;
-    u16 sp18;
-    u16 sp14;
-    u16 sp12;
-    u16 sp10;
-    s32 temp_a1;
-    s32 temp_a1_2;
-    s32 temp_a2;
-    s32 temp_a3;
-    s32 temp_lo;
-    s32 temp_s0;
-    s32 var_s3;
-    s32 var_s4;
-    s32 var_s5;
-    void *var_s1;
+// @class: regalloc-order
+// @stuck: 154/154 ins structural match (callees/consts/ctrl-flow/stack/GPU-packet all byte-correct); residual 25 = caller-saved temp-reg coalescing in the final ring-vertex block (target reuses dead $s0=iVar3 for iVar3-(iVar4>>6) subu where gcc reuses iVar4>>6's reg; iVar4 mflo -> $a3 vs target $v0) + 2-ins schedule swap of giv-increment vs iVar2*4 -> permuter grinder territory (§27 step-5)
 
-    var_s4 = func_80010A08(0x140);
-    if (var_s4 != 0) {
-        temp_a1 = arg0->unk14;
-        arg0->unk4 = (s32) (arg0->unk4 + arg0->unk10);
-        arg0->unk8 = (s32) (arg0->unk8 + temp_a1);
-        arg0->unkC = (s32) (arg0->unkC + arg0->unk18);
-        sp10 = arg0->unk6;
-        sp12 = arg0->unkA;
-        sp14 = arg0->unkE;
-        func_8004914C(&D_800AF648, temp_a1);
+ /* 0x14 stride */
+
+extern void *func_80010A08(s32);
+extern void func_8004914C(void *a0);
+extern void func_800491AC(void *a0);
+extern s32 RotTransPers(s32, s32, s32 *, s32 *);
+extern s32 func_8004787C(s32 a0);
+extern s32 func_80047948(s32 a0);
+extern s32 AddPrim(s32, void *);
+
+void func_80144090(s32 param_1) {
+
+    extern OtBlk aD800A651C_80144090[] __asm__("D_800A651C");
+    extern u8 D_800AF648;
+    extern short aD800B9A02_80144090 __asm__("D_800B9A02");
+    void *iVar1;
+    s32 iVar2;
+    s32 iVar3;
+    s32 iVar4;
+    s32 iVar5;
+    s32 iVar6;
+    struct {
+        s16 v10[4];
+        u16 sxy[2];
+        s32 p;
+        s32 flag;
+    } L;
+
+    iVar1 = func_80010A08(0x140);
+    if (iVar1 != 0) {
+        *(s32 *)(param_1 + 4) = *(s32 *)(param_1 + 4) + *(s32 *)(param_1 + 0x10);
+        *(s32 *)(param_1 + 8) = *(s32 *)(param_1 + 8) + *(s32 *)(param_1 + 0x14);
+        *(s32 *)(param_1 + 0xc) = *(s32 *)(param_1 + 0xc) + *(s32 *)(param_1 + 0x18);
+        L.v10[0] = *(u16 *)(param_1 + 6);
+        L.v10[1] = *(u16 *)(param_1 + 0xa);
+        L.v10[2] = *(u16 *)(param_1 + 0xe);
+        func_8004914C(&D_800AF648);
         func_800491AC(&D_800AF648);
-        var_s5 = func_8004955C(&sp10, &sp18, &sp1C, &sp20) + 4;
-        var_s3 = 0;
-        if (var_s5 < 0) {
-            var_s5 = 0;
+        iVar2 = RotTransPers((s32)L.v10, (s32)L.sxy, &L.p, &L.flag);
+        iVar2 = iVar2 + 4;
+        if (iVar2 < 0) {
+            iVar2 = 0;
         }
-        var_s1 = var_s4 + 0xE;
+        iVar6 = 0;
         do {
-            var_s1->unk-A = 0xFFFFFF;
-            var_s1->unk-B = 4;
-            var_s1->unk-7 = 0x20;
-            if ((arg0->unk1C - 6) <= 0) {
-                var_s1->unk-6 = sp18;
-                var_s1->unk-4 = sp1A;
+            *(s32 *)((u8 *)iVar1 + 4) = 0xffffff;
+            *(u8 *)((u8 *)iVar1 + 3) = 4;
+            *(u8 *)((u8 *)iVar1 + 7) = 0x20;
+            if (*(s32 *)(param_1 + 0x1c) - 6 < 1) {
+                *(s16 *)((u8 *)iVar1 + 8) = L.sxy[0];
+                *(s16 *)((u8 *)iVar1 + 0xa) = L.sxy[1];
             } else {
-                var_s1->unk-6 = (u16) (sp18 + ((s32) (func_8004787C(var_s3) * ((arg0->unk1C - 6) * 0x10)) >> 0xC));
-                var_s1->unk-4 = (u16) (sp1A + ((s32) (func_80047948(var_s3) * ((arg0->unk1C - 6) * 0x10)) >> 0xC));
+                iVar5 = func_8004787C(iVar6);
+                *(s16 *)((u8 *)iVar1 + 8) = L.sxy[0] + ((iVar5 * ((*(s32 *)(param_1 + 0x1c) - 6) << 4)) >> 0xc);
+                iVar5 = func_80047948(iVar6);
+                *(s16 *)((u8 *)iVar1 + 0xa) = L.sxy[1] + ((iVar5 * ((*(s32 *)(param_1 + 0x1c) - 6) << 4)) >> 0xc);
             }
-            temp_s0 = func_8004787C(var_s3) * (arg0->unk1C * 0x10);
-            temp_lo = func_80047948(var_s3) * (arg0->unk1C * 0x10);
-            var_s3 += 0x100;
-            temp_a1_2 = var_s4;
-            var_s4 += 0x14;
-            temp_a2 = temp_s0 >> 6;
-            temp_a3 = temp_lo >> 6;
-            var_s1->unk2 = (s16) (sp18 + ((s32) (temp_s0 + temp_a3) >> 0xC));
-            var_s1->unk4 = (s16) (sp1A + ((s32) (temp_lo + temp_a2) >> 0xC));
-            var_s1->unk-2 = (s16) (sp18 + ((s32) (temp_s0 - temp_a3) >> 0xC));
-            var_s1->unk0 = (s16) (sp1A + ((s32) (temp_lo - temp_a2) >> 0xC));
-            var_s1 += 0x14;
-            func_80058C6C(*(&D_800A651C + (D_800B9A02 * 0x14)) + (var_s5 * 4), temp_a1_2, temp_a2, temp_a3);
-        } while (var_s3 < 0x1000);
+            iVar3 = func_8004787C(iVar6) * (*(s32 *)(param_1 + 0x1c) << 4);
+            iVar4 = func_80047948(iVar6) * (*(s32 *)(param_1 + 0x1c) << 4);
+            iVar6 = iVar6 + 0x100;
+            *(s16 *)((u8 *)iVar1 + 0x10) = L.sxy[0] + ((iVar3 + (iVar4 >> 6)) >> 0xc);
+            *(s16 *)((u8 *)iVar1 + 0x12) = L.sxy[1] + ((iVar4 + (iVar3 >> 6)) >> 0xc);
+            *(s16 *)((u8 *)iVar1 + 0xc) = L.sxy[0] + ((iVar3 - (iVar4 >> 6)) >> 0xc);
+            *(s16 *)((u8 *)iVar1 + 0xe) = L.sxy[1] + ((iVar4 - (iVar3 >> 6)) >> 0xc);
+            AddPrim(aD800A651C_80144090[(u16)aD800B9A02_80144090].a + (iVar2 * 4), iVar1);
+            iVar1 = (u8 *)iVar1 + 0x14;
+        } while (iVar6 < 0x1000);
     }
 }

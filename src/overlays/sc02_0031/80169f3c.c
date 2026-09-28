@@ -4,34 +4,41 @@
  * Member-0012 C shape retargeted to this member: D_801813D0->D_80187CC0; D_80181410->D_80187D00.
  * Oracle MATCH re-earned against the resident image; Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80169F3C - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-void func_800D1FC8();
-s32 func_800D21C4();
-void func_80128EA8();
-void func_80146C3C();
-extern s32 D_80187D00;
-extern s32 D_80187CC0;
-typedef struct {
-    u8 pad[4]; s32 u4;
-    u8 pad8[0x10]; s16 u18, u1A;
-    u8 pad1C[8]; u8 u24, u25, u26;
-} U;
-typedef struct { u8 pad[2]; u16 u2; u8 pad4[0x1C]; U *inner; } T;
-void func_80169F3C(T *p) {
-    U *v;
-    func_800D1FC8(p, 6);
-    v = (U *)func_800D21C4(p, &D_80187D00, 0x16);
-    if (v) {
-        p->inner = v;
-        v->u1A = 0x2000;
-        v->u18 = 0x2000;
-        v->u26 = 0x60;
-        v->u25 = 0x60;
-        v->u24 = 0x60;
-        v->u4 |= 0x50000000;
-        func_80128EA8(v, (u8 *)p + 0x24, &D_80187CC0);
-        p->u2++;
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+extern void func_800D1FC8(s32 a0, s32 a1);
+extern s32 func_800D21C4(s32 a0, void *a1, s32 a2);
+extern void func_80128EA8(s32 a0, s32 a1, s32 a2);
+extern void func_80146C3C(void);
+extern char D_80187D00[];
+extern char D_80187CC0[];
+
+void func_80169F3C(int param_1)
+{
+    int iVar1;
+
+    ((int (*)(int, int))func_800D1FC8)(param_1, 6);
+    iVar1 = func_800D21C4(param_1, D_80187D00, 0x16);
+    if (iVar1 != 0) {
+        *(int *)(param_1 + 0x20) = iVar1;
+        *(short *)(iVar1 + 0x1a) = 0x2000;
+        *(short *)(iVar1 + 0x18) = 0x2000;
+        *(char *)(iVar1 + 0x26) = 0x60;
+        *(char *)(iVar1 + 0x25) = 0x60;
+        *(char *)(iVar1 + 0x24) = 0x60;
+        *(unsigned int *)(iVar1 + 4) = *(unsigned int *)(iVar1 + 4) | 0x50000000;
+        ((void (*)(int, int, void *))func_80128EA8)(iVar1, param_1 + 0x24, D_80187CC0);
+        *(short *)(param_1 + 2) = *(short *)(param_1 + 2) + 1;
     } else {
-        func_80146C3C(p);
+        ((void (*)(int))func_80146C3C)(param_1);
     }
 }

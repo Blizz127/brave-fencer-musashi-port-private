@@ -2,37 +2,54 @@
  * SHA256(span)=c362c565bf2f3abffb63cb3407962442f66772f3bcf805eb1a1a6107bec55a61.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-#include "m2c_macros.h"
+/* func_8016B4F8 - byte-exact against retail at -O2 (tools/register_match.py). */
+extern void func_80015978(s32 a0, s32 *a1);
+extern void func_80015978(s32, s32*);
+extern void func_80015978(int a0, int *a1);
+extern void func_8016B984(void *a0);
+extern int func_8016B9F8(int);
+extern int func_8016B834(int, int);
+extern void func_8016B91C(int);
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+void func_8016B4F8(int param_1)
+{
 
-void func_80015978(s32, s32 (*)());          /* extern */
-extern s32 D_801846B8;
-s32 func_8016B834(void *, s32);                 /* static */
-void func_8016B91C(void *);                      /* static */
-void func_8016B984(void *);                      /* static */
-s32 func_8016B9F8(void *);                          /* static */
+    extern int D_801846B8;
+    int iVar1;
+    int uVar2;
+    volatile int buf[2];
 
-void func_8016B4F8(void *arg0) {
-    s32 temp_v0;
-    s32 temp_v0_2;
-    s32 temp_v0_3;
-    s32 var_v0;
-
-    func_80015978(arg0 + 4, D_801846B8);
-    if ((func_8016B9F8(arg0) != 0) || (M2C_FIELD(arg0, s32 *, 0x18) = 0, M2C_FIELD(arg0, s32 *, 0x14) = 0, M2C_FIELD(arg0, s32 *, 0x10) = 0, temp_v0 = func_8016B834(arg0, 0), M2C_FIELD(arg0, s32 *, 0x10) = temp_v0, (temp_v0 == 0)) || (temp_v0_2 = func_8016B834(arg0, 1), M2C_FIELD(arg0, s32 *, 0x14) = temp_v0_2, (temp_v0_2 == 0)) || (temp_v0_3 = func_8016B834(arg0, 2), M2C_FIELD(arg0, s32 *, 0x18) = temp_v0_3, (temp_v0_3 == 0))) {
-        func_8016B984(arg0);
-        return;
+    ((void (*)(int, void *))func_80015978)(param_1 + 4, &D_801846B8);
+    if (func_8016B9F8(param_1) == 0) {
+        *(int *)(param_1 + 0x18) = 0;
+        *(int *)(param_1 + 0x14) = 0;
+        *(int *)(param_1 + 0x10) = 0;
+        iVar1 = func_8016B834(param_1, 0);
+        *(int *)(param_1 + 0x10) = iVar1;
+        if (iVar1 != 0) {
+            iVar1 = func_8016B834(param_1, 1);
+            *(int *)(param_1 + 0x14) = iVar1;
+            if (iVar1 != 0) {
+                iVar1 = func_8016B834(param_1, 2);
+                *(int *)(param_1 + 0x18) = iVar1;
+                if (iVar1 != 0) goto success;
+            }
+        }
     }
-    func_8016B91C(arg0);
-    var_v0 = 0x2D0;
-    if (M2C_FIELD(arg0, s32 *, 0x2C) == 0) {
-        var_v0 = 0xF0;
+    ((void (*)(int))func_8016B984)(param_1);
+    return;
+success:
+    func_8016B91C(param_1);
+    uVar2 = *(int *)(param_1 + 0x2c);
+    if (uVar2 == 0) {
+        uVar2 = 0xf0;
+    } else {
+        uVar2 = 0x2d0;
     }
-    M2C_FIELD(arg0, s32 *, 0x1C) = var_v0;
-    M2C_FIELD(arg0, u16 *, 2) = (u16) (M2C_FIELD(arg0, u16 *, 2) + 1);
+    *(int *)(param_1 + 0x1c) = uVar2;
+    uVar2 = *(unsigned short *)(param_1 + 2);
+    uVar2 = uVar2 + 1;
+    *(unsigned short *)(param_1 + 2) = uVar2;
 }

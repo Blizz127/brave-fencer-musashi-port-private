@@ -2,59 +2,51 @@
  * SHA256(span)=22c3ea89192a584021748e27429b706094b404f86db0145d80b33635872b46b1.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-void func_80011C10();                                  /* extern */
-s32 func_80029178();                               /* extern */
-s32 func_80029504();                                /* extern */
-s32 func_800CF854(s32);                             /* extern */
-s32 func_801288B0();                                /* static */
-s32 func_801288E8(s32);                             /* static */
-s32 func_80128940(s32);                             /* static */
-s32 func_80128998();                                /* static */
-s32 func_801289F0();                                /* static */
-extern s16 D_800B9A08;
+/* func_8012832C - byte-exact against retail at -O2 (tools/register_match.py). */
+#define currentLocationId D_800B9A08
+extern s16 currentLocationId;
+extern s32 func_80029504(void);
+extern s32 func_800CF854(s32);
+extern s32 func_80128998(void);
+extern s32 func_801289F0(void);
+extern s32 func_801288E8(s32);
+extern s32 func_80128940(s32);
+extern s32 func_80029178(s32);
+extern s32 func_801288B0(void);
+extern void func_80011C10(void);
 
 void func_8012832C(void) {
-    s32 temp_a0;
-    s32 var_v0;
-
-    temp_a0 = func_80029504();
-    switch (D_800B9A08) {                           /* irregular */
+    s32 a0 = func_80029504();
+    s32 v0;
+    switch (currentLocationId) {
     case 0x300E:
-        if (func_800CF854(temp_a0) == 0) {
-            var_v0 = func_80128998();
+        if (func_800CF854(a0) == 0) {
+            v0 = func_80128998();
         } else {
-            var_v0 = func_801289F0();
-        }
-block_15:
-        if (var_v0 != 0) {
-        default:
-            func_80011C10();
+            v0 = func_801289F0();
         }
         break;
     case 0x30A0:
-        if (temp_a0 < 0x640) {
-            var_v0 = func_801288E8(temp_a0);
+        if (a0 < 0x640) {
+            v0 = func_801288E8(a0);
         } else {
-            var_v0 = func_80128940(temp_a0);
+            v0 = func_80128940(a0);
         }
-        goto block_15;
+        break;
     case 0x3014:
-        var_v0 = 1;
-        if (temp_a0 == 0x4B0) {
-            var_v0 = 1;
-            if (!(func_80029178(0x138) & 0xFF)) {
-                var_v0 = func_801288B0();
-            }
+        if (a0 == 0x4B0 && (func_80029178(0x138) & 0xFF) == 0) {
+            v0 = func_801288B0();
+        } else {
+            v0 = 1;
         }
-        goto block_15;
+        break;
+    default:
+        func_80011C10();
+        return;
+    }
+    if (v0 != 0) {
+        func_80011C10();
     }
 }

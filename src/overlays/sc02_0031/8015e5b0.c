@@ -5,39 +5,50 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8015E5B0 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-s32 func_80133784();
-void func_80015978();
-void func_8014C4AC();
-typedef struct Inner { u8 pad[0x12]; s16 u12; } Inner;
-typedef struct {
-    u8 pad[6]; s16 u6; u8 pad8[2]; s16 uA; u8 padC[2]; s16 uE;
-} Q;
-typedef struct {
-    u8 pad[6]; s16 u6; u8 pad8[2]; s16 uA; u8 padC[2]; s16 uE;
-    u8 pad10[0x10]; Inner *inner;
-    u8 pad24[0x168]; Q *u18C;
-} T;
-void func_8015E5B0(T *p) {
-    s16 a[4];
-    s16 b[4];
-    Q *q = p->u18C;
-    if (q == 0) {
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+struct obj {
+    u8 pad0[0x4];
+    s16 unk4;
+    u8 pad6[0x2];
+    s32 unk8;
+};
+extern s32 func_80133784(s32 a0, void *a1, s32 a2);
+extern void func_80015978(s32 a0, s32 *a1);
+extern void func_8014C4AC(s32 a0, s32 a1, s32 a2, s16 *a3, s32 a4);
+
+void func_8015E5B0(u8 *self)
+{
+    u8 *obj;
+    s16 src[4];
+    s16 dst[4];
+    obj = *(u8 **)(self + 0x18C);
+    if (obj == 0) {
         return;
     }
-    a[0] = p->u6;
-    a[1] = p->uA - 0x14;
-    a[2] = p->uE;
-    b[0] = q->u6;
-    b[1] = q->uA;
-    b[2] = q->uE;
-    if (func_80133784(0, a, b)) {
-        q->u6 = b[0];
-        q->uA = b[1];
-        q->uE = b[2];
+    src[0] = *(u16 *)(self + 0x6);
+    src[1] = *(u16 *)(self + 0xA) - 0x14;
+    src[2] = *(u16 *)(self + 0xE);
+    dst[0] = *(u16 *)(obj + 0x6);
+    dst[1] = *(u16 *)(obj + 0xA);
+    dst[2] = *(u16 *)(obj + 0xE);
+    if (func_80133784(0, src, (s32)dst) != 0) {
+        *(u16 *)(obj + 0x6) = dst[0];
+        *(u16 *)(obj + 0xA) = dst[1];
+        *(u16 *)(obj + 0xE) = dst[2];
     }
-    func_80015978((u8 *)q + 4, a);
-    a[3] = 0;
-    func_8014C4AC(q, 0x1C, 0, a, p->inner->u12);
-    p->u18C = 0;
+    func_80015978((s32)(obj + 4), (s32 *)src);
+    src[3] = 0;
+    func_8014C4AC((s32)obj, 0x1C, 0, src,
+                  *(s16 *)(*(u8 **)(self + 0x20) + 0x12));
+    *(s32 *)(self + 0x18C) = 0;
 }

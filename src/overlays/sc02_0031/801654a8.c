@@ -4,13 +4,22 @@
  * the C is the Druthulu shared/ov func_801654A8 shape (the two published variants differ only in the dispatch table) retargeted to this member's D_801878D4, with D_80078E78/D_80078EC1 already matching; oracle MATCH 54/54.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_801654A8 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
 extern u8 D_80078E78[];
 extern u8 D_80078EC1;
-extern void *D_801878D4[];
-s32 func_80165658(s32 a0, s32 a1);
-void func_800CAE0C(s32 a0);
+extern void (*D_801878D4[])(void);
+extern u8 func_80165658(s32 a0, s32 a1);
+extern void func_800CAE0C(s32 a0);
 
 void func_801654A8(s32 arg0)
 {

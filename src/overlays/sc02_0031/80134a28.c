@@ -5,16 +5,22 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80134A28 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL of func_80134A28 (main_0012.s), decoded manually from
- * raw asm (fully visible; NOT verified against retail; C89-gated
- * only, promotion requires an oracle MATCH): frameless 3-arg s32
- * leaf, instruction-identical to func_80134310 (verified register
- * for register from raw asm): arg0[0]*arg1[0] + arg0[1]*arg1[1] +
- * arg0[2]*arg1[2] + arg2 via three mult/mflo lows summed with the
- * bias in the jr delay slot. */
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
 
-s32 func_80134A28(s16 *arg0, s16 *arg1, s32 arg2) {
-    return arg0[0] * arg1[0] + arg0[1] * arg1[1] + arg0[2] * arg1[2] + arg2;
+s32 func_80134A28(s32 a0, s32 a1, s32 a2) {
+    return *(s16*)(a0 + 0x0) * *(s16*)(a1 + 0x0)
+         + *(s16*)(a0 + 0x2) * *(s16*)(a1 + 0x2)
+         + *(s16*)(a0 + 0x4) * *(s16*)(a1 + 0x4)
+         + a2;
 }

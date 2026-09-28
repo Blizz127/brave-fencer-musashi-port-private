@@ -5,7 +5,16 @@
  * Donor shape: Druthulu shared/ov/func_8016EFC8.h (init OV state + D_80126D50 = *a0 | 0x04000000 | a1).
  * NOT in parked PAC0 hole 8014E934…80153C8C; later SC02 text near jr_8017AE2C / shared OV body.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8016EFC8 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
 extern u8 D_80126D6C;
 extern s32 D_80126D54;
@@ -29,13 +38,14 @@ extern s32 D_80127074;
 extern u8 D_800B9A17;
 extern s16 D_80126D20;
 extern s32 D_80126D50;
+extern void func_8012A568(void (*a0)(void));
 
-s32 func_8016EFC8(s32 a0, s32 a1) {
+s32 func_8016EFC8(s32 a0, s32 a1)
+{
     s32 v1;
     s32 m;
-
     v1 = *(s32 *)a0;
-    m = 0x04000000;
+    m = 0x4000000;
     D_80126D6C = 1;
     D_80126D54 = a0;
     D_80126D6D = 0;

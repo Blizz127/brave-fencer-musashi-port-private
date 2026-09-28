@@ -1,178 +1,155 @@
 /* Main-exec range [80024448,800249F0) from the SLUS executable.
  * SHA256(span)=ff81ac9b9f82924653a5474d03f75218cfb73158612272926d93e719bd569e71.
  * Word export for the native seam (m2c produced no draft). */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80024448 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_80024448 (main / src/800.c) -- TMD mesh dispatcher: walks the primitive list at
+ * hdr->prims (hdr = *(a0+8): [0]=verts [2]=norms [4]=prims [5]=count) and, per run of
+ * primitives, dispatches on (word>>24)&0xFC (0x20..0x3C, jump table jtbl_80072B88) and the
+ * gradation bit (word>>16)&4 to the matching emitter, which bumps the D_800A5E60 packet
+ * pointer. Each arm then subtracts the run length (u16 at +0) from the remaining count and
+ * advances by run_len * stride (16/20/24/28/32/36 bytes). The D_80078D88 tests select the
+ * handwritten shaded variants (func_80026514 / func_800268D0) with an 8th argument.
+ *   [MATCH 362/362, S72m_1]  Shape facts: every arm carries its OWN `count -= n; p += n*stride`
+ * tail (gcc-2.7.2 cross-jumps only the suffix shared with the fall-through predecessor, so the
+ * three-way D_80078D88 chains keep three copies); case bodies are in source order
+ * 0x20,0x28,0x24,0x2C,0x30,0x38,0x34,0x3C to reproduce the target's body layout while the
+ * jump table indexes by value. */
+extern u8 *D_800A5E60;
+extern s32 D_80078D88[];
 
-s32 func_800249F0(u32 *, s32, s32, s32, s32, s32, s32); /* static */
-s32 func_80024BC0(u32 *, s32, s32, s32, s32, s32, s32); /* static */
-s32 func_80024DE8(u32 *, s32, s32, s32, s32, s32, s32); /* static */
-s32 func_80025000(u32 *, s32, s32, s32, s32, s32, s32); /* static */
-s32 func_8002528C(u32 *, s32, s32, s32, s32, s32, s32); /* static */
-s32 func_80025504(u32 *, s32, s32, s32, s32, s32, s32); /* static */
-s32 func_80025818(u32 *, s32, s32, s32, s32, s32, s32); /* static */
-s32 func_80025A30(u32 *, s32, s32, s32, s32, s32, s32); /* static */
-s32 func_80025CBC(u32 *, s32, s32, s32, s32, s32, s32); /* static */
-s32 func_80025EB8(u32 *, s32, s32, s32, s32, s32, s32); /* static */
-s32 func_80026128(u32 *, s32, s32, s32, s32, s32, s32); /* static */
-s32 func_800262D8(u32 *, s32, s32, s32, s32, s32, s32); /* static */
-s32 func_80026514(u32 *, s32, s32, s32, s32, s32, s32, s32); /* static */
-s32 func_800268D0(u32 *, s32, s32, s32, s32, s32, s32, s32); /* static */
-extern s32 D_80078D88;
-extern s32 D_800A5E60;
+/* Callees: every one is DEFINED later in src/800.c; these are spelled to be compatible with
+ * those definitions (verbatim where the types are spellable here, no-proto otherwise). */
+extern long *func_800249F0(char *f, s32 verts, s32 norms, long *prim, s32 count, s32 shift, s32 ot);
+extern u8 *func_80024DE8();
+extern u8 *func_8002528C();
+extern void *func_80025504();
+extern u8 *func_80025A30(u8 *prim, u8 *vtx, u8 *nrm, u8 *pkt, s32 n, s32 shift, u32 *ot);
+extern void *func_80025CBC(void *prims, void *scr, void *cols, void *packets, s32 count, s32 otshift, u32 *ot);
+extern u32 *func_80025EB8();
+/* Handwritten-asm stubs, defined `void f()` in the TU; the packet pointer they leave in $v0
+ * is consumed here through a no-proto function-pointer cast (§378: folds to a direct jal). */
+extern void func_80026514();
+extern void func_800268D0();
 
-void func_80024448(void *arg0, void *arg1, s32 arg2) {
-    s32 temp_s2;
-    s32 temp_s3;
-    s32 temp_v0_3;
-    s32 temp_v1;
-    s32 var_s1;
-    s32 var_v0;
-    s32 var_v0_2;
-    s32 var_v0_3;
-    s32 var_v0_4;
-    u16 temp_v0_4;
-    u16 temp_v0_5;
-    u16 temp_v0_6;
-    u16 temp_v1_10;
-    u16 temp_v1_11;
-    u16 temp_v1_12;
-    u16 temp_v1_13;
-    u16 temp_v1_2;
-    u16 temp_v1_3;
-    u16 temp_v1_4;
-    u16 temp_v1_5;
-    u16 temp_v1_6;
-    u16 temp_v1_7;
-    u16 temp_v1_8;
-    u16 temp_v1_9;
-    u32 *var_s0;
-    u32 temp_v0_2;
-    void *temp_v0;
+#define CNT (*(u16 *)s0)
+#define OT  (*(u32 **)(param_2 + 4))
 
-    temp_v0 = M2C_FIELD(arg0, void **, 8);
-    var_s0 = M2C_FIELD(temp_v0, u32 **, 0x10);
-    var_s1 = M2C_FIELD(temp_v0, s32 *, 0x14);
-    temp_s3 = M2C_FIELD(temp_v0, s32 *, 0);
-    temp_s2 = M2C_FIELD(temp_v0, s32 *, 8);
-    if (var_s1 != 0) {
-        do {
-            temp_v0_2 = *var_s0;
-            temp_v0_3 = (temp_v0_2 >> 0x18) & 0xFC;
-            temp_v1 = (temp_v0_2 >> 0x10) & 4;
-            switch (temp_v0_3) {
-            case 0x20:
-                if (temp_v1 != 0) {
-                    D_800A5E60 = func_80024DE8(var_s0, temp_s3, temp_s2, D_800A5E60, (s32) (u16) *var_s0, arg2, M2C_FIELD(arg1, s32 *, 4));
-                    temp_v1_2 = (u16) *var_s0;
-                    var_s1 -= temp_v1_2;
-                    var_v0 = temp_v1_2 * 0x18;
-                } else {
-                    D_800A5E60 = func_800249F0(var_s0, temp_s3, temp_s2, D_800A5E60, (s32) (u16) *var_s0, arg2, M2C_FIELD(arg1, s32 *, 4));
-                    temp_v0_4 = (u16) *var_s0;
-                    var_s1 -= temp_v0_4;
-                    var_v0 = temp_v0_4 * 0x10;
-                }
-block_30:
-                var_s0 += var_v0;
-                break;
-            case 0x28:
-                if (temp_v1 != 0) {
-                    D_800A5E60 = func_80025000(var_s0, temp_s3, temp_s2, D_800A5E60, (s32) (u16) *var_s0, arg2, M2C_FIELD(arg1, s32 *, 4));
-                    temp_v0_5 = (u16) *var_s0;
-                    var_s1 -= temp_v0_5;
-                    var_v0 = temp_v0_5 << 5;
-                } else {
-                    D_800A5E60 = func_80024BC0(var_s0, temp_s3, temp_s2, D_800A5E60, (s32) (u16) *var_s0, arg2, M2C_FIELD(arg1, s32 *, 4));
-                    temp_v1_3 = (u16) *var_s0;
-                    var_s1 -= temp_v1_3;
-                    var_v0_2 = temp_v1_3 * 4;
-block_28:
-                    var_v0_3 = var_v0_2 + (u16) *var_s0;
-block_29:
-                    var_v0 = var_v0_3 * 4;
-                }
-                goto block_30;
-            case 0x24:
-                D_800A5E60 = func_80025CBC(var_s0, temp_s3, temp_s2, D_800A5E60, (s32) (u16) *var_s0, arg2, M2C_FIELD(arg1, s32 *, 4));
-                temp_v1_4 = (u16) *var_s0;
-                var_s1 -= temp_v1_4;
-                var_v0 = temp_v1_4 * 0x18;
-                goto block_30;
-            case 0x2C:
-                D_800A5E60 = func_80025EB8(var_s0, temp_s3, temp_s2, D_800A5E60, (s32) (u16) *var_s0, arg2, M2C_FIELD(arg1, s32 *, 4));
-                temp_v0_6 = (u16) *var_s0;
-                var_s1 -= temp_v0_6;
-                var_v0 = temp_v0_6 << 5;
-                goto block_30;
-            case 0x30:
-                if (temp_v1 != 0) {
-                    D_800A5E60 = func_80025818(var_s0, temp_s3, temp_s2, D_800A5E60, (s32) (u16) *var_s0, arg2, M2C_FIELD(arg1, s32 *, 4));
-                    temp_v1_5 = (u16) *var_s0;
-                    var_s1 -= temp_v1_5;
-                    var_v0_3 = temp_v1_5 * 7;
-                } else {
-                    if (D_80078D88 & 0x10000) {
-                        D_800A5E60 = func_80026514(var_s0, temp_s3, temp_s2, D_800A5E60, (s32) (u16) *var_s0, arg2, M2C_FIELD(arg1, s32 *, 4), 0);
-                        temp_v1_6 = (u16) *var_s0;
-                        var_s1 -= temp_v1_6;
-                        var_v0_2 = temp_v1_6 * 4;
-                    } else if (D_80078D88 & 0x20000) {
-                        D_800A5E60 = func_80026514(var_s0, temp_s3, temp_s2, D_800A5E60, (s32) (u16) *var_s0, arg2, M2C_FIELD(arg1, s32 *, 4), 1);
-                        temp_v1_7 = (u16) *var_s0;
-                        var_s1 -= temp_v1_7;
-                        var_v0_2 = temp_v1_7 * 4;
-                    } else {
-                        D_800A5E60 = func_8002528C(var_s0, temp_s3, temp_s2, D_800A5E60, (s32) (u16) *var_s0, arg2, M2C_FIELD(arg1, s32 *, 4));
-                        temp_v1_8 = (u16) *var_s0;
-                        var_s1 -= temp_v1_8;
-                        var_v0_2 = temp_v1_8 * 4;
-                    }
-                    goto block_28;
-                }
-                goto block_29;
-            case 0x38:
-                if (temp_v1 != 0) {
-                    var_v0_4 = func_80025A30(var_s0, temp_s3, temp_s2, D_800A5E60, (s32) (u16) *var_s0, arg2, M2C_FIELD(arg1, s32 *, 4));
-block_27:
-                    D_800A5E60 = var_v0_4;
-                    temp_v1_9 = (u16) *var_s0;
-                    var_s1 -= temp_v1_9;
-                    var_v0_2 = temp_v1_9 * 8;
-                    goto block_28;
-                }
-                if (D_80078D88 & 0x10000) {
-                    D_800A5E60 = func_800268D0(var_s0, temp_s3, temp_s2, D_800A5E60, (s32) (u16) *var_s0, arg2, M2C_FIELD(arg1, s32 *, 4), 0);
-                    temp_v1_10 = (u16) *var_s0;
-                    var_s1 -= temp_v1_10;
-                    var_v0 = temp_v1_10 * 0x18;
-                } else if (D_80078D88 & 0x20000) {
-                    D_800A5E60 = func_800268D0(var_s0, temp_s3, temp_s2, D_800A5E60, (s32) (u16) *var_s0, arg2, M2C_FIELD(arg1, s32 *, 4), 1);
-                    temp_v1_11 = (u16) *var_s0;
-                    var_s1 -= temp_v1_11;
-                    var_v0 = temp_v1_11 * 0x18;
-                } else {
-                    D_800A5E60 = func_80025504(var_s0, temp_s3, temp_s2, D_800A5E60, (s32) (u16) *var_s0, arg2, M2C_FIELD(arg1, s32 *, 4));
-                    temp_v1_12 = (u16) *var_s0;
-                    var_s1 -= temp_v1_12;
-                    var_v0 = temp_v1_12 * 0x18;
-                }
-                goto block_30;
-            case 0x34:
-                D_800A5E60 = func_80026128(var_s0, temp_s3, temp_s2, D_800A5E60, (s32) (u16) *var_s0, arg2, M2C_FIELD(arg1, s32 *, 4));
-                temp_v1_13 = (u16) *var_s0;
-                var_s1 -= temp_v1_13;
-                var_v0_3 = temp_v1_13 * 7;
-                goto block_29;
-            case 0x3C:
-                var_v0_4 = func_800262D8(var_s0, temp_s3, temp_s2, D_800A5E60, (s32) (u16) *var_s0, arg2, M2C_FIELD(arg1, s32 *, 4));
-                goto block_27;
+void func_80024448(int param_1, int param_2, u32 param_3)
+{
+    u32 *s0;
+    u32 *v0;
+    s32 iVar;
+    u32 flag;
+    u32 vtx;
+    u32 nrm;
+    /* These five return TU-local untagged struct type names (POLY_F4, PG4, PG3, PktGT3,
+     * PktGT4) that src/800.c introduces only AFTER this function, so no file-scope forward
+     * decl can spell them (a file-scope `extern u8 *f();` is a hard "conflicting types" error
+     * at the later definition). Block-scope externs live in gcc-2.7.2's limbo instead: the
+     * later definition draws only a "type mismatch with previous external decl" warning,
+     * and the emitted bytes are identical (measured on a synthetic TU, S72m_1). */
+    extern u8 *func_80024BC0();
+    extern u8 *func_80025000();
+    extern u8 *func_80025818();
+    extern u8 *func_80026128();
+    extern u8 *func_800262D8();
+
+    v0 = *(u32 **)(param_1 + 8);
+    s0 = (u32 *)v0[4];
+    iVar = v0[5];
+    vtx = v0[0];
+    nrm = v0[2];
+
+    if (iVar == 0) return;
+
+    do {
+        flag = (*s0 >> 16) & 4;
+        switch ((*s0 >> 24) & 0xFC) {
+        case 0x20:
+            if (flag) {
+                D_800A5E60 = (u8 *)func_80024DE8(s0, vtx, nrm, D_800A5E60, CNT, param_3, OT);
+                iVar -= CNT;
+                s0 = (u32 *)((u8 *)s0 + CNT * 24);
+            } else {
+                D_800A5E60 = (u8 *)func_800249F0((char *)s0, vtx, nrm, (long *)D_800A5E60, CNT, param_3, (s32)OT);
+                iVar -= CNT;
+                s0 = (u32 *)((u8 *)s0 + CNT * 16);
             }
-        } while (var_s1 != 0);
-    }
+            break;
+        case 0x28:
+            if (flag) {
+                D_800A5E60 = (u8 *)func_80025000(s0, vtx, nrm, D_800A5E60, CNT, param_3, OT);
+                iVar -= CNT;
+                s0 = (u32 *)((u8 *)s0 + CNT * 32);
+            } else {
+                D_800A5E60 = (u8 *)func_80024BC0(s0, vtx, nrm, D_800A5E60, CNT, param_3, OT);
+                iVar -= CNT;
+                s0 = (u32 *)((u8 *)s0 + CNT * 20);
+            }
+            break;
+        case 0x24:
+            D_800A5E60 = (u8 *)func_80025CBC(s0, (void *)vtx, (void *)nrm, D_800A5E60, CNT, param_3, OT);
+            iVar -= CNT;
+            s0 = (u32 *)((u8 *)s0 + CNT * 24);
+            break;
+        case 0x2C:
+            D_800A5E60 = (u8 *)func_80025EB8(s0, vtx, nrm, D_800A5E60, CNT, param_3, OT);
+            iVar -= CNT;
+            s0 = (u32 *)((u8 *)s0 + CNT * 32);
+            break;
+        case 0x30:
+            if (flag) {
+                D_800A5E60 = (u8 *)func_80025818(s0, vtx, nrm, D_800A5E60, CNT, param_3, OT);
+                iVar -= CNT;
+                s0 = (u32 *)((u8 *)s0 + CNT * 28);
+            } else {
+                if (D_80078D88[0] & 0x10000) {
+                    D_800A5E60 = ((u8 *(*)())func_80026514)(s0, vtx, nrm, D_800A5E60, CNT, param_3, OT, 0);
+                    iVar -= CNT;
+                    s0 = (u32 *)((u8 *)s0 + CNT * 20);
+                } else if (D_80078D88[0] & 0x20000) {
+                    D_800A5E60 = ((u8 *(*)())func_80026514)(s0, vtx, nrm, D_800A5E60, CNT, param_3, OT, 1);
+                    iVar -= CNT;
+                    s0 = (u32 *)((u8 *)s0 + CNT * 20);
+                } else {
+                    D_800A5E60 = (u8 *)func_8002528C(s0, vtx, nrm, D_800A5E60, CNT, param_3, OT);
+                    iVar -= CNT;
+                    s0 = (u32 *)((u8 *)s0 + CNT * 20);
+                }
+            }
+            break;
+        case 0x38:
+            if (flag) {
+                D_800A5E60 = (u8 *)func_80025A30((u8 *)s0, (u8 *)vtx, (u8 *)nrm, D_800A5E60, CNT, param_3, OT);
+                iVar -= CNT;
+                s0 = (u32 *)((u8 *)s0 + CNT * 36);
+            } else if (D_80078D88[0] & 0x10000) {
+                D_800A5E60 = ((u8 *(*)())func_800268D0)(s0, vtx, nrm, D_800A5E60, CNT, param_3, OT, 0);
+                iVar -= CNT;
+                s0 = (u32 *)((u8 *)s0 + CNT * 24);
+            } else if (D_80078D88[0] & 0x20000) {
+                D_800A5E60 = ((u8 *(*)())func_800268D0)(s0, vtx, nrm, D_800A5E60, CNT, param_3, OT, 1);
+                iVar -= CNT;
+                s0 = (u32 *)((u8 *)s0 + CNT * 24);
+            } else {
+                D_800A5E60 = (u8 *)func_80025504(s0, vtx, nrm, D_800A5E60, CNT, param_3, OT);
+                iVar -= CNT;
+                s0 = (u32 *)((u8 *)s0 + CNT * 24);
+            }
+            break;
+        case 0x34:
+            D_800A5E60 = (u8 *)func_80026128(s0, vtx, nrm, D_800A5E60, CNT, param_3, OT);
+            iVar -= CNT;
+            s0 = (u32 *)((u8 *)s0 + CNT * 28);
+            break;
+        case 0x3C:
+            D_800A5E60 = (u8 *)func_800262D8(s0, vtx, nrm, D_800A5E60, CNT, param_3, OT);
+            iVar -= CNT;
+            s0 = (u32 *)((u8 *)s0 + CNT * 36);
+            break;
+        }
+    } while (iVar != 0);
 }

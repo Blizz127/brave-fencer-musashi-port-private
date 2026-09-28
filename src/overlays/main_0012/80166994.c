@@ -2,161 +2,144 @@
  * SHA256(span)=d8d36242db38ba6fa8a76e20c30de2fba251a9337a6c11d18fd18ad8a2301743.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80166994 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* Vendor names mapped to address-named symbols for the link-by-address harness. */
+#define RotTransSV func_8004945C
+#define VectorNormalSS func_80047E98
 
-void func_80047E98(u16 *, u16 *, s32, u16);            /* extern */
-void func_8004945C(s16 *, s16 *, void *);                 /* extern */
-extern s32 D_80184418;
-void func_801484B0(s16 *, s16 *, s16);                 /* static */
-void func_80148534(s16 *, s16 *, s16);                 /* static */
-void func_80149350(s32, s16 *, s16 *);                 /* static */
-void func_80165FA4(s32, s16 *, s16 *);                 /* static */
+/* File-scope declarations from the vendor translation unit. */
+typedef struct { s16 f0, f1, f2, f3, f4, f5; } TrailEntry;
+typedef struct { u8 flag, idx, count, timer; TrailEntry e[16]; } Trail;
+void func_8012A568(void (*a0)(void));
+extern void func_8012A568(void (*a0)(void));
 
-s32 func_80166994(void *arg0, s16 arg1, s16 arg2, s16 arg3) {
-    s32 sp30;
-    u16 sp2C;
-    u16 sp2A;
-    u16 sp28;
-    u16 sp24;
-    u16 sp22;
-    u16 sp20;
-    s16 sp18;
-    s16 sp10;
-    s32 temp_a2;
-    s32 temp_a3;
-    s32 temp_s2;
-    s32 temp_t0;
-    s32 temp_t1;
-    s32 temp_v0_3;
-    s32 temp_v1_3;
-    s32 var_v0;
-    u16 temp_a2_2;
-    u16 temp_a3_2;
-    u16 temp_v1_4;
-    u32 temp_a0;
-    u32 temp_v1;
-    u8 temp_a1;
-    u8 temp_v0;
-    u8 temp_v0_2;
-    u8 temp_v0_4;
-    u8 temp_v1_2;
-    u8 temp_v1_5;
-    void *temp_s1;
+extern void func_801484B0(s32 a0, s32 a1);
+extern void func_80148534(s32 a0, s32 a1);
+extern void func_80149350(s32 arg0);
+extern s32 func_80165FA4(s32 a0, s32 a1, s32 a2);
 
-    temp_s1 = (arg2 * 0xC4) + D_80184418;
-    temp_s2 = arg0->unk34;
-    if (arg1 != 1) {
-        if (arg1 < 2) {
-            if (arg1 != 0) {
-                var_v0 = arg2 << 0x10;
-            } else {
-                temp_s1->unk0 = 1;
-                temp_s1->unk2 = 0U;
-                temp_s1->unk1 = 0U;
-                temp_s1->unk3 = 0xF4U;
-                goto block_17;
-            }
-            goto block_18;
+/* func_80166994 — trail/afterimage ring recorder (0xC4-stride Trail records at D_80184418).
+ * param_2: 0=init, 1=advance(record), 2=fadeout; param_3: trail index (s16); param_4: divisor (s16).
+ *
+ * K&R definition: true s16 params => callee-side lazy per-use narrow/extend with raw pseudos
+ * (s3/t0/s4 hold raw a1/a2/a3; first-use extension allocates IN PLACE into the arg reg), while
+ * the promoted K&R type (int x4) stays compatible with the canon-sig s32 prototype in the TU.
+ * Returns s32 (v0=1 when the fadeout completes, else 0) => the //@EDIT above flips the split's
+ * canon-sig prototype return type, AND engine_core.h needs the once-global ec_edit (all 5 sites,
+ * byte-neutral: every caller discards the result):
+ *   ec_edit old: "extern void func_80166994(s32 a0, s32 a1, s32 a2, s32 a3); \"
+ *   ec_edit new: "extern s32 func_80166994(s32 a0, s32 a1, s32 a2, s32 a3); \"
+ * Without the ec_edit, cc1 hard-errors (conflicting types vs the void decls in DEFINE_ macros).
+ *
+ * Fully block-scoped (typedefs + externs inside the body) so the crack propagates ×134 via
+ * family_remap with zero file-scope footprint. No register pins.
+ */
+s32 func_80166994(param_1, param_2, param_3, param_4)
+    s32 param_1;
+    s16 param_2;
+    s16 param_3;
+    s16 param_4;
+{
+    extern u8 D_80184418[];
+    extern void RotTransSV(s32, s32, void*);
+    extern s32 VectorNormalSS(void *a0, void *a1);
+
+    Trail *p = &((Trail *)D_80184418)[param_3];
+    s32 uVar6 = *(s32 *)(param_1 + 0x34);
+    s16 v10[4];
+    s16 v18[4];
+    s16 v20[4];
+    s16 v28[4];
+    s16 out[4];
+    s32 c;
+
+    switch (param_2) {
+    case 0:
+        p->flag = 1;
+        p->count = 0;
+        p->idx = 0;
+        p->timer = 0xf4;
+        break;
+    case 1:
+        v20[0] = p->e[p->idx].f0;
+        v20[1] = p->e[p->idx].f1;
+        v20[2] = p->e[p->idx].f2;
+        v28[0] = p->e[p->idx].f3;
+        v28[1] = p->e[p->idx].f4;
+        v28[2] = p->e[p->idx].f5;
+        c = p->idx;
+        p->idx = c + 1;
+        if ((u8)(c + 1) > 0xf) {
+            p->idx = 0;
         }
-        var_v0 = arg2 << 0x10;
-        if (arg1 != 2) {
-            goto block_18;
+        if (p->count < 0xf) {
+            p->count = p->count + 1;
         }
-        temp_v0 = temp_s1->unk3 - 0x10;
-        temp_a0 = temp_v0 & 0xFF;
-        temp_s1->unk3 = temp_v0;
-        if (temp_a0 < 0x10U) {
-            temp_s1->unk0 = 0;
+        break;
+    case 2: {
+        u8 bVar3 = p->timer - 0x10;
+        p->timer = bVar3;
+        if (bVar3 < 0x10) {
+            p->flag = 0;
             return 1;
         }
-        temp_a1 = temp_s1->unk2;
-        temp_v1 = temp_a1 & 0xFF;
-        if (temp_v1 >= 2U) {
-            if ((u32) (temp_a0 >> 4) < temp_v1) {
-                temp_s1->unk2 = (u8) (temp_a1 - 1);
+        {
+            u8 bVar1 = p->count;
+            if (bVar1 >= 2 && (bVar3 >> 4) < bVar1) {
+                p->count = bVar1 - 1;
             }
-            return 0;
         }
-        /* Duplicate return node #27. Try simplifying control flow for better match */
         return 0;
     }
-    sp20 = (temp_s1 + (temp_s1->unk1 * 0xC))->unk4;
-    sp22 = (temp_s1 + (temp_s1->unk1 * 0xC))->unk6;
-    sp24 = (temp_s1 + (temp_s1->unk1 * 0xC))->unk8;
-    sp28 = (temp_s1 + (temp_s1->unk1 * 0xC))->unkA;
-    sp2A = (temp_s1 + (temp_s1->unk1 * 0xC))->unkC;
-    sp2C = (temp_s1 + (temp_s1->unk1 * 0xC))->unkE;
-    temp_v0_2 = temp_s1->unk1 + 1;
-    temp_s1->unk1 = temp_v0_2;
-    if ((u32) (temp_v0_2 & 0xFF) >= 0x10U) {
-        temp_s1->unk1 = 0U;
     }
-    temp_v1_2 = temp_s1->unk2;
-    if (temp_v1_2 < 0xFU) {
-        temp_s1->unk2 = (u8) (temp_v1_2 + 1);
-    }
-block_17:
-    var_v0 = arg2 << 0x10;
-block_18:
-    if ((var_v0 >> 0x10) < 2) {
-        func_801484B0(&sp10, &sp18, arg2);
+
+    if (param_3 < 2) {
+        func_801484B0((s32)v10, (s32)v18);
     } else {
-        func_80148534(&sp10, &sp18, arg2);
+        func_80148534((s32)v10, (s32)v18);
     }
-    func_80165FA4(temp_s2, &sp10, &sp18);
-    func_80149350(temp_s2, &sp10, &sp10);
-    func_8004945C(&sp18, &sp18, &sp30);
-    if ((arg1 << 0x10) != 0) {
-        temp_t0 = (s32) (sp10 + (s16) sp20) >> 1;
-        sp20 = (u16) temp_t0;
-        temp_a3 = (s32) (sp12 + (s16) sp22) >> 1;
-        sp22 = (u16) temp_a3;
-        temp_v1_3 = (s32) (sp14 + (s16) sp24) >> 1;
-        sp24 = (u16) temp_v1_3;
-        temp_t1 = (s32) (sp18 + (s16) sp28) >> 1;
-        sp28 = (u16) temp_t1;
-        sp20 = temp_t0 - temp_t1;
-        temp_a2 = (s32) (sp1A + (s16) sp2A) >> 1;
-        temp_a3_2 = temp_a3 - temp_a2;
-        sp2A = (u16) temp_a2;
-        sp22 = temp_a3_2;
-        temp_v0_3 = (s32) (sp1C + (s16) sp2C) >> 1;
-        sp2C = (u16) temp_v0_3;
-        sp24 = temp_v1_3 - temp_v0_3;
-        func_80047E98(&sp20, &sp20, temp_a2, temp_a3_2);
-        temp_a2_2 = sp28 + ((s16) sp20 / arg3);
-        sp20 = temp_a2_2;
-        sp22 = sp2A + ((s16) sp22 / arg3);
-        temp_v1_4 = sp2C + ((s16) sp24 / arg3);
-        sp24 = temp_v1_4;
-        (temp_s1 + (temp_s1->unk1 * 0xC))->unk4 = temp_a2_2;
-        (temp_s1 + (temp_s1->unk1 * 0xC))->unk6 = sp22;
-        (temp_s1 + (temp_s1->unk1 * 0xC))->unk8 = temp_v1_4;
-        (temp_s1 + (temp_s1->unk1 * 0xC))->unkA = sp28;
-        (temp_s1 + (temp_s1->unk1 * 0xC))->unkC = sp2A;
-        (temp_s1 + (temp_s1->unk1 * 0xC))->unkE = sp2C;
-        temp_v0_4 = temp_s1->unk1 + 1;
-        temp_s1->unk1 = temp_v0_4;
-        if ((u32) (temp_v0_4 & 0xFF) >= 0x10U) {
-            temp_s1->unk1 = 0U;
+    func_80165FA4(uVar6, (s32)v10, (s32)v18);
+    ((void (*)(s32, s32, s32))func_80149350)(uVar6, (s32)v10, (s32)v10);
+    ((void (*)(void *, void *, void *))RotTransSV)(v18, v18, out);
+
+    if (param_2 != 0) {
+        v20[0] = (v10[0] + v20[0]) >> 1;
+        v20[1] = (v10[1] + v20[1]) >> 1;
+        v20[2] = (v10[2] + v20[2]) >> 1;
+        v28[0] = (v18[0] + v28[0]) >> 1;
+        v28[1] = (v18[1] + v28[1]) >> 1;
+        v28[2] = (v18[2] + v28[2]) >> 1;
+        v20[0] = v20[0] - v28[0];
+        v20[1] = v20[1] - v28[1];
+        v20[2] = v20[2] - v28[2];
+        VectorNormalSS(v20, v20);
+        v20[0] = v28[0] + v20[0] / param_4;
+        v20[1] = v28[1] + v20[1] / param_4;
+        v20[2] = v28[2] + v20[2] / param_4;
+        p->e[p->idx].f0 = v20[0];
+        p->e[p->idx].f1 = v20[1];
+        p->e[p->idx].f2 = v20[2];
+        p->e[p->idx].f3 = v28[0];
+        p->e[p->idx].f4 = v28[1];
+        p->e[p->idx].f5 = v28[2];
+        c = p->idx;
+        p->idx = c + 1;
+        if ((u8)(c + 1) > 0xf) {
+            p->idx = 0;
         }
-        temp_v1_5 = temp_s1->unk2;
-        if (temp_v1_5 < 0xFU) {
-            temp_s1->unk2 = (u8) (temp_v1_5 + 1);
+        if (p->count < 0xf) {
+            p->count = p->count + 1;
         }
     }
-    (temp_s1 + (temp_s1->unk1 * 0xC))->unk4 = (u16) sp10;
-    (temp_s1 + (temp_s1->unk1 * 0xC))->unk6 = (u16) sp12;
-    (temp_s1 + (temp_s1->unk1 * 0xC))->unk8 = (u16) sp14;
-    (temp_s1 + (temp_s1->unk1 * 0xC))->unkA = (u16) sp18;
-    (temp_s1 + (temp_s1->unk1 * 0xC))->unkC = (u16) sp1A;
-    (temp_s1 + (temp_s1->unk1 * 0xC))->unkE = (u16) sp1C;
+
+    p->e[p->idx].f0 = v10[0];
+    p->e[p->idx].f1 = v10[1];
+    p->e[p->idx].f2 = v10[2];
+    p->e[p->idx].f3 = v18[0];
+    p->e[p->idx].f4 = v18[1];
+    p->e[p->idx].f5 = v18[2];
     return 0;
 }

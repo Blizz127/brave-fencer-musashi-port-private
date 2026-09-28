@@ -5,18 +5,23 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
-/* Decompiled by m2c from main.s, then verified byte-exact
- * against retail by tools/match_function.py. Types and signatures are
- * whatever reproduces the bytes; they are not evidence of the
- * original declaration. */
-
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8012A62C - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-typedef struct { u32 w[41]; } T41;
-extern T41 *D_801151D4;
-extern T41 D_80126DB8;
-extern u8 D_80127504;
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-void func_8012A62C(u8 v) {
-    D_80126DB8 = *D_801151D4;
-    D_80127504 = v;
+struct BigCopy { s32 words[41]; };
+
+void func_8012A62C(s32 a0) {
+    extern s32 D_801151D4;
+    extern struct BigCopy D_80126DB8;
+    extern u8 D_80127504;
+    D_80126DB8 = *(struct BigCopy *)D_801151D4;
+    D_80127504 = a0;
 }

@@ -4,43 +4,47 @@
  * Member-0012 C shape retargeted to this member: D_8017E6D4->D_80184FC4.
  * Oracle MATCH re-earned against the resident image; Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8012E9C0 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-void func_8016AA50();
-void func_8016B428();
-void func_80019064();
-extern s32 D_80184FC4;
-typedef struct Q { u8 pad[0x30]; s16 u30; } Q;
-typedef struct {
-    u8 pad[6]; u16 u6;
-    u8 pad8[2]; u16 uA;
-    u8 padC[2]; u16 uE;
-    u8 pad10[0x4E]; u8 u5E;
-    u8 pad5F; s16 u60;
-    u8 pad62[0x16]; Q *u78;
-    s16 u7C, u7E, u80, u82;
-} T;
-void func_8012E9C0(T *p) {
-    s32 a1;
-    if (p->u60 == 0) {
-        return;
-    }
-    if (p->u5E == 0x1D) {
-        p->u82 = 0;
-        p->u7C = p->u6;
-        p->u7E = p->uA;
-        p->u80 = p->uE;
-    }
-    if (p->u78) {
-        a1 = (p->u60 * p->u78->u30) >> 12;
-        if (a1 <= 0) {
-            a1 = 1;
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+extern void func_8016AA50(int, int);
+extern void func_8016B428(int);
+extern void func_80019064(void *);
+extern int D_80184FC4;
+
+void func_8012E9C0(int param_1)
+{
+    int iVar1;
+
+    if (*(short *)(param_1 + 0x60) != 0) {
+        if (*(unsigned char *)(param_1 + 0x5e) == 0x1d) {
+            *(short *)(param_1 + 0x82) = 0;
+            *(short *)(param_1 + 0x7c) = *(unsigned short *)(param_1 + 6);
+            *(short *)(param_1 + 0x7e) = *(unsigned short *)(param_1 + 0xa);
+            *(short *)(param_1 + 0x80) = *(unsigned short *)(param_1 + 0xe);
         }
-    } else {
-        a1 = p->u60;
+        if (*(int *)(param_1 + 0x78) != 0) {
+            iVar1 = *(short *)(param_1 + 0x60) *
+                        *(short *)(*(int *)(param_1 + 0x78) + 0x30) >> 0xc;
+            if (iVar1 < 1) {
+                iVar1 = 1;
+            }
+        } else {
+            iVar1 = *(short *)(param_1 + 0x60);
+        }
+        func_8016AA50(param_1, iVar1);
+        if ((*(unsigned short *)(param_1 + 0x82) & 1) != 0) {
+            func_8016B428(param_1);
+            func_80019064(&D_80184FC4);
+        }
     }
-    func_8016AA50(p, a1);
-    if (p->u82 & 1) {
-        func_8016B428(p);
-        func_80019064(&D_80184FC4);
-    }
+    return;
 }

@@ -1,154 +1,149 @@
-/* SC02 resident retail span [8013D9B0,8013DBE4). Offset 0x15858 at base 80128158.
- * SHA256(span)=8b1253c4460dd014d43a9d3402230a5058dfbc0a4e5fd6195424f1b4a972272e.
- * Words are the guest's loaded image (artifacts/sc02-resident-20260910).
- * Member-0012 C shape retargeted to this member: D_801841A4->D_801B635C; D_801841AC->D_801B6364; D_801841BC->D_801B6374; D_801841C4->D_801B637C.
- * Oracle MATCH re-earned against the resident image; Not MAIN10.
- */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-
-/* GTE/cop2 mnemonic overlay: ordinary C cannot emit coprocessor ops.
- * Verified by tools/match_function.py. */
+/* GTE mnemonic macros, copied from vendor/bfm-decomp/include/gte_macros.inc (assembler-only, emit no code). */
 __asm__(
-    ".set noreorder\n"
-    ".globl func_8013D9B0\n"
-    ".type func_8013D9B0, @function\n"
-    "func_8013D9B0:\n"
-    "addiu $sp, $sp, -0x48\n"
-    "sw $s2, 0x38($sp)\n"
-    "lui $s2, %hi(D_801B6364)\n"
-    "lw $s2, %lo(D_801B6364)($s2)\n"
-    "sw $ra, 0x44($sp)\n"
-    "sw $s4, 0x40($sp)\n"
-    "sw $s3, 0x3C($sp)\n"
-    "sw $s1, 0x34($sp)\n"
-    "sw $s0, 0x30($sp)\n"
-    "sll $v0, $a0, 2\n"
-    "lui $v1, %hi(D_801B635C)\n"
-    "lw $v1, %lo(D_801B635C)($v1)\n"
-    "lhu $a1, 0x0($s2)\n"
-    "addu $v0, $v0, $v1\n"
-    "lw $v1, 0x0($v0)\n"
-    "addiu $v0, $zero, -0x1\n"
-    "lui $at, %hi(D_801B637C)\n"
-    "sw $v0, %lo(D_801B637C)($at)\n"
-    "addiu $v0, $zero, 0xFF\n"
-    "sw $v1, 0x18($sp)\n"
-    "andi $v1, $a1, 0xFFFF\n"
-    "addu $s3, $zero, $zero\n"
-    "addiu $s4, $sp, 0x18\n"
-    "addiu $s1, $s2, 0xC\n"
-    "andi $v1, $a1, 0xFFFF\n"
-    ".L8013DA1C:\n"
-    "addiu $v0, $zero, 0x9\n"
-    "addu $t5, $zero, $zero\n"
-    "lhu $v0, -0x8($s1)\n"
-    "nop\n"
-    "sh $v0, 0x10($sp)\n"
-    "lhu $v0, -0x6($s1)\n"
-    "nop\n"
-    "sh $v0, 0x12($sp)\n"
-    "lhu $v0, -0x4($s1)\n"
-    "nop\n"
-    "sh $v0, 0x14($sp)\n"
-    "lhu $v0, -0x2($s1)\n"
-    "nop\n"
-    "sh $v0, 0x16($sp)\n"
-    "lh $v1, -0x4($s1)\n"
-    "lh $v0, -0x2($s1)\n"
-    "nop\n"
-    "mult $v1, $v0\n"
-    "addu $s0, $zero, $zero\n"
-    "lw $t3, 0x0($s1)\n"
-    "mflo $t6\n"
-    "sll $v0, $t6, 1\n"
-    "addu $a1, $t3, $v0\n"
-    "addu $t2, $a1, $zero\n"
-    ".L8013DA84:\n"
-    "lhu $v0, 0x0($t3)\n"
-    "nop\n"
-    "sw $v0, 0x1C($sp)\n"
-    "lhu $v0, 0x0($t2)\n"
-    "nop\n"
-    "andi $v1, $v0, 0x1F\n"
-    "andi $a2, $v0, 0x3E0\n"
-    "andi $a3, $v0, 0x7C00\n"
-    "addiu $v0, $sp, 0x1C\n"
-    "mtc2 $zero, $8\n"
-    "lwc2 $6, 0x0($s4)\n"
-    "lwc2 $28, 0x0($v0)\n"
-    "nop\n"
-    "nop\n"
-    "addiu $v0, $sp, 0x20\n"
-    "addu $t4, $v0, $zero\n"
-    "swc2 $29, 0x0($t4)\n"
-    "lw $v0, 0x20($sp)\n"
-    "nop\n"
-    "andi $a0, $v0, 0x1F\n"
-    "andi $t0, $v0, 0x3E0\n"
-    "andi $t1, $v0, 0x7C00\n"
-    "slt $v0, $v1, $a0\n"
-    "addiu $s0, $zero, 0x1\n"
-    "addiu $v1, $v1, 0x1\n"
-    ".L8013DAF4:\n"
-    "slt $v0, $a0, $v1\n"
-    "nop\n"
-    "addiu $v1, $v1, -0x1\n"
-    ".L8013DB04:\n"
-    "slt $v0, $a2, $t0\n"
-    "addiu $s0, $zero, 0x1\n"
-    "addiu $a2, $a2, 0x20\n"
-    ".L8013DB18:\n"
-    "slt $v0, $t0, $a2\n"
-    "nop\n"
-    "addiu $a2, $a2, -0x20\n"
-    ".L8013DB28:\n"
-    "slt $v0, $a3, $t1\n"
-    "addiu $s0, $zero, 0x1\n"
-    "addiu $a3, $a3, 0x400\n"
-    ".L8013DB3C:\n"
-    "slt $v0, $t1, $a3\n"
-    "nop\n"
-    "addiu $a3, $a3, -0x400\n"
-    ".L8013DB4C:\n"
-    "or $v1, $v1, $a2\n"
-    "lw $a0, 0x1C($sp)\n"
-    "or $v1, $v1, $a3\n"
-    "andi $v0, $a0, 0x8000\n"
-    "or $v1, $v1, $v0\n"
-    "nop\n"
-    "nop\n"
-    "ori $v1, $zero, 0x8000\n"
-    ".L8013DB74:\n"
-    "sh $v1, 0x0($t2)\n"
-    "addiu $t2, $t2, 0x2\n"
-    "addiu $t5, $t5, 0x1\n"
-    "slt $v0, $t5, $t6\n"
-    "addiu $t3, $t3, 0x2\n"
-    ".L8013DB8C:\n"
-    "nop\n"
-    "addiu $a0, $sp, 0x10\n"
-    ".L8013DB9C:\n"
-    "or $s3, $s3, $s0\n"
-    ".L8013DBA0:\n"
-    "addiu $s2, $s2, 0x10\n"
-    "lhu $a1, 0x0($s2)\n"
-    "addiu $v0, $zero, 0xFF\n"
-    "andi $v1, $a1, 0xFFFF\n"
-    "addiu $s1, $s1, 0x10\n"
-    ".L8013DBB8:\n"
-    "lui $at, %hi(D_801B6374)\n"
-    "sw $s3, %lo(D_801B6374)($at)\n"
-    ".L8013DBC0:\n"
-    "lw $ra, 0x44($sp)\n"
-    "lw $s4, 0x40($sp)\n"
-    "lw $s3, 0x3C($sp)\n"
-    "lw $s2, 0x38($sp)\n"
-    "lw $s1, 0x34($sp)\n"
-    "lw $s0, 0x30($sp)\n"
-    "addiu $sp, $sp, 0x48\n"
-    "jr $ra\n"
-    "nop\n"
-    ".size func_8013D9B0, .-func_8013D9B0\n"
-    ".set reorder\n"
+".macro cop2op fake_op, op, gbg = 0, sf = 1, mx = 0, v = 0, cv = 0, lm = 0\n"
+"    cop2 \\fake_op << 20 | \\gbg << 20 | \\sf << 19 | \\mx << 17 | \\v << 15 | \\cv << 13 | \\lm << 10 | \\op\n"
+".endm\n"
+".macro dpcl\n"
+"    cop2op 0x06, 0x29\n"
+".endm\n"
 );
+/* func_8013D9B0 - byte-exact against retail at -O2 (tools/register_match.py). */
+extern void func_800599B8(u16 *);
+extern s32 D_801B6374;
+extern void *D_801B635C;
+extern void func_800599B8(u16*);
 
+void func_8013D9B0(int param_1)
+{
+
+    extern s16 *D_801B6364;
+    extern s32 D_801B637C;
+    u8 buf[0x20];
+    register s32 uVar13 __asm__("$16");
+    register u16 *psVar14 __asm__("$17");
+    register u16 *psVar15 __asm__("$18");
+    register s32 uVar16 __asm__("$19");
+    register void *r0 __asm__("$20");
+    register u16 *puVar10 __asm__("$11");
+    register u16 *puVar9 __asm__("$10");
+    register s32 iVar11 __asm__("$13");
+    register s32 iVar12 __asm__("$14");
+    u16 sVar4;
+    register u32 uVar5 __asm__("$3");
+    register u32 uVar7 __asm__("$6");
+    register u32 uVar1 __asm__("$7");
+    register u32 uVar6 __asm__("$4");
+    register u32 uVar8 __asm__("$8");
+    register u32 uVar3 __asm__("$9");
+
+    psVar15 = (*(u16 * *)&D_801B6364);
+    if (psVar15 != 0) {
+        sVar4 = *psVar15;
+        *(u32 *)(buf + 8) = (*(u32 * *)&D_801B635C)[param_1];
+        D_801B637C = -1;
+        uVar16 = 0;
+        if (sVar4 != 0xff) {
+            r0 = buf + 8;
+            psVar14 = psVar15 + 6;
+            do {
+                iVar11 = 0;
+                if (sVar4 == 9) {
+                    *(s16 *)(buf + 0) = psVar14[-4];
+                    __asm__ __volatile__("" ::: "memory");
+                    *(s16 *)(buf + 2) = psVar14[-3];
+                    __asm__ __volatile__("" ::: "memory");
+                    *(s16 *)(buf + 4) = psVar14[-2];
+                    __asm__ __volatile__("" ::: "memory");
+                    *(s16 *)(buf + 6) = psVar14[-1];
+                    __asm__ __volatile__("" ::: "memory");
+                    {
+                        register s32 mw __asm__("$3") = (s32)((s16 *)psVar14)[-2];
+                        register s32 mh __asm__("$2") = (s32)((s16 *)psVar14)[-1];
+                        iVar12 = mw * mh;
+                    }
+                    uVar13 = 0;
+                    puVar10 = *(u16 **)psVar14;
+                    {
+                        register s32 boff __asm__("$2") = iVar12 * 2;
+                        register u16 *pi __asm__("$5");
+                        pi = (u16 *)((s32)puVar10 + boff);
+                        __asm__ __volatile__("" : "=r"(pi) : "0"(pi));
+                        puVar9 = pi;
+                    }
+                    if (0 < iVar12) {
+                        do {
+                            register u32 pix __asm__("$2");
+                            register u32 out __asm__("$2");
+                            u32 result;
+                            *(u32 *)(buf + 0xc) = (u32)*puVar10;
+                            pix = (u32)*puVar9;
+                            uVar5 = pix & 0x1f;
+                            uVar7 = pix & 0x3e0;
+                            uVar1 = pix & 0x7c00;
+                            {
+                                void *p1;
+                                register void *pa __asm__("$2");
+                                register void *pb __asm__("$12");
+                                __asm__ __volatile__("");
+                                p1 = buf + 0xc;
+                                __asm__ __volatile__("" : "=r"(p1) : "0"(p1));
+                                __asm__ __volatile__("mtc2 $0, $8") ;
+                                __asm__ __volatile__("lwc2 $6, 0(%0)"  :: "r"( r0 ) : "memory") ;
+                                __asm__ __volatile__("lwc2 $28, 0(%0)" :: "r"( p1 ) : "memory") ;
+                                __asm__ __volatile__("nop\n\tnop\n\tdpcl") ;
+                                pa = buf + 0x10;
+                                __asm__ __volatile__("" : "=r"(pa) : "0"(pa));
+                                pb = pa;
+                                __asm__ __volatile__("swc2 $29, 0(%0)" :: "r"( pb ) : "memory") ;
+                            }
+                            out = *(u32 *)(buf + 0x10);
+                            uVar6 = out & 0x1f;
+                            uVar8 = out & 0x3e0;
+                            uVar3 = out & 0x7c00;
+                            if (uVar5 != uVar6) {
+                                register s32 c __asm__("$2");
+                                uVar13 = 1;
+                                if ((s32)uVar5 < (s32)uVar6) uVar5 = uVar5 + 1;
+                                c = (s32)uVar6 < (s32)uVar5;
+                                if (c) uVar5 = uVar5 - 1;
+                            }
+                            if (uVar7 != uVar8) {
+                                register s32 c __asm__("$2");
+                                uVar13 = 1;
+                                if ((s32)uVar7 < (s32)uVar8) uVar7 = uVar7 + 0x20;
+                                c = (s32)uVar8 < (s32)uVar7;
+                                if (c) uVar7 = uVar7 - 0x20;
+                            }
+                            if (uVar1 != uVar3) {
+                                register s32 c __asm__("$2");
+                                uVar13 = 1;
+                                if ((s32)uVar1 < (s32)uVar3) uVar1 = uVar1 + 0x400;
+                                c = (s32)uVar3 < (s32)uVar1;
+                                if (c) uVar1 = uVar1 - 0x400;
+                            }
+                            result = uVar5 | uVar7 | uVar1 | (*(u32 *)(buf + 0xc) & 0x8000);
+                            if (result == 0 && *(u32 *)(buf + 0xc) != 0) {
+                                result = 0x8000;
+                            }
+                            *puVar9 = (u16)result;
+                            puVar9 = puVar9 + 1;
+                            iVar11 = iVar11 + 1;
+                            puVar10 = puVar10 + 1;
+                        } while (iVar11 < iVar12);
+                    }
+                    if (uVar13 != 0) {
+                        ((void (*)(void *))func_800599B8)(buf);
+                    }
+                    uVar16 = uVar16 | uVar13;
+                }
+                psVar15 = psVar15 + 8;
+                sVar4 = *psVar15;
+                psVar14 = psVar14 + 8;
+            } while (sVar4 != 0xff);
+        }
+        D_801B6374 = uVar16;
+    }
+    return;
+}

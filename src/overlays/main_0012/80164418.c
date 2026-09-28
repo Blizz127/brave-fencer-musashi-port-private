@@ -2,51 +2,41 @@
  * SHA256(span)=ec6c50fde455d84eaa73b94778f332494cc2c662267276923f8abb7ddba0bcc9.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-#include "m2c_macros.h"
+/* func_80164418 - byte-exact against retail at -O2 (tools/register_match.py). */
+#define ratan2 func_8004CFEC
+extern s32 ratan2(s32 a0, s32 a1);
+extern s32 ratan2(s32 x, s32 y);
+extern s32 ratan2(s32 dx, s32 dy);
+void func_80162D88(s32 *a0);
+void func_80162FC0(s32 *a0);
+void func_801630C4(s32 a0, s32 a1, s32 a2, s32 a3);
+extern void func_80162D88(s32 *a0);
+extern s32 func_80012ABC(s32 a0, s32 a1, s32 a2);
+extern void func_801630C4(s32, s32, s32, s32);
+extern void func_80162FC0(s32 *a0);
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-s16 func_80012ABC(s16, s16, s32);               /* extern */
-s16 func_8004CFEC(s16, s16);                        /* extern */
-void func_80162D88(void *);                      /* static */
-void func_80162FC0(void *);                      /* static */
-void func_801630C4(void *, s32, s32, s32); /* static */
-
-void func_80164418(void *arg0) {
-    s16 sp1A;
-    s16 sp18;
-    s16 sp14;
-    s16 sp12;
-    s16 sp10;
-    s16 temp_a0;
-    s16 temp_v0;
-    void *temp_a1;
-    void *temp_s1;
-
-    temp_a1 = M2C_FIELD(arg0, void **, 0x4C);
-    temp_s1 = M2C_FIELD(arg0, void **, 0x20);
-    temp_a0 = M2C_FIELD(temp_a1, u16 *, 6) - M2C_FIELD(arg0, u16 *, 6);
-    sp10 = temp_a0;
-    sp12 = M2C_FIELD(temp_a1, u16 *, 0xA) - (M2C_FIELD(arg0, u16 *, 0xA) + 0x1E);
-    temp_v0 = M2C_FIELD(temp_a1, u16 *, 0xE) - M2C_FIELD(arg0, u16 *, 0xE);
-    sp14 = temp_v0;
-    sp1A = func_8004CFEC(temp_a0, temp_v0);
-    if (sp14 < 0) {
-        sp14 = -sp14;
+void func_80164418(s32 s0) {
+    s16 v[6];
+    s32 s1 = *(s32 *)(s0 + 0x20);
+    s32 a1 = *(s32 *)(s0 + 0x4C);
+    v[0] = *(u16 *)(a1 + 0x6) - *(u16 *)(s0 + 0x6);
+    v[1] = *(u16 *)(a1 + 0xA) - (*(u16 *)(s0 + 0xA) + 0x1E);
+    v[2] = *(u16 *)(a1 + 0xE) - *(u16 *)(s0 + 0xE);
+    v[5] = ratan2(v[0], v[2]);
+    if (v[2] < 0) {
+        v[2] = -v[2];
     }
-    if (sp14 == 0) {
-        sp18 = 0;
+    if (v[2] == 0) {
+        v[4] = 0;
     } else {
-        sp18 = func_8004CFEC(-sp12, sp14);
+        v[4] = ratan2(-v[1], v[2]);
     }
-    M2C_FIELD(temp_s1, u16 *, 0x14) = (u16) ((M2C_FIELD(temp_s1, u16 *, 0x14) + 0x71) & 0xFFF);
-    M2C_FIELD(temp_s1, s16 *, 0x10) = func_80012ABC(M2C_FIELD(temp_s1, s16 *, 0x10), sp18, 2);
-    M2C_FIELD(temp_s1, s16 *, 0x12) = func_80012ABC(M2C_FIELD(temp_s1, s16 *, 0x12), sp1A, 2);
-    func_801630C4(arg0, 0, 0, 0x8000);
-    func_80162FC0(arg0);
-    func_80162D88(arg0);
+    *(u16 *)(s1 + 0x14) = (*(u16 *)(s1 + 0x14) + 0x71) & 0xFFF;
+    *(s16 *)(s1 + 0x10) = func_80012ABC(*(s16 *)(s1 + 0x10), v[4], 0x2);
+    *(s16 *)(s1 + 0x12) = func_80012ABC(*(s16 *)(s1 + 0x12), v[5], 0x2);
+    ((s32 (*)(s32, s32, s32, s32))func_801630C4)(s0, 0, 0, 0x8000);
+    func_80162FC0((s32 *)s0);
+    func_80162D88((s32 *)s0);
 }

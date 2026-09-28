@@ -5,39 +5,44 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_801525F4 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-void func_8014BC44();
-void func_80154A74();
-void func_801553C0();
-void func_801470AC();
-void func_801472B4();
-void func_801477E8();
-void func_80153C18();
-typedef struct Inner { u8 pad[0x10]; s16 u10; } Inner;
-typedef struct {
-    u8 pad[0x20]; Inner *inner;
-    u8 pad24[0x18]; u16 u3C, u3E, u40, u42;
-    u8 pad44[0x1C]; s16 u60, u62, u64;
-    u8 pad66[0x42]; u8 uA8;
-    u8 padA9[0x34]; u8 uDD;
-    u8 padDE[0x14]; s16 uF2;
-} T;
-void func_801525F4(T *p) {
-    func_8014BC44(p, p->uF2);
-    p->uA8 = 0x20;
-    func_80154A74(p, 0x11);
-    func_801553C0(p);
-    func_801470AC(p);
-    func_801472B4(p);
-    p->u3E = 0;
-    p->u40 = 0;
-    p->u42 = 0;
-    p->uDD = 0;
-    p->u3C &= 0xFFFE;
-    p->inner->u10 = 0;
-    p->u60 = 0x1000;
-    p->u62 = 0x1000;
-    p->u64 = 0x1000;
-    func_801477E8(p, 0);
-    func_80153C18(p);
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+extern void func_8014BC44(s32 a0, s32 a1);
+extern void func_80154A74(s32 a0, s32 a1);
+extern void func_801553C0(s32 a0);
+extern void func_801470AC(s32 *a0);
+extern void func_801472B4(void *a0);
+extern void func_801477E8(s32 *a0, s32 a1);
+extern void func_80153C18();
+
+void func_801525F4(s32 a0)
+{
+    s32 v1;
+    func_8014BC44(a0, *(s16 *)(a0 + 0xF2));
+    *(s8 *)(a0 + 0xA8) = 0x20;
+    func_80154A74(a0, 0x11);
+    func_801553C0(a0);
+    func_801470AC((s32 *)a0);
+    func_801472B4((void *)a0);
+    v1 = *(s32 *)(a0 + 0x20);
+    *(s16 *)(a0 + 0x3E) = 0;
+    *(s16 *)(a0 + 0x40) = 0;
+    *(s16 *)(a0 + 0x42) = 0;
+    *(s8 *)(a0 + 0xDD) = 0;
+    *(s16 *)(a0 + 0x3C) = *(u16 *)(a0 + 0x3C) & 0xFFFE;
+    *(s16 *)(v1 + 0x10) = 0;
+    *(s16 *)(a0 + 0x60) = 0x1000;
+    *(s16 *)(a0 + 0x62) = 0x1000;
+    *(s16 *)(a0 + 0x64) = 0x1000;
+    func_801477E8((s32 *)a0, 0);
+    func_80153C18(a0);
 }

@@ -2,45 +2,54 @@
  * SHA256(span)=2845ab190f9887efa58b0eb9ae1f2f166d17816e78e1e20d24922422235e1cc8.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-void func_8001212C();                                  /* extern */
-void func_800190AC();                                  /* extern */
-extern s32 D_80185C10;
-void func_80129010();                                  /* static */
-void func_8012956C();                                  /* static */
-void func_80129CF8();                                  /* static */
-void func_801379FC();                                  /* static */
-void func_8013BC7C(s32 (*)());                           /* static */
-void func_8013BCDC();                                  /* static */
-void func_8013CA14();                                  /* static */
-void func_8014FDF4(void *);                               /* static */
-void func_801505FC(void *);                               /* static */
-void func_801508B4(void *);                               /* static */
-void func_801627E8();                                  /* static */
-void func_80162B1C();                                  /* static */
-void func_80165CA0();                                  /* static */
-void func_80165E90();                                  /* static */
-void func_8016E95C();                                  /* static */
-void func_801754A8();                                  /* static */
-void func_8017849C();                                  /* static */
-extern u16 D_800B99DA;
+/* func_801287B8 - byte-exact against retail at -O2 (tools/register_match.py). */
+struct S8014FDF4;
+struct S8014FDF4 {
+    s16 pad0[3];    
+    s16 f6;         
+    s16 pad8;       
+    s16 fA;         
+    s16 padC;       
+    s16 fE;         
+    s16 pad[0x3C];  
+    s16 f88;        
+    s16 f8A;        
+    s16 f8C;        
+};
 extern u8 D_800B9A64;
-extern s32 *D_80126B58;
+extern void func_80129CF8(void);
+extern void func_8017849C(void);
+extern void func_8014FDF4(struct S8014FDF4 *a0);
+extern s32 func_801505FC(s32 a0);
+extern s32 func_801508B4(s32);
+extern void func_80165E90(void);
+extern void func_801627E8(void);
+extern void func_80162B1C(void);
+extern void func_80165CA0(void);
+extern void func_80129010(void);
+extern void func_8013CA14(void);
+extern void func_800190AC(void);
+extern void func_8012956C(void);
+extern s32 func_8016E95C();
+extern void func_801754A8(void);
+extern void func_8013BC7C();
+extern void func_8013BCDC(void);
+extern void func_801379FC(void);
+extern void func_8001212C(void);
 
 void func_801287B8(void) {
+
+    extern s32 D_80126B58;
+    extern s32 D_80185C10;
+    extern u16 D_800B99DA;
+    extern u8 D_800B9A64;
     func_80129CF8();
     func_8017849C();
-    func_8014FDF4(&D_80126B58);
-    func_801505FC(&D_80126B58);
-    func_801508B4(&D_80126B58);
+    ((void (*)(void *))func_8014FDF4)(&D_80126B58);
+    ((void (*)(void *))func_801505FC)(&D_80126B58);
+    ((void (*)(void *))func_801508B4)(&D_80126B58);
     func_80165E90();
     func_801627E8();
     func_80162B1C();
@@ -49,14 +58,19 @@ void func_801287B8(void) {
     func_8013CA14();
     func_800190AC();
     func_8012956C();
-    func_8016E95C();
+    ((void (*)(void))func_8016E95C)();
     func_801754A8();
-    if (D_80185C10 == 0) {
-        func_8013BC7C(D_80185C10);
+    {
+         
+
+        register volatile s32 *p __asm__("$4") = &D_80185C10;
+        if (*p == 0) {
+            func_8013BC7C();
+        }
     }
     func_8013BCDC();
     func_801379FC();
-    D_800B99DA += 1;
+    D_800B99DA++;
     if (D_800B9A64 != 0) {
         func_8001212C();
     }

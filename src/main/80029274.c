@@ -1,45 +1,23 @@
 /* Exact retail word export for [80029274,8002931C); EXE and assembly verified. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80029274 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* Vendor typedefs this body depends on (copied from vendor/bfm-decomp). */
+typedef struct {
+    u16 unk00;
+    u8  pad[14];
+} T16;  /* 0x10 */
+typedef struct {
+    s32 words[38];
+} Blk98_80029274;
 
-extern s32 D_80072C84;
-extern s32 *D_80078E78;
+extern Blk98_80029274 D_80072C84;
+extern Blk98_80029274 D_80078E78;
 
 void func_80029274(void) {
-    s32 sp90;
-    s32 (*var_a2)();
-    void *var_a3_2;
-    void *var_a2_2;
-    void *var_a3;
+    Blk98_80029274 buffer;
 
-    var_a3 = sp;
-    var_a2 = D_80072C84;
-    do {
-        var_a3->unk0 = (s32) var_a2->unk0;
-        var_a3->unk4 = (s32) var_a2->unk4;
-        var_a3->unk8 = (s32) var_a2->unk8;
-        var_a3->unkC = (s32) var_a2->unkC;
-        var_a2 += 0x10;
-        var_a3 += 0x10;
-    } while (var_a2 != (D_80072C84 + 0x90));
-    var_a3->unk0 = (s32) var_a2->unk0;
-    var_a3->unk4 = (s32) var_a2->unk4;
-    var_a3_2 = &D_80078E78;
-    var_a2_2 = sp;
-    do {
-        var_a3_2->unk0 = (s32) var_a2_2->unk0;
-        var_a3_2->unk4 = (s32) var_a2_2->unk4;
-        var_a3_2->unk8 = (s32) var_a2_2->unk8;
-        var_a3_2->unkC = (s32) var_a2_2->unkC;
-        var_a2_2 += 0x10;
-        var_a3_2 += 0x10;
-    } while (var_a2_2 != &sp90);
-    var_a3_2->unk0 = (s32) var_a2_2->unk0;
-    var_a3_2->unk4 = (s32) var_a2_2->unk4;
+    buffer = D_80072C84;
+    D_80078E78 = buffer;
 }

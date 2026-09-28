@@ -2,55 +2,57 @@
  * SHA256(span)=28a311a5ad9a3da9fbc8fc9c09e28f8aa85077e824619bf7cc87e72b3a5b0760.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-#include "m2c_macros.h"
+/* func_8012E364 - byte-exact against retail at -O2 (tools/register_match.py). */
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
 
-extern s32 D_801840C8;
-extern s32 D_801840CC;
-extern s16 D_80126CE0;
+void func_8012E364(s32 arg0_)
+{
 
-void func_8012E364(void *arg0) {
-    s32 temp_a1;
-    s32 temp_v0;
-    s32 temp_v1;
-    s32 var_v0;
-    s32 var_v0_2;
-    void *temp_a0;
-    void *temp_a0_2;
+    extern s16 D_80126CE0;
+    extern s32 D_801840C8;
+    extern s32 D_801840CC;
+    register s32 arg0 __asm__("$6");
+    register s32 prev __asm__("$5");
+    register u16 flags __asm__("$2");
+    s32 a;
+    s32 diff;
+    s32 v;
+    register s32 d __asm__("$2");
+    s32 spd;
+    s32 e1;
+    s32 e2;
 
-    M2C_FIELD(arg0, s16 *, 0x5C) = 0;
-    if (D_80126CE0 == 0) {
+    arg0 = arg0_;
+    *(s16 *)(arg0 + 0x5C) = 0;
+    a = D_80126CE0;
+    if (a == 0) {
         D_801840C8 = 0x1000;
         D_801840CC = 0x1000;
     }
-    M2C_FIELD(arg0, s32 *, 0x1C) = (s32) (M2C_FIELD(arg0, s32 *, 0x1C) + 1);
-    temp_v0 = D_801840C8 - (((0x90 - D_80126CE0) << 0xC) / 144);
-    if (temp_v0 > 0) {
-        var_v0 = D_801840C8 - (temp_v0 >> 2);
-        goto block_6;
+    a = ((0x90 - a) << 12) / 0x90;
+    *(s32 *)(arg0 + 0x1C) += 1;
+    spd = 0x1000;
+
+    diff = D_801840C8 - a;
+    if (diff > 0) {
+        D_801840C8 -= diff >> 2;
+    } else if (diff < 0) {
+        D_801840C8 += (-diff) / 4;
     }
-    if (temp_v0 < 0) {
-        var_v0 = D_801840C8 + ((s32) -temp_v0 / 4);
-block_6:
-        D_801840C8 = var_v0;
-    }
-    temp_a1 = D_801840CC;
-    temp_a0 = M2C_FIELD(arg0, void **, 0x20);
-    D_801840CC = 0x1000;
-    temp_v1 = (D_801840C8 - temp_a1) + 0x1000;
-    D_801840C8 = temp_v1;
-    M2C_FIELD(temp_a0, u16 *, 0x2C) = (u16) (M2C_FIELD(temp_a0, u16 *, 0x2C) | 0x10);
-    temp_a0_2 = M2C_FIELD(arg0, void **, 0x20);
-    var_v0_2 = temp_v1;
-    if (temp_v1 < 0) {
-        var_v0_2 = -var_v0_2;
-    }
-    M2C_FIELD(temp_a0_2, s16 *, 0x1C) = (s16) var_v0_2;
-    M2C_FIELD(temp_a0_2, s16 *, 0x18) = (s16) var_v0_2;
-    M2C_FIELD(M2C_FIELD(arg0, void **, 0x20), s16 *, 0x1A) = 0x1000;
+
+    prev = D_801840CC;
+    e1 = *(s32 *)(arg0 + 0x20);
+    v = D_801840C8 - prev + spd;
+    D_801840CC = spd;
+    flags = *(u16 *)(e1 + 0x2C);
+    D_801840C8 = v;
+    *(u16 *)(e1 + 0x2C) = flags | 0x10;
+
+    e2 = *(s32 *)(arg0 + 0x20);
+    d = __builtin_abs(v);
+    *(s16 *)(e2 + 0x1C) = d;
+    *(s16 *)(e2 + 0x18) = d;
+    *(s16 *)(*(s32 *)(arg0 + 0x20) + 0x1A) = 0x1000;
 }

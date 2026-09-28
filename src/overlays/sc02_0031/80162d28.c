@@ -5,25 +5,27 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80162D28 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-void func_80013F3C();
-void func_800126C4();
-void func_80012558();
-void func_800123F0();
-typedef struct Inner {
-    u8 pad_0[16];
-    s16 a;
-    s16 b;
-    s16 c;
-} Inner;
-typedef struct {
-    u8 pad_0[32];
-    Inner * inner;
-} T;
-void func_80162D28(T *p) {
-    Inner *q = p->inner;
-    func_80013F3C((u8 *)q + 52);
-    func_800126C4((u8 *)q + 52, q->a);
-    func_80012558((u8 *)q + 52, q->b);
-    func_800123F0((u8 *)q + 52, q->c);
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+extern void func_80013F3C(s32 a0);
+extern void func_800126C4(s32 a0, s32 a1);
+extern void func_80012558(s32 a0, s32 a1);
+extern void func_800123F0(s32 a0, s32 a1);
+
+void func_80162D28(s32 *a0) {
+    s16 *s0 = (s16 *)a0[8];
+    s32 s1 = (s32)s0 + 0x34;
+    func_80013F3C(s1);
+    func_800126C4(s1, s0[8]);
+    func_80012558(s1, s0[9]);
+    func_800123F0(s1, s0[10]);
 }

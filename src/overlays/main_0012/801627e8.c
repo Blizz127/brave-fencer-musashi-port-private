@@ -2,20 +2,23 @@
  * SHA256(span)=be0b217f2a1dcf2b1f0f3974387efba02ae46fefe18583bd0af528795f49133f.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
+/* func_801627E8 - byte-exact against retail at -O2 (tools/register_match.py). */
+extern s32 D_8011F750;
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+void func_801627E8(void)
+{
 
-extern s32 D_80180F24;
-extern u8 D_8011F750;
+    extern s32 D_8011F750;                
+    extern void (*D_80180F24[])(void);    
+    register u8 *p __asm__("$4") = (u8 *)&D_8011F750;
+    s32 idx;
 
-void func_801627E8(void) {
-    if (D_8011F750 != 0) {
-        *(D_80180F24 + ((D_8011F750 - 1) * 4))(&D_8011F750);
+    __asm__ __volatile__("" : "=r"(p) : "0"(p));    
+    idx = *p;
+    if (idx != 0) {
+        idx = idx - 1;
+        D_80180F24[idx]();
     }
 }

@@ -1,23 +1,24 @@
 /* Exact retail word export for [80059BFC,80059CF4); EXE and assembly verified. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Sony PsyQ library routine (vendor/bfm-decomp keeps it as INCLUDE_ASM); C written from the retail disassembly. */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_80059BFC - byte-exact against retail at -O2 (tools/register_match.py). */
 
-void D_80072784();
-extern s32 D_80072780;
-extern s32 D_80072844;
-extern s32 D_800741C0;
+typedef struct {
+    u8 pad0[0x2C];
+    void (*f2C)(void *, void *);
+} GpuFns;
+extern GpuFns *D_80072780;
+extern s32 (*D_80072784)(char *, ...);
 extern u8 D_8007278A;
-
-void func_80059BFC(s32 *arg0, s32 arg1) {
-    if ((u8) D_8007278A >= 2U) {
-        D_80072784(D_800741C0, arg0, arg1);
+extern char D_800741C0[];
+extern u8 D_80072844[];
+void *func_80059BFC(void *a, void *b)
+{
+    if (D_8007278A >= 2) {
+        D_80072784(D_800741C0, a, b);
     }
-    D_80072780->unk2C(arg0, arg1);
-    *arg0 = (s32) D_80072844 & 0xFFFFFF;
+    D_80072780->f2C(a, b);
+    *(u32 *)a = (u32)D_80072844 & 0xFFFFFF;
+    return a;
 }

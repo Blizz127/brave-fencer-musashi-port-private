@@ -1,42 +1,29 @@
 /* Native retail instruction export [80059760,80059888).
  * Verified against asm/main.s and the extracted EXE. No C match claim. */
+/* Sony PsyQ library routine (vendor/bfm-decomp keeps it as INCLUDE_ASM); C written from the retail disassembly. */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_80059760 - byte-exact against retail at -O2 (tools/register_match.py). */
 
-extern s32 D_8007278C;
-void D_80072784();
-extern s32 D_80074154;
-extern s32 D_80074160;
-extern s32 D_80074174;
+typedef struct { s16 x, y, w, h; } RECT;
 extern u8 D_8007278A;
+extern s16 D_8007278C;
 extern s16 D_8007278E;
-
-void func_80059760(s16 arg0, void *arg1, s16 arg2, s16 arg3) {
-    s32 (*var_a0)();
-    s16 temp_a1;
-    s16 temp_v1;
-    s16 var_a2;
-    s16 var_a3;
-
-    var_a2 = arg2;
-    var_a3 = arg3;
-    switch (D_8007278A) {                           /* irregular */
+extern s32 (*D_80072784)(char *, ...);
+extern char D_80074154[], D_80074160[], D_80074174[];
+void func_80059760(char *name, RECT *r)
+{
+    switch (D_8007278A) {
     case 1:
-        temp_a1 = M2C_FIELD(arg1, s16 *, 4);
-        if ((D_8007278C < temp_a1) || (var_a3 = M2C_FIELD(arg1, s16 *, 0), ((D_8007278C < (temp_a1 + var_a3)) != 0)) || (temp_v1 = M2C_FIELD(arg1, s16 *, 2), ((D_8007278E < temp_v1) != 0)) || (var_a2 = M2C_FIELD(arg1, s16 *, 6), ((D_8007278E < (temp_v1 + var_a2)) != 0)) || (temp_a1 <= 0) || (var_a3 < 0) || (temp_v1 < 0) || (var_a2 <= 0)) {
-            var_a0 = D_80074154;
-block_13:
-            D_80072784(var_a0, arg0, var_a2, var_a3);
-            D_80072784(D_80074160, M2C_FIELD(arg1, s16 *, 0), M2C_FIELD(arg1, s16 *, 2), M2C_FIELD(arg1, s16 *, 4), (s32) M2C_FIELD(arg1, s16 *, 6));
+        if (r->w > D_8007278C || r->w + r->x > D_8007278C || r->y > D_8007278E ||
+            r->y + r->h > D_8007278E || r->w <= 0 || r->x < 0 || r->y < 0 || r->h <= 0) {
+            D_80072784(D_80074154, name);
+            D_80072784(D_80074160, r->x, r->y, r->w, r->h);
         }
-        return;
+        break;
     case 2:
-        var_a0 = D_80074174;
-        goto block_13;
+        D_80072784(D_80074174, name);
+        D_80072784(D_80074160, r->x, r->y, r->w, r->h);
+        break;
     }
 }

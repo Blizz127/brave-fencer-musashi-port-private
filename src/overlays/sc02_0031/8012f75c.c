@@ -5,39 +5,27 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8012F75C - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL of func_8012F75C (main_0012.s), decoded manually from
- * raw asm (0x58 bytes; m2c corrected: unkC1 = 3 sits in the beqz
- * delay slot so it is unconditional (m2c had this right), the
- * 31B14 jal has a nop delay slot with a0 still holding obj so it
- * is 31B14(arg0) by pass-through (m2c showed no args), and the
- * sw v0,0x1C(s0) store is real here (unlike func_8012F5F4 where
- * the 0x10 is dead); NOT verified against retail; C89-gated
- * only, promotion requires an oracle MATCH): always sets byte
- * unkC1 = 3; when word unkB4 & 4 calls 31B14(obj), stores word
- * unk1C = 0x10 and zeroes u16 unk98. Ends with 31CA8(obj, 6). */
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern void func_80131B14();
+extern void func_80131CA8(int a0, int a1);
 
-struct obj_8012F75C {
-    u8 pad[0x1C];
-    s32 unk1C;
-    u8 pad2[0x98 - 0x20];
-    u16 unk98;
-    u8 pad3[0xB4 - 0x9A];
-    s32 unkB4;
-    u8 pad4[0xC1 - 0xB8];
-    u8 unkC1;
-};
-
-extern void func_80131B14(void *arg0);
-extern void func_80131CA8(void *arg0, s32 arg1);
-
-void func_8012F75C(struct obj_8012F75C *arg0) {
-    arg0->unkC1 = 3;
-    if (arg0->unkB4 & 4) {
-        func_80131B14(arg0);
-        arg0->unk1C = 0x10;
-        arg0->unk98 = 0;
+void func_8012F75C(s32 a0) {
+    *(u8 *)(a0 + 0xC1) = 3;
+    if (*(s32 *)(a0 + 0xB4) & 0x4) {
+        func_80131B14();
+        *(s32 *)(a0 + 0x1C) = 0x10;
+        *(s16 *)(a0 + 0x98) = 0;
     }
-    func_80131CA8(arg0, 6);
+    func_80131CA8(a0, 6);
 }

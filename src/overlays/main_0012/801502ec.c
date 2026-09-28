@@ -2,53 +2,46 @@
  * SHA256(span)=38ce7ed37ba95ad398e2d7698414eff5266772650b9ce1c78524b7162508be88.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_801502EC - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* File-scope declarations from the vendor translation unit. */
+typedef struct { s16 unk0, unk2, unk4, unk6; } Vec8_c1;
 
-s32 func_80135D20(s32, s32, void *);                   /* static */
-extern u16 D_801202A0;
-extern s32 *D_80126720;
-
-s32 func_801502EC(void *arg1, void *arg2) {
-    s32 sp1F;
-    s32 sp1B;
-    s32 sp18;
-    s32 sp17;
-    s32 sp13;
-    s32 var_s3;
-    u16 *var_s0;
-    u16 *var_s1;
-
-    sp13 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-    sp17 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-    var_s1 = &D_801202A0;
-    arg1->unk2 = 0x7FFF;
-    var_s3 = 0;
-    if ((u32) &D_801202A0 < (u32) (&D_801202A0 + 0x6480)) {
-        var_s0 = &D_801202A0 + 0x58;
+/* func_801502EC — shared body (overlay slot 0x80128158, h_exact 8e65f9ef). ONE source: instantiated by #include at each
+ * member's site in address order; the members are recorded in config/dedup.us.yaml (Phase 35). */
+extern s32 func_80135D20(s32 a0, s32 a1, void *a2);
+s32 func_801502EC(s32 e, void *a1, void *a2) {
+    extern u8 D_801202A0[];
+    extern u8 D_80126720[];
+    extern u8 D_801152A8[];
+    Vec8_c1 save;
+    Vec8_c1 test;
+    s32 found;
+    u8 *p;
+    found = 0;
+    __builtin_memcpy(&save, a1, 8);
+    *(s16 *)((s32)a1 + 2) = 0x7fff;
+    p = D_801202A0;
+    if (p < p + 0x6480) {
         do {
-            if ((*var_s1 != 0) && (var_s0->unk4 & 0x400) && (var_s0->unk0 != 0)) {
-                sp1B = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-                sp1F = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-                if (func_80135D20(var_s0->unk-38, var_s0->unk0, &sp18) != 0) {
-                    var_s3 = 1;
-                    if ((s16) sp1A < arg1->unk2) {
-                        arg1->unk3 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-                        arg1->unk7 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-                        arg2->unk3 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-                        arg2->unk7 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
+            if (*(u16 *)p != 0) {
+                if ((*(u16 *)(p + 0x5C) & 0x400) != 0) {
+                    if (*(s32 *)(p + 0x58) != 0) {
+                        test = save;
+                        if (func_80135D20(*(s32 *)(p + 0x20), *(s32 *)(p + 0x58), &test) != 0) {
+                            found = 1;
+                            if (test.unk2 < *(s16 *)((s32)a1 + 2)) {
+                                __builtin_memcpy(a1, &test, 8);
+                                __builtin_memcpy(a2, D_801152A8, 8);
+                            }
+                        }
                     }
                 }
             }
-            var_s1 += 0x10C;
-            var_s0 += 0x10C;
-        } while ((u32) var_s1 < (u32) &D_80126720);
+            p += 0x10C;
+        } while (p < D_80126720);
     }
-    return var_s3;
+    return found;
 }

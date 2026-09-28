@@ -5,10 +5,18 @@
  * differ only in the dispatch table) retargeted to this member's D_80186ADC.
  * Oracle MATCH 24/24. Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80155458 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-typedef int (*CB)(void);
-extern CB D_80186ADC[];
+extern int (*D_80186ADC[])(void);
 
 s32 func_80155458(s32 param_1)
 {

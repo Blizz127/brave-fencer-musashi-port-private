@@ -2,23 +2,21 @@
  * SHA256(span)=a3e99ba544ede2d2c25b31770bf36d76ef8f0d95aa7003fda50e53f0177d70c5.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-#include "psx_types.h"
-#include "m2c_macros.h"
+/* Source: PsyQ library C derived from xenogears-decomp-ai-archerfish (src/slus_006.64/psyq/libcd/sys.c), same PsyQ object; symbols renamed to this build's addresses. Matching build only. */
+/* func_80043528 - byte-exact against retail at -O3 (tools/register_match.py). */
+typedef	unsigned char	u_char;
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+int CdSync(int mode, u_char *result) ;
 
-extern s32 D_8006CD2C[];
-extern s32 D_80073614;
+extern char D_80073614;
 
-s32 func_80043528(s32 arg0) {
-    u32 temp_a0;
+extern char* D_8006CD2C[];
 
-    temp_a0 = arg0 & 0xFF;
-    if (temp_a0 < 7U) {
-        return *(D_8006CD2C + (temp_a0 * 4));
+char* func_80043528(u_char intr) {
+    if (intr >= 7) {
+        return &D_80073614;
     }
-    return D_80073614;
+    return D_8006CD2C[intr];
 }
+
+int CdSync(int mode, u_char* result);

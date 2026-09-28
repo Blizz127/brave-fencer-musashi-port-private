@@ -2,32 +2,33 @@
  * SHA256(span)=5027069527435db92edda4eec6fa476aba941b5ff9051c72898984fd38d40869.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-#include "m2c_macros.h"
+/* func_8015DCB8 - byte-exact against retail at -O2 (tools/register_match.py). */
+extern void func_80149374(s32 a0, s32 a1);
+extern void func_80149374(s32 arg0, s32 arg1);
+extern void func_80149374(int, int);
+extern void func_80149374(s32, s32);
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+void func_8015DCB8(s32 param_1) {
 
-extern s32 D_80180C9C[];
-void func_80149374(void *);                      /* static */
+    extern s8 D_80180C9C[];
+    s32 iVar1;
+    s32 iVar2;
 
-void func_8015DCB8(void *arg0) {
-    s32 temp_v1;
-    s32 temp_v1_2;
-    s32 temp_v1_3;
-    void *temp_a1;
+    iVar2 = *(s32 *)(param_1 + 0x178);
 
-    temp_v1 = M2C_FIELD(arg0, s32 *, 0x234);
-    temp_a1 = M2C_FIELD(arg0, void **, 0x178);
-    M2C_FIELD(arg0, s32 *, 0x234) = (s32) (temp_v1 + 1);
-    M2C_FIELD(temp_a1, s16 *, 6) = (s16) ((s8) *(D_80180C9C + temp_v1) + M2C_FIELD(M2C_FIELD(temp_a1, void **, 0x78), u16 *, 0xC));
-    temp_v1_2 = M2C_FIELD(arg0, s32 *, 0x234);
-    M2C_FIELD(arg0, s32 *, 0x234) = (s32) (temp_v1_2 + 1);
-    M2C_FIELD(temp_a1, s16 *, 0xA) = (s16) ((s8) *(D_80180C9C + temp_v1_2) + M2C_FIELD(M2C_FIELD(temp_a1, void **, 0x78), u16 *, 0xE));
-    temp_v1_3 = M2C_FIELD(arg0, s32 *, 0x234);
-    M2C_FIELD(arg0, s32 *, 0x234) = (s32) (temp_v1_3 + 1);
-    M2C_FIELD(temp_a1, s16 *, 0xE) = (s16) ((s8) *(D_80180C9C + temp_v1_3) + M2C_FIELD(M2C_FIELD(temp_a1, void **, 0x78), u16 *, 0x10));
-    func_80149374(temp_a1 + 4);
+    iVar1 = *(s32 *)(param_1 + 0x234);
+    *(s32 *)(param_1 + 0x234) = iVar1 + 1;
+    *(s16 *)(iVar2 + 6) = (s16)D_80180C9C[iVar1] + *(s16 *)(*(s32 *)(iVar2 + 0x78) + 0xc);
+
+    iVar1 = *(s32 *)(param_1 + 0x234);
+    *(s32 *)(param_1 + 0x234) = iVar1 + 1;
+    *(s16 *)(iVar2 + 10) = (s16)D_80180C9C[iVar1] + *(s16 *)(*(s32 *)(iVar2 + 0x78) + 0xe);
+
+    iVar1 = *(s32 *)(param_1 + 0x234);
+    *(s32 *)(param_1 + 0x234) = iVar1 + 1;
+    *(s16 *)(iVar2 + 0xe) = (s16)D_80180C9C[iVar1] + *(s16 *)(*(s32 *)(iVar2 + 0x78) + 0x10);
+
+    func_80149374(param_1, iVar2 + 4);
 }

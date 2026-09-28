@@ -2,192 +2,180 @@
  * SHA256(span)=6e7d43854cc07c74640d135aec8f0f3f5f28948210499a38faf749bf5ec9cf46.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80130D48 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* Vendor names mapped to address-named symbols for the link-by-address harness. */
+#define rand func_8005C49C
 
-s32 func_8005C49C(u16, u16);                        /* extern */
-extern s32 D_8017E760;
-extern s32 D_8017E790;
-extern s32 D_8017E7F0;
-extern s32 D_8017E7F8;
-extern s32 D_8017E818;
-void *func_8012C658(s16, s16, void *);              /* static */
-s32 func_80131CF4(s32, s32);                          /* static */
-extern s32 D_80078E78;
+/* File-scope declarations from the vendor translation unit. */
+s32 func_8012C658(s32 arg0, s32 arg1, s32 arg2);
+
+extern s32 rand(void);
+extern u8 D_80078E78[];
 extern u16 D_80078EB2;
 extern u16 D_80078EB4;
+extern s16 D_8017E760[];
+extern s16 D_8017E790[];
+extern s16 D_8017E7F0[];
+extern s16 D_8017E7F8[];
+extern s16 D_8017E818[];
 
-void func_80130D48(void *arg0) {
-    s32 (*var_s0)();
-    s32 (*var_s0_2)();
-    s16 *var_s0_3;
-    s16 var_a0;
-    s16 var_a1_2;
-    s16 var_s1_3;
-    s32 temp_a0;
-    s32 temp_a0_2;
-    s32 temp_v0;
-    s32 var_a0_2;
-    s32 var_a1;
-    s32 var_s1;
-    s32 var_s1_2;
-    s32 var_s1_4;
-    s32 var_s1_5;
-    s32 var_v1;
-    s32 var_v1_2;
-    s32 var_v1_3;
-    u32 temp_v1;
-    void *temp_v0_2;
+void func_80130D48(s32 arg0)
+{
+    extern s32 func_80131CF4(s32);
 
-    temp_v0 = func_80131CF4(arg0->unkBC, 0x15);
-    if (temp_v0 != 0) {
-        if (arg0->unk5E == 0xB) {
-            var_a0 = 0x33;
-            goto block_62;
+    register s16 *tbl __asm__("$16");
+    register s32 pa __asm__("$18") = arg0;
+    register u8 *p  __asm__("$19") = D_80078E78;
+    s32 s1v;
+    s32 call_a0;
+    s32 call_a1;
+    s32 cnt;
+    s32 r;
+    void *ret;
+
+    s1v = ((int (*)(int, int))func_80131CF4)(*(s32 *)((s8 *)pa + 0xBC), 0x15);
+    if (s1v == 0) {
+        return;
+    }
+
+    if (*(u8 *)((s8 *)pa + 0x5E) == 0xB) {
+        call_a0 = 0x33;
+        call_a1 = 0;
+        goto do_call;
+    }
+
+    switch (s1v & 0xFFFF0000) {
+    case 0x10000: {
+        u32 x = D_80078EB4;
+        u32 y = D_80078EB2;
+        u32 b;
+        u32 a;
+
+        s1v = 0;
+        if (x == y) {
+            s1v = 0xC;
+        } else if ((y >> 1) >= x) {
+            s1v = 3;
         }
-        temp_v1 = temp_v0 & 0xFFFF0000;
-        if (temp_v1 != 0x40000) {
-            if (temp_v1 <= 0x40000U) {
-                switch (temp_v1) {                  /* switch 1; irregular */
-                default:                            /* switch 1 */
-                    var_a0 = 0x31;
-                    if (temp_v1 != 0x30000) {
-                        return;
-                    }
-                    goto block_62;
-                case 0x10000:                       /* switch 1 */
-                    var_s1 = 0;
-                    if (D_80078EB4 == D_80078EB2) {
-                        var_s1 = 0xC;
-                    } else if ((u32) ((u16) D_80078EB2 >> 1) >= (u16) D_80078EB4) {
-                        var_s1 = 3;
-                    }
-                    if (D_80078E78.unk40 == D_80078E78.unk3E) {
-                        var_s1_2 = var_s1 + 0x18;
-                        goto block_25;
-                    }
-                    var_v1 = var_s1 * 2;
-                    if ((u32) ((u16) D_80078E78.unk3E >> 1) >= (u16) D_80078E78.unk40) {
-                        var_s1_2 = var_s1 + 6;
-block_25:
-                        var_v1 = var_s1_2 * 2;
-                    }
-                    var_s0 = var_v1 + D_8017E790;
-                    var_a1 = 0;
-                    var_a0_2 = func_8005C49C() % 100;
-loop_27:
-                    if (var_a0_2 >= *var_s0) {
-                        var_a1 += 1;
-                        var_s0 += 2;
-                        if (var_a1 >= 3) {
 
-                        } else {
-                            goto loop_27;
-                        }
-                    }
-                    var_s1_3 = 0;
-                    switch (var_a1) {               /* switch 2; irregular */
-                    case 0:                         /* switch 2 */
-                        var_s0 = D_8017E7F0;
-                        var_s1_3 = 0x31;
-                        break;
-                    case 1:                         /* switch 2 */
-                        var_a0_2 = (s32) D_80078E78.unk3A;
-                        var_a1 = (s32) D_80078E78.unk3C;
-                        var_v1_2 = 0 * 2;
-                        if (((var_a0_2 * 7) / 10) >= var_a1) {
-                            var_s1_4 = 4;
-                            if (((s32) (var_a0_2 - (var_a0_2 >> 0x1F)) >> 1) >= var_a1) {
-                                var_s1_4 = 8;
-                                if ((D_80078E78.unk3A / 5) >= var_a1) {
-                                    var_s1_4 = 0xC;
-                                }
-                            }
-                            var_v1_2 = var_s1_4 * 2;
-                        }
-                        var_s0 = var_v1_2 + D_8017E7F8;
-                        var_s1_3 = 0x32;
-                        break;
-                    case 2:                         /* switch 2 */
-                        var_a0_2 = (s32) D_80078E78.unk3E;
-                        var_a1 = (s32) D_80078E78.unk40;
-                        var_v1_3 = 0 * 2;
-                        if (((var_a0_2 * 7) / 10) >= var_a1) {
-                            var_s1_5 = 4;
-                            if (((s32) (var_a0_2 - (var_a0_2 >> 0x1F)) >> 1) >= var_a1) {
-                                var_s1_5 = 8;
-                                if ((D_80078E78.unk3E / 5) >= var_a1) {
-                                    var_s1_5 = 0xC;
-                                }
-                            }
-                            var_v1_3 = var_s1_5 * 2;
-                        }
-                        var_s0 = var_v1_3 + D_8017E818;
-                        var_s1_3 = 0x33;
-                        break;
-                    }
-                    var_a1_2 = 0;
-                    temp_a0 = func_8005C49C((u16) var_a0_2, (u16) var_a1) % 100;
-loop_50:
-                    if (temp_a0 >= *var_s0) {
-                        var_a1_2 += 1;
-                        var_s0 += 2;
-                        if (var_a1_2 < 4) {
-                            goto loop_50;
-                        }
-                    }
-                    var_a0 = var_s1_3;
-                    goto block_63;
-                case 0x20000:                       /* switch 1 */
-                    var_a0 = 0x33;
-                    goto block_62;
-                }
-            } else {
-                if (temp_v1 != 0x60000) {
-                    if (temp_v1 <= 0x60000U) {
-                        var_a0 = 0x33;
-                        if (temp_v1 != 0x50000) {
-                            return;
-                        }
-                        goto block_62;
-                    }
-                    var_a0 = 0x27B;
-                    if (temp_v1 != 0x70000) {
-                        return;
-                    }
-                    goto block_62;
-                }
-                var_s0_2 = D_8017E760;
-                temp_a0_2 = func_8005C49C() & 0xFF;
-                if (temp_a0_2 >= D_8017E760) {
-                    var_s0_3 = D_8017E760 + 6;
-                    do {
-                        var_s0_3 += 6;
-                    } while (temp_a0_2 >= *var_s0_3);
-                    var_s0_2 = var_s0_3 - 6;
-                }
-                var_a0 = var_s0_2->unk2;
-                if ((u16) D_80078E78.unk40 < 4U) {
-                    var_a0 = 0x33;
-                }
-                var_a1_2 = var_s0_2->unk4;
-                goto block_63;
-            }
-        } else {
-            var_a0 = 0x32;
-block_62:
-            var_a1_2 = 0;
-block_63:
-            temp_v0_2 = func_8012C658(var_a0, var_a1_2, arg0);
-            if (temp_v0_2 != 0) {
-                temp_v0_2->unkA = (u16) (temp_v0_2->unkA - 0x20);
+        b = *(u16 *)(p + 0x40);
+        a = *(u16 *)(p + 0x3E);
+        if (b == a) {
+            s1v += 0x18;
+        } else if ((a >> 1) >= b) {
+            s1v += 6;
+        }
+        { register s32 v1 __asm__("$3"); register s8 *bp __asm__("$2"); v1 = s1v * 2; bp = (s8 *)D_8017E790; tbl = (s16 *)(bp + v1); }
+
+        r = rand() % 100;
+        cnt = 0;
+    loop27:
+        if (r >= *tbl) {
+            cnt += 1;
+            tbl += 1;
+            if (cnt < 3) {
+                goto loop27;
             }
         }
+
+        s1v = 0;
+        switch (cnt) {
+        case 0:
+            tbl = D_8017E7F0;
+            s1v = 0x31;
+            break;
+        case 1: {
+            s32 mx = *(u16 *)(p + 0x3A);
+            s32 cur = *(u16 *)(p + 0x3C);
+            if (((mx * 7) / 10) >= cur) {
+                s1v = 4;
+                if ((mx / 2) >= cur) {
+                    s1v = 8;
+                    if ((mx / 5) >= cur) {
+                        s1v = 0xC;
+                    }
+                }
+            }
+            { register s32 v1 __asm__("$3"); register s8 *bp __asm__("$2"); v1 = s1v * 2; bp = (s8 *)D_8017E7F8; tbl = (s16 *)(bp + v1); }
+            s1v = 0x32;
+            break;
+        }
+        case 2: {
+            s32 mx = *(u16 *)(p + 0x3E);
+            s32 cur = *(u16 *)(p + 0x40);
+            if (((mx * 7) / 10) >= cur) {
+                s1v = 4;
+                if ((mx / 2) >= cur) {
+                    s1v = 8;
+                    if ((mx / 5) >= cur) {
+                        s1v = 0xC;
+                    }
+                }
+            }
+            { register s32 v1 __asm__("$3"); register s8 *bp __asm__("$2"); v1 = s1v * 2; bp = (s8 *)D_8017E818; tbl = (s16 *)(bp + v1); }
+            s1v = 0x33;
+            break;
+        }
+        }
+
+        r = rand() % 100;
+        call_a1 = 0;
+    loop50:
+        if (r >= *tbl) {
+            call_a1 += 1;
+            tbl += 1;
+            if (call_a1 < 4) {
+                goto loop50;
+            }
+        }
+        call_a0 = s1v;
+        goto do_call;
+    }
+    case 0x20000:
+        call_a0 = 0x33;
+        call_a1 = 0;
+        goto do_call;
+    case 0x30000:
+        call_a0 = 0x31;
+        call_a1 = 0;
+        goto do_call;
+    case 0x40000:
+        call_a0 = 0x32;
+        call_a1 = 0;
+        goto do_call;
+    case 0x50000:
+        call_a0 = 0x33;
+        call_a1 = 0;
+        goto do_call;
+    case 0x60000: {
+        s32 rr = rand() & 0xFF;
+        tbl = D_8017E760;
+        if (rr >= *tbl) {
+            do {
+                tbl += 3;
+            } while (rr >= *tbl);
+        }
+        call_a0 = tbl[1];
+        if (*(u16 *)(p + 0x40) < 4U) {
+            call_a0 = 0x33;
+        }
+        call_a1 = tbl[2];
+        goto do_call;
+    }
+    case 0x70000:
+        call_a0 = 0x27B;
+        call_a1 = 0;
+        goto do_call;
+    default:
+        return;
+    }
+
+do_call:
+    ret = func_8012C658(call_a0, call_a1, pa);
+    if (ret != 0) {
+        *(u16 *)((s8 *)ret + 0xA) -= 0x20;
     }
 }

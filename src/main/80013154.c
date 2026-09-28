@@ -1,20 +1,3 @@
-/* Main-exec range [80013154,80013200) from the SLUS executable.
- * SHA256(span)=6a1c53b25aab826244e312e62db9b42ec62c7925775749e713f50a19e4b80ed5.
- * Word export for the native seam; the body below is kept
- * byte-identical (wrap only, no rewrite). */
-#include "psx_types.h"
-
-#if defined(__mips__)
-__asm__(
-    ".set\tnoreorder\n"
-    ".globl\tfunc_80013154\n"
-    ".ent\tfunc_80013154\n"
-    ".type\tfunc_80013154, @function\n"
-    "func_80013154:\n"
-    ".end\tfunc_80013154\n"
-    ".size\tfunc_80013154, .-func_80013154\n"
-);
-#else
 s32 func_80013154(s16 arg0, s16 arg1, s32 arg2) {
     s16 var_v0_2;
     s32 temp_a3;
@@ -45,4 +28,3 @@ s32 func_80013154(s16 arg0, s16 arg1, s32 arg2) {
     }
     return var_v0 >> 0x10;
 }
-#endif

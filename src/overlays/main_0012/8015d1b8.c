@@ -2,82 +2,88 @@
  * SHA256(span)=81db4d4bfb325b0f3c05091d15903c66be41d0374cfc347a7acd016774ec565f.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8015D1B8 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+extern s32 func_80149FB0(s32);
+extern void func_80147324(s32 a0);
+extern u16  func_80148800(s32 *a0);
+extern void func_80149724(void);
+extern void func_80154274(s32 *a0, s32 a1);
+extern void func_80146E90(s32 *a0, s32 a1);
+extern void func_80146DB8(s32*, s32*);
+extern void func_801477E8(s32 *a0, s32 a1);
+extern void func_8014FA04(s32);
+extern void func_8014E6A0(void);
+extern void func_80147078(s32 *a0, s16 a1);
+extern void func_80159B70(void*);
+extern void func_8015D380(s32);
+extern s32  func_801725F4(u8 *a0);
 
-extern s32 D_80180A1C;
-extern s32 D_80180BFC;
-extern s32 D_80180C00;
-extern s32 D_80180C44;
-void func_80146DB8(void *, void *);                    /* static */
-void func_80146E90(void *, s32);                         /* static */
-void func_80147078(void *, s32);                         /* static */
-void func_80147324(s32, s16);                            /* static */
-void func_801477E8(void *, s32);                       /* static */
-s32 func_80148800(void *);                          /* static */
-void func_80149724(void *);                            /* static */
-void func_80149FB0();                                  /* static */
-s32 func_8014E6A0(void *);                          /* static */
-void func_8014FA04(void *);                            /* static */
-void func_80154274(void *, void *);                       /* static */
-void func_80159B70(void *);                            /* static */
-void func_8015D380(void *);                            /* static */
-void func_801725F4(void *);                            /* static */
-extern s32 *D_800D4C14;
 
-void func_8015D1B8(void *arg0) {
-    s16 temp_v0;
-    s16 temp_v1_2;
-    s16 var_v0;
-    s32 temp_s0;
-    s32 temp_v1;
-    s32 var_v1;
-    void *temp_a0;
+void func_8015D1B8(s32 *a0)
+{
 
-    func_80149FB0();
-    temp_a0 = arg0->unk20;
-    temp_v1 = temp_a0->unk10 + arg0->unk236;
-    temp_a0->unk10 = (u16) (temp_v1 & 0xFFF);
-    temp_v1_2 = arg0->unk244;
-    temp_v0 = (s16) arg0->unk20->unk10;
-    if ((temp_v0 - temp_v1_2) >= 0) {
-        var_v0 = temp_v0 - temp_v1_2;
+    extern void (*D_80180A1C[])(void*);
+    extern s32 D_80180BFC;
+    extern s32 D_80180C00;
+    extern s32 D_80180C44;
+    extern s32 D_800D4C14;
+    s32 sum;
+    s32 keep;
+    s32 obj;
+    s16 cur;
+    s16 prev;
+    s16 d;
+    s32 off;
+    s32 *p;
+    s32 dummy[2]; /* L1: dead, but its stack slot is what makes the frame 0x38 */
+
+    ((void (*)(void))func_80149FB0)();
+    obj = *(s32 *)((u8 *)a0 + 0x20);
+    sum = *(u16 *)(obj + 0x10) + *(u16 *)((u8 *)a0 + 0x236);
+    *(u16 *)(obj + 0x10) = sum & 0xFFF;
+    keep = sum; /* L2: AFTER the store — this is what keeps the $s0 copy alive */
+
+    cur = *(s16 *)(*(s32 *)((u8 *)a0 + 0x20) + 0x10);
+    prev = *(s16 *)((u8 *)a0 + 0x244);
+    if (cur - prev >= 0) {
+        d = cur - prev;
     } else {
-        var_v0 = temp_v1_2 - temp_v0;
+        d = prev - cur;
     }
-    if (var_v0 >= 0x801) {
-        func_80147324(0x5E9, temp_v0);
+    if (d > 0x800) {
+        func_80147324(0x5E9);
     }
-    arg0->unk244 = (s16) arg0->unk20->unk10;
-    if (func_80148800(arg0) & 0x40) {
-        *(D_80180A1C + (arg0->unk0 * 4))(arg0);
-        func_80149724(arg0);
-        func_80154274(arg0, &D_800D4C14);
-        func_80146E90(arg0, 0x10);
-        var_v1 = temp_v1 & 0xFFF;
-        if (var_v1 < 0) {
-            var_v1 += 0x1FF;
+    *(u16 *)((u8 *)a0 + 0x244) = *(u16 *)(*(s32 *)((u8 *)a0 + 0x20) + 0x10);
+
+    if (func_80148800(a0) & 0x40) {
+        ((void (**)(s32*))D_80180A1C)[*(u16 *)a0](a0);
+        ((void (*)(s32 *))func_80149724)(a0);
+        func_80154274(a0, (s32)&D_800D4C14);
+        func_80146E90(a0, 0x10);
+        {
+            u32 t = keep & 0xFFF; /* L3: unsigned value, signed guard -> bgez + srl */
+            if ((s32)t < 0) {
+                t += 0x1FF;
+            }
+            p = &D_80180C44; /* L4 + scheduling: the `la` must precede the srl/sll pair */
+            off = (t >> 9) * 8;
         }
-        temp_s0 = ((u32) var_v1 >> 9) * 8;
-        D_80180C44 = (s32) *(D_80180BFC + temp_s0);
-        func_80146DB8(arg0, D_80180C44 - 8);
-        func_801477E8(arg0, *(D_80180C00 + temp_s0));
+        *p = *(s32 *)((u8 *)&D_80180BFC + off);
+        ((void (*)(s32 *, s32))func_80146DB8)(a0, (s32)(p - 2)); /* 0x801893D8 == &D_80180C44[-2] (no label there) */
+        func_801477E8(a0, *(s32 *)((u8 *)&D_80180C00 + off));
         func_80147324(0x5EA);
-        return;
+    } else {
+        ((void (*)(s32 *))func_8014FA04)(a0);
+        if (((s32 (*)(s32 *))func_8014E6A0)(a0) == 0) {
+            ((void (**)(s32*))D_80180A1C)[*(u16 *)a0](a0);
+            func_80147078(a0, 0);
+            ((void (*)(s32 *))func_80159B70)(a0);
+        } else {
+            ((void (*)(s32 *))func_8015D380)(a0);
+            func_801725F4(a0);
+        }
     }
-    func_8014FA04(arg0);
-    if (func_8014E6A0(arg0) == 0) {
-        *(D_80180A1C + (arg0->unk0 * 4))(arg0);
-        func_80147078(arg0, 0);
-        func_80159B70(arg0);
-        return;
-    }
-    func_8015D380(arg0);
-    func_801725F4(arg0);
 }

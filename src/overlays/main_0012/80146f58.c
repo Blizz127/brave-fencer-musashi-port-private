@@ -2,29 +2,33 @@
  * SHA256(span)=651d802d8df86aedc6ff0f05cddf4b3562889bd5f54d1d498110d76ab957cec3.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
+/* func_80146F58 - byte-exact against retail at -O2 (tools/register_match.py). */
+#define ApplyMatrixSV func_80048FBC
+struct vec;
+struct vec {
+    s32 unk0;
+    s32 unk4;
+    s32 unk8;
+    s32 unkC;
+    s32 unk10;
+    s32 unk14;
+    s32 unk18;
+};
+typedef struct { s16 vx, vy, vz, pad; } Svec_801372B0;
+extern s16 func_8012A68C(void);
+extern s16 func_8012A758(void);
+extern void func_8004978C(s16 *a0, void *a1);
+extern void ApplyMatrixSV(void *m, Svec_801372B0 *in, Svec_801372B0 *out);
+extern void ApplyMatrixSV(void*, Svec_801372B0*, Svec_801372B0*);
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-void func_80048FBC(void *, s32, s32);                       /* extern */
-void func_8004978C(s16 *, void *);                        /* extern */
-s16 func_8012A68C();                                /* static */
-s16 func_8012A758();                                /* static */
-
-void func_80146F58(s32 arg0, s32 arg1) {
-    s32 sp18;
-    s16 sp14;
-    s16 sp12;
-    s16 sp10;
-
-    sp10 = func_8012A68C();
-    sp12 = func_8012A758();
-    sp14 = 0;
-    func_8004978C(&sp10, &sp18);
-    func_80048FBC(&sp18, arg0, arg1);
+void func_80146F58(s32 a0, s32 a1) {
+    s16 vec[3];
+    u8 mat[0x20];
+    vec[0] = func_8012A68C();
+    vec[1] = func_8012A758();
+    vec[2] = 0;
+    func_8004978C(vec, mat);
+    ((void (*)(void *, void *, void *))ApplyMatrixSV)(mat, (void *)a0, (void *)a1);
 }

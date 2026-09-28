@@ -5,19 +5,19 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_801726A0 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL from m2c draft of func_801726A0 (main_0012.s): NOT
- * verified against retail. C89-gated only; promotion requires an
- * oracle MATCH. Word bit-test at +0x1F4 (lw; same flags word as the
- * rest of the 801725xx cluster). Body is m2c's verbatim with the
- * member typed. */
+extern void func_8012A568(void (*a0)(void));
 
-struct data_801726A0 {
-    u8 pad[0x1F4];
-    s32 unk1F4;
-};
-
-s32 func_801726A0(struct data_801726A0 *arg0) {
-    return arg0->unk1F4 & 0x40;
+s32 func_801726A0(s32 *a0) {
+    return *(s32*)((s32)a0 + 0x1F4) & 0x40;
 }

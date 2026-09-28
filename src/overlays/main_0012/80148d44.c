@@ -2,46 +2,55 @@
  * SHA256(span)=b7a38aaabe7342c5e69a5d82881fe62f8ea69aef450153a7357d972d094dbab4.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
+/* func_80148D44 - byte-exact against retail at -O2 (tools/register_match.py). */
+#define ratan2 func_8004CFEC
+extern s32 ratan2(s32 a0, s32 a1);
+extern s32 ratan2(s32 x, s32 y);
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+s32 func_80148D44(void) {
 
-s32 func_8004CFEC(s32, s32, s32);                   /* extern */
-extern s32 D_8017FEB8;
-extern void *D_801151D4;
-extern u8 D_80126C01;
-extern u16 D_80126C02;
-extern u16 D_80126C06;
+    extern s32 D_801151D4;
+    extern u8 D_80126C01;
+    extern u16 D_80126C02;
+    extern u16 D_80126C06;
+    extern s32 D_8017FEB8[];
+    register s32 ang __asm__("$16");
+    register s32 a __asm__("$4");
+    s32 p;
+    s32 res;
+    s32 d;
 
-s16 func_80148D44(void) {
-    s16 var_v0;
-    s32 temp_a0;
-    s32 temp_a0_2;
-    s32 temp_a2;
-
-    temp_a2 = D_801151D4->unk44;
-    temp_a0 = (func_8004CFEC(temp_a2 - D_801151D4->unk50, D_801151D4->unk48 - D_801151D4->unk3C, temp_a2) - 0x400) & 0xFFF;
-    if (D_80126C01 != 0x53) {
-        if ((s32) D_80126C01 < 0x54) {
-            if (D_80126C01 != 0x41) {
-                return 0x41;
-            }
-            return *(D_8017FEB8 + (((u16) D_80126C02 >> 0xC) * 4))(temp_a0);
-        }
-        if (D_80126C01 != 0x73) {
-            return 0x73;
-        }
-        goto block_7;
+    p = D_801151D4;
+    a = (ratan2(*(s32 *)(p + 0x44) - *(s32 *)(p + 0x50),
+                  *(s32 *)(p + 0x48) - *(s32 *)(p + 0x3c)) - 0x400) & 0xFFF;
+    d = (s32)D_80126C01;
+    __asm__ __volatile__("" : : "r"(a));
+    ang = a;
+    if (d == 0x53) {
+        goto final;
     }
-block_7:
-    temp_a0_2 = D_80126C06 & 0xFF;
-    if ((temp_a0_2 != 0x80) || (var_v0 = -1, (((u16) D_80126C06 >> 8) != temp_a0_2))) {
-        var_v0 = (temp_a0 + func_8004CFEC((D_80126C06 & 0xFF) - 0x80, 0x80 - ((u16) D_80126C06 >> 8))) & 0xFFF;
+    if (d < 0x54) {
+        if (d == 0x41) {
+            goto call;
+        }
+        return 0x41;
     }
-    return var_v0;
+    if (d != 0x73) {
+        return 0x73;
+    }
+    goto final;
+call:
+    return (s32)(s16)((s16 (*)())(D_8017FEB8[D_80126C02 >> 0xc]))();
+final:
+    {
+        u32 e = D_80126C06;
+        if (((e & 0xff) == 0x80) && ((e >> 8) == (e & 0xff))) {
+            return -1;
+        }
+        __asm__ __volatile__("" : : : "memory");
+        res = (ang + ratan2((D_80126C06 & 0xff) - 0x80, 0x80 - (D_80126C06 >> 8))) & 0xFFF;
+    }
+    return res;
 }

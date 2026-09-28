@@ -2,43 +2,67 @@
  * SHA256(span)=c26d03bf8638b6852079a21c881d02e2b09a8faf91f2866c001225fcbfc19e2e.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
-#include "psx_types.h"
+/* Source: PsyQ library C derived from xenogears-decomp-ai-archerfish (src/slus_006.64/psyq/libcd/cdread.c), same PsyQ object; symbols renamed to this build's addresses. Matching build only. */
+/* func_80045FD0 - byte-exact against retail at -O3 (tools/register_match.py). */
+typedef	unsigned char	u_char;
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+typedef	unsigned long	u_long;
 
-void D_8006CF9C();                                     /* static */
-extern s32 D_8006CFA8;
-extern s32 D_8006CFB0;
-extern s32 D_8006CFB4;
-extern s32 D_8006CFC0;
-extern s32 D_8006CFC4;
-extern s32 D_8006CFC8;
-extern s32 D_8006CFCC;
-extern s32 D_8006CFD0;
-extern s32 D_8006CFD4;
-void func_8004359C(s32);                               /* static */
-void func_800435B4(s32);                               /* static */
-void func_80043704(s32, s32);                              /* static */
-void func_800439D4(s32);                               /* static */
+typedef enum { false, true } bool;
+
+typedef void (*CdlCB)(u_char,u_char *);
+
+int func_80043704(u_char com, u_char *param);
+
+void (*func_800439D4(void (*func)()));
+
+CdlCB func_800435B4(CdlCB func);
+
+CdlCB func_8004359C(CdlCB func);
+
+typedef struct {
+    int nsectors;       
+    u_long* dest_base;  
+    u_long* dest_cur;   
+    int mode;           
+    int payload_words;  
+    int status;         
+    int vb_attempt;     
+    int vb_read;        
+    int sector_num;     
+    CdlCB cbsync;
+    CdlCB cbready;
+    CdlCB cbdata;
+    int block_mode;  
+    u_char* unk34;
+    int unk38;
+} ReadAttr_t;
+
+extern CdlCB D_8006CF9C;
+
+extern volatile ReadAttr_t D_8006CFA0;
 
 void func_80045FD0(void) {
-    D_8006CFA8 = (s32) (D_8006CFA8 + (D_8006CFB0 * 4));
-    D_8006CFB4 = (s32) (D_8006CFB4 - 1);
-    D_8006CFC0 = (s32) (D_8006CFC0 + 1);
-    if (D_8006CFB4 == 0) {
-        func_8004359C(D_8006CFC4);
-        func_800435B4(D_8006CFC8);
-        if (D_8006CFD0 & 1) {
-            func_800439D4(D_8006CFCC);
-        }
-        func_80043704(9, 0);
-        if (D_8006CF9C != 0) {
-            D_8006CF9C(2, D_8006CFD4);
-        }
+    D_8006CFA0.dest_cur += D_8006CFA0.payload_words;
+    --D_8006CFA0.status;
+    ++D_8006CFA0.sector_num;
+
+    if (D_8006CFA0.status != 0) {
+        return;
+    }
+
+    func_8004359C(D_8006CFA0.cbsync);
+    func_800435B4(D_8006CFA0.cbready);
+
+    if (D_8006CFA0.block_mode & 0x1 ) {
+        func_800439D4(D_8006CFA0.cbdata);
+    }
+
+    func_80043704(0x09 , 0);
+
+    if (D_8006CF9C != 0 ) {
+        D_8006CF9C(2, D_8006CFA0.unk34);
     }
 }
+
+int cd_read_retry(bool is_retry);

@@ -1,95 +1,150 @@
 /* Complete SC02 packet builder; mixed C with empty register constraints. */
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef unsigned int u32;
-typedef struct { int used; u32 *data; int other; } Buffer;
-extern Buffer D_800AF634[];
-extern u8 D_8011F7A8[], D_8011F7F0[], D_80188330[], D_800B9A13;
-extern u16 D_80188380[], D_8018838C;
-extern u8 D_80188420[], D_8018840C[];
-extern void *D_80188438[];
-extern u8 D_800D45D4[], D_800D43D4[], D_800D4414[];
-extern u8 *func_8017742C(u8 *, short, short);
-extern void func_8005A600(u8 *, int, int, int, int);
-extern void func_800183E0(void *);
-#define H(p,o) (*(u16 *)((u8 *)(p)+(o)))
-#define W(p,o) (*(u32 *)((u8 *)(p)+(o)))
-#define P(p,o) (*(u8 **)((u8 *)(p)+(o)))
-void func_80175DA8(short buffer)
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80175DA8 - byte-exact against retail at -O2 (tools/register_match.py). */
+#include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+typedef void (*code)(unsigned short *);
+typedef struct { s32 g0; s32 pad[2]; } S_AF634;
+typedef struct {
+        u32 tag;    /* 0x00 */
+        u32 code;   /* 0x04 */
+        u16 x;      /* 0x08 */
+        u16 y;      /* 0x0A */
+        u32 uv;     /* 0x0C */
+        u32 wh;     /* 0x10 */
+    } Sp_80175DA8;
+extern void func_8012A568(void (*a0)(void));
+extern u32 *func_8017742C(u32 *a0, s32 a1, s32 a2);
+extern s32 func_8005A600(s32 a0, s32 a1, s32 a2, s32 a3, s32 a4);
+extern void func_800183E0(s32 a0);
+
+void func_80175DA8(param_1)
+    u16 param_1;
 {
-    u8 *source = D_80188330;
-    short i = 0;
-    register u8 *values __asm__("$18") = D_8011F7F0;
-    u8 *state = values - 0x48;
-    u8 *packet = (u8 *)(D_800AF634[buffer].data + D_800AF634[buffer].used);
-    u8 *tail = packet + 16;
-    u8 *first;
-    void *resource;
-    u16 *table;
-    register unsigned int amount __asm__("$4");
-    register int shifted __asm__("$3");
-    register int under __asm__("$3");
-    register u8 *field __asm__("$4");
-    int mask;
-    register int offset __asm__("$2");
-    u8 selected;
-    P(state, 0x28 + buffer * 4) = packet;
+
+    extern u8  D_8011F7F0;
+    extern u8  D_800B9A13;
+    extern S_AF634 D_800AF634[];
+    extern S_AF634 D_800AF638[];
+    extern u16 D_80188330[];
+    extern u16 D_80188380[];
+    extern u16 D_8018838C;
+    extern u8  D_8018840C[];
+    extern u8  D_80188420[];
+    extern s32 D_80188438[];
+    extern u8  D_800D43D4;
+    extern u8  D_800D4414;
+    extern u8  D_800D45D4;
+
+    u8 *base = &D_8011F7F0;
+    u8 *s = base - 0x48;
+    u16 *src = D_80188330;
+    Sp_80175DA8 *p;
+    s16 i;
+    s32 arg;
+    s32 t;
+    s32 fl;
+    u16 v;
+
+    p = (Sp_80175DA8 *)(D_800AF638[(s16)param_1].g0 + D_800AF634[(s16)param_1].g0 * 4);
+    *(Sp_80175DA8 **)(s + (s16)param_1 * 4 + 0x28) = p;
+    i = 0;
     do {
-        __asm__ volatile("" : "=r"(tail) : "0"(tail));
-        W(packet,0) = (((u32)packet - 0x14) & 0xFFFFFF) | 0x04000000;
-        W(tail,-12) = W(source,0); source += 4;
+        p->tag = ((u32)(p - 1) & 0xFFFFFF) | 0x4000000;
+        p->code = *(u32 *)src;
+        src += 2;
         if (i < 2) {
-            H(tail,-8) = H(source,0) + H(state,12); source += 2;
-            H(tail,-6) = H(source,0) + H(state,14); source += 2;
+            p->x = *src++ + *(u16 *)(s + 0xC);
+            p->y = *src++ + *(u16 *)(s + 0xE);
         } else if (i == 2) {
-            H(tail,-8) = H(source,0) + H(state,16); source += 2;
-            H(tail,-6) = H(source,0) + H(state,18); source += 2;
+            p->x = *src++ + *(u16 *)(s + 0x10);
+            p->y = *src++ + *(u16 *)(s + 0x12);
         } else {
-            H(tail,-8) = H(source,0) + H(state,20); source += 2;
-            H(tail,-6) = H(source,0) + H(state,22); source += 2;
+            p->x = *src++ + *(u16 *)(s + 0x14);
+            p->y = *src++ + *(u16 *)(s + 0x16);
         }
-        W(tail,-4) = W(source,0); source += 4;
-        W(tail,0) = W(source,0); source += 4;
-        packet += 20; tail += 20;
+        p->uv = *(u32 *)src;
+        src += 2;
+        p->wh = *(u32 *)src;
+        src += 2;
+        p++;
         i++;
     } while (i < 5);
-    state[7] = D_800B9A13;
-    packet = func_8017742C(packet, H(state,16) - 152, H(state,18) + 9);
-    func_8005A600(packet,0,0,22,0);
-    W(packet,0) = (((u32)packet - 20) & 0xFFFFFF) | 0x02000000;
-    P(state,0x30 + buffer * 4) = packet;
-    packet += 20;
-    D_800AF634[buffer].used += (packet - P(state,0x28 + buffer * 4)) >> 2;
-    packet = P(state,0x28 + buffer * 4);
-    if (values[0x48]) packet[13] = 0; else packet[13] = 160;
-    first = P(state,0x28 + buffer * 4);
-    H(first,0x22) = 0x6CD6;
-    selected = values[0x48];
-    if (selected & 0x80) {
-        H(first,0x20) = D_8018838C;
-        resource = D_800D45D4;
-    } else {
-        table = D_80188380;
-        if (selected) { int index = selected - 1; __asm__ volatile("" : "=r"(index) : "0"(index)); table += index; }
-        H(first,0x20) = *table;
-        resource = D_80188438[values[0x48]];
+
+    *(u8 *)(s + 7) = D_800B9A13;
+    p = (Sp_80175DA8 *)func_8017742C((u32 *)p,
+                                     (s16)(*(u16 *)(s + 0x10) - 0x98),
+                                     (s16)(*(u16 *)(s + 0x12) + 9));
+    func_8005A600((s32)p, 0, 0, 0x16, 0);
+    p->tag = ((u32)(p - 1) & 0xFFFFFF) | 0x2000000;
+    *(Sp_80175DA8 **)(s + (s16)param_1 * 4 + 0x30) = p;
+    p++;
+    {
+        s32 acc = D_800AF634[(s16)param_1].g0;
+        D_800AF634[(s16)param_1].g0 =
+            acc + (((s32)p - *(s32 *)(s + (s16)param_1 * 4 + 0x28)) >> 2);
     }
-    func_800183E0(resource);
-    field = P(state,0x28 + buffer * 4);
-    shifted = (u32)H(values,0x2E) << 16;
-    __asm__ volatile("" : "=r"(field) : "0"(field));
-    __asm__ volatile("" : "=r"(shifted) : "0"(shifted));
-    if (shifted) { offset = shifted >> 20; __asm__ volatile("" : "=r"(offset) : "0"(offset)); field[0x49] = D_80188420[offset]; }
-    else field[0x49] = 160;
-    amount = H(values,0x40);
-    first = P(state,0x28 + buffer * 4);
-    under = amount < 100;
-    __asm__ volatile("" : "=r"(under) : "0"(under), "r"(amount));
-    if (under) first[0x5D] = D_8018840C[(u16)(amount / 5U)];
-    else first[0x5D] = 0;
-    mask = *(short *)(values+0x1E) & 0x8000;
-    __asm__ volatile("" : "=r"(mask) : "0"(mask));
-    resource = D_800D43D4;
-    if (mask) resource = D_800D4414;
-    func_800183E0(resource);
+
+    p = *(Sp_80175DA8 **)(s + (s16)param_1 * 4 + 0x28);
+    if (base[0x48] != 0) {
+        *((u8 *)p + 0xD) = 0;
+    } else {
+        *((u8 *)p + 0xD) = 0xA0;
+    }
+
+    {
+        u8 *q1 = *(u8 **)(s + (s16)param_1 * 4 + 0x28);
+        *(u16 *)(q1 + 0x22) = 0x6CD6;
+        if (base[0x48] & 0x80) {
+            *(u16 *)(q1 + 0x20) = D_8018838C;
+            arg = (s32)&D_800D45D4;
+        } else {
+            u16 *tt = D_80188380;
+            s32 k = base[0x48];
+            if (k != 0) {
+                k--;
+                tt += k;
+            }
+            *(u16 *)(q1 + 0x20) = *tt;
+            arg = D_80188438[base[0x48]];
+        }
+    }
+    func_800183E0(arg);
+
+    {
+        u8 *q2 = *(u8 **)(s + (s16)param_1 * 4 + 0x28);
+        t = (s32)(*(u16 *)(base + 0x2E) << 16);
+        if (t != 0) {
+            q2[0x49] = D_80188420[t >> 20];
+        } else {
+            q2[0x49] = 0xA0;
+        }
+    }
+
+    {
+        u8 *q3 = *(u8 **)(s + (s16)param_1 * 4 + 0x28);
+        v = *(u16 *)(base + 0x40);
+        if (v < 100) {
+            q3[0x5D] = D_8018840C[v / 5];
+        } else {
+            q3[0x5D] = 0;
+        }
+    }
+
+    fl = *(s16 *)(base + 0x1E) & 0x8000;
+    /* §5a zero-byte sched fence: without it sched1 hoists the `la D_800D43D4`
+       into the lh's load-delay slot, dropping the target's nop (-1 ins). */
+    __asm__("");
+    arg = (s32)&D_800D43D4;
+    if (fl != 0) {
+        arg = (s32)&D_800D4414;
+    }
+    func_800183E0(arg);
 }

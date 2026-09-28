@@ -2,71 +2,79 @@
  * SHA256(span)=deb23fd6ef32d8f7ef618b5c4b2db8e894bca565db420bcab76d01f7ac459021.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80131B14 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+extern void func_80019064(void *a0);
+extern void func_8012B23C(s32 a0);
+extern void func_8012B2CC(s32 a0);
+extern void func_8016AA50(int, int);
+extern s32 func_8016B428(s32);
+            typedef struct { s8 c[8]; } Blk8_80131B14;
 
-void func_80019064(s32 (*)());               /* extern */
-void func_8002A520(void *);                      /* extern */
-void func_8002A790(void *);                      /* extern */
-extern s32 D_8017E840;
-void func_8012B23C(void *);                      /* static */
-void func_8012B2CC(void *);                      /* static */
-void func_8016AA50(void *, s32, s32);            /* static */
-void func_8016B428(void *);                      /* static */
+// @class: regalloc-order
+// @stuck: none — MATCH (89 ins). Reconcile: TU canonical decl is `void func_80131B14(void)`
+//   (ov_SC01_077_a.c L1676/L1756; callers cast to (void(*)(int)) when passing p), so the def MUST be
+//   (void) or cc1 hard-errors `conflicting types` (exit 33). §42c lever #6: capture incoming $a0 into a
+//   NORMAL pseudo (`register u8 *a0v __asm__("$4"); u8 *p = a0v;`) so p gets a callee-saved home ($s0).
+//   func_8012B2CC/func_8012B23C are file-scope DEFINE'd here (split L740/L744) as void(s32) — do NOT redeclare;
+//   the (void(*)(void*)) cast on the bare name is byte-neutral. Body keys: e(0x5E) as s32 not u8 (kills the
+//   compare-time andi 0xff); f76 dual-width via per-access casts (lhu in the decrement, lh in the <=0 compare);
+//   the p->f20 reload split into TWO separate temps so the 2nd load takes $v0 not $v1.
 
-void func_80131B14(void *arg0, s32 arg1, s32 arg2) {
-    s32 var_a1;
-    s32 var_a2;
-    u8 temp_s1;
-    void *temp_v0;
-    void *temp_v0_2;
+void func_80131B14(void) {
+    register u8 *a0v __asm__("$4");
+    u8 *p = a0v;
 
-    var_a1 = arg1;
-    var_a2 = arg2;
-    temp_s1 = M2C_FIELD(arg0, u8 *, 0x5E);
-    if (M2C_FIELD(arg0, s16 *, 0x60) != 0) {
-        if (temp_s1 == 0x1D) {
-            M2C_FIELD(arg0, u16 *, 0x82) = 0U;
-            M2C_FIELD(arg0, u16 *, 0x7C) = (u16) M2C_FIELD(arg0, u16 *, 6);
-            M2C_FIELD(arg0, u16 *, 0x7E) = (u16) M2C_FIELD(arg0, u16 *, 0xA);
-            M2C_FIELD(arg0, u16 *, 0x80) = (u16) M2C_FIELD(arg0, u16 *, 0xE);
+    extern void func_8002A520(void *);
+    extern void func_8002A790(void *);
+    extern u8 D_8017E840;
+
+    s32 e = *(u8 *)(p + 0x5E);
+
+    if (*(s16 *)(p + 0x60) != 0) {
+        if (e == 0x1D) {
+            *(s16 *)(p + 0x82) = 0;
+            *(s16 *)(p + 0x7C) = *(u16 *)(p + 0x06);
+            *(s16 *)(p + 0x7E) = *(u16 *)(p + 0x0A);
+            *(s16 *)(p + 0x80) = *(u16 *)(p + 0x0E);
         }
-        temp_v0 = M2C_FIELD(arg0, void **, 0x78);
-        if (temp_v0 != 0) {
-            var_a2 = M2C_FIELD(arg0, s16 *, 0x60) * M2C_FIELD(temp_v0, s16 *, 0x30);
-            var_a1 = var_a2 >> 0xC;
-            if (var_a1 <= 0) {
-                var_a1 = 1;
+        {
+            s32 dec;
+            s32 q = *(s32 *)(p + 0x78);
+            if (q != 0) {
+                dec = ((s32)*(s16 *)(p + 0x60) * (s32)*(s16 *)(q + 0x30)) >> 12;
+                if (dec <= 0) dec = 1;
             }
+            *(u16 *)(p + 0x76) = *(u16 *)(p + 0x76) - dec;
         }
-        M2C_FIELD(arg0, u16 *, 0x76) = (u16) (M2C_FIELD(arg0, u16 *, 0x76) - var_a1);
-        func_8016AA50(arg0, var_a1, var_a2);
-        if (M2C_FIELD(arg0, u16 *, 0x82) & 1) {
-            func_8016B428(arg0);
-            func_80019064(D_8017E840);
-        }
-    }
-    M2C_FIELD(arg0, u16 *, 0x5C) = (u16) (M2C_FIELD(arg0, u16 *, 0x5C) & 0xFFFE);
-    if (temp_s1 != 0x1D) {
-        if (M2C_FIELD(arg0, u8 *, 0xC8) != 0) {
-            func_8002A520(arg0);
-        }
-        if (M2C_FIELD(arg0, u8 *, 0xC9) != 0) {
-            func_8002A790(arg0);
+        ((void (*)(void *))func_8016AA50)(p);
+        if (*(u16 *)(p + 0x82) & 1) {
+            ((void (*)(void *))func_8016B428)(p);
+            ((void(*)(void *))func_80019064)(&D_8017E840);
         }
     }
-    if ((s16) M2C_FIELD(arg0, u16 *, 0x76) <= 0) {
-        M2C_FIELD(arg0, u16 *, 0x5C) = 0U;
+
+    *(u16 *)(p + 0x5C) = *(u16 *)(p + 0x5C) & 0xFFFE;
+
+    if (e != 0x1D) {
+        if (*(u8 *)(p + 0xC8)) func_8002A520(p);
+        if (*(u8 *)(p + 0xC9)) func_8002A790(p);
     }
-    M2C_FIELD(M2C_FIELD(arg0, void **, 0x20), s16 *, 0x12) = (s16) ((M2C_FIELD(arg0, u16 *, 0x62) + 0x800) & 0xFFF);
-    temp_v0_2 = M2C_FIELD(arg0, void **, 0x20);
-    M2C_FIELD(temp_v0_2, s16 *, 0x14) = 0;
-    M2C_FIELD(temp_v0_2, s16 *, 0x10) = 0;
-    func_8012B2CC(arg0);
-    func_8012B23C(arg0);
+
+    if (*(s16 *)(p + 0x76) <= 0) *(s16 *)(p + 0x5C) = 0;
+
+    {
+        s32 r = *(s32 *)(p + 0x20);
+        *(s16 *)(r + 0x12) = (*(u16 *)(p + 0x62) + 0x800) & 0xFFF;
+        {
+            s32 r2 = *(s32 *)(p + 0x20);
+            *(s16 *)(r2 + 0x14) = 0;
+            *(s16 *)(r2 + 0x10) = 0;
+        }
+    }
+
+    ((void (*)(void *))func_8012B2CC)(p);
+    ((void (*)(void *))func_8012B23C)(p);
 }

@@ -4,22 +4,23 @@
  * Member-0012 C shape retargeted to this member: D_8017F7C8->D_801860B8.
  * Oracle MATCH re-earned against the resident image; Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_801427EC - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-extern void (*D_801860B8[])(void *arg0);
-extern s16 D_801270C0;
+extern u16 D_801270C0;
+extern void (*D_801860B8[])();
 
-/* HAND MODEL of func_801427EC (main_0012.s), decoded manually from
- * raw asm (fully visible; NOT verified against retail; C89-gated
- * only, promotion requires an oracle MATCH): void (u8 *), 0x18
- * frame (ra saved only on the taken path, via the beq delay slot).
- * Returns at once when lh(D_801270C0) == 3; otherwise indirect
- * tail-calls F7C8[lhu(a0+2)] with a0. Table element type
- * provisional. */
-void func_801427EC(u8 *arg0)
+void func_801427EC(int param_1)
 {
-    if (D_801270C0 == 3) {
-        return;
+    if (*(s16 *)&D_801270C0 != 3) {
+        D_801860B8[*(u16 *)(param_1 + 2)]();
     }
-    D_801860B8[*(u16 *)(arg0 + 2)](arg0);
 }

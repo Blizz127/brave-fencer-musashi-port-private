@@ -5,26 +5,23 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_801292C8 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL of func_801292C8 (main_0012.s), decoded manually from
- * raw asm (fully visible; NOT verified against retail; C89-gated
- * only, promotion requires an oracle MATCH): loads word unk20;
- * when non-NULL calls func_80016714(unk20, tag == 1 ? 0x84 :
- * 0x38) (size chosen by the bne delay-slot pair); always zeroes
- * u16 unk0 (sh, shared exit). */
+extern void func_80016714(void *a0, s32 a1);
 
-struct obj_801292C8 {
-    u16 unk0;
-    u8 pad[0x20 - 0x2];
-    void *unk20;
-};
-
-extern void func_80016714(void *arg0, s32 arg1);
-
-void func_801292C8(struct obj_801292C8 *arg0) {
-    if (arg0->unk20 != 0) {
-        func_80016714(arg0->unk20, *(u16 *) arg0->unk20 == 1 ? 0x84 : 0x38);
+void func_801292C8(u8 *a0) {
+    u16 *p = *(u16 **)(a0 + 0x20);
+    if (p != 0) {
+        func_80016714(p, (p[0] == 1) ? 0x84 : 0x38);
     }
-    arg0->unk0 = 0;
+    *(s16 *)a0 = 0;
 }

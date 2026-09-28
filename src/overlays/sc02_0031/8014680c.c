@@ -2,24 +2,32 @@
  * Ahead leaf.
  * Words from pinned SC02.CD member31 PAC0 decode (live-guest identity).
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8014680C - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
 extern s32 D_8011F9D0;
 extern unsigned short D_8011F9D6;
 extern unsigned short D_8011F9DA;
 extern unsigned short D_8011F9DE;
-extern int D_8011FA1C;
-extern int D_8011FA20;
-extern int D_8011FA24;
+extern int   D_8011FA1C;
+extern int   D_8011FA20;
+extern int   D_8011FA24;
 
-unsigned short *func_8014680C(short *param_1) {
+unsigned short *func_8014680C(short *param_1)
+{
     int iVar1, iVar2;
-    unsigned short *psVar3;
-    unsigned short *psVar4;
-
+    register unsigned short *psVar3 __asm__("$3");
+    register unsigned short *psVar4 __asm__("$7");
     iVar2 = 0;
-    psVar4 = (unsigned short *)&D_8011F9D0;
+    psVar4 = (unsigned short *)&(*(unsigned short *)&D_8011F9D0);
     psVar3 = psVar4;
     iVar1 = 0;
     for (; iVar2 < 8;

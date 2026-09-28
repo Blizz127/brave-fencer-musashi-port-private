@@ -1,0 +1,8 @@
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+#include "psx_types.h"
+/* func_801659A8 - byte-exact against retail at -O2 (tools/register_match.py). */
+extern s32 D_8012811C;
+
+s32 func_801659A8(void) {
+    return D_8012811C;
+}

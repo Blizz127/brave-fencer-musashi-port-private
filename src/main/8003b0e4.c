@@ -1,21 +1,17 @@
 /* Native retail instruction export [8003B0E4,8003B14C).
  * Verified against asm/main.s and the extracted EXE. No C match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Sony PsyQ library routine (vendor/bfm-decomp keeps it as INCLUDE_ASM); C written from the retail disassembly. */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_8003B0E4 - byte-exact against retail at -O2 (tools/register_match.py). */
 
-void func_8003B12C();                                  /* extern */
+void func_8003B0E4(void)
+{
+    volatile s32 i;
+    volatile s32 v;
 
-void func_8003B0E4(void) {
-    s32 sp4;
-    s32 sp0;
-
-    sp4 = 0xD;
-    sp0 = 0;
-    func_8003B12C();
+    v = 13;
+    for (i = 0; i < 60; i++) {
+        v = v * 13;
+    }
 }

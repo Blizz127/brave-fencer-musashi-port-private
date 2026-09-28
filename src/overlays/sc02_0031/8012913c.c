@@ -5,42 +5,35 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8012913C - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL from m2c draft of func_8012913C (main_0012.s): NOT
- * verified against retail. C89-gated only; promotion requires an
- * oracle MATCH. Allocator pattern: the void* from func_801291C0 is
- * null-checked, then initialized — a HALFWORD at +0x0 (sh, taking
- * the s16 argument) and a WORD at +0x20 (sw, taking temp_v0_2).
- * The struct declares exactly those two members. The extern
- * ?-prototypes follow the repo pipeline convention (s32 returns
- * where compared, void with word-sized params otherwise). NULL is
- * spelled 0. Body is m2c's verbatim. */
+extern void func_8001D074(s32 a, s32 b);
+extern u8 *func_801291C0(void);
+extern s32 func_8001CC3C(s32 a0, s32 a1, s32 a2, s32 a3);
 
-struct obj_8012913C {
-    s16 unk0;
-    u8 pad[0x1E];
-    s32 unk20;
-};
-
-void func_8001CC3C(s32, s32, s32, s32);
-s32 func_8001D074(s32, s32);
-void *func_801291C0();
-
-void *func_8012913C(s16 arg0) {
-    s32 temp_v0_2;
-    struct obj_8012913C *temp_v0;
-
-    temp_v0_2 = func_8001D074(0x7E, 0x100);
-    if (temp_v0_2 != 0) {
-        temp_v0 = (struct obj_8012913C *) func_801291C0();
-        if (temp_v0 != 0) {
-            temp_v0->unk0 = arg0;
-            temp_v0->unk20 = temp_v0_2;
-            func_8001CC3C(temp_v0_2, 0, 0, 0);
-            return temp_v0;
-        }
-        return 0;
+u8 * func_8012913C(s32 arg0)
+{
+    s32 iVar1;
+    u8 *puVar2;
+    iVar1 = ((s32(*)(s32,s32))func_8001D074)(0x7E, 0x100);
+    if (iVar1 == 0) {
+        return (u8 *)0;
     }
-    return 0;
+    puVar2 = func_801291C0();
+    if (puVar2 == (u8 *)0) {
+        return (u8 *)0;
+    }
+    *(s16 *)puVar2 = arg0;
+    *(s32 *)(puVar2 + 0x20) = iVar1;
+    func_8001CC3C(iVar1, 0, 0, 0);
+    return puVar2;
 }

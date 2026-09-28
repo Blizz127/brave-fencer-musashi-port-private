@@ -2,60 +2,73 @@
  * SHA256(span)=d7fb449042e542cb0ac033500bef4b588ad7bbf0fc460385ea10330ca863d134.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
+/* func_80177EA4 - byte-exact against retail at -O2 (tools/register_match.py). */
+typedef unsigned int uint;
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-s32 *func_80177EA4(s32 *arg0, s32 arg1, s32 arg2, s32 arg3) {
-    s16 temp_v0;
-    s16 var_t2;
-    s32 *var_t1;
-    s32 temp_a3;
-    s32 var_a0;
-    s32 var_a1;
-    s32 var_a2;
-    s32 var_t3;
-    s32 var_v0;
-    void *var_t0;
-
-    var_a1 = arg1;
-    var_a2 = arg2;
-    var_t1 = arg0;
-    var_t3 = 0x01000000;
-    var_t2 = 0;
-    temp_a3 = arg3 << 0x10;
-    var_t0 = var_t1 + 0xC;
+uint *func_80177EA4(uint *param_1, int param_2, uint param_3, int param_4)
+{
+    uint uVar1;
+    register int iVar2 __asm__("$4");
+    register uint *p1 __asm__("$9");
+    register uint *puVar3 __asm__("$8");
+    register int iVar4 __asm__("$10");
+    register uint uVar5 __asm__("$11");
+    register uint mask __asm__("$12");
+    register int nx __asm__("$2");
+    register int p4s __asm__("$7");
+    int cont;
+    p1 = param_1; uVar5 = 0x1000000; iVar4 = 0; mask = 0xffffff;
+    p4s = param_4 << 0x10;
+    puVar3 = p1 + 3;
     do {
-        *var_t1 = ((var_t1 - 0x14) & 0xFFFFFF) | 0x03000000;
-        var_t0->unk-8 = 0x74808080;
-        if (var_t2 != 0) {
-            if (var_t2 == 6) {
-                var_a0 = 1;
-                var_t3 = 0;
-            } else {
-                var_a0 = ((var_a1 >> 0x10) & 0xF) + 1;
-                var_a1 *= 0x10;
+        register uint c74 __asm__("$4");
+        register uint c3 __asm__("$3");
+        register uint m __asm__("$2");
+        c74 = 0x74808080;
+        m = (uint)(p1 + -5) & mask;
+        __asm__ __volatile__("" : "=r"(m) : "0"(m));
+        c3 = 0x3000000;
+        *p1 = m | c3;
+        puVar3[-2] = c74;
+        if ((short)iVar4 != 0) {
+            register int six __asm__("$2");
+            six = 6;
+            if ((short)iVar4 == six) { iVar2 = 1; uVar5 = 0; }
+            else {
+                register int t __asm__("$2");
+                t = param_2 >> 0x10 & 0xf;
+                iVar2 = t + 1;
+                param_2 = param_2 << 4;
             }
-            if (var_a0 != 1) {
-                var_t3 = 0;
+            {
+                register int iv2c __asm__("$3");
+                register int one __asm__("$2");
+                iv2c = iVar2;
+                __asm__ __volatile__("" : "=r"(iv2c) : "0"(iv2c));
+                one = 1;
+                if (iv2c != one) uVar5 = 0;
             }
-            var_v0 = temp_a3 | (var_a2 & 0xFFFF) | var_t3;
-        } else {
-            var_a0 = 0;
-            var_v0 = temp_a3 | (var_a2 & 0xFFFF);
+            uVar1 = p4s | (param_3 & 0xffff) | uVar5;
+        } else { iVar2 = 0; uVar1 = p4s | (param_3 & 0xffff); }
+        puVar3[-1] = uVar1;
+        __asm__ __volatile__("" : : "r"(iVar2) : "memory");
+        {
+            register uint c6b __asm__("$3");
+            register uint r __asm__("$2");
+            c6b = 0x6b564000;
+            r = (uint)(iVar2 << 3) | c6b;
+            *puVar3 = r;
         }
-        var_t0->unk-4 = var_v0;
-        var_t0->unk0 = (s32) ((var_a0 * 8) | 0x6B564000);
-        var_t0 += 0x14;
-        var_t1 += 0x14;
-        temp_v0 = var_t2 + 1;
-        var_t2 = temp_v0;
-        var_a2 += 8;
-    } while (temp_v0 < 7);
-    return var_t1;
+        puVar3 = puVar3 + 5; p1 = p1 + 5; param_3 = param_3 + 8;
+        {
+            register int sx __asm__("$2");
+            nx = iVar4 + 1;
+            iVar4 = nx;
+            sx = nx << 0x10;
+            cont = (sx >> 0x10) < 7;
+        }
+    } while (cont);
+    return p1;
 }

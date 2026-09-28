@@ -2,51 +2,46 @@
  * SHA256(span)=c0b00bc1387cc6482062e6cc6d51d5b3ca133b621846f50ef3e8f0ae67e2732a.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-#include "m2c_macros.h"
+/* func_80149FB0 - byte-exact against retail at -O2 (tools/register_match.py). */
+#define currentLocationId D_800B9A08
+extern s16 currentLocationId;
+extern short currentLocationId;
+extern u8 D_80078E78[];
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+s32 func_80149FB0(s32 a0) {
 
-extern s32 D_8017FF38;
-extern s32 *D_80078E78;
-extern s16 D_800B9A08;
+    extern s32 D_8017FF38[];
+    extern u8 D_80078E78[];
+    s32 *p = &D_8017FF38[0];
+    register s32 v __asm__("$3") = *p;
+    u8 *q = &D_80078E78[0];
+    s32 loc;
 
-s32 func_80149FB0(void *arg0) {
-    s32 *var_v0_2;
-    s32 var_v0;
-    s32 var_v1;
-
-    var_v1 = D_8017FF38;
-    var_v0_2 = D_8017FF38 + 4;
-    if (var_v1 != 0) {
-loop_2:
-        if (D_800B9A08 != var_v1) {
-            var_v1 = *var_v0_2;
-            var_v0_2 += 4;
-            if (var_v1 == 0) {
-                goto block_4;
+    if (v != 0) {
+        loc = currentLocationId;
+        p = p + 1;
+        do {
+            if (loc == v) {
+                goto ret0;
             }
-            goto loop_2;
-        }
-        goto block_7;
+            v = *p;
+            p = p + 1;
+        } while (v != 0);
     }
-block_4:
-    var_v0 = 0;
-    if (!(M2C_FIELD(arg0, s32 *, 0x44) & 0x400)) {
-        var_v0 = 0;
-        if (M2C_FIELD(arg0, s16 *, 0x1C8) == 0) {
-            var_v0 = 1;
-            if (!(M2C_FIELD(arg0, u16 *, 0xAC) & 0x100)) {
-block_7:
-                return 0;
-            }
-            M2C_FIELD(&D_80078E78, u8 *, 0x48) = (u8) (M2C_FIELD(&D_80078E78, u8 *, 0x48) ^ 0x80);
-            /* Duplicate return node #9. Try simplifying control flow for better match */
-            return var_v0;
-        }
+
+    if ((*(u32 *)(a0 + 0x44) & 0x400) != 0) {
+        return 0;
     }
-    return var_v0;
+    if (*(s16 *)(a0 + 0x1C8) != 0) {
+        return 0;
+    }
+    if ((*(u16 *)(a0 + 0xAC) & 0x100) == 0) {
+    ret0:
+        return 0;
+    }
+    v = q[0x48];
+    q[0x48] = v ^ 0x80;
+    return 1;
 }

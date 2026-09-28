@@ -5,34 +5,30 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8012F7B4 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL of func_8012F7B4 (main_0012.s), decoded manually from
- * raw asm (0x74 bytes; m2c BEE8() misread corrected: the jal has
- * a nop delay slot with a0 still holding obj, so it is
- * BEE8(arg0) by pass-through; NOT verified against retail;
- * C89-gated only, promotion requires an oracle MATCH): when word
- * unkB4 & 4, calls BEE8(obj); when word unk1C is 1 and
- * 31A34(obj, 8) returns 0, calls 31A34(obj, 0x20). Always ends
- * with 31CA8(obj, 7). */
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern s32 func_8012BEE8(s32);
+extern s32 func_80131A34(s32, s32);
+extern void func_80131CA8(int a0, int a1);
 
-struct obj_8012F7B4 {
-    u8 pad[0x1C];
-    s32 unk1C;
-    u8 pad2[0xB4 - 0x20];
-    s32 unkB4;
-};
-
-extern s32 func_8012BEE8(void *arg0);
-extern s32 func_80131A34(void *arg0, s32 arg1);
-extern void func_80131CA8(void *arg0, s32 arg1);
-
-void func_8012F7B4(struct obj_8012F7B4 *arg0) {
-    if (arg0->unkB4 & 4) {
-        func_8012BEE8(arg0);
-        if (arg0->unk1C == 1 && func_80131A34(arg0, 8) == 0) {
-            func_80131A34(arg0, 0x20);
+void func_8012F7B4(s32 a0) {
+    if (*(s32 *)(a0 + 0xB4) & 4) {
+        func_8012BEE8(a0);
+        if (*(s32 *)(a0 + 0x1C) == 1) {
+            if (func_80131A34(a0, 8) == 0) {
+                func_80131A34(a0, 0x20);
+            }
         }
     }
-    func_80131CA8(arg0, 7);
+    func_80131CA8(a0, 7);
 }

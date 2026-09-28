@@ -1,65 +1,28 @@
 /* Exact retail word export [800191D4,8001923C); verified against pinned EXE and asm. */
-#if defined(__mips__)
-__asm__(
-    ".set	noreorder
-"
-    ".globl	func_800191D4
-"
-    ".ent	func_800191D4
-"
-    ".type	func_800191D4, @function
-"
-    "func_800191D4:
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-    ".end	func_800191D4
-"
-    ".size	func_800191D4, .-func_800191D4
-"
-);
-#else
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_800191D4 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-s32 func_8001923C(s32);                             /* static */
-extern s32 D_80078E30;
-
-s32 func_800191D4(s32 arg0) {
-    if ((D_80078E30 < 0) || (func_8001923C(arg0) != 0)) {
-        return 1;
-    }
-    return D_80078E30 != arg0;
-}
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
 #endif
 
+extern s32 D_80078E30;
+extern s32 func_8001923C(s32 a0);
+
+s32 func_800191D4(s32 a0) {
+    extern s32 D_80078E30;
+    extern s32 func_8001923C();
+    s32 *p = &D_80078E30;
+
+    if (*p < 0) {
+        return 1;
+    }
+    if (func_8001923C(a0) == 0) {
+        return *p != a0;
+    }
+    return 1;
+}

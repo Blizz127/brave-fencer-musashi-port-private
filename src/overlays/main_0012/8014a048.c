@@ -2,70 +2,74 @@
  * SHA256(span)=8dc9afab9bc0e6df6da4e0760cdbef904a8a0a77285398c249c0cc15f95bdeb3.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8014A048 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* File-scope declarations from the vendor translation unit. */
+typedef struct {
+    /* 0x00 */ s16 a30;
+    /* 0x02 */ s16 a2e;
+    /* 0x04 */ s16 a2c;
+    /* 0x06 */ s16 pad06;
+    /* 0x08 */ s32 buf[2];
+    /* 0x10 */ s16 a20;
+    /* 0x12 */ s16 a1e;
+    /* 0x14 */ s16 a1c;
+} Loc;
 
-void func_8012F14C(s32, s16 *, void *);       /* static */
-s32 func_80135260(s32, s32, u16 *, void *);      /* static */
-void func_8014A1B0(void *, void *);              /* static */
-s32 func_8014BEF8(void *, s16 *);                   /* static */
-extern s32 *D_801202A0;
-
-s32 func_8014A048(void *arg0) {
-    s16 sp24;
-    s16 sp22;
-    s16 sp20;
-    s32 sp18;
-    u16 sp14;
-    u16 sp12;
-    u16 sp10;
-    s32 temp_a1;
-    s32 var_s2;
-    u16 temp_v1;
-    u32 var_s3;
-    void *temp_s0;
-
-    if (!(M2C_FIELD(arg0, s32 *, 0x44) & 0x400)) {
-        temp_v1 = M2C_FIELD(arg0, u16 *, 0xAC);
-        if (!(temp_v1 & 0x80)) {
-            if (temp_v1 & 0x10) {
-                if (func_8014BEF8(arg0, &sp20) != 0) {
-                    goto block_4;
-                }
-                /* Duplicate return node #15. Try simplifying control flow for better match */
-                return 0;
-            }
-            /* Duplicate return node #15. Try simplifying control flow for better match */
+/* func_8014A048 — shared body (overlay slot 0x80128158, h_exact e56821e1). ONE source: instantiated by #include at each
+ * member's site in address order; the members are recorded in config/dedup.us.yaml (Phase 35). */
+extern u8 func_8014BEF8(void);
+extern void func_8012F14C(s32 a0, s32 a1, s32 a2);
+extern s32 func_80135260(s32 arg0, s32 arg1, s16 *arg2, s16 *arg3);
+extern void func_8014A1B0(s32 a0, s32 a1);
+extern u8 D_801202A0[];
+s32 func_8014A048(s32 param_1) {
+    Loc L;
+    s32 s0;
+    s32 s2;
+    u32 s3;
+    if ((*(u32 *)(param_1 + 0x44) & 0x400) != 0) {
+        return 0;
+    }
+    if ((*(u16 *)(param_1 + 0xAC) & 0x80) == 0) {
+        if ((*(u16 *)(param_1 + 0xAC) & 0x10) == 0) {
             return 0;
         }
-block_4:
-        sp10 = M2C_FIELD(arg0, u16 *, 6);
-        var_s3 = 0;
-        sp12 = M2C_FIELD(arg0, u16 *, 0xA);
-        sp22 = -0x10;
-        sp20 = 0;
-        sp24 = -0x20;
-        sp14 = M2C_FIELD(arg0, u16 *, 0xE);
-        var_s2 = 0;
-        func_8012F14C(M2C_FIELD(arg0, s32 *, 0x20) + 0x34, &sp20, &sp18);
-loop_5:
-        temp_s0 = var_s2 + &D_801202A0;
-        if ((M2C_FIELD(temp_s0, u16 *, 0) == 0) || (temp_a1 = M2C_FIELD(temp_s0, s32 *, 0x58), (temp_a1 == 0)) || (M2C_FIELD(temp_s0, s16 *, 0xAA) != 0) || (M2C_FIELD(arg0, s32 *, 0x184) == temp_s0) || !(M2C_FIELD(temp_s0, u16 *, 0x5C) & 0x200) || (func_80135260(M2C_FIELD(temp_s0, s32 *, 0x20), temp_a1, &sp10, &sp18) == 0)) {
-            var_s3 += 1;
-            var_s2 += 0x10C;
-            if (var_s3 >= 0x60U) {
-                return 0;
-            }
-            goto loop_5;
+        if (((s32 (*)(s32))func_8014BEF8)(param_1) == 0) {
+            goto ret0;
         }
-        M2C_FIELD(arg0, void **, 0x178) = temp_s0;
-        func_8014A1B0(arg0, temp_s0);
-        return 1;
     }
+    L.a30 = *(s16 *)(param_1 + 6);
+    L.a2e = *(s16 *)(param_1 + 0xA);
+    L.a2c = *(s16 *)(param_1 + 0xE);
+    L.a1e = -0x10;
+    L.a20 = 0;
+    L.a1c = -0x20;
+    ((void (*)(s32, s32, s32))func_8012F14C)(*(s32 *)(param_1 + 0x20) + 0x34, (s32)&L.a20, (s32)L.buf);
+    s3 = 0;
+    s2 = 0;
+    while (1) {
+        s0 = (s32)D_801202A0 + s2;
+        __asm__ __volatile__("" : "=r"(s0) : "0"(s0));
+        if ((*(u16 *)s0 != 0) &&
+            (*(s32 *)(s0 + 0x58) != 0) &&
+            (*(s16 *)(s0 + 0xAA) == 0) &&
+            (*(s32 *)(param_1 + 0x184) != s0) &&
+            ((*(u16 *)(s0 + 0x5C) & 0x200) != 0) &&
+            (((s32 (*)(s32, s32, s32, s32))func_80135260)(*(s32 *)(s0 + 0x20), *(s32 *)(s0 + 0x58), (s32)&L.a30, (s32)L.buf) != 0)) {
+            break;
+        }
+        s3++;
+        s2 += 0x10C;
+        if (s3 >= 0x60) {
+            return 0;
+        }
+    }
+    *(s32 *)(param_1 + 0x178) = s0;
+    func_8014A1B0(param_1, s0);
+    return 1;
+ret0:
     return 0;
 }

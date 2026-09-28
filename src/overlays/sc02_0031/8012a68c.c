@@ -5,25 +5,23 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8012A68C - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL from m2c draft of func_8012A68C (main_0012.s): NOT
- * verified against retail. C89-gated only; promotion requires an
- * oracle MATCH. Call chain grounded from raw asm: A7D4(sp+0x10, sp+0x18) then A6D0 with the same pair. Both take the 3-halfword out struct. */
-
-struct pair_8012A7D4 {
-    s16 unk0;
-    s16 unk2;
-    s16 unk4;
-};
-
-void func_8012A7D4(struct pair_8012A7D4 *arg0, struct pair_8012A7D4 *arg1);
-s16 func_8012A6D0(struct pair_8012A7D4 *arg0, struct pair_8012A7D4 *arg1);
+extern void func_8012A7D4(void *a0, void *a1);
+extern s32 func_8012A6D0(void *a0, void *a1);
 
 s16 func_8012A68C(void) {
-    struct pair_8012A7D4 sp10;
-    struct pair_8012A7D4 sp18;
-
-    func_8012A7D4(&sp10, &sp18);
-    return func_8012A6D0(&sp10, &sp18);
+    s16 a[4];
+    s16 b[4];
+    func_8012A7D4(a, b);
+    return (s16)func_8012A6D0(a, b);
 }

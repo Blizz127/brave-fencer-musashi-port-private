@@ -5,26 +5,33 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8013A448 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-void func_8013A530();
-typedef struct Q { u8 pad[0x28]; u16 u28, u2A; } Q;
-typedef struct {
-    u16 u0, u2;
-    Q *q;
-} T;
-void func_8013A448(T *p) {
-    Q *q = p->q;
-    if (p->u2 == 0) {
-        q->u2A = 0x400;
-        q->u28 = 0x400;
-        p->u2++;
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern void func_8013A530();
+
+void func_8013A448(void *a0) {
+    s16 *a1 = *(s16 **)((char *)a0 + 0x4);
+    if (*(u16 *)((char *)a0 + 0x2) == 0) {
+        *(s16 *)((char *)a1 + 0x2A) = 0x400;
+        *(s16 *)((char *)a1 + 0x28) = 0x400;
+        *(s16 *)((char *)a0 + 0x2) = *(u16 *)((char *)a0 + 0x2) + 1;
     } else {
-        q->u28 += 0x200;
-        q->u2A += 0x200;
-        if ((s16)q->u28 == 0x1000) {
-            p->u0 = 2;
-            p->u2 = 0;
+        *(s16 *)((char *)a1 + 0x28) = *(u16 *)((char *)a1 + 0x28) + 0x200;
+        *(s16 *)((char *)a1 + 0x2A) = *(u16 *)((char *)a1 + 0x2A) + 0x200;
+        if (*(s16 *)((char *)a1 + 0x28) == 0x1000) {
+            *(s16 *)((char *)a0 + 0x0) = 2;
+            *(s16 *)((char *)a0 + 0x2) = 0;
         }
     }
-    func_8013A530(p);
+    func_8013A530();
 }

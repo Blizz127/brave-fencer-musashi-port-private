@@ -5,26 +5,22 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80139A68 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL of func_80139A68 (main_0012.s), decoded manually from
- * raw asm (fully visible; NOT verified against retail; C89-gated
- * only, promotion requires an oracle MATCH): void (s32, s32),
- * no frame. i = (u32)a1 & 0xFFFF (andi); if (i < 4u, sltiu)
- * D_80127540[i] = (u16)a0 (sh; the sll x2 rides the branch
- * delay slot); return. Halfword twin of func_80139A44 (whose
- * table holds pointers). No direct jal/j callers in the
- * overlay (jalr- or cross-overlay-reached). The u16 table
- * view agrees with func_80138AB4.c (D_80127540[h48] feeds
- * func_80139D04). */
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern s16 D_80127540[4];
 
-extern u16 D_80127540[];
-
-void func_80139A68(s32 arg0, s32 arg1) {
-    u32 iv;
-
-    iv = ((u32)arg1) & 0xFFFF;
-    if (iv < 4) {
-        D_80127540[iv] = (u16)arg0;
+void func_80139A68(s32 a0, u16 a1) {
+    if (a1 < 4) {
+        D_80127540[a1] = (s16)a0;
     }
 }

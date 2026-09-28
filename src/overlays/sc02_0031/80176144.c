@@ -1,19 +1,37 @@
 /* Complete SC02 scene buffer setup; independently matched ordinary C. */
-typedef unsigned int u32;
-typedef unsigned char u8;
-typedef struct { int used; u32 *data; int other; } Buffer;
-extern Buffer D_800AF634[];
-extern u8 D_8011F7A8[];
-extern unsigned short D_8011F7BC, D_8011F7BE;
-extern u8 *func_80178004(u8 *,short,short);
-#define P(p,o) (*(u8 **)((p)+(o)))
-void func_80176144(short buffer)
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80176144 - byte-exact against retail at -O2 (tools/register_match.py). */
+#include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+typedef struct { s32 g0; s32 pad[2]; } S_AF634;
+extern void func_8012A568(void (*a0)(void));
+
+void func_80176144(s32 a0)
 {
-    u8 *slot = D_8011F7A8 + buffer*4;
-    u8 *packet = (u8 *)(D_800AF634[buffer].data + D_800AF634[buffer].used);
-    P(slot,0x38) = packet;
-    packet = func_80178004(packet,D_8011F7BC-23,D_8011F7BE+101);
-    P(slot,0x40) = packet-20;
-    packet += 20;
-    D_800AF634[buffer].used += (packet-P(slot,0x38)) >> 2;
+    extern S_AF634 aAF634[] __asm__("D_800AF634");
+    extern S_AF634 aAF638[] __asm__("D_800AF638");
+    extern u8  D_8011F7A8;
+    extern s16 D_8011F7BC;
+    extern s16 D_8011F7BE;
+    extern s32 func_80178004();
+    u32 *slot;
+    u32 *p;
+    s16 param_1 = (s16)a0;
+    p = (u32 *)(aAF638[param_1].g0 + aAF634[param_1].g0 * 4);
+    slot = (u32 *)(param_1 * 4 + (s32)&D_8011F7A8);
+    slot[14] = (u32)p;
+    __asm__("");
+    p = (u32 *)func_80178004((s32)p,
+                             (s16)((*(u16 *)&D_8011F7BC) - 0x17),
+                             (s16)((*(u16 *)&D_8011F7BE) + 0x65));
+    slot[16] = (u32)p - 0x14;
+    p += 5;
+    aAF634[param_1].g0 += ((s32)p - (s32)slot[14]) >> 2;
 }

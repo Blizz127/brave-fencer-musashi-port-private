@@ -2,56 +2,58 @@
  * SHA256(span)=7c1b548a06b35a6cf4d2fe221e5f2e4eae652530140d6f7800525c692d9d770a.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80156848 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* File-scope declarations from the vendor translation unit. */
+typedef struct { s16 a; s16 b; s16 c; s16 d; } S8;
+typedef struct { u8 b[8]; } B8;
 
-void func_80013E94(void *, s32 *);               /* extern */
-void func_801469C8(s32, s32, s16, s16, s32, s32, s32, s32); /* static */
-void func_80146A6C(u8, s32, s16, s16, s32, s32, s32); /* static */
-void func_80156A1C(s32, u32);                    /* static */
-extern s32 *D_801151E0;
-extern s32 *D_80126730;
-extern s32 *D_80126AF0;
-extern s32 *D_80126AF2;
-extern s32 *D_80126AF4;
-extern s32 *D_80128120;
-extern s32 *D_80128138;
-
-void func_80156848(s32 arg0, void *arg1) {
-    s32 sp20;
-    s32 *temp_s1;
-    s32 temp_v1;
-    s32 var_s0;
-    u32 var_s2;
-
-    var_s2 = 0;
-    var_s0 = 0;
+/* func_80156848 — shared body (overlay slot 0x80128158, h_exact 6818a35c). ONE source: instantiated by #include at each
+ * member's site in address order; the members are recorded in config/dedup.us.yaml (Phase 35). */
+extern s32 D_801151E0[];
+extern B8 D_80128120[];
+extern B8 D_80128138[];
+extern S8 D_80126AF0[];
+extern u8 D_80126730[];
+void func_80156848(s32 param_1, s32 param_2) {
+    extern s32 D_801151E0[];
+    extern u8 D_80126730[];
+    extern S8 D_80126AF0[];
+    extern B8 D_80128120[];
+    extern B8 D_80128138[];
+    extern void func_80013E94(void *a0, void *a1);
+    extern s32 func_801469C8(int a0, void *a1, int a2, int a3, u16 arg5, int arg6, int arg7, int arg8);
+    extern s32 func_80146A6C(s32 a0, void *a1, s32 a2, s32 a3, s32 a4, s32 a5, s32 a6);
+    extern void func_80156A1C(s32 a0, s32 a1);
+    u32 uVar1;
+    s32 i;
+    u32 uVar3;
+    u32 local_20[2];
+    uVar3 = 0;
+    i = 0;
     do {
-        temp_s1 = (var_s2 * 4) + &D_801151E0;
-        temp_v1 = *temp_s1;
-        if (temp_v1 & 1) {
-            func_80013E94(var_s0 + &D_80128120, &sp20);
-            func_80146A6C(M2C_FIELD(arg1, u8 *, 8), arg0, *(&D_80126AF0 + var_s0), *(&D_80126AF2 + var_s0), (s32) *(&D_80126AF4 + var_s0), sp20, (s32) M2C_FIELD(arg1, u8 *, 9));
-            var_s2 += 1;
-        } else {
-            if (temp_v1 & 6) {
-                func_80156A1C(arg0, var_s2);
-                func_80013E94(var_s0 + &D_80128138, &sp20);
-                if ((*temp_s1 & 6) == 4) {
-                    sp20 |= 0x80000000;
-                }
-                func_80146A6C(6U, arg0, *(&D_80126AF0 + var_s0), *(&D_80126AF2 + var_s0), (s32) *(&D_80126AF4 + var_s0), sp20, 0);
-                if (*(&D_80126730 + var_s2) == 0x24) {
-                    func_801469C8(0x53, arg0, *(&D_80126AF0 + var_s0), *(&D_80126AF2 + var_s0), (s32) *(&D_80126AF4 + var_s0), sp20, 0, 0x14);
-                }
+        uVar1 = D_801151E0[uVar3];
+        if (uVar1 & 1) {
+            func_80013E94(&D_80128120[i], local_20);
+            ((s32 (*)(s32, s32, s32, s32, s32, s32, s32))func_80146A6C)(*(u8 *)(param_2 + 8), param_1, (s32)D_80126AF0[i].a,
+                          (s32)D_80126AF0[i].b, (s32)D_80126AF0[i].c, local_20[0],
+                          *(u8 *)(param_2 + 9));
+        } else if (uVar1 & 6) {
+            func_80156A1C(param_1, uVar3);
+            func_80013E94(&D_80128138[i], local_20);
+            if ((D_801151E0[uVar3] & 6) == 4) {
+                local_20[0] = local_20[0] | 0x80000000;
             }
-            var_s2 += 1;
+            ((s32 (*)(s32, s32, s32, s32, s32, s32, s32))func_80146A6C)(6, param_1, (s32)D_80126AF0[i].a,
+                          (s32)D_80126AF0[i].b, (s32)D_80126AF0[i].c, local_20[0], 0);
+            if (D_80126730[uVar3] == 0x24) {
+                ((void (*)(s32, s32, s32, s32, s32, s32, s32, s32))func_801469C8)(0x53, param_1, (s32)D_80126AF0[i].a,
+                              (s32)D_80126AF0[i].b, (s32)D_80126AF0[i].c, local_20[0], 0, 0x14);
+            }
         }
-        var_s0 += 8;
-    } while (var_s2 < 3U);
+        uVar3 = uVar3 + 1;
+        i = i + 1;
+    } while (uVar3 < 3);
 }

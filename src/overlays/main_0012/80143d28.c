@@ -2,50 +2,65 @@
  * SHA256(span)=f5062271bece294d2764798b74cf10951b828c25b654116aeacff019ff0ea852.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80143D28 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* Vendor names mapped to address-named symbols for the link-by-address harness. */
+#define ApplyMatrixSV func_80048FBC
 
-void func_80048FBC(void *, void *, void *);      /* extern */
-extern s32 D_8017FCDC;
-s32 func_8012BEE8(void *);                          /* static */
-void func_8012C218(void *);                      /* static */
+/* File-scope declarations from the vendor translation unit. */
+typedef struct { s16 vx, vy, vz, pad; } Svec_801372B0;
+typedef struct {
+    u8  pad[8]; /* 0x00 */
+    u16 f8;     /* 0x08 */
+    u16 fa;     /* 0x0a */
+} MatEntry;
 
-void func_80143D28(void *arg0) {
-    s16 var_s3;
-    s32 temp_v1;
-    void *temp_a1;
-    void *temp_s1;
-    void *temp_s2;
+// @class: regalloc-order
+// @stuck: none — MATCH (80 ins, relocation-masked). iVar2/iVar3 pinned $s1/$s2; sVar4 is an
+//   int set BEFORE the call so it naturally takes callee-saved $s3; chained assignment
+//   a=b=c=sVar4 materializes the value once (the addu $v0,$s3,$zero move) + delay-slot store.
 
-    temp_s2 = M2C_FIELD(arg0, void **, 0x20);
-    temp_s1 = M2C_FIELD(arg0, void **, 0x64);
-    temp_a1 = (M2C_FIELD(arg0, s16 *, 0x70) * 0xC) + D_8017FCDC;
-    M2C_FIELD(temp_s2, u16 *, 0x14) = (u16) M2C_FIELD(temp_a1, u16 *, 8);
-    M2C_FIELD(temp_s2, u16 *, 0x12) = (u16) (M2C_FIELD(temp_s2, u16 *, 0x12) + M2C_FIELD(temp_a1, u16 *, 0xA));
-    func_80048FBC(M2C_FIELD(arg0, void **, 0x20) + 0x34, temp_a1, arg0 + 0x50);
-    var_s3 = 0x1000;
-    if ((M2C_FIELD(arg0, s16 *, 0xFE) == 0) && ((temp_s1 == 0) || (M2C_FIELD(temp_s1, s16 *, 0x36) != M2C_FIELD(arg0, s16 *, 0xFC)) || (M2C_FIELD(temp_s1, u8 *, 0xC1) != 6))) {
-        if (M2C_FIELD(arg0, s32 *, 0x1C) >= 0x11) {
-            M2C_FIELD(arg0, s32 *, 0x1C) = 0x10;
+     /* size 0x0c */
+
+extern void ApplyMatrixSV(void*, Svec_801372B0*, Svec_801372B0*);
+extern s32 func_8012BEE8(s32 a0);
+extern void func_8012C218(void *a0);
+
+void func_80143D28(s32 param_1) {
+
+    extern MatEntry D_8017FCDC[];
+    register s32 iVar3 __asm__("$18") = *(s32 *)(param_1 + 0x20); /* $s2 */
+    register s32 iVar2 __asm__("$17") = *(s32 *)(param_1 + 0x64); /* $s1 */
+    MatEntry *p = &D_8017FCDC[*(s16 *)(param_1 + 0x70)];
+    s32 sVar4;
+    s32 iVar1;
+
+    *(s16 *)(iVar3 + 0x14) = p->f8;
+    *(u16 *)(iVar3 + 0x12) = *(u16 *)(iVar3 + 0x12) + p->fa;
+    sVar4 = 0x1000;
+    ((void (*)(void *, void *, void *))ApplyMatrixSV)((void *)(*(s32 *)(param_1 + 0x20) + 0x34), p, (void *)(param_1 + 0x50));
+
+    if (*(s16 *)(param_1 + 0xfe) == 0 &&
+        (iVar2 == 0 || *(s16 *)(iVar2 + 0x36) != *(s16 *)(param_1 + 0xfc) ||
+         *(u8 *)(iVar2 + 0xc1) != 6)) {
+        if (0x10 < *(s32 *)(param_1 + 0x1c)) {
+            *(s32 *)(param_1 + 0x1c) = 0x10;
         }
-        M2C_FIELD(arg0, s16 *, 0xFE) = 1;
+        *(s16 *)(param_1 + 0xfe) = 1;
     }
-    temp_v1 = M2C_FIELD(arg0, s32 *, 0x1C);
-    if (temp_v1 < 0x11) {
-        var_s3 = temp_v1 << 8;
+
+    iVar1 = *(s32 *)(param_1 + 0x1c);
+    if (iVar1 < 0x11) {
+        sVar4 = iVar1 << 8;
     }
-    if (temp_v1 >= 0x74) {
-        var_s3 = (0x78 - temp_v1) << 0xA;
+    if (0x73 < iVar1) {
+        sVar4 = (0x78 - iVar1) << 10;
     }
-    M2C_FIELD(temp_s2, s16 *, 0x1C) = var_s3;
-    M2C_FIELD(temp_s2, s16 *, 0x1A) = var_s3;
-    M2C_FIELD(temp_s2, s16 *, 0x18) = var_s3;
-    if (func_8012BEE8(arg0) != 0) {
-        func_8012C218(arg0);
+    *(s16 *)(iVar3 + 0x18) = *(s16 *)(iVar3 + 0x1a) = *(s16 *)(iVar3 + 0x1c) = sVar4;
+
+    if (func_8012BEE8(param_1)) {
+        func_8012C218((void *)param_1);
     }
 }

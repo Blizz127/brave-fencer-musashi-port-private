@@ -2,69 +2,65 @@
  * SHA256(span)=a1e1cbc2d42d0f9a7ac7ab0f6fa334e736cb261833911050c802dba1dfce41a9.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80164530 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* Vendor names mapped to address-named symbols for the link-by-address harness. */
+#define ratan2 func_8004CFEC
 
-s16 func_80012A60(s16, s16);                        /* extern */
-s16 func_80012DBC(s16, s16, s32, s32);                  /* extern */
-s16 func_80047D3C(s32, s32);                        /* extern */
-s32 func_8004CFEC(s32, s16);                        /* extern */
-s16 func_8014C59C(void *, void *);                     /* static */
-extern s32 D_800AF630;
-extern s32 *D_801202A0;
-extern s32 *D_80126720;
-
-void func_80164530(void *arg0) {
-    void *var_s1;
-    void *var_s5;
-    s16 temp_v0;
-    s16 temp_v0_2;
-    s16 temp_v0_3;
-    s16 temp_v0_4;
-    s16 var_s2;
-    s16 var_s6;
-    s32 temp_lo;
-    s32 temp_s0;
-    u32 temp_v1;
-    u32 temp_v1_2;
-    void *temp_s4;
-
-    var_s5 = saved_reg_s5;
-    var_s6 = saved_reg_s6;
-    var_s1 = &D_801202A0;
-    temp_s4 = arg0->unk20;
-    var_s2 = 0x1000;
-    if ((u32) &D_801202A0 < (u32) (&D_801202A0 + 0x6480)) {
-        do {
-            if (var_s1->unk5C & 0x2000) {
-                temp_v0 = func_8014C59C(arg0, var_s1);
-                temp_v0_2 = func_80012A60(temp_v0, temp_s4->unk12);
-                if ((temp_v0_2 < 0x200) && (temp_v0_2 < var_s2)) {
-                    var_s6 = temp_v0;
-                    var_s2 = temp_v0_2;
-                    var_s5 = var_s1;
-                }
+/* func_80164530 — shared body (overlay slot 0x80128158, h_exact 9aa82e98). ONE source: instantiated by #include at each
+ * member's site in address order; the members are recorded in config/dedup.us.yaml (Phase 35). */
+extern s32 func_8014C59C(void *a0, void *a1);
+extern s32 func_80012A60(s32 a0, s32 a1);
+extern s32 func_80012DBC(s32 a0, s32 a1, s32 a2, s32 a3);
+extern s32 func_80047D3C(s32 a0);
+extern s32 ratan2(s32 a0, s32 a1);
+extern u8 D_801202A0[];
+extern u8 D_800AF630[];
+void func_80164530(s32 arg0) {
+    register u8 *p __asm__("$17");
+    register s32 s0 __asm__("$16");
+    register u8 *unaff_s5 __asm__("$21");
+    register s32 unaff_s6 __asm__("$22");
+    register u8 *base __asm__("$23");
+    s32 iVar9;
+    s16 sVar4;
+    s32 ix, iy, dist;
+    sVar4 = 0x1000;
+    base = D_800AF630;
+    p = D_801202A0;
+    iVar9 = *(s32 *)(arg0 + 0x20);
+    for (; p < D_801202A0 + 0x6480; p += 0x10C) {
+        if ((*(u16 *)(p + 0x5C) & 0x2000) != 0) {
+            s32 r2;
+            s0 = func_8014C59C((void *)arg0, (void *)p);
+            r2 = func_80012A60((s32)(s16)s0, (s32)*(s16 *)(iVar9 + 0x12));
+            if (((s16)r2 < 0x200) && ((s16)r2 < sVar4)) {
+                unaff_s6 = s0;
+                sVar4 = r2;
+                unaff_s5 = p;
             }
-            var_s1 += 0x10C;
-        } while ((u32) var_s1 < (u32) &D_80126720);
+        }
     }
-    if (var_s2 != 0x1000) {
-        arg0->unk20->unk12 = func_80012DBC(temp_s4->unk12, var_s6, 0xA, 1);
-        if (D_800AF630.unkA3D8 == 0x30A0) {
-            temp_s0 = var_s5->unk58 & 0x0FFFFFFF;
-            if (temp_s0 != 0) {
-                temp_v1 = temp_s0->unkC + temp_s0->unkE;
-                temp_v0_3 = (var_s5->unkE + ((s32) (temp_v1 + (temp_v1 >> 0x1F)) >> 1)) - arg0->unkE;
-                temp_lo = temp_v0_3 * temp_v0_3;
-                temp_v1_2 = temp_s0->unk4 + temp_s0->unk6;
-                temp_v0_4 = (var_s5->unk6 + ((s32) (temp_v1_2 + (temp_v1_2 >> 0x1F)) >> 1)) - arg0->unk6;
-                arg0->unk20->unk10 = (s16) (func_8004CFEC((var_s5->unkA + ((s32) (temp_s0->unk8 + temp_s0->unkA) / 2)) - arg0->unkA, func_80047D3C(temp_lo + (temp_v0_4 * temp_v0_4), temp_lo)) & 0xFFF);
+    if (sVar4 != 0x1000) {
+        *(s16 *)(*(s32 *)(arg0 + 0x20) + 0x12) =
+            (s16)func_80012DBC((s32)*(s16 *)(iVar9 + 0x12), (s32)(s16)unaff_s6, 10, 1);
+        if (*(s16 *)(base + 0xA3D8) == 0x30A0) {
+            u32 uVar7 = *(u32 *)(unaff_s5 + 0x58) & 0xFFFFFFF;
+            if (uVar7 != 0) {
+                iy = (s32)((((u32)*(u16 *)(unaff_s5 + 0xE) +
+                             ((s32)*(s16 *)(uVar7 + 0xC) + (s32)*(s16 *)(uVar7 + 0xE)) / 2) -
+                            (u32)*(u16 *)(arg0 + 0xE)) << 16) >> 16;
+                ix = (s32)((((u32)*(u16 *)(unaff_s5 + 0x6) +
+                             ((s32)*(s16 *)(uVar7 + 0x4) + (s32)*(s16 *)(uVar7 + 0x6)) / 2) -
+                            (u32)*(u16 *)(arg0 + 0x6)) << 16) >> 16;
+                dist = func_80047D3C(iy * iy + ix * ix);
+                s0 = ratan2(((s32)*(s16 *)(unaff_s5 + 0xA) +
+                             ((s32)*(s16 *)(uVar7 + 0x8) + (s32)*(s16 *)(uVar7 + 0xA)) / 2) -
+                            (s32)*(s16 *)(arg0 + 0xA),
+                            (s32)(s16)dist) & 0xFFF;
+                *(u16 *)(*(s32 *)(arg0 + 0x20) + 0x10) = (u16)s0;
             }
         }
     }

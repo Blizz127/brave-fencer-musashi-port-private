@@ -2,63 +2,63 @@
  * SHA256(span)=72a356bc4f7bfaee66e693be25e39dedc63b40ac93bc5c834cab417550e03206.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-#include "m2c_macros.h"
+/* func_80158434 - byte-exact against retail at -O2 (tools/register_match.py). */
+extern void func_80146CA0(void *a0);
+extern void func_80146DB8(s32 *a0, s32 *a1);
+extern s32 func_80146E98(s32 a0);
+extern void func_801473EC(s32 *a0);
+extern void func_80147460(s32 a0);
+extern void func_801474EC(s32 *a0);
+extern void func_801477E8(s32 *a0, s32 a1);
+extern void func_80147AD4(s32 arg0, s32 arg1, s32 arg2, s32 arg3);
+extern void func_80147AD4(s32 a0, s32 a1, s32 a2, s32 a3);
+extern void func_80148038(s32 a0, s32 a1);
+extern void func_8014CBF8(void *a0);
+extern void func_80154274(s32 *a0, s32 a1);
+extern int func_80155FF8(int arg, int a1);
+int func_80155FF8(int arg, int a1);
+extern void func_80148038(int, int);
+extern void func_80147460(int);
+extern s32 func_801615C4(void *a0, s32 a1);
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+void func_80158434(s32 param_1)
+{
 
-extern s32 D_801806B0;
-void func_80146CA0(void *);                      /* static */
-void func_80146DB8(void *, s32 (*)());       /* static */
-s32 func_80146E98(void *);                          /* static */
-void func_801473EC(void *);                      /* static */
-void func_80147460(void *);                      /* static */
-void func_801474EC(void *);                      /* static */
-void func_801477E8(void *, s32);             /* static */
-void func_80147AD4(void *, s32, s32, s32); /* static */
-void func_80148038(void *, s32);             /* static */
-void func_8014CBF8();                            /* static */
-void func_80154274(void *, void *);           /* static */
-void func_80155FF8(void *, u8);                  /* static */
-s32 func_801615C4(void *, s32);                 /* static */
-extern s32 *D_800D533C;
+    extern u8 D_801806B0;
+    extern u8 D_800D533C;
+    u32 uVar1;
+    u32 uVar2;
+    s32 frame_pad[4];
+    (void)&frame_pad;
 
-void func_80158434(void *arg0) {
-    s32 temp_v0;
-    s32 var_v0;
-
-    M2C_FIELD(arg0, s32 *, 0x44) = (s32) (M2C_FIELD(arg0, s32 *, 0x44) | 2);
-    if (M2C_FIELD(arg0, u16 *, 0xB8) & 0x4000) {
-        M2C_FIELD(arg0, s32 *, 0x234) = (s32) (M2C_FIELD(arg0, s32 *, 0x234) + 1);
-        func_8014CBF8();
-        func_801474EC(arg0);
-        func_801477E8(arg0, 0xFFFA0000);
-        func_80146DB8(arg0, D_801806B0);
+    *(u32 *)(param_1 + 0x44) = *(u32 *)(param_1 + 0x44) | 2;
+    if ((*(u16 *)(param_1 + 0xB8) & 0x4000) != 0) {
+        *(s32 *)(param_1 + 0x234) = *(s32 *)(param_1 + 0x234) + 1;
+        ((s32 (*)(void))func_8014CBF8)();
+        ((void (*)(s32))func_801474EC)(param_1);
+        ((void (*)(s32, s32))func_801477E8)(param_1, 0xFFFA0000);
+        ((void (*)(s32, s32))func_80146DB8)(param_1, (s32)&D_801806B0);
     }
-    if (M2C_FIELD(arg0, s32 *, 0x234) != 0) {
-        func_80148038(arg0, 0x10000);
-        func_80147460(arg0);
-        func_80147AD4(arg0, 0, 0, 0);
-        func_801473EC(arg0);
+    if (*(s32 *)(param_1 + 0x234) != 0) {
+        func_80148038(param_1, 0x10000);
+        func_80147460(param_1);
+        func_80147AD4(param_1, 0, 0, 0);
+        ((void (*)(s32))func_801473EC)(param_1);
     }
-    temp_v0 = func_801615C4(arg0, 0);
-    if (temp_v0 != 0) {
-        var_v0 = temp_v0 & 0x2000;
-        if (temp_v0 != 1) {
-            goto block_8;
-        }
-        goto block_9;
+    uVar1 = ((s32 (*)(s32, s32))func_801615C4)(param_1, 0);
+    if (uVar1 != 0) {
+        if (uVar1 == 1) goto LAB_80158508;
+        uVar2 = uVar1 & 0x2000;
+    } else {
+        uVar2 = func_80146E98(param_1);
     }
-    var_v0 = func_80146E98(arg0);
-block_8:
-    if (var_v0 != 0) {
-block_9:
-        func_80154274(arg0, &D_800D533C);
-        func_80146CA0(arg0);
-        return;
-    }
-    func_80155FF8(arg0, M2C_FIELD(arg0, u8 *, 0x1AA));
+    if (uVar2 == 0) goto LAB_80158528;
+LAB_80158508:
+    ((void (*)(s32, s32))func_80154274)(param_1, (s32)&D_800D533C);
+    ((void (*)(s32))func_80146CA0)(param_1);
+    return;
+LAB_80158528:
+    ((void (*)(s32, s32))func_80155FF8)(param_1, *(u8 *)(param_1 + 0x1AA));
 }

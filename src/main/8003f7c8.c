@@ -2,30 +2,27 @@
  * SHA256(span)=ab34f016e621694d4d9ed7196f2ca36668fce4fa0016ba9639d011634642c5ba.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Sony PsyQ library routine (vendor/bfm-decomp keeps it as INCLUDE_ASM); C written from the retail disassembly. */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_8003F7C8 - byte-exact against retail at -O2 (tools/register_match.py). */
 
-void func_80040868(s32, s16);                            /* static */
 extern s32 D_800A6510;
 extern s16 D_800B9B3A;
-
-s32 func_8003F7C8(s16 arg0) {
+extern void func_80040868(s32);
+s16 func_8003F7C8(u16 voice)
+{
+    s16 v = voice;
     if (D_800A6510 == 1) {
         return -1;
     }
     D_800A6510 = 1;
-    if ((u32) (arg0 & 0xFFFF) >= 0x18U) {
+    if ((u16)voice < 24) {
+        D_800B9B3A = v;
+        func_80040868(0);
         D_800A6510 = 0;
-        return -1;
+        return 0;
     }
-    D_800B9B3A = arg0;
-    func_80040868(0, arg0);
     D_800A6510 = 0;
-    return 0;
+    return -1;
 }

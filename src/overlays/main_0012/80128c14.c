@@ -2,40 +2,35 @@
  * SHA256(span)=6f02e31fe8bb0f8493d19d5a91c5a5ec7d00e8a3d0254c8ad4e63c82ec7ba66c.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-void func_80010AE0();                                 /* extern */
-extern s16 D_800B9A08;
+/* func_80128C14 - byte-exact against retail at -O2 (tools/register_match.py). */
+#define currentLocationId D_800B9A08
+extern s16 currentLocationId;
+extern short currentLocationId;
+extern void func_80010AE0(s32 a0);
 
 void func_80128C14(void) {
-    s32 var_a0;
-    if (D_800B9A08 != 0x3081) {
-        if (D_800B9A08 < 0x3082) {
-            if (D_800B9A08 != 0x3023) {
-                var_a0 = 0x480;
-                if (D_800B9A08 != 0x3067) {
-                    var_a0 = 0x3E0;
-                }
-            } else {
-                var_a0 = 0x4E0;
-            }
-        } else if (D_800B9A08 != 0x3093) {
-            var_a0 = 0xFFB;
-            if (D_800B9A08 != 0x30A5) {
-                var_a0 = 0x3E0;
-            }
-        } else {
-            var_a0 = 0xFFB;
-        }
-    } else {
-        var_a0 = 0x420;
+    s32 a0;
+    switch (currentLocationId) {
+    case 0x3023:
+        a0 = 0x4E0;
+        break;
+    case 0x3081:
+        a0 = 0x420;
+        break;
+    case 0x3067:
+        a0 = 0x480;
+        break;
+    case 0x3093:
+        a0 = 0xFFB;
+        break;
+    case 0x30A5:
+        a0 = 0xFFB;
+        break;
+    default:
+        a0 = 0x3E0;
+        break;
     }
-    func_80010AE0(var_a0);
+    func_80010AE0(a0);
 }

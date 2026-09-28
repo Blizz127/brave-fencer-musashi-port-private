@@ -4,41 +4,36 @@
  * Member-0012 C shape retargeted to this member: D_80184288->D_801B6440; D_80184294->D_801B644C; D_80184298->D_801B6450.
  * Oracle MATCH re-earned against the resident image; Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8015879C - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-
-/* HAND MODEL from m2c draft of func_8015879C (main_0012.s): NOT verified
- * against retail. C89-gated only; promotion requires an oracle MATCH.
- * m2c shape: arg0->unkA8 on a void*. The disassembly stores it as a
- * BYTE (sb $zero, 0xA8), so the model declares one u8 at +0xA8 — a
- * word member would miscompile. The three globals are word stores
- * (sw %lo(...)); D_801B6440 was missing from the draft's declarations
- * and is added per the repo pipeline convention. Body is m2c's
- * verbatim. */
-
-struct data_8015879C {
-    u8 pad[0xA8];
-    u8 unkA8;
-};
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
 extern s32 D_801B6440;
 extern s32 D_801B644C;
 extern s32 D_801B6450;
-void func_80146C98(void *, s32);
-void func_80147078(void *, s32);
-void func_80147084();
-void func_80147098(void *);
-void func_801470AC(void *);
-void func_80158880(void *);
+extern void func_80147084(s32 *a0);
+extern void func_80147098(s32 *a0);
+extern void func_801470AC(s32 *a0);
+extern void func_80147078(s32 *a0, s16 a1);
+extern void func_80146C98(s32 *a0, s16 a1);
+extern void func_80158880(s32 *param);
 
-void func_8015879C(struct data_8015879C *arg0) {
+void func_8015879C(s32 param_1) {
     D_801B6440 = 0;
     D_801B644C = 1;
     D_801B6450 = 0;
-    arg0->unkA8 = 0;
-    func_80147084();
-    func_80147098(arg0);
-    func_801470AC(arg0);
-    func_80147078(arg0, 0x1A);
-    func_80146C98(arg0, 1);
-    func_80158880(arg0);
+    *(u8 *)(param_1 + 0xa8) = 0;
+    ((void (*)(void))func_80147084)();
+    ((void (*)(s32))func_80147098)(param_1);
+    ((void (*)(s32))func_801470AC)(param_1);
+    ((void (*)(s32, s32))func_80147078)(param_1, 0x1a);
+    ((void (*)(s32, s32))func_80146C98)(param_1, 1);
+    ((void (*)(s32))func_80158880)(param_1);
 }

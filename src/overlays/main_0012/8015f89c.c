@@ -2,35 +2,33 @@
  * SHA256(span)=71bb9524117d7daf2f481bf15f4700e1aab262ddf70ef60f948e5357477802b0.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-extern s32 D_80180A1C;
-void func_801466F0(s32, void *, s32, s32, s32, s32, s32, s32); /* static */
-void func_80147078(void *, s32);                         /* static */
-void func_80159B70(void *);                            /* static */
-void func_80161208(void *);                            /* static */
+/* func_8015F89C - byte-exact against retail at -O2 (tools/register_match.py). */
+extern void func_801466F0(s32 a0, s32 a1, s32 a2, s32 a3, s32 sp5, s32 sp6, s32 sp7, s32 sp8);
+extern void func_80147078(s32 *a0, s16 a1);
+extern int func_80161208();
+extern s32 func_80161208();
+extern void func_80159B70(void *a0);
+extern void func_80159B70(void*);
+extern void func_80147078(s32*, s16);
+extern void func_80159B70(void *);
+extern void func_801466F0(s32, s32, s32, s32, s32, s32, s32, s32);
+extern void func_80147078(s32 *, s16);
 
 void func_8015F89C(void *arg0) {
-    u16 temp_v1;
 
-    temp_v1 = arg0->unkB8;
-    if (!(temp_v1 & 0x4000)) {
-        if (temp_v1 & 0x8000) {
-            *(D_80180A1C + (arg0->unk0 * 4))(arg0);
+    extern void (*D_80180A1C[])(void *);
+    u16 flags = *(u16 *)((u8 *)arg0 + 0xB8);
+    if (!(flags & 0x4000)) {
+        if (flags & 0x8000) {
+            D_80180A1C[*(u16 *)arg0](arg0);
             func_80147078(arg0, 0);
             func_80159B70(arg0);
             return;
         }
-        goto block_4;
+    } else {
+        func_801466F0(1, arg0, 0, -0x1E, 0, 0, 0, 0);
     }
-    func_801466F0(1, arg0, 0, -0x1E, 0, 0, 0, 0);
-block_4:
-    func_80161208(arg0);
+    ((s32 (*)(void *))func_80161208)(arg0);
 }

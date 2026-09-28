@@ -5,34 +5,41 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80157AC8 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-void func_80147AD4();
-void func_801473EC();
-s32 func_80161208();
-void func_8016706C();
-void func_80154274();
-void func_80146CA0();
-void func_80155FF8();
-void func_801725A4();
-extern s32 D_800D51AC;
-typedef struct {
-    u8 pad[0x2C]; s32 u2C;
-    u8 pad30[0x14]; s32 flags;
-    u8 pad48[0x162]; u8 u1AA;
-} T;
-void func_80157AC8(T *p) {
-    p->flags |= 2;
-    func_80147AD4(p, 0, 0, 0x10000);
-    func_801473EC(p);
-    if (func_80161208(p) == 0) {
-        if (p->u2C > 0) {
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+extern void func_80147AD4(s32 a0, s32 a1, s32 a2, s32 a3);
+extern void func_801473EC(s32 *a0);
+extern s32 func_80161208();
+extern void func_8016706C(s32 a0);
+extern void func_80154274(s32 *a0, s32 a1);
+extern void func_80146CA0(void *a0);
+extern int func_80155FF8(int arg, int a1);
+extern s32 func_801725A4(u8 *a0);
+extern u8 D_800D51AC[];
+
+void func_80157AC8(s32 param_1)
+{
+    *(u32 *)(param_1 + 0x44) = *(u32 *)(param_1 + 0x44) | 2;
+    ((s32 (*)(s32, s32, s32, s32))func_80147AD4)(param_1, 0, 0, 0x10000);
+    ((void (*)(s32))func_801473EC)(param_1);
+    if (((s32 (*)(s32))func_80161208)(param_1) == 0) {
+        if (*(s32 *)(param_1 + 0x2c) > 0) {
             func_8016706C(4);
             func_8016706C(5);
-            func_80154274(p, &D_800D51AC);
-            func_80146CA0(p);
+            ((void (*)(s32, s32))func_80154274)(param_1, (s32)D_800D51AC);
+            ((void (*)(s32))func_80146CA0)(param_1);
         } else {
-            func_80155FF8(p, p->u1AA);
-            func_801725A4(p);
+            ((void (*)(s32, s32))func_80155FF8)(param_1, *(u8 *)(param_1 + 0x1aa));
+            ((void (*)(s32))func_801725A4)(param_1);
         }
     }
 }

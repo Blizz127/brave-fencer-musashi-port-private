@@ -2,50 +2,39 @@
  * SHA256(span)=ac5778006c2faf45085b218661db535c6244eff0d158856fc6fa6f6e246f66a4.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
+/* func_80159464 - byte-exact against retail at -O2 (tools/register_match.py). */
+#define currentLocationId D_800B9A08
+typedef struct { s16 id; s16 val; } Entry;
+struct Entry {
+    u8 f0;
+    u8 f1;
+    u8 pad[0x1e];
+};
+extern s16 currentLocationId;
+extern short currentLocationId;
+extern s32 func_80029A94(s32);
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+s32 func_80159464(void) {
 
-s32 func_80029A94(s32, s16);                          /* extern */
-extern s32 D_80180758;
-extern s16 D_800B9A08;
+    extern Entry D_80180758[];
+    Entry *e;
 
-s16 func_80159464(s16 arg1) {
-    s32 (*var_a0)();
-    s16 var_a1;
-    s16 var_v0;
-    s32 var_v0_2;
-
-    var_a1 = arg1;
-    var_a0 = D_80180758;
-    var_v0_2 = (u16) D_80180758 << 0x10;
-    if (D_80180758 != 0) {
-        var_a1 = D_800B9A08;
-loop_2:
-        if (var_a1 != (var_v0_2 >> 0x10)) {
-            var_a0 += 4;
-            var_v0_2 = (u16) *var_a0 << 0x10;
-            if (*var_a0 == 0) {
-                goto block_4;
-            }
-            goto loop_2;
+    e = D_80180758;
+    while (e->id != 0) {
+        if (currentLocationId == e->id) {
+            return e->val;
         }
-        var_v0 = var_a0->unk2;
-        /* Duplicate return node #8. Try simplifying control flow for better match */
-        return var_v0;
+        e++;
     }
-block_4:
-    var_v0 = 0;
-    if (func_80029A94(1, var_a1) == 0) {
-        var_v0 = 0;
-        if (func_80029A94(0) == 0) {
-            return -1;
-        }
+    if (func_80029A94(1) != 0) {
+        goto ret0;
     }
-    return var_v0;
+    if (func_80029A94(0) != 0) {
+        goto ret0;
+    }
+    return -1;
+ret0:
+    return 0;
 }

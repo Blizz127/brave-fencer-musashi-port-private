@@ -1,0 +1,28 @@
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+#include "psx_types.h"
+/* func_801642AC - byte-exact against retail at -O2 (tools/register_match.py). */
+extern void func_80146CA0(void *a0);
+extern void func_80146E90(s32 *a0, s32 a1);
+extern s32 func_80146E98(s32 a0);
+extern void func_80147324(s32 arg0);
+extern s32 func_80013328(s32 a0, s32 a1);
+extern void func_80147324(s32 a0);
+extern void func_80146E90(s32*, s32);
+extern s32  func_80146E98(s32 a0);
+extern void func_80147324();
+extern void func_80147324(int arg0);
+s32 func_80163764(s32 a0);
+extern void func_80164418();
+extern s32 func_80163764(s32 a0);
+
+void func_801642AC(s32 a0) {
+    s32 s1 = a0;
+    s32 s0 = *(s32 *)(s1 + 0x4C);
+    func_80164418();
+    if (func_80013328(s0 + 4, s1 + 4) < 0x28 || func_80146E98(s1) != 0) {
+        func_80146E90((s32 *)s1, 8);
+        func_80147324(0x44A);
+        func_80146CA0((void *)s1);
+    }
+    func_80163764(s1);
+}

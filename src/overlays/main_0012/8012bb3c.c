@@ -2,58 +2,55 @@
  * SHA256(span)=e2387b4b60633a23e37b28ebacd2a4864e7e041e032dd9470c1c85c492dd73fb.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-#include "m2c_macros.h"
+/* func_8012BB3C - byte-exact against retail at -O2 (tools/register_match.py). */
+#define ratan2 func_8004CFEC
+extern s32 ratan2(s32 a0, s32 a1);
+extern s32 ratan2(s32 x, s32 y);
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-s32 func_8004CFEC(s32, s32, s16);                   /* extern */
-
-s16 func_8012BB3C(void *arg0, void *arg1, s32 arg2, s16 arg3) {
-    s16 temp_a2;
-    s32 temp_a0;
-    s32 temp_lo;
-    s32 temp_lo_2;
-    s32 temp_s1;
-    s32 var_v0;
-    s32 var_v0_2;
-    s32 var_v1;
-    s32 var_v1_2;
-
-    temp_a2 = M2C_FIELD(arg0, s16 *, 0xA);
-    temp_s1 = arg2 & 0xFFF;
-    temp_a0 = (func_8004CFEC(temp_a2 - M2C_FIELD(arg1, s16 *, 0xA), M2C_FIELD(arg1, s16 *, 2) - M2C_FIELD(arg0, s16 *, 2), temp_a2) - 0x400) & 0xFFF;
-    if (temp_s1 == temp_a0) {
-        var_v0 = 0;
+s32 func_8012BB3C(s32 arg0, s32 arg1, u32 arg2, s32 arg3) {
+    register s32 a __asm__("$17");    
+    register s32 div __asm__("$16");  
+    register s32 q __asm__("$3");     
+    register s32 d __asm__("$2");     
+    s32 ang;
+    s32 diff;
+    u32 cur;
+    a = arg2;
+    div = arg3;
+    ang = ratan2(*(s16 *)(arg0 + 0xA) - *(s16 *)(arg1 + 0xA),
+                 *(s16 *)(arg1 + 0x2) - *(s16 *)(arg0 + 0x2));
+    ang = ang - 0x400;
+    __asm__ __volatile__("" : : "r"(ang));
+    div = (s16)div;
+    a = a & 0xFFF;
+    cur = ang & 0xFFF;
+    if (a == cur) {
+        d = 0;
     } else {
-        var_v1 = temp_a0 - temp_s1;
-        var_v0_2 = var_v1 < -0x800;
-        if (var_v1 >= 0x801) {
-            var_v1 = temp_a0 - (temp_s1 + 0x1000);
-            var_v0_2 = var_v1 < -0x800;
+        s32 t;
+        diff = cur - a;
+        if (0x800 < diff) {
+            t = a + 0x1000;
+            diff = cur - t;
         }
-        if (var_v0_2 != 0) {
-            var_v1 = temp_a0 - (temp_s1 - 0x1000);
+        if (diff < -0x800) {
+            t = a - 0x1000;
+            diff = cur - t;
         }
-        if (var_v1 >= 0) {
-            temp_lo = var_v1 / arg3;
-            var_v0 = temp_lo;
-            if (temp_lo == 0) {
-                var_v1_2 = 1;
-                goto block_11;
+        if (diff >= 0) {
+            q = diff / div;
+            if (q == 0) {
+                q = 1;
             }
         } else {
-            temp_lo_2 = var_v1 / arg3;
-            var_v0 = temp_lo_2;
-            if (temp_lo_2 == 0) {
-                var_v1_2 = -1;
-block_11:
-                var_v0 = var_v1_2;
+            q = diff / div;
+            if (q == 0) {
+                q = -1;
             }
         }
+        d = q;
     }
-    return (s16) var_v0;
+    return (s16)d;
 }

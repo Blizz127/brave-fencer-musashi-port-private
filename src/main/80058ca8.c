@@ -1,15 +1,14 @@
 /* Main-exec range [80058CA8,80058CE4) from the SLUS executable.
  * SHA256(span)=b8f4360e6e689e8860897359cf6e98bab5eaba5e11b218cb5637492c1875b33c.
  * Word export for the native seam (m2c produced no draft). */
+/* Sony PsyQ library routine (vendor/bfm-decomp keeps it as INCLUDE_ASM); C written from the retail disassembly. */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_80058CA8 - byte-exact against retail at -O2 (tools/register_match.py). */
 
-void func_80058CA8(s32 *arg0, s32 arg1, s32 *arg2) {
-    *arg2 = (*arg2 & 0xFF000000) | (*arg0 & 0xFFFFFF);
-    *arg0 = (*arg0 & 0xFF000000) | (arg1 & 0xFFFFFF);
+typedef struct { unsigned addr : 24; unsigned len : 8; } P_TAG;
+void func_80058CA8(void *ot, void *p0, void *p1)
+{
+    ((P_TAG *)p1)->addr = ((P_TAG *)ot)->addr;
+    ((P_TAG *)ot)->addr = (u32)p0;
 }

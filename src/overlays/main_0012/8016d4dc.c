@@ -2,55 +2,49 @@
  * SHA256(span)=9c1b9073419294b530947087e7feb38affb24ebdee850bce537b05903959634b.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-#include "m2c_macros.h"
+/* func_8016D4DC - byte-exact against retail at -O2 (tools/register_match.py). */
+#define VectorNormalSS func_80047E98
+extern s32 VectorNormalSS(void *a0, void *a1);
+extern void func_800D22E4(s32 a0);
+extern s32 D_80126B58;
+void func_8016C74C(s32 a0, s32 a1, s32 a2, s32 a3, s32 a4);
+extern short func_8016CF04();
+void func_8016C83C(s32 a0);
+short func_8016CF04(s32 param_1, s32 param_2);
+extern void func_8016C83C(s32 a0);
+extern void func_8016C74C(s32 a0, s32 a1, s32 a2, s32 a3, s32 a4);
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-s32 func_80047E98(s16 *, s16 *);                    /* extern */
-void func_800D22E4(void *);                      /* extern */
-void func_8016C74C(void *, s16 *, s32, s32, s32); /* static */
-void func_8016C83C(void *);                   /* static */
-void func_8016CF04(void *, s32);             /* static */
-extern s32 *D_80126B58;
-
-void func_8016D4DC(void *arg0) {
-    s16 sp1C;
-    s16 sp1A;
-    s16 sp18;
-    void *temp_a1;
-    s32 var_a2;
-    s32 temp_v0;
-
-    temp_a1 = M2C_FIELD(arg0, void **, 0x34);
-    if (M2C_FIELD(temp_a1, u16 *, 0) != 1) {
-        M2C_FIELD(arg0, s16 *, 2) = 3;
-        M2C_FIELD(arg0, void **, 0x34) = &D_80126B58;
-        M2C_FIELD(arg0, s32 *, 0x1C) = 0x40;
-        func_8016C83C(temp_a1);
+void func_8016D4DC(s32 a0) {
+    s16 d[20];
+    s32 a1 = *(s32 *)(a0 + 0x34);
+    s32 dist;
+    s32 idx;
+    if (*(u16 *)a1 != 1) {
+        *(s16 *)(a0 + 2) = 3;
+        *(s32 *)(a0 + 0x34) = (s32)&D_80126B58;
+        *(s32 *)(a0 + 0x1C) = 0x40;
+        func_8016C83C(a0);
         return;
     }
-    sp18 = M2C_FIELD(temp_a1, u16 *, 6) - M2C_FIELD(arg0, u16 *, 6);
-    sp1A = M2C_FIELD(temp_a1, u16 *, 0xA) - M2C_FIELD(arg0, u16 *, 0xA);
-    sp1C = M2C_FIELD(temp_a1, u16 *, 0xE) - M2C_FIELD(arg0, u16 *, 0xE);
-    temp_v0 = func_80047E98(&sp18, &sp18);
-    if (temp_v0 < 0x510) {
-        func_8016CF04(arg0, 2);
-        M2C_FIELD(arg0, s16 *, 2) = 4;
+    d[0] = *(u16 *)(a1 + 6) - *(u16 *)(a0 + 6);
+    d[1] = *(u16 *)(a1 + 0xA) - *(u16 *)(a0 + 0xA);
+    d[2] = *(u16 *)(a1 + 0xE) - *(u16 *)(a0 + 0xE);
+    dist = VectorNormalSS(d, d);
+    if (dist < 0x510) {
+        func_8016CF04(a0, 2);
+        *(s16 *)(a0 + 2) = 4;
         return;
     }
-    if (temp_v0 < 0x1900) {
-        var_a2 = 6;
+    if (dist < 0x1900) {
+        idx = 6;
+    } else if (dist < 0x6400) {
+        idx = 5;
     } else {
-        var_a2 = 4;
-        if (temp_v0 < 0x6400) {
-            var_a2 = 5;
-        }
+        idx = 4;
     }
-    func_8016C74C(arg0, &sp18, var_a2, 9, 0x400);
-    func_800D22E4(arg0);
-    func_8016CF04(arg0, 1);
+    func_8016C74C(a0, (s32)d, idx, 9, 0x400);
+    func_800D22E4(a0);
+    func_8016CF04(a0, 1);
 }

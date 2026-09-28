@@ -805,10 +805,7 @@ def candidates(only=None, excluded=None):
         if not src.exists():
             continue
         text = src.read_text(errors="replace")
-        if "MUSASHI_NATIVE_MIPS_WORD_EXPORT" not in text:
-            continue
-        other = set(re.findall(r"MUSASHI_NATIVE_[A-Z0-9_]+", text)) - {
-            "MUSASHI_NATIVE_MIPS_WORD_EXPORT", "MUSASHI_NATIVE_MIPS_WORD"}
+        other = set(re.findall(r"MUSASHI_NATIVE_[A-Z0-9_]+", text))
         if other:
             continue  # bespoke binding already owns this file
         if only and m["vram"] not in only:

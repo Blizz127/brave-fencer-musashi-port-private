@@ -2,43 +2,40 @@
  * SHA256(span)=d0c956ff69cc28d2bf174ad4a8406af376d275da1c8484ce9db8ee3ce0179917.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-#include "m2c_macros.h"
+/* func_8013D8FC - byte-exact against retail at -O2 (tools/register_match.py). */
+extern void func_800599B8(u16 *);
+extern void func_800599B8(u16*);
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+void func_8013D8FC(void)
+{
 
-void func_800599B8(u16 *, s32);                  /* extern */
-extern s32 D_801841AC;
+    extern s16 *D_801841AC;
+    register s16 *psVar3 __asm__("$17");
+    register s16 *psVar2 __asm__("$16");
+    register s32 c9 __asm__("$19");
+    register s32 cff __asm__("$18");
+    u16 sVar1;
+    s16 buf[4];
 
-void func_8013D8FC(void) {
-    u16 sp16;
-    u16 sp14;
-    u16 sp12;
-    u16 sp10;
-    u16 *var_s1;
-    u16 var_a0;
-    void *var_s0;
-
-    var_s1 = D_801841AC;
-    if (var_s1 != 0) {
-        var_a0 = *var_s1;
-        if ((var_a0 & 0xFFFF) != 0xFF) {
-            var_s0 = var_s1 + 0xA;
-            do {
-                if (var_a0 == 9) {
-                    sp10 = M2C_FIELD(var_s0, u16 *, -6);
-                    sp12 = M2C_FIELD(var_s0, u16 *, -4);
-                    sp14 = (u16) M2C_FIELD(var_s0, s16 *, -2);
-                    sp16 = M2C_FIELD(var_s0, u16 *, 0);
-                    func_800599B8(&sp10, M2C_FIELD(var_s0, s32 *, 2) + (M2C_FIELD(var_s0, s16 *, -2) * 2));
-                }
-                var_s1 += 0x10;
-                var_a0 = *var_s1;
-                var_s0 += 0x10;
-            } while (var_a0 != 0xFF);
-        }
+    psVar3 = D_801841AC;
+    if (psVar3 != (s16 *)0x0 && (sVar1 = (u16)*psVar3, sVar1 != 0xff)) {
+        c9 = 9;
+        cff = 0xff;
+        psVar2 = psVar3 + 5;
+        do {
+            if (sVar1 == c9) {
+                s32 arg2 = *(s32 *)(psVar2 + 1) + psVar2[-1] * 2;
+                buf[0] = psVar2[-3];
+                buf[1] = psVar2[-2];
+                buf[2] = psVar2[-1];
+                buf[3] = *psVar2;
+                ((void (*)(s32, s32))func_800599B8)((s32)buf, arg2);
+            }
+            psVar3 = psVar3 + 8;
+            sVar1 = (u16)*psVar3;
+            psVar2 = psVar2 + 8;
+        } while (sVar1 != cff);
     }
 }

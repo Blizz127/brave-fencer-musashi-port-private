@@ -5,27 +5,22 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80139A44 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL of func_80139A44 (main_0012.s), decoded manually from
- * raw asm (fully visible; NOT verified against retail; C89-gated
- * only, promotion requires an oracle MATCH): void (void *,
- * s32), no frame. i = (u32)a1 & 0xFFFF (andi); if (i < 4u,
- * sltiu) D_80127530[i] = a0 (sw; the sll x4 rides the branch
- * delay slot, so the indexed store is the array write);
- * return. No direct jal/j callers in the overlay (jalr- or
- * cross-overlay-reached, as with func_80139A34). The u8*
- * table view agrees with func_801380E0.c / func_801387B8.c
- * (D_80127530[h4A] byte-string bases); the void* param
- * assigns implicitly. */
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern s32 D_80127530[4];
 
-extern u8 *D_80127530[];
-
-void func_80139A44(void *arg0, s32 arg1) {
-    u32 iv;
-
-    iv = ((u32)arg1) & 0xFFFF;
-    if (iv < 4) {
-        D_80127530[iv] = arg0;
+void func_80139A44(s32 a0, u16 a1) {
+    if (a1 < 4) {
+        D_80127530[a1] = a0;
     }
 }

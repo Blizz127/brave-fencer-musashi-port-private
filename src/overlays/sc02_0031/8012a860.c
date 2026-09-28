@@ -5,21 +5,29 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8012A860 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-s32 func_8012ACE0();
-void func_8012AAAC();
-typedef struct {
-    u8 pad[0x72]; u16 f72;
-    u8 pad74[0x1C]; s32 u90, u94;
-    u8 pad98[2]; s16 u9a; s32 u9c;
-} T;
-void func_8012A860(T *p, s32 a1) {
-    s32 v;
-    p->u90 = a1;
-    v = func_8012ACE0(p);
-    p->u94 = v - 1;
-    p->u9c = 0;
-    p->u9a = 0;
-    p->f72 |= 0x200;
-    func_8012AAAC(p);
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+extern int func_8012ACE0(void *a0);
+extern void func_8012AAAC();
+
+void func_8012A860(void *a0, int a1) {
+    int v0;
+    register char *p asm("$4");
+    *(int *)((char *)a0 + 0x90) = a1;
+    v0 = func_8012ACE0(a0);
+    p = (char *)a0;
+    *(unsigned short *)(p + 0x72) = *(unsigned short *)(p + 0x72) | 0x200;
+    *(int *)(p + 0x94) = v0 - 1;
+    *(int *)(p + 0x9C) = 0;
+    *(short *)(p + 0x9A) = 0;
+    func_8012AAAC();
 }

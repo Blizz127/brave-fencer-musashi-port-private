@@ -4,10 +4,18 @@
  * the C is the Druthulu shared/ov func_80147514 shape (h_exact 875787c3) with its V4s struct defined here; oracle MATCH 69/69.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80147514 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-struct V4s80147514 { s16 x, y, z, w; };
-
+struct V4s80147514 { s16 a, b, c, d; };
 extern s32 func_80012C6C(s32 a0, s32 a1, s32 a2);
 extern s32 func_800129CC(s32 a0, s32 a1);
 

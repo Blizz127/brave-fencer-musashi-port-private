@@ -1,55 +1,3 @@
-/* Exact retail word export for [80018E9C,80018F20); EXE and assembly verified. */
-#if defined(__mips__)
-__asm__(
-    ".set	noreorder
-"
-    ".globl	func_80018E9C
-"
-    ".ent	func_80018E9C
-"
-    ".type	func_80018E9C, @function
-"
-    "func_80018E9C:
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-    ".end	func_80018E9C
-"
-    ".size	func_80018E9C, .-func_80018E9C
-"
-);
-#else
 /* Body below is an UNVERIFIED draft, not an oracle match
  * claim; promotion requires tools/match_function.py MATCH. */
 #include "psx_types.h"
@@ -83,5 +31,3 @@ void func_80018E9C(s32 arg0) {
         func_800291A0(0xE2, var_a1);
     }
 }
-#endif
-

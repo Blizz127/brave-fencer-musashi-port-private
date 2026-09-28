@@ -2,52 +2,94 @@
  * SHA256(span)=bf87c333734cccdeeb1ce752c2a4a0d020246107e59bdc2183ec955620c5ca3e.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80027C10 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* Vendor typedefs this body depends on (copied from vendor/bfm-decomp). */
+typedef struct { s16 vx, vy, vz, pad; } SVEC2;      /* 0x08 */
+typedef struct {                                     /* 0x14 */
+    u32 w0;      /* 0x00 */
+    u32 rgb;     /* 0x04 */
+    u16 n0;      /* 0x08 */
+    u16 v0;      /* 0x0A */
+    u16 n1;      /* 0x0C */
+    u16 v1;      /* 0x0E */
+    u16 n2;      /* 0x10 */
+    u16 v2;      /* 0x12 */
+} Face2;
+typedef struct {                                     /* 0x1C */
+    u32 tag;
+    u32 rgb0;
+    s16 x0, y0;
+    u32 rgb1;
+    s16 x1, y1;
+    u32 rgb2;
+    s16 x2, y2;
+} G3P;
+typedef struct {                                     /* 0x18 */
+    u32 w0;      /* 0x00 */
+    u32 rgb;     /* 0x04 */
+    u16 n0;      /* 0x08 */
+    u16 v0;      /* 0x0A */
+    u16 n1;      /* 0x0C */
+    u16 v1;      /* 0x0E */
+    u16 n2;      /* 0x10 */
+    u16 v2;      /* 0x12 */
+    u16 n3;      /* 0x14 */
+    u16 v3;      /* 0x16 */
+} Face3;
+typedef struct {                                     /* 0x24 */
+    u32 tag;     /* 0x00 */
+    u32 rgb0;    /* 0x04 */
+    s16 x0, y0;  /* 0x08 */
+    u32 rgb1;    /* 0x0C */
+    s16 x1, y1;  /* 0x10 */
+    u32 rgb2;    /* 0x14 */
+    s16 x2, y2;  /* 0x18 */
+    u32 rgb3;    /* 0x1C */
+    s16 x3, y3;  /* 0x20 */
+} G4P;
 
-void func_80027D20(s32, s32, s32, u32 *, u32, s32, s32); /* static */
-void func_80027F4C(s32, s32, s32, u32 *, u32, s32, s32); /* static */
-extern s32 *D_80000000;
+extern G3P *func_80027D20(Face2 *f, SVEC2 *verts, SVEC2 *norms, G3P *prims,
+                           s32 count, s32 shift, s32 ot);
+extern G4P *func_80027F4C(Face3 *f, SVEC2 *verts, SVEC2 *norms, G4P *prims,
+                           s32 count, s32 shift, s32 ot);
 
-void func_80027C10(void *arg0, void *arg1, s32 arg2) {
-    s32 temp_s3;
-    s32 temp_s4;
-    s32 temp_v1;
-    s32 temp_v1_2;
-    s32 var_s1;
-    s32 var_v0;
-    u32 *var_a3;
-    u32 temp_s0;
-    u32 temp_s2;
-    void *temp_v0;
+void func_80027C10(void *a0, void *a1, s32 a2)
+{
+    void *geo;
+    SVEC2 *verts;
+    SVEC2 *norms;
+    Face2 *f;
+    G3P *p;
+    u32 w0;
+    s32 cnt;
+    u32 opc;
+    u32 masked;
 
-    temp_v0 = M2C_FIELD(arg0, void **, 8);
-    var_a3 = M2C_FIELD(arg0, u32 **, 0xC);
-    temp_s4 = M2C_FIELD(temp_v0, s32 *, 0);
-    temp_s3 = M2C_FIELD(temp_v0, s32 *, 8);
-    var_s1 = M2C_FIELD(temp_v0, s32 *, 0x10);
+    geo = *(void **)((s32)a0 + 0x8);
+    p = *(G3P **)((s32)a0 + 0xC);
+    verts = *(SVEC2 **)((s32)geo + 0x0);
+    norms = *(SVEC2 **)((s32)geo + 0x8);
+    f = *(Face2 **)((s32)geo + 0x10);
+
     do {
-        temp_s2 = *var_a3;
-        temp_s0 = *var_a3;
-        temp_v1_2 = (temp_s2 >> 0x18) & 0xFC;
-        switch (temp_v1_2) {                        /* irregular */
+        w0 = p->tag;
+        cnt = p->rgb0;
+        p = (G3P *)((s32)p + 8);
+        opc = (w0 >> 24) & 0xFC;
+        switch (opc) {
         case 0x30:
-            func_80027D20(var_s1, temp_s4, temp_s3, var_a3, temp_s0, arg2, M2C_FIELD(arg1, s32 *, 4));
-            var_v0 = temp_s0 * 0x14;
-block_6:
-            var_s1 += var_v0;
+            func_80027D20(f, verts, norms, p, cnt, a2, *(s32 *)((s32)a1 + 4));
+            f = (Face2 *)((s32)f + cnt * 20);
             break;
         case 0x38:
-            func_80027F4C(var_s1, temp_s4, temp_s3, var_a3, temp_s0, arg2, M2C_FIELD(arg1, s32 *, 4));
-            var_v0 = temp_s0 * 0x18;
-            goto block_6;
+            func_80027F4C((Face3 *)f, verts, norms, (G4P *)p, cnt, a2, *(s32 *)((s32)a1 + 4));
+            f = (Face2 *)((s32)f + cnt * 24);
+            break;
         }
-        temp_v1 = temp_s2 & 0xFFFFFF;
-        var_a3 = (u32 *) (temp_v1 | (s32) &D_80000000);
-    } while (temp_v1 != 0);
+        masked = w0 & 0xFFFFFF;
+        p = (G3P *)(masked | 0x80000000);
+    } while (masked != 0);
 }

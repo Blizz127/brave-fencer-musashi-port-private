@@ -1,67 +1,45 @@
 /* Overlay range [80171B4C,80171C64) from MAIN.CD member 0012.
  * SHA256(span)=2419efb76e4de6ffde5d8a9ab35167ddd2fb9da9800bab164ae3b7663801ea53.
  * Word export for the native seam (m2c produced no draft). */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-#include "m2c_macros.h"
+/* func_80171B4C - byte-exact against retail at -O2 (tools/register_match.py). */
+#define ratan2 func_8004CFEC
+extern s32 D_801151D4;
+extern s32 ratan2(s32 a0, s32 a1);
+extern s32 ratan2(s32 x, s32 y);
+extern void func_80146D90(s32 a0);
+extern s32 ratan2(s32 dx, s32 dy);
+extern void func_80146D90(int);
+extern void func_80146D90(s32);
+extern s32 ratan2(s32, s32);
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-s32 func_8004CFEC(s32, s32, s32);                   /* extern */
-void func_80146D90(void *);                      /* static */
-extern void *D_801151D4;
-
-s32 func_80171B4C(void *arg0, s32 arg1) {
-    s16 var_v0_2;
-    s32 temp_a2;
-    s32 temp_v0;
-    s32 var_v0;
-    s32 var_v1;
-    u8 temp_v0_2;
-
-    M2C_FIELD(arg0, s8 *, 0xA9) = 0x41;
-    temp_a2 = M2C_FIELD(D_801151D4, s32 *, 0x70);
-    temp_v0 = ((M2C_FIELD(M2C_FIELD(arg0, void **, 0x20), s16 *, 0x12) - ((func_8004CFEC(M2C_FIELD(D_801151D4, s32 *, 0x68) - M2C_FIELD(D_801151D4, s32 *, 0x5C), temp_a2 - M2C_FIELD(D_801151D4, s32 *, 0x64), temp_a2) + 0x800) & 0xFFF)) + 0x100) & 0xE00;
-    var_v1 = temp_v0 >> 9;
-    if (temp_v0 < 0) {
-        var_v1 = (s32) (temp_v0 + 0x1FF) >> 9;
+s32 func_80171B4C(arg0, arg1)
+s32 arg0;
+u8 arg1;
+{
+    s32 p, ang, idx;
+    u8 c;
+    p = D_801151D4;
+    *(u8 *)(arg0 + 0xA9) = 0x41;
+    ang = ratan2(*(s32 *)(p + 0x68) - *(s32 *)(p + 0x5C),
+                 *(s32 *)(p + 0x70) - *(s32 *)(p + 0x64));
+    idx = ((*(s16 *)(*(s32 *)(arg0 + 0x20) + 0x12) - ((ang + 0x800) & 0xFFF)) + 0x100) & 0xE00;
+    switch (idx / 0x200) {
+    case 0: *(u16 *)(arg0 + 0xAA) = 0x1000; break;
+    case 1: *(u16 *)(arg0 + 0xAA) = 0x3000; break;
+    case 2: *(u16 *)(arg0 + 0xAA) = 0x2000; break;
+    case 3: *(u16 *)(arg0 + 0xAA) = 0x6000; break;
+    case 4: *(u16 *)(arg0 + 0xAA) = 0x4000; break;
+    case 5: *(u16 *)(arg0 + 0xAA) = 0xC000; break;
+    case 6: *(u16 *)(arg0 + 0xAA) = 0x8000; break;
+    case 7: *(u16 *)(arg0 + 0xAA) = 0x9000; break;
     }
-    switch (var_v1) {
-    case 0:
-        var_v0_2 = 0x1000;
-block_12:
-        M2C_FIELD(arg0, s16 *, 0xAA) = var_v0_2;
-        break;
-    case 1:
-        var_v0_2 = 0x3000;
-        goto block_12;
-    case 2:
-        var_v0_2 = 0x2000;
-        goto block_12;
-    case 3:
-        var_v0_2 = 0x6000;
-        goto block_12;
-    case 4:
-        var_v0_2 = 0x4000;
-        goto block_12;
-    case 5:
-        var_v0_2 = 0xC000;
-        goto block_12;
-    case 6:
-        var_v0_2 = 0x8000;
-        goto block_12;
-    case 7:
-        var_v0_2 = 0x9000;
-        goto block_12;
+    c = *(u8 *)(arg0 + 0x20C);
+    *(u8 *)(arg0 + 0x20C) = c + 1;
+    if (c != arg1) {
+        return 0;
     }
-    temp_v0_2 = M2C_FIELD(arg0, u8 *, 0x20C);
-    M2C_FIELD(arg0, u8 *, 0x20C) = (u8) (temp_v0_2 + 1);
-    var_v0 = 0;
-    if ((temp_v0_2 & 0xFF) == (arg1 & 0xFF)) {
-        func_80146D90(arg0);
-        var_v0 = 1;
-    }
-    return var_v0;
+    func_80146D90(arg0);
+    return 1;
 }

@@ -5,41 +5,61 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80151DB0 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-void func_80019064();
-void func_80151204();
-s32 func_80012A60();
-void func_80154274();
-void func_80149020();
-void func_80147324();
-void func_80146CA0();
-void func_80172630();
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+/* m2c compat (vendor/bfm-decomp/include/common.h). */
+typedef s32 M2C_UNK;
+typedef s8 M2C_UNK8;
+typedef s16 M2C_UNK16;
+typedef s32 M2C_UNK32;
+typedef s64 M2C_UNK64;
+#define M2C_FIELD(expr, type_ptr, offset) (*(type_ptr)((s8 *)(expr) + (offset)))
+#define M2C_BITWISE(type, expr) ((type)(expr))
+
+extern void func_80019064(void *a0);
+extern int func_80151204(int arg, int a1);
+extern s32 func_80012A60(s32 a0, s32 a1);
+extern void func_80154274(s32 *a0, s32 a1);
+extern void func_80149020(s32 *a0);
+extern void func_80147324(s32 arg0);
+extern void func_80146CA0(void *a0);
+extern s32 func_80172630(u8 *a0);
 extern s32 D_80062C14;
-extern s32 D_800D5880;
+extern M2C_UNK D_800D5880;
 extern s32 D_800D58AC;
-typedef struct Inner { u8 pad[0x10]; s16 u10, u12; } Inner;
-typedef struct {
-    u8 pad[0x20]; Inner *inner;
-    u8 pad24[0x40]; s16 u64;
-    u8 pad66[0x8C]; s16 uF2, uF4;
-} T;
-void func_80151DB0(T *p) {
-    s32 v;
-    Inner *q;
+
+void func_80151DB0(s32 param_1)
+{
+    short sVar1;
+    unsigned short uVar2;
+    int iVar3;
     func_80019064(&D_80062C14);
-    func_80151204(p, p->uF2);
-    q = p->inner;
-    v = func_80012A60(q->u12, p->uF4);
-    if ((s16)v >= 0x401) {
-        func_80154274(p, &D_800D5880);
-        p->inner->u10 = 0xC00;
+    ((void (*)(int, int))func_80151204)(param_1, (int)*(short *)(param_1 + 0xf2));
+    sVar1 = ((short (*)(int, int))func_80012A60)((int)*(short *)(*(int *)(param_1 + 0x20) + 0x12),
+                          (int)*(short *)(param_1 + 0xf4));
+    if (sVar1 >= 0x401) {
+        ((void (*)(int, void *))func_80154274)(param_1, &D_800D5880);
+        iVar3 = *(int *)(param_1 + 0x20);
+        uVar2 = 0xc00;
     } else {
-        func_80154274(p, &D_800D58AC);
-        p->inner->u10 = 0x400;
+        ((void (*)(int, void *))func_80154274)(param_1, &D_800D58AC);
+        iVar3 = *(int *)(param_1 + 0x20);
+        uVar2 = 0x400;
     }
-    p->u64 = 0xCC;
-    func_80149020(p);
+    *(unsigned short *)(iVar3 + 0x10) = uVar2;
+    *(unsigned short *)(param_1 + 100) = 0xcc;
+    __asm__ __volatile__("" : : "r"(param_1));
+    ((void (*)(int))func_80149020)(param_1);
     func_80147324(0x436);
-    func_80146CA0(p);
-    func_80172630(p);
+    ((void (*)(int))func_80146CA0)(param_1);
+    ((void (*)(int))func_80172630)(param_1);
 }

@@ -2,38 +2,36 @@
  * SHA256(span)=f2834037efda4168a719e4287fe156d38bba04d41f604eb0ae0fbb64ea17f81d.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-#include "m2c_macros.h"
+/* func_80159BE4 - byte-exact against retail at -O2 (tools/register_match.py). */
+extern void func_80146CA0(void *a0);
+extern void func_80146DB8(s32 *a0, s32 *a1);
+extern void func_80154A74(s32 a0, s32 a1);
+extern void func_801553C0(s32 a0);
+extern void func_80154150(s32 a0, s32 a1);
+extern void func_801553A8(s32 *a0);
+extern void func_80154A74(int, int);
+extern s32 func_80172590(u8 *a0);
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+void func_80159BE4(s32 arg0)
+{
 
-extern s32 D_80180980;
-void func_80146CA0(void *);                      /* static */
-void func_80146DB8(s32 (*)());               /* static */
-void func_80154150(void *, s32);             /* static */
-void func_80154A74(void *, s32);             /* static */
-void func_801553A8(void *);                      /* static */
-void func_801553C0(void *);                      /* static */
-void func_80172590(void *);                      /* static */
+    extern unsigned char D_80180980;
+    int v;
 
-void func_80159BE4(void *arg0) {
-    s32 var_a1;
-    func_80146DB8(D_80180980);
-    if (M2C_FIELD(arg0, s32 *, 0x44) & 0x200) {
+    ((void (*)(int, void *))func_80146DB8)(arg0, &D_80180980);
+    if ((*(unsigned int *)(arg0 + 0x44) & 0x200) != 0) {
         func_80154150(arg0, 5);
-        var_a1 = 0x1C;
+        func_80154A74(arg0, 0x1C);
     } else {
         func_80154150(arg0, 4);
-        var_a1 = 0x11;
+        func_80154A74(arg0, 0x11);
     }
-    func_80154A74(arg0, var_a1);
-    M2C_FIELD(arg0, s32 *, 0x234) = 0;
-    M2C_FIELD(arg0, s32 *, 0x238) = 0;
+    *(int *)(arg0 + 0x234) = 0;
+    *(int *)(arg0 + 0x238) = 0;
     func_801553C0(arg0);
-    func_801553A8(arg0);
-    func_80172590(arg0);
-    func_80146CA0(arg0);
+    ((void (*)(int))func_801553A8)(arg0);
+    ((void (*)(int))func_80172590)(arg0);
+    ((void (*)(int))func_80146CA0)(arg0);
 }

@@ -5,48 +5,26 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8013A9B4 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL of func_8013A9B4 (main_0012.s), decoded manually from
- * raw asm (fully visible; NOT verified against retail; C89-gated
- * only, promotion requires an oracle MATCH): void (struct *,
- * struct row *), 0x18 frame. Link op: v0 = a1 (row, kept
- * across the v1 = 1); row->h02 = 0 (sh); row->w04 = arg0
- * (sw); arg0->w40 = row (sw); row->h00 = 1 (sh, delay v1
- * dead); row->h0C = 0; row->h0E = 0 (sh pair);
- * 3A9F8(row, lhu(arg0->h18)) (a0 = row rides the jal delay
- * slot; the h0E zero lands first). The row writes prove
- * rows carry the full {h00,h02,w04,h0C,h0E} footprint --
- * the row struct here (and in func_8013A380.c /
- * func_8013A8FC.c) carries exactly that. Void: the sole
- * caller (my staged 3A8FC, bare) ignores $v0. 3A9F8 decl
- * mirrored (staged; its h0E store may overwrite the zero
- * just written, order preserved). */
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern void func_8013A9F8(s32 a0, s32 a1);
 
-struct row_8013A9B4 {
-    s16 h00;
-    u16 h02;
-    void *w04;
-    u8 pad08[4];
-    u16 h0C;
-    u16 h0E;
-};
-
-struct st_8013A9B4 {
-    u8 pad00[0x18];
-    u16 h18;
-    u8 pad1A[0x26];
-    void *w40;
-};
-
-extern void func_8013A9F8(void *arg0, s32 arg1);
-
-void func_8013A9B4(struct st_8013A9B4 *arg0, struct row_8013A9B4 *arg1) {
-    arg1->h02 = 0;
-    arg1->w04 = arg0;
-    arg0->w40 = arg1;
-    arg1->h00 = 1;
-    arg1->h0C = 0;
-    arg1->h0E = 0;
-    func_8013A9F8(arg1, arg0->h18);
+void func_8013A9B4(s32 a0, s32 a1) {
+    *(s16 *)(a1 + 0x2) = 0;
+    *(s32 *)(a1 + 0x4) = a0;
+    *(s32 *)(a0 + 0x40) = a1;
+    *(s16 *)(a1 + 0x0) = 1;
+    *(s16 *)(a1 + 0xC) = 0;
+    *(s16 *)(a1 + 0xE) = 0;
+    func_8013A9F8(a1, *(u16 *)(a0 + 0x18));
 }

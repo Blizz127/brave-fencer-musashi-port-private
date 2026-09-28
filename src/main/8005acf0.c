@@ -1,24 +1,14 @@
 /* Exact retail word export for [8005ACF0,8005AD34); EXE and assembly verified. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Sony PsyQ library routine (vendor/bfm-decomp keeps it as INCLUDE_ASM); C written from the retail disassembly. */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_8005ACF0 - byte-exact against retail at -O2 (tools/register_match.py). */
 
-extern s32 D_80072788;
-s32 func_8005ACF0(s32 arg0, s32 arg1) {
-    s32 var_v0;
-    s32 var_v1;
-
-    if ((u32) (D_80072788 - 1) >= 2U) {
-        var_v1 = (arg1 & 0x7FF) << 0xB;
-        var_v0 = arg0 & 0x7FF;
-    } else {
-        var_v1 = (arg1 & 0xFFF) << 0xC;
-        var_v0 = arg0 & 0xFFF;
+extern u8 D_80072788;
+u32 func_8005ACF0(s32 x, s32 y)
+{
+    if (D_80072788 == 1 || D_80072788 == 2) {
+        return 0xE5000000 | ((y & 0xFFF) << 12) | (x & 0xFFF);
     }
-    return var_v1 | (var_v0 | 0xE5000000);
+    return 0xE5000000 | ((y & 0x7FF) << 11) | (x & 0x7FF);
 }

@@ -2,106 +2,84 @@
  * SHA256(span)=99e93b375a079ec69067489e2c622e775e2206605652514cc752b3275c7d2849.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8013AF20 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* File-scope declarations from the vendor translation unit. */
+typedef struct { u32 addr : 24; u32 len : 8; u8 r0, g0, b0, code; } P_TAG;
+typedef void (*code)(unsigned short *);
 
-s32 *func_80010A08();                        /* extern */
-
-void func_8013AF20(s32 *arg0, void *arg1, void *arg2, void *arg3) {
-    s32 *var_s0;
-    s32 *var_s2;
-    s32 *var_t1;
-    s32 var_t0;
-    s32 var_t0_2;
-    s32 var_t0_3;
-    u16 temp_v0;
-    u16 temp_v0_3;
-    u16 temp_v1;
-    u8 temp_v0_2;
-    void *var_a0;
-    void *var_a0_2;
-    void *var_a0_3;
-    void *var_a1;
-    void *var_a1_2;
-    void *var_a2;
-    void *var_a3;
-
-    var_s2 = func_80010A08(0x168);
-    var_s0 = func_80010A08(0x1E0);
-    var_t1 = func_80010A08(0x1E0);
-    var_t0 = 0;
-    var_a0 = var_s0 + 0xE;
-    var_a1 = arg2;
+/* func_8013AF20 — shared body (overlay slot 0x80128158, h_exact c7ed6f70). ONE source: instantiated by #include at each
+ * member's site in address order; the members are recorded in config/dedup.us.yaml (Phase 35). */
+extern void *func_80010A08(s32);
+void func_8013AF20(u32 *param_1, u16 *param_2, u16 *param_3, u8 *param_4)
+{
+    u32 *puVar3;
+    u32 *puVar4;
+    u32 *puVar5;
+    s32 iVar8;
+    s32 j;
+    puVar3 = (u32 *)func_80010A08(0x168);
+    puVar4 = (u32 *)func_80010A08(0x1e0);
+    puVar5 = (u32 *)func_80010A08(0x1e0);
+    iVar8 = 0;
+    j = 0;
     do {
-        M2C_FIELD(var_a0, s8 *, -0xB) = 3;
-        M2C_FIELD(var_a0, s8 *, -7) = 0x40;
-        M2C_FIELD(var_a0, s8 *, -0xA) = 0x3D;
-        M2C_FIELD(var_a0, s8 *, -9) = 0x3D;
-        M2C_FIELD(var_a0, s8 *, -8) = 0x3D;
-        M2C_FIELD(var_a0, u16 *, -6) = (u16) M2C_FIELD(var_a1, u16 *, 0);
-        M2C_FIELD(var_a0, u16 *, -4) = (u16) M2C_FIELD(var_a1, u16 *, 2);
-        var_t0 += 1;
-        M2C_FIELD(var_a0, u16 *, -2) = (u16) M2C_FIELD(var_a1, u16 *, 4);
-        temp_v0 = M2C_FIELD(var_a1, u16 *, 6);
-        var_a1 += 4;
-        M2C_FIELD(var_a0, u16 *, 0) = temp_v0;
-        var_a0 += 0x10;
-        *var_s0 = (*var_s0 & 0xFF000000) | (*arg0 & 0xFFFFFF);
-        *arg0 = (*arg0 & 0xFF000000) | ((s32) var_s0 & 0xFFFFFF);
-        var_s0 += 0x10;
-    } while (var_t0 < 0x1E);
-    var_t0_2 = 0;
-    var_a0_2 = var_t1 + 0xE;
-    var_a1_2 = arg2;
-    var_a3 = arg3;
+        *(u8 *)((s32)puVar4 + 3) = 3;
+        *(u8 *)((s32)puVar4 + 7) = 0x40;
+        *(u8 *)((s32)puVar4 + 4) = 0x3d;
+        *(u8 *)((s32)puVar4 + 5) = 0x3d;
+        *(u8 *)((s32)puVar4 + 6) = 0x3d;
+        *(u16 *)((s32)puVar4 + 8) = param_3[j];
+        *(u16 *)((s32)puVar4 + 0xa) = param_3[j + 1];
+        iVar8 = iVar8 + 1;
+        *(u16 *)((s32)puVar4 + 0xc) = param_3[j + 2];
+        *(u16 *)((s32)puVar4 + 0xe) = param_3[j + 3];
+        j += 2;
+        /* addPrim(param_1, puVar4): setaddr(p, getaddr(ot)), setaddr(ot, p) */
+        ((P_TAG *)puVar4)->addr = ((P_TAG *)param_1)->addr;
+        ((P_TAG *)param_1)->addr = (u32)puVar4;
+        puVar4 = puVar4 + 4;
+    } while (iVar8 < 0x1e);
+    iVar8 = 0;
+    j = 0;
     do {
-        var_t0_2 += 1;
-        M2C_FIELD(var_a0_2, s8 *, -0xB) = 3;
-        M2C_FIELD(var_a0_2, s8 *, -7) = 0x40;
-        M2C_FIELD(var_a0_2, s8 *, -0xA) = 0x92;
-        M2C_FIELD(var_a0_2, s8 *, -9) = 0x92;
-        M2C_FIELD(var_a0_2, s8 *, -8) = 0x92;
-        M2C_FIELD(var_a0_2, s16 *, -6) = (s16) (M2C_FIELD(var_a1_2, u16 *, 0) + (s8) M2C_FIELD(var_a3, u8 *, 0));
-        M2C_FIELD(var_a0_2, s16 *, -4) = (s16) (M2C_FIELD(var_a1_2, u16 *, 2) + (s8) M2C_FIELD(var_a3, u8 *, 1));
-        M2C_FIELD(var_a0_2, s16 *, -2) = (s16) (M2C_FIELD(var_a1_2, u16 *, 4) + (s8) M2C_FIELD(var_a3, u8 *, 2));
-        temp_v1 = M2C_FIELD(var_a1_2, u16 *, 6);
-        var_a1_2 += 4;
-        temp_v0_2 = M2C_FIELD(var_a3, u8 *, 3);
-        var_a3 += 2;
-        M2C_FIELD(var_a0_2, s16 *, 0) = (s16) (temp_v1 + (s8) temp_v0_2);
-        var_a0_2 += 0x10;
-        *var_t1 = (*var_t1 & 0xFF000000) | (*arg0 & 0xFFFFFF);
-        *arg0 = (*arg0 & 0xFF000000) | ((s32) var_t1 & 0xFFFFFF);
-        var_t1 += 0x10;
-    } while (var_t0_2 < 0x1E);
-    var_t0_3 = 0;
-    var_a0_3 = var_s2 + 0x16;
-    var_a2 = arg2;
+        iVar8 = iVar8 + 1;
+        *(u8 *)((s32)puVar5 + 3) = 3;
+        *(u8 *)((s32)puVar5 + 7) = 0x40;
+        *(u8 *)((s32)puVar5 + 4) = 0x92;
+        *(u8 *)((s32)puVar5 + 5) = 0x92;
+        *(u8 *)((s32)puVar5 + 6) = 0x92;
+        *(u16 *)((s32)puVar5 + 8) = param_3[j] + (s8)param_4[j];
+        *(u16 *)((s32)puVar5 + 0xa) = param_3[j + 1] + (s8)param_4[j + 1];
+        *(u16 *)((s32)puVar5 + 0xc) = param_3[j + 2] + (s8)param_4[j + 2];
+        *(u16 *)((s32)puVar5 + 0xe) = param_3[j + 3] + (s8)param_4[j + 3];
+        j += 2;
+        ((P_TAG *)puVar5)->addr = ((P_TAG *)param_1)->addr;
+        ((P_TAG *)param_1)->addr = (u32)puVar5;
+        puVar5 = puVar5 + 4;
+    } while (iVar8 < 0x1e);
+    iVar8 = 0;
+    j = 0;
     do {
-        M2C_FIELD(var_a0_3, s8 *, -0x13) = 5;
-        M2C_FIELD(var_a0_3, s8 *, -0xF) = 0x28;
-        M2C_FIELD(var_a0_3, s8 *, -0x12) = 0xFF;
-        M2C_FIELD(var_a0_3, s8 *, -0x11) = 0xFF;
-        M2C_FIELD(var_a0_3, s8 *, -0x10) = 0xFF;
-        M2C_FIELD(var_a0_3, u16 *, -0xE) = (u16) M2C_FIELD(var_a2, u16 *, 0);
-        M2C_FIELD(var_a0_3, u16 *, -0xC) = (u16) M2C_FIELD(var_a2, u16 *, 2);
-        M2C_FIELD(var_a0_3, u16 *, -0xA) = (u16) M2C_FIELD(arg1, u16 *, 0);
-        M2C_FIELD(var_a0_3, u16 *, -8) = (u16) M2C_FIELD(arg1, u16 *, 2);
-        M2C_FIELD(var_a0_3, u16 *, -6) = (u16) M2C_FIELD(var_a2, u16 *, 4);
-        M2C_FIELD(var_a0_3, u16 *, -4) = (u16) M2C_FIELD(var_a2, u16 *, 6);
-        var_t0_3 += 2;
-        M2C_FIELD(var_a0_3, u16 *, -2) = (u16) M2C_FIELD(var_a2, u16 *, 8);
-        temp_v0_3 = M2C_FIELD(var_a2, u16 *, 0xA);
-        var_a2 += 8;
-        M2C_FIELD(var_a0_3, u16 *, 0) = temp_v0_3;
-        var_a0_3 += 0x18;
-        *var_s2 = (*var_s2 & 0xFF000000) | (*arg0 & 0xFFFFFF);
-        *arg0 = (*arg0 & 0xFF000000) | ((s32) var_s2 & 0xFFFFFF);
-        var_s2 += 0x18;
-    } while (var_t0_3 < 0x1E);
+        *(u8 *)((s32)puVar3 + 3) = 5;
+        *(u8 *)((s32)puVar3 + 7) = 0x28;
+        *(u8 *)((s32)puVar3 + 4) = 0xff;
+        *(u8 *)((s32)puVar3 + 5) = 0xff;
+        *(u8 *)((s32)puVar3 + 6) = 0xff;
+        *(u16 *)((s32)puVar3 + 8) = param_3[j];
+        *(u16 *)((s32)puVar3 + 0xa) = param_3[j + 1];
+        *(u16 *)((s32)puVar3 + 0xc) = param_2[0];
+        *(u16 *)((s32)puVar3 + 0xe) = param_2[1];
+        *(u16 *)((s32)puVar3 + 0x10) = param_3[j + 2];
+        *(u16 *)((s32)puVar3 + 0x12) = param_3[j + 3];
+        iVar8 = iVar8 + 2;
+        *(u16 *)((s32)puVar3 + 0x14) = param_3[j + 4];
+        *(u16 *)((s32)puVar3 + 0x16) = param_3[j + 5];
+        j += 4;
+        ((P_TAG *)puVar3)->addr = ((P_TAG *)param_1)->addr;
+        ((P_TAG *)param_1)->addr = (u32)puVar3;
+        puVar3 = puVar3 + 6;
+    } while (iVar8 < 0x1e);
 }

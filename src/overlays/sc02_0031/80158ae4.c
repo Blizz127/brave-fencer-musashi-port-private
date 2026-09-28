@@ -5,54 +5,57 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80158AE4 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-void func_8016F264();
-void func_80165840();
-void func_801658DC();
-void func_80165A20();
-void func_80165A78();
-void func_8014BF48();
-void func_8014CBF8();
-void func_8014B160();
-void func_80149020();
-void func_80146CA0();
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
 extern s32 D_800AE6AC;
 extern s32 D_800AE6B0;
 extern s32 D_80078EC8;
-typedef struct {
-    u8 pad[0x60]; s16 u60, u62, u64;
-    u8 pad66[2]; s16 u68, u6A, u6C;
-    u8 pad6E[2]; s16 u70, u72, u74;
-    u8 pad76[0x80]; s16 uF6;
-    u8 padF8[0x36]; s16 u12E;
-    u8 pad130[0x88]; s16 u1B8, u1BA;
-    u8 pad1BC[0xC]; s16 u1C8;
-} T;
-void func_80158AE4(T *p) {
+extern void func_8016F264(void);
+extern void func_80165840(void);
+extern void func_801658DC(void);
+extern s32 func_80165A20(s32 a0);
+extern void func_80165A78(s32);
+extern void func_8014BF48(void);
+extern void func_8014CBF8(void *a0);
+extern void func_8014B160(s32 a0);
+extern void func_80149020(s32 *a0);
+extern void func_80146CA0(void *a0);
+
+void func_80158AE4(void * a0)
+{
     D_800AE6B0 = D_800AE6AC | 0x1000000;
-    func_8016F264(p);
-    func_80165840(p);
-    func_801658DC(p);
-    func_80165A20(p);
-    func_80165A78(p);
+    func_8016F264();
+    ((void (*)(s32))func_80165840)(a0);
+    ((void (*)(s32))func_801658DC)(a0);
+    func_80165A20(a0);
+    func_80165A78(a0);
     func_8014BF48();
-    func_8014CBF8(p);
-    func_8014B160(p);
-    func_80149020(p);
-    p->u12E = 0;
-    p->u74 = 0x1000;
-    p->u72 = 0x1000;
-    p->u70 = 0x1000;
-    p->u6C = 0x1000;
-    p->u6A = 0x1000;
-    p->u68 = 0x1000;
-    p->u64 = 0x1000;
-    p->u62 = 0x1000;
-    p->u60 = 0x1000;
-    p->u1BA = 0x1000;
-    p->u1B8 = 0x1000;
-    p->uF6 = 0x1000;
+    func_8014CBF8((void *)a0);
+    func_8014B160(a0);
+    func_80149020((s32 *)a0);
+    *(s16 *)(a0 + 0x12E) = 0;
+    *(s16 *)(a0 + 0x74) = 0x1000;
+    *(s16 *)(a0 + 0x72) = 0x1000;
+    *(s16 *)(a0 + 0x70) = 0x1000;
+    *(s16 *)(a0 + 0x6C) = 0x1000;
+    *(s16 *)(a0 + 0x6A) = 0x1000;
+    *(s16 *)(a0 + 0x68) = 0x1000;
+    *(s16 *)(a0 + 0x64) = 0x1000;
+    *(s16 *)(a0 + 0x62) = 0x1000;
+    *(s16 *)(a0 + 0x60) = 0x1000;
+    *(s16 *)(a0 + 0x1BA) = 0x1000;
+    *(s16 *)(a0 + 0x1B8) = 0x1000;
+    *(s16 *)(a0 + 0xF6) = 0x1000;
     D_80078EC8 = 0;
-    p->u1C8 = 0;
-    func_80146CA0(p);
+    *(s16 *)(a0 + 0x1C8) = 0;
+    func_80146CA0((void *)a0);
 }

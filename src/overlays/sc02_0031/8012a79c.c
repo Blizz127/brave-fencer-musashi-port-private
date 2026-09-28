@@ -5,25 +5,23 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8012A79C - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL from m2c draft of func_8012A79C (main_0012.s): NOT
- * verified against retail. C89-gated only; promotion requires an
- * oracle MATCH. NOTE: func_8004CFEC is declared (s32, s32): func_8012B77C
- * passes full 32-bit differences as the second argument, so the
- * parameter is 32 bits wide even where only 16 arrive (same codegen). CORRECTED: raw asm shows func_8004CFEC takes two args (func_8012A6D0 never sets $a2 before the call); the $a2 load is register allocation for the temp, not a third argument. */
+extern s32 func_8004CFEC(s32 a0, s32 a1);
 
-extern s16 func_8004CFEC(s32 arg0, s32 arg1);
-
-struct pt_8012A79C {
-    s16 unk0;
-    s16 unk2;
-    s16 unk4;
-};
-
-s16 func_8012A79C(struct pt_8012A79C *arg0, struct pt_8012A79C *arg1) {
-    s16 temp_a2;
-
-    temp_a2 = arg0->unk0;
-    return func_8004CFEC(temp_a2 - arg1->unk0, arg0->unk4 - arg1->unk4);
+s16 func_8012A79C(s16 *a0, s16 *a1) {
+    s16 x0 = a0[0];
+    s16 x1 = a1[0];
+    s16 y0 = a0[2];
+    s16 y1 = a1[2];
+    return func_8004CFEC(x0 - x1, y0 - y1);
 }

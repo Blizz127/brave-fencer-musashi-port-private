@@ -5,28 +5,32 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8012E544 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL of func_8012E544 (main_0012.s), decoded manually from
- * raw asm (0x38 bytes; NOT verified against retail; C89-gated
- * only, promotion requires an oracle MATCH): same pool scan as
- * func_8012E504 but without the arg0 exclusion: returns the first
- * 0x10C-stride entry from &D_801202A0 (+0x6480 bound) whose first
- * u16 equals arg0, else 0. */
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern u8 D_801202A0[];
 
-extern u8 D_801202A0;
-
-u8 *func_8012E544(s32 arg0) {
-    u8 *v1;
-    u8 *end;
-
-    v1 = &D_801202A0;
-    end = &D_801202A0 + 0x6480;
-    while (v1 != end) {
-        if (*(u16 *) v1 == arg0) {
-            return v1;
-        }
-        v1 += 0x10C;
+s32 func_8012E544(s32 a0) {
+    s32 a1;
+    s32 v1;
+    v1 = (s32)D_801202A0;
+    a1 = v1 + 0x6480;
+    if (v1 != a1) {
+        do {
+            if (*(u16 *)v1 == a0) {
+                return v1;
+            }
+            v1 += 0x10C;
+        } while (v1 != a1);
     }
     return 0;
 }

@@ -5,78 +5,105 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8012E778 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-
-/* GTE/cop2 mnemonic overlay: ordinary C cannot emit coprocessor ops.
- * Verified by tools/match_function.py. */
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+/* GTE instruction macros (vendor/bfm-decomp/include/gte_macros.inc) for GNU as. */
 __asm__(
-    ".set noreorder\n"
-    ".globl func_8012E778\n"
-    ".type func_8012E778, @function\n"
-    "func_8012E778:\n"
-    "lh $v0, 0x6($a0)\n"
-    "addiu $sp, $sp, -0x18\n"
-    "sw $v0, 0x0($sp)\n"
-    "lh $v0, 0xA($a0)\n"
-    "nop\n"
-    "sw $v0, 0x4($sp)\n"
-    "lh $v0, 0xE($a0)\n"
-    "nop\n"
-    "sw $v0, 0x8($sp)\n"
-    "lui $v0, %hi(D_800AF648)\n"
-    "addiu $v0, $v0, %lo(D_800AF648)\n"
-    "lw $t4, 0x0($v0)\n"
-    "lw $t5, 0x4($v0)\n"
-    "ctc2 $t4, $0\n"
-    "ctc2 $t5, $1\n"
-    "lw $t4, 0x8($v0)\n"
-    "lw $t5, 0xC($v0)\n"
-    "lw $t6, 0x10($v0)\n"
-    "ctc2 $t4, $2\n"
-    "ctc2 $t5, $3\n"
-    "ctc2 $t6, $4\n"
-    "lw $t4, 0x14($v0)\n"
-    "lw $t5, 0x18($v0)\n"
-    "ctc2 $t4, $5\n"
-    "lw $t6, 0x1C($v0)\n"
-    "ctc2 $t5, $6\n"
-    "ctc2 $t6, $7\n"
-    "lhu $t5, 0x4($sp)\n"
-    "lhu $t4, 0x0($sp)\n"
-    "sll $t5, $t5, 16\n"
-    "or $t4, $t4, $t5\n"
-    "mtc2 $t4, $0\n"
-    "lwc2 $1, 0x8($sp)\n"
-    "nop\n"
-    "nop\n"
-    "addiu $v0, $sp, 0x10\n"
-    "swc2 $14, 0x0($v0)\n"
-    "sll $v0, $a1, 16\n"
-    "lh $v1, 0x10($sp)\n"
-    "nop\n"
-    "sra $a0, $v0, 16\n"
-    "slt $v0, $a0, $v1\n"
-    "addu $v0, $zero, $zero\n"
-    "nop\n"
-    ".L8012E838:\n"
-    "negu $v0, $v1\n"
-    "slt $v0, $a0, $v0\n"
-    "addu $v0, $zero, $zero\n"
-    ".L8012E848:\n"
-    "lh $v0, 0x12($sp)\n"
-    "nop\n"
-    "sra $a1, $a1, 16\n"
-    "slt $v0, $a1, $v0\n"
-    "addiu $v0, $zero, 0x1\n"
-    "addu $v0, $zero, $zero\n"
-    ".L8012E86C:\n"
-    "negu $v0, $v0\n"
-    "slt $v0, $a1, $v0\n"
-    "addu $v0, $zero, $zero\n"
-    "addiu $v0, $zero, 0x1\n"
-    "addiu $sp, $sp, 0x18\n"
-    "jr $ra\n"
-    "nop\n"
-    ".size func_8012E778, .-func_8012E778\n"
-    ".set reorder\n"
+    ".macro cop2op fake_op, op, gbg = 0, sf = 1, mx = 0, v = 0, cv = 0, lm = 0\n"
+    "    cop2 \\fake_op << 20 | \\gbg << 20 | \\sf << 19 | \\mx << 17 | \\v << 15 | \\cv << 13 | \\lm << 10 | \\op\n"
+    ".endm\n"
+    ".macro rtps\n"
+    "    cop2op 0x01, 0x01\n"
+    ".endm\n"
+    ".macro op sf\n"
+    "    cop2op 0x17, 0x0C, sf = \\sf\n"
+    ".endm\n"
 );
+
+typedef struct { s32 vx, vy, vz; } VECTOR;
+typedef struct { s32 m[3][3]; s32 t[3]; } MATRIX_L48;
+#define gte_SetRotMatrix(r0) __asm__ volatile (         \
+    "lw $12, 0( %0 );"                                   \
+    "lw $13, 4( %0 );"                                   \
+    "ctc2 $12, $0;"                                      \
+    "ctc2 $13, $1;"                                      \
+    "lw $12, 8( %0 );"                                   \
+    "lw $13, 12( %0 );"                                  \
+    "lw $14, 16( %0 );"                                  \
+    "ctc2 $12, $2;"                                      \
+    "ctc2 $13, $3;"                                      \
+    "ctc2 $14, $4"                                       \
+    :                                                    \
+    : "r"( r0 )                                          \
+    : "$12", "$13", "$14" )
+#define gte_SetTransMatrix(r0) __asm__ volatile (        \
+    "lw $12, 20( %0 );"                                  \
+    "lw $13, 24( %0 );"                                  \
+    "ctc2 $12, $5;"                                      \
+    "lw $14, 28( %0 );"                                  \
+    "ctc2 $13, $6;"                                      \
+    "ctc2 $14, $7"                                       \
+    :                                                    \
+    : "r"( r0 )                                          \
+    : "$12", "$13", "$14" )
+#define gte_ldlv0(r0) __asm__ volatile (                 \
+    "lhu $13, 4( %0 );"                                  \
+    "lhu $12, 0( %0 );"                                  \
+    "sll $13, $13, 16;"                                  \
+    "or $12, $12, $13;"                                  \
+    "mtc2 $12, $0;"                                      \
+    "lwc2 $1, 8( %0 )"                                   \
+    :                                                    \
+    : "r"( r0 )                                          \
+    : "$12", "$13" )
+#define gte_rtps() __asm__ volatile ("nop;nop;rtps")
+#define gte_stsxy(r0) __asm__ volatile (                 \
+    "swc2 $14, 0( %0 )"                                  \
+    :                                                    \
+    : "r"( r0 )                                          \
+    : "memory" )
+extern u8 D_800AF648;
+
+s32 func_8012E778(int param_1, int param_2)
+{
+    MATRIX_L48 *r0;
+    int iVarX;
+    int iVarY;
+    int iVar3;
+    int iVar4;
+    int sp[6];
+    sp[0] = (int)*(short *)(param_1 + 6);
+    sp[1] = (int)*(short *)(param_1 + 10);
+    sp[2] = (int)*(short *)(param_1 + 0xe);
+    r0 = (MATRIX_L48 *)&D_800AF648;
+    gte_SetRotMatrix(r0);
+    gte_SetTransMatrix(r0);
+    gte_ldlv0((VECTOR *)sp);
+    gte_rtps();
+    gte_stsxy((long *)((int)sp + 0x10));
+    iVarX = (int)*(short *)((int)sp + 0x10);
+    iVar3 = (short)param_2;
+    if (iVarX >= 0) {
+        if (iVar3 >= iVarX) goto cy;
+        return 0;
+    }
+    if (iVar3 < -iVarX) return 0;
+cy:
+    iVarY = (int)*(short *)((int)sp + 0x12);
+    iVar4 = param_2 >> 0x10;
+    if (iVarY >= 0) {
+        if (iVar4 >= iVarY) goto c1;
+        return 0;
+    }
+    if (iVar4 < -iVarY) return 0;
+c1:
+    return 1;
+}

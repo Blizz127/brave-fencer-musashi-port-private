@@ -1,0 +1,17 @@
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+#include "psx_types.h"
+/* func_8012F214 - byte-exact against retail at -O2 (tools/register_match.py). */
+#define RotTransSV func_8004945C
+extern void func_8004914C(void *);
+extern void func_800491AC(void *);
+extern void func_8004914C(void *a0);
+extern void func_800491AC(void *a0);
+extern void RotTransSV(s32 a0, s32 a1, void *a2);
+
+void func_8012F214(s32 a0, s32 a1, s32 a2) {
+    s32 *p = (s32 *)(*(s32 *)(a0 + 0x20) + 0x34);
+    s32 buf[2];
+    func_8004914C(p);
+    func_800491AC(p);
+    RotTransSV(a1, a2, buf);
+}

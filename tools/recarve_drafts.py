@@ -18,9 +18,11 @@ work:
   exactly as they are.
 * A draft that already compiles is never touched. Being close enough to
   build is progress; replacing it with a fresh guess would throw that away.
-* The `MUSASHI_NATIVE_MIPS_WORD_EXPORT` block is copied across verbatim and
-  compared word for word afterwards. Those words feed the native seam
-  through tools/extract_asm_words.py, and a changed count fails the build.
+* A legacy `MUSASHI_NATIVE_MIPS_WORD_EXPORT` block, if a draft still has
+  one, is copied across verbatim and compared word for word afterwards.
+  Tracked sources no longer carry these blocks (retail words are not
+  committed; tests/test_no_retail_words.py), and the port reads code from
+  the user's disc at run time.
 * A regenerated body that still does not compile is discarded, leaving the
   original file on disk.
 

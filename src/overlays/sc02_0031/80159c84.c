@@ -4,32 +4,66 @@
  * the C is the Druthulu shared/ov func_80159C84 shape (h_exact e2cb2ce3) with its externs hoisted, rand bound to func_8005C49C, the dispatch table retargeted to D_8018730C, D_80181878 to D_80187270, D_800B99DA as u16, and the two switches lowered to 0x801B5C94 via --rodata-base; oracle MATCH 337/337.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80159C84 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
+extern unsigned char D_80187270;
 extern u16 D_800B99DA;
-extern s32 D_80187270;
-void func_801483E8();
-void func_80149704();
-void func_8014A830();
-void func_80161208();
-void func_80149D9C(void);
-s32 func_8005C49C(void);
-void func_80149FA8(void *p);
-void func_80149FB0(s32 p);
-s32 func_80161B18(void *p);
-s32 func_80161B84(void *p);
-s32 func_80161BE0(void *p);
-s32 func_801496D4(void *p);
-
-extern s32 D_800D5F04;
-extern s32 D_800D5F14;
-extern s32 D_800D5F34;
-extern s32 D_800D5F44;
-extern s32 D_800D49F4;
+extern s32 func_8005C49C(void);
+extern s32 func_80149D9C(s32 a0);
+extern void func_80149FA8(void);
+extern s32 func_80149FB0(s32 a0);
+extern s32 func_80161B18(void *a0);
+extern s32 func_80161B84(void *a0);
+extern int func_80161BE0(void *a0);
+extern s32 func_801496D4(void *a0);
+extern void func_80149704(void);
+extern s32 func_801619A4(s32 *a0);
+extern s32 func_80149AA8(s32 *a0);
+extern void func_80149AD4(s32 *a0);
+extern s32 func_80149B54(s32 *a0);
+extern s32 func_8014A738(u8 *a0);
+extern void func_8014A830(void);
+extern void func_80149BAC(s32 *a0);
+extern s32 func_801498E0(s32 *a0);
+extern s32 func_80149954(s32 a0);
+extern s32 func_80149A64(s32 *a0);
+extern void func_800CCCC0(u8 *a0);
+extern s32 func_80149CD4(s32 a0);
+extern void func_8015E880(s32 *a0);
+extern s32 func_801488A8(u8 *a0);
+extern void func_8015A230(s32 *a0);
+extern void func_80154B4C(u8 *a0, s32 a1);
+extern s32 func_8016F1AC(void);
+extern void func_80146DB8(s32 *a0, s32 *a1);
+extern void func_80154190(u8 *a0, s32 a1);
+extern void func_80154150(s32 a0, s32 a1);
+extern void func_80147324(s32 a0);
+extern void func_80155440(s32 *a0);
+extern void func_80154A74(s32 a0, s32 a1);
+extern void func_80147A84(s32 a0);
+extern void func_801473EC(s32 *a0);
+extern void func_8014C010(s32 a0, s32 a1);
+extern s32 func_80161208();
+extern void func_801483E8(void);
+extern s32 func_80172590(u8 *a0);
 
 void func_80159C84(u8 *p) {
 
     extern void (*D_8018730C[])(void *);  /* canonical */
+    extern s32 D_800D5F04;
+    extern s32 D_800D5F14;
+    extern s32 D_800D5F34;
+    extern s32 D_800D5F44;
+    extern s32 D_800D49F4;
     s32 t;
 
     if (((s32 (*)(void))func_80149D9C)() != 0) {

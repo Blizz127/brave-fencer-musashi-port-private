@@ -4,24 +4,34 @@
  * Member-0012 C shape retargeted to this member: D_80184288->D_801B6440; D_80184294->D_801B644C; D_80184298->D_801B6450.
  * Oracle MATCH re-earned against the resident image; Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80158814 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
 extern s32 D_801B6440;
 extern s32 D_801B644C;
 extern s32 D_801B6450;
-void func_80147084();
-void func_80147098();
-void func_801470AC();
-void func_80147078();
-void func_80158880();
-typedef struct { u8 pad[0xA8]; u8 fA8; } T;
-void func_80158814(T *p) {
+extern void func_80147084(s32 *a0);
+extern void func_80147098(s32 *a0);
+extern void func_801470AC(s32 *a0);
+extern void func_80147078(s32 *a0, s16 a1);
+extern void func_80158880(s32 *param);
+
+void func_80158814(void *arg0) {
     D_801B6440 = 0;
     D_801B644C = 1;
     D_801B6450 = 0;
-    p->fA8 = 0;
-    func_80147084(p);
-    func_80147098(p);
-    func_801470AC(p);
-    func_80147078(p, 0x1A);
-    func_80158880(p);
+    *(s8 *)((s32)arg0 + 0xA8) = 0;
+    ((void (*)(void))func_80147084)();
+    ((void (*)(void *))func_80147098)(arg0);
+    ((void (*)(void *))func_801470AC)(arg0);
+    ((void (*)(void *, s32))func_80147078)(arg0, 0x1A);
+    ((void (*)(void *))func_80158880)(arg0);
 }

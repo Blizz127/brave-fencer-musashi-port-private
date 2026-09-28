@@ -2,39 +2,43 @@
  * SHA256(span)=ab815254984cefdd2f02ba20632d2ebc514987359243a5b8c8845f7bed83d7f3.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-#include "m2c_macros.h"
-
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-extern s32 D_8018175C;
-extern s16 D_800B9A08;
-extern s32 *D_80126B58;
+/* func_8016F1C4 - byte-exact against retail at -O2 (tools/register_match.py). */
+#define currentLocationId D_800B9A08
+extern s16 currentLocationId;
+extern short currentLocationId;
+extern s32 D_80126B58;
 
 s32 func_8016F1C4(void) {
-    s32 *var_v0;
-    s32 var_v1;
 
-    var_v1 = D_8018175C;
-    var_v0 = D_8018175C + 4;
-    if (var_v1 != 0) {
-loop_2:
-        if (D_800B9A08 != var_v1) {
-            var_v1 = *var_v0;
-            var_v0 += 4;
-            if (var_v1 == 0) {
-                goto block_4;
+    extern s32 D_8018175C;
+    extern s32 D_80126B58;
+    s32 *p;
+    s32 cur;
+    s32 loc;
+    s32 v;
+    s32 *base = &D_80126B58;
+
+    p = &D_8018175C;
+    cur = *p;
+    if (cur != 0) {
+        loc = currentLocationId;
+        p = p + 1;
+        for (;;) {
+            if (loc == cur) {
+                return 1;
             }
-            goto loop_2;
+            cur = *p;
+            p = p + 1;
+            if (cur == 0) {
+                break;
+            }
         }
-        return 1;
     }
-block_4:
-    if ((M2C_FIELD(&D_80126B58, s32 *, 0x1F8) & 0x80FFFFFF) && (M2C_FIELD(&D_80126B58, s32 *, 0x1F8) & 0x10000000)) {
+    v = base[0x7E];
+    if (((v & 0x80FFFFFF) != 0) && ((v & 0x10000000) != 0)) {
         return 0;
     }
-    return M2C_FIELD(&D_80126B58, s32 *, 0x1F8) & 0x80FFFFFF;
+    return base[0x7E] & 0x80FFFFFF;
 }

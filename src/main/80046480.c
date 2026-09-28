@@ -1,33 +1,62 @@
 /* Exact retail word export for [80046480,8004654C); EXE-verified. */
-#include "psx_types.h"
-#include "m2c_macros.h"
+/* Source: PsyQ library C derived from xenogears-decomp-ai-archerfish (src/slus_006.64/psyq/libcd/cdread.c), same PsyQ object; symbols renamed to this build's addresses. Matching build only. */
+/* func_80046480 - byte-exact against retail at -O3 (tools/register_match.py). */
+typedef	unsigned char	u_char;
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+typedef	unsigned long	u_long;
 
-extern s32 D_8006CFBC;
-s32 func_8004239C();                         /* static */
-void func_8004357C(s32, s32);            /* static */
-void func_800460CC();                     /* static */
+typedef enum { false, true } bool;
 
-s32 func_80046480(s32 arg0, s32 arg1) {
-    s32 var_s0;
+typedef void (*CdlCB)(u_char,u_char *);
 
-loop_1:
-    var_s0 = -1;
-    if ((M2C_FIELD(D_8006CFBC, s32 *, 0) + 0x4B0) >= func_8004239C(-1)) {
-        if ((M2C_FIELD(D_8006CFBC, s32 *, -8) < 0) || ((M2C_FIELD(D_8006CFBC, s32 *, -4) + 0x3C) < func_8004239C(-1))) {
-            func_800460CC(1);
-            var_s0 = M2C_FIELD(D_8006CFBC, s32 *, -0x1C);
-        } else {
-            var_s0 = M2C_FIELD(D_8006CFBC, s32 *, -8);
+int func_8004357C(int mode, u_char *result) ;
+
+void (*CdDataCallback(void (*func)()));
+
+CdlCB CdReadCallback(CdlCB func);
+
+typedef struct {
+    int nsectors;       
+    u_long* dest_base;  
+    u_long* dest_cur;   
+    int mode;           
+    int payload_words;  
+    int status;         
+    int vb_attempt;     
+    int vb_read;        
+    int sector_num;     
+    CdlCB cbsync;
+    CdlCB cbready;
+    CdlCB cbdata;
+    int block_mode;  
+    u_char* unk34;
+    int unk38;
+} ReadAttr_t;
+
+extern volatile ReadAttr_t D_8006CFA0;
+
+extern int func_8004239C(int mode);
+
+int func_800460CC(bool is_retry);
+
+int func_80046480(int mode, u_char* result) {
+    int status;
+    while (true) {
+        status = -1;
+        if (func_8004239C(-1) <= D_8006CFA0.vb_read + 0x4B0 ) {
+            if (D_8006CFA0.status < 0 ||
+                func_8004239C(-1) > D_8006CFA0.vb_attempt + 0x3C ) {
+                func_800460CC( true);
+                status = D_8006CFA0.nsectors;
+            } else {
+                status = D_8006CFA0.status;
+            }
+        }
+        if (mode != 0x0  || status <= 0) {
+            func_8004357C(1, result);
+            return status;
         }
     }
-    if ((arg0 == 0) && (var_s0 > 0)) {
-        goto loop_1;
-    }
-    func_8004357C(1, arg1);
-    return var_s0;
 }
+
+CdlCB CdReadCallback(CdlCB func);

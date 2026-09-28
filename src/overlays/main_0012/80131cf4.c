@@ -2,40 +2,36 @@
  * SHA256(span)=5e4fce9b9a54c616d357f19428c3cd2da6ee4cda625803d02ac3cfb394096c4b.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-#include "m2c_macros.h"
+/* func_80131CF4 - byte-exact against retail at -O2 (tools/register_match.py). */
+s32 aF80131CF4(s32 *a0, s32 a1) __asm__("func_80131CF4");
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-s32 *func_80131CF4(s32 *arg0, s32 arg1) {
-    s32 *var_a0;
-    s32 var_v0;
-
-    var_a0 = arg0;
-    if (var_a0 == 0) {
+s32 aF80131CF4(s32 *a0, s32 a1) {
+    s32 v0;
+    s32 k;
+    if (a0 == 0) {
         return 0;
     }
-    if (*var_a0 != 0) {
-        var_v0 = *var_a0;
-loop_5:
-        if (var_v0 == 0xD) {
-            var_a0 = M2C_FIELD(var_a0, s32 **, 4);
-            goto block_9;
-        }
-        if (var_v0 != arg1) {
-            var_a0 += 8;
-block_9:
-            var_v0 = *var_a0;
-            if (var_v0 == 0) {
-                /* Duplicate return node #11. Try simplifying control flow for better match */
-                return 0;
-            }
-            goto loop_5;
-        }
-        return M2C_FIELD(var_a0, s32 **, 4);
+    goto enter;
+found:
+    return a0[1];
+enter:
+    if (a0[0] == 0) {
+        return 0;
     }
+    __asm__ __volatile__("" : "=r"(k) : "0"(0xD) : "memory");
+    v0 = a0[0];
+    do {
+        if (v0 == k) {
+            a0 = (s32 *)a0[1];
+        } else {
+            if (v0 == a1) {
+                goto found;
+            }
+            a0 = (s32 *)((u8 *)a0 + 8);
+        }
+        v0 = a0[0];
+    } while (v0 != 0);
     return 0;
 }

@@ -4,36 +4,28 @@
  * Member-0012 C shape retargeted to this member: D_80180A1C->D_8018730C.
  * Oracle MATCH re-earned against the resident image; Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8015F9A4 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL from m2c draft of func_8015F9A4 (main_0012.s): NOT verified
- * against retail. C89-gated only; promotion requires an oracle MATCH.
- * m2c shapes: arg0->unkB8 and arg0->unk0 on a void*, plus a callback
- * table call `*(D_8018730C + (unk0 * 4))()`. The disassembly loads both
- * members as halfwords (lhu +0xB8 and +0x0) and calls the table via
- * sll-2/addu/lw/jalr, so the model declares two u16 members and an
- * extern table of unchecked-prototype function pointers indexed by
- * unk0. No other layout is guessed. Body is m2c's verbatim. */
+extern void (*D_8018730C[])(void *);
+extern void func_80147078(s32 *a0, s16 a1);
+extern void func_80159B70(void *a0);
+extern s32 func_80161208(void);
 
-struct data_8015F9A4 {
-    u16 unk0;
-    u8 pad[0xB6];
-    u16 unkB8;
-};
-
-typedef void (*callback_8015F9A4)();
-extern callback_8015F9A4 D_8018730C[];
-
-void func_80147078(void *, s32);
-void func_80159B70(void *);
-void func_80161208(void *);
-
-void func_8015F9A4(struct data_8015F9A4 *arg0) {
-    if (arg0->unkB8 & 0x8000) {
-        D_8018730C[arg0->unk0]();
+void func_8015F9A4(void *arg0) {
+    if (*(u16 *)((u8 *)arg0 + 0xB8) & 0x8000) {
+        D_8018730C[*(u16 *)arg0](arg0);
         func_80147078(arg0, 0);
         func_80159B70(arg0);
-        return;
+    } else {
+        ((s32 (*)(void *))func_80161208)(arg0);
     }
-    func_80161208(arg0);
 }

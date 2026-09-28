@@ -1,9 +1,18 @@
 /* Complete SC02 entry dispatcher; independently matched ordinary C. */
-/* Complete SC02 member 31 [801819E8,80181A24), 15 words. */
-typedef struct CallbackState { unsigned short id, state; } CallbackState;
-typedef int (*Callback)(CallbackState *);
-extern Callback D_80188E00[];
-int func_801819E8(CallbackState *object)
-{
-    return D_80188E00[object->state](object);
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_801819E8 - byte-exact against retail at -O2 (tools/register_match.py). */
+#include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+extern void func_8012A568(void (*a0)(void));
+extern void (*D_80188E00[])(void);
+
+void func_801819E8(void *a0) {
+    D_80188E00[*(u16 *)((s32)a0 + 0x2)]();
 }

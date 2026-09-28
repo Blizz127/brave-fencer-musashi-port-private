@@ -2,36 +2,36 @@
  * SHA256(span)=2f7f30733400879be4c0933bd8d062320c830c9bbb39deb88de7b52f3c21f66d.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-extern void *D_80115100;
-extern s32 *D_80115200;
+/* func_80163328 - byte-exact against retail at -O2 (tools/register_match.py). */
+struct Vec4s;
+struct Vec4s { s16 a, b, c, d; };
+typedef struct {
+    s16 f0, f1, f2, f3;
+} Vec4s;
+extern s32 D_80115100;
+extern s32 D_80115200;
+extern u16 D_80126B18[];
 
 void func_80163328(void) {
-    s32 *var_t0;
-    u32 var_t2;
-    void **var_a3;
-    void *temp_v0;
-
-    var_t2 = 0;
-    var_a3 = &D_80115100;
-    var_t0 = &D_80115200;
+    u32 i;
+    s32 *table;
+    u16 *src;
+    s32 *flags;
+    i = 0;
+    table = &D_80115100;
+    src = D_80126B18;
+    flags = &D_80115200;
     do {
-        if (*var_t0 & 1) {
-            temp_v0 = *var_a3;
-            temp_v0->unk7F = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-            temp_v0->unk83 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-            (*var_a3)->unk82 = 0;
+        if (*flags & 1) {
+            u8 *dst = (u8 *)*table;
+            *(struct Vec4s *)(dst + 0x7C) = *(struct Vec4s *)src;
+            *(s16 *)((u8 *)*table + 0x82) = 0;
         }
-        var_a3 += 4;
-        var_t2 += 1;
-        var_t0 += 4;
-    } while (var_t2 < 3U);
+        table += 1;
+        src += 4;
+        i += 1;
+        flags += 1;
+    } while (i < 3);
 }

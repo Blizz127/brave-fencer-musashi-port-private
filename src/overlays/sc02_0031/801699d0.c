@@ -5,44 +5,31 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_801699D0 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL from m2c draft of func_801699D0 (main_0012.s): NOT verified
- * against retail. C89-gated only; promotion requires an oracle MATCH.
- * m2c shapes: arg0->unk1C/unk30/unk14 on a void*, plus arg0 + 0x38.
- * The disassembly touches the members as words (lw/sw +0x1C/+0x30/
- * +0x14) and computes the address with a byte addiu, so the model
- * declares three s32 members and casts for the +0x38 address.
- * CORRECTION to the draft: the func_80169A4C call passes TWO
- * arguments — $a0 still holds arg0 at the jal (nothing clobbers it
- * after entry) while $a1 gets arg0+0x38. The draft passed only the
- * second. Callee declarations follow the repo pipeline convention.
- * Otherwise the body is m2c's verbatim. */
+extern s32 func_80169A4C(s32 a0, s32 a1);
+extern void func_800D22E4(s32 a0);
+extern void func_80146C3C();
 
-struct data_801699D0 {
-    u8 pad[0x14];
-    s32 unk14;
-    u8 pad2[0x4];
-    s32 unk1C;
-    u8 pad3[0x10];
-    s32 unk30;
-};
-
-void func_80146C3C(void *);
-void func_80169A4C();
-void func_800D22E4();
-
-void func_801699D0(struct data_801699D0 *arg0) {
+void func_801699D0(void *arg0) {
     s32 temp_v1;
-
-    temp_v1 = arg0->unk1C;
+    temp_v1 = *(s32 *)((u8 *)arg0 + 0x1C);
     if (temp_v1 < 0xF) {
-        arg0->unk30 = (s32) (0xC0 - (temp_v1 * 8));
-        func_80169A4C(arg0, (void *) ((u8 *) arg0 + 0x38));
-        func_800D22E4(arg0);
-        arg0->unk14 = (s32) (arg0->unk14 + 0x10000);
-        arg0->unk1C = (s32) (arg0->unk1C + 1);
-        return;
+        *(s32 *)((u8 *)arg0 + 0x30) = 0xC0 - temp_v1 * 8;
+        func_80169A4C((s32)arg0, (s32)arg0 + 0x38);
+        func_800D22E4((s32)arg0);
+        *(s32 *)((u8 *)arg0 + 0x14) = *(s32 *)((u8 *)arg0 + 0x14) + 0x10000;
+        *(s32 *)((u8 *)arg0 + 0x1C) = *(s32 *)((u8 *)arg0 + 0x1C) + 1;
+    } else {
+        ((void (*)(s32))func_80146C3C)((s32)arg0);
     }
-    func_80146C3C(arg0);
 }

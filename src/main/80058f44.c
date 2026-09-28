@@ -1,26 +1,16 @@
 /* Main-exec range [80058F44,80058F70) from the SLUS executable.
  * SHA256(span)=22889462dff9f64b9d44aeb687752f3932c9ea6966836adce80d2237e6c891bc.
  * Word export for the native seam (m2c produced no draft). */
+/* Sony PsyQ library routine (vendor/bfm-decomp keeps it as INCLUDE_ASM); C written from the retail disassembly. */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_80058F44 - byte-exact against retail at -O2 (tools/register_match.py). */
 
-void func_80058F44(void *arg0, s32 arg1, s32 arg2, s32 arg3) {
-    s32 var_v0;
-    s32 var_v1;
-
-    M2C_FIELD(arg0, s8 *, 3) = 1;
-    var_v1 = 0xE1000000;
-    if (arg2 != 0) {
-        var_v1 = 0xE1000200;
-    }
-    var_v0 = arg3 & 0x9FF;
-    if (arg1 != 0) {
-        var_v0 |= 0x400;
-    }
-    M2C_FIELD(arg0, s32 *, 4) = (s32) (var_v1 | var_v0);
+typedef struct { u32 tag; u32 code[1]; } DR_TPAGE;
+#define get_mode(dfe, dtd, tpage) \
+    ((0xE1000000) | ((dtd) ? 0x0200 : 0) | ((dfe) ? 0x0400 : 0) | ((tpage) & 0x9FF))
+void func_80058F44(DR_TPAGE *p, s32 dfe, s32 dtd, s32 tpage)
+{
+    ((u8 *)p)[3] = 1;
+    p->code[0] = get_mode(dfe, dtd, tpage);
 }

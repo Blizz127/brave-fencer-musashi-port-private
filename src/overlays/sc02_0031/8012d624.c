@@ -5,19 +5,24 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8012D624 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL from m2c draft of func_8012D624 (main_0012.s): NOT
- * verified against retail. C89-gated only; promotion requires an
- * oracle MATCH. Triple init grounded as lhu (u16); the third half is stored in the jal delay slot. a1/a2 pass through untouched to func_8012D664 (true 3-parameter signature; m2c missed the forwarding), and the call result is returned (v0 untouched to jr). */
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern int func_8012D664();
 
-extern s32 func_8012D664(void *arg0, s32 arg1, void *arg2);
-
-s32 func_8012D624(void *arg0, s32 arg1, void *arg2) {
-    u16 h[3];
-
-    h[0] = ((u16 *) arg0)[3];
-    h[1] = ((u16 *) arg0)[5];
-    h[2] = ((u16 *) arg0)[7];
-    return func_8012D664(h, arg1, arg2);
+void func_8012D624(s32 a0) {
+    u16 sp[3];
+    sp[0] = *(u16 *)(a0 + 0x6);
+    sp[1] = *(u16 *)(a0 + 0xA);
+    sp[2] = *(u16 *)(a0 + 0xE);
+    func_8012D664((void *)sp);
 }

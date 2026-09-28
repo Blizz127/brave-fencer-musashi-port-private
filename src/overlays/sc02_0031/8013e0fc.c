@@ -5,51 +5,57 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8013E0FC - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-
-/* GTE/cop2 mnemonic overlay: ordinary C cannot emit coprocessor ops.
- * Verified by tools/match_function.py. */
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+/* GTE instruction macros (vendor/bfm-decomp/include/gte_macros.inc) for GNU as. */
 __asm__(
-    ".set noreorder\n"
-    ".globl func_8013E0FC\n"
-    ".type func_8013E0FC, @function\n"
-    "func_8013E0FC:\n"
-    "addiu $sp, $sp, -0x38\n"
-    "sw $ra, 0x30($sp)\n"
-    "lh $v0, 0x2($a0)\n"
-    "lh $v1, 0x0($a1)\n"
-    "nop\n"
-    "subu $v0, $v0, $v1\n"
-    "sw $v0, 0x10($sp)\n"
-    "lh $v0, 0x6($a0)\n"
-    "lh $v1, 0x2($a1)\n"
-    "nop\n"
-    "subu $v0, $v0, $v1\n"
-    "sw $v0, 0x14($sp)\n"
-    "lh $v0, 0xA($a0)\n"
-    "lh $v1, 0x4($a1)\n"
-    "nop\n"
-    "subu $v0, $v0, $v1\n"
-    "sw $v0, 0x18($sp)\n"
-    "addiu $v0, $sp, 0x10\n"
-    "lwc2 $9, 0x0($v0)\n"
-    "lwc2 $10, 0x4($v0)\n"
-    "lwc2 $11, 0x8($v0)\n"
-    "nop\n"
-    "nop\n"
-    "addiu $v0, $sp, 0x20\n"
-    "swc2 $25, 0x0($v0)\n"
-    "swc2 $26, 0x4($v0)\n"
-    "swc2 $27, 0x8($v0)\n"
-    "lw $a0, 0x20($sp)\n"
-    "lw $v0, 0x24($sp)\n"
-    "lw $v1, 0x28($sp)\n"
-    "addu $a0, $a0, $v0\n"
-    "addu $a0, $a0, $v1\n"
-    "lw $ra, 0x30($sp)\n"
-    "addiu $sp, $sp, 0x38\n"
-    "jr $ra\n"
-    "nop\n"
-    ".size func_8013E0FC, .-func_8013E0FC\n"
-    ".set reorder\n"
+    ".macro cop2op fake_op, op, gbg = 0, sf = 1, mx = 0, v = 0, cv = 0, lm = 0\n"
+    "    cop2 \\fake_op << 20 | \\gbg << 20 | \\sf << 19 | \\mx << 17 | \\v << 15 | \\cv << 13 | \\lm << 10 | \\op\n"
+    ".endm\n"
+    ".macro sqr sf\n"
+    "    cop2op 0x0A, 0x28, sf = \\sf, lm = 1\n"
+    ".endm\n"
+    ".macro op sf\n"
+    "    cop2op 0x17, 0x0C, sf = \\sf\n"
+    ".endm\n"
 );
+
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern int func_800480EC(int a0);
+
+int func_8013E0FC(s16 *a0, s16 *a1) {
+    s32 d[3];
+    s32 sq[3];
+    d[0] = a0[1] - a1[0];
+    d[1] = a0[3] - a1[1];
+    d[2] = a0[5] - a1[2];
+    __asm__ __volatile__("" ::: "memory");
+    {
+        register s32 *pd __asm__("$2") = &d[0];
+        __asm__ __volatile__(
+            "lwc2 $9, 0(%0)\n"
+            "lwc2 $10, 4(%0)\n"
+            "lwc2 $11, 8(%0)\n"
+            "nop\n"
+            "nop\n"
+            "sqr 1\n"
+            : : "r"(pd) : "$9", "$10", "$11", "memory");
+    }
+    {
+        register s32 *pq __asm__("$2") = &sq[0];
+        __asm__ __volatile__(
+            "swc2 $25, 0(%0)\n"
+            "swc2 $26, 4(%0)\n"
+            "swc2 $27, 8(%0)\n"
+            : : "r"(pq) : "memory");
+    }
+    return func_800480EC(sq[0] + sq[1] + sq[2]);
+}

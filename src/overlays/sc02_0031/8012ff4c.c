@@ -5,46 +5,28 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8012FF4C - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL of func_8012FF4C (main_0012.s), decoded manually from
- * raw asm (0x4C bytes; m2c CA8(0xF) misread corrected: a0 is
- * never written, so obj passes through (this function keeps obj
- * in a0 throughout, no frame register); NOT verified against
- * retail; C89-gated only, promotion requires an oracle MATCH):
- * unconditionally sets byte unkC1 = 5 (sb in the beqz delay
- * slot); when word unkB4 & 0x20 zeroes u16 unk5C, stores word
- * unk1C = 0x1E (real sw), zeroes u16 unk98 and target halfword
- * +0x10. Ends with CA8(obj, 0xF). */
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern void func_80131CA8(int a0, int a1);
 
-struct obj_8012FF4C {
-    u8 pad[0x1C];
-    s32 unk1C;
-    void *unk20;
-    u8 pad2[0x5C - 0x24];
-    u16 unk5C;
-    u8 pad3[0x98 - 0x5E];
-    u16 unk98;
-    u8 pad4[0xB4 - 0x9A];
-    s32 unkB4;
-    u8 pad5[0xC1 - 0xB8];
-    u8 unkC1;
-};
-
-struct tgt_8012FF4C {
-    u8 pad[0x10];
-    u16 unk10;
-};
-
-extern void func_80131CA8(void *arg0, s32 arg1);
-
-void func_8012FF4C(struct obj_8012FF4C *arg0) {
-    arg0->unkC1 = 5;
-    if (arg0->unkB4 & 0x20) {
-        arg0->unk5C = 0;
-        arg0->unk1C = 0x1E;
-        arg0->unk98 = 0;
-        ((struct tgt_8012FF4C *) arg0->unk20)->unk10 = 0;
+void func_8012FF4C(s32 a0) {
+    *(s8 *)(a0 + 0xC1) = 5;
+    if (*(s32 *)(a0 + 0xB4) & 0x20) {
+        s32 v1 = *(s32 *)(a0 + 0x20);
+        *(s16 *)(a0 + 0x5C) = 0;
+        *(s32 *)(a0 + 0x1C) = 0x1E;
+        *(s16 *)(a0 + 0x98) = 0;
+        *(s16 *)(v1 + 0x10) = 0;
     }
-    func_80131CA8(arg0, 0xF);
+    func_80131CA8(a0, 0xF);
 }

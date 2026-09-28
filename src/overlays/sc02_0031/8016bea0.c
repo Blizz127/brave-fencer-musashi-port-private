@@ -4,22 +4,47 @@
  * Member-0012 C shape retargeted to this member: D_801847F4->D_801B69AC; D_801847F8->D_801B69B0.
  * Oracle MATCH re-earned against the resident image; Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8016BEA0 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-void func_8016BF50();
-void func_8016BFA8();
-void func_80146C3C();
-extern s32 D_801B69AC;
-extern s32 D_801B69B0;
-typedef struct Inner { u8 pad[0x12]; u16 ang; u8 pad14[6]; s16 u1A; } Inner;
-typedef struct { u8 pad[0x10]; s16 u10; u8 pad12[0xE]; Inner *inner; } T;
-void func_8016BEA0(T *p) {
-    Inner *in = p->inner;
-    func_8016BF50(p);
-    p->u10 -= 0x18;
-    in->u1A += p->u10;
-    in->ang = (in->ang + 0x22) & 0xFFF;
-    func_8016BFA8(p, &D_801B69AC, &D_801B69B0, (u8 *)in + 0x18);
-    if (in->u1A < 0) {
-        func_80146C3C(p);
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+/* m2c compat (vendor/bfm-decomp/include/common.h). */
+typedef s32 M2C_UNK;
+typedef s8 M2C_UNK8;
+typedef s16 M2C_UNK16;
+typedef s32 M2C_UNK32;
+typedef s64 M2C_UNK64;
+#define M2C_FIELD(expr, type_ptr, offset) (*(type_ptr)((s8 *)(expr) + (offset)))
+#define M2C_BITWISE(type, expr) ((type)(expr))
+
+extern void func_80146C3C();
+extern void func_8016BFA8(s32 a0, s32 a1, s32 a2, s32 a3);
+extern M2C_UNK D_801B69AC;
+extern M2C_UNK D_801B69B0;
+extern void func_8012A568(void (*a0)(void));
+
+s32 func_8016BEA0(s32 param_1)
+{
+    extern void func_8016BF50(void);
+
+    int iVar2;
+    unsigned short uVar1;
+
+    iVar2 = *(int *)(((int)param_1) + 0x20);
+    func_8016BF50();
+    uVar1 = *(unsigned short *)(((int)param_1) + 0x10) - 0x18;
+    *(unsigned short *)(((int)param_1) + 0x10) = uVar1;
+    *(unsigned short *)(iVar2 + 0x1a) = *(unsigned short *)(iVar2 + 0x1a) + uVar1;
+    *(unsigned short *)(iVar2 + 0x12) = (*(unsigned short *)(iVar2 + 0x12) + 0x22) & 0xfff;
+    ((void (*)(int, void *, void *, int))func_8016BFA8)(((int)param_1), &(*(int *)&D_801B69AC), &(*(int *)&D_801B69B0), iVar2 + 0x18);
+    if (*(short *)(iVar2 + 0x1a) < 0) {
+        ((void (*)(int))func_80146C3C)(((int)param_1));
     }
 }

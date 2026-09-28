@@ -4,7 +4,16 @@
  * the C is the Druthulu shared/ov func_80158638 shape (h_exact 6a497e0f); all four of its data symbols (D_800B9A64, D_80078EB4, D_800B9A17, D_80110EC0) already match this member; oracle MATCH 87/87.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80158638 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
 extern s32 func_80159464();
 extern s32 func_8014C98C(void);
@@ -19,25 +28,12 @@ extern void func_8014BDC8(void);
 extern void func_8014B2A8(void);
 extern s32 func_8013767C(s32 a0);
 extern void func_80158814(void *a0);
-extern u8 D_800B9A64;
-extern s16 D_80078EB4;
-extern u8 D_800B9A17;
-extern u8 D_80110EC0;
 
-extern s32 func_80159464();
-extern s32 func_8014C98C(void);
-extern int func_800D0F8C(int a0);
-extern void func_801599A4(void *a0);
-extern void func_8016F0E4(void);
-extern void func_80159B3C(void *a0);
-extern void func_80165718(s32 a0);
-extern void func_800D0F4C(s32 a0);
-extern void func_8014BB0C(void);
-extern void func_8014BDC8(void);
-extern void func_8014B2A8(void);
-extern s32 func_8013767C(s32 a0);
-extern void func_80158814(void *a0);
 void func_80158638(void *a0) {
+    extern u8 D_800B9A64;
+    extern s16 D_80078EB4;
+    extern u8 D_800B9A17;
+    extern u8 D_80110EC0;
     s32 v1;
     if (D_800B9A64 != 0) {
         return;

@@ -2,16 +2,14 @@
  * SHA256(span)=1c2e33c9e0ddfcd56385916112089fab3d7d343336e2514633a70260ef7d4064.
  * Word export only: the native seam executes the retail instruction
  * stream itself; this is not a C match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Sony PsyQ library routine (vendor/bfm-decomp keeps it as INCLUDE_ASM); C written from the retail disassembly. */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_80058C6C - byte-exact against retail at -O2 (tools/register_match.py). */
 
-void func_80058C6C(s32 *arg0, s32 *arg1) {
-    *arg1 = (*arg1 & 0xFF000000) | (*arg0 & 0xFFFFFF);
-    *arg0 = (*arg0 & 0xFF000000) | ((s32) arg1 & 0xFFFFFF);
+typedef struct { unsigned addr : 24; unsigned len : 8; } P_TAG;
+void func_80058C6C(void *ot, void *p)
+{
+    ((P_TAG *)p)->addr = ((P_TAG *)ot)->addr;
+    ((P_TAG *)ot)->addr = (u32)p;
 }

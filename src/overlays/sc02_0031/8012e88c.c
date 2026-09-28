@@ -5,26 +5,20 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8012E88C - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL of func_8012E88C (main_0012.s), decoded manually from
- * raw asm (0x1C bytes; NOT verified against retail; C89-gated
- * only, promotion requires an oracle MATCH): clears bit 31 of the
- * word at unk20 + 4 (lui/ori 0x7FFFFFFF, and, sw). */
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
 
-struct obj_8012E88C {
-    u8 pad[0x20];
-    void *unk20;
-};
-
-struct tgt_8012E88C {
-    u8 pad[4];
-    s32 unk4;
-};
-
-void func_8012E88C(struct obj_8012E88C *arg0) {
-    struct tgt_8012E88C *t;
-
-    t = (struct tgt_8012E88C *) arg0->unk20;
-    t->unk4 &= 0x7FFFFFFF;
+void func_8012E88C(u8 *a0) {
+    s32 *p = *(s32 **)(a0 + 0x20);
+    p[1] = p[1] & 0x7FFFFFFF;
 }

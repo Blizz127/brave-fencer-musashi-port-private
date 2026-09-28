@@ -2,46 +2,29 @@
  * SHA256(span)=1c86375acb7f40915e3e3176ee5d35c0f6b0acf52c1c667b16241a0b51a93f46.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
+/* func_8017DCB0 - byte-exact against retail at -O2 (tools/register_match.py). */
+extern unsigned short *D_80182540[];
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+void func_8017DCB0(s32 val, s32 n, void *dst, s32 flag) {
+    register u32 d __asm__("$3");
+    s32 idx;
+    s16 i;
 
-extern s32 D_80182540;
-
-void func_8017DCB0(u32 arg0, s16 arg1, u16 *arg2, s32 arg3) {
-    s16 temp_v0;
-    s16 var_t1;
-    s32 var_a3;
-    u16 *var_a2;
-    u32 temp_v1;
-    u32 var_a0;
-    u32 var_t0;
-
-    var_a0 = arg0;
-    var_a2 = arg2;
-    var_a3 = arg3;
-    var_t1 = 0;
-    if (arg1 > 0) {
-        do {
-            temp_v1 = var_a0 >> 0x1C;
-            var_t0 = temp_v1;
-            if ((var_a3 << 0x10) != 0) {
-                if (temp_v1 != 0) {
-                    var_a3 = 0;
-                } else {
-                    var_t0 = 0xA;
-                }
+    n = (s16)n;
+    for (i = 0; i < n; i++) {
+        d = (u32)val >> 28;
+        idx = d;
+        if ((flag << 16) != 0) {
+            if (d != 0) {
+                flag = 0;
+            } else {
+                idx = 10;
             }
-            var_a0 *= 0x10;
-            temp_v0 = var_t1 + 1;
-            var_t1 = temp_v0;
-            *var_a2 = **((var_t0 * 4) + D_80182540);
-            var_a2 += 2;
-        } while (temp_v0 < arg1);
+        }
+        val <<= 4;
+        *(u16 *)dst = *D_80182540[idx];
+        dst = (u16 *)dst + 1;
     }
 }

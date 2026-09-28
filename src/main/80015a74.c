@@ -1,28 +1,27 @@
 /* Exact retail word export for [80015A74,80015AD0); EXE and assembly verified. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80015A74 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-
-#if defined(__mips__)
-__asm__(
-    ".set\tnoreorder\n"
-    ".globl\tfunc_80015A74\n"
-    ".ent\tfunc_80015A74\n"
-    ".type\tfunc_80015A74, @function\n"
-    "func_80015A74:\n"
-    ".end\tfunc_80015A74\n"
-    ".size\tfunc_80015A74, .-func_80015A74\n"
-);
-#else
-u32 func_80015A74(u32 val) {
-    u32 div = 1000000000U;
-    u32 res = 0;
-    s32 count = 9;
-    do {
-        u32 q = val / div;
-        val %= div;
-        div /= 10;
-        res = (res << 4) | (q & 0xF);
-        count--;
-    } while (count >= 0);
-    return res;
-}
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
 #endif
+
+
+unsigned int func_80015A74(unsigned int param_1) {
+    unsigned int result;
+    unsigned int divisor;
+    int i;
+
+    divisor = 1000000000;
+    result = 0;
+    for (i = 0; i < 10; i++) {
+        result = (result << 4) | (param_1 / divisor);
+        param_1 = param_1 % divisor;
+        divisor = divisor / 10;
+    }
+    return result;
+}

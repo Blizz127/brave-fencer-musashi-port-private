@@ -2,65 +2,76 @@
  * SHA256(span)=7713f489577ebddec36f90a5f4b11764ede1bedcd3a1ea38658f416bdb20fa19.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8016BFD0 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* File-scope declarations from the vendor translation unit. */
+typedef struct {
+    s16 m[9];    /* 0x00 */
+    s16 pad;     /* 0x12 */
+    s32 t[3];    /* 0x14, 0x18, 0x1c */
+    s32 rest[8]; /* 0x20..0x3f */
+} Mtx;
+typedef struct { s16 x, y, z; } Vec3_8016BFD0;
+typedef struct { char b[4]; } W;
 
-void func_800123F0(void *, s16);                          /* extern */
-void func_80013F3C(void *);                               /* extern */
-void func_80017714(void *);                            /* extern */
-void func_80020F34(void *, u16 *);                        /* extern */
-extern s32 D_801815C8;
-extern s32 D_801815D0;
-extern s32 D_801815D8;
-extern s32 D_801815E0;
-void func_8012EFB8(u16 *, u16 *);                      /* static */
-void func_8012F14C(void *, s32 (*)(), void *, s16);         /* static */
+extern void func_800123F0(s32 a0, s32 a1);
+extern void func_80013F3C(s32 a0);
+extern void func_80020F34(s32 a0, s32 a1);
+extern void func_8012EFB8(s32 a0);
+extern void func_8012F14C(s32 a0, s32 a1, s32 a2);
 
-void func_8016BFD0(void *arg0, void *arg1, void *arg2, void *arg3, void *arg4) {
-    u16 sp5C;
-    u16 sp5A;
-    u16 sp58;
-    u16 sp54;
-    u16 sp52;
-    u16 sp50;
-    s32 sp2C;
-    s32 sp28;
-    s32 sp24;
-    s32 sp10;
-    void *temp_s2;
+// @class: struct
+// @stuck: none — MATCH (95 ins). Keys: (1) 4-byte unaligned copies via `struct{char b[4];}`
+//   assignment -> lwl/lwr/swl/swr with reload; (2) 0x40-byte stack buffer `buf` (Mtx padded to
+//   0x40, not 0x20) sets the frame to 0x70 and lands v1/v2 at sp+0x50/0x58; (3) func_80017714(a4)
+//   takes param_5 as an arg -> gcc materializes `addu $a0,$s0,$zero` and stores the 4 zeros via $a0.
 
-    temp_s2 = arg0->unk20;
-    arg4->unk30 = 0x50000000;
-    arg4->unk23 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-    arg4->unk27 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-    arg4->unk2B = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-    arg4->unk2F = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-    sp50 = arg0->unk6;
-    sp52 = arg0->unkA;
-    sp54 = arg0->unkE;
-    func_8012EFB8(&sp50, &sp50);
-    func_80013F3C(&sp10);
-    func_800123F0(&sp10, temp_s2->unk12);
-    sp58 = arg3->unk0;
-    sp5A = arg3->unk2;
-    sp5C = arg3->unk4;
-    func_80020F34(&sp10, &sp58);
-    sp24 = (s32) (s16) sp50;
-    sp28 = (s32) (s16) sp52;
-    sp2C = (s32) (s16) sp54;
-    func_8012F14C(&sp10, D_801815C8, arg4, (s16) sp54);
-    func_8012F14C(&sp10, D_801815D0, arg4 + 8);
-    func_8012F14C(&sp10, D_801815D8, arg4 + 0x10);
-    func_8012F14C(&sp10, D_801815E0, arg4 + 0x18);
-    arg4->unk4 = 0;
-    arg4->unkC = 0;
-    arg4->unk14 = 0;
-    arg4->unk1C = 0;
-    func_80017714(arg4);
+
+
+
+void func_8016BFD0(s32 a0, s32 a1, s32 a2, s32 a3, void *a4) {
+    extern void func_80017714();
+    extern s32 D_801815C8;
+    extern s32 D_801815D0;
+    extern s32 D_801815D8;
+    extern s32 D_801815E0;
+
+    Mtx buf;
+    Vec3_8016BFD0 v1;
+    Vec3_8016BFD0 v2;
+    s32 iVar5 = *(s32 *)(a0 + 0x20);
+
+    *(u32 *)((s32)a4 + 0x30) = 0x50000000;
+    *(W *)((s32)a4 + 0x20) = *(W *)a1;
+    *(W *)((s32)a4 + 0x24) = *(W *)a1;
+    *(W *)((s32)a4 + 0x28) = *(W *)a2;
+    *(W *)((s32)a4 + 0x2c) = *(W *)a2;
+
+    v1.x = *(u16 *)(a0 + 6);
+    v1.y = *(u16 *)(a0 + 0xa);
+    v1.z = *(u16 *)(a0 + 0xe);
+    ((void(*)())func_8012EFB8)(&v1, &v1);
+    ((void(*)())func_80013F3C)(&buf);
+    ((void(*)())func_800123F0)(&buf, (s32)*(s16 *)(iVar5 + 0x12));
+
+    v2.x = *(u16 *)(a3 + 0);
+    v2.y = *(u16 *)(a3 + 2);
+    v2.z = *(u16 *)(a3 + 4);
+    ((void(*)())func_80020F34)(&buf, &v2);
+
+    buf.t[0] = v1.x;
+    buf.t[1] = v1.y;
+    buf.t[2] = v1.z;
+    ((void(*)())func_8012F14C)(&buf, &D_801815C8, (s32)a4);
+    ((void(*)())func_8012F14C)(&buf, &D_801815D0, (s32)a4 + 8);
+    ((void(*)())func_8012F14C)(&buf, &D_801815D8, (s32)a4 + 0x10);
+    ((void(*)())func_8012F14C)(&buf, &D_801815E0, (s32)a4 + 0x18);
+
+    *(s16 *)((s32)a4 + 4) = 0;
+    *(s16 *)((s32)a4 + 0xc) = 0;
+    *(s16 *)((s32)a4 + 0x14) = 0;
+    *(s16 *)((s32)a4 + 0x1c) = 0;
+    func_80017714(a4);
 }

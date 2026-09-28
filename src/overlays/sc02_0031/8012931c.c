@@ -5,17 +5,19 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8012931C - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL of func_8012931C (main_0012.s), decoded manually from
- * raw asm (fully visible, no frame; NOT verified against retail;
- * C89-gated only, promotion requires an oracle MATCH):
- * accumulates three word pairs: unk4 += unk10, unk8 += unk14,
- * unkC += unk18 (lw/addu/sw; the unkC store sits in the jr
- * delay slot). */
-
-struct obj_8012931C {
-    u8 pad[4];
+struct vec {
+    s32 unk0;
     s32 unk4;
     s32 unk8;
     s32 unkC;
@@ -24,8 +26,8 @@ struct obj_8012931C {
     s32 unk18;
 };
 
-void func_8012931C(struct obj_8012931C *arg0) {
-    arg0->unk4 += arg0->unk10;
-    arg0->unk8 += arg0->unk14;
-    arg0->unkC += arg0->unk18;
+void func_8012931C(struct vec *a0) {
+    a0->unk4 += a0->unk10;
+    a0->unk8 += a0->unk14;
+    a0->unkC += a0->unk18;
 }

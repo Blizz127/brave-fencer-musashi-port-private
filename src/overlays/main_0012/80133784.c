@@ -2,117 +2,120 @@
  * SHA256(span)=bb1d419a28302257af8d974325d80186d6c89fe78bf44e7d14cc8424df976002.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80133784 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* File-scope declarations from the vendor translation unit. */
+typedef struct { u16 f0, f2, f4; s16 f6; } Box_80133784;
 
-s32 func_80047D3C(s32, s16, s32, void *);           /* extern */
-extern s32 D_8017E910;
-extern s32 D_8017E914;
-extern s32 D_80184120;
-extern s32 D_8018412C;
-extern s32 D_80184130;
-s32 func_80133AB0(s16, s16, s16, s32);              /* static */
+s32 func_80133784(s32 arg0, void *arg1, s32 arg2) {
 
-s32 func_80133784(s16 arg0, void *arg1, void *arg2) {
-    s16 temp_a1;
-    s16 temp_v1_2;
-    s16 var_s3;
-    s32 temp_a2;
-    s32 temp_v0;
-    s32 temp_v0_2;
-    s32 temp_v1;
-    s32 var_s1;
-    s32 var_s2;
-    s32 var_s4;
-    s32 var_v0;
-    s32 var_v1;
+    extern s32 D_80184120;
+    extern s32 func_80047D3C(s32);
+    extern s32 func_80133AB0(s16, s16, s16, s32);
+    extern Box_80133784 * D_8017E910;
+    extern Box_80133784 * D_8017E914;
+    extern s16 D_8018412C;
+    extern u16 D_80184130;
 
-    var_s1 = 0;
-    var_s3 = 0;
-    var_s4 = 0;
-    M2C_FIELD(D_8017E910, s16 *, 6) = -0x7FFF;
-    M2C_FIELD(D_8017E914, s16 *, 6) = 0x7FFF;
-    var_s2 = 0;
-    M2C_FIELD(D_8017E910, u16 *, 0) = (u16) M2C_FIELD(arg1, u16 *, 0);
-    M2C_FIELD(D_8017E910, u16 *, 4) = (u16) M2C_FIELD(arg1, u16 *, 4);
-    M2C_FIELD(D_8017E914, u16 *, 0) = (u16) M2C_FIELD(arg2, u16 *, 0);
-    D_80184130 = 0U;
+    register s32 s1 __asm__("$17");
+    s32 s2;
+    register s16 s3 __asm__("$19");
+    register s32 s4 __asm__("$20");
+    register s16 a0v __asm__("$4");
+    register s16 arg0s __asm__("$21");
+    s32 dx, dy, dz;
+    s32 r, ret;
+
+    a0v = ((s16)arg0);
+    s1 = 0;
+    s3 = 0;
+    s4 = 0;
+    s2 = 0;
+    arg0s = a0v;
+    D_8017E910->f6 = -0x7FFF;
+    D_8017E914->f6 = 0x7FFF;
+    D_8017E910->f0 = ((Box_80133784 *)arg1)->f0;
+    D_8017E910->f4 = ((Box_80133784 *)arg1)->f4;
+    D_8017E914->f0 = ((Box_80133784 *)arg2)->f0;
+    D_8017E914->f4 = ((Box_80133784 *)arg2)->f4;
+    D_80184130 = 0;
     D_8018412C = 0;
-    M2C_FIELD(D_8017E914, u16 *, 4) = (u16) M2C_FIELD(arg2, u16 *, 4);
-    if (arg0 == 0) {
-        temp_v1 = M2C_FIELD(arg2, u16 *, 0) - M2C_FIELD(arg1, u16 *, 0);
-        temp_a2 = M2C_FIELD(arg2, u16 *, 2) - M2C_FIELD(arg1, u16 *, 2);
-        temp_a1 = M2C_FIELD(arg2, u16 *, 4) - M2C_FIELD(arg1, u16 *, 4);
-        if ((temp_v1 << 0x10) == 0) {
-            var_v0 = temp_v1 << 0x10;
-            if ((temp_a2 << 0x10) == 0) {
-                var_s2 = (temp_a1 << 0x10) == 0;
-                goto block_4;
-            }
-        } else {
-block_4:
-            var_v0 = temp_v1 << 0x10;
+
+    if ((s16)a0v == 0) {
+        s16 sx = ((Box_80133784 *)arg2)->f0 - ((Box_80133784 *)arg1)->f0;
+        s16 sy = ((Box_80133784 *)arg2)->f2 - ((Box_80133784 *)arg1)->f2;
+        s16 sz = ((Box_80133784 *)arg2)->f4 - ((Box_80133784 *)arg1)->f4;
+        if (sx == 0 && sy == 0) {
+            s32 zt = (sz == 0);
+            __asm__("addu %0,%1,$zero" : "=r"(s2) : "r"(zt));
         }
-        temp_v0 = var_v0 >> 0x10;
-        M2C_FIELD(D_8017E910, u16 *, 2) = (u16) (M2C_FIELD(arg1, u16 *, 2) - 4);
-        var_v1 = func_80047D3C((temp_v0 * temp_v0) + (temp_a1 * temp_a1), temp_a1, temp_a2, arg1);
-        if (var_v1 < 3) {
-            var_v1 = 4;
-        } else if (var_v1 < 5) {
-            var_v1 += 1;
+        D_8017E910->f2 = ((Box_80133784 *)arg1)->f2 - 4;
+        r = func_80047D3C(sx * sx + sz * sz);
+        if (r < 3) {
+            r = 4;
+        } else if (r < 5) {
+            r += 1;
         }
-        M2C_FIELD(D_8017E914, u16 *, 2) = (u16) (M2C_FIELD(arg2, u16 *, 2) + var_v1 + 1);
+        D_8017E914->f2 = ((Box_80133784 *)arg2)->f2 + r + 1;
     } else {
-        M2C_FIELD(D_8017E910, u16 *, 2) = (u16) M2C_FIELD(arg1, u16 *, 2);
-        if (arg0 == 2) {
-            M2C_FIELD(D_8017E914, u16 *, 0) = (u16) M2C_FIELD(D_8017E910, u16 *, 0);
-            M2C_FIELD(D_8017E914, u16 *, 2) = (u16) (M2C_FIELD(D_8017E910, u16 *, 2) + 6);
-            var_s2 = 1;
-            M2C_FIELD(D_8017E914, u16 *, 4) = (u16) M2C_FIELD(D_8017E910, u16 *, 4);
+        D_8017E910->f2 = ((Box_80133784 *)arg1)->f2;
+        if ((s16)a0v == 2) {
+            D_8017E914->f0 = D_8017E910->f0;
+            D_8017E914->f2 = D_8017E910->f2 + 6;
+            s2 = 1;
+            D_8017E914->f4 = D_8017E910->f4;
         } else {
-            M2C_FIELD(D_8017E914, u16 *, 2) = (u16) M2C_FIELD(arg2, u16 *, 2);
+            D_8017E914->f2 = ((Box_80133784 *)arg2)->f2;
         }
     }
-loop_13:
-    temp_v0_2 = func_80133AB0(arg0, (s16) M2C_FIELD(D_8017E910, u16 *, 0), (s16) M2C_FIELD(D_8017E910, u16 *, 4), D_80184120);
-    if (temp_v0_2 != 0) {
-        var_s4 |= temp_v0_2;
-        if (var_s2 == 0) {
-            var_s3 += 1;
-            if (var_s3 >= 5) {
-                M2C_FIELD(D_8017E914, u16 *, 0) = (u16) M2C_FIELD(D_8017E910, u16 *, 0);
-                M2C_FIELD(D_8017E914, u16 *, 2) = (u16) M2C_FIELD(D_8017E910, u16 *, 2);
-                var_s1 = 0x2000;
-                M2C_FIELD(D_8017E914, u16 *, 4) = (u16) M2C_FIELD(D_8017E910, u16 *, 4);
-                goto block_25;
-            }
-            goto loop_13;
+
+    while (1) {
+        s32 ret0;
+        register s32 retc __asm__("$3");
+        __asm__ __volatile__("");
+        ret0 = func_80133AB0(arg0s, (s16)D_8017E910->f0, (s16)D_8017E910->f4, (*(s32*)&D_80184120));
+        __asm__("addu %0,%1,$zero" : "=r"(retc) : "r"(ret0));
+        ret = retc;
+        if (ret == 0) goto after;
+        s4 |= ret;
+        if (s2 != 0) goto after;
+        {
+            s16 oldc = s3;
+            s3 = s3 + 1;
+            if (oldc >= 5) break;
         }
     }
-    if (((var_s4 << 0x10) != 0) || (D_8018412C != 0)) {
-        temp_v1_2 = M2C_FIELD(D_8017E910, s16 *, 6);
-        if (temp_v1_2 >= -0xBCB) {
-            if (temp_v1_2 < -0x578) {
-                var_s1 = 0x4000;
+
+    D_8017E914->f0 = D_8017E910->f0;
+    D_8017E914->f2 = D_8017E910->f2;
+    s1 = 0x2000;
+    D_8017E914->f4 = D_8017E910->f4;
+    goto store_out;
+
+after:
+    if ((s16)s4 != 0 || D_8018412C != 0) {
+        s16 t;
+        __asm__ __volatile__("" :: "r"(s4));
+        t = D_8017E910->f6;
+        if (t >= -0xBCB) {
+            if (t < -0x578) {
+                s1 |= 0x4000;
             } else {
-                var_s1 = 0x8000;
+                s1 |= 0x8000;
             }
         }
-        if (M2C_FIELD(D_8017E914, s16 *, 6) < -0xBCB) {
-            var_s1 |= 0x2000;
+        if ((s16)D_8017E914->f6 < -0xBCB) {
+            s1 |= 0x2000;
         }
-block_25:
-        M2C_FIELD(arg2, u16 *, 0) = (u16) M2C_FIELD(D_8017E914, u16 *, 0);
-        M2C_FIELD(arg2, u16 *, 2) = (u16) M2C_FIELD(D_8017E914, u16 *, 2);
-        M2C_FIELD(arg2, u16 *, 6) = (u16) D_80184130;
-        M2C_FIELD(arg2, u16 *, 4) = (u16) M2C_FIELD(D_8017E914, u16 *, 4);
-        return var_s1 & 0xFFFF;
+    store_out:
+        ((Box_80133784 *)arg2)->f0 = D_8017E914->f0;
+        ((Box_80133784 *)arg2)->f2 = D_8017E914->f2;
+        ((Box_80133784 *)arg2)->f4 = D_8017E914->f4;
+        ((Box_80133784 *)arg2)->f6 = D_80184130;
+        return s1 & 0xFFFF;
     }
-    M2C_FIELD(arg2, u16 *, 6) = (u16) D_80184130;
+    ((Box_80133784 *)arg2)->f6 = D_80184130;
     return 0;
 }

@@ -4,40 +4,47 @@
  * Member-0012 C shape retargeted to this member: D_80180A1C->D_8018730C.
  * Oracle MATCH re-earned against the resident image; Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8015C944 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-typedef void (*CB)();
-extern CB D_8018730C[];
-void func_80149FB0();
-void func_80147AD4();
-void func_801473EC();
-void func_8014D738();
-void func_80147078();
-void func_80159B70();
-s32 func_80161240();
-s32 func_80146E98();
-void func_80146CA0();
-void func_80161C24();
-typedef struct {
-    u16 idx;
-    u8 pad2[0xB6]; u16 b8;
-    u8 padBA[0xB4]; u16 u16E;
-    s32 u170;
-} T;
-void func_8015C944(T *p) {
-    func_80149FB0(p);
-    func_80147AD4(p, 0, 0, 0);
-    func_801473EC(p);
-    func_8014D738(p);
-    if (p->u170 == 0) {
-        D_8018730C[p->idx](p);
-        func_80147078(p, 0);
-        func_80159B70(p);
-    } else if (func_80161240(p) == 0) {
-        if (func_80146E98(p)) {
-            func_80146CA0(p);
-        }
-        if (p->b8 & 0x2000) {
-            func_80161C24(p, p->u16E);
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+extern s32 func_80149FB0(s32 a0);
+extern void func_80147AD4(s32 a0, s32 a1, s32 a2, s32 a3);
+extern void func_801473EC(s32 *a0);
+extern void func_8014D738(void);
+extern void func_80147078(s32 *a0, s16 a1);
+extern void func_80159B70(void *a0);
+extern void func_80161240(void *a0);
+extern s32 func_80146E98(s32 a0);
+extern void func_80146CA0(void *a0);
+extern void func_80161C24(s32, s32);
+
+void func_8015C944(int param_1) {
+
+    extern void (*D_8018730C[])();
+    func_80149FB0(param_1);
+    func_80147AD4(param_1, 0, 0, 0);
+    ((void (*)(int))func_801473EC)(param_1);
+    ((void (*)(int))func_8014D738)(param_1);
+    if (*(int *)(param_1 + 0x170) == 0) {
+        (*D_8018730C[*(unsigned short *)param_1])(param_1);
+        ((void (*)(int, int))func_80147078)(param_1, 0);
+        ((void (*)(int))func_80159B70)(param_1);
+    } else {
+        if (((int (*)(int))func_80161240)(param_1) == 0) {
+            if (func_80146E98(param_1) != 0) {
+                ((void (*)(int))func_80146CA0)(param_1);
+            }
+            if ((*(unsigned short *)(param_1 + 0xb8) & 0x2000) != 0) {
+                func_80161C24(param_1, *(unsigned short *)(param_1 + 0x16e));
+            }
         }
     }
 }

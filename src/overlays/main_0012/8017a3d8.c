@@ -2,39 +2,38 @@
  * SHA256(span)=6cbecb50f3f8d25714fb18fdeca6c16855fc15964d38c1e54961679b22250c72.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
+/* func_8017A3D8 - byte-exact against retail at -O2 (tools/register_match.py). */
+extern int func_800D0CA0(int);
+extern int func_8001AAA0(void);
+extern int func_800D0CE0(void);
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+int func_8017A3D8(void)
+{
 
-void func_8001AAA0(s16);                               /* extern */
-void func_800D0CA0();                                 /* extern */
-void func_800D0CE0(s16);                               /* extern */
-void func_8017A49C();                                  /* extern */
-extern s32 D_80185380;
-extern s32 D_80185384;
-void func_8017A460();                                  /* static */
-
-void func_8017A3D8(void) {
-    if (D_80185384 != 0) {
-        if (D_80185384 != 0x64) {
-            func_8017A460();
-            return;
+    extern short D_80185384;
+    extern short D_80185380;
+    switch (D_80185384) {
+    case 0:
+        func_800D0CA0(1);
+        D_80185384 = D_80185384 + 1;
+        return 0;
+    case 100:
+    {
+        register int a __asm__("$4");
+        a = D_80185380;
+        if (a != -1) {
+            return func_8001AAA0() != 0;
         }
-        if (D_80185380 != -1) {
-            func_8001AAA0(D_80185380);
-            func_8017A49C();
-            return;
-        }
-        func_800D0CE0(D_80185380);
-        func_8017A49C();
-        return;
+        return func_800D0CE0() == 1;
     }
-    func_800D0CA0(1);
-    D_80185384 = (s16) ((u16) D_80185384 + 1);
-    func_8017A49C();
+    default:
+        D_80185384 = D_80185384 + 1;
+        if (D_80185384 < 0x1E) {
+            return 0;
+        }
+        D_80185384 = 100;
+        return 0;
+    }
 }

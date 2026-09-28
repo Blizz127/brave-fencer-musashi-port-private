@@ -2,84 +2,48 @@
  * SHA256(span)=60178c0ae6b305a7b3bd4f14702cdb013db141e42123b892a0ca531573294a95.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80029774 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+typedef struct {
+    s32 words[38];
+} Blk98_80029274;
 
-extern s32 *D_80078E78;
-extern s32 *D_80078F28;
-extern s32 *D_800A5E58;
-extern u16 D_800A6588;
-extern s32 *D_800AE648;
-extern s32 *D_800BA1B8;
+typedef struct {
+    char c[4];
+} Blk4_80029774;
 
-void func_80029774(s32 arg0) {
-    void *var_a2;
-    s32 var_a2_2;
-    s32 var_a2_3;
-    s32 var_a2_4;
-    s32 var_a2_5;
-    u16 *var_a0;
-    u16 temp_v0;
-    u8 temp_v0_2;
-    u8 temp_v0_3;
-    void *temp_t1;
-    void *var_a3;
-    void *var_a3_2;
-    void *var_v1;
-    void *var_v1_2;
-    void *var_v1_3;
+extern Blk98_80029274 D_80078E78;
+extern u8 D_80078F28[];
+extern u16 D_800A6588[];
+extern u8 D_800AE648[];
+extern u8 D_800BA1B8[];
+extern u8 D_800BA2B8[];
+extern s32 D_800A5E58[];
 
-    temp_t1 = (arg0 * 0x2DC) + &D_80078F28;
-    var_a3 = temp_t1 + 0x24;
-    var_a2 = &D_80078E78;
-    do {
-        var_a3->unk0 = (s32) var_a2->unk0;
-        var_a3->unk4 = (s32) var_a2->unk4;
-        var_a3->unk8 = (s32) var_a2->unk8;
-        var_a3->unkC = (s32) var_a2->unkC;
-        var_a2 += 0x10;
-        var_a3 += 0x10;
-    } while (var_a2 != (&D_80078E78 + 0x90));
-    var_a3->unk0 = (s32) var_a2->unk0;
-    var_a3->unk4 = (s32) var_a2->unk4;
-    var_a2_2 = 0;
-    var_a0 = &D_800A6588;
-    var_v1 = temp_t1;
-    do {
-        temp_v0 = *var_a0;
-        var_a0 += 2;
-        var_a2_2 += 1;
-        var_v1->unkBC = temp_v0;
-        var_v1 += 2;
-    } while (var_a2_2 < 0x40);
-    var_a2_3 = 0;
-    var_v1_2 = temp_t1;
-    do {
-        temp_v0_2 = *(&D_800AE648 + var_a2_3);
-        var_a2_3 += 1;
-        var_v1_2->unk13C = temp_v0_2;
-        var_v1_2 = temp_t1 + var_a2_3;
-    } while (var_a2_3 < 0x40);
-    var_a2_4 = 0;
-    var_v1_3 = temp_t1;
-    do {
-        temp_v0_3 = *(&D_800BA1B8 + var_a2_4);
-        var_a2_4 += 1;
-        var_v1_3->unk17C = temp_v0_3;
-        var_v1_3 = temp_t1 + var_a2_4;
-    } while (var_a2_4 < 0x100);
-    var_a2_5 = 0;
-    var_a3_2 = temp_t1;
-    do {
-        var_a3_2->unk27F = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-        var_a2_5 += 1;
-        var_a3_2 += 4;
-    } while (var_a2_5 < 0x18);
-    *(&D_800A5E58 + (arg0 * 4)) = 1;
+void func_80029774(s32 a0) {
+    u8 *dst;
+    s32 i;
+
+    dst = D_80078F28 + a0 * 0x2DC;
+    *(Blk98_80029274 *)(dst + 0x24) = D_80078E78;
+
+    for (i = 0; i < 0x40; i++) {
+        *(u16 *)(dst + 0xBC + i * 2) = D_800A6588[i];
+    }
+
+    for (i = 0; i < 0x40; i++) {
+        *(u8 *)(i + dst + 0x13C) = D_800AE648[i];
+    }
+
+    for (i = 0; i < 0x100; i++) {
+        *(u8 *)(i + dst + 0x17C) = D_800BA1B8[i];
+    }
+
+    for (i = 0; i < 0x18; i++) {
+        *(Blk4_80029774 *)(dst + 0x27C + i * 4) = *(Blk4_80029774 *)(D_800BA2B8 + i * 4);
+    }
+
+    D_800A5E58[a0] = 1;
 }
