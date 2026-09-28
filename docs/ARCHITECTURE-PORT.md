@@ -135,31 +135,64 @@ bfm_plat_shutdown();
 ### Game-event hook points
 
 These are named events the native lane fires when the game does them.
-Payload structs are in `bfm_plugin.h`, names in `bfm_plat_events.c`.
+Payload structs are in `bfm_plugin.h`, names in `bfm_plat_events.c`, and
+the retail sites in `bfm_plat_hook_sites.c` (`bfm_plat_known_sites`,
+`bfm_plat_hooks_register_known`). Evidence paths are in
+`vendor/bfm-decomp` (Druthulu's cleaned decomp of the same SLUS-00726
+build, fetched separately) unless marked "repo".
 
-| Event | Name | Payload | Fired by | Guest site |
-|---|---|---|---|---|
-| `BFM_EVENT_ROOM_ENTER` | `room_enter` | `BfmEventRoom {area, room}` | room/map loader | TBD |
-| `BFM_EVENT_ROOM_EXIT` | `room_exit` | `BfmEventRoom` | room teardown | TBD |
-| `BFM_EVENT_BATTLE_START` | `battle_start` | `BfmEventBattle {encounter, result=0}` | boss / scripted fight setup | TBD |
-| `BFM_EVENT_BATTLE_END` | `battle_end` | `BfmEventBattle {encounter, result 1 won / 0 lost}` | fight resolution | TBD |
-| `BFM_EVENT_ITEM_GET` | `item_get` | `BfmEventItem {item, count}` | inventory add | TBD |
-| `BFM_EVENT_SAVE` / `LOAD` | `save` / `load` | `BfmEventSave {slot}` | memory-card save/load | TBD |
-| frame_begin, frame_end, vsync, input, before/after_present, boot, shutdown | | | the platform itself | n/a |
+| Event | Guest site | Symbol | Evidence | Payload fill | Confidence |
+|---|---|---|---|---|---|
+| `frame_begin` | `0x800189A8` | `func_800189A8` (per-frame pad poll: 2 pads, 0x4C records at `D_80078D98`) | first call in `main`'s inner loop, `src/boot.c:310` (`main` 0x80010178, `src/boot.c:277`); body `src/800.c:6042`, `PadGetState` at `src/800.c:6094`; also once per frame in the resident modal loop `src/md_MAIN_003/md_MAIN_003_jr_800D1E18.c:236` | none (action: `bfm_plat_frame_wait`) | high. The modal loop gets FRAME_BEGIN without FRAME_END |
+| `frame_end` | `0x800184F0` | `func_800184F0` | called right before `VSync(*(s32 *)(p + 0xA3E8))`, `src/boot.c:372`/`:374`; body `src/800.c:5761`; no other caller | none (action: `bfm_plat_frame_hook_end`) | high |
+| `room_enter` | `0x80128158` in any `SC*` overlay | `func_80128158` (location-overlay export stub 0 → `func_80128288`, a phase dispatch `D_8017E618[D_800B99F6]`, repo `src/overlays/main_0012/80128288.c`) | called every scene-loop frame by resident `func_800CF238`, `src/resident/resident.c:255`; phase 0 reached SC02/31's init `80128420` (repo `docs/MENU-BOOT-CONTINUATION.md`, "SC02 initialization routine") | fires on the edge into scene phase 0 (u16 `0x800B99F6` = state base+0xA3C6) or on an overlay change. area/room are parsed from the overlay name the native lane reports ("SC02_031" → 2/31) | medium. Phase 0 = init is observed for SC02/31 only |
+| `room_exit` | `0x80011B7C` | `func_80011B7C(mode)` (set major mode base+0xA3C0, clear phase) | the scene loop leaves with `func_80011B7C(8)`, `src/resident/resident.c:261`; body `src/boot.c:950` | fires when `$a0 == 8` while an `SC*` overlay is selected | low. ~400 call sites, and mode 8 is not proven unique to scene exit |
+| `save` | `0x8002B0B4` | `func_8002B0B4` (memory-card state machine; splat's `SaveLoadRoutine` is its case 0) | state 13 writes the slot's 0x300-byte game-state block, `src/800_b.c:301`, `:318`, then advances `D_800760AC` | fires on the edge into state 13 (s32 `0x800760AC`); slot = `$a1` | medium. A retried write could fire twice |
+| `load` | `0x8002B0B4` | same | states 17/32 read that block, `src/800_b.c:486-488` | fires on the edge into state 17 or 32; slot = `$a1` | medium |
+| `battle_start` / `battle_end` / `item_get` | TBD | none | no named symbol, comment or runtime note found in vendor/bfm-decomp or this repo | none | needs runtime tracing |
 
-There are two ways to fire them:
-- **Hook sites (preferred for matched code).** The native lane registers
-  `BfmPlatHookSite {guest_pc, event, label, fill, user}` entries with
-  `bfm_plat_hooks_register`. On entry to a guest function, its dispatcher
-  calls `if (bfm_plat_hooks_has(pc)) bfm_plat_hooks_at(pc);`. The `fill`
-  callback reads guest registers or RAM into the payload and can return
-  nonzero to skip a hit that isn't a real event. Several events can share
-  one pc. The table is sorted, so the check costs one binary search.
-- **Direct emitters** for hand-ported code: `bfm_plat_event_room_enter/exit`,
+`tests/test_bfm_plat.py` pins these sites to their symbols, events and
+confidence. When the vendor tree is present, it also checks that every
+cited line still contains the cited code.
+
+How the native lane uses them:
+- `bfm_plat_guest_memory_bind` (RAM) and `bfm_plat_guest_regs_bind`
+  (registers, for `$a0`/`$a1`). Then `bfm_plat_hooks_register_known()`.
+- On overlay selection: `bfm_plat_hooks_set_overlay("SC02_031")`, or NULL
+  for none. Sites at or above `0x80128158` (the location-overlay window)
+  must name an overlay pattern (`"SC*"` or an exact name), because the same
+  address is different code in each overlay. Registration refuses them
+  otherwise.
+- On entry to a guest function: `if (bfm_plat_hooks_has(pc))
+  bfm_plat_hooks_at(pc);`.
+- Frame sites are actions. The FRAME_BEGIN site calls `bfm_plat_frame_wait()`
+  (input poll, hotkeys, and blocking while paused). The FRAME_END site calls
+  `bfm_plat_frame_hook_end()` (pending screenshot, cheats, overlays). The
+  game's own VSync → `bfm_plat_timing_vsync` does the pacing, and its own
+  DrawOTag/present does the presenting.
+- Direct emitters for hand-ported code: `bfm_plat_event_room_enter/exit`,
   `bfm_plat_event_battle`, `bfm_plat_event_item_get`, `bfm_plat_event_save`.
 
 The `events` console command lists each event with its count and every
-registered site with its hits.
+registered site with its overlay and hits.
+
+### Pause, screenshot, quit
+
+- **Pause** (hotkey, `pause` command, `bfm_plat_pause`): `bfm_plat_frame_begin`
+  returns `BFM_PLAT_PAUSED`. The caller skips its game logic and still calls
+  `bfm_plat_frame_end`, which presents, draws "PAUSED" and paces but emits no
+  FRAME_BEGIN/FRAME_END, so cheats and plugins don't tick. Audio is paused.
+  The hook-site path blocks in `bfm_plat_frame_wait` instead, so the guest
+  frame loop doesn't advance.
+- **Screenshot** (hotkey, `screenshot [PATH.png]`): reads the current
+  display area (last `set_disp_env`, 15- or 24-bit) back through
+  `download_vram` and writes a PNG with the dependency-free encoder in
+  `bfm_plat_image.c` (stored deflate, so zlib isn't needed). The shot is
+  taken before overlays are drawn. Files go to `[video] screenshot_dir`
+  (default `screenshots`) as `bfm_NNNNN.png`, at the native display
+  resolution.
+- **Quit** (hotkey, `quit`): sets `bfm_plat_quit_requested()` for the main
+  loop.
 
 ## Mod hooks
 
@@ -266,6 +299,7 @@ aspect.
 | SDL2 (runtime dependency) | system / host-port-deps | zlib | not vendored |
 | OpenAL Soft (via PsyCross) | system | LGPL-2.1, dynamically linked | not vendored |
 | OpenSSL libcrypto (`disc_media.c` SHA-256) | system | Apache-2.0 | `pinned` backend only |
+| built-in 5x7 debug font (`bfm_plat_font.c`) | `pc_port/platform/` | this repository | original glyphs drawn for this port, not derived from PsyCross's `dbugfont` |
 | zlib (`texture_png.c` inflate) | system libz | zlib | PNG decoder only; the decoder itself is in-house, and no third-party PNG code is vendored |
 | Game data | the user's own disc image | © the rights holders | never committed or shipped |
 
@@ -292,13 +326,16 @@ Stubbed / next:
 - The `psycross` renderer has no HD `upload_replacement` path, and
   `set_output` is a no-op. PsyCross owns window size.
 - The SDL input backend's rebinding at runtime (`set_bindings`) has no UI.
-  Screenshot and pause hotkeys are reported but not acted on.
-- The `psycross` renderer has no `overlay_text` yet, so the console and
-  cheat menu don't draw on it. They draw on any backend that implements
-  it (they're tested with a capturing backend).
+- Overlay text on `psycross` is compile-checked only. It draws the
+  built-in 5x7 font (`bfm_plat_font.c`, original to this repo) as TILE runs
+  over a semi-transparent backing, in the current draw environment's
+  coordinates. It uses no VRAM texture, because PsyCross's `FntLoad` would
+  overwrite game VRAM.
 - No Lua runtime (seam only).
-- Guest sites for the hook points (all TBD), and registering them from
-  the native lane. Widescreen projection and 60 fps interpolation.
+- Guest sites for battle start/end and item get (no evidence yet). Room
+  exit is low-confidence. Registering the known sites and reporting the
+  selected overlay from the native lane.
+- Widescreen projection and 60 fps interpolation.
 - Routing the game's Psy-Q-shaped call sites (libgpu/libcd/libetc shims in
   the native lane) through `bfm_plat_*`.
 
@@ -315,7 +352,8 @@ add_library(bfm_plat STATIC
     pc_port/platform/bfm_plat_input.c    pc_port/platform/bfm_plat_storage.c
     pc_port/platform/bfm_plat_timing.c   pc_port/platform/bfm_plat_mods.c
     pc_port/platform/bfm_plat_console.c  pc_port/platform/bfm_plat_console_ui.c
-    pc_port/platform/bfm_plat_events.c)
+    pc_port/platform/bfm_plat_events.c   pc_port/platform/bfm_plat_hook_sites.c
+    pc_port/platform/bfm_plat_image.c    pc_port/platform/bfm_plat_font.c)
 target_include_directories(bfm_plat PUBLIC pc_port/platform)
 target_link_libraries(bfm_plat PUBLIC ${CMAKE_DL_LIBS})
 
