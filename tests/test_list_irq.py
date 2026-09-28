@@ -105,7 +105,7 @@ def _compile_and_run(mutation=None, *, compiler="cc", extra_flags=()):
             *map(str,sources.values()),
             *[str(ROOT/'src/main'/f'{name}.c') for name in
               ('800427f4','80042ce8','800616d0','8006291c','80062988',
-               '8001096c','80042e08','80042f8c')],
+               '8001096c','80042e08')],str(ROOT/'pc_port/libetc_dma_registration.c'),
             '-lcrypto',*flags,'-o',str(exe)],capture_output=True,text=True,timeout=30)
         assert compiled.returncode == 0, compiled.stderr
         return subprocess.run([str(exe),str(cue),str(binary),str(ROOT/'extracted/disc/files/SLUS_007.26'),str(reference)],capture_output=True,text=True,timeout=30)

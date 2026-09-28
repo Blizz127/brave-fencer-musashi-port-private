@@ -227,8 +227,8 @@ if(MUSASHI_BUILD_PC_PORT)
         src/main/8005c1c0.c
         src/main/8005bd7c.c
         src/main/800426fc.c
-        src/main/800429dc.c
-        src/main/80042f8c.c
+        pc_port/libetc_irq_registration.c
+        pc_port/libetc_dma_registration.c
         pc_port/libetc_irq_veneer.c
         pc_port/libetc_dma_veneer.c
         src/main/8001096c.c
@@ -250,10 +250,6 @@ if(MUSASHI_BUILD_PC_PORT)
         COMPILE_DEFINITIONS MUSASHI_NATIVE_DEVICE_BINDING=1)
     set_source_files_properties(src/main/8005bd7c.c src/main/800426fc.c PROPERTIES
         COMPILE_DEFINITIONS MUSASHI_NATIVE_DEVICE_BINDING=1)
-    set_source_files_properties(src/main/800429dc.c PROPERTIES
-        COMPILE_DEFINITIONS MUSASHI_NATIVE_CALLBACK_REGISTRATION=1)
-    set_source_files_properties(src/main/80042f8c.c PROPERTIES
-        COMPILE_DEFINITIONS MUSASHI_NATIVE_DMA_REGISTRATION=1)
     set_source_files_properties(src/main/80042ce8.c src/main/8001096c.c PROPERTIES
         COMPILE_DEFINITIONS MUSASHI_NATIVE_CALLBACK_HANDLER=1)
     set_source_files_properties(src/main/80042e08.c PROPERTIES
@@ -381,7 +377,7 @@ if(MUSASHI_BUILD_PC_PORT)
             src/main/80042ce8.c
             src/main/8001096c.c
             src/main/80042e08.c
-            src/main/80042f8c.c
+            pc_port/libetc_dma_registration.c
             src/main/800616d0.c
             src/main/8006291c.c
             src/main/80062988.c
