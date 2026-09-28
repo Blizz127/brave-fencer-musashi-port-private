@@ -44,25 +44,24 @@ The shares:
   - 47 fail the lane's hooks rule;
   - 46 are PsyQ stub entries;
   - the rest fail other lane rules.
-By domain, excluding idle, with overlay code attributed to the resident
-MAIN.CD member (73b802be3). Residency is inferred from traced entries; only
-45 K instructions needed the global tie-break.
-- **Game code** (38.7 M instructions, 187 functions):
-  - byte-matched C *runs* for 1.2%: the native lane covers the main EXE
-    only;
-  - byte-matched C *exists* for 44.7%;
-  - the rest is:
-    - main_0003's hand-written MDEC routines (func_800D3204/800D3234,
-      verbatim asm, no C form): 55.3%;
-    - main_0003 matched C, interpreted because overlays have no lane yet:
-      39.5%;
-    - main-EXE matched C: 5.2%.
-- **PsyQ** (61.2 M, 267 functions):
-  - shims run 0.3%;
-  - interpreted retail 99.7%, mostly unregistered libcd (46 M, including
-    the 43 M sector-copy loop at 80046C38), libpad (6.4 M) and libetc
-    (2.2 M).
-  - Under the owner's rule, PsyQ stays platform code. The target there is
+By domain, excluding idle, classified against the B1 lane table
+(29477eed8). Overlay code is attributed to the resident MAIN.CD member
+(73b802be3). That attribution is inferred from traced entries, and only
+45 K instructions needed the global tie-break. The next run records exact
+residency (tools/patches/trace-resident.patch).
+- **Game code** (17.3 M instructions, 186 functions):
+  - byte-matched C *runs* for **4.7%** (71 functions), up from 1.2% before
+    B1;
+  - byte-matched C *exists* for **99.85%**;
+  - the gap is main_0003's matched C, interpreted because the lane has
+    no overlay support yet, plus the lane-refused main-EXE functions
+    (hooks and other rules).
+- **PsyQ/SDK** (82.6 M, 268 functions):
+  - shims run 0.2%;
+  - the rest is interpreted retail: unregistered libcd (46 M, including
+    the 43 M sector-copy loop at 80046C38), libpress in main_0003
+    (21.4 M, D-023), libpad (6.4 M) and libetc (2.2 M).
+  - Under the owner's rule, PsyQ/SDK stays platform code. The target is
     shims proven faithful, not matched C.
 
 Shadowing:
@@ -100,6 +99,7 @@ Shadowing:
 | D-020 | PsyQ compat entries run hand-written C instead of the retail library instructions at their PCs. This is by design: the port's PsyQ layer is PsyCross or its own code, never decompiled PsyQ. By default (`MUSASHI_PSYQ_LANE=pure`) that means every non-stub entry except the device entries and those whose body holds a port-sequenced PC. Each shim must be proven faithful by `tests/psyq_shim_probe.c` (retail on the interpreter vs the shim, same inputs, comparing v0 and guest RAM). The proven ones are in the table below. Seven were fixed after the lane probe (7935600a2). The GTE functions RotMatrix, RotMatrixYXZ/X/Y/Z and ratan2 read the game's own tables (193b41e86). All other entries have no per-entry differential yet. | `pc_port/platform/psyq/bfm_psyq_compat.def`, `pc_port/native_lane_psyq.c` | Owner rule: no decompiled PsyQ in the port. | open for every entry not proven below |
 | D-021 | Entries with the `PSYCROSS` status call PsyCross (MIT, a PsyQ reimplementation), whose GTE and libgpu semantics are not retail. | `pc_port/platform/psyq/psyq_psycross.c` | Same as D-020. | untested |
 | D-022 | Shims set v0 (and write memory) exactly, but leave the other caller-saved registers (v1, a0-a3, t0-t9) as they were on entry, where the retail code clobbers them. Under the o32 ABI no C caller can observe this; hand-written asm callers could. | `native_lane_psyq.c`, `mips_formatter.c` `lane_try` | Wrappers work on the live register file. | open (believed invisible; not measured) |
+| D-023 | main_0003 (the intro movie player) contains Sony libpress DecDCTvlcSize/DecDCTvlc at 0x800D3204-0x800D3574: handwritten SDK assembly that can never be C. It runs as interpreted retail, unmatched. For the port it is platform territory: the faithful replacement is a PsyCross or port-own DecDCTvlc, proven by a differential against interpreted retail (same bitstream in, same RAM out). | `tools/port_matched_ratio.py` `SDK_OVERLAY_RANGES` | Planned. | open (interpreted retail today, so faithful by construction until replaced) |
 
 ### PsyQ shim differential status (`tests/psyq_shim_probe.c`, 96 inputs each)
 
