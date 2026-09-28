@@ -51,11 +51,12 @@ that wrap them translate.
 |---|---|---|---|
 | renderer | `bfm_plat_renderer.h` | draw env / disp env, primitive lists, VRAM upload/download, present, output (window, internal scale, aspect, frame rate), overlay text | `null` (built-in: real 1024x512 VRAM, FILL, upload/download), `psycross` (`backends/renderer_psycross.c` → PsyCross libgpu) |
 | audio | `bfm_plat_audio.h` | 44.1 kHz s16 stereo MAIN (SPU mix) and CD (XA/CD-DA) streams, volume, pause, status; drops PCM during fast-forward | `null` (built-in, counts frames), `sdl` (`backends/audio_sdl.c` → `pc_port/audio_sdl.c`) |
-| input | `bfm_plat_input.h` | two pads as PS1 buttons (active-high) and analog, host bindings, port hotkeys (fast-forward, console, cheat menu, pause, screenshot, quit), PS1 SIO wire bytes for the pad shim | `null` (built-in "scripted": state is set by code, for tests and the route autopilot). An SDL keyboard/joystick backend comes with the SDL libs |
+| input | `bfm_plat_input.h` | two pads as PS1 buttons (active-high) and analog, `[input]` bindings from config, port hotkeys (fast-forward, console, cheat menu, pause, screenshot, quit), console text/key queue, PS1 SIO wire bytes for the pad shim | `null` (built-in "scripted": state is set by code, for tests and the route autopilot), `sdl` (`backends/input_sdl.c`: keyboard + SDL GameController) |
 | disc/storage | `bfm_plat_storage.h` | sector reads (2048 / 2324 / 2340 / 2352), MSF↔LBA, ISO9660 file lookup, whole-file reads through the mods file hook, memory cards (128 KiB `.mcd` per slot, atomic save) | `image` (built-in: user `.cue`/`.bin` raw or `.iso`), `pinned` (`backends/disc_pinned.c` → `pc_port/disc_media.c`, verified retail cue/bin by SHA-256) |
 | timing | `bfm_plat_timing.h` | `VSync(n)` pacing at the NTSC field rate (1001/60000 s), resync after stalls, fast-forward speed (0 = uncapped), injectable clock | built-in host monotonic clock (POSIX `clock_gettime` / Win32 QPC) |
-| mods | `bfm_plat_mods.h`, `bfm_plugin.h` | folder loader, event hooks, C plugins, script-runtime seam, hash-keyed asset replacement, texture dump, guest-memory binding | built-in |
-| console/cheats | `bfm_plat_console.h` | cheat registry (plugin callbacks, `cheats.ini` pokes), cheat-menu model, console commands | built-in |
+| mods | `bfm_plat_mods.h`, `bfm_plugin.h` | folder loader, event hooks, C plugins, script-runtime seam, hash-keyed asset replacement, texture decoders, texture dump, guest-memory binding | built-in (`.bfmi` decoder); `backends/texture_png.c` (`.png`, in-house on zlib) |
+| console/cheats | `bfm_plat_console.h`, `bfm_plat_console_ui.h` | cheat registry (plugin callbacks, `cheats.ini` pokes), cheat-menu model, console commands, console text front end (scrollback, edit line, history, Tab completion) drawn via renderer `overlay_text` | built-in |
+| game events | `bfm_plat_events.h` (events themselves in `bfm_plugin.h`) | event name catalog, guest-PC hook-site table for the native lane, `events` console command | built-in |
 | config | `bfm_plat_config.h`, `bfm_plat_ini.h` | user INI file, CLI overrides, save-back, per-plugin sections | built-in |
 
 The existing `pc_port/` device owners (`gpu_psycross.c`, `audio_sdl.c`,
@@ -69,8 +70,48 @@ modeled cycle count, not wall time, and stays separate from
 
 `bfm_plat_register_builtin_backends()` (`bfm_plat_backends.c`) registers
 the backends compiled into a build: `-DBFM_PLAT_WITH_PSYCROSS`,
-`-DBFM_PLAT_WITH_SDL_AUDIO`, `-DBFM_PLAT_WITH_PINNED_DISC`. The default
-dependency-free build registers none and runs on the built-ins.
+`-DBFM_PLAT_WITH_SDL_AUDIO`, `-DBFM_PLAT_WITH_SDL_INPUT`,
+`-DBFM_PLAT_WITH_PINNED_DISC`. `-DBFM_PLAT_WITH_PNG` registers the PNG
+texture decoder in `bfm_plat_init`. The default dependency-free build
+registers none and runs on the built-ins.
+
+### Input bindings
+
+Bindings come from `[input]`. Each key names a target and lists host
+inputs, comma-separated. A target with no key uses its default, and an
+empty value unbinds it.
+
+```ini
+[input]
+analog = 1                       ; report DualShock analog mode (sdl backend)
+p1.cross = key:z, pad:a          ; defaults: p1 keyboard + pad 1, p2 pad 2 only
+p1.l2 = key:q, pad:lefttrigger   ; axes: pad:lefttrigger, pad:-leftx, pad:+lefty
+p2.start = pad:start
+hotkey.fast_forward = key:tab    ; also console (`), cheat_menu (f1), pause,
+hotkey.quit =                    ; screenshot (f12), quit (unbound)
+```
+
+Targets are `p1.`/`p2.` plus `select l3 r3 start up right down left l2 r2
+l1 r1 triangle circle cross square`, and `hotkey.` plus `fast_forward
+console cheat_menu pause screenshot quit`. The core parses these
+(`bfm_plat_input_bindings_from_config`). A backend supplies only a resolver
+from `key:NAME` / `pad:NAME` to its host codes, so a future non-SDL backend
+gets the same config format. The `sdl` backend reads keyboard and
+controller *state* after `SDL_PumpEvents`, and gets typed text and
+controller hotplug through `SDL_AddEventWatch`. It never takes events off
+the queue that PsyCross pumps. While the console is open, letter-key
+bindings are ignored and pads report neutral to the game.
+
+### Console front end
+
+`bfm_plat_console_ui` is the text UI over `bfm_plat_console_exec`. The
+console hotkey toggles it when `[debug] console = 1`. Text typed before it
+opens is dropped. Input backends push text and editing keys
+(`bfm_plat_input_push_text/_key`), and the frame loop drains them while
+the console is open. It draws 12 scrollback lines plus the prompt through
+`bfm_plat_renderer_overlay_text`, so any renderer that implements
+`overlay_text` shows it. Keys: Enter, Backspace, Left/Right, Up/Down
+(history), PageUp/PageDown, Tab (command completion), Esc.
 
 ### Lifecycle and the frame loop
 
@@ -91,11 +132,34 @@ for (;;) {
 bfm_plat_shutdown();
 ```
 
-Runtime events the native dispatch table emits where the game does them:
-`bfm_plat_event_room_enter/exit(area, room)`, `bfm_plat_event_battle(start,
-encounter, result)`, `bfm_plat_event_item_get(item, count)`. Which guest
-functions correspond to these events is still to be settled with the
-native-lane work (`port/native-lane`).
+### Game-event hook points
+
+These are named events the native lane fires when the game does them.
+Payload structs are in `bfm_plugin.h`, names in `bfm_plat_events.c`.
+
+| Event | Name | Payload | Fired by | Guest site |
+|---|---|---|---|---|
+| `BFM_EVENT_ROOM_ENTER` | `room_enter` | `BfmEventRoom {area, room}` | room/map loader | TBD |
+| `BFM_EVENT_ROOM_EXIT` | `room_exit` | `BfmEventRoom` | room teardown | TBD |
+| `BFM_EVENT_BATTLE_START` | `battle_start` | `BfmEventBattle {encounter, result=0}` | boss / scripted fight setup | TBD |
+| `BFM_EVENT_BATTLE_END` | `battle_end` | `BfmEventBattle {encounter, result 1 won / 0 lost}` | fight resolution | TBD |
+| `BFM_EVENT_ITEM_GET` | `item_get` | `BfmEventItem {item, count}` | inventory add | TBD |
+| `BFM_EVENT_SAVE` / `LOAD` | `save` / `load` | `BfmEventSave {slot}` | memory-card save/load | TBD |
+| frame_begin, frame_end, vsync, input, before/after_present, boot, shutdown | | | the platform itself | n/a |
+
+There are two ways to fire them:
+- **Hook sites (preferred for matched code).** The native lane registers
+  `BfmPlatHookSite {guest_pc, event, label, fill, user}` entries with
+  `bfm_plat_hooks_register`. On entry to a guest function, its dispatcher
+  calls `if (bfm_plat_hooks_has(pc)) bfm_plat_hooks_at(pc);`. The `fill`
+  callback reads guest registers or RAM into the payload and can return
+  nonzero to skip a hit that isn't a real event. Several events can share
+  one pc. The table is sorted, so the check costs one binary search.
+- **Direct emitters** for hand-ported code: `bfm_plat_event_room_enter/exit`,
+  `bfm_plat_event_battle`, `bfm_plat_event_item_get`, `bfm_plat_event_save`.
+
+The `events` console command lists each event with its count and every
+registered site with its hits.
 
 ## Mod hooks
 
@@ -137,8 +201,11 @@ native-lane work (`port/native-lane`).
   of FNV-1a 64 over the original data:
   - textures: `le16 width, le16 height, width*height le16 pixels` of each
     VRAM upload → `assets/textures/<hash>.<ext>`. The built-in decoder is
-    `.bfmi` ("BFMI", le16 w, le16 h, RGBA8888), and PNG etc. plug in through
-    `bfm_plat_mods_register_decoder`. A replacement may be the same size
+    `.bfmi` ("BFMI", le16 w, le16 h, RGBA8888). `.png` comes from
+    `backends/texture_png.c` (in-house, on zlib's inflate: non-interlaced
+    grey, RGB, palette 1-8 bit with tRNS, grey+alpha and RGBA, 8/16-bit,
+    all filters, CRC-checked; Adam7 is refused). Other formats plug in
+    through `bfm_plat_mods_register_decoder`. A replacement may be the same size
     or an integer multiple of it (HD). Backends with `upload_replacement`
     get the HD image. Otherwise a same-size image is folded back to 15-bit
     VRAM (opaque black keeps the STP bit), and anything else keeps the
@@ -156,8 +223,8 @@ native-lane work (`port/native-lane`).
   `FRAME_END`. The cheat menu is a model toggled by the cheat-menu hotkey
   and drawn through the renderer overlay. Console commands: `help`,
   `cheats`, `cheat NAME on|off|toggle`, `peek`, `poke`, `get`, `set`,
-  `mods`, `ff [SPEED]`, plus any a plugin registers. The console's text
-  front end (key capture, rendering) arrives with the SDL input backend.
+  `mods`, `ff [SPEED]`, `events`, plus any a plugin registers. The text
+  front end is `bfm_plat_console_ui` (above).
 - **Config file + command line** (`bfm_plat_config.h`). The path is
   `$BFM_PORT_CONFIG`, else `$XDG_CONFIG_HOME/bfm-port/config.ini`, else
   `~/.config/bfm-port/config.ini` (`%APPDATA%\bfm-port\config.ini` on
@@ -199,6 +266,7 @@ aspect.
 | SDL2 (runtime dependency) | system / host-port-deps | zlib | not vendored |
 | OpenAL Soft (via PsyCross) | system | LGPL-2.1, dynamically linked | not vendored |
 | OpenSSL libcrypto (`disc_media.c` SHA-256) | system | Apache-2.0 | `pinned` backend only |
+| zlib (`texture_png.c` inflate) | system libz | zlib | PNG decoder only; the decoder itself is in-house, and no third-party PNG code is vendored |
 | Game data | the user's own disc image | © the rights holders | never committed or shipped |
 
 ## Status
@@ -211,8 +279,11 @@ also clean under ASan/UBSan):
   plugins, the script seam, texture and file replacement, texture dump.
   Cheats (callback and poke), cheat-menu model, console. Frame loop with
   hotkeys and fast-forward.
-- `psycross`, `sdl` (audio) and `pinned` (disc) backends, compile-checked
-  only against their headers.
+- `psycross`, `sdl` (audio), `sdl` (input) and `pinned` (disc) backends,
+  compile-checked only against their headers. The PNG decoder is fully
+  tested (zlib is present).
+- Config-driven input bindings, the console text front end, the
+  event catalog and the guest-PC hook-site table.
 
 Stubbed / next:
 - The `psycross`, `sdl` and `pinned` backends have never run. They need the
@@ -220,13 +291,68 @@ Stubbed / next:
   top-level `CMakeLists.txt` belongs to the native-lane work).
 - The `psycross` renderer has no HD `upload_replacement` path, and
   `set_output` is a no-op. PsyCross owns window size.
-- No SDL input backend yet (keyboard/joystick, bindings from config), and
-  no console text front end.
-- No Lua runtime (seam only). No PNG texture decoder (seam only).
-- Game-event emission (room/battle/item) from the native dispatch table.
-  Widescreen projection and 60 fps interpolation.
+- The SDL input backend's rebinding at runtime (`set_bindings`) has no UI.
+  Screenshot and pause hotkeys are reported but not acted on.
+- The `psycross` renderer has no `overlay_text` yet, so the console and
+  cheat menu don't draw on it. They draw on any backend that implements
+  it (they're tested with a capturing backend).
+- No Lua runtime (seam only).
+- Guest sites for the hook points (all TBD), and registering them from
+  the native lane. Widescreen projection and 60 fps interpolation.
 - Routing the game's Psy-Q-shaped call sites (libgpu/libcd/libetc shims in
   the native lane) through `bfm_plat_*`.
+
+## CMake wiring (note for port/native-lane)
+
+This branch doesn't touch `CMakeLists.txt`. To wire it into the build:
+
+```cmake
+# Core: C99, no dependencies. dlopen for native plugins.
+add_library(bfm_plat STATIC
+    pc_port/platform/bfm_plat.c          pc_port/platform/bfm_plat_backends.c
+    pc_port/platform/bfm_plat_ini.c      pc_port/platform/bfm_plat_config.c
+    pc_port/platform/bfm_plat_renderer.c pc_port/platform/bfm_plat_audio.c
+    pc_port/platform/bfm_plat_input.c    pc_port/platform/bfm_plat_storage.c
+    pc_port/platform/bfm_plat_timing.c   pc_port/platform/bfm_plat_mods.c
+    pc_port/platform/bfm_plat_console.c  pc_port/platform/bfm_plat_console_ui.c
+    pc_port/platform/bfm_plat_events.c)
+target_include_directories(bfm_plat PUBLIC pc_port/platform)
+target_link_libraries(bfm_plat PUBLIC ${CMAKE_DL_LIBS})
+
+if(MUSASHI_WITH_PSYCROSS)   # SDL2 / OpenAL / GL already found above
+    target_sources(bfm_plat PRIVATE
+        pc_port/platform/backends/renderer_psycross.c
+        pc_port/platform/backends/audio_sdl.c
+        pc_port/platform/backends/input_sdl.c)
+    # renderer_psycross.c needs C11 (PsyCross headers use static_assert)
+    set_source_files_properties(pc_port/platform/backends/renderer_psycross.c
+        PROPERTIES COMPILE_OPTIONS "-std=gnu11;-include;assert.h")
+    target_include_directories(bfm_plat PRIVATE
+        ${MUSASHI_PSYCROSS_DIR}/include pc_port/include)
+    target_compile_definitions(bfm_plat PRIVATE BFM_PLAT_WITH_PSYCROSS
+        BFM_PLAT_WITH_SDL_AUDIO BFM_PLAT_WITH_SDL_INPUT)
+    target_link_libraries(bfm_plat PRIVATE SDL2::SDL2 musashi_pc_port)
+endif()
+
+find_package(ZLIB)          # optional: .png texture replacements
+if(ZLIB_FOUND)
+    target_sources(bfm_plat PRIVATE pc_port/platform/backends/texture_png.c)
+    target_compile_definitions(bfm_plat PRIVATE BFM_PLAT_WITH_PNG)
+    target_link_libraries(bfm_plat PRIVATE ZLIB::ZLIB)
+endif()
+# Optional: pc_port/platform/backends/disc_pinned.c + BFM_PLAT_WITH_PINNED_DISC
+# (links disc_media.c / OpenSSL::Crypto, already in musashi_pc_port).
+```
+
+Notes:
+- `bfm_plat.c` must be compiled with the same `BFM_PLAT_WITH_PNG` define as
+  `texture_png.c`. Keep the definitions on the target, not per source.
+- `musashi_audio_sdl_*` comes from `pc_port/audio_sdl.c`. Link whichever
+  target builds it (shown here as `musashi_pc_port`).
+- Tests: `python3 -m pytest tests/test_bfm_plat.py`. It builds its own
+  probes and doesn't need CMake.
+- For the sample plugin to find nothing but the plugin SDK, export nothing
+  from the executable. Plugins use only the `BfmPluginHost` table.
 
 ## Migration order (does not stall current work)
 
@@ -236,8 +362,9 @@ Stubbed / next:
    `bfm_plat_timing_vsync`, CdRead/CdSearchFile → `bfm_plat_disc_*`, pad →
    `bfm_plat_input_*`, LoadImage/DrawOTag → renderer. It binds guest RAM
    with `bfm_plat_guest_memory_bind`.
-3. SDL libs arrive: build and run the `psycross`/`sdl`/`pinned` backends,
-   add the SDL input backend and the console front end.
+3. SDL libs arrive: build and run the `psycross`/`sdl`/`pinned` backends
+   (SDL input and the console front end are already written). Add
+   `overlay_text` to the `psycross` renderer.
 4. Room-enter and frame-tick events from dispatch, then asset replacement
    on real uploads, then the cheat console on the real game.
 5. A modern renderer backend comes later and only needs the renderer
