@@ -18,6 +18,9 @@
 #ifdef BFM_PLAT_WITH_PNG
 int bfm_plat_texture_png_register(void);
 #endif
+#ifdef BFM_PLAT_WITH_LUA
+int bfm_plat_script_lua_register(void);
+#endif
 
 static BfmPlatConfig cfg_copy;
 static int up;
@@ -86,6 +89,9 @@ int bfm_plat_init(const BfmPlatConfig *cfg) {
     bfm_plat_mods_set_config_getter(config_lookup);
 #ifdef BFM_PLAT_WITH_PNG
     bfm_plat_texture_png_register();
+#endif
+#ifdef BFM_PLAT_WITH_LUA
+    bfm_plat_script_lua_register();
 #endif
     bfm_plat_console_init(&cfg_copy);
     bfm_plat_events_register_console();

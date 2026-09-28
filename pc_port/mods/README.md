@@ -20,6 +20,9 @@ to have the port write the hashes (and your own disc's textures) to
 `dump_dir` on your machine for making replacements. Don't redistribute those
 dumps.
 
+`examples/lua_hello` is the same sample in Lua (builds with
+`BFM_PLAT_WITH_LUA`, after `tools/fetch_lua.sh`).
+
 `examples/hello` is a sample mod: frame counter, room-enter log, a
 `turbo_cross` cheat and a `hello` console command. Build it with
 `examples/build_example.sh`.

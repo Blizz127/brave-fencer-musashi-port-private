@@ -631,6 +631,11 @@ static void load_cheats(unsigned mod) {
 static const char *host_config_get(const char *key);
 static const char *(*config_getter)(const char *key);
 
+static int host_register_command(const char *name, const char *help,
+                                 BfmCommandFn fn, void *user) {
+    return bfm_plat_console_register_owned(name, help, fn, user, loading_mod);
+}
+
 static int host_register_cheat(const BfmCheat *c) {
     return bfm_plat_cheat_register(c, loading_mod);
 }
@@ -653,7 +658,7 @@ static void init_host(unsigned i) {
     h->guest_write = bfm_plat_guest_write;
     h->register_cheat = host_register_cheat;
     h->set_cheat = bfm_plat_cheat_set;
-    h->register_command = bfm_plat_console_register;
+    h->register_command = host_register_command;
     h->config_get = host_config_get;
 }
 
@@ -664,6 +669,8 @@ const BfmPluginHost *bfm_plat_mods_host(unsigned i) {
 void bfm_plat_mods_set_config_getter(const char *(*fn)(const char *)) {
     config_getter = fn;
 }
+
+int bfm_plat_mods_loading(void) { return loading_mod; }
 
 int bfm_plat_mods_register_static_plugin(const char *name, BfmPluginInitFn init,
                                          BfmPluginShutdownFn shutdown) {
@@ -681,7 +688,10 @@ int bfm_plat_mods_register_static_plugin(const char *name, BfmPluginInitFn init,
 }
 
 int bfm_plat_mods_register_script_runtime(const BfmPlatScriptRuntime *rt) {
+    unsigned i;
     if (!rt || !rt->name || !rt->extension || !rt->load) return BFM_PLAT_INVALID;
+    for (i = 0; i < runtime_count; i++)
+        if (runtimes[i] == rt || strcmp(runtimes[i]->name, rt->name) == 0) return BFM_PLAT_OK;
     if (runtime_count >= MAX_RUNTIMES) return BFM_PLAT_NO_SPACE;
     runtimes[runtime_count++] = rt;
     return BFM_PLAT_OK;
@@ -862,6 +872,7 @@ void bfm_plat_mods_shutdown(void) {
     for (i = 0; i < sub_count; i++)
         if (subs[i].id >= first_mod_sub_id) subs[i].fn = NULL;
     bfm_plat_cheat_drop_owned();
+    bfm_plat_console_drop_owned();
     for (i = 0; i < asset_count; i++) free(assets[i].data);
     free(assets);
     assets = NULL;

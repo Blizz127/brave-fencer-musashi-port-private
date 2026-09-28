@@ -17,6 +17,7 @@ typedef struct Command {
     const char *help;
     BfmCommandFn fn;
     void *user;
+    int owner;
 } Command;
 
 /* cheats.ini cheats: console-owned copies of their strings. */
@@ -204,6 +205,18 @@ void bfm_plat_cheat_menu_draw(void) {
 
 int bfm_plat_console_register(const char *name, const char *help,
                               BfmCommandFn fn, void *user) {
+    return bfm_plat_console_register_owned(name, help, fn, user, -1);
+}
+
+void bfm_plat_console_drop_owned(void) {
+    unsigned i, j = 0;
+    for (i = 0; i < command_count; i++)
+        if (commands[i].owner < 0) commands[j++] = commands[i];
+    command_count = j;
+}
+
+int bfm_plat_console_register_owned(const char *name, const char *help,
+                                    BfmCommandFn fn, void *user, int owner) {
     unsigned i;
     if (!name_ok(name) || strlen(name) >= sizeof commands[0].name || !fn)
         return BFM_PLAT_INVALID;
@@ -214,6 +227,7 @@ int bfm_plat_console_register(const char *name, const char *help,
     commands[command_count].help = help ? help : "";
     commands[command_count].fn = fn;
     commands[command_count].user = user;
+    commands[command_count].owner = owner;
     command_count++;
     return BFM_PLAT_OK;
 }

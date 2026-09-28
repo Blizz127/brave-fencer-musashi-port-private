@@ -565,6 +565,70 @@ class BfmPlatTests(unittest.TestCase):
                 self.assertIn(f"window {num}:{den} {h} {ww}", lines)
         self.assertIn("hfov 18181 24158", lines)   # 2*atan(160/1000), 2*atan(214/1000)
 
+    def test_lua_runtime_sample_mod_and_sandbox(self):
+        lua_src = ROOT / "tools/third_party/lua/src"
+        if not (lua_src / "lua.h").is_file():
+            self.skipTest("Lua not fetched (tools/fetch_lua.sh)")
+        objdir = self.tmp / "luaobj"
+        objdir.mkdir(exist_ok=True)
+        lua_c = sorted(str(p) for p in lua_src.glob("*.c") if p.name not in ("lua.c", "luac.c"))
+        subprocess.run(["cc", "-std=gnu99", "-O1", "-c", *lua_c], cwd=objdir, check=True,
+                       stdin=subprocess.DEVNULL, timeout=300)
+        probe = self.tmp / "bfm_plat_lua_probe"
+        sources = sorted(str(p) for p in PLAT.glob("bfm_plat*.c"))
+        subprocess.run(["cc", *CFLAGS, "-DBFM_PLAT_WITH_LUA", "-I", str(PLAT), "-I", str(lua_src),
+                        *sources, str(PLAT / "backends/script_lua.c"),
+                        str(ROOT / "tests/bfm_plat_probe.c"), *sorted(map(str, objdir.glob("*.o"))),
+                        "-o", str(probe), "-ldl", "-lm"],
+                       check=True, stdin=subprocess.DEVNULL, timeout=300)
+        d = self.fresh("luamods")
+        shutil.copytree(ROOT / "pc_port/mods/examples/lua_hello", d / "lua_hello")
+        (d / "luabad").mkdir()
+        (d / "luabad/mod.ini").write_text("[mod]\nname = luabad\nscript = main.lua\n")
+        (d / "luabad/main.lua").write_text("this is not lua (\n")
+        (d / "luaspin").mkdir()
+        (d / "luaspin/mod.ini").write_text("[mod]\nname = luaspin\nscript = main.lua\n")
+        (d / "luaspin/main.lua").write_text("while true do end\n")
+        (d / "luasandbox").mkdir()
+        (d / "luasandbox/mod.ini").write_text("[mod]\nname = luasandbox\nscript = main.lua\n")
+        (d / "luasandbox/main.lua").write_text("io.open('/etc/passwd')\n")
+        (d / "luatest").mkdir()
+        (d / "luatest/mod.ini").write_text("[mod]\nname = luatest\npriority = 200\nscript = main.lua\n")
+        (d / "luatest/main.lua").write_text("""
+local seen = {}
+bfm.on("item_get", function(_, p) seen.item = p.item .. "x" .. p.count end)
+bfm.on("save", function(_, p) seen.slot = p.slot end)
+bfm.on(15, function(name, p) seen.proj = name .. ":" .. p.ofx .. "," .. p.ofy end)
+local sub = bfm.on("vsync", function() seen.vsync = true end)
+assert(bfm.off(sub))
+assert(bfm.read16(0x80003000) == 0x2211)
+assert(bfm.read(0x80003000, 2) == "\\x11\\x22")
+bfm.write32(0x80003010, 0xDEADBEEF)
+bfm.cheat{name = "lua_poke", address = 0x80003020, value = 0x5A, width = 1}
+bfm.set_cheat("lua_poke", true)
+local sandbox = tostring(io) .. "," .. tostring(os) .. "," .. tostring(require) .. "," .. tostring(load)
+bfm.command("luatest", "luatest", function()
+  return string.format("item=%s slot=%s proj=%s vsync=%s sandbox=%s mod=%s",
+    seen.item, seen.slot, seen.proj, tostring(seen.vsync), sandbox, bfm.mod_name)
+end)
+bfm.command("luaboom", "luaboom", function() error("boom") end)
+bfm.on("frame_end", function() if seen.late == nil then
+  seen.late = pcall(bfm.cheat, {name = "late", address = 0, value = 0, width = 1}) end end)
+""")
+        out = self.run_probe("lua", d, probe=probe)
+        self.assertIn("mod lua_hello script=1", out)
+        self.assertIn("mod luatest script=1", out)
+        self.assertIn("mod luabad script=-1", out)
+        self.assertIn("mod luaspin script=-1", out)        # budget stopped the loop
+        self.assertIn("mod luasandbox script=-1", out)     # io is not available
+        self.assertIn("reply hola: 0 frames, 0 rooms a,b", out)
+        self.assertIn("reply hola: 3 frames, 1 rooms", out)
+        self.assertIn("luatest item=7x3 slot=2 proj=projection:160,120 vsync=nil "
+                      "sandbox=nil,nil,nil,nil mod=luatest", out)
+        self.assertIn("ram efbeadde poke 5a", out)
+        self.assertIn("turbo 2", out)
+        self.assertIn("boom luaboom: script error", out)
+
     def test_overlay_font(self):
         self.run_probe("font")
 

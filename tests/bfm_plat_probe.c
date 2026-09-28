@@ -1138,6 +1138,70 @@ static int group_widescreen(void) {
     return 0;
 }
 
+
+#ifdef BFM_PLAT_WITH_LUA
+/* lua MODSDIR: the pytest writes lua_hello + test mods there. */
+static int group_lua(int argc, char **argv) {
+    BfmPlatConfig c;
+    BfmPlatClock fake;
+    BfmPlatPad pad, got;
+    char out[1024];
+    unsigned i, pressed = 0;
+    CHECK(argc >= 1);
+    reset_all();
+    bind_ram();
+    bind_regs();
+    memset(ram, 0, sizeof ram);
+    ram[0x3000] = 0x11;
+    ram[0x3001] = 0x22;
+    bfm_plat_config_defaults(&c);
+    snprintf(c.mod_dirs, sizeof c.mod_dirs, "%s", argv[0]);
+    strcpy(c.renderer, "null");
+    CHECK(bfm_plat_config_load_string(&c, "[mod.lua_hello]\ngreeting = hola\n") == BFM_PLAT_OK);
+    CHECK(bfm_plat_init(&c) == BFM_PLAT_OK);
+    fake.now_ns = probe_now; fake.sleep_ns = probe_sleep; fake.user = NULL;
+    bfm_plat_timing_set_clock(&fake);
+    for (i = 0; i < bfm_plat_mods_count(); i++) {
+        const BfmPlatModInfo *m = bfm_plat_mods_get(i);
+        printf("mod %s script=%d\n", m->name, m->script_loaded);
+    }
+    CHECK(bfm_plat_console_exec("lua_hello a b", out, sizeof out) == 0);
+    printf("reply %s\n", out);
+    bfm_plat_event_room_enter(4, 12);
+    for (i = 0; i < 3; i++) { bfm_plat_frame_begin(); bfm_plat_frame_end(1); }
+    CHECK(bfm_plat_console_exec("lua_hello", out, sizeof out) == 0);
+    printf("reply %s\n", out);
+    /* guest memory, payload tables, poke cheat from Lua */
+    bfm_plat_event_item_get(7, 3);
+    bfm_plat_event_save(0, 2);
+    bfm_plat_projection_set_offset(160, 120);
+    bfm_plat_frame_end(1);
+    CHECK(bfm_plat_console_exec("luatest", out, sizeof out) == 0);
+    printf("luatest %s\n", out);
+    printf("ram %02x%02x%02x%02x poke %02x\n", ram[0x3010], ram[0x3011], ram[0x3012], ram[0x3013], ram[0x3020]);
+    /* callback cheat edits input (turbo) */
+    memset(&pad, 0, sizeof pad);
+    pad.connected = 1;
+    pad.buttons = BFM_PAD_CROSS;
+    bfm_plat_input_scripted_set(0, &pad);
+    CHECK(bfm_plat_cheat_set("lua_turbo", 1) == BFM_PLAT_OK);
+    for (i = 0; i < 4; i++) {
+        bfm_plat_frame_begin();
+        bfm_plat_input_pad(0, &got);
+        pressed += (got.buttons & BFM_PAD_CROSS) != 0;
+        bfm_plat_frame_end(1);
+    }
+    printf("turbo %u\n", pressed);
+    CHECK(bfm_plat_console_exec("luaboom", out, sizeof out) != 0);   /* error in command */
+    printf("boom %s\n", out);
+    bfm_plat_shutdown();
+    CHECK(bfm_plat_console_exec("lua_hello", out, sizeof out) != 0);  /* dropped with the mod */
+    CHECK(bfm_plat_cheat_count() == 0);
+    bfm_plat_mods_emit(BFM_EVENT_FRAME_END, NULL);                    /* no dangling hooks */
+    return 0;
+}
+#endif
+
 #ifdef BFM_PLAT_WITH_PNG
 int bfm_plat_texture_png_decode_memory(const uint8_t *, size_t, uint32_t *,
                                        uint32_t *, uint8_t **);
@@ -1192,6 +1256,9 @@ int main(int argc, char **argv) {
     else if (strcmp(g, "pause_screenshot") == 0) r = group_pause_screenshot(argc - 2, argv + 2);
     else if (strcmp(g, "font") == 0) r = group_font();
     else if (strcmp(g, "widescreen") == 0) r = group_widescreen();
+#ifdef BFM_PLAT_WITH_LUA
+    else if (strcmp(g, "lua") == 0) r = group_lua(argc - 2, argv + 2);
+#endif
 #ifdef BFM_PLAT_WITH_PNG
     else if (strcmp(g, "png") == 0) r = group_png(argc - 2, argv + 2);
     else if (strcmp(g, "texture_png") == 0) {

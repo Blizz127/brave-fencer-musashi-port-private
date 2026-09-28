@@ -131,6 +131,9 @@ void bfm_plat_mods_observe_texture(const BfmPlatRect *rect,
 /* The host table handed to plugins/scripts, for a given mod. */
 const BfmPluginHost *bfm_plat_mods_host(unsigned mod_index);
 
+/* Index of the mod whose plugin/script is loading right now, or -1. */
+int bfm_plat_mods_loading(void);
+
 /* Backs host->config_get (bfm_plat_init wires it to the user config). */
 void bfm_plat_mods_set_config_getter(const char *(*fn)(const char *key));
 

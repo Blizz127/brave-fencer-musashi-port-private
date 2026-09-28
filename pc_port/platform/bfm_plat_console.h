@@ -60,6 +60,11 @@ void bfm_plat_cheat_menu_draw(void);
 
 int bfm_plat_console_register(const char *name, const char *help,
                               BfmCommandFn fn, void *user);
+/* As above, owned by a mod (>= 0): dropped by bfm_plat_console_drop_owned
+ * when mods shut down, so an unloaded plugin never leaves a command. */
+int bfm_plat_console_register_owned(const char *name, const char *help,
+                                    BfmCommandFn fn, void *user, int owner_mod);
+void bfm_plat_console_drop_owned(void);
 /* Executes one line; reply goes into out. Returns 0 ok, nonzero error
  * (unknown command or usage). */
 int bfm_plat_console_exec(const char *line, char *out, size_t out_size);
