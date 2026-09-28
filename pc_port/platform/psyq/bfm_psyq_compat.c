@@ -200,13 +200,14 @@ int bfm_psyq_SetPolyGT4(uint32_t *r) { return set_header(r, 12, 0x3C); }
 int bfm_psyq_SetLineF2(uint32_t *r) { return set_header(r, 3, 0x40); }
 int bfm_psyq_SetLineG2(uint32_t *r) { return set_header(r, 4, 0x50); }
 
-static int set_polyline(uint32_t *r, uint8_t len, uint32_t term_off) {
-    if (!set_header(r, len, 0x58)) return 0;
+static int set_polyline(uint32_t *r, uint8_t len, uint8_t code, uint32_t term_off) {
+    if (!set_header(r, len, code)) return 0;
     return wr32(A(0) + term_off, 0x55555555u);
 }
 
-int bfm_psyq_SetLineG3(uint32_t *r) { return set_polyline(r, 7, 7u * 4u); }
-int bfm_psyq_SetLineG4(uint32_t *r) { return set_polyline(r, 9, 9u * 4u); }
+/* LineG3 is GP0 0x58 (3-vertex gouraud polyline), LineG4 0x5C */
+int bfm_psyq_SetLineG3(uint32_t *r) { return set_polyline(r, 7, 0x58, 7u * 4u); }
+int bfm_psyq_SetLineG4(uint32_t *r) { return set_polyline(r, 9, 0x5C, 9u * 4u); }
 
 /* SetDefDispEnv(env, x, y, w, h): disp = {x,y,w,h}, screen = 0, flags 0 */
 int bfm_psyq_SetDefDispEnv(uint32_t *r) {
@@ -518,13 +519,23 @@ static uint8_t to_bcd(uint32_t v) { return (uint8_t)(((v / 10u) << 4) | (v % 10u
 static uint32_t from_bcd(uint8_t v) { return (uint32_t)(v >> 4) * 10u + (v & 15u); }
 
 /* CdIntToPos(i, loc): loc = BCD {m, s, f} of LBA i + 150 */
+/* signed BCD as the retail code forms it: ((x / 10) << 4) + x % 10, low byte */
+static uint8_t to_bcd_s(int32_t x) {
+    return (uint8_t)((uint32_t)(x / 10) << 4) + (uint8_t)(x % 10);
+}
+
+/* Retail func_80043A18 divides signed: s = (i + 150) / 75, frame = rest,
+ * minute = s / 60, second = s - 60 * minute (truncating toward zero), so
+ * negative LBAs produce the same bytes as the retail code. */
 int bfm_psyq_CdIntToPos(uint32_t *r) {
     uint8_t *p = (uint8_t *)bfm_psyq_ptr(A(1), 3);
-    uint32_t i = A(0) + 150u;
+    int32_t i = (int32_t)A(0) + 150, s, mm;
     if (!p) return 0;
-    p[0] = to_bcd(i / 4500u);
-    p[1] = to_bcd((i / 75u) % 60u);
-    p[2] = to_bcd(i % 75u);
+    s = i / 75;
+    mm = s / 60;
+    p[2] = to_bcd_s(i - s * 75);
+    p[1] = to_bcd_s(s - mm * 60);
+    p[0] = to_bcd_s(mm);
     RET(A(1));
     return 1;
 }
@@ -612,27 +623,48 @@ static int guest_strlen(uint32_t a, uint32_t *len) {
     return 0;
 }
 
+/* strcpy (func_8005C540): NULL dst or src returns 0 without copying;
+ * otherwise a forward byte copy (overlap behaves as the retail loop) and
+ * returns dst. */
 int bfm_psyq_strcpy(uint32_t *r) {
-    uint32_t len;
-    void *d, *s;
+    uint32_t len, k;
+    uint8_t *d;
+    const uint8_t *s;
+    if (!A(0) || !A(1)) { RET(0); return 1; }
     if (!guest_strlen(A(1), &len)) return 0;
-    d = bfm_psyq_ptr(A(0), len + 1u);
-    s = bfm_psyq_ptr(A(1), len + 1u);
+    d = (uint8_t *)bfm_psyq_ptr(A(0), len + 1u);
+    s = (const uint8_t *)bfm_psyq_ptr(A(1), len + 1u);
     if (!d || !s) return 0;
-    memmove(d, s, len + 1u);
+    for (k = 0; k <= len; k++) {
+        d[k] = s[k];
+        if (!s[k]) break;
+    }
     RET(A(0));
     return 1;
 }
 
+/* strcmp (func_8005C4DC): both NULL or equal -> 0; NULL a0 -> -1, NULL a1
+ * -> 1; else the difference of the first differing bytes (unsigned). */
 int bfm_psyq_strcmp(uint32_t *r) {
     uint32_t la, lb;
     const unsigned char *a, *b;
     size_t i;
+    if (!A(0) || !A(1)) {
+        RET(A(0) == A(1) ? 0u : A(0) ? 1u : (uint32_t)-1);
+        return 1;
+    }
     if (!guest_strlen(A(0), &la) || !guest_strlen(A(1), &lb)) return 0;
     a = (const unsigned char *)bfm_psyq_ptr(A(0), la + 1u);
     b = (const unsigned char *)bfm_psyq_ptr(A(1), lb + 1u);
+    if (!a || !b) return 0;
     for (i = 0; a[i] && a[i] == b[i]; i++) {}
     RET((uint32_t)((int32_t)a[i] - (int32_t)b[i]));
+    return 1;
+}
+
+/* srand (func_8005C4CC): the seed goes to D_80078980 */
+int bfm_psyq_srand(uint32_t *r) {
+    if (!wr32(0x80078980u, A(0))) return 0;
     return 1;
 }
 

@@ -84,9 +84,7 @@ int main(void) {
 
     /* stateless: no bridge needed */
     CHECK(call("ratan2", 1, 1, 0, 0) && R[2] == 512);
-    w16(0x80001000, 0); w16(0x80001002, 1024); w16(0x80001004, 0);   /* 90 deg about Y */
-    CHECK(call("RotMatrixYXZ", 0x80001000, 0x80001100, 0, 0) && R[2] == 0x80001100);
-    CHECK(r16(0x80001100) == 0 && r16(0x80001104) == 4096 && r16(0x80001110) == 0);
+    /* (RotMatrixYXZ is exact HLE over the guest table now: bfm_plat_probe libgte) */
     /* RotMatrixZ multiplies m by the rotation (it doesn't overwrite it) */
     put_matrix(0x80001200, ident, t1000);
     CHECK(call("RotMatrixZ", 1024, 0x80001200, 0, 0) && r16(0x80001200) == 0 && r16(0x80001208) == 0 &&
@@ -166,11 +164,13 @@ int main(void) {
         CHECK(call("SetRotMatrix", 0x80002300, 0, 0, 0) && call("SetTransMatrix", 0x80002300, 0, 0, 0));
         CHECK(CFC2(7) == 9u);
         CHECK(call("PopMatrix", 0, 0, 0, 0) && r32(0x8006DC18) == 0 && CFC2(0) == 4096u && CFC2(7) == 1000u);
-        CHECK(call("PopMatrix", 0, 0, 0, 0) && r32(0x8006DC18) == 0);            /* underflow: logged */
+        /* underflow: refused, so the retail error path (saves $ra, printf) runs */
+        CHECK(!call("PopMatrix", 0, 0, 0, 0) && r32(0x8006DC18) == 0);
         for (i = 0; i < 20; i++) CHECK(call("PushMatrix", 0, 0, 0, 0));
         CHECK(r32(0x8006DC18) == 0x280);
         w32(0x8006DC1C + 0x280, 0x5A5A5A5A);
-        CHECK(call("PushMatrix", 0, 0, 0, 0) && r32(0x8006DC18) == 0x280 && r32(0x8006DC1C + 0x280) == 0x5A5A5A5A);
+        /* overflow: refused (retail error path), nothing written */
+        CHECK(!call("PushMatrix", 0, 0, 0, 0) && r32(0x8006DC18) == 0x280 && r32(0x8006DC1C + 0x280) == 0x5A5A5A5A);
         w32(0x8006DC18, 0);
     }
 

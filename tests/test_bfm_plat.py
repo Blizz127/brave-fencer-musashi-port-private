@@ -868,11 +868,31 @@ bfm.on("frame_end", function() if seen.late == nil then
             m[7] = mul12(cz, sx) - mul12(t, cx)
             return [s16(v) for v in m]
 
+        def rotmatrix_yxz(x, y, z):   # retail func_80049A1C
+            sx, cx = sincos(x)
+            sy, cy = sincos(y)
+            sz, cz = sincos(z)
+            m = [0] * 9
+            m[5] = -sx
+            m[2] = mul12(sy, cx)
+            m[8] = mul12(cy, cx)
+            m[3] = mul12(sz, cx)
+            m[4] = mul12(cz, cx)
+            t = mul12(sy, sx)
+            m[0] = mul12(cy, cz) + mul12(t, sz)
+            m[1] = -mul12(cy, sz) + mul12(t, cz)
+            t = mul12(cy, sx)
+            m[7] = mul12(sy, sz) + mul12(t, cz)
+            m[6] = -mul12(sy, cz) + mul12(t, sz)
+            return [s16(v) for v in m]
+
         out = self.run_probe("libgte")
         for ang in ((0, 0, 0), (0, 0, 1024), (512, -300, 77), (-4000, 4095, -1),
                     (1234, 2345, 3456), (-2048, -1024, 2048)):
             want = " ".join(str(v) for v in rotmatrix(*ang))
             self.assertIn("rot %d %d %d: %s" % (ang[0], ang[1], ang[2], want), out)
+            want = " ".join(str(v) for v in rotmatrix_yxz(*ang))
+            self.assertIn("rotyxz %d %d %d: %s" % (ang[0], ang[1], ang[2], want), out)
         m = [1000 * i - 3000 for i in range(9)]
         v = (2048, 8192, -4096)
         scaled = [s16(mul12(m[k], v[k % 3])) for k in range(9)]
