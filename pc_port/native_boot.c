@@ -4130,6 +4130,9 @@ int main(int argc, char **argv) {
     }
     {
         boot.guest_clock = getenv("MUSASHI_GUEST_CLOCK") && getenv("MUSASHI_GUEST_CLOCK")[0] == '1';
+        /* Guest clock: host VBlanks are drained, never timed; a burst of them
+         * while the guest runs a long stretch without charging must not fault. */
+        boot.irq.scheduler.host_edges_advisory = boot.guest_clock;
         boot.guest_unthrottled = getenv("MUSASHI_UNTHROTTLED") && getenv("MUSASHI_UNTHROTTLED")[0] == '1';
         boot.guest_next_vblank = MUSASHI_GUEST_FRAME_CYCLES;
         boot.guest_host_origin = SDL_GetPerformanceCounter();
@@ -4335,6 +4338,9 @@ int main(int argc, char **argv) {
                 g_plat_audio.faulted);
 #endif
     fprintf(stderr, "native_boot: SPU_KEYON writes=%llu\n", (unsigned long long)g_spu_keyon_writes);
+    if (boot.irq.scheduler.host_edges_advisory)
+        fprintf(stderr, "native_boot: HOST_VBLANKS dropped=%llu (guest clock: advisory)\n",
+                (unsigned long long)boot.irq.scheduler.dropped_host_vblanks);
     if (boot.spu) {
         MusashiSpuCdAudioSnapshot audio_state;
         if (!musashi_spu_cd_audio_snapshot(boot.spu, &audio_state)) cleanup_ok = 0;

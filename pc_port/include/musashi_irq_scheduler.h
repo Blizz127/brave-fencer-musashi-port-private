@@ -68,6 +68,12 @@ typedef struct MusashiPsyCrossIrqScheduler {
     /* A failed dispatch leaves partial guest effects. Latch it until the
      * owner destroys/reloads the runtime; uninstall/reinstall is no resume. */
     int faulted;
+    /* Guest-clock owners (native_boot MUSASHI_GUEST_CLOCK=1) take no time
+     * from host VBlanks and only drain them; for them a full host queue drops
+     * the edge (counted) instead of latching source_overflow. Host-paced
+     * owners leave this 0: an overflow there is a real lost VBlank. */
+    int host_edges_advisory;
+    uint64_t dropped_host_vblanks;  /* source mutex */
 } MusashiPsyCrossIrqScheduler;
 
 /* One controller is shared by startup registration and delivered interrupts.

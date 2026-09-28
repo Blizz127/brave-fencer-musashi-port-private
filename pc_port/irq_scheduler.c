@@ -77,6 +77,11 @@ static void scheduler_vblank(void) {
     if (!scheduler || !scheduler->installed || scheduler->source_overflow)
         return;
     tick = SDL_GetPerformanceCounter();
+    if (scheduler->host_edges_advisory &&
+        scheduler->pending_vblanks >= MUSASHI_IRQ_SOURCE_CAPACITY) {
+        if (scheduler->dropped_host_vblanks != UINT64_MAX) ++scheduler->dropped_host_vblanks;
+        return;
+    }
     if (scheduler->pending_vblanks >= MUSASHI_IRQ_SOURCE_CAPACITY ||
         scheduler->source_sequence == UINT64_MAX ||
         tick < scheduler->source_tick || tick < scheduler->source_cut_tick) {
