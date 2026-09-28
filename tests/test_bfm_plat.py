@@ -215,6 +215,8 @@ def read_png_rgb(path):
 # Known hook sites pinned to their symbols. Changing a site means changing
 # this table and its evidence together.
 KNOWN_SITES = {
+    ("8004923c", "-", "projection"): ("func_8004923C", "high"),
+    ("8004921c", "-", "projection"): ("func_8004921C", "high"),
     ("800189a8", "-", "frame_begin"): ("func_800189A8", "high"),
     ("800184f0", "-", "frame_end"): ("func_800184F0", "high"),
     ("80128158", "SC*", "room_enter"): ("func_80128158", "medium"),
@@ -244,6 +246,8 @@ VENDOR_EVIDENCE = [
     ("src/800_b.c", 486, "case 17:"),
     ("src/800_b.c", 487, "case 32:"),
     ("src/800_b.c", 488, "func_80060404(D_80075CC0, idx * 0x300 + 0x480, 0x300);"),
+    ("src/800.c", 1787, "func_8004923C(0x3E8);"),
+    ("src/shared/ov/func_8017C530.h", 14, "func_8004921C(ofx, ofy);"),
     ("config/symbols.us.txt", 14, "main                             = 0x80010178; // func"),
     ("config/symbols.us.txt", None, "GameModeDispatch                 = 0x80010B40;"),
 ]
@@ -267,13 +271,13 @@ class BfmPlatTests(unittest.TestCase):
         sources = sorted(str(p) for p in PLAT.glob("bfm_plat*.c"))
         subprocess.run(["cc", *CFLAGS, "-I", str(PLAT), *sources,
                         str(ROOT / "tests/bfm_plat_probe.c"), "-o",
-                        str(cls.probe), "-ldl"],
+                        str(cls.probe), "-ldl", "-lm"],
                        check=True, stdin=subprocess.DEVNULL, timeout=120)
         cls.png_probe = cls.tmp / "bfm_plat_png_probe"
         subprocess.run(["cc", *CFLAGS, "-DBFM_PLAT_WITH_PNG", "-I", str(PLAT),
                         *sources, str(PLAT / "backends/texture_png.c"),
                         str(ROOT / "tests/bfm_plat_probe.c"), "-o",
-                        str(cls.png_probe), "-ldl", "-lz"],
+                        str(cls.png_probe), "-ldl", "-lz", "-lm"],
                        check=True, stdin=subprocess.DEVNULL, timeout=120)
         cls.plugin = cls.tmp / "hello_plugin.so"
         subprocess.run(["cc", *CFLAGS, "-shared", "-fPIC", "-I", str(PLAT),
@@ -495,6 +499,13 @@ class BfmPlatTests(unittest.TestCase):
         # The repository file the room-enter evidence cites.
         disp = (ROOT / "src/overlays/main_0012/80128288.c").read_text()
         self.assertIn("D_8017E618[D_800B99F6]();", disp)
+        # Repository files the projection evidence cites.
+        self.assertIn("ctc2 $a0, $26", (ROOT / "src/main/8004923c.c").read_text())
+        off = (ROOT / "src/main/8004921c.c").read_text()
+        self.assertIn("ctc2 $a0, $24", off)
+        self.assertIn("ctc2 $a1, $25", off)
+        self.assertIn("func_8004921C(", (ROOT / "src/main/80052bec.c").read_text())
+        self.assertIn("func_8004923C(0x3E8);", (ROOT / "src/main/80014444.c").read_text())
 
     def test_hook_site_evidence_matches_vendor_source(self):
         v = vendor_root()
@@ -524,6 +535,35 @@ class BfmPlatTests(unittest.TestCase):
         # The port's own PNG decoder reads its screenshots back.
         out = self.run_probe("png", d / "bfm_00000.png", probe=self.png_probe)
         self.assertIn("png 4 2 ff0000ff00ff00ff", out)
+
+    def test_widescreen_projection_maths(self):
+        from fractions import Fraction as F
+        out = self.run_probe("widescreen")
+        lines = out.splitlines()
+        for num, den in ((4, 3), (16, 9), (16, 10)):
+            aspect = F(num, den)
+            for w in (256, 320, 368, 512, 640):
+                exact = w * aspect / F(4, 3)
+                vis = (w * 3 * num + 2 * den) // (4 * den)
+                vis += (vis - w) & 1
+                # within a pixel, plus at most one for the centring parity bump
+                self.assertLessEqual(abs(vis - exact), F(3, 2))
+                self.assertIn(f"horplus {num}:{den} {w} visible {vis} x0 {-((vis - w) // 2)} "
+                              f"scale 65536 active {int(aspect != F(4, 3))}", lines)
+            scale = (4 * den * 65536 + (3 * num) // 2) // (3 * num)
+            self.assertLess(abs(F(scale, 65536) - F(4, 3) / aspect), F(1, 65536))
+            want = []
+            for sx in (-1024, -1, 0, 1, 40, 159, 160, 161, 319, 320, 1023):
+                q = (sx - 160) * scale
+                q = (q + 32768) >> 16 if q >= 0 else -((-q + 32768) >> 16)
+                self.assertLessEqual(abs(160 + q - (160 + (sx - 160) * F(4, 3) / aspect)), F(1, 2))
+                want.append(str(160 + q))
+            self.assertIn(f"anamorphic {num}:{den} scale {scale} " + " ".join(want), lines)
+            for h in (240, 720, 1081):
+                ww = (h * num + den // 2) // den
+                ww += ww & 1
+                self.assertIn(f"window {num}:{den} {h} {ww}", lines)
+        self.assertIn("hfov 18181 24158", lines)   # 2*atan(160/1000), 2*atan(214/1000)
 
     def test_overlay_font(self):
         self.run_probe("font")

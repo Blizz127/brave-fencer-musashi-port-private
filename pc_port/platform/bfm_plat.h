@@ -29,6 +29,7 @@
 #include "bfm_plat_console_ui.h"
 #include "bfm_plat_events.h"
 #include "bfm_plat_image.h"
+#include "bfm_plat_widescreen.h"
 
 typedef struct BfmPlatStatus {
     const char *renderer;

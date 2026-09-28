@@ -22,6 +22,7 @@ static void reset_all(void) {
     bfm_plat_timing_set_clock(NULL);
     bfm_plat_hooks_reset();
     bfm_plat_console_ui_reset();
+    bfm_plat_projection_reset();
 }
 
 /* ------------------------------------------------------------ guest RAM */
@@ -1054,6 +1055,89 @@ static int group_font(void) {
     return 0;
 }
 
+
+/* --------------------------------------------------------- widescreen */
+static int group_widescreen(void) {
+    static const int aspects[][2] = {{4, 3}, {16, 9}, {16, 10}};
+    static const int widths[] = {256, 320, 368, 512, 640};
+    static const int32_t sxs[] = {-1024, -1, 0, 1, 40, 159, 160, 161, 319, 320, 1023};
+    BfmPlatWidescreen ws;
+    unsigned a, w, i;
+    int win;
+    for (a = 0; a < 3; a++) {
+        for (w = 0; w < 5; w++) {
+            CHECK(bfm_plat_widescreen_compute(aspects[a][0], aspects[a][1], BFM_WIDESCREEN_HOR_PLUS,
+                                              widths[w], 240, &ws) == BFM_PLAT_OK);
+            printf("horplus %d:%d %d visible %d x0 %d scale %u active %d\n", aspects[a][0],
+                   aspects[a][1], widths[w], ws.visible_w, ws.visible_x0,
+                   (unsigned)ws.sx_scale_q16, ws.active);
+            CHECK(bfm_plat_widescreen_sx(&ws, 300, 160) == 300);
+        }
+        CHECK(bfm_plat_widescreen_compute(aspects[a][0], aspects[a][1], BFM_WIDESCREEN_ANAMORPHIC,
+                                          320, 240, &ws) == BFM_PLAT_OK);
+        printf("anamorphic %d:%d scale %u", aspects[a][0], aspects[a][1], (unsigned)ws.sx_scale_q16);
+        for (i = 0; i < sizeof sxs / sizeof sxs[0]; i++)
+            printf(" %d", (int)bfm_plat_widescreen_sx(&ws, sxs[i], 160));
+        printf("\n");
+        for (i = 0; i < 3; i++) {
+            static const int hs[] = {240, 720, 1081};
+            bfm_plat_widescreen_window(&ws, hs[i], &win);
+            printf("window %d:%d %d %d\n", aspects[a][0], aspects[a][1], hs[i], win);
+        }
+    }
+    CHECK(bfm_plat_widescreen_compute(5, 4, BFM_WIDESCREEN_HOR_PLUS, 320, 240, &ws) == BFM_PLAT_INVALID);
+    CHECK(bfm_plat_widescreen_compute(16, 9, 7, 320, 240, &ws) == BFM_PLAT_INVALID);
+    CHECK(bfm_plat_widescreen_compute(16, 9, 0, 0, 240, &ws) == BFM_PLAT_INVALID);
+    printf("hfov %d %d\n", (int)bfm_plat_projection_hfov_mdeg(1000, 320),
+           (int)bfm_plat_projection_hfov_mdeg(1000, 428));
+
+    /* config + current state + projection hook sites */
+    {
+        BfmPlatConfig c;
+        char *args[] = {"prog", "--aspect", "16:10"};
+        BfmPlatProjection pr;
+        reset_all();
+        bind_ram();
+        bind_regs();
+        bfm_plat_config_defaults(&c);
+        CHECK(c.aspect_num == 4 && c.aspect_den == 3 && !c.widescreen);
+        CHECK(bfm_plat_config_set(&c, "video.aspect", "5:4") == BFM_PLAT_INVALID);
+        CHECK(bfm_plat_config_set(&c, "video.widescreen", "1") == BFM_PLAT_OK && c.aspect_num == 16 && c.aspect_den == 9);
+        CHECK(bfm_plat_config_apply_args(&c, 3, args, NULL) == BFM_PLAT_OK && c.aspect_den == 10 && c.widescreen);
+        CHECK(bfm_plat_config_set(&c, "video.widescreen_mode", "anamorphic") == BFM_PLAT_OK);
+        CHECK(bfm_plat_config_set(&c, "video.widescreen_mode", "stretch") == BFM_PLAT_INVALID);
+        c.mods_enabled = 0;
+        strcpy(c.renderer, "null");
+        CHECK(bfm_plat_init(&c) == BFM_PLAT_OK);
+        CHECK(bfm_plat_widescreen_current()->mode == BFM_WIDESCREEN_ANAMORPHIC);
+        CHECK(bfm_plat_widescreen_current()->sx_scale_q16 == 54613);
+        CHECK(bfm_plat_hooks_register_known() == BFM_PLAT_OK);
+        regs[4] = 0x3E8;
+        CHECK(bfm_plat_hooks_at(0x8004923C) == 1);
+        regs[4] = 160; regs[5] = 120;
+        CHECK(bfm_plat_hooks_at(0x8004921C) == 1);
+        bfm_plat_projection_get(&pr);
+        CHECK(pr.h == 1000 && pr.ofx == 160 && pr.ofy == 120 && pr.updates == 2);
+        CHECK(bfm_plat_mods_event_count(BFM_EVENT_PROJECTION) == 2);
+        CHECK(bfm_plat_widescreen_sx_current(320) == 293 && bfm_plat_widescreen_sx_current(0) == 27);
+        regs[4] = 0xFFFFFFF0u; regs[5] = 0x10078u;   /* -16, 120 (upper bits ignored) */
+        bfm_plat_hooks_at(0x8004921C);
+        bfm_plat_projection_get(&pr);
+        CHECK(pr.ofx == -16 && pr.ofy == 120);
+        /* hor+ follows the display width */
+        bfm_plat_config()->widescreen_mode = BFM_WIDESCREEN_HOR_PLUS;
+        {
+            BfmPlatDispEnv d;
+            memset(&d, 0, sizeof d);
+            d.disp.w = 512; d.disp.h = 240;
+            bfm_plat_renderer_set_disp_env(&d);
+            CHECK(bfm_plat_widescreen_current()->visible_w == 614);
+            CHECK(bfm_plat_widescreen_sx_current(500) == 500);
+        }
+    }
+    return 0;
+}
+
 #ifdef BFM_PLAT_WITH_PNG
 int bfm_plat_texture_png_decode_memory(const uint8_t *, size_t, uint32_t *,
                                        uint32_t *, uint8_t **);
@@ -1107,6 +1191,7 @@ int main(int argc, char **argv) {
     else if (strcmp(g, "hook_fills") == 0) r = group_hook_fills();
     else if (strcmp(g, "pause_screenshot") == 0) r = group_pause_screenshot(argc - 2, argv + 2);
     else if (strcmp(g, "font") == 0) r = group_font();
+    else if (strcmp(g, "widescreen") == 0) r = group_widescreen();
 #ifdef BFM_PLAT_WITH_PNG
     else if (strcmp(g, "png") == 0) r = group_png(argc - 2, argv + 2);
     else if (strcmp(g, "texture_png") == 0) {

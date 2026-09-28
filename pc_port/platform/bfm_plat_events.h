@@ -40,6 +40,7 @@ typedef union BfmPlatEventPayload {
     BfmEventBattle battle;
     BfmEventItem item;
     BfmEventSave save;
+    BfmEventProjection projection;
 } BfmPlatEventPayload;
 
 /* Reads guest state for the event at a hook site. Return 0 to fire, nonzero

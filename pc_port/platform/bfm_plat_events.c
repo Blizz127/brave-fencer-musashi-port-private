@@ -14,13 +14,14 @@ static const BfmPlatEventInfo catalog[BFM_EVENT_COUNT] = {
     {BFM_EVENT_INPUT, "input", "BfmEventInput", "platform (bfm_plat_input_poll)", "pads/hotkeys, editable"},
     {BFM_EVENT_BEFORE_PRESENT, "before_present", "", "platform (renderer present)", "before the frame is shown"},
     {BFM_EVENT_AFTER_PRESENT, "after_present", "", "platform (renderer present)", "after the frame is shown"},
-    {BFM_EVENT_ROOM_ENTER, "room_enter", "BfmEventRoom", "native lane: room/map loader (guest site TBD)", "a new room/map became active"},
-    {BFM_EVENT_ROOM_EXIT, "room_exit", "BfmEventRoom", "native lane: room teardown (guest site TBD)", "the current room is being left"},
+    {BFM_EVENT_ROOM_ENTER, "room_enter", "BfmEventRoom", "location-overlay entry stub (bfm_plat_hook_sites.c)", "a new room/map became active"},
+    {BFM_EVENT_ROOM_EXIT, "room_exit", "BfmEventRoom", "scene-loop exit (bfm_plat_hook_sites.c)", "the current room is being left"},
     {BFM_EVENT_BATTLE_START, "battle_start", "BfmEventBattle", "native lane: boss/scripted fight setup (guest site TBD)", "a boss or scripted fight began"},
     {BFM_EVENT_BATTLE_END, "battle_end", "BfmEventBattle", "native lane: fight resolution (guest site TBD)", "that fight ended (result: 1 won, 0 lost/fled)"},
     {BFM_EVENT_ITEM_GET, "item_get", "BfmEventItem", "native lane: inventory add (guest site TBD)", "an item was added to the inventory"},
-    {BFM_EVENT_SAVE, "save", "BfmEventSave", "native lane: memory-card save (guest site TBD)", "the game saved to a slot"},
-    {BFM_EVENT_LOAD, "load", "BfmEventSave", "native lane: memory-card load (guest site TBD)", "the game loaded from a slot"},
+    {BFM_EVENT_SAVE, "save", "BfmEventSave", "memory-card state machine (bfm_plat_hook_sites.c)", "the game saved to a slot"},
+    {BFM_EVENT_LOAD, "load", "BfmEventSave", "native lane: memory-card load", "the game loaded from a slot"},
+    {BFM_EVENT_PROJECTION, "projection", "BfmEventProjection", "native lane: libgte SetGeomScreen/SetGeomOffset", "the game changed GTE H or OFX/OFY"},
 };
 
 const BfmPlatEventInfo *bfm_plat_event_info(BfmEvent e) {

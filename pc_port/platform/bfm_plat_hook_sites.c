@@ -8,6 +8,7 @@
  * what the evidence claims. */
 #include "bfm_plat_events.h"
 #include "bfm_plat_mods.h"
+#include "bfm_plat_widescreen.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -103,6 +104,36 @@ static int fill_load(void *u, BfmEvent e, BfmPlatEventPayload *p) {
     return card_edge(&last_card_state_load, is_load_state, p);
 }
 
+/* libgte SetGeomScreen(h): ctc2 $a0, $26 (H is 16 bits). */
+static int fill_geom_screen(void *u, BfmEvent e, BfmPlatEventPayload *p) {
+    uint32_t a0;
+    BfmPlatProjection cur;
+    (void)u; (void)e;
+    if (bfm_plat_guest_reg(BFM_GUEST_REG_A0, &a0) != BFM_PLAT_OK) return 1;
+    bfm_plat_projection_get(&cur);
+    bfm_plat_projection_record((int32_t)(a0 & 0xFFFFu), cur.ofx, cur.ofy);
+    p->projection.h = (int32_t)(a0 & 0xFFFFu);
+    p->projection.ofx = cur.ofx;
+    p->projection.ofy = cur.ofy;
+    return 0;
+}
+
+/* libgte SetGeomOffset(ofx, ofy): each shifted <<16 into OFX/OFY. */
+static int fill_geom_offset(void *u, BfmEvent e, BfmPlatEventPayload *p) {
+    uint32_t a0, a1;
+    BfmPlatProjection cur;
+    (void)u; (void)e;
+    if (bfm_plat_guest_reg(BFM_GUEST_REG_A0, &a0) != BFM_PLAT_OK ||
+        bfm_plat_guest_reg(BFM_GUEST_REG_A1, &a1) != BFM_PLAT_OK)
+        return 1;
+    bfm_plat_projection_get(&cur);
+    bfm_plat_projection_record(cur.h, (int16_t)(a0 & 0xFFFFu), (int16_t)(a1 & 0xFFFFu));
+    p->projection.h = cur.h;
+    p->projection.ofx = (int16_t)(a0 & 0xFFFFu);
+    p->projection.ofy = (int16_t)(a1 & 0xFFFFu);
+    return 0;
+}
+
 static const BfmPlatKnownSite known[] = {
     {0x800189A8u, NULL, BFM_EVENT_FRAME_BEGIN, "func_800189A8",
      "src/boot.c:310 first call in main's per-frame inner loop (main @ src/boot.c:277); "
@@ -137,6 +168,16 @@ static const BfmPlatKnownSite known[] = {
      "same state machine; states 17 and 32 read the slot's game-state block with "
      "func_80060404(D_80075CC0, idx*0x300+0x480, 0x300) (src/800_b.c:486-488)",
      "medium: as for save; states 17/32 are the two read paths", fill_load},
+    {0x8004923Cu, NULL, BFM_EVENT_PROJECTION, "func_8004923C",
+     "libgte SetGeomScreen: body is `ctc2 $a0, $26; jr $ra` (repo src/main/8004923c.c); "
+     "game init func_80014444 calls InitGeom (func_80047CB4, which sets H=0x3E8, OFX=OFY=0) then "
+     "func_8004923C(0x3E8) and stores 0x3E8 in D_80126950 (src/800.c:1787; repo src/main/80014444.c)",
+     "high: instruction shape is exactly SetGeomScreen", fill_geom_screen},
+    {0x8004921Cu, NULL, BFM_EVENT_PROJECTION, "func_8004921C",
+     "libgte SetGeomOffset: `sll $a0,16; sll $a1,16; ctc2 $a0,$24; ctc2 $a1,$25` (repo src/main/8004921c.c); "
+     "called per draw buffer by the libgs offset routine func_80052BEC (repo src/main/80052bec.c) "
+     "and by the overlays' camera code (src/shared/ov/func_8017C530.h:14)",
+     "high: instruction shape is exactly SetGeomOffset", fill_geom_offset},
 };
 
 static const BfmEvent unsited[] = {

@@ -67,6 +67,11 @@ int bfm_plat_init(const BfmPlatConfig *cfg) {
     output_from_config(&out);
     r = bfm_plat_renderer_open(cfg_copy.renderer, &out, NULL);
     if (r != BFM_PLAT_OK) return r;
+    if (bfm_plat_renderer_set_output(&out) == BFM_PLAT_UNSUPPORTED &&
+        cfg_copy.widescreen_mode == BFM_WIDESCREEN_ANAMORPHIC && cfg_copy.widescreen) {
+        bfm_plat_mods_log("port", 1, "renderer cannot stretch: anamorphic widescreen falls back to hor+");
+        cfg_copy.widescreen_mode = BFM_WIDESCREEN_HOR_PLUS;
+    }
     r = bfm_plat_audio_open(cfg_copy.audio, NULL);
     if (r != BFM_PLAT_OK) return r;
     r = bfm_plat_input_open(cfg_copy.input, NULL);

@@ -16,6 +16,9 @@ void bfm_plat_config_defaults(BfmPlatConfig *cfg) {
     if (!cfg) return;
     memset(cfg, 0, sizeof *cfg);
     cfg->widescreen = 0;
+    cfg->aspect_num = 4;
+    cfg->aspect_den = 3;
+    cfg->widescreen_mode = BFM_WIDESCREEN_HOR_PLUS;
     cfg->internal_scale = 1;
     cfg->window_width = 960;
     cfg->window_height = 720;
@@ -119,7 +122,24 @@ int bfm_plat_config_set(BfmPlatConfig *cfg, const char *key,
     if (!cfg || !key || !value || !strchr(key, '.') || strlen(key) >= 64)
         return BFM_PLAT_INVALID;
     record(cfg, key, value);
-    if (strcmp(key, "video.widescreen") == 0) r = set_bool(&cfg->widescreen, value);
+    if (strcmp(key, "video.widescreen") == 0) {
+        int w;
+        if (bfm_plat_ini_bool(value, &w)) {
+            cfg->aspect_num = w ? 16 : 4;
+            cfg->aspect_den = w ? 9 : 3;
+            cfg->widescreen = w;
+        } else r = BFM_PLAT_INVALID;
+    } else if (strcmp(key, "video.aspect") == 0) {
+        if (strcmp(value, "4:3") == 0) { cfg->aspect_num = 4; cfg->aspect_den = 3; }
+        else if (strcmp(value, "16:9") == 0) { cfg->aspect_num = 16; cfg->aspect_den = 9; }
+        else if (strcmp(value, "16:10") == 0) { cfg->aspect_num = 16; cfg->aspect_den = 10; }
+        else r = BFM_PLAT_INVALID;
+        cfg->widescreen = !(cfg->aspect_num == 4 && cfg->aspect_den == 3);
+    } else if (strcmp(key, "video.widescreen_mode") == 0) {
+        if (strcmp(value, "hor+") == 0) cfg->widescreen_mode = BFM_WIDESCREEN_HOR_PLUS;
+        else if (strcmp(value, "anamorphic") == 0) cfg->widescreen_mode = BFM_WIDESCREEN_ANAMORPHIC;
+        else r = BFM_PLAT_INVALID;
+    }
     else if (strcmp(key, "video.internal_scale") == 0) r = set_int(&cfg->internal_scale, value, 1, 8);
     else if (strcmp(key, "video.window_width") == 0) r = set_int(&cfg->window_width, value, 320, 16384);
     else if (strcmp(key, "video.window_height") == 0) r = set_int(&cfg->window_height, value, 240, 16384);
@@ -206,8 +226,7 @@ int bfm_plat_config_apply_args(BfmPlatConfig *cfg, int argc, char **argv,
         const char *key = NULL;
         if (strcmp(a, "--config") == 0) { i++; continue; }
         if (strcmp(a, "--widescreen") == 0) {
-            cfg->widescreen = 1;
-            record(cfg, "video.widescreen", "1");
+            bfm_plat_config_set(cfg, "video.aspect", "16:9");
             mark(used, i);
             continue;
         }
@@ -240,6 +259,7 @@ int bfm_plat_config_apply_args(BfmPlatConfig *cfg, int argc, char **argv,
         }
         if (strcmp(a, "--fps") == 0) key = "video.frame_rate";
         else if (strcmp(a, "--scale") == 0) key = "video.internal_scale";
+        else if (strcmp(a, "--aspect") == 0) key = "video.aspect";
         else if (strcmp(a, "--renderer") == 0) key = "backends.renderer";
         else if (strcmp(a, "--audio") == 0) key = "backends.audio";
         else if (strcmp(a, "--disc") == 0) key = "disc.path";
@@ -277,10 +297,13 @@ int bfm_plat_config_save_file(const BfmPlatConfig *c, const char *path) {
     char section[64] = "";
     if (!c || !path || !(f = fopen(path, "w"))) return BFM_PLAT_ERROR;
     fprintf(f, "; Brave Fencer Musashi PC port configuration\n\n");
-    fprintf(f, "[video]\nwidescreen = %d\ninternal_scale = %d\n"
+    fprintf(f, "[video]\naspect = %d:%d\nwidescreen_mode = %s\n",
+            c->aspect_num, c->aspect_den,
+            c->widescreen_mode == BFM_WIDESCREEN_ANAMORPHIC ? "anamorphic" : "hor+");
+    fprintf(f, "internal_scale = %d\n"
                "window_width = %d\nwindow_height = %d\nfullscreen = %d\n"
                "frame_rate = %d\nvsync = %d\nscreenshot_dir = %s\n\n",
-            c->widescreen, c->internal_scale, c->window_width,
+            c->internal_scale, c->window_width,
             c->window_height, c->fullscreen, c->frame_rate, c->vsync,
             c->screenshot_dir);
     fprintf(f, "[timing]\nfast_forward_speed = %g\nfast_forward_toggle = %d\n\n",
@@ -312,7 +335,6 @@ int bfm_plat_config_save_file(const BfmPlatConfig *c, const char *path) {
 }
 
 void bfm_plat_config_aspect(const BfmPlatConfig *cfg, int *num, int *den) {
-    int wide = cfg && cfg->widescreen;
-    if (num) *num = wide ? 16 : 4;
-    if (den) *den = wide ? 9 : 3;
+    if (num) *num = cfg && cfg->aspect_num > 0 ? cfg->aspect_num : 4;
+    if (den) *den = cfg && cfg->aspect_den > 0 ? cfg->aspect_den : 3;
 }

@@ -7,8 +7,10 @@
  * else $HOME/.config/bfm-port/config.ini (%APPDATA%\bfm-port\config.ini on
  * Windows). A missing file is not an error; defaults apply.
  *
- *   [video]    widescreen, internal_scale, window_width, window_height,
- *              fullscreen, frame_rate (30|60), vsync, screenshot_dir
+ *   [video]    aspect (4:3 | 16:9 | 16:10), widescreen_mode (hor+ |
+ *              anamorphic), widescreen (legacy: 1 = 16:9, 0 = 4:3),
+ *              internal_scale, window_width, window_height, fullscreen,
+ *              frame_rate (30|60), vsync, screenshot_dir
  *   [timing]   fast_forward_speed (x real speed, 0 = uncapped),
  *              fast_forward_toggle (0 hold / 1 toggle)
  *   [backends] renderer, audio, input, storage   (backend names)
@@ -18,7 +20,7 @@
  *   [debug]    console, log_level
  *
  * Command line: --config PATH, --set section.key=value, --widescreen,
- * --fps N, --scale N, --renderer NAME, --audio NAME, --disc PATH, --no-mods,
+ * --aspect 16:9, --fps N, --scale N, --renderer NAME, --audio NAME, --disc PATH, --no-mods,
  * --fullscreen. Unknown options are left for the caller (see argv_used).
  *
  * Every key is also readable as a string through bfm_plat_config_get() so
@@ -30,6 +32,9 @@
 #define BFM_PLAT_PATH_MAX 512
 #define BFM_PLAT_CONFIG_EXTRA_MAX 128
 
+#define BFM_WIDESCREEN_HOR_PLUS 0     /* wider view, unstretched pixels */
+#define BFM_WIDESCREEN_ANAMORPHIC 1   /* squeeze X in projection, stretch output */
+
 typedef struct BfmPlatConfigEntry {
     char key[64];   /* "section.key" */
     char value[BFM_PLAT_PATH_MAX];
@@ -37,7 +42,9 @@ typedef struct BfmPlatConfigEntry {
 
 typedef struct BfmPlatConfig {
     /* video */
-    int widescreen;          /* 0 = 4:3 (retail), 1 = 16:9 */
+    int widescreen;          /* derived: aspect is not 4:3 */
+    int aspect_num, aspect_den;   /* output aspect, 4:3 retail */
+    int widescreen_mode;     /* BFM_WIDESCREEN_HOR_PLUS / _ANAMORPHIC */
     int internal_scale;      /* 1..8, multiplies the 320x240-class buffer */
     int window_width;
     int window_height;
@@ -103,7 +110,7 @@ const char *bfm_plat_config_get(const BfmPlatConfig *cfg, const char *key);
 /* Writes the typed fields back as INI (unknown sections are kept). */
 int bfm_plat_config_save_file(const BfmPlatConfig *cfg, const char *path);
 
-/* Derived output aspect (numerator/denominator) from widescreen. */
+/* Output aspect (numerator/denominator). */
 void bfm_plat_config_aspect(const BfmPlatConfig *cfg, int *num, int *den);
 
 #endif

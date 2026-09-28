@@ -33,8 +33,18 @@ static int pc_init(void *self, const BfmPlatOutput *o) {
     PsyCrossRenderer *s = (PsyCrossRenderer *)self;
     memset(s, 0, sizeof *s);
 #ifdef BFM_PLAT_PSYCROSS_OWNS_WINDOW
-    PsyX_Initialise((char *)"Brave Fencer Musashi", o->window_width,
-                    o->window_height, o->fullscreen);
+    {
+        /* Wider render target: the window takes the configured aspect at
+         * the configured height. PsyCross (PGXP) maps the 4:3 display into
+         * it unstretched, which is hor+ widescreen. */
+        BfmPlatWidescreen ws;
+        int w = o->window_width;
+        if (bfm_plat_widescreen_compute(o->aspect_num, o->aspect_den,
+                                        BFM_WIDESCREEN_HOR_PLUS, 320, 240, &ws) == BFM_PLAT_OK)
+            bfm_plat_widescreen_window(&ws, o->window_height, &w);
+        PsyX_Initialise((char *)"Brave Fencer Musashi", w, o->window_height,
+                        o->fullscreen);
+    }
 #else
     (void)o;
 #endif
@@ -50,9 +60,13 @@ static void pc_shutdown(void *self) {
 }
 
 static int pc_output(void *self, const BfmPlatOutput *o) {
-    (void)self; (void)o;
-    /* Window size / internal scale / aspect are PsyX settings; widescreen
-     * needs the game-side projection change as well (see ARCHITECTURE-PORT). */
+    (void)self;
+    /* PsyCross fixes its window at PsyX_Initialise and always maps the 4:3
+     * display unstretched (hor+). Anamorphic output needs a stretching
+     * renderer, so it is refused here and the caller keeps hor+. */
+    if (o->aspect_num * 3 != o->aspect_den * 4 &&
+        bfm_plat_config()->widescreen_mode == BFM_WIDESCREEN_ANAMORPHIC)
+        return BFM_PLAT_UNSUPPORTED;
     return BFM_PLAT_OK;
 }
 

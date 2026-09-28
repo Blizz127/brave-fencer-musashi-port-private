@@ -47,6 +47,7 @@ typedef enum BfmEvent {
     BFM_EVENT_ITEM_GET = 12,      /* [BfmEventItem] */
     BFM_EVENT_SAVE = 13,          /* [BfmEventSave] */
     BFM_EVENT_LOAD = 14,          /* [BfmEventSave] */
+    BFM_EVENT_PROJECTION = 15,    /* [BfmEventProjection] GTE H/OFX/OFY set */
     BFM_EVENT_COUNT
 } BfmEvent;
 
@@ -73,6 +74,11 @@ typedef struct BfmEventItem {
 typedef struct BfmEventSave {
     uint32_t slot;
 } BfmEventSave;
+
+typedef struct BfmEventProjection {
+    int32_t h;
+    int32_t ofx, ofy;
+} BfmEventProjection;
 
 typedef void (*BfmEventFn)(void *user, BfmEvent event, void *payload);
 
