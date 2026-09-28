@@ -307,6 +307,34 @@ int musashi_gte_owner_command(MusashiGteOwner *owner,
     return 1;
 }
 
+/* Native-lane lease (port-plat's BfmPsyqGteBridge): host libgte wrappers
+ * run PsyCross GTE code on this owner's shared gteRegs bank. begin succeeds
+ * only on the owner thread with CU2 set, initialized and not faulted or
+ * already executing, and marks the owner executing, so an interpreter COP2
+ * operation nested inside the native call trips the reentry check. A
+ * native call is not a source context, so no context identity is checked. */
+int musashi_gte_owner_native_begin(MusashiGteOwner *owner) {
+    uint32_t status = 0;
+    if (owner == NULL || !owner->initialized || owner->faulted || owner->executing)
+        return 0;
+    owner->reentry_violation = 0;
+    owner->executing = 1;
+    if (!owner_thread_matches(owner) ||
+        !musashi_cpu_status_read(owner->cpu_status, &status) ||
+        (status & MUSASHI_CPU_STATUS_CU2) == 0 || owner->faulted) {
+        owner->executing = 0;
+        return 0;
+    }
+    return 1;
+}
+
+void musashi_gte_owner_native_end(MusashiGteOwner *owner, uint32_t commands) {
+    if (owner == NULL || !owner->executing) return;
+    if (owner->command_count <= UINT64_MAX - commands) owner->command_count += commands;
+    else owner->faulted = 1;
+    owner->executing = 0;
+}
+
 int musashi_gte_owner_snapshot(MusashiGteOwner *owner,
                                MusashiGteSnapshot *snapshot) {
     MusashiGteSnapshot local;
