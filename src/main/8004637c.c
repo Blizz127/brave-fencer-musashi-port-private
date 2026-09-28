@@ -1,56 +1,75 @@
 /* Exact retail word export for [8004637C,80046480); EXE-verified. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
-#include "psx_types.h"
+/* Source: PsyQ library C derived from xenogears-decomp-ai-archerfish (src/slus_006.64/psyq/libcd/cdread.c), same PsyQ object; symbols renamed to this build's addresses. Matching build only. */
+/* func_8004637C - byte-exact against retail at -O3 (tools/register_match.py). */
+typedef	unsigned char	u_char;
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+typedef	unsigned long	u_long;
 
-extern s32 D_8006CFA0;
-extern s32 D_8006CFA4;
-extern s32 D_8006CFAC;
-extern s32 D_8006CFB0;
-extern s32 D_8006CFBC;
-extern s32 D_8006CFC4;
-extern s32 D_8006CFC8;
-extern s32 D_8006CFCC;
-extern s32 D_8006CFD0;
-s32 func_8004239C();                               /* static */
-s32 func_80043410();                                /* static */
-s32 func_8004359C(s32, s32);                          /* static */
-s32 func_800435B4();                               /* static */
-void func_80043830(s32, s32, s32);                           /* static */
-s32 func_800439D4();                               /* static */
-s32 func_800460CC();                               /* static */
+typedef enum { false, true } bool;
 
-s32 func_8004637C(s32 arg0, s32 arg1, s32 arg2) {
-    s32 temp_v1;
-    s32 var_v0;
+typedef void (*CdlCB)(u_char,u_char *);
 
-    D_8006CFAC = arg2;
-    temp_v1 = D_8006CFAC & 0x30;
-    if (temp_v1 != 0) {
-        var_v0 = 0x249;
-        if (temp_v1 != 0x20) {
-            var_v0 = 0x246;
-        }
-    } else {
-        var_v0 = 0x200;
+int func_80043830(u_char com, u_char *param, u_char *result);
+
+int CdReadSync(int mode, u_char *result);
+
+void (*func_800439D4(void (*func)()));
+
+CdlCB func_800435B4(CdlCB func);
+
+CdlCB func_8004359C(CdlCB func);
+
+int func_80043410(void);
+
+typedef struct {
+    int nsectors;       
+    u_long* dest_base;  
+    u_long* dest_cur;   
+    int mode;           
+    int payload_words;  
+    int status;         
+    int vb_attempt;     
+    int vb_read;        
+    int sector_num;     
+    CdlCB cbsync;
+    CdlCB cbready;
+    CdlCB cbdata;
+    int block_mode;  
+    u_char* unk34;
+    int unk38;
+} ReadAttr_t;
+
+extern volatile ReadAttr_t D_8006CFA0;
+
+extern int func_8004239C(int mode);
+
+int func_800460CC(bool is_retry);
+
+int func_8004637C(int sectors, u_long* buf, int mode) {
+    D_8006CFA0.mode = mode;
+    switch (D_8006CFA0.mode & (0x10  | 0x20 )) {
+    case 0:
+        D_8006CFA0.payload_words = 2048 / sizeof(u_long);
+        break;
+    case 0x20 :
+        D_8006CFA0.payload_words = 2340 / sizeof(u_long);
+        break;
+    default:  
+        D_8006CFA0.payload_words = 2328 / sizeof(u_long);
     }
-    D_8006CFB0 = var_v0;
-    D_8006CFAC = (s32) (D_8006CFAC | 0x20);
-    D_8006CFA4 = arg1;
-    D_8006CFA0 = arg0;
-    D_8006CFC4 = func_8004359C(0, arg0);
-    D_8006CFC8 = func_800435B4(0);
-    if (D_8006CFD0 & 1) {
-        D_8006CFCC = func_800439D4(0);
+    D_8006CFA0.mode |= 0x20;
+    D_8006CFA0.dest_base = buf;
+    D_8006CFA0.nsectors = sectors;
+    D_8006CFA0.cbsync = func_8004359C(0 );
+    D_8006CFA0.cbready = func_800435B4(0 );
+    if (D_8006CFA0.block_mode & 0x1 ) {
+        D_8006CFA0.cbdata = func_800439D4(0 );
     }
-    D_8006CFBC = func_8004239C(-1);
-    if (func_80043410() & 0xE0) {
-        func_80043830(9, 0, 0);
+    D_8006CFA0.vb_read = func_8004239C(-1);
+    if (func_80043410() & (0x80  | 0x40  | 0x20 )) {
+        func_80043830(0x09 , 0, 0);
     }
-    return func_800460CC(0) > 0;
+    return func_800460CC( false) > 0;
 }
+
+int CdReadSync(int mode, u_char* result);

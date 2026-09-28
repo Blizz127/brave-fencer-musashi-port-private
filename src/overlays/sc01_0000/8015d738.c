@@ -1,0 +1,106 @@
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8015D738 - byte-exact against retail at -O2 (tools/register_match.py). */
+#include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+extern int func_80148AFC(void*);
+extern s32 func_80161B18(void *);
+extern s32 func_80161B84(void *);
+extern u16 func_80148800(s32*);
+extern u8 func_8014BEF8(void);
+extern s32 func_80165624(s32);
+extern s32 func_801488A8(u8*);
+extern void func_8014D738(void);
+extern s32 func_80161208();
+extern void func_80154A74(s32, s32);
+extern void func_8015DAC4(s32*);
+extern void func_8015DE24(s32*);
+extern void func_8015DA5C(s32);
+extern void func_8015F948(s32*);
+extern void func_800CAF14(void *);
+extern void func_80154150(s32, s32);
+extern void func_80146DB8(s32*, s32*);
+extern void func_80147A84(s32);
+extern void func_801473EC(s32*);
+extern void func_80149374(s32, s32);
+extern void func_80147078(s32*, s16);
+extern void func_80159B70(void *);
+extern void func_8015C714(void *);
+extern void func_801483E8(void);
+extern void (*D_801812A4[])(void *);
+extern u8 D_80078E78[];
+extern u8 D_801814E8[];
+
+void func_8015D738(void *arg0) {
+
+    extern u8 D_80181268[];
+    extern u8 D_80181278[];
+    u8 *p = D_80078E78;
+    s32 s1;
+    ((void (*)(void))func_80148AFC)();
+    if (func_80161B18(arg0) != 0) return;
+    if (func_80161B84(arg0) != 0) return;
+    s1 = *(s32 *)((char *)arg0 + 0x178);
+    if (s1 != 0) {
+        if (*(u16 *)s1 == 0x360) goto block_808;
+    }
+    __asm__ __volatile__("");
+    if (s1 != 0) {
+        if (*(u16 *)s1 != 0) goto block_7F4;
+    }
+    D_801812A4[*(u16 *)arg0](arg0);
+    ((void (*)(void *, s32))func_80147078)(arg0, 0);
+    func_80159B70(arg0);
+    return;
+block_7F4:
+    if (((s32 (*)(void *))func_80148800)(arg0) & 0x80) {
+    block_808:
+        ((void (*)(void *, s32))func_80154A74)(arg0, 0x11);
+        ((void (*)(void *))func_8015DAC4)(arg0);
+        return;
+    }
+    if ((((s32 (*)(void *))func_80148800)(arg0) & 0x10) && ((s32 (*)(void *))func_8014BEF8)(arg0) != 0) {
+        ((void (*)(void *, s32))func_80154A74)(arg0, 0x11);
+        ((void (*)(void *))func_8015DE24)(arg0);
+        return;
+    }
+    if ((((s32 (*)(void *))func_80148800)(arg0) & 0x20) && p[0x49] == 0xA) {
+        if (((s32 (*)(void *))func_80165624)(arg0) != 0) {
+            ((void (*)(void *))func_8015DA5C)(arg0);
+            ((void (*)(void *))func_8015F948)(arg0);
+            return;
+        }
+        ((void (*)(void *, s32))func_80154A74)(arg0, 0x11);
+        func_800CAF14(arg0);
+        return;
+    }
+    if (((s32 (*)(void *))func_801488A8)(arg0) != 0 && *(u16 *)(*(s32 *)((char *)arg0 + 0x178)) != 0x82) {
+        ((void (*)(void *, s32))func_80154150)(arg0, 0x1B);
+        ((void (*)(void *, void *))func_80146DB8)(arg0, &D_80181268);
+    } else {
+        ((void (*)(void *, s32))func_80154150)(arg0, 0x1A);
+        ((void (*)(void *, void *))func_80146DB8)(arg0, &D_80181278);
+    }
+    ((void (*)(void *))func_80147A84)(arg0);
+    ((void (*)(void *))func_801473EC)(arg0);
+    s1 = *(s32 *)((char *)arg0 + 0x178);
+    *(s16 *)(s1 + 6) = (s16)((s8)D_801814E8[*(s32 *)((char *)arg0 + 0x234)] + *(u16 *)(*(s32 *)(s1 + 0x78) + 0xc));
+    *(s16 *)(s1 + 0xa) = (s16)((s8)D_801814E8[*(s32 *)((char *)arg0 + 0x234) + 1] + *(u16 *)(*(s32 *)(s1 + 0x78) + 0xe));
+    *(s16 *)(s1 + 0xe) = (s16)((s8)D_801814E8[*(s32 *)((char *)arg0 + 0x234) + 2] + *(u16 *)(*(s32 *)(s1 + 0x78) + 0x10));
+    ((void (*)(void *, void *))func_80149374)(arg0, (void *)(s1 + 4));
+    *(s16 *)(*(s32 *)(s1 + 0x20) + 0x12) = (*(u16 *)(*(s32 *)((char *)arg0 + 0x20) + 0x12) + 0x800) & 0xFFF;
+    if (((s32 (*)(void *))func_8014D738)(arg0) != 0) {
+        D_801812A4[*(u16 *)arg0](arg0);
+        ((void (*)(void *, s32))func_80147078)(arg0, 9);
+        func_8015C714(arg0);
+        return;
+    }
+    if (func_80161208(arg0) != 0) return;
+    ((void (*)(void *))func_801483E8)(arg0);
+}

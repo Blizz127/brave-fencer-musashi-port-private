@@ -1,191 +1,312 @@
 /* Native retail instruction export [8003C598,8003C92C).
  * Verified against asm/main.s and the extracted EXE. No C match claim. */
-#include "psx_types.h"
-#include "m2c_macros.h"
+/* Source: PsyQ library C derived from xenogears-decomp-ai-archerfish (src/slus_006.64/psyq/libspu/SpuSetCommonAttr.c), same PsyQ object; symbols renamed to this build's addresses. Matching build only. */
+/* func_8003C598 - byte-exact against retail at -O3 (tools/register_match.py). */
+typedef signed short       s16;
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+typedef signed int         s32;
 
-extern s32 D_8006B54C;
+typedef unsigned short     u16;
 
-void func_8003C598(void *arg0) {
-    s16 temp_a2;
-    s16 temp_a3;
-    s16 temp_v1;
-    s16 temp_v1_2;
-    s16 var_a2_2;
-    s16 var_t0_2;
-    s16 var_v1;
-    s16 var_v1_2;
-    s16 var_v1_3;
-    s16 var_v1_4;
-    s32 temp_t1;
-    s32 temp_t2;
-    s32 var_a1;
-    s32 var_a1_2;
-    s32 var_v0;
-    s32 var_v0_2;
-    u16 var_a2;
-    u16 var_t0;
+typedef unsigned int       u32;
 
-    var_a2 = 0;
-    temp_t1 = M2C_FIELD(arg0, s32 *, 0);
-    temp_t2 = temp_t1 == 0;
-    var_t0 = 0;
-    if (temp_t2 == 0) {
-        if (temp_t1 & 1) {
-            if (temp_t1 & 4) {
-                goto block_3;
+typedef struct {
+    short left;	        
+    short right;        
+} SpuVolume;
+
+typedef struct {
+    SpuVolume	volume;		   
+    int		reverb;		   
+    int		mix;		   
+} SpuExtAttr;
+
+typedef struct {
+    unsigned int	mask;	   
+
+    SpuVolume		mvol;	   
+    SpuVolume		mvolmode;  
+    SpuVolume		mvolx;	   
+    SpuExtAttr		cd;	   
+    SpuExtAttr		ext;	   
+} SpuCommonAttr;
+
+typedef struct {
+    SpuVolume volume;
+    u16 pitch;
+    u16 addr;
+    u16 adsr[2];
+    u16 volumex;
+    u16 loop_addr;
+} SPU_VOICE_REG;
+
+typedef struct {
+
+    u16 m_dAPF1;
+    u16 m_dAPF2;
+
+    s16 m_vIIR;
+    s16 m_vCOMB1;
+    s16 m_vCOMB2;
+    s16 m_vCOMB3;
+    s16 m_vCOMB4;
+    s16 m_vWALL;
+    s16 m_vAPF1;
+    s16 m_vAPF2;
+
+    u16 m_mLSAME;
+    u16 m_mRSAME;
+
+    u16 m_mLCOMB1;
+    u16 m_mRCOMB1;
+    u16 m_mLCOMB2;
+    u16 m_mRCOMB2;
+
+    u16 m_dLSAME;
+    u16 m_dRSAME;
+
+    u16 m_mLDIFF;
+    u16 m_mRDIFF;
+
+    u16 m_mLCOMB3;
+    u16 m_mRCOMB3;
+    u16 m_mLCOMB4;
+    u16 m_mRCOMB4;
+
+    u16 m_dLDIFF;
+    u16 m_dRDIFF;
+
+    u16 m_mLAPF1;
+    u16 m_mRAPF1;
+    u16 m_mLAPF2;
+    u16 m_mRAPF2;
+
+    s16 m_vLIN;
+    s16 m_vRIN;
+} ReverbRegisters;
+
+typedef struct {
+    SPU_VOICE_REG voice[24 ];
+
+    SpuVolume main_vol;  
+    SpuVolume rev_vol;  
+
+    u16 key_on[2];
+    u16 key_off[2];
+    u16 chan_fm[2];
+    u16 noise_mode[2];
+    u16 rev_mode[2];
+    u32 m_EndxFlags;
+
+    u16 unk;
+
+    u16 rev_work_addr;
+    u16 irq_addr;
+    u16 trans_addr;
+    u16 trans_fifo;
+
+    u16 spucnt;
+    u16 data_trans;
+    u16 spustat;
+
+    SpuVolume cd_vol;
+    SpuVolume ex_vol;
+
+    SpuVolume main_volx;
+
+    u32 unk2;
+
+    ReverbRegisters m_Reverb;
+} SPU_RXX;
+
+union SpuUnion {
+    SPU_RXX _rxx;
+    volatile SPU_RXX rxx;
+    u16 _raw[0x100];
+    volatile u16 raw[0x100];
+};
+
+extern union SpuUnion* D_8006B54C;
+
+void func_8003C598(SpuCommonAttr* attr) {
+    u16 mvol_mode_left;
+    u16 mvol_mode_right;
+    u16 vol_total_left;
+    u16 vol_total_right;
+    u32 mask;
+    s32 bSetAll;
+    u16 cnt;
+
+    vol_total_left = 0;
+    vol_total_right = 0;
+    mask = attr->mask;
+    bSetAll = attr->mask == 0;
+
+    if (bSetAll || mask & (0x01 <<  0) ) {
+        if (bSetAll || mask & (0x01 <<  2) ) {
+            switch (attr->mvolmode.left) {
+
+            case 1 :
+                mvol_mode_left = 0x8000 ;
+                break;
+            case 2 :
+                mvol_mode_left = 0x9000 ;
+                break;
+            case 3 :
+                mvol_mode_left = 0xA000 ;
+                break;
+            case 4 :
+                mvol_mode_left = 0xB000 ;
+                break;
+            case 5 :
+                mvol_mode_left = 0xC000 ;
+                break;
+            case 6 :
+                mvol_mode_left = 0xD000 ;
+                break;
+            case 7 :
+                mvol_mode_left = 0xE000 ;
+                break;
+            case 0 :
+                vol_total_left = attr->mvol.left;
+                mvol_mode_left = 0x0000 ;
+                break;
+            default:
+                vol_total_left = attr->mvol.left;
+                mvol_mode_left = 0x0000 ;
+                break;
             }
-            goto block_12;
-            goto block_13;
         }
-    } else {
-block_3:
-        temp_v1 = M2C_FIELD(arg0, s16 *, 8);
-        switch (temp_v1) {                          /* switch 1 */
-        case 1:                                     /* switch 1 */
-            var_a1 = 0x8000;
-            break;
-        case 2:                                     /* switch 1 */
-            var_a1 = 0x9000;
-            break;
-        case 3:                                     /* switch 1 */
-            var_a1 = 0xA000;
-            break;
-        case 4:                                     /* switch 1 */
-            var_a1 = 0xB000;
-            break;
-        case 5:                                     /* switch 1 */
-            var_a1 = 0xC000;
-            break;
-        case 6:                                     /* switch 1 */
-            var_a1 = 0xD000;
-            break;
-        case 7:                                     /* switch 1 */
-            var_a1 = 0xE000;
-            break;
-        default:                                    /* switch 1 */
-block_12:
-            var_a2 = M2C_FIELD(arg0, u16 *, 4);
-            var_a1 = 0;
-            break;
+        else {
+            vol_total_left = attr->mvol.left;
+            mvol_mode_left = 0x0000 ;
         }
-block_13:
-        var_v0 = var_a2 & 0x7FFF;
-        if (var_a1 != 0) {
-            temp_a3 = (s16) M2C_FIELD(arg0, u16 *, 4);
-            if (temp_a3 >= 0x80) {
-                var_a2_2 = 0x7F;
+
+        if (mvol_mode_left != 0x0000 ) {
+            if (attr->mvol.left > 0x7F ) {
+                vol_total_left = 0x7F ;
+            } else if (attr->mvol.left < 0) {
+                vol_total_left = 0;
             } else {
-                var_a2_2 = temp_a3;
-                if (temp_a3 < 0) {
-                    var_a2_2 = 0;
-                }
+                vol_total_left = attr->mvol.left;
             }
-            var_v0 = var_a2_2 & 0x7FFF;
         }
-        M2C_FIELD(D_8006B54C, s16 *, 0x180) = (s16) (var_v0 | var_a1);
+        vol_total_left &= ~(1 << 15) ;
+        D_8006B54C->rxx.main_vol.left = (vol_total_left) | mvol_mode_left;
     }
-    if (temp_t2 == 0) {
-        if (temp_t1 & 2) {
-            if (temp_t1 & 8) {
-                goto block_23;
+
+    if (bSetAll || mask & (0x01 <<  1) ) {
+        if (bSetAll || mask & (0x01 <<  3) ) {
+            switch (attr->mvolmode.right) {
+            case 1 :
+                mvol_mode_right = 0x8000 ;
+                break;
+            case 2 :
+                mvol_mode_right = 0x9000 ;
+                break;
+            case 3 :
+                mvol_mode_right = 0xA000 ;
+                break;
+            case 4 :
+                mvol_mode_right = 0xB000 ;
+                break;
+            case 5 :
+                mvol_mode_right = 0xC000 ;
+                break;
+            case 6 :
+                mvol_mode_right = 0xD000 ;
+                break;
+            case 7 :
+                mvol_mode_right = 0xE000 ;
+                break;
+            case 0 :
+                vol_total_right = attr->mvol.right;
+                mvol_mode_right = 0x0000 ;
+                break;
+            default:
+                vol_total_right = attr->mvol.right;
+                mvol_mode_right = 0x0000 ;
+                break;
             }
-            goto block_32;
-            goto block_33;
+        } else {
+            vol_total_right = attr->mvol.right;
+            mvol_mode_right = 0x0000 ;
         }
-    } else {
-block_23:
-        temp_v1_2 = M2C_FIELD(arg0, s16 *, 0xA);
-        switch (temp_v1_2) {                        /* switch 2 */
-        case 1:                                     /* switch 2 */
-            var_a1_2 = 0x8000;
-            break;
-        case 2:                                     /* switch 2 */
-            var_a1_2 = 0x9000;
-            break;
-        case 3:                                     /* switch 2 */
-            var_a1_2 = 0xA000;
-            break;
-        case 4:                                     /* switch 2 */
-            var_a1_2 = 0xB000;
-            break;
-        case 5:                                     /* switch 2 */
-            var_a1_2 = 0xC000;
-            break;
-        case 6:                                     /* switch 2 */
-            var_a1_2 = 0xD000;
-            break;
-        case 7:                                     /* switch 2 */
-            var_a1_2 = 0xE000;
-            break;
-        default:                                    /* switch 2 */
-block_32:
-            var_t0 = M2C_FIELD(arg0, u16 *, 6);
-            var_a1_2 = 0;
-            break;
-        }
-block_33:
-        var_v0_2 = var_t0 & 0x7FFF;
-        if (var_a1_2 != 0) {
-            temp_a2 = (s16) M2C_FIELD(arg0, u16 *, 6);
-            if (temp_a2 >= 0x80) {
-                var_t0_2 = 0x7F;
+
+        if (mvol_mode_right != 0x0000 ) {
+            if (attr->mvol.right > 0x7F ) {
+                vol_total_right = 0x7F ;
+            } else if (attr->mvol.right < 0) {
+                vol_total_right = 0;
             } else {
-                var_t0_2 = temp_a2;
-                if (temp_a2 < 0) {
-                    var_t0_2 = 0;
-                }
+                vol_total_right = attr->mvol.right;
             }
-            var_v0_2 = var_t0_2 & 0x7FFF;
         }
-        M2C_FIELD(D_8006B54C, s16 *, 0x182) = (s16) (var_v0_2 | var_a1_2);
+        vol_total_right &= ~(1 << 15) ;
+        D_8006B54C->rxx.main_vol.right = vol_total_right | mvol_mode_right;
     }
-    if ((temp_t2 != 0) || (temp_t1 & 0x40)) {
-        M2C_FIELD(D_8006B54C, u16 *, 0x1B0) = (u16) M2C_FIELD(arg0, u16 *, 0x10);
+
+    if (bSetAll || (mask & (0x01 <<  6) )) {
+        D_8006B54C->rxx.cd_vol.left = attr->cd.volume.left;
     }
-    if ((temp_t2 != 0) || (temp_t1 & 0x80)) {
-        M2C_FIELD(D_8006B54C, u16 *, 0x1B2) = (u16) M2C_FIELD(arg0, u16 *, 0x12);
+
+    if (bSetAll || (mask & (0x01 <<  7) )) {
+        D_8006B54C->rxx.cd_vol.right = attr->cd.volume.right;
     }
-    if ((temp_t2 != 0) || (temp_t1 & 0x400)) {
-        M2C_FIELD(D_8006B54C, u16 *, 0x1B4) = (u16) M2C_FIELD(arg0, u16 *, 0x1C);
+
+    if (bSetAll || (mask & (0x01 << 10) )) {
+        D_8006B54C->rxx.ex_vol.left = attr->ext.volume.left;
     }
-    if ((temp_t2 != 0) || (temp_t1 & 0x800)) {
-        M2C_FIELD(D_8006B54C, u16 *, 0x1B6) = (u16) M2C_FIELD(arg0, u16 *, 0x1E);
+
+    if (bSetAll || (mask & (0x01 << 11) )) {
+        D_8006B54C->rxx.ex_vol.right = attr->ext.volume.right;
     }
-    if ((temp_t2 != 0) || (temp_t1 & 0x100)) {
-        if (M2C_FIELD(arg0, s32 *, 0x14) == 0) {
-            var_v1 = M2C_FIELD(D_8006B54C, u16 *, 0x1AA) & 0xFFFB;
+
+    if (bSetAll || (mask & (0x01 <<  8) )) {
+        if (attr->cd.reverb == 0) {
+            cnt = D_8006B54C->rxx.spucnt;
+            cnt &= ~(1 <<  2) ;
+            D_8006B54C->rxx.spucnt = cnt;
         } else {
-            var_v1 = M2C_FIELD(D_8006B54C, u16 *, 0x1AA) | 4;
+            cnt = D_8006B54C->rxx.spucnt;
+            cnt |= (1 <<  2) ;
+            D_8006B54C->rxx.spucnt = cnt;
         }
-        M2C_FIELD(D_8006B54C, s16 *, 0x1AA) = var_v1;
     }
-    if ((temp_t2 != 0) || (temp_t1 & 0x200)) {
-        if (M2C_FIELD(arg0, s32 *, 0x18) == 0) {
-            var_v1_2 = M2C_FIELD(D_8006B54C, u16 *, 0x1AA) & 0xFFFE;
+
+    if (bSetAll || (mask & (0x01 <<  9) )) {
+        if (attr->cd.mix == 0) {
+            cnt = D_8006B54C->rxx.spucnt;
+            cnt &= ~(1 <<  0) ;
+            D_8006B54C->rxx.spucnt = cnt;
         } else {
-            var_v1_2 = M2C_FIELD(D_8006B54C, u16 *, 0x1AA) | 1;
+            cnt = D_8006B54C->rxx.spucnt;
+            cnt |= (1 <<  0) ;
+            D_8006B54C->rxx.spucnt = cnt;
         }
-        M2C_FIELD(D_8006B54C, s16 *, 0x1AA) = var_v1_2;
     }
-    if ((temp_t2 != 0) || (temp_t1 & 0x1000)) {
-        if (M2C_FIELD(arg0, s32 *, 0x20) == 0) {
-            var_v1_3 = M2C_FIELD(D_8006B54C, u16 *, 0x1AA) & 0xFFF7;
+
+    if (bSetAll || (mask & (0x01 << 12) )) {
+        if (attr->ext.reverb == 0) {
+            cnt = D_8006B54C->rxx.spucnt;
+            cnt &= ~(1 <<  3) ;
+            D_8006B54C->rxx.spucnt = cnt;
         } else {
-            var_v1_3 = M2C_FIELD(D_8006B54C, u16 *, 0x1AA) | 8;
+            cnt = D_8006B54C->rxx.spucnt;
+            cnt |= (1 <<  3) ;
+            D_8006B54C->rxx.spucnt = cnt;
         }
-        M2C_FIELD(D_8006B54C, s16 *, 0x1AA) = var_v1_3;
     }
-    if ((temp_t2 != 0) || (temp_t1 & 0x2000)) {
-        if (M2C_FIELD(arg0, s32 *, 0x24) == 0) {
-            var_v1_4 = M2C_FIELD(D_8006B54C, u16 *, 0x1AA) & 0xFFFD;
+
+    if (bSetAll || (mask & (0x01 << 13) )) {
+        if (attr->ext.mix == 0) {
+            cnt = D_8006B54C->rxx.spucnt;
+            cnt &= ~(1 <<  1) ;
+            D_8006B54C->rxx.spucnt = cnt;
         } else {
-            var_v1_4 = M2C_FIELD(D_8006B54C, u16 *, 0x1AA) | 2;
+            cnt = D_8006B54C->rxx.spucnt;
+            cnt |= (1 <<  1) ;
+            D_8006B54C->rxx.spucnt = cnt;
         }
-        M2C_FIELD(D_8006B54C, s16 *, 0x1AA) = var_v1_4;
     }
 }

@@ -1,126 +1,194 @@
 /* Exact retail word export for [8003AB84,8003AE14); EXE and assembly verified. */
-#include "psx_types.h"
-#include "m2c_macros.h"
+/* Source: PsyQ library C derived from xenogears-decomp-ai-archerfish (src/slus_006.64/psyq/libspu/Spu.c), same PsyQ object; symbols renamed to this build's addresses. Matching build only. */
+/* func_8003AB84 - byte-exact against retail at -O3 (tools/register_match.py). */
+typedef unsigned short u_short;
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+typedef signed short s16;
 
-extern s32 D_8006B54C;
-extern s32 *D_8006B550;
-extern s32 *D_8006B554;
-extern s32 *D_8006B558;
-extern s32 D_8006B564;
-extern s32 D_8006B574;
-extern s32 D_8006B59C;
-extern s32 D_8006B5A0;
-extern s32 D_8006B5A4;
-void func_8003B08C(s32, void *, s32);        /* static */
-void func_8003B0B8(s32, void *, s32);        /* static */
+typedef signed int s32;
 
-s32 func_8003AB84(s32 arg0, u32 arg1, s32 arg2, s32 arg3) {
-    s32 temp_a0;
-    s32 var_a0;
-    s32 var_a2;
-    s32 var_v0;
-    u32 *var_s0;
-    u32 temp_a0_2;
-    u32 temp_v0;
-    u32 var_v1;
-    u32 var_v1_2;
-    u32 var_v1_3;
+typedef unsigned short u16;
 
-    if (arg0 != 1) {
-        if (arg0 < 2) {
-            if (arg0 != 0) {
-                return 0;
-            }
-            D_8006B59C = 1;
-            if ((M2C_FIELD(D_8006B54C, u16 *, 0x1A6) & 0xFFFF) != D_8006B564) {
-                var_v1 = 1;
-loop_15:
-                var_v0 = -2;
-                if (var_v1 < 0xF01U) {
-                    var_v1 += 1;
-                    if (M2C_FIELD(D_8006B54C, u16 *, 0x1A6) == D_8006B564) {
-                        goto block_17;
-                    }
-                    goto loop_15;
-                }
-                /* Duplicate return node #29. Try simplifying control flow for better match */
-                return var_v0;
-            }
-block_17:
-            M2C_FIELD(D_8006B54C, u16 *, 0x1AA) = (u16) (M2C_FIELD(D_8006B54C, u16 *, 0x1AA) | 0x30);
-            return 0;
-        }
-        switch (arg0) {                             /* irregular */
+typedef unsigned int u32;
+
+typedef struct {
+    short left;
+    short right;
+} SpuVolume;
+
+typedef struct {
+    SpuVolume volume;
+    u16 pitch;
+    u16 addr;
+    u16 adsr[2];
+    u16 volumex;
+    u16 loop_addr;
+} SPU_VOICE_REG;
+
+typedef struct {
+    u16 m_dAPF1;
+    u16 m_dAPF2;
+    s16 m_vIIR;
+    s16 m_vCOMB1;
+    s16 m_vCOMB2;
+    s16 m_vCOMB3;
+    s16 m_vCOMB4;
+    s16 m_vWALL;
+    s16 m_vAPF1;
+    s16 m_vAPF2;
+    u16 m_mLSAME;
+    u16 m_mRSAME;
+    u16 m_mLCOMB1;
+    u16 m_mRCOMB1;
+    u16 m_mLCOMB2;
+    u16 m_mRCOMB2;
+    u16 m_dLSAME;
+    u16 m_dRSAME;
+    u16 m_mLDIFF;
+    u16 m_mRDIFF;
+    u16 m_mLCOMB3;
+    u16 m_mRCOMB3;
+    u16 m_mLCOMB4;
+    u16 m_mRCOMB4;
+    u16 m_dLDIFF;
+    u16 m_dRDIFF;
+    u16 m_mLAPF1;
+    u16 m_mRAPF1;
+    u16 m_mLAPF2;
+    u16 m_mRAPF2;
+    s16 m_vLIN;
+    s16 m_vRIN;
+} ReverbRegisters;
+
+typedef struct {
+    SPU_VOICE_REG voice[24];
+    SpuVolume main_vol;
+    SpuVolume rev_vol;
+    u16 key_on[2];
+    u16 key_off[2];
+    u16 chan_fm[2];
+    u16 noise_mode[2];
+    u16 rev_mode[2];
+    u32 m_EndxFlags;
+    u16 unk;
+    u16 rev_work_addr;
+    u16 irq_addr;
+    u16 trans_addr;
+    u16 trans_fifo;
+    u16 spucnt;
+    u16 data_trans;
+    u16 spustat;
+    SpuVolume cd_vol;
+    SpuVolume ex_vol;
+    SpuVolume main_volx;
+    u32 unk2;
+    ReverbRegisters m_Reverb;
+} SPU_RXX;
+
+union SpuUnion {
+    SPU_RXX _rxx;
+    volatile SPU_RXX rxx;
+    u16 _raw[0x100];
+    volatile u16 raw[0x100];
+};
+
+extern union SpuUnion* D_8006B54C;
+
+extern volatile long* D_8006B550;
+
+extern volatile long* D_8006B554;
+
+extern volatile long* D_8006B558;
+
+extern u_short D_8006B564;
+
+extern long D_8006B574;
+
+extern long D_8006B59C;
+
+extern long D_8006B5A0;
+
+extern long D_8006B5A4;
+
+typedef void *va_list;
+
+s32 func_8003AB84(s32 operation, ...) {
+    u16 spuTransferMode;
+    s32 chcr;
+    u32 dmaTimer;
+    u32 addr;
+    va_list args;
+    u32 arg;
+    u16 controlRegister;
+    (args = ((char *)&(operation) + (((sizeof (operation) + sizeof (int) - 1) / sizeof (int)) * sizeof (int))));
+    switch (operation) {
         case 2:
-            temp_v0 = arg1 >> D_8006B574;
-            D_8006B564 = (u16) temp_v0;
-            M2C_FIELD(D_8006B54C, u16 *, 0x1A6) = (u16) temp_v0;
-            return 0;
+            arg = (args = ((char *) (args)) += (((sizeof (u32) + sizeof (int) - 1) / sizeof (int)) * sizeof (int)), *((u32 *) ((char *) (args) - (((sizeof (u32) + sizeof (int) - 1) / sizeof (int)) * sizeof (int)))));
+            D_8006B54C->rxx.trans_addr = D_8006B564 = arg >> D_8006B574;
+            break;
+        case 1:
+            D_8006B59C = 0;
+            dmaTimer = 0;
+            while (D_8006B54C->rxx.trans_addr != D_8006B564) {
+                if (++dmaTimer > (0xF00U)) {
+                    return (-2);
+                }
+            }
+            controlRegister = D_8006B54C->rxx.spucnt;
+            controlRegister &= ~( 3 << 4 );
+            controlRegister |= ( 2 << 4 );
+            D_8006B54C->rxx.spucnt = controlRegister;
+            break;
+        case 0:
+            D_8006B59C = 1;
+            dmaTimer = 0;
+            while (D_8006B54C->rxx.trans_addr != D_8006B564) {
+                if (++dmaTimer > (0xF00U)) {
+                    return (-2);
+                }
+            }
+            controlRegister = D_8006B54C->rxx.spucnt;
+            controlRegister &= ~( 3 << 4 );
+            controlRegister |= ( 3 << 4 );
+            D_8006B54C->rxx.spucnt = controlRegister;
+            break;
         case 3:
-            var_a0 = 0x20;
             if (D_8006B59C == 1) {
-                var_a0 = 0x30;
-            }
-            temp_a0 = var_a0 & 0xFFFF;
-            var_v1_2 = 1;
-            if ((M2C_FIELD(D_8006B54C, u16 *, 0x1AA) & 0x30) != temp_a0) {
-loop_21:
-                var_v0 = -2;
-                if (var_v1_2 < 0xF01U) {
-                    var_v1_2 += 1;
-                    if ((M2C_FIELD(D_8006B54C, u16 *, 0x1AA) & 0x30) == temp_a0) {
-                        goto block_23;
-                    }
-                    goto loop_21;
-                }
+                spuTransferMode = ( 3 << 4 );
             } else {
-block_23:
-                if (D_8006B59C == 1) {
-                    var_s0 = &arg1 + 4;
-                    func_8003B0B8(temp_a0, D_8006B54C, 1);
-                } else {
-                    var_s0 = &arg1 + 4;
-                    func_8003B08C(temp_a0, D_8006B54C, 1);
-                }
-                D_8006B5A0 = (s32) M2C_FIELD(var_s0, s32 *, -4);
-                temp_a0_2 = M2C_FIELD(var_s0, u32 *, 0);
-                D_8006B5A4 = (s32) ((temp_a0_2 >> 6) + ((temp_a0_2 & 0x3F) != 0));
-                *D_8006B550 = D_8006B5A0;
-                *D_8006B554 = (D_8006B5A4 << 0x10) | 0x10;
-                var_a2 = 0x01000201;
-                if (D_8006B59C == 1) {
-                    var_a2 = 0x01000200;
-                }
-                *D_8006B558 = var_a2;
-                var_v0 = 0;
+                spuTransferMode = ( 2 << 4 );
             }
-            /* Duplicate return node #29. Try simplifying control flow for better match */
-            return var_v0;
-        default:
-            return 0;
-        }
-    } else {
-        D_8006B59C = 0;
-        if ((M2C_FIELD(D_8006B54C, u16 *, 0x1A6) & 0xFFFF) != D_8006B564) {
-            var_v1_3 = 1;
-loop_10:
-            var_v0 = -2;
-            if (var_v1_3 < 0xF01U) {
-                var_v1_3 += 1;
-                if (M2C_FIELD(D_8006B54C, u16 *, 0x1A6) == D_8006B564) {
-                    goto block_12;
+            dmaTimer = 0;
+            while ((D_8006B54C->rxx.spucnt & ( 3 << 4 )) != spuTransferMode) {
+                if (++dmaTimer > (0xF00U)) {
+                    return (-2);
                 }
-                goto loop_10;
             }
-            return var_v0;
-        }
-block_12:
-        M2C_FIELD(D_8006B54C, u16 *, 0x1AA) = (u16) ((M2C_FIELD(D_8006B54C, u16 *, 0x1AA) & 0xFFCF) | 0x20);
-        return 0;
+            if (D_8006B59C == 1) {
+                func_8003B0B8();
+            } else {
+                func_8003B08C();
+            }
+            arg = (args = ((char *) (args)) += (((sizeof (u32) + sizeof (int) - 1) / sizeof (int)) * sizeof (int)), *((u32 *) ((char *) (args) - (((sizeof (u32) + sizeof (int) - 1) / sizeof (int)) * sizeof (int)))));
+            D_8006B5A0 = arg;
+            arg = (args = ((char *) (args)) += (((sizeof (u32) + sizeof (int) - 1) / sizeof (int)) * sizeof (int)), *((u32 *) ((char *) (args) - (((sizeof (u32) + sizeof (int) - 1) / sizeof (int)) * sizeof (int)))));
+            D_8006B5A4 = (arg / 64);
+            D_8006B5A4 += ((arg % 64) ? 1 : 0);
+            *D_8006B550 = D_8006B5A0;
+            *D_8006B554 = (D_8006B5A4 << 16) | 16;
+            if (D_8006B59C == 1) {
+                chcr = ((0 << (0)) | (0 << (1)) | (0 << (8)) | (1 << (9)) | (1 << (24)) | (0 << (28)) | (0 << (29)));
+            } else {
+                chcr = ((1 << (0)) | (0 << (1)) | (0 << (8)) | (1 << (9)) | (1 << (24)) | (0 << (28)) | (0 << (29)));
+            }
+            *D_8006B558 = chcr;
+            break;
     }
+    return 0;
 }
+
+s32 _spu_Fw(s32 addr, s32 size);
+
+void func_8003B08C(void);
+
+void func_8003B0B8(void);

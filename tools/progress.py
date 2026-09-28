@@ -130,6 +130,8 @@ SCENE_OVERLAY_REGION_BYTES = {
     "sc07_0008": 348508,
     "sc07_0009": 351232,
     "sc02_0004": 351032,
+    "sc06_0027": 351792,
+    "sc02_0031": 379596,
 }
 # ceil(30% of 806272) = 241882 unique qualifying bytes.
 COVERAGE_THRESHOLD_BYTES = (IDENTIFIED_CODE_BYTES * 3 + 9) // 10

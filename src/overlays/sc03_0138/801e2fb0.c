@@ -1,0 +1,58 @@
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+#include "psx_types.h"
+/* func_801E2FB0 - byte-exact against retail at -O2 (tools/register_match.py). */
+extern u8 *D_80126B10;
+extern void func_800D1724(void *);
+extern s32 func_801789AC(s32 a0);
+extern void func_80174438(s32 a0);
+extern void func_80178CBC(s32 a0, s32 a1);
+extern void func_80185B88(s32 a0);
+extern s16 func_80185B78(void);
+
+void func_801E2FB0(void *param_1) {
+
+    extern s32 D_801E34FC;
+    extern s32 D_801E3560;
+    extern s32 D_801E3578;
+    extern s32 D_800D39CC;
+
+    switch (*(u16 *)((s32)param_1 + 0x34)) {
+    case 0: {
+        s32 v1 = func_801789AC((s32)param_1);
+        switch (v1) {
+        case 1:
+            *(u16 *)((s32)param_1 + 0x34) = 2;
+            func_80185B88(5);
+            break;
+        case 2:
+            func_80178CBC((s32)param_1, (s32)&D_801E3560);
+            *(u16 *)((s32)param_1 + 0x34) = 0;
+            break;
+        case 3:
+            func_80178CBC((s32)param_1, (s32)&D_801E3578);
+            *(u16 *)((s32)param_1 + 0x34) = 3;
+            break;
+        }
+        break;
+    }
+    case 1:
+        break;
+    case 2: {
+        s32 v0 = func_80185B78();
+        if (v0 != 0) {
+            func_800D1724((void *)&D_800D39CC);
+            *(u16 *)((s32)param_1 + 0x34) = 1;
+        } else {
+            func_80178CBC((s32)param_1, (s32)&D_801E34FC);
+            *(u16 *)((s32)param_1 + 0x34) = 0;
+        }
+        break;
+    }
+    case 3:
+        if (func_801789AC((s32)param_1) != 0) {
+            func_80174438((s32)D_80126B10);
+            *(u16 *)((s32)param_1 + 0x34) = 1;
+        }
+        break;
+    }
+}
