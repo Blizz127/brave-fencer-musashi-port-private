@@ -51,7 +51,13 @@ fi
 
 cmake -S . -B "$test_root/build" "${cmake_args[@]}"
 cmake --build "$test_root/build"
-ctest --test-dir "$test_root/build" --output-on-failure
+# Without a display the live probes skip (77). When xvfb-run is available,
+# run them against a virtual X server instead so they are exercised.
+ctest_cmd=(ctest --test-dir "$test_root/build" --output-on-failure)
+if [[ -z "${DISPLAY:-}" && -z "${WAYLAND_DISPLAY:-}" ]] && command -v xvfb-run >/dev/null 2>&1; then
+    ctest_cmd=(xvfb-run -a -s "-screen 0 1280x960x24" "${ctest_cmd[@]}")
+fi
+"${ctest_cmd[@]}"
 
 # Decomp-owned objects must not reference a Psy-Q callback whose return value
 # truncates on 64-bit. PsyCross itself legitimately defines these, so only our
