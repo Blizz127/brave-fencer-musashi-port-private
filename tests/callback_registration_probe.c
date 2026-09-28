@@ -155,7 +155,7 @@ int main(int argc, char **argv) {
 #ifdef MUSASHI_WITH_PSYCROSS
     if (live) {
         PsyX_Initialise("musashi_callback_registration_live", 320, 240, 0);
-        if (SDL_GL_GetCurrentWindow() == NULL) {
+        if (SDL_GL_GetCurrentWindow() == NULL || SDL_GL_GetCurrentContext() == NULL) {
             fputs("callback registration: PsyCross initialisation failed, skipping\n", stderr);
             return 77;
         }

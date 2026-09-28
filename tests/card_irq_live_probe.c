@@ -144,7 +144,7 @@ int main(void) {
     unsigned deliveries_after_first;
 
     PsyX_Initialise("musashi_card_irq_live", 320, 240, 0);
-    if (SDL_GL_GetCurrentWindow() == NULL) {
+    if (SDL_GL_GetCurrentWindow() == NULL || SDL_GL_GetCurrentContext() == NULL) {
         fputs("card_irq_live: PsyCross initialisation failed, skipping\n", stderr);
         return 77;
     }

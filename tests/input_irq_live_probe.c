@@ -309,7 +309,7 @@ int main(int argc, char **argv) {
     SetVideoMode(MODE_NTSC);
     PsyX_Initialise("musashi_input_irq_live", 320, 240, 0);
     assert(GetVideoMode() == MODE_NTSC);
-    if (!SDL_GL_GetCurrentWindow() || !g_intrMutex) {
+    if (!SDL_GL_GetCurrentWindow() || !SDL_GL_GetCurrentContext() || !g_intrMutex) {
         fputs("input_irq_live: PsyCross unavailable\n", stderr);
         musashi_psyx_shutdown();
         return 77;

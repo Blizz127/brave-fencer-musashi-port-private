@@ -39,7 +39,7 @@ int main(void) {
 
     SetVideoMode(MODE_NTSC);
     PsyX_Initialise("musashi_irq_scheduler_live", 320, 240, 0);
-    if (SDL_GL_GetCurrentWindow() == NULL) {
+    if (SDL_GL_GetCurrentWindow() == NULL || SDL_GL_GetCurrentContext() == NULL) {
         fputs("irq_scheduler_live: PsyCross initialisation failed, skipping\n", stderr);
         return 77;
     }
