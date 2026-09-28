@@ -1,0 +1,322 @@
+#!/usr/bin/env python3
+"""How much of the guest code a port run executes is byte-matched C.
+
+Reads a headless run's executed-path trace and classifies every executed
+guest function by what the default native-lane build runs for it:
+
+  matched_c      the native lane runs byte-matched decomp C (a registry
+                 entry with recovery "c", admitted by tools/native_lane_gen.py)
+  port_shim      hand-written port code runs instead of the retail
+                 instructions: an active PsyQ compat entry (HLE or PsyCross
+                 wrapper), a BIOS call (host HLE), or a guest function the
+                 host skips (called, but its first instruction never steps)
+  interpreted    the interpreter runs the retail instructions from the
+                 user's disc, split by whether matched C exists for it
+
+Inputs (all produced locally; nothing here is retail data):
+  --trace-counts  <run>/trace.counts (MUSASHI_TRACE_FUNCS)
+  --trace-insns   <run>/trace.insns  (optional, MUSASHI_TRACE_INSNS: steps per
+                  PC; tools/patches/trace-insns.patch). Without it the
+                  instruction share is an estimate: calls x registry size/4.
+  --lane-report   <build>/generated/native_lane/report.json
+  provenance/matches.json and pc_port/platform/psyq/bfm_psyq_compat.def
+
+Run the trace with MUSASHI_NATIVE_LANE=0 in a lane-ON build, which gives
+complete counts: every call and every instruction goes through the
+interpreter, which records them. The classes then say what the lane-ON
+default would run for each one. A lane-ON trace misses native-to-native
+calls (direct C calls are not traced), so --lane-run on only marks the
+result partial.
+
+Output: JSON (--json PATH, or stdout) and a one-line summary on stderr.
+"""
+import argparse
+import bisect
+import collections
+import json
+import re
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+DEVICE = {"VSync", "DrawSync", "DrawOTag", "LoadImage", "StoreImage", "MoveImage",
+          "PutDrawEnv", "PutDispEnv", "SetDispMask", "CdSearchFile", "putchar"}
+BIOS = {0xA0, 0xB0, 0xC0}
+
+
+def load_counts(path):
+    rows = []
+    for line in Path(path).read_text().splitlines():
+        if not line or line.startswith("#"):
+            continue
+        f = line.split()
+        rows.append({"pc": int(f[0], 16), "calls": int(f[1]), "kind": f[2],
+                     "caller": int(f[3], 16), "lane": f[4] if len(f) > 4 else None})
+    return rows
+
+
+def load_insns(path):
+    steps = {}
+    for line in Path(path).read_text().splitlines():
+        if line and not line.startswith("#"):
+            pc, n = line.split()
+            steps[int(pc, 16)] = int(n)
+    return steps
+
+
+def load_psyq(path):
+    out = {}
+    pat = re.compile(r"^BFM_PSYQ\((0x[0-9A-Fa-f]+),\s*(\w+),\s*BFM_PSYQ_(\w+),", re.M)
+    for m in pat.finditer(Path(path).read_text()):
+        out[int(m.group(1), 16)] = {"name": m.group(2), "status": m.group(3)}
+    return out
+
+
+def load_formatter_ranges(path):
+    """Code ranges the interpreter admits (address pairs in the formatter's
+    range table), used as function extents where the registry has none."""
+    pat = re.compile(r"^\s*\{ 0x(8[0-9a-fA-F]{7})u, 0x(8[0-9a-fA-F]{7})u, k\w+Words \}", re.M)
+    return sorted((int(m.group(1), 16), int(m.group(2), 16))
+                  for m in pat.finditer(Path(path).read_text(errors="replace")))
+
+
+class Registry:
+    """Function lookup by guest PC. Main is unambiguous. Overlays share
+    addresses, so each overlay PC resolves to the region with the most
+    traced call targets matching its function starts (reported)."""
+
+    def __init__(self, matches, traced_targets, ranges=()):
+        main = [m for m in matches if m["region"] == "main"]
+        spans = sorted((m["vram"], m["vram"] + max(m.get("size") or 4, 4)) for m in main)
+        for lo, hi in ranges:  # fill registry gaps only
+            i = bisect.bisect_left(spans, (lo, 0))
+            if (i < len(spans) and spans[i][0] < hi) or (i and spans[i - 1][1] > lo):
+                continue
+            spans.insert(i, (lo, hi))
+            main.append({"name": None, "vram": lo, "size": hi - lo, "region": "main",
+                         "recovery": None, "unregistered": True})
+        self.main = sorted(main, key=lambda m: m["vram"])
+        self.main_starts = [m["vram"] for m in self.main]
+        by_region = collections.defaultdict(list)
+        for m in matches:
+            if m["region"] != "main":
+                by_region[m["region"]].append(m)
+        self.hits = {}
+        for region, ms in by_region.items():
+            n = sum(1 for m in ms if m["vram"] in traced_targets)
+            if n:
+                self.hits[region] = n
+        # Best-hit regions claim their address ranges first; a lower-hit
+        # region's function overlapping a claimed range is dropped, which
+        # leaves a non-overlapping map for bisect.
+        kept = []
+        claimed = []  # sorted (start, end)
+        for region in sorted(self.hits, key=lambda r: -self.hits[r]):
+            for m in by_region[region]:
+                lo, hi = m["vram"], m["vram"] + max(m.get("size") or 4, 4)
+                i = bisect.bisect_left(claimed, (lo, 0))
+                if (i < len(claimed) and claimed[i][0] < hi) or (i and claimed[i - 1][1] > lo):
+                    continue
+                claimed.insert(i, (lo, hi))
+                kept.append(m)
+        self.overlay = sorted(kept, key=lambda m: m["vram"])
+        self.overlay_starts = [m["vram"] for m in self.overlay]
+
+    def find(self, pc):
+        for starts, ms in ((self.main_starts, self.main), (self.overlay_starts, self.overlay)):
+            i = bisect.bisect_right(starts, pc) - 1
+            if i >= 0 and pc < ms[i]["vram"] + max(ms[i].get("size") or 4, 4):
+                return ms[i]
+        return None
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap.add_argument("--trace-counts", required=True)
+    ap.add_argument("--trace-insns")
+    ap.add_argument("--lane-report", required=True)
+    ap.add_argument("--lane-run", choices=("off", "on"), default="off",
+                    help="whether MUSASHI_NATIVE_LANE was on during the traced run")
+    ap.add_argument("--registry", default=str(ROOT / "provenance/matches.json"))
+    ap.add_argument("--psyq-def", default=str(ROOT / "pc_port/platform/psyq/bfm_psyq_compat.def"))
+    ap.add_argument("--psyq-lane", choices=("pure", "all", "off"), default="pure",
+                    help="MUSASHI_PSYQ_LANE of the configuration being classified")
+    ap.add_argument("--formatter", default=str(ROOT / "pc_port/mips_formatter.c"),
+                    help="source of the interpreter's code ranges (extents for registry gaps)")
+    ap.add_argument("--idle", default="800424e4",
+                    help="comma-separated function PCs that are idle waits (VSync polling); "
+                         "shares are also given without them")
+    ap.add_argument("--label", default="headless boot to the title")
+    ap.add_argument("--json")
+    a = ap.parse_args(argv)
+
+    counts = load_counts(a.trace_counts)
+    steps = load_insns(a.trace_insns) if a.trace_insns else None
+    report = json.loads(Path(a.lane_report).read_text())
+    matches = json.loads(Path(a.registry).read_text())["matches"]
+    psyq = load_psyq(a.psyq_def)
+    hooked_psyq = {int(x, 16) for x in report.get("psyq_hooked", [])}
+    lane_fn = {f["vram"]: f for f in report["functions"]}
+    admitted = {pc for pc, f in lane_fn.items() if f.get("admitted")}
+
+    def psyq_active(pc):
+        p = psyq.get(pc)
+        if not p or p["status"] == "STUB" or pc in hooked_psyq or a.psyq_lane == "off":
+            return False
+        return a.psyq_lane == "all" or p["name"] not in DEVICE
+
+    traced = {r["pc"]: r for r in counts}
+    fr = Path(a.formatter)
+    reg = Registry(matches, set(traced), load_formatter_ranges(fr) if fr.exists() else ())
+
+    # Functions: every traced entry, plus any registry function that stepped
+    # without a traced entry (reached by a jump or fall-through).
+    funcs = {}
+    for r in counts:
+        m = reg.find(r["pc"]) if r["pc"] >> 28 == 8 else None
+        funcs[r["pc"]] = {"pc": r["pc"], "calls": r["calls"], "steps": 0, "reg": m,
+                          "lane_column": r["lane"]}
+    unattributed_steps = 0
+    if steps is not None:
+        for pc, n in steps.items():
+            m = reg.find(pc)
+            key = m["vram"] if m else None
+            if key is None:
+                unattributed_steps += n
+                continue
+            f = funcs.get(key)
+            if f is None:
+                f = funcs[key] = {"pc": key, "calls": 0, "steps": 0, "reg": m, "lane_column": None}
+            f["steps"] += n
+
+    for f in funcs.values():
+        pc, m = f["pc"], f["reg"]
+        exact = m is not None and m["vram"] == pc
+        rec = m["recovery"] if exact else None
+        if pc in BIOS:
+            cls, why = "port_shim", "bios_hle"
+        elif pc in admitted:
+            cls, why = "matched_c", "native lane"
+        elif psyq_active(pc):
+            cls, why = "port_shim", "psyq_" + psyq[pc]["status"].lower()
+        elif steps is not None and f["calls"] and not steps.get(pc) and f["steps"] == 0 \
+                and (pc >> 28) == 8:
+            cls, why = "port_shim", "host_skipped"
+        else:
+            cls = "interpreted"
+            if rec == "c":
+                if m["region"] != "main":
+                    why = "matched_c_unused: overlay (no lane for overlays yet)"
+                elif pc in lane_fn:
+                    why = "matched_c_unused: lane rule " + lane_fn[pc]["rule"]
+                elif pc in psyq:
+                    why = "matched_c_unused: psyq entry " + psyq[pc]["status"].lower()
+                else:
+                    why = "matched_c_unused: not a lane candidate"
+            elif rec in ("assembly", "mixed"):
+                why = "retail_asm: registry " + rec
+            elif m is not None and m.get("unregistered"):
+                why = "unregistered: no registry entry"
+            elif m is not None:
+                why = "retail_asm: inside " + str(m["name"])
+            else:
+                why = "unregistered"
+        f["class"], f["why"] = cls, why
+        size = (m.get("size") or 4) if exact else 4
+        f["est_steps"] = f["calls"] * size // 4
+
+    key = "steps" if steps is not None else "est_steps"
+    tot_f = len(funcs)
+    tot_c = sum(f["calls"] for f in funcs.values())
+    tot_s = sum(f[key] for f in funcs.values()) + (unattributed_steps if steps is not None else 0)
+    classes = {}
+    for cls in ("matched_c", "port_shim", "interpreted"):
+        fs = [f for f in funcs.values() if f["class"] == cls]
+        sub = collections.Counter()
+        subc = collections.Counter()
+        subs = collections.Counter()
+        for f in fs:
+            w = f["why"].split(":")[0]
+            sub[w] += 1
+            subc[w] += f["calls"]
+            subs[w] += f[key]
+        s = sum(f[key] for f in fs)
+        classes[cls] = {
+            "functions": len(fs), "functions_share": round(len(fs) / tot_f, 4) if tot_f else 0,
+            "calls": sum(f["calls"] for f in fs),
+            "instructions": s, "instructions_share": round(s / tot_s, 4) if tot_s else 0,
+            "by_reason": {w: {"functions": sub[w], "calls": subc[w], "instructions": subs[w]}
+                          for w in sorted(sub)},
+        }
+
+    idle = {int(x, 16) for x in a.idle.split(",") if x}
+    idle_s = sum(f[key] for f in funcs.values() if f["pc"] in idle)
+    busy = tot_s - idle_s
+    for cls, c in classes.items():
+        s = c["instructions"] - sum(f[key] for f in funcs.values()
+                                    if f["class"] == cls and f["pc"] in idle)
+        c["instructions_share_excluding_idle"] = round(s / busy, 4) if busy else 0
+
+    def row(f):
+        m = f["reg"]
+        return {"pc": "%08x" % f["pc"], "name": m["name"] if m and m["vram"] == f["pc"] else None,
+                "calls": f["calls"], "instructions": f[key], "why": f["why"],
+                "source": m.get("source") if m and m["vram"] == f["pc"] else None}
+
+    shadows = [dict(row(f), shim=psyq.get(f["pc"], {}).get("name"))
+               for f in funcs.values() if f["class"] == "port_shim" and f["reg"] is not None
+               and f["reg"]["vram"] == f["pc"] and f["reg"]["recovery"] == "c"]
+    shadows.sort(key=lambda r: -r["instructions"])
+    # Registered matched C shadowed by an active shim, executed or not.
+    static_shadows = sorted("%08x %s" % (pc, p["name"]) for pc, p in psyq.items()
+                            if psyq_active(pc) and any(m["region"] == "main" and m["vram"] == pc
+                                                       and m["recovery"] == "c" for m in reg.main))
+    unused = sorted((row(f) for f in funcs.values() if f["why"].startswith("matched_c_unused")),
+                    key=lambda r: -r["instructions"])
+    shims = sorted((row(f) for f in funcs.values() if f["class"] == "port_shim"),
+                   key=lambda r: -r["calls"])
+    lane_disagree = [("%08x" % f["pc"]) for f in funcs.values()
+                     if f["lane_column"] == "native" and f["class"] != "matched_c"
+                     and not f["why"].startswith("psyq")]
+
+    result = {
+        "label": a.label,
+        "instructions_basis": "exact interpreted steps per PC (MUSASHI_TRACE_INSNS)" if steps is not None
+                              else "ESTIMATE: calls x registry size / 4 (no loops, no early returns)",
+        "trace_complete": a.lane_run == "off",
+        "classified_as": "lane-ON default build, MUSASHI_PSYQ_LANE=%s" % a.psyq_lane,
+        "idle_functions": sorted("%08x" % x for x in idle),
+        "totals": {"functions": tot_f, "calls": tot_c, "instructions": tot_s,
+                   "idle_instructions": idle_s,
+                   "unattributed_instructions": unattributed_steps},
+        "classes": classes,
+        "overlay_regions_inferred": dict(sorted(reg.hits.items(), key=lambda kv: -kv[1])[:12]),
+        "shadowed_executed": shadows,
+        "shadowed_static": static_shadows,
+        "port_shims_executed": shims,
+        "matched_c_unused_top": unused[:60],
+        "lane_column_disagreements": lane_disagree,
+    }
+    text = json.dumps(result, indent=1)
+    if a.json:
+        Path(a.json).write_text(text + "\n")
+    else:
+        print(text)
+    c = classes
+    def pct(cls):
+        return "%.1f%% (%.1f%% excl. idle)" % (100 * c[cls]["instructions_share"],
+                                               100 * c[cls]["instructions_share_excluding_idle"])
+    print("port_matched_ratio: %s: of instructions, matched C %s [%d/%d functions], "
+          "port shims %s [%d], interpreted retail %s [%d, %d with unused matched C]; "
+          "%d shims shadow matched C (%d executed)%s" % (
+              a.label, pct("matched_c"), c["matched_c"]["functions"], tot_f,
+              pct("port_shim"), c["port_shim"]["functions"],
+              pct("interpreted"), c["interpreted"]["functions"],
+              c["interpreted"]["by_reason"].get("matched_c_unused", {}).get("functions", 0),
+              len(static_shadows), len(shadows),
+              "" if steps is not None else " [instruction share ESTIMATED]"), file=sys.stderr)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
