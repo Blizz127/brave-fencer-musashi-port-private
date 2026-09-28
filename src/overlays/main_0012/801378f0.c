@@ -2,50 +2,38 @@
  * SHA256(span)=b701331abb8cc5df830599b68c5fb643e19a49ef37deefd51c7a811f4a8a2e6b.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-#include "m2c_macros.h"
-
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-void func_80016714(void *, s32);          /* extern */
-extern s32 D_8017E936[];
-extern s32 D_8017E93A[];
-void func_8013A860();                            /* static */
-extern s32 *D_801269F0;
-extern s32 *D_80126A28;
-extern s32 *D_80126A2A;
-extern s32 *D_80126A2C;
-extern s32 *D_80126A2E;
-extern s32 *D_80127520;
-extern s32 *D_8017E934;
-extern s32 *D_8017E938;
+/* func_801378F0 - byte-exact against retail at -O2 (tools/register_match.py). */
+extern void func_80016714(void *a0, s32 a1);
+extern void func_8013A860(void);
 
 void func_801378F0(void) {
-    void *var_s2;
-    s32 var_s0;
-    s32 var_s1;
-    s32 var_s3;
-    u16 temp_v0;
 
-    func_80016714(&D_80127520, 0xBFC);
-    var_s3 = 0;
-    var_s1 = 0;
-    var_s2 = &D_801269F0;
-    var_s0 = 0;
+    extern u8 D_80127520[];
+    extern u8 aD801269F0[] __asm__("D_801269F0");  
+    extern u8 D_80126A28[];
+    extern u8 D_8017E934[];
+    s32 i;
+    s32 si;
+    s32 di;
+    u8 *p;
+
+    func_80016714(D_80127520, 0xBFC);
+    i = 0;
+    si = 0;
+    p = aD801269F0;
+    di = 0;
     do {
-        func_80016714(var_s2, 0x4C);
-        *(&D_80126A28 + var_s0) = *(&D_8017E934 + var_s1);
-        var_s2 += 0x4C;
-        *(&D_80126A2A + var_s0) = *(D_8017E936 + var_s1);
-        var_s3 += 1;
-        *(&D_80126A2C + var_s0) = *(&D_8017E938 + var_s1);
-        temp_v0 = *(D_8017E93A + var_s1);
-        var_s1 += 8;
-        *(&D_80126A2E + var_s0) = temp_v0;
-        var_s0 += 0x4C;
-    } while (var_s3 < 3);
+        func_80016714(p, 0x4C);
+        *(u16 *)&D_80126A28[di]     = *(u16 *)&D_8017E934[si];
+        *(u16 *)&D_80126A28[di + 2] = *(u16 *)&D_8017E934[si + 2];
+        *(u16 *)&D_80126A28[di + 4] = *(u16 *)&D_8017E934[si + 4];
+        *(u16 *)&D_80126A28[di + 6] = *(u16 *)&D_8017E934[si + 6];
+        p += 0x4C;
+        i += 1;
+        si += 8;
+        di += 0x4C;
+    } while (i < 3);
     func_8013A860();
 }

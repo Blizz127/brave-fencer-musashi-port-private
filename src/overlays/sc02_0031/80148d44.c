@@ -2,11 +2,21 @@
  * Ahead leaf.
  * Words from pinned SC02.CD member31 PAC0 decode (live-guest identity).
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80148D44 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-extern s32 ratan2(s32 a0, s32 a1);
+extern s32 func_8004CFEC(s32 a0, s32 a1);
 
 s32 func_80148D44(void) {
+
     extern s32 D_801151D4;
     extern u8 D_80126C01;
     extern u16 D_80126C02;
@@ -19,7 +29,7 @@ s32 func_80148D44(void) {
     s32 d;
 
     p = D_801151D4;
-    a = (ratan2(*(s32 *)(p + 0x44) - *(s32 *)(p + 0x50),
+    a = (func_8004CFEC(*(s32 *)(p + 0x44) - *(s32 *)(p + 0x50),
                   *(s32 *)(p + 0x48) - *(s32 *)(p + 0x3c)) - 0x400) & 0xFFF;
     d = (s32)D_80126C01;
     __asm__ __volatile__("" : : "r"(a));
@@ -46,7 +56,7 @@ final:
             return -1;
         }
         __asm__ __volatile__("" : : : "memory");
-        res = (ang + ratan2((D_80126C06 & 0xff) - 0x80, 0x80 - (D_80126C06 >> 8))) & 0xFFF;
+        res = (ang + func_8004CFEC((D_80126C06 & 0xff) - 0x80, 0x80 - (D_80126C06 >> 8))) & 0xFFF;
     }
     return res;
 }

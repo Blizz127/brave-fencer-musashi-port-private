@@ -2,67 +2,66 @@
  * SHA256(span)=aa4b990f2613b720adab343799213226cc04518ca1330f5e1e6062f9c97b3730.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-#include "m2c_macros.h"
-
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-s32 func_80029178();                         /* extern */
-extern s32 *D_801202A0;
+/* func_8014A738 - byte-exact against retail at -O2 (tools/register_match.py). */
+typedef struct {
+        u8 pad0[6];
+        u16 x;
+        u8 pad8[6];
+        u16 z;
+        u8 pad10[0xB1];
+        u8 state;
+        u8 padC2[0x4A];
+    } Ent_801202A0;
+typedef struct {
+        s16 vx;
+        s16 vy;
+        s16 vz;
+        s16 pad;
+    } Vec_8014A738;
+extern s32 func_80029178(s32);
+extern u8 D_801202A0[];
+extern s32 func_80029178(s32 arg);
+extern s32 func_80029178(s32 a0);
 
 s32 func_8014A738(void *arg0) {
-    s16 sp14;
-    void *var_a1;
-    s16 temp_a0;
-    s32 var_v0;
-    u32 var_a2;
-
-    var_v0 = 0;
-    if (func_80029178(0x83) & 0xFF) {
-        var_a2 = 0;
-        var_a1 = &D_801202A0;
-loop_2:
-        if (M2C_FIELD(var_a1, u8 *, 0xC1) == 7) {
-            temp_a0 = M2C_FIELD(arg0, u16 *, 6) - M2C_FIELD(var_a1, u16 *, 6);
-            sp14 = M2C_FIELD(arg0, u16 *, 0xE) - M2C_FIELD(var_a1, u16 *, 0xE);
-            if (temp_a0 >= 0) {
-                if (temp_a0 >= 0x40) {
-                    var_a2 += 1;
-                    goto block_12;
-                }
-                goto block_7;
-            }
-            if (-temp_a0 < 0x40) {
-block_7:
-                if (sp14 >= 0) {
-                    var_v0 = 1;
-                    if (sp14 >= 0x40) {
-                        var_a2 += 1;
-                        goto block_12;
-                    }
-                } else {
-                    var_v0 = 1;
-                    if (-sp14 >= 0x40) {
-                        goto block_11;
-                    }
+    extern u8 D_801202A0[];
+    Vec_8014A738 d;
+    u32 i;
+    Ent_801202A0 *base;
+    if ((func_80029178(0x83) & 0xFF) == 0) {
+        return 0;
+    }
+    base = (Ent_801202A0 *)D_801202A0;
+    for (i = 0; i < 0x60; i++) {
+        if (base[i].state == 7) {
+            d.vx = ((Ent_801202A0 *)arg0)->x - base[i].x;
+            d.vz = ((Ent_801202A0 *)arg0)->z - base[i].z;
+            if (d.vx >= 0) {
+                if (d.vx < 0x40) {
+                    goto zcheck;
                 }
             } else {
-                goto block_11;
+                if (-d.vx < 0x40) {
+                    goto zcheck;
+                }
             }
-        } else {
-block_11:
-            var_a2 += 1;
-block_12:
-            var_a1 += 0x10C;
-            if (var_a2 >= 0x60U) {
-                var_v0 = 0;
+            continue;
+        zcheck:
+            if (d.vz >= 0) {
+                if (d.vz < 0x40) {
+                    goto found;
+                }
             } else {
-                goto loop_2;
+                if (-d.vz < 0x40) {
+                    goto found;
+                }
             }
+            continue;
+        found:
+            return 1;
         }
     }
-    return var_v0;
+    return 0;
 }

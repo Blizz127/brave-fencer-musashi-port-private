@@ -4,10 +4,9 @@
 `pc_port/mips_formatter.c` includes `sc01_pac<N>_words.inc` to build the
 resident SC01 overlay images the formatter compares live guest RAM against:
 member 0 is the New Game opening, member 1 the Allucaneet castle interior the
-opening fades into. The include has no checked-in source: unlike the
-`extract_asm_words.py` seams, the words are not transcribed into a decomp C
-file, they are the retail payload itself, so the only honest input is the
-pinned disc archive.
+opening fades into. The include has no checked-in source: retail words are
+never transcribed into decomp C files (tests/test_no_retail_words.py), so the
+only honest input is the pinned disc archive.
 
 SC01.CD is pinned by SHA-256 (`decode_title_pac.SC01_SHA256`); each member
 must be a single code PAC (kind 4) with a zero-padded header sector, and its

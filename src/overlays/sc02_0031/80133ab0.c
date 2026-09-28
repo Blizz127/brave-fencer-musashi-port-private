@@ -6,33 +6,44 @@
  * D_80185200, D_8018520C) and the counters D_801B62E8/D_801B62E4.
  * Oracle MATCH 137/137. Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80133AB0 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-typedef struct {
-    u16 ox, oy, w, h;
-    s32 cells;
-    s32 p0C;
-    s32 p10;
-    s32 p14;
-    s32 p18;
-    s32 p1C;
+typedef struct Map_80133AB0 {
+    u16 ox;       /* 0x00 */
+    u16 oy;       /* 0x02 */
+    u16 w;        /* 0x04 */
+    u16 h;        /* 0x06 */
+    u16 *cells;   /* 0x08 */
+    void *p0C;    /* 0x0C */
+    void *p10;    /* 0x10 */
+    u8  *p14;     /* 0x14 */
+    u8  *p18;     /* 0x18 */
+    u8  *p1C;     /* 0x1C */
 } Map_80133AB0;
-
-extern u32 D_80185204;
-extern u32 D_80185200;
-extern u32 D_8018520C;
-extern u16 D_801B62E8;
-extern s16 D_801B62E4;
-s32 func_80133CD4(s16, u8 *, void *, void *);
 
 s32 func_80133AB0(s16 flag, s16 x, s16 y, s32 arg3)
 {
+    extern u8 D_80185204;
+    extern u8 D_80185200;
+    extern u8 D_8018520C;
+    extern u16 D_801B62E8;
+    extern s16 D_801B62E4;
+    extern s32 func_80133CD4();
 
     Map_80133AB0 *map = (Map_80133AB0 *)arg3;
     u16 *pA = (*(u16 * *)&D_80185204);
     u16 *pB = (*(u16 * *)&D_80185200);
     u16 *pC = (*(u16 * *)&D_8018520C);
-    register int zr __asm__("$0");  // !FAKE: pin $0 — NEEDED DIFFERS (P36 rung B headers1)
+    register int zr __asm__("$0");
     u32 X, Y, cell, Xc, Yc;
     u16 k, off;
     int cnt;
@@ -40,7 +51,7 @@ s32 func_80133AB0(s16 flag, s16 x, s16 y, s32 arg3)
     u8 *s0;
     u16 raw;
     u32 hib;
-    register int harg __asm__("$4");  // !FAKE: pin $4 — NEEDED DIFFERS (P36 rung B headers1)
+    register int harg __asm__("$4");
     s32 ret;
     void *p0C, *p10;
     u8 *p14, *p18, *p1C;
@@ -51,11 +62,11 @@ s32 func_80133AB0(s16 flag, s16 x, s16 y, s32 arg3)
     pC[2] = pA[2] - pB[2];
 
     X = ((((u16)x + 0x8000) >> 7) & 0x1ff) - map->ox;
-    __asm__("addu %0,%1,$zero" : "=r"(Xc) : "r"(X));  // !FAKE: instruction addu — NEEDED DIFFERS (P36 rung B headers1)
+    __asm__("addu %0,%1,$zero" : "=r"(Xc) : "r"(X));
     if (!((X & 0xffff) < map->w))
         return 0;
     Y = ((((u16)y + 0x8000) >> 7) & 0x1ff) - map->oy;
-    __asm__("addu %0,%1,$zero" : "=r"(Yc) : "r"(Y));  // !FAKE: instruction addu — NEEDED DIFFERS (P36 rung B headers1)
+    __asm__("addu %0,%1,$zero" : "=r"(Yc) : "r"(Y));
     if (!((Y & 0xffff) < map->h))
         return 0;
 

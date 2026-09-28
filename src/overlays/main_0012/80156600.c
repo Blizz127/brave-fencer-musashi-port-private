@@ -2,38 +2,25 @@
  * SHA256(span)=ab9145429a2387cd66af6d2d74ddc7b5befce9f1cdf07e2f7e138d4fc9644639.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
+/* func_80156600 - byte-exact against retail at -O2 (tools/register_match.py). */
+struct S8;
+struct S8 { u32 a; u32 b; } __attribute__((packed, aligned(1)));
+typedef struct { s16 a; s16 b; s16 c; s16 d; } S8;
+extern s32 D_801151E0[];
+extern S8 D_80126AF0[];
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-extern s32 *D_801151E0;
-extern s32 *D_80126AF0;
-
-void *func_80156600(void) {
-    void *var_a1;
-    void *var_v0;
-    s32 *var_v1;
-    u32 var_a0;
-
-    var_a0 = 0;
-    var_a1 = &D_80126AF0;
-    var_v1 = &D_801151E0;
-loop_1:
-    var_v0 = var_a1;
-    if (!(*var_v1 & 1)) {
-        var_a1 += 8;
-        var_a0 += 1;
-        var_v1 += 4;
-        if (var_a0 >= 3U) {
-            var_v0 = 0;
-        } else {
-            goto loop_1;
+s32 func_80156600(void* _arg0)
+{
+    u32 i = 0;
+    s8 *ptr = &((s8 *)D_80126AF0)[0];
+    do {
+        if (D_801151E0[i] & 1) {
+            return ptr;
         }
-    }
-    return var_v0;
+        ptr += 8;
+        i++;
+    } while (i < 3);
+    return (s8 *)0;
 }

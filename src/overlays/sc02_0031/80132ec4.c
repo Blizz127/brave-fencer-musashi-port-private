@@ -5,27 +5,22 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80132EC4 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL of func_80132EC4 (main_0012.s), decoded manually from
- * raw asm (fully visible; NOT verified against retail; C89-gated
- * only, promotion requires an oracle MATCH): frameless 2-arg void.
- * If arg0[0] == 0, returns at once; else do { arg0+4 = (u16)arg1;
- * arg0 += 8; } while (arg0[0] != 0). The sh truncates arg1 to its
- * low halfword; stride-8 nodes modelled as {s32, u16, pad}. */
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
 
-struct node_80132EC4 {
-    s32 unk0;
-    u16 unk4;
-    u8 pad[0x2];
-};
-
-void func_80132EC4(struct node_80132EC4 *arg0, s32 arg1) {
-    if (arg0->unk0 == 0) {
-        return;
+void func_80132EC4(void *a0, s16 a1) {
+    while (*(s32 *)a0 != 0) {
+        *(s16 *)((s32)a0 + 4) = a1;
+        a0 = (void *)((s32)a0 + 8);
     }
-    do {
-        arg0->unk4 = arg1;
-        arg0++;
-    } while (arg0->unk0 != 0);
 }

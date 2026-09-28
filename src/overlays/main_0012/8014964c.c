@@ -2,31 +2,42 @@
  * SHA256(span)=b65d062f6b02cf0e37095c862979b73fe375e750ae10b25db29fb84167937a47.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
+/* func_8014964C - byte-exact against retail at -O2 (tools/register_match.py). */
+typedef struct {
+      s16 f0;
+      s16 f2;
+      s16 f4;
+      s16 pad6;
+} Vec3;
+extern void func_8012F14C(s32 a0, s32 a1, s32 a2);
+extern void func_8012EFB8(s32 a0);
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-void func_8012EFB8(void *, u16 *);                        /* static */
-void func_8012F14C(s32, u16 *, void *);                   /* static */
-
-void func_8014964C(void *arg0, void *arg1) {
-    s32 sp20;
-    u16 sp18;
-    u16 sp14;
-    u16 sp12;
-    u16 sp10;
-
-    sp10 = arg1->unk2;
-    sp12 = arg1->unk6;
-    sp14 = arg1->unkA;
-    func_8012F14C(arg0->unk20 + 0x34, &sp10, &sp20);
-    func_8012EFB8(&sp20, &sp18);
-    arg1->unk2 = sp18;
-    arg1->unk6 = sp1A;
-    arg1->unkA = sp1C;
+void func_8014964C(s32 param_1, s32 param_2) {
+    Vec3 in;
+    Vec3 out;
+    s32 mid[2];
+    register s32 p2 __asm__("$16");
+    Vec3 *pin;
+    s32 *m1;
+    s32 *m2;
+    s32 mtx;
+    p2 = param_2;
+    in.f0 = *(s16 *)(p2 + 2);
+    in.f2 = *(s16 *)(p2 + 6);
+    in.f4 = *(s16 *)(p2 + 0xA);
+    pin = &in;
+    __asm__ __volatile__("" : "=r"(pin) : "0"(pin));
+    mtx = *(s32 *)(param_1 + 0x20);
+    __asm__ __volatile__("" : "=r"(mtx) : "0"(mtx));
+    m1 = mid;
+    __asm__ __volatile__("" : "=r"(m1) : "0"(m1));
+    ((void (*)(s32, Vec3 *, s32 *))func_8012F14C)(mtx + 0x34, pin, m1);
+    m2 = mid;
+    __asm__ __volatile__("" : "=r"(m2) : "0"(m2));
+    ((void (*)(s32 *, Vec3 *))func_8012EFB8)(m2, &out);
+    *(s16 *)(p2 + 2) = out.f0;
+    *(s16 *)(p2 + 6) = out.f2;
+    *(s16 *)(p2 + 0xA) = out.f4;
 }

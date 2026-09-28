@@ -40,6 +40,8 @@ typedef struct MusashiNativeLaneEntry {
     uint32_t cost_cycles; /* charged once to the execution clock per call */
     MusashiNativeLaneFn fn;
     const char *name;
+    uint8_t argc;    /* o32 argument words the host function consumes */
+    uint8_t returns; /* 1 when it produces v0, 0 for void */
 } MusashiNativeLaneEntry;
 
 /* Argument n (0-based) under the o32 register ABI. */
@@ -55,6 +57,11 @@ int musashi_native_lane_install(const MusashiNativeLaneEntry *entries,
  * MUSASHI_NATIVE_LANE_GUEST_BASE for this memory. */
 int musashi_native_lane_usable(const MusashiBootMemory *memory);
 
+/* Nesting suspension: while suspended, every PC runs on the interpreter.
+ * Host routers whose checks count interpreted calls (the IRQ dispatcher)
+ * suspend the lane for their duration. */
+void musashi_native_lane_suspend(int suspend);
+
 /* Interpreter thunk for natively compiled code: call guest function target
  * with argc words (a0-a3, then guest stack), on the invoking CPU and its
  * run loop, and return v0 (v1 through *v1 when non-NULL). A refusal inside
@@ -63,15 +70,34 @@ int musashi_native_lane_usable(const MusashiBootMemory *memory);
 uint32_t musashi_native_guest_call(uint32_t target, unsigned argc,
                                    const uint32_t *args, uint32_t *v1);
 
-/* Map a zeroed region of size bytes at exactly host address
- * MUSASHI_NATIVE_LANE_GUEST_BASE (64-bit Linux: MAP_FIXED_NOREPLACE).
- * Returns NULL when the address is unavailable or the host is unsupported. */
-void *musashi_native_lane_map_guest_window(size_t size);
+/* Reference execution for differential checks: run guest function target
+ * with argc argument words on a fresh device-less CPU (gp=0x80074750,
+ * ra=sentinel, stack args at sp+0x10) until it returns. use_lane=0 forces
+ * the interpreter for every PC. Returns 1 on a normal return. */
+int musashi_native_lane_reference_call(MusashiBootMemory *memory, uint32_t target,
+                                       const uint32_t *args, unsigned argc,
+                                       uint32_t sp, int use_lane,
+                                       uint32_t *v0, uint32_t *v1);
 
 /* Executed-path tracer (MUSASHI_TRACE_FUNCS=path). Called by the formatter
  * for jal/jalr targets and CPU dispatch entries; exposed for host routers
  * that enter guest code without a jal. kind: 'j' jal, 'r' jalr, 'd' entry. */
 void musashi_trace_function_entry(uint32_t target, uint32_t caller, char kind);
+/* Write <path>.counts now (it is also written at exit). */
+void musashi_trace_function_flush(void);
+
+/* Guest function-entry hook for the platform layer (bfm_plat hook sites,
+ * mods): called once when execution reaches a jal/jalr target, after the
+ * delay slot (a0-a3 final) and before the native lane. regs is the live
+ * guest register file, valid only during the call. NULL disables it. */
+typedef void (*MusashiEntryHook)(void *userdata, uint32_t pc, const uint32_t *regs);
+void musashi_formatter_set_entry_hook(MusashiEntryHook hook, void *userdata);
+
+/* Overlay selection notice for the platform layer: name is the selected
+ * member ("SC02_031", "SC01_000", "SC01_001", "MAIN_0004", "MAIN_0007",
+ * "MAIN_0010") or NULL when none is selected. Called on changes only. */
+typedef void (*MusashiOverlayHook)(void *userdata, const char *name);
+void musashi_formatter_set_overlay_hook(MusashiOverlayHook hook, void *userdata);
 
 #ifdef __cplusplus
 }

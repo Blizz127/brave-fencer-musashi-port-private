@@ -1,0 +1,34 @@
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+#include "psx_types.h"
+/* func_8012FB54 - byte-exact against retail at -O2 (tools/register_match.py). */
+extern void func_8002D4C8(s32 a0, s32 a1);
+extern void func_80131CA8(int a0, int a1);
+extern void func_80131CA8();
+extern void func_80131CA8(s32 a0, s32 a1);
+extern void func_801319E0(s32 a0);
+extern s32 func_80143B6C(s32 a0, s32 a1);
+
+void func_8012FB54(s32 a0) {
+    s32 s0 = a0;
+    s32 v1;
+    s32 p;
+    if ((*(s32 *)(s0 + 0xB4) & 0x10000) != 0) {
+        *(s32 *)(s0 + 0x4) = *(s32 *)(s0 + 0x4) + *(s32 *)(s0 + 0x10);
+        *(s32 *)(s0 + 0x8) = *(s32 *)(s0 + 0x8) + *(s32 *)(s0 + 0x14);
+        *(s32 *)(s0 + 0xC) = *(s32 *)(s0 + 0xC) + *(s32 *)(s0 + 0x18);
+        v1 = *(s32 *)(s0 + 0x1C) - 1;
+        *(s32 *)(s0 + 0x1C) = v1;
+        if (v1 == 0) {
+            func_801319E0(s0);
+        } else {
+            p = func_80143B6C(s0, 1);
+            if (p != 0) {
+                *(s16 *)(p + 0xA) = *(u16 *)(p + 0xA) + *(u16 *)(s0 + 0xAC);
+            }
+            if (*(s32 *)(s0 + 0x1C) == 0x13) {
+                func_8002D4C8(0x8F2, 0);
+            }
+        }
+    }
+    func_80131CA8(s0, 0x36);
+}

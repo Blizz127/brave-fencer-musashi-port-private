@@ -4,47 +4,56 @@
  * the C is the Druthulu shared/ov func_8015126C shape (h_exact 59d8e878) with its 31 externs hoisted verbatim and its register pins as published; every data symbol it names already matches this member; oracle MATCH 254/254.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8015126C - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-extern s32 D_80127078;
-extern s32 D_80126AE4;
-extern s32 D_801151FC;
-extern s32 D_80127518;
-extern s32 func_801470A0(void *a0);
-extern s32 func_8014A454(s32 a0);
-extern void func_80160368(s32 *a0);
-extern s32 func_801619D0(void *a0);
-extern s32 func_80151880(s32 a0);
-extern void func_800CCF68(void *);
-extern s32 func_80161A00(s32 a0);
-extern s32 func_801518D8(s32 a0);
-extern void func_800CCF58(void *);
-extern s32 func_80161A30(s32 a0);
-extern s32 func_80161A60(s32 a0);
-extern void func_801599A4(void *);
-extern void func_801607B8(s32 *a0);
-extern void func_80147084(s32 *a0);
-extern s32  func_80029D3C(void);
-extern s32 func_8014CB7C(void);
-extern void func_80153C9C(void);
-extern void func_8015173C(s32 *a0);
-extern s32 func_801725CC(u8 *a0);
-extern void func_8014B310(void);
-extern void func_8014B4D4(void *a0);
-extern void func_8014B944(s32 a0, s32 a1, s32 a2);
-extern void func_80146D80(s32 *a0);
-extern void func_801477E8(s32 *a0, s32 a1);
-extern void func_80147324(s32 arg0);
-extern void func_8014BD24(s32 a0, s32 a1);
-extern void func_8014ACE8(void *a0, s32 a1, s32 a2);
 
 void func_8015126C(u16 *p)
 {
+    extern s32 D_80127078;
+    extern s32 D_80126AE4;
+    extern s32 D_801151FC;
+    extern s32 D_80127518;
     extern s32 D_800AE6A8;       /* +0x8 == D_800AE6B0 (s32) */
     extern u8  D_80078E78[];     /* +0x49 == D_80078EC1 (u8) */
-    u8  *r = D_80078E78;     /* $s2 */
-    s32 *q = &D_800AE6A8;   /* $s1 */
-    register s32 sh16 __asm__("$2");                 /* $v0 */  // !FAKE: pin $2 — NEEDED DIFFERS (P36 rung B headers1)
+    extern s32 func_801470A0(void *a0);
+    extern s32 func_8014A454(s32 a0);
+    extern void func_80160368(s32 *a0);
+    extern s32 func_801619D0(void *a0);
+    extern s32 func_80151880(s32 a0);
+    extern void func_800CCF68(void *);
+    extern s32 func_80161A00(s32 a0);
+    extern s32 func_801518D8(s32 a0);
+    extern void func_800CCF58(void *);
+    extern s32 func_80161A30(s32 a0);
+    extern s32 func_80161A60(s32 a0);
+    extern void func_801599A4(void *);
+    extern void func_801607B8(s32 *a0);
+    extern void func_80147084(s32 *a0);
+    extern s32  func_80029D3C(void);
+    extern s32 func_8014CB7C(void);
+    extern void func_80153C9C(void);
+    extern void func_8015173C(s32 *a0);
+    extern s32 func_801725CC(u8 *a0);
+    extern void func_8014B310(void);
+    extern void func_8014B4D4(void *a0);
+    extern void func_8014B944(s32 a0, s32 a1, s32 a2);
+    extern void func_80146D80(s32 *a0);
+    extern void func_801477E8(s32 *a0, s32 a1);
+    extern void func_80147324(s32 arg0);
+    extern void func_8014BD24(s32 a0, s32 a1);
+    extern void func_8014ACE8(void *a0, s32 a1, s32 a2);
+    register u8  *r __asm__("$18") = D_80078E78;     /* $s2 */
+    register s32 *q __asm__("$17") = &D_800AE6A8;   /* $s1 */
+    register s32 sh16 __asm__("$2");                 /* $v0 */
     u16 uVar3;
     s32 angle;
     s32 v;
@@ -117,7 +126,7 @@ void func_8015126C(u16 *p)
     ((void (*)(void *))func_80147084)(p);
     {
         u16 t = p[0x1f];
-        register s32 cmp79 __asm__("$4");  // !FAKE: pin $4 — NEEDED DIFFERS (P36 rung B headers1)
+        register s32 cmp79 __asm__("$4");
         *(u8 *)(p + 0x54) = 0;
         ((s8 *)p)[0xdd] = (s8)t;
         if (((t & 0xff) != 0x11) && ((cmp79 = *(s16 *)(p + 0x79)) != 1000)) {

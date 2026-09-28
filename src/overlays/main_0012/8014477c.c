@@ -2,47 +2,48 @@
  * SHA256(span)=50ff2cd50a551ae0020bcc5ad4093c9ce46ee781ac432b19594415253ba6ee1a.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
+/* func_8014477C - byte-exact against retail at -O2 (tools/register_match.py). */
+extern void func_8012A828(s32 a0, void * a1);
+extern void func_8012C1B8(void);
+extern void func_8012CAE4(void *a0);
+extern void func_8012A828(s32 a0, void *a1);
+extern void func_8001CA1C(s32 a0, s32 a1);
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+void func_8014477C(void *param_1) {
 
-void func_8001CA1C(void *, s32 (*)());                   /* extern */
-extern s32 D_8017FCC0;
-extern s32 D_8017FCCC;
-void func_8012A828(void *, s32 (*)());                   /* static */
-void *func_8012C1B8();                              /* static */
-void func_8012CAE4(void *);                            /* static */
-extern s32 *D_80000008;
+    extern u8 D_8017FCC0;
+    extern u8 D_8017FCCC;
+    s32 v0;
+    s32 v1;
+    register s32 uVar2 __asm__("$2");
+    register s32 addr __asm__("$3");
+    s32 gv;
+    s32 fv;
 
-void func_8014477C(void *arg0) {
-    s32 temp_v0_2;
-    void *temp_v0;
-    void *temp_v1;
-
-    temp_v0 = func_8012C1B8();
-    arg0->unk20 = temp_v0;
-    if (temp_v0 == 0) {
-        func_8012CAE4(arg0);
+    v0 = ((s32 (*)(void))func_8012C1B8)();
+    *(s32 *)((s32)param_1 + 0x20) = v0;
+    if (v0 == 0) {
+        func_8012CAE4(param_1);
         return;
     }
-    func_8001CA1C(temp_v0, D_8017FCC0);
-    temp_v1 = arg0->unk64;
-    if (temp_v1->unk0 != 0) {
-        arg0->unkFC = (u16) temp_v1->unk36;
-        temp_v0_2 = arg0->unk64->unk58;
-        if (temp_v0_2 != 0) {
-            arg0->unkA = (u16) (*((temp_v0_2 & 0x0FFFFFFF) | (s32) &D_80000008) + (arg0->unkA - 0x30));
+    ((void (*)(s32, void *))func_8001CA1C)(v0, &D_8017FCC0);
+    if (*(u16 *)(*(s32 *)((s32)param_1 + 0x64)) != 0) {
+        *(s16 *)((s32)param_1 + 0xFC) = *(u16 *)(*(s32 *)((s32)param_1 + 0x64) + 0x36);
+        uVar2 = *(s32 *)(*(s32 *)((s32)param_1 + 0x64) + 0x58);
+        if (uVar2 != 0) {
+            addr = uVar2 & 0xFFFFFFF;
+            gv = *(u16 *)((addr | 0x80000000) + 8);
+            fv = *(u16 *)((s32)param_1 + 0xA) - 0x30;
+            *(u16 *)((s32)param_1 + 0xA) = gv + fv;
         } else {
-            arg0->unkA = (u16) (arg0->unkA - 0x60);
+            *(u16 *)((s32)param_1 + 0xA) = *(u16 *)((s32)param_1 + 0xA) - 0x60;
         }
     }
-    func_8012A828(arg0, D_8017FCCC);
-    arg0->unk2 = 1;
-    arg0->unk20->unk12 = (s16) ((arg0->unk70 << 0xC) / 3);
-    arg0->unk1C = 0x78;
+    ((void (*)(void *, void *))func_8012A828)(param_1, &D_8017FCCC);
+    v1 = (s32)*(s16 *)((s32)param_1 + 0x70) << 0xC;
+    *(s16 *)((s32)param_1 + 0x2) = 1;
+    *(s16 *)(*(s32 *)((s32)param_1 + 0x20) + 0x12) = v1 / 3;
+    *(s32 *)((s32)param_1 + 0x1C) = 0x78;
 }

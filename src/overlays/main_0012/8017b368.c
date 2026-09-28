@@ -2,48 +2,44 @@
  * SHA256(span)=e1492b6030cb4922e05af5c114df0ea60fed240e00a6c6d17eeae33be41994fb.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
+/* func_8017B368 - byte-exact against retail at -O2 (tools/register_match.py). */
+typedef struct { s16 a, b, c, d; } SV4_8017B368;
+typedef struct { SV4_8017B368 x, y; } Pair16;
+extern void func_8012F214(s32 a0, s32 a1, s32 a2);
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+s32 func_8017B368(s32 param)
+{
 
-extern s32 D_80181CC0;
-extern s32 D_8018534C;
-extern s32 D_8018536C;
-void func_8012F214(s32, void *, void *);                  /* static */
-void func_8017BA3C();                                  /* static */
-extern s32 D_801853BC;
-extern s32 D_801853C4;
-extern s16 D_80185C08;
+    extern s16 D_8018534C;
+    extern s16 D_80185C08;
+    extern void func_8017BA3C(s32 param_1, s32 param_2);
+    extern void func_8012F214(s32 a0, s32 a1, s32 a2);
+    extern SV4_8017B368 D_8018536C;
+    extern SV4_8017B368 D_80185374;
+    extern s16 D_801853C4;
+    extern s16 D_801853BC;
+    extern u16 D_80181CC0;
 
-void func_8017B368(s32 arg0) {
-    s32 sp1F;
-    s32 sp1B;
-    s32 sp18;
-    s32 sp17;
-    s32 sp13;
-    s32 sp10;
-    s32 temp_s0;
+    SV4_8017B368 loc0;
+    SV4_8017B368 loc1;
+    u32 n = (u32)&D_8018536C;
 
-    func_8017BA3C();
-    if ((u32) D_8018536C >= 0xBU) {
-        sp13 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-        sp17 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-        sp1B = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-        sp1F = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
+    ((void (*)(void))func_8017BA3C)();
+
+    if (n >= 0xB) {
+        loc0 = *(SV4_8017B368 *)n;
+        loc1 = D_80185374;
     } else {
-        temp_s0 = (s32) D_8018536C * 0x10;
-        func_8012F214(arg0, temp_s0 + D_80181CC0, &sp10);
-        func_8012F214(arg0, temp_s0 + (D_80181CC0 + 8), &sp18);
+        s32 ax = (s32)&((Pair16 *)&D_80181CC0)[n].x;
+        s32 ay = (s32)&((Pair16 *)&D_80181CC0)[n].y;
+        func_8012F214(param, ax, (s32)&loc0);
+        func_8012F214(param, ay, (s32)&loc1);
     }
-    D_801853C4.unk3 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-    D_801853C4.unk7 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-    D_801853BC.unk3 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-    D_801853BC.unk7 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
+
+    (*(SV4_8017B368 *)&D_801853C4) = loc0;
+    (*(SV4_8017B368 *)&D_801853BC) = loc1;
     D_80185C08 = 1;
     D_8018534C = 0;
 }

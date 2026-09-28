@@ -6,25 +6,34 @@
  * D_80185200/D_80185204 boxes, D_801B62E4/F8 counters, D_801B62D8 argument.
  * Oracle MATCH 203/203. Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80133784 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-typedef struct { s16 f0; s16 f2; s16 f4; s16 f6; } Box_80133784;
-extern Box_80133784 *D_80185200;
-extern Box_80133784 *D_80185204;
-extern s16 D_801B62E4;
-extern u16 D_801B62E8;
+typedef struct { u16 f0, f2, f4; s16 f6; } Box_80133784;
 extern s32 D_801B62D8;
-extern s32 func_80047D3C(s32);
-extern s32 func_80133AB0(s16, s16, s16, s32);
 
 s32 func_80133784(s32 arg0, void *arg1, s32 arg2) {
-        
-    s32 s1;
+    extern s32 func_80047D3C(s32);
+    extern s32 func_80133AB0(s16, s16, s16, s32);
+    extern Box_80133784 * D_80185200;
+    extern Box_80133784 * D_80185204;
+    extern s16 D_801B62E4;
+    extern u16 D_801B62E8;
+
+    register s32 s1 __asm__("$17");
     s32 s2;
-    register s16 s3 __asm__("$19");  // !FAKE: pin $19 — NEEDED DIFFERS (P36 rung A headers1)
-    register s32 s4 __asm__("$20");  // !FAKE: pin $20 — NEEDED DIFFERS (P36 rung A headers1)
-    s16 a0v;
-    register s16 arg0s __asm__("$21");  // !FAKE: pin $21 — NEEDED DIFFERS (P36 rung A headers1)
+    register s16 s3 __asm__("$19");
+    register s32 s4 __asm__("$20");
+    register s16 a0v __asm__("$4");
+    register s16 arg0s __asm__("$21");
     s32 dx, dy, dz;
     s32 r, ret;
 
@@ -49,7 +58,7 @@ s32 func_80133784(s32 arg0, void *arg1, s32 arg2) {
         s16 sz = ((Box_80133784 *)arg2)->f4 - ((Box_80133784 *)arg1)->f4;
         if (sx == 0 && sy == 0) {
             s32 zt = (sz == 0);
-            __asm__("addu %0,%1,$zero" : "=r"(s2) : "r"(zt));  // !FAKE: instruction addu — NEEDED DIFFERS (P36 rung A headers1)
+            __asm__("addu %0,%1,$zero" : "=r"(s2) : "r"(zt));
         }
         D_80185200->f2 = ((Box_80133784 *)arg1)->f2 - 4;
         r = func_80047D3C(sx * sx + sz * sz);
@@ -73,9 +82,10 @@ s32 func_80133784(s32 arg0, void *arg1, s32 arg2) {
 
     while (1) {
         s32 ret0;
-        register s32 retc __asm__("$3");  // !FAKE: pin $3 — NEEDED DIFFERS (P36 rung A headers1)
+        register s32 retc __asm__("$3");
+        __asm__ __volatile__("");
         ret0 = func_80133AB0(arg0s, (s16)D_80185200->f0, (s16)D_80185200->f4, (*(s32*)&D_801B62D8));
-        __asm__("addu %0,%1,$zero" : "=r"(retc) : "r"(ret0));  // !FAKE: instruction addu — NEEDED DIFFERS (P36 rung A headers1)
+        __asm__("addu %0,%1,$zero" : "=r"(retc) : "r"(ret0));
         ret = retc;
         if (ret == 0) goto after;
         s4 |= ret;
@@ -96,7 +106,7 @@ s32 func_80133784(s32 arg0, void *arg1, s32 arg2) {
 after:
     if ((s16)s4 != 0 || D_801B62E4 != 0) {
         s16 t;
-        __asm__ __volatile__("" :: "r"(s4));  // !FAKE: keepalive — NEEDED DIFFERS (P36 rung A headers1)
+        __asm__ __volatile__("" :: "r"(s4));
         t = D_80185200->f6;
         if (t >= -0xBCB) {
             if (t < -0x578) {

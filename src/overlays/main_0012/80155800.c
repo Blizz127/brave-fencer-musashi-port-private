@@ -2,71 +2,88 @@
  * SHA256(span)=4958e9a3123b66bf0da45374f2de256d4488a72c75c81cc2178467a8701a4069.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80155800 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* File-scope declarations from the vendor translation unit. */
+typedef struct {
+    u8   pad00[0x12];
+    u16  unk12;              /* 0x12 */
+} Sub_80155800_80155800;
+typedef struct {
+    u8            pad00[0x20];
+    Sub_80155800_80155800 *unk20;     /* 0x20 */
+    u8            pad24[0x44 - 0x24];
+    s32           unk44;     /* 0x44 */
+    u8            pad48[0xB8 - 0x48];
+    u16           unkB8;     /* 0xB8 */
+    u8            padBA[0x1A8 - 0xBA];
+    u8            unk1A8;    /* 0x1A8 */
+    u8            unk1A9;    /* 0x1A9 */
+    u8            unk1AA;    /* 0x1AA */
+    u8            pad1AB[0x1C0 - 0x1AB];
+    u8            unk1C0;    /* 0x1C0 */
+    u8            pad1C1[0x234 - 0x1C1];
+    u8            unk234;    /* 0x234 */
+} Ent_80155800_80155800;
 
-void func_8001382C(s16, void *, void *);                  /* extern */
-void func_80146DB8(void *, void *);                       /* static */
-s32 func_80146E98(void *);                          /* static */
-void func_801473EC(void *);                            /* static */
-void func_80147A84(void *);                            /* static */
-s32 func_801487F4(void *);                          /* static */
-s32 func_80148800(void *);                          /* static */
-s32 func_801488A8(void *);                          /* static */
-void func_80148AFC(void *);                            /* static */
-s32 func_801496D4(void *);                          /* static */
-void func_80149704(void *);                            /* static */
-void func_80149AD4(void *);                            /* static */
-void func_80149B14(void *);                            /* static */
-void func_80154134(void *);                            /* static */
-void func_80155A44(void *);                            /* static */
-void func_80155F80(void *);                            /* static */
-void func_80155FF8(void *, u8);                        /* static */
-void func_801599A4(void *);                            /* static */
-void func_80159B3C(void *);                            /* static */
-void func_8015A230(void *);                            /* static */
-s32 func_80161208(void *);                          /* static */
-extern s32 D_8011F730;
-
-void func_80155800(void *arg0) {
-    s32 sp10;
+/* func_80155800 — shared body (overlay slot 0x80128158, h_exact ac3af9dd). ONE source: instantiated by #include at each
+ * member's site in address order; the members are recorded in config/dedup.us.yaml (Phase 35). */
+extern void func_8001382C(s32 a0, void *a1, void *a2);
+extern void func_80146DB8(s32 *a0, s32 *a1);
+extern s32 func_80146E98(s32 a0);
+extern void func_801473EC(s32 *a0);
+extern void func_80147A84(s32 arg0);
+extern u16 func_801487F4(s32 *a0);
+extern u16 func_80148800(s32 *a0);
+extern s32 func_801488A8(u8 *a0);
+extern int func_80148AFC(void *a0);
+extern s32 func_801496D4(void *a0);
+extern void func_80149704(void);
+extern void func_80149AD4(s32 *a0);
+extern void func_80149B14(s32 *a0);
+extern void func_80154134(u8 *a0);
+extern void func_801599A4(void *a0);
+extern void func_80159B3C(void *a0);
+s32 func_80155800(s32 arg0) {
+    extern s32 D_8011F730;
+    extern int func_80155A44(int);
+    extern s32 func_80155F80();
+    extern int func_80155FF8(int, int);
+    extern void func_8015A230(s32*);
+    extern s32 func_80161208(void *);
+    struct { s16 a, b, c, d, e, f, g, h, i, j, k, l; } sp10;
     u8 temp_v0;
     u8 temp_v1;
-    u8 var_v1;
-
-    arg0->unk44 = (s32) (arg0->unk44 | 2);
-    if (arg0->unkB8 == 0x8000) {
-        func_801599A4();
-        func_80159B3C(arg0);
+    s32 var_v1;
+    ((Ent_80155800_80155800 *)arg0)->unk44 |= 2;
+    if (((Ent_80155800_80155800 *)arg0)->unkB8 == 0x8000) {
+        ((void(*)(void *))func_801599A4)(((Ent_80155800_80155800 *)arg0));
+        ((void(*)(void *))func_80159B3C)(((Ent_80155800_80155800 *)arg0));
         return;
     }
-    func_80155A44(arg0);
-    if (func_80148800(arg0) & 0x80) {
-        temp_v1 = arg0->unk1A9;
+    ((void (*)(void *))func_80155A44)(((Ent_80155800_80155800 *)arg0));
+    if (((s32(*)(void *))func_80148800)(((Ent_80155800_80155800 *)arg0)) & 0x80) {
+        temp_v1 = ((Ent_80155800_80155800 *)arg0)->unk1A9;
         if (temp_v1 >= 4U) {
-            if (arg0->unk1C0 != 0) {
-                func_80148AFC(arg0);
-                func_80155F80(arg0);
-                func_80154134(arg0);
-                temp_v0 = arg0->unk1AA;
+            if (((Ent_80155800_80155800 *)arg0)->unk1C0 != 0) {
+                ((void(*)(void *))func_80148AFC)(((Ent_80155800_80155800 *)arg0));
+                ((void (*)(void *))func_80155F80)(((Ent_80155800_80155800 *)arg0));
+                ((void(*)(void *))func_80154134)(((Ent_80155800_80155800 *)arg0));
+                temp_v0 = ((Ent_80155800_80155800 *)arg0)->unk1AA;
                 var_v1 = temp_v0 + 1;
                 if (temp_v0 == 0) {
                     var_v1 = 2;
                 } else if (var_v1 >= 5U) {
                     var_v1 = 1;
                 }
-                arg0->unk1AA = var_v1;
-                func_80149B14(arg0);
+                ((Ent_80155800_80155800 *)arg0)->unk1AA = var_v1;
+                ((void(*)(void *))func_80149B14)(((Ent_80155800_80155800 *)arg0));
                 return;
             }
-            if ((u8) arg0->unk1AA >= 2U) {
-                if (arg0->unk1A8 == 0) {
+            if (((Ent_80155800_80155800 *)arg0)->unk1AA >= 2U) {
+                if (((Ent_80155800_80155800 *)arg0)->unk1A8 == 0) {
                     if (temp_v1 != 0) {
                         goto block_13;
                     }
@@ -75,36 +92,36 @@ void func_80155800(void *arg0) {
                 goto block_22;
             }
 block_13:
-            func_80148AFC(arg0);
-            func_80155F80(arg0);
-            func_80154134(arg0);
-            func_80149AD4(arg0);
+            ((void(*)(void *))func_80148AFC)(((Ent_80155800_80155800 *)arg0));
+            ((void (*)(void *))func_80155F80)(((Ent_80155800_80155800 *)arg0));
+            ((void(*)(void *))func_80154134)(((Ent_80155800_80155800 *)arg0));
+            ((void(*)(void *))func_80149AD4)(((Ent_80155800_80155800 *)arg0));
             D_8011F730 |= 3;
             return;
         }
     }
 block_15:
-    if ((arg0->unk1A8 == 0) && (arg0->unk1A9 != 0)) {
-        if (func_801496D4(arg0) != 0) {
-            func_801599A4(arg0);
-            func_80149704(arg0);
+    if ((((Ent_80155800_80155800 *)arg0)->unk1A8 == 0) && (((Ent_80155800_80155800 *)arg0)->unk1A9 != 0)) {
+        if (((s32(*)(void *))func_801496D4)(((Ent_80155800_80155800 *)arg0)) != 0) {
+            ((void(*)(void *))func_801599A4)(((Ent_80155800_80155800 *)arg0));
+            ((void(*)(void *))func_80149704)(((Ent_80155800_80155800 *)arg0));
             return;
         }
-        if (!(func_801487F4(arg0) & 8) && (func_801488A8(arg0) != 0)) {
-            func_801599A4(arg0);
-            func_8015A230(arg0);
+        if (!(((s32(*)(void *))func_801487F4)(((Ent_80155800_80155800 *)arg0)) & 8) && (((s32(*)(void *))func_801488A8)(((Ent_80155800_80155800 *)arg0)) != 0)) {
+            ((void(*)(void *))func_801599A4)(((Ent_80155800_80155800 *)arg0));
+            ((void (*)(void *))func_8015A230)(((Ent_80155800_80155800 *)arg0));
             return;
         }
         goto block_22;
     }
 block_22:
-    if (func_80146E98(arg0) == 0) {
-        func_8001382C((s16) ((s32) arg0->unk20->unk12 * -1), arg0 + 0x234, &sp10);
-        func_80146DB8(arg0, &sp10);
-        func_80147A84(arg0);
-        func_801473EC(arg0);
+    if (((s32(*)(void *))func_80146E98)(((Ent_80155800_80155800 *)arg0)) == 0) {
+        ((void(*)(s16, void *, void *))func_8001382C)((s16) -(s32) ((Ent_80155800_80155800 *)arg0)->unk20->unk12, &((Ent_80155800_80155800 *)arg0)->unk234, &sp10);
+        ((void(*)(void *, void *))func_80146DB8)(((Ent_80155800_80155800 *)arg0), &sp10);
+        ((void(*)(void *))func_80147A84)(((Ent_80155800_80155800 *)arg0));
+        ((void(*)(void *))func_801473EC)(((Ent_80155800_80155800 *)arg0));
     }
-    if (func_80161208(arg0) == 0) {
-        func_80155FF8(arg0, arg0->unk1AA);
+    if (func_80161208(((Ent_80155800_80155800 *)arg0)) == 0) {
+        ((void (*)(void *, u8))func_80155FF8)(((Ent_80155800_80155800 *)arg0), ((Ent_80155800_80155800 *)arg0)->unk1AA);
     }
 }

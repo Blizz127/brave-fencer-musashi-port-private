@@ -61,41 +61,129 @@ def _expected_words(source, include_name):
     return len(exported) or len(ASM_WORD.findall(source_text))
 
 
-def _generate_formatter_includes(output):
-    formatter = ROOT / "pc_port/mips_formatter.c"
-    import shutil
-    for name in WORD_INCLUDE.findall(formatter.read_text()):
-        cached = ROOT / "build/generated" / name
-        if cached.is_file():
-            shutil.copyfile(cached, output / name)
+EXE = ROOT / "extracted/disc/files/SLUS_007.26"
+EXE_BASE, EXE_TEXT = 0x80010000, 0x800
+RANGE_LIST = ROOT / "tests/data/formatter_word_ranges.txt"
+
+
+def _word_ranges():
+    """<stem> -> guest word addresses, from the committed address list."""
+    ranges = {}
+    for line in RANGE_LIST.read_text().splitlines():
+        if not line or line.startswith("#"):
             continue
-        if name in PAC_INCLUDES:
-            member, words, sha = PAC_INCLUDES[name]
-            archive = ROOT / "extracted/disc/files/SC01.CD"
-            assert archive.is_file(), f"missing archive {archive} for {name}"
-            subprocess.run([
-                sys.executable,
-                str(ROOT / "tools/extract_pac_words.py"),
-                str(archive),
-                str(output / name),
-                "--member", str(member),
-                "--expected-words", str(words),
-                "--expected-sha256", str(sha),
-            ], check=True, timeout=30)
-            if (ROOT / "build/generated").is_dir():
-                shutil.copyfile(output / name, cached)
+        stem, count = line.split()
+        count = int(count)
+        if stem == "8004239c_minus_one":
+            # The export joins the entry path to its distant epilogue.
+            addresses = list(range(0x8004239C, 0x80042400, 4)) + \
+                list(range(0x800424CC, 0x800424E4, 4))
+        else:
+            start = int(stem[:8], 16)
+            addresses = list(range(start, start + 4 * count, 4))
+        assert len(addresses) == count, stem
+        ranges[stem] = addresses
+    ranges["80044670_full"] = ranges["80044670"]
+    return ranges
+
+
+def _exe_bytes():
+    if not EXE.is_file():
+        try:
+            import pytest
+            pytest.skip("licensed pinned EXE unavailable")
+        except ImportError:
+            import unittest
+            raise unittest.SkipTest("licensed pinned EXE unavailable")
+    return EXE.read_bytes()
+
+
+def _exe_word(exe, address):
+    offset = address - EXE_BASE + EXE_TEXT
+    return int.from_bytes(exe[offset:offset + 4], "little")
+
+
+def _write_words(path, words):
+    # Same layout tools/extract_asm_words.py used: one header line, then words.
+    path.write_text("/* Generated from the local extracted EXE; do not edit. */\n" +
+                    "".join(f"0x{w:08x}u,\n" for w in words))
+
+
+def _generate_formatter_includes(output, pac=False):
+    """Materialize <stem>_words.inc for every admitted main-exe range from the
+    developer's own extracted EXE (never from src/ word exports). The port no
+    longer compiles these; tests that assert or mutate words read them here
+    and push mutations to the probe with _sync_code_image()."""
+    exe = _exe_bytes()
+    for stem, addresses in _word_ranges().items():
+        _write_words(output / f"{stem}_words.inc", [_exe_word(exe, a) for a in addresses])
+    for name in PAC_INCLUDES if pac else ():
+        # SC01 PAC members stay on the disc; only tests that ask extract them.
+        member, words, sha = PAC_INCLUDES[name]
+        archive = ROOT / "extracted/disc/files/SC01.CD"
+        if not archive.is_file():
             continue
-        source = _source_for_include(name)
-        expected = _expected_words(source, name)
-        assert expected > 0, f"empty audited source for {name}"
-        subprocess.run([
-            sys.executable,
-            str(ROOT / "tools/extract_asm_words.py"),
-            str(source),
-            str(output / name),
-            "--expected-words", str(expected),
-            *((["--asm-label", ASM_LABELS[name]]) if name in ASM_LABELS else []),
-        ], check=True, timeout=30)
+        subprocess.run([sys.executable, str(ROOT / "tools/extract_pac_words.py"), str(archive),
+                        str(output / name), "--member", str(member), "--expected-words",
+                        str(words), "--expected-sha256", str(sha)], check=True, timeout=60)
+
+
+OVERLAY_MEMBERS = {
+    # name: (source, guest base)
+    "MAIN_0004": ("extracted/overlays/main/0004.bin", 0x800CE5F8),  # file carries a 0x800 header
+    "MAIN_0007": ("extracted/overlays/main/0007.bin", 0x800CEDF8),
+    "MAIN_0010": ("extracted/overlays/main/0010.bin", 0x800AEDF8),
+    "MAIN_0012": ("extracted/overlays/main/0012.bin", 0x80100158),
+}
+
+
+def _materialize_overlays(output):
+    """Decode the overlay members probes need from the local disc extract
+    into output/<name>.bin + <name>.base and point MUSASHI_OVERLAY_DIR there
+    (tests/probe_code_words.h). SC02 member 31 is decoded from SC02.CD."""
+    import os
+    import struct
+    for name, (source, base) in OVERLAY_MEMBERS.items():
+        path = ROOT / source
+        if path.is_file():
+            (output / f"{name}.bin").write_bytes(path.read_bytes())
+            (output / f"{name}.base").write_text(f"{base:08x}\n")
+    archive = ROOT / "extracted/disc/files/SC02.CD"
+    if archive.is_file():
+        sys.path.insert(0, str(ROOT))
+        from tools.decode_title_pac import decode
+        data = archive.read_bytes()
+        sector, size = struct.unpack_from("<II", data, 8 + 31 * 8)
+        member = data[sector * 2048:sector * 2048 + size]
+        code, _ = decode(member[0x800:struct.unpack_from("<4I", member)[3]])
+        (output / "SC02_031.bin").write_bytes(code)
+        (output / "SC02_031.base").write_text("80128158\n")
+    os.environ["MUSASHI_OVERLAY_DIR"] = str(output)
+    return output
+
+
+def _sync_code_image(output):
+    """Apply every <stem>_words.inc in output to a copy of the EXE and point
+    the probes at it (MUSASHI_CODE_IMAGE, test-only MUSASHI_CODE_IMAGE_MUTANT).
+    tests/conftest.py restores the pristine image after each test."""
+    import os
+    exe = bytearray(_exe_bytes())
+    word = re.compile(r"0x([0-9a-fA-F]{8})u")
+    for stem, addresses in _word_ranges().items():
+        path = output / f"{stem}_words.inc"
+        if not path.is_file():
+            continue
+        words = [int(w, 16) for w in word.findall(path.read_text())]
+        assert len(words) == len(addresses), path
+        for address, value in zip(addresses, words):
+            offset = address - EXE_BASE + EXE_TEXT
+            exe[offset:offset + 4] = value.to_bytes(4, "little")
+    image = output / "code_image.exe"
+    image.write_bytes(bytes(exe))
+    os.environ["MUSASHI_CODE_IMAGE"] = str(image)
+    if bytes(exe) != EXE.read_bytes():
+        os.environ["MUSASHI_CODE_IMAGE_MUTANT"] = "1"
+    return image
 
 
 def test_bios_event_callback_executor_exact_targets_and_refusals():

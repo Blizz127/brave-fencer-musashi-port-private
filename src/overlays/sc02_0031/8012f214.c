@@ -5,30 +5,26 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8012F214 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL of func_8012F214 (main_0012.s), decoded manually from
- * raw asm (0x60 bytes; NOT verified against retail; C89-gated
- * only, promotion requires an oracle MATCH): t = unk20 + 0x34;
- * calls 8004914C(t) (t set in the jal delay slot), 800491AC(t),
- * then 8004945C(arg1, arg2, buf) with an 8-byte stack buffer.
- * Same tail shape as func_8012F14C with the GTE-base override. */
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern void func_8004914C(void *a0);
+extern void func_800491AC(void *a0);
+extern void func_8004945C(s32 a0, s32 a1, void *a2);
 
-struct obj_8012F214 {
-    u8 pad[0x20];
-    void *unk20;
-};
-
-extern void func_8004914C(void *arg0);
-extern void func_800491AC(void *arg0);
-extern void func_8004945C(void *arg0, void *arg1, void *arg2);
-
-void func_8012F214(struct obj_8012F214 *arg0, void *arg1, void *arg2) {
-    u8 *t;
-    u8 buf[8];
-
-    t = (u8 *) arg0->unk20 + 0x34;
-    func_8004914C(t);
-    func_800491AC(t);
-    func_8004945C(arg1, arg2, buf);
+void func_8012F214(s32 a0, s32 a1, s32 a2) {
+    s32 *p = (s32 *)(*(s32 *)(a0 + 0x20) + 0x34);
+    s32 buf[2];
+    func_8004914C(p);
+    func_800491AC(p);
+    func_8004945C(a1, a2, buf);
 }

@@ -5,21 +5,29 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8016BF50 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-void func_80149350();
-void func_80015954();
-typedef struct {
-    u8 pad[0x12]; s16 u12;
-    u8 pad14[2]; s16 u16;
-    u8 pad18[2]; s16 u1A;
-    u8 pad1C[0x18]; void *u34;
-} T;
-void func_8016BF50(T *p) {
-    s16 v[4];
-    void *m = p->u34;
-    v[0] = p->u12;
-    v[1] = p->u16;
-    v[2] = p->u1A;
-    func_80149350(m, v, v);
-    func_80015954(v, (u8 *)p + 4);
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+extern void func_80149350(s32 arg0);
+extern void func_80015954(s32 a0, s32 a1);
+extern void func_8012A568(void (*a0)(void));
+
+s32 func_8016BF50(s32 param)
+{
+    u16 buf[3];
+    s32 arg;
+    arg = *(s32 *)(param + 0x34);
+    buf[0] = *(u16 *)(param + 0x12);
+    buf[1] = *(u16 *)(param + 0x16);
+    buf[2] = *(u16 *)(param + 0x1a);
+    ((void (*)(s32, void *, void *))func_80149350)(arg, buf, buf);
+    ((void (*)(void *, s32))func_80015954)(buf, param + 4);
 }

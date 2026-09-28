@@ -1,31 +1,79 @@
 /* Complete SC02 retail span [80177EA4,80177F84); independently matched ordinary C. */
-typedef unsigned int u32;
-typedef struct { u32 tag, color, xy, uv, unused; } Packet;
-Packet *func_80177EA4(Packet *packet, int digits, short x, short y)
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80177EA4 - byte-exact against retail at -O2 (tools/register_match.py). */
+#include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+typedef unsigned int uint;
+
+uint *func_80177EA4(uint *param_1, int param_2, uint param_3, int param_4)
 {
-    short i;
-    u32 hidden = 0x01000000;
-    for (i = 0; i < 7; i++) {
-        short glyph;
-        packet->tag = (((u32)packet - 20) & 0xFFFFFF) | 0x03000000;
-        packet->color = 0x74808080;
-        if (i != 0) {
-            if (i == 6) {
-                glyph = 1;
-                hidden = 0;
-            } else {
-                glyph = ((digits >> 16) & 15) + 1;
-                digits = (u32)digits << 4;
+    uint uVar1;
+    register int iVar2 __asm__("$4");
+    register uint *p1 __asm__("$9");
+    register uint *puVar3 __asm__("$8");
+    register int iVar4 __asm__("$10");
+    register uint uVar5 __asm__("$11");
+    register uint mask __asm__("$12");
+    register int nx __asm__("$2");
+    register int p4s __asm__("$7");
+    int cont;
+    p1 = param_1; uVar5 = 0x1000000; iVar4 = 0; mask = 0xffffff;
+    p4s = param_4 << 0x10;
+    puVar3 = p1 + 3;
+    do {
+        register uint c74 __asm__("$4");
+        register uint c3 __asm__("$3");
+        register uint m __asm__("$2");
+        c74 = 0x74808080;
+        m = (uint)(p1 + -5) & mask;
+        __asm__ __volatile__("" : "=r"(m) : "0"(m));
+        c3 = 0x3000000;
+        *p1 = m | c3;
+        puVar3[-2] = c74;
+        if ((short)iVar4 != 0) {
+            register int six __asm__("$2");
+            six = 6;
+            if ((short)iVar4 == six) { iVar2 = 1; uVar5 = 0; }
+            else {
+                register int t __asm__("$2");
+                t = param_2 >> 0x10 & 0xf;
+                iVar2 = t + 1;
+                param_2 = param_2 << 4;
             }
-            if (glyph != 1) hidden = 0;
-            packet->xy = ((u32)y << 16) | (unsigned short)x | hidden;
-        } else {
-            glyph = 0;
-            packet->xy = ((u32)y << 16) | (unsigned short)x;
+            {
+                register int iv2c __asm__("$3");
+                register int one __asm__("$2");
+                iv2c = iVar2;
+                __asm__ __volatile__("" : "=r"(iv2c) : "0"(iv2c));
+                one = 1;
+                if (iv2c != one) uVar5 = 0;
+            }
+            uVar1 = p4s | (param_3 & 0xffff) | uVar5;
+        } else { iVar2 = 0; uVar1 = p4s | (param_3 & 0xffff); }
+        puVar3[-1] = uVar1;
+        __asm__ __volatile__("" : : "r"(iVar2) : "memory");
+        {
+            register uint c6b __asm__("$3");
+            register uint r __asm__("$2");
+            c6b = 0x6b564000;
+            r = (uint)(iVar2 << 3) | c6b;
+            *puVar3 = r;
         }
-        packet->uv = (glyph << 3) | 0x6B564000;
-        packet++;
-        x += 8;
-    }
-    return packet;
+        puVar3 = puVar3 + 5; p1 = p1 + 5; param_3 = param_3 + 8;
+        {
+            register int sx __asm__("$2");
+            nx = iVar4 + 1;
+            iVar4 = nx;
+            sx = nx << 0x10;
+            cont = (sx >> 0x10) < 7;
+        }
+    } while (cont);
+    return p1;
 }

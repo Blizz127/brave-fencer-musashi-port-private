@@ -4,32 +4,23 @@
  * Member-0012 C shape retargeted to this member: D_8017E984->D_80185274.
  * Oracle MATCH re-earned against the resident image; Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80138BE0 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL of func_80138BE0 (main_0012.s), decoded manually from
- * raw asm (fully visible; NOT verified against retail; C89-gated
- * only, promotion requires an oracle MATCH): s32 result, 0x18
- * frame. If (h0E != 0) h0E--; then tail-dispatch
- * D_80185274[lh(h04)] via jalr with a0 still live (no a-reg
- * writes precede it), returning the target's $v0. Callers
- * ignore the result; the s32 is forwarded for machine
- * exactness. Table contents unstaged; the s32(struct*)-typed
- * view matches the indirect-dispatcher precedent. */
+extern void (*D_80185274[])(void);
 
-struct h_80138BE0 {
-    u8 pad00[4];
-    s16 h04;
-    u8 pad06[8];
-    u16 h0E;
-};
-
-typedef s32 (*tgt_80138BE0)(struct h_80138BE0 *);
-
-extern tgt_80138BE0 D_80185274[];
-
-s32 func_80138BE0(struct h_80138BE0 *arg0) {
-    if (arg0->h0E != 0) {
-        arg0->h0E--;
+void func_80138BE0(int p)
+{
+    if (*(unsigned short *)(p + 0xe) != 0) {
+        *(unsigned short *)(p + 0xe) -= 1;
     }
-    return D_80185274[arg0->h04](arg0);
+    D_80185274[*(short *)(p + 4)]();
 }

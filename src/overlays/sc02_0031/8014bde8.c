@@ -1,4 +1,37 @@
 /* Complete SC02 retail span [8014BDE8,8014BE78).
  * Ahead hole after 4AA28; PAC0 member31.
  */
-/* Matched C deferred. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8014BDE8 - byte-exact against retail at -O2 (tools/register_match.py). */
+#include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+struct B8014 { char b[8]; };
+extern s32 func_8016F1AC(void);
+extern s32 func_8017267C(s32 *a0);
+extern void func_80015978(s32 a0, s32 *a1);
+extern s32 func_80013294(void *a0, void *a1);
+extern void func_80029ED4(s32 a0);
+
+void func_8014BDE8(s32 a0) {
+    s32 s0 = a0;
+    struct B8014 sp10;
+    s16 sp18[4];
+    if (func_8016F1AC() != 0) {
+        return;
+    }
+    if (func_8017267C((s32 *)s0) != 0) {
+        return;
+    }
+    sp10 = *(struct B8014 *)(s0 + 0x98);
+    func_80015978(s0 + 4, (s32 *)sp18);
+    sp18[1] = 0;
+    *(s16 *)((s32)&sp10 + 0x2) = 0;
+    func_80029ED4((func_80013294(&sp10, sp18) << 16) >> 16);
+}

@@ -1,13 +1,23 @@
 /* SC02.CD member31 PAC0 decoded [8013C98C,8013C9C4). No C match claim. */
-/* Compared byte-exact with decoded SC02 member31; not registered in the main oracle. */
-/* SC02 member 31 [8013C98C,8013C9C4): initialize a block then clear two words. */
-extern unsigned char D_801B6350[];
-extern int D_801269D4, D_801269C8;
-extern void func_80016714(void *, int);
-void func_8013C98C(void)
-{
-    func_80016714(D_801B6350, 8);
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8013C98C - byte-exact against retail at -O2 (tools/register_match.py). */
+#include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern void func_80016714(void *a0, s32 a1);
+extern s32 D_801B6350;
+extern s32 D_801269D4;
+extern s32 D_801269C8;
+
+void func_8013C98C(void) {
+    func_80016714(&D_801B6350, 8);
     D_801269D4 = 0;
     D_801269C8 = 0;
 }
-

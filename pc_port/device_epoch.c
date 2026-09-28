@@ -69,7 +69,10 @@ static int collect_and_commit(MusashiDeviceEpoch *epoch) {
     batch.cut_tick = 0;
     batch.count = 0;
     if (epoch->cuts == UINT64_MAX ||
-        !epoch->adapter.collect_source(epoch->adapter.userdata, &batch)) return 0;
+        !epoch->adapter.collect_source(epoch->adapter.userdata, &batch)) {
+        epoch->fault_reason = "source-collect";
+        return 0;
+    }
     /* Keep transferred metadata inspectable even if validation or a later
      * backend operation refuses. A faulted epoch is never replayed. */
     epoch->pending.frequency = batch.frequency;
@@ -80,9 +83,17 @@ static int collect_and_commit(MusashiDeviceEpoch *epoch) {
                (batch.count < MUSASHI_IRQ_SOURCE_CAPACITY ? batch.count : MUSASHI_IRQ_SOURCE_CAPACITY) *
                sizeof(batch.edges[0]));
     epoch->pending_next = 0;
+    if (batch.count > MUSASHI_IRQ_SOURCE_CAPACITY) {
+        /* More VBlank edges queued than one cut holds: the CPU thread fell
+         * behind host time (a starved host with host-paced time). */
+        epoch->fault_reason = "source-overflow";
+        return 0;
+    }
     if (batch.frequency != epoch->frequency || batch.cut_tick < epoch->last_cut_tick ||
-        batch.count > MUSASHI_IRQ_SOURCE_CAPACITY || !to_cycle(epoch, batch.cut_tick, &target) ||
-        target < epoch->cycle) return 0;
+        !to_cycle(epoch, batch.cut_tick, &target) || target < epoch->cycle) {
+        epoch->fault_reason = "source-cut";
+        return 0;
+    }
     sequence = epoch->last_sequence;
     edge_tick = epoch->last_edge_tick;
     /* Validate the entire cut before changing device state. */
@@ -91,7 +102,10 @@ static int collect_and_commit(MusashiDeviceEpoch *epoch) {
         if (sequence == UINT64_MAX || edge->sequence != sequence + 1 ||
             edge->tick < edge_tick || edge->tick < epoch->last_cut_tick ||
             edge->tick > batch.cut_tick || !to_cycle(epoch, edge->tick, &edge_cycle) ||
-            edge_cycle < epoch->cycle) return 0;
+            edge_cycle < epoch->cycle) {
+            epoch->fault_reason = "source-edge";
+            return 0;
+        }
         sequence = edge->sequence;
         edge_tick = edge->tick;
     }
@@ -100,15 +114,23 @@ static int collect_and_commit(MusashiDeviceEpoch *epoch) {
     for (i = 0; i < batch.count; ++i) {
         const MusashiIrqSourceEdge *edge = &epoch->pending.edges[i];
         if (!to_cycle(epoch, edge->tick, &edge_cycle) ||
-            !epoch->adapter.advance_devices(epoch->adapter.userdata, edge_cycle)) return 0;
-        epoch->cycle = edge_cycle;
-        if (!epoch->adapter.vblank_edge(epoch->adapter.userdata, edge->sequence, edge_cycle))
+            !epoch->adapter.advance_devices(epoch->adapter.userdata, edge_cycle)) {
+            epoch->fault_reason = "device-advance";
             return 0;
+        }
+        epoch->cycle = edge_cycle;
+        if (!epoch->adapter.vblank_edge(epoch->adapter.userdata, edge->sequence, edge_cycle)) {
+            epoch->fault_reason = "vblank-edge";
+            return 0;
+        }
         epoch->last_sequence = edge->sequence;
         epoch->last_edge_tick = edge->tick;
         epoch->pending_next = i + 1;
     }
-    if (!epoch->adapter.advance_devices(epoch->adapter.userdata, target)) return 0;
+    if (!epoch->adapter.advance_devices(epoch->adapter.userdata, target)) {
+        epoch->fault_reason = "device-advance";
+        return 0;
+    }
     epoch->cycle = target;
     return 1;
 }
@@ -123,12 +145,18 @@ static int advance(MusashiDeviceEpoch *epoch, uint32_t cost) {
     if (!collect_and_commit(epoch)) goto done;
     if (epoch->cycle < reserved) {
         if (epoch->waits == UINT64_MAX || !to_tick(epoch, reserved, &target_tick) ||
-            !epoch->adapter.wait_until_counter(epoch->adapter.userdata, target_tick)) goto done;
+            !epoch->adapter.wait_until_counter(epoch->adapter.userdata, target_tick)) {
+            epoch->fault_reason = "host-wait";
+            goto done;
+        }
         ++epoch->waits;
         /* The adapter promised to reach the reservation using actual host
          * time. A stalled/early wait cannot manufacture elapsed cycles. */
-        if (!collect_and_commit(epoch) || epoch->last_cut_tick < target_tick ||
-            epoch->cycle < reserved) goto done;
+        if (!collect_and_commit(epoch)) goto done;
+        if (epoch->last_cut_tick < target_tick || epoch->cycle < reserved) {
+            epoch->fault_reason = "host-wait-short";
+            goto done;
+        }
     }
     ok = 1;
 done:

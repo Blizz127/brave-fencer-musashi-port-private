@@ -2,134 +2,145 @@
  * SHA256(span)=7624327224e0eb5db018533dc14a9164832237da9126a6b359288025c192718e.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80163EC8 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* File-scope declarations from the vendor translation unit. */
+typedef struct { u8 b[8]; } Blk8;
 
-s16 func_80012F74(s16, s16, s32, s32);                  /* extern */
-void func_80015978(void *, void *);                       /* extern */
-extern s32 D_80183944;
-void func_80146994(s32, void *, s32, void *);              /* static */
-void func_80146CA0(void *);                            /* static */
-void func_80146E90(void *, s32);                         /* static */
-void func_80147324();                                 /* static */
-s32 func_80148800(void *);                          /* static */
-void func_80149350(void *, void *, u16 *);                /* static */
-void func_8014AD30(void *, void *, s32, s16);               /* static */
-void func_8014C4AC(void *, s32, s32, void *, s32);          /* static */
-s32 func_8014CA00(void *);                          /* static */
-s32 func_80156370();                               /* static */
-void func_80162D88(void *, s32 (*)());                   /* static */
-s32 func_801656D0(void *, s32);                     /* static */
-extern u16 D_800B99DA;
+extern s32 func_80146994(s32 a0, s32 a1, s32 a2, s32 a3);
+extern void func_80146CA0(void *a0);
+extern void func_80146E90(s32 *a0, s32 a1);
+extern void func_80147324(s32 a0);
+extern u16 func_80148800(s32 *a0);
+extern void func_80149350(s32 arg0);
+extern void func_8014AD30(s32 a0, u16 *a1, s32 a2, s32 a3);
+extern s32 func_8014CA00(s32 a0);
+extern u16 func_80156370(u16 a0);
+extern void func_80162D88(s32 *a0);
 
-void func_80163EC8(void *arg0) {
-    s16 sp2E;
-    s32 sp28;
-    u16 sp20;
-    s32 sp1F;
-    s32 sp1B;
-    s32 sp18;
-    s16 temp_v0_2;
-    s16 temp_v0_4;
-    u8 temp_a0;
-    void *temp_s1;
-    void *temp_s3;
-    void *temp_s3_2;
-    void *temp_s4;
-    void *temp_v0;
-    void *temp_v0_3;
+void func_80163EC8(s32 param_1) {
+    extern Blk8 D_80183944;
+    extern u16 D_800B99DA;
+    extern u8 func_801656D0(s32 a0, s32 a1);
+    extern s32 func_80012F74(s32 a0, s32 a1, s32 a2, s32 a3);
+    extern void func_80015978(s32 a0, s32 *a1);
+    extern void func_8014C4AC(s32 a0, s32 a1, s32 a2, s16 *a3, s32 a4);
 
-    sp1B = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-    sp1F = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-    temp_s1 = arg0->unk4C;
-    temp_s4 = arg0->unk20;
-    func_80162D88(arg0, D_80183944);
-    temp_v0 = temp_s1->unk184;
-    if (temp_v0 == 0) {
-        goto block_4;
-    }
-    if (temp_v0->unk36 != temp_s1->unk194) {
-        temp_s1->unk184 = 0;
-block_4:
-        temp_s1->unk18A = 0U;
-        temp_s1->unk188 = 0;
-        temp_s1->unk44 = (s32) (temp_s1->unk44 & ~0x20);
-        func_80146CA0(arg0);
-        func_80146CA0(arg0);
+    Blk8 in;
+    u16 out[4];
+    s16 buf[4];
+    s32 psVar6;
+    s32 iVar8;
+    s32 iVar7;
+    register s32 uVar5 __asm__("$2");   /* PIN (flagged): uVar5 -> $v0 */
+    u16 uVar4;
+    u8 uVar3;
+
+    in = D_80183944;
+    psVar6 = *(s32 *)(param_1 + 0x4c);
+    iVar8 = *(s32 *)(param_1 + 0x20);
+    func_80162D88((s32 *)param_1);
+
+    if (*(s32 *)(psVar6 + 0x184) == 0) {
+        uVar5 = *(s32 *)(psVar6 + 0x44);
+        *(s16 *)(psVar6 + 0x18a) = 0;
+        *(s16 *)(psVar6 + 0x188) = 0;
+        *(s32 *)(psVar6 + 0x44) = uVar5 & ~0x20;
+        func_80146CA0((void *)param_1);
+        func_80146CA0((void *)param_1);
         return;
     }
-    temp_s1->unk18A = (u16) (temp_s1->unk18A + 1);
-    if (!(D_800B99DA & 3)) {
-        temp_v0_2 = temp_s1->unk188;
-        temp_a0 = arg0->unk67;
-        if (temp_v0_2 >= (s32) temp_a0) {
-            temp_s1->unk188 = (s16) (temp_v0_2 - temp_a0);
+    if (*(s16 *)(*(s32 *)(psVar6 + 0x184) + 0x36) == *(u16 *)(psVar6 + 0x194)) {
+        goto LAB_matched;
+    }
+    *(s32 *)(psVar6 + 0x184) = 0;
+    uVar5 = *(s32 *)(psVar6 + 0x44);
+    *(s16 *)(psVar6 + 0x18a) = 0;
+    *(s16 *)(psVar6 + 0x188) = 0;
+    *(s32 *)(psVar6 + 0x44) = uVar5 & ~0x20;
+    func_80146CA0((void *)param_1);
+    func_80146CA0((void *)param_1);
+    return;
+
+LAB_matched:
+    *(s16 *)(psVar6 + 0x18a) = *(u16 *)(psVar6 + 0x18a) + 1;
+    if ((D_800B99DA & 3) == 0) {
+        if (*(s16 *)(psVar6 + 0x188) >= *(u8 *)(param_1 + 0x67)) {
+            *(s16 *)(psVar6 + 0x188) = *(s16 *)(psVar6 + 0x188) - *(u8 *)(param_1 + 0x67);
         } else {
-            temp_s1->unk188 = 0;
+            *(s16 *)(psVar6 + 0x188) = 0;
         }
-        if (temp_s1->unk188 < 0) {
-            temp_s1->unk188 = 0;
+        if (*(s16 *)(psVar6 + 0x188) < 0) {
+            *(s16 *)(psVar6 + 0x188) = 0;
         }
     }
-    arg0->unk66 = (u16) (arg0->unk66 + 0x40);
-    if (func_80148800(temp_s1) & 0x80) {
-        arg0->unk66 = 0U;
-        temp_s1->unk188 = (s16) ((u16) temp_s1->unk188 + (func_801656D0(temp_s1, func_8014CA00(temp_s1->unk184) & 0xFF) & 0xFF));
-        temp_s4->unk1A = 0x4000;
-        temp_s4->unk18 = 0x4000;
-        temp_s4->unk48 = (s32) arg0->unk58;
-        temp_s4->unk4C = (s32) arg0->unk5A;
-        temp_s4->unk50 = (s32) arg0->unk5C;
-        func_80149350(arg0, &sp18, &sp20);
-        arg0->unk6 = sp20;
-        arg0->unkA = sp22;
-        arg0->unkE = sp24;
+
+    *(s16 *)(param_1 + 0x66) = *(u16 *)(param_1 + 0x66) + 0x40;
+    uVar5 = func_80148800((s32 *)psVar6);
+    if ((uVar5 & 0x80) != 0) {
+        *(s16 *)(param_1 + 0x66) = 0;
+        uVar3 = func_801656D0(psVar6, func_8014CA00(*(s32 *)(psVar6 + 0x184)) & 0xff);
+        *(s16 *)(psVar6 + 0x188) = *(u16 *)(psVar6 + 0x188) + uVar3;
+        *(s16 *)(iVar8 + 0x1a) = 0x4000;
+        *(s16 *)(iVar8 + 0x18) = 0x4000;
+        *(s32 *)(iVar8 + 0x48) = *(s16 *)(param_1 + 0x58);
+        *(s32 *)(iVar8 + 0x4c) = *(s16 *)(param_1 + 0x5a);
+        *(s32 *)(iVar8 + 0x50) = *(s16 *)(param_1 + 0x5c);
+        ((void (*)(s32, s32, s32))func_80149350)(param_1, (s32)&in, (s32)out);
+        *(s16 *)(param_1 + 0x6) = out[0];
+        *(s16 *)(param_1 + 0xa) = out[1];
+        *(s16 *)(param_1 + 0xe) = out[2];
     }
-    if (temp_s1->unk188 >= 0x81) {
-        temp_s1->unk188 = 0x80;
+
+    if (0x80 < *(s16 *)(psVar6 + 0x188)) {
+        *(s16 *)(psVar6 + 0x188) = 0x80;
     }
-    if (temp_s1->unk188 >= 0x80) {
-        temp_s3 = temp_s1->unk184;
-        if (temp_s3 != 0) {
-            func_80015978(temp_s3 + 4, &sp28);
-            sp2E = 0;
-            func_8014C4AC(temp_s3, 0xE, func_80156370(0xE) & 0xFFFF, &sp28, (s32) temp_s4->unk12);
-            func_80146994(0x33, arg0, 0, temp_s3);
+    if (*(s16 *)(psVar6 + 0x188) >= 0x80) {
+        iVar7 = *(s32 *)(psVar6 + 0x184);
+        if (iVar7 != 0) {
+            func_80015978(iVar7 + 4, (s32 *)buf);
+            buf[3] = 0;
+            uVar4 = func_80156370(0xe);
+            func_8014C4AC(iVar7, 0xe, uVar4, buf, *(s16 *)(iVar8 + 0x12));
+            func_80146994(0x33, param_1, 0, iVar7);
         }
-        goto block_23;
-    }
-    if (((s16) temp_s1->unk18A >= 0x80) || (temp_s1->unk0 == 0x19)) {
-        temp_s3_2 = temp_s1->unk184;
-        if (temp_s3_2 != 0) {
-            func_80015978(temp_s3_2 + 4, &sp28);
-            sp2E = 0;
-            func_8014C4AC(temp_s3_2, 0x21, func_80156370(0x21) & 0xFFFF, &sp28, (s32) temp_s4->unk12);
-            if (temp_s3_2->unkB4 & 0x40000) {
-                func_8014AD30(arg0, &sp28, 0, temp_s3_2->unk60);
+    } else {
+        if (*(s16 *)(psVar6 + 0x18a) < 0x80 && *(u16 *)psVar6 != 0x19) {
+            goto LAB_end;
+        }
+        iVar7 = *(s32 *)(psVar6 + 0x184);
+        if (iVar7 != 0) {
+            func_80015978(iVar7 + 4, (s32 *)buf);
+            buf[3] = 0;
+            uVar4 = func_80156370(0x21);
+            func_8014C4AC(iVar7, 0x21, uVar4, buf, *(s16 *)(iVar8 + 0x12));
+            if ((*(s32 *)(iVar7 + 0xb4) & 0x40000) != 0) {
+                func_8014AD30(param_1, (u16 *)buf, 0, *(s16 *)(iVar7 + 0x60));
             }
         }
-block_23:
-        temp_v0_3 = func_8014CA00(temp_s1->unk184);
-        temp_s1->unk184 = temp_v0_3;
-        if ((u32) temp_v0_3 >= 0x1FU) {
-            temp_s1->unk184 = 0;
-        }
-        func_80146E90(arg0, 0x20);
-        temp_s1->unk44 = (s32) (temp_s1->unk44 & ~0x20);
-        func_80147324(0x449);
-        func_80146CA0(arg0);
-        func_80146CA0(arg0);
     }
-    temp_v0_4 = func_80012F74(temp_s4->unk1A, 0x1800, 3, 1);
-    temp_s4->unk1A = temp_v0_4;
-    temp_s4->unk18 = temp_v0_4;
-    arg0->unk6 = func_80012F74((s16) arg0->unk6, arg0->unk58, 8, 1);
-    arg0->unkA = func_80012F74((s16) arg0->unkA, arg0->unk5A, 8, 1);
-    arg0->unkE = func_80012F74((s16) arg0->unkE, arg0->unk5C, 8, 1);
+
+    uVar5 = func_8014CA00(iVar7);
+    *(s32 *)(psVar6 + 0x184) = uVar5;
+    if (0x1e < (u32)uVar5) {
+        *(s32 *)(psVar6 + 0x184) = 0;
+    }
+    func_80146E90((s32 *)param_1, 0x20);
+    *(s32 *)(psVar6 + 0x44) = *(s32 *)(psVar6 + 0x44) & ~0x20;
+    func_80147324(0x449);
+    func_80146CA0((void *)param_1);
+    func_80146CA0((void *)param_1);
+
+LAB_end:
+    uVar4 = func_80012F74(*(s16 *)(iVar8 + 0x1a), 0x1800, 3, 1);
+    *(s16 *)(iVar8 + 0x1a) = uVar4;
+    *(s16 *)(iVar8 + 0x18) = uVar4;
+    uVar4 = func_80012F74(*(s16 *)(param_1 + 0x6), *(s16 *)(param_1 + 0x58), 8, 1);
+    *(s16 *)(param_1 + 0x6) = uVar4;
+    uVar4 = func_80012F74(*(s16 *)(param_1 + 0xa), *(s16 *)(param_1 + 0x5a), 8, 1);
+    *(s16 *)(param_1 + 0xa) = uVar4;
+    uVar4 = func_80012F74(*(s16 *)(param_1 + 0xe), *(s16 *)(param_1 + 0x5c), 8, 1);
+    *(s16 *)(param_1 + 0xe) = uVar4;
 }

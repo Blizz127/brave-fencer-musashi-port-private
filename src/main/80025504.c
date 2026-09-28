@@ -2,201 +2,145 @@
  * SHA256(span)=e22f3a3deaaeb66554b33460b41e38580a507a5cc9864956feb4355c4b13d248.
  * Word export for the native seam; the body below is kept
  * byte-identical (wrap only, no rewrite). */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80025504 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* GTE/cop2 mnemonic overlay: ordinary C cannot emit coprocessor ops.
- * Verified by tools/match_function.py. */
-__asm__(
-    ".set noreorder\n"
-    ".globl func_80025504\n"
-    ".type func_80025504, @function\n"
-    "func_80025504:\n"
-    "addiu $sp, $sp, -0x28\n"
-    "lw $t5, 0x38($sp)\n"
-    "sw $s0, 0x18($sp)\n"
-    "lw $s0, 0x3C($sp)\n"
-    "lw $t9, 0x40($sp)\n"
-    "addu $t6, $a0, $zero\n"
-    "sw $s2, 0x20($sp)\n"
-    "sw $s1, 0x1C($sp)\n"
-    "addiu $t8, $zero, -0x1001\n"
-    "addiu $t7, $sp, 0x4\n"
-    "addiu $s2, $sp, 0x8\n"
-    "addiu $s1, $sp, 0xC\n"
-    "lui $t3, (0xFFFFFF >> 16)\n"
-    "ori $t3, $t3, (0xFFFFFF & 0xFFFF)\n"
-    "addiu $t1, $a0, 0x14\n"
-    "addiu $t2, $a3, 0x4\n"
-    ".L80025548:\n"
-    "lhu $a0, -0xA($t1)\n"
-    "lhu $v1, -0x6($t1)\n"
-    "lhu $v0, -0x2($t1)\n"
-    "sll $a0, $a0, 3\n"
-    "addu $a0, $a1, $a0\n"
-    "sll $v1, $v1, 3\n"
-    "addu $v1, $a1, $v1\n"
-    "sll $v0, $v0, 3\n"
-    "addu $v0, $a1, $v0\n"
-    "lwc2 $0, 0x0($a0)\n"
-    "lwc2 $1, 0x4($a0)\n"
-    "lwc2 $2, 0x0($v1)\n"
-    "lwc2 $3, 0x4($v1)\n"
-    "lwc2 $4, 0x0($v0)\n"
-    "lwc2 $5, 0x4($v0)\n"
-    "nop\n"
-    "nop\n"
-    "cfc2 $t4, $31\n"
-    "nop\n"
-    "sw $t4, 0x0($sp)\n"
-    "lw $v0, 0x0($sp)\n"
-    "nop\n"
-    "and $v0, $v0, $t8\n"
-    "nop\n"
-    "nop\n"
-    "nop\n"
-    "swc2 $24, 0x0($t7)\n"
-    "lw $v0, 0x4($sp)\n"
-    "nop\n"
-    "nop\n"
-    "swc2 $12, 0x8($a3)\n"
-    "swc2 $13, 0x10($a3)\n"
-    "swc2 $14, 0x18($a3)\n"
-    "lhu $v0, 0x2($t1)\n"
-    "nop\n"
-    "sll $v0, $v0, 3\n"
-    "addu $v0, $a1, $v0\n"
-    "lwc2 $0, 0x0($v0)\n"
-    "lwc2 $1, 0x4($v0)\n"
-    "nop\n"
-    "nop\n"
-    "cfc2 $t4, $31\n"
-    "nop\n"
-    "sw $t4, 0x0($sp)\n"
-    "lw $v0, 0x0($sp)\n"
-    "nop\n"
-    "and $v0, $v0, $t8\n"
-    "addiu $v0, $a3, 0x20\n"
-    "swc2 $14, 0x0($v0)\n"
-    "lui $v0, %hi(D_80078D88)\n"
-    "lw $v0, %lo(D_80078D88)($v0)\n"
-    "nop\n"
-    "andi $v0, $v0, 0x8000\n"
-    "addiu $v0, $sp, 0x10\n"
-    "addiu $v1, $sp, 0x14\n"
-    "swc2 $16, 0x0($s2)\n"
-    "swc2 $17, 0x0($s1)\n"
-    "swc2 $18, 0x0($v0)\n"
-    "swc2 $19, 0x0($v1)\n"
-    "lw $t0, 0x10($sp)\n"
-    "lw $v1, 0x14($sp)\n"
-    "nop\n"
-    "slt $v0, $t0, $v1\n"
-    "nop\n"
-    "addu $t0, $v1, $zero\n"
-    ".L8002566C:\n"
-    "lw $v1, 0x8($sp)\n"
-    "lw $a0, 0xC($sp)\n"
-    "nop\n"
-    "slt $v0, $v1, $a0\n"
-    "slt $v0, $v1, $t0\n"
-    "addu $v1, $a0, $zero\n"
-    "slt $v0, $v1, $t0\n"
-    ".L8002568C:\n"
-    "sra $v0, $v1, 2\n"
-    "addu $v1, $t0, $zero\n"
-    "sra $v0, $v1, 2\n"
-    ".L8002569C:\n"
-    "sw $v0, 0x4($sp)\n"
-    ".L800256A4:\n"
-    "nop\n"
-    "nop\n"
-    "swc2 $7, 0x0($t7)\n"
-    "addiu $v0, $t6, 0x4\n"
-    "lwc2 $6, 0x0($v0)\n"
-    "lhu $a0, -0xC($t1)\n"
-    "lhu $v1, -0x8($t1)\n"
-    "lhu $v0, -0x4($t1)\n"
-    "sll $a0, $a0, 3\n"
-    "addu $a0, $a2, $a0\n"
-    "sll $v1, $v1, 3\n"
-    "addu $v1, $a2, $v1\n"
-    "sll $v0, $v0, 3\n"
-    "addu $v0, $a2, $v0\n"
-    "lwc2 $0, 0x0($a0)\n"
-    "lwc2 $1, 0x4($a0)\n"
-    "lwc2 $2, 0x0($v1)\n"
-    "lwc2 $3, 0x4($v1)\n"
-    "lwc2 $4, 0x0($v0)\n"
-    "lwc2 $5, 0x4($v0)\n"
-    "nop\n"
-    "nop\n"
-    "swc2 $20, 0x4($a3)\n"
-    "swc2 $21, 0xC($a3)\n"
-    "swc2 $22, 0x14($a3)\n"
-    "lhu $v0, 0x0($t1)\n"
-    "nop\n"
-    "sll $v0, $v0, 3\n"
-    "addu $v0, $a2, $v0\n"
-    "lwc2 $0, 0x0($v0)\n"
-    "lwc2 $1, 0x4($v0)\n"
-    "nop\n"
-    "nop\n"
-    "addiu $v0, $a3, 0x1C\n"
-    "swc2 $22, 0x0($v0)\n"
-    "lw $v0, 0x4($sp)\n"
-    "addiu $t2, $t2, 0x24\n"
-    "srav $v0, $v0, $s0\n"
-    "sll $v0, $v0, 2\n"
-    "addu $t0, $t9, $v0\n"
-    "lw $v1, 0x0($t0)\n"
-    "lui $v0, (0x8000000 >> 16)\n"
-    "and $v1, $v1, $t3\n"
-    "or $v1, $v1, $v0\n"
-    "and $v0, $a3, $t3\n"
-    "sw $v1, 0x0($a3)\n"
-    "sw $v0, 0x0($t0)\n"
-    "lui $v0, %hi(D_800A2B78)\n"
-    "lw $v0, %lo(D_800A2B78)($v0)\n"
-    "nop\n"
-    "addiu $a3, $a3, 0x24\n"
-    "lbu $v0, -0x21($t2)\n"
-    "nop\n"
-    "andi $v0, $v0, 0x2\n"
-    "lui $a0, (0xE100000A >> 16)\n"
-    "ori $a0, $a0, (0xE100000A & 0xFFFF)\n"
-    "lw $v1, 0x4($sp)\n"
-    "addiu $v0, $zero, 0x1\n"
-    "sb $v0, -0x1($t2)\n"
-    "lui $v0, %hi(D_800A2B78)\n"
-    "lw $v0, %lo(D_800A2B78)($v0)\n"
-    "srav $v1, $v1, $s0\n"
-    "sll $v1, $v1, 2\n"
-    "addu $t0, $t9, $v1\n"
-    "andi $v0, $v0, 0x3\n"
-    "sll $v0, $v0, 5\n"
-    "or $v0, $v0, $a0\n"
-    "sw $v0, 0x0($t2)\n"
-    "addiu $t2, $t2, 0x8\n"
-    "lw $v1, 0x0($t0)\n"
-    "lui $v0, (0x1000000 >> 16)\n"
-    "and $v1, $v1, $t3\n"
-    "or $v1, $v1, $v0\n"
-    "and $v0, $a3, $t3\n"
-    "sw $v1, 0x0($a3)\n"
-    "addiu $a3, $a3, 0x8\n"
-    "sw $v0, 0x0($t0)\n"
-    ".L800257EC:\n"
-    "addiu $t5, $t5, -0x1\n"
-    "addiu $t1, $t1, 0x18\n"
-    "addiu $t6, $t6, 0x18\n"
-    ".L800257FC:\n"
-    "addu $v0, $a3, $zero\n"
-    "lw $s2, 0x20($sp)\n"
-    "lw $s1, 0x1C($sp)\n"
-    "lw $s0, 0x18($sp)\n"
-    "addiu $sp, $sp, 0x28\n"
-    "jr $ra\n"
-    "nop\n"
-    ".size func_80025504, .-func_80025504\n"
-    ".set reorder\n"
-);
+#define gte_ldv0(r0)  __asm__ volatile("lwc2 $0, 0(%0);lwc2 $1, 4(%0)" : : "r"(r0))
+#define gte_ldv3(r0, r1, r2) __asm__ volatile(                              \
+    "lwc2 $0, 0(%0);lwc2 $1, 4(%0);"                                        \
+    "lwc2 $2, 0(%1);lwc2 $3, 4(%1);"                                        \
+    "lwc2 $4, 0(%2);lwc2 $5, 4(%2)" : : "r"(r0), "r"(r1), "r"(r2))
+#define gte_ldrgb(r0) __asm__ volatile("lwc2 $6, 0(%0)" : : "r"(r0))
+#define gte_rtpt()  __asm__ volatile("nop;nop;cop2 0x0280030")
+#define gte_rtps()  __asm__ volatile("nop;nop;cop2 0x0180001")
+#define gte_nclip() __asm__ volatile("nop;nop;cop2 0x1400006")
+#define gte_avsz4() __asm__ volatile("nop;nop;cop2 0x168002e")
+#define gte_ncct()  __asm__ volatile("nop;nop;cop2 0x118043f")
+#define gte_nccs()  __asm__ volatile("nop;nop;cop2 0x108041b")
+#define gte_stflg(r0) __asm__ volatile("cfc2 $12, $31;nop;sw $12, 0(%0)" : : "r"(r0) : "$12", "memory")
+#define gte_stopz(r0) __asm__ volatile("swc2 $24, 0(%0)" : : "r"(r0) : "memory")
+#define gte_stotz(r0) __asm__ volatile("swc2 $7, 0(%0)" : : "r"(r0) : "memory")
+#define gte_stsxy2(r0) __asm__ volatile("swc2 $14, 0(%0)" : : "r"(r0) : "memory")
+#define gte_strgb2(r0) __asm__ volatile("swc2 $22, 0(%0)" : : "r"(r0) : "memory")
+#define gte_stsxy3_g4(r0) __asm__ volatile(                                 \
+    "swc2 $12, 8(%0);swc2 $13, 16(%0);swc2 $14, 24(%0)" : : "r"(r0) : "memory")
+#define gte_strgb3_g4(r0) __asm__ volatile(                                 \
+    "swc2 $20, 4(%0);swc2 $21, 12(%0);swc2 $22, 20(%0)" : : "r"(r0) : "memory")
+#define gte_stsz4(r0, r1, r2, r3) __asm__ volatile(                         \
+    "swc2 $16, 0(%0);swc2 $17, 0(%1);swc2 $18, 0(%2);swc2 $19, 0(%3)"       \
+    : : "r"(r0), "r"(r1), "r"(r2), "r"(r3) : "memory")
+typedef struct {
+    s16 vx, vy, vz, pad;
+} GVec8;
+typedef struct {
+    s32 unk0;
+    u32 rgb;
+    u16 n0, v0;
+    u16 n1, v1;
+    u16 n2, v2;
+    u16 n3, v3;
+} GFace;
+typedef struct {
+    u32 tag;
+    u8 r0, g0, b0, code;
+    u32 xy0;
+    u32 rgb1;
+    u32 xy1;
+    u32 rgb2;
+    u32 xy2;
+    u32 rgb3;
+    u32 xy3;
+} GPolyG4;
+typedef struct {
+    u8 addr0, addr1, addr2, len;
+    u32 code0;
+} GDrMode;
+extern s32 D_80078D88[];
+extern s32 D_800A2B78;
+
+void *func_80025504(GFace *prim, GVec8 *vtx, GVec8 *nrm, GPolyG4 *poly, s32 n, s32 shift,
+                    u32 *ot)
+{
+    s32 flag;
+    s32 p;
+    s32 sz0, sz1, sz2, sz3;
+    s32 zmax, ztmp;
+    u32 *op;
+    GDrMode *dm;
+    GFace *fp;
+    register GFace *p0 __asm__("$4") = prim;
+
+    __asm__("" : "=r"(poly) : "0"(poly));
+    fp = p0;
+    for (; n != 0; n--, fp++) {
+            gte_ldv3(&vtx[fp->v0], &vtx[fp->v1], &vtx[fp->v2]);
+            gte_rtpt();
+            gte_stflg(&flag);
+            if (flag & 0xffffefff) {
+                continue;
+            }
+            gte_nclip();
+            gte_stopz(&p);
+            if (p <= 0) {
+                continue;
+            }
+            gte_stsxy3_g4(poly);
+            gte_ldv0(&vtx[fp->v3]);
+            gte_rtps();
+            gte_stflg(&flag);
+            if (flag & 0xffffefff) {
+                continue;
+            }
+            gte_stsxy2(&poly->xy3);
+            if (D_80078D88[0] & 0x8000) {
+                gte_stsz4(&sz0, &sz1, &sz2, &sz3);
+                zmax = sz2;
+                if (zmax < sz3) {
+                    zmax = sz3;
+                }
+                ztmp = sz0;
+                if (ztmp < sz1) {
+                    ztmp = sz1;
+                }
+                if (ztmp < zmax) {
+                    ztmp = zmax;
+                }
+                p = ztmp >> 2;
+            } else {
+                gte_avsz4();
+                gte_stotz(&p);
+            }
+            gte_ldrgb(&fp->rgb);
+            gte_ldv3(&nrm[fp->n0], &nrm[fp->n1], &nrm[fp->n2]);
+            gte_ncct();
+            gte_strgb3_g4(poly);
+            gte_ldv0(&nrm[fp->n3]);
+            gte_nccs();
+            gte_strgb2(&poly->rgb3);
+
+            op = &ot[p >> shift];
+            poly->tag = (*op & 0xffffff) | 0x08000000;
+            *op = (u32)poly & 0xffffff;
+            poly++;
+            if (D_800A2B78 != 0) {
+                if (poly[-1].code & 2) {
+                    dm = (GDrMode *)poly;
+                    op = &ot[p >> shift];
+                    dm->len = 1;
+                    dm->code0 = 0xe100000a | ((D_800A2B78 & 3) << 5);
+                    *(u32 *)dm = (*op & 0xffffff) | 0x01000000;
+                    *op = (u32)dm & 0xffffff;
+                    poly = (GPolyG4 *)((u8 *)dm + 8);
+                }
+            }
+    }
+    return poly;
+}

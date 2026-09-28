@@ -2,98 +2,87 @@
  * SHA256(span)=871aae21999c78d67d19d2c41f0184c06fe5f08dbeef7f0a71cd20b3337d5c43.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80168828 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* Vendor names mapped to address-named symbols for the link-by-address harness. */
+#define RotMatrixYXZ func_80049A1C
 
-void func_800173BC(s16 *, void *);            /* extern */
-void func_80017DC4(u16 *, void *);            /* extern */
-void func_80017E68(u16 *, void *);            /* extern */
-void func_80048EAC(void *, void *);        /* extern */
-void func_80049A1C(u16 *, void *);            /* extern */
-void func_80049CAC(u16 *, void *);            /* extern */
-extern s32 D_80181364;
+/* File-scope declarations from the vendor translation unit. */
+typedef struct {
+    u16 f00, f02, f04, f06;
+    s16 f08;
+    u16 f0a, f0c, f0e, f10, f12, f14, f16;
+    u8  f18, f19, f1a, f1b, f1c, f1d, f1e, f1f, f20, f21, f22, f23;
+    u32 f24;
+} Thing_80168828;
 
-void func_80168828(void *arg0) {
-    u16 sp7C;
-    u16 sp7A;
-    u16 sp78;
-    s32 sp58;
-    s32 sp38;
-    s32 sp34;
-    s8 sp32;
-    s8 sp31;
-    s8 sp30;
-    s8 sp2E;
-    s8 sp2D;
-    s8 sp2C;
-    s8 sp2A;
-    s8 sp29;
-    s8 sp28;
-    s16 sp24;
-    s16 sp22;
-    s16 sp20;
-    s16 sp1C;
-    s16 sp1A;
-    s16 sp18;
-    s16 sp14;
-    s16 sp12;
-    s16 sp10;
-    s32 (*var_s3)();
-    s16 temp_v0_2;
-    s16 var_s5;
-    u16 temp_v0;
-    u16 temp_v0_3;
+extern void func_80017E68(void *a0, void *a1);
+extern void func_80048EAC(void *a0, void *a1);
 
-    sp14 = 2;
-    sp1C = 0x24;
-    sp24 = 0x28;
-    sp18 = -3;
-    sp20 = 3;
-    sp2A = 0x10;
-    sp30 = 0xFF;
-    sp2C = 0xFF;
-    sp31 = 0xC0;
-    sp2D = 0xC0;
-    sp12 = 0;
-    sp10 = 0;
-    sp22 = 0;
-    sp1A = 0;
-    sp28 = 0x40;
-    sp29 = 0x40;
-    sp32 = 0x40;
-    sp2E = 0x40;
-    sp34 = 0x50000000;
-    sp78 = M2C_FIELD(arg0, u16 *, 6);
-    var_s3 = D_80181364;
-    sp7A = M2C_FIELD(arg0, u16 *, 0xA);
-    var_s5 = 0;
-    sp7C = M2C_FIELD(arg0, u16 *, 0xE);
-    func_80017E68(&sp78, &sp38);
-    temp_v0 = (M2C_FIELD(arg0, s32 *, 0x1C) << 0xB) + 0x1000;
-    sp7C = temp_v0;
-    sp7A = temp_v0;
-    sp78 = temp_v0;
-    func_80017DC4(&sp78, &sp38);
-    sp78 = M2C_FIELD(arg0, u16 *, 0x12);
-    sp7A = M2C_FIELD(arg0, u16 *, 0x16);
-    sp7C = M2C_FIELD(arg0, u16 *, 0x1A);
-    func_80049A1C(&sp78, &sp58);
-    func_80048EAC(&sp38, &sp58);
-    sp7A = 0;
-    do {
-        sp78 = M2C_FIELD(var_s3, u16 *, 0);
-        temp_v0_3 = M2C_FIELD(var_s3, u16 *, 2);
-        var_s3 = var_s3 + 2 + 2;
-        sp7C = temp_v0_3;
-        func_80049CAC(&sp78, &sp38);
-        func_80048EAC(&sp58, &sp38);
-        func_800173BC(&sp10, &sp38);
-        temp_v0_2 = var_s5 + 1;
-        var_s5 = temp_v0_2;
-    } while (temp_v0_2 < 4);
+
+
+void func_80168828(void)
+{
+    extern s32 func_80017DC4(void *a0, void *a1);
+    extern void func_80049CAC(s32 a0, s32 a1);
+    extern void func_800173BC(void *a0, void *a1);
+    extern u16 D_80181364[];
+
+    register s32 a0v __asm__("$4");
+    s32 param_1 = a0v;
+    Thing_80168828 thing;
+    s16 matA[16];
+    s16 matB[16];
+    s16 svec[4];
+    u16 *p;
+    short i;
+    register s32 c40 __asm__("$3");   /* $v1: hold the CSE'd 0x40 (else gcc folds to $v0 immediate) */
+
+    c40 = 0x40;
+    thing.f04 = 2;
+    thing.f0c = 0x24;
+    thing.f14 = 0x28;
+    thing.f08 = -3;
+    thing.f10 = 3;
+    thing.f02 = 0;
+    thing.f00 = 0;
+    thing.f12 = 0;
+    thing.f0a = 0;
+    thing.f18 = c40;
+    thing.f19 = c40;
+    thing.f22 = c40;
+    thing.f1e = c40;
+    thing.f1a = 0x10;
+    thing.f20 = 0xff;
+    thing.f1c = 0xff;
+    thing.f21 = 0xc0;
+    thing.f1d = 0xc0;
+    thing.f24 = 0x50000000;
+
+    svec[0] = *(u16 *)(param_1 + 6);
+    svec[1] = *(u16 *)(param_1 + 0xA);
+    svec[2] = *(u16 *)(param_1 + 0xE);
+    func_80017E68(svec, matA);
+
+    svec[0] = svec[1] = svec[2] = (*(s32 *)(param_1 + 0x1C) << 11) + 0x1000;
+    ((void (*)(void *, void *))func_80017DC4)(svec, matA);
+
+    svec[0] = *(u16 *)(param_1 + 0x12);
+    svec[1] = *(u16 *)(param_1 + 0x16);
+    svec[2] = *(u16 *)(param_1 + 0x1A);
+    RotMatrixYXZ(svec, matB);
+
+    func_80048EAC(matA, matB);
+
+    svec[1] = 0;
+    p = D_80181364;
+    for (i = 0; i < 4; i++) {
+        svec[0] = *p++;
+        svec[2] = *p++;
+        ((void (*)(void *, void *))func_80049CAC)(svec, matA);
+        func_80048EAC(matB, matA);
+        func_800173BC(&thing, matA);
+    }
 }

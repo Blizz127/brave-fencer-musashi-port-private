@@ -2,60 +2,74 @@
  * SHA256(span)=7b03d2b8582c5890d4d34acb0a27ba1e8dff631d4c0d481053cafe8b3c9aa3a5.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80135004 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* File-scope declarations from the vendor translation unit. */
+extern u8 D_8017E910;
+extern u8 D_8017E914;
 
-extern s32 D_8017E910;
-extern s32 D_8017E914;
-extern s32 D_8017E918;
-extern s32 D_8017E91C;
-extern s32 D_80184120;
-extern s32 D_80184130;
-s32 func_80134A74(s32, s16, s16, s32);              /* static */
+            typedef struct { s8 c[8]; } Blk8_80135004;
 
-s32 func_80135004(s32 arg0, void *arg1, void *arg2) {
-    s32 temp_s1;
-    u16 temp_a1;
-    u16 temp_v0;
-    u16 temp_v0_2;
-    u16 temp_v0_3;
-    u16 temp_v1;
-    u16 temp_v1_2;
-    u16 temp_v1_3;
+// @class: plumbing
+// @stuck: MATCH (89 ins). To BANK: retype aD8017E914_80135004 + aD8017E910_80135004 (u8 -> s16*) in sibling func_80135168's externs (src/ov_SC01_077/ov_SC01_077_a.c ~L1879); they hold pointers double-referenced across a call, so only a 4-byte/pointer decl folds %lo (u8 &-cast CSE's the address into a saved reg). Retype is byte-NEUTRAL for the sibling (verified: identical objdump bytes u8 vs s16*).
 
-    temp_v0 = M2C_FIELD(arg2, u16 *, 0);
-    M2C_FIELD(D_8017E914, u16 *, 0) = temp_v0;
-    temp_v1 = M2C_FIELD(arg1, u16 *, 0);
-    M2C_FIELD(D_8017E910, u16 *, 0) = temp_v1;
-    M2C_FIELD(D_8017E91C, s16 *, 0) = (s16) (temp_v0 - temp_v1);
-    temp_v0_2 = M2C_FIELD(arg2, u16 *, 2);
-    M2C_FIELD(D_8017E914, u16 *, 2) = temp_v0_2;
-    temp_v1_2 = M2C_FIELD(arg1, u16 *, 2);
-    M2C_FIELD(D_8017E910, u16 *, 2) = temp_v1_2;
-    M2C_FIELD(D_8017E91C, s16 *, 2) = (s16) (temp_v0_2 - temp_v1_2);
-    temp_v0_3 = M2C_FIELD(arg2, u16 *, 4);
-    temp_s1 = arg0 & 0xFFFF;
-    M2C_FIELD(D_8017E914, u16 *, 4) = temp_v0_3;
-    temp_v1_3 = M2C_FIELD(arg1, u16 *, 4);
-    M2C_FIELD(D_8017E910, u16 *, 4) = temp_v1_3;
-    M2C_FIELD(D_8017E91C, s16 *, 4) = (s16) (temp_v0_3 - temp_v1_3);
-    D_80184130 = 0U;
-    if (func_80134A74(temp_s1, (s16) M2C_FIELD(D_8017E910, u16 *, 0), (s16) M2C_FIELD(D_8017E910, u16 *, 4), D_80184120) != 0) {
-        goto block_1;
+
+
+
+s32 func_80135004(s32 arg0, s32 p1, s32 p2)
+{
+
+    extern s32 D_80184120;
+    extern int func_80134A74(int, s16, s16, int);
+    extern s16 * aD8017E914_80135004 __asm__("D_8017E914");
+    extern s16 * aD8017E910_80135004 __asm__("D_8017E910");
+    extern u8 D_8017E91C;
+    extern s16 *D_8017E918;
+    extern u16 D_80184130;
+
+    register s16 *pb0 __asm__("$9");   /* aD8017E914_80135004 -> $t1 */
+    register s16 *pac __asm__("$6");   /* aD8017E910_80135004 -> $a2 */
+    register s16 *pb8 __asm__("$8");   /* D_8017E91C -> $t0 */
+    u16 *pb4;
+    u16 a, b;
+    int id;
+    int a1v, a2v, d94;
+
+    pb0 = aD8017E914_80135004;
+    __asm__ __volatile__("" : : "r"(pb0));
+
+    a = ((u16 *)p2)[0]; pac = aD8017E910_80135004; pb0[0] = a; b = ((u16 *)p1)[0]; pb8 = (*(s16 * *)&D_8017E91C); pac[0] = b; pb8[0] = a - b;
+    a = ((u16 *)p2)[1]; pb0[1] = a; b = ((u16 *)p1)[1]; pac[1] = b; pb8[1] = a - b;
+    a = ((u16 *)p2)[2]; pb0[2] = a; b = ((u16 *)p1)[2]; pac[2] = b; pb8[2] = a - b;
+
+    id = ((int)arg0) & 0xFFFF;
+    a1v = pac[0]; a2v = pac[2]; d94 = D_80184120;
+    __asm__ __volatile__("" ::: "memory");
+    D_80184130 = 0;
+
+    if (func_80134A74(id, a1v, a2v, d94)) {
+    found:
+        pb4 = (*(u16 * *)&D_8017E918);
+        ((u16 *)p2)[0] = pb4[0];
+        ((u16 *)p2)[1] = pb4[1];
+        ((u16 *)p2)[2] = pb4[2];
+        ((u16 *)p2)[3] = D_80184130;
+        return 1;
     }
-    temp_a1 = M2C_FIELD(D_8017E914, u16 *, 0);
-    if ((((M2C_FIELD(D_8017E910, u16 *, 0) & 0xFF80) == (temp_a1 & 0xFF80)) && ((M2C_FIELD(D_8017E910, u16 *, 4) & 0xFF80) == (M2C_FIELD(D_8017E914, u16 *, 4) & 0xFF80))) || (func_80134A74(temp_s1, (s16) temp_a1, (s16) M2C_FIELD(D_8017E914, u16 *, 4), D_80184120) == 0)) {
+    {
+        register u16 *qb __asm__("$4");   /* aD8017E910_80135004 -> $a0 (reloaded) */
+        register int qa0 __asm__("$5");   /* aD8017E914_80135004[0], kept in $a1 for the 2nd-call arg */
+        register u16 *qa __asm__("$6");   /* aD8017E914_80135004 -> $a2 (reloaded) */
+        qb = (u16 *)aD8017E910_80135004;
+        qa = (u16 *)aD8017E914_80135004;
+        qa0 = qa[0];
+        if (((qb[0] & 0xFF80) == (qa0 & 0xFF80)) &&
+            ((qb[2] & 0xFF80) == (qa[2] & 0xFF80)))
+            return 0;
+        if (func_80134A74(id, (s16)qa0, (s16)qa[2], D_80184120))
+            goto found;
         return 0;
     }
-block_1:
-    M2C_FIELD(arg2, u16 *, 0) = (u16) M2C_FIELD(D_8017E918, u16 *, 0);
-    M2C_FIELD(arg2, u16 *, 2) = (u16) M2C_FIELD(D_8017E918, u16 *, 2);
-    M2C_FIELD(arg2, u16 *, 6) = (u16) D_80184130;
-    M2C_FIELD(arg2, u16 *, 4) = (u16) M2C_FIELD(D_8017E918, u16 *, 4);
-    return 1;
 }

@@ -2,59 +2,30 @@
  * SHA256(span)=35eeaa608d1a071588bd42e61a6686574312f645cc4d4d4852fdc5c68d6dae0c.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-#include "m2c_macros.h"
-
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-s32 func_8004CFEC(s32, s32);                        /* extern */
-extern s16 D_80126CB4;
+/* func_8012B8E4 - byte-exact against retail at -O2 (tools/register_match.py). */
+#define ratan2 func_8004CFEC
+extern s32 ratan2(s32 a0, s32 a1);
+extern s32 ratan2(s32 x, s32 y);
 extern s16 D_80126CB8;
+extern s16 D_80126CB4;
 
-s32 func_8012B8E4(void *arg0, s16 arg1) {
-    s16 temp_s1;
-    s32 temp_a0;
-    s32 temp_lo;
-    s32 temp_lo_2;
-    s32 temp_s1_2;
-    s32 var_v0;
-    s32 var_v0_2;
-    s32 var_v1;
-    s32 var_v1_2;
-
-    temp_s1 = M2C_FIELD(M2C_FIELD(arg0, void **, 0x20), s16 *, 0x12);
-    temp_a0 = (func_8004CFEC(M2C_FIELD(arg0, s16 *, 0xE) - D_80126CB8, D_80126CB4 - M2C_FIELD(arg0, s16 *, 6)) - 0x400) & 0xFFF;
-    temp_s1_2 = temp_s1 & 0xFFF;
-    if (temp_s1_2 == temp_a0) {
-        return 0;
-    }
-    var_v1 = temp_a0 - temp_s1_2;
-    var_v0_2 = var_v1 < -0x800;
-    if (var_v1 >= 0x801) {
-        var_v1 = temp_a0 - (temp_s1_2 + 0x1000);
-        var_v0_2 = var_v1 < -0x800;
-    }
-    if (var_v0_2 != 0) {
-        var_v1 = temp_a0 - (temp_s1_2 - 0x1000);
-    }
-    if (var_v1 >= 0) {
-        temp_lo = var_v1 / arg1;
-        var_v0 = temp_lo;
-        if (temp_lo == 0) {
-            var_v1_2 = 1;
-            goto block_11;
-        }
-    } else {
-        temp_lo_2 = var_v1 / arg1;
-        var_v0 = temp_lo_2;
-        if (temp_lo_2 == 0) {
-            var_v1_2 = -1;
-block_11:
-            var_v0 = var_v1_2;
-        }
-    }
-    return var_v0;
+s32 func_8012B8E4(s32 arg0, s32 arg1) {
+    register s32 d __asm__("$16");
+    register s32 s1ang __asm__("$17");
+    s32 u5; s32 u6; s32 iVar4; s32 q; s32 t;
+    d = arg1;
+    s1ang = *(s16 *)(*(s32 *)(arg0 + 0x20) + 0x12);
+    u5 = (ratan2(*(s16 *)(arg0 + 0xE) - D_80126CB8, D_80126CB4 - *(s16 *)(arg0 + 6)) - 0x400) & 0xFFF;
+    __asm__ __volatile__("" : : "r"(u5));
+    d = (s16)d;
+    u6 = s1ang & 0xFFF;
+    if (u6 == u5) return 0;
+    iVar4 = u5 - u6;
+    if (iVar4 > 0x800) { t = u6 + 0x1000; iVar4 = u5 - t; }
+    if (iVar4 < -0x800) { t = u6 - 0x1000; iVar4 = u5 - t; }
+    if (iVar4 >= 0) { q = iVar4 / d; if (q == 0) q = 1; }
+    else { q = iVar4 / d; if (q == 0) q = -1; }
+    return q;
 }

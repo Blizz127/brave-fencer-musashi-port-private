@@ -35,7 +35,7 @@ class DmaIrqHandlerTests(unittest.TestCase):
             "cc", "-std=c99", "-O2", "-Wall", "-Wextra", "-Werror", "-shared", "-fPIC",
             "-DMUSASHI_NATIVE_DMA_IRQ_HANDLER=1",
             "-I", str(ROOT / "include"), "-I", str(ROOT / "pc_port/include"),
-            str(ROOT / "src/main/80042e08.c"),
+            str(ROOT / "pc_port/libetc_dma_irq.c"),
             str(ROOT / "pc_port/boot_memory.c"),
             "-lcrypto", "-o", str(library),
         ], check=True, stdin=subprocess.DEVNULL, timeout=60, capture_output=True)

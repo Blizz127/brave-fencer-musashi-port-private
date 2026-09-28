@@ -2,34 +2,39 @@
  * member0012 (extracted/overlays/main/0012.bin offset 0x7BEB0, base 80128158).
  * Callee of live STOP 8017BF38; jal 8002D4C8.
  */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
+/* func_8017C008 - byte-exact against retail at -O2 (tools/register_match.py). */
+extern void func_8002D4C8(s32 a0, s32 a1);
+extern void *D_8011DB24;
+extern u8 D_800B9A15;
+extern unsigned char D_800B9A13;
+extern u16 D_80115110;
+extern unsigned short D_80115112;
+extern u16 D_80115112;
+extern void func_8002D4C8(int, int);
+void func_8002D4C8(s32 a0, s32 a1);
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+void func_8017C008(s32 a0, s32 a1) {
+    extern u8 D_800B9A15;
+    extern unsigned char D_800B9A13;
+    extern u16 D_80115110;
+    extern unsigned short D_80115112;
+    extern s16 D_80115126;
+    extern s16 D_801857F0;
+    extern s16 D_801857EC;
+    extern void *D_8011DB24;
+    extern void func_8017C080(void);
+    void *func_ptr;
 
-void func_8002D4C8(s32, s32);                              /* extern */
-extern s32 D_801857EC;
-extern s32 D_801857F0;
-extern s32 func_8017C080;
-extern s8 D_800B9A13;
-extern s8 D_800B9A15;
-extern s16 D_80115110;
-extern s16 D_80115112;
-extern s16 D_80115126;
-extern s32 (*D_8011DB24)();
-
-void func_8017C008(s16 arg0, s16 arg1) {
     D_800B9A15 = 1;
     D_800B9A13 = 5;
     D_80115110 = 4;
-    D_80115126 = arg0;
-    D_801857F0 = arg1;
-    D_801857EC = arg1;
+    func_ptr = func_8017C080;
+    D_80115126 = a0;
+    D_801857F0 = a1;
+    D_801857EC = a1;
     D_80115112 = 0;
-    D_8011DB24 = func_8017C080;
+    D_8011DB24 = func_ptr;
     func_8002D4C8(0x1E, 0);
 }

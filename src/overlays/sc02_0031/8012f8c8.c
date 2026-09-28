@@ -4,31 +4,26 @@
  * Member-0012 C shape retargeted to this member: D_8017E6FC->D_80184FEC.
  * Oracle MATCH re-earned against the resident image; Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8012F8C8 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL of func_8012F8C8 (main_0012.s), decoded manually from
- * raw asm (NOT verified against retail; C89-gated only,
- * promotion requires an oracle MATCH): F828-sibling:
- * unconditionally sets byte unkC1 = 7 (sb in the beqz delay
- * slot); when word unkB4 & 0x80 calls 80131170(obj,
- * &D_80184FEC, 0xB) (pass-through a0); ends with 31CA8(obj,
- * 0x16). */
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern void func_80131170(s32 a0, s32 a1, s32 a2);
+extern void func_80131CA8(int a0, int a1);
+extern u8 D_80184FEC[];
 
-struct obj_8012F8C8 {
-    u8 pad[0xB4];
-    s32 unkB4;
-    u8 pad2[0xC1 - 0xB8];
-    u8 unkC1;
-};
-
-extern u8 D_80184FEC;
-extern void func_80131170(void *arg0, void *arg1, s32 arg2);
-extern void func_80131CA8(void *arg0, s32 arg1);
-
-void func_8012F8C8(struct obj_8012F8C8 *arg0) {
-    arg0->unkC1 = 7;
-    if (arg0->unkB4 & 0x80) {
-        func_80131170(arg0, &D_80184FEC, 0xB);
+void func_8012F8C8(u8* arg0) {
+    *(u8*)(arg0 + 0xC1) = 7;
+    if (*(u32*)(arg0 + 0xB4) & 0x80) {
+        ((void (*)(void*, void*, s32))func_80131170)(arg0, D_80184FEC, 0xB);
     }
-    func_80131CA8(arg0, 0x16);
+    ((void (*)(void*, s32))func_80131CA8)(arg0, 0x16);
 }

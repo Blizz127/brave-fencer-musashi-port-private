@@ -2,23 +2,19 @@
  * SHA256(span)=6e80098d10569f4ef6e4048dfcc17639c124f9a303c3233806cf3dd041fbb7bf.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Sony PsyQ library routine (vendor/bfm-decomp keeps it as INCLUDE_ASM); C written from the retail disassembly. */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_8003D9CC - byte-exact against retail at -O2 (tools/register_match.py). */
 
-void D_8006B8EC();                                     /* static */
 extern s32 D_8006B8F8;
-
-void func_8003D9CC(void) {
+extern void (*D_8006B8EC)(void);
+void func_8003D9CC(void)
+{
     if (D_8006B8F8 == 0) {
         D_8006B8F8 = 1;
-        return;
+    } else {
+        D_8006B8F8 = 0;
+        D_8006B8EC();
     }
-    D_8006B8F8 = 0;
-    D_8006B8EC();
 }

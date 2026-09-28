@@ -2,33 +2,27 @@
  * SHA256(span)=1d2a2196071f42b057de387e5f51d1ca0ad61d74d4afa09598adbb7961ce6b4c.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-#include "m2c_macros.h"
+/* func_80143BDC - byte-exact against retail at -O2 (tools/register_match.py). */
+struct S80143BDC;
+struct S80143BDC {
+    s16 f0, f2, f4, f6, f8, fA, fC, fE;
+    s32 f10;
+};
+extern s32 func_8012C51C(void *a0, s32 a1);
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-void func_8012C51C(u16 *, s32);              /* static */
-
-void func_80143BDC(void *arg0) {
-    s32 sp20;
-    s16 sp1E;
-    s16 sp1A;
-    s16 sp18;
-    s16 sp16;
-    u16 sp14;
-    u16 sp12;
-    u16 sp10;
-
-    sp10 = M2C_FIELD(arg0, u16 *, 0);
-    sp12 = M2C_FIELD(arg0, u16 *, 2);
-    sp16 = 0x1C;
-    sp18 = 1;
-    sp1A = 0;
-    sp20 = 0;
-    sp1E = 0;
-    sp14 = M2C_FIELD(arg0, u16 *, 4);
-    func_8012C51C(&sp10, 0);
+void func_80143BDC(u16 *a0) {
+    struct S80143BDC sp;
+    u16 t;
+    sp.f0 = a0[0];
+    sp.f2 = a0[1];
+    t = a0[2];
+    sp.f6 = 0x1C;
+    sp.f8 = 1;
+    sp.fA = 0;
+    sp.f10 = 0;
+    sp.fE = 0;
+    sp.f4 = t;
+    func_8012C51C(&sp, 0);
 }

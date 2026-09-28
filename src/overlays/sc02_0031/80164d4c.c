@@ -5,18 +5,31 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80164D4C - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-s32 func_80164E40();
-void func_80146CA0();
-typedef struct Inner { u8 pad[0x18]; u16 a, b; } Inner;
-typedef struct { u8 pad[0x20]; Inner *inner; } T;
-void func_80164D4C(T *p) {
-    Inner *in = p->inner;
-    if (func_80164E40(p)) {
-        func_80146CA0(p);
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+extern s32 func_80164E40(void);
+extern void func_80146CA0(void *a0);
+
+void func_80164D4C(void *arg0) {
+    register s32 a __asm__("$16");
+    register s32 iVar3 __asm__("$17");
+    s16 sVar1;
+    a = (s32)arg0;
+    iVar3 = *(s32 *)(a + 0x20);
+    if (((s32 (*)(void))func_80164E40)() != 0) {
+        func_80146CA0((void *)a);
     } else {
-        u16 v = in->b + 0x100;
-        in->b = v;
-        in->a = v;
+        sVar1 = *(s16 *)(iVar3 + 0x1a) + 0x100;
+        *(s16 *)(iVar3 + 0x1a) = sVar1;
+        *(s16 *)(iVar3 + 0x18) = sVar1;
     }
 }

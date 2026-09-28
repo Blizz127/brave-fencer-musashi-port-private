@@ -2,54 +2,48 @@
  * SHA256(span)=9035b674c398e0a3bc3692a308b7e4d347bd86411648131a32ea323b35e36b11.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-#include "m2c_macros.h"
+/* func_80135168 - byte-exact against retail at -O2 (tools/register_match.py). */
+int func_80134A74(int param_1, s16 param_2, s16 param_3, int param_4);
+extern int func_80134A74(int, s16, s16, int);
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+int func_80135168(u16 arg0, u16 *p1, u16 *p2)
+{
 
-extern s32 D_8017E910;
-extern s32 D_8017E914;
-extern s32 D_8017E918;
-extern s32 D_8017E91C;
-extern s32 D_80184120;
-extern s32 D_80184130;
-s32 func_80134A74(s32, s16, s16, s32);              /* static */
+    extern int D_80184120;
+    extern u16 D_80184130;
+     
 
-s32 func_80135168(s32 arg0, void *arg1, void *arg2) {
-    s32 var_v0;
-    u16 temp_v0;
-    u16 temp_v0_2;
-    u16 temp_v0_3;
-    u16 temp_v1;
-    u16 temp_v1_2;
-    u16 temp_v1_3;
 
-    temp_v0 = M2C_FIELD(arg2, u16 *, 0);
-    M2C_FIELD(D_8017E914, u16 *, 0) = temp_v0;
-    temp_v1 = M2C_FIELD(arg1, u16 *, 0);
-    M2C_FIELD(D_8017E910, u16 *, 0) = temp_v1;
-    M2C_FIELD(D_8017E91C, s16 *, 0) = (s16) (temp_v0 - temp_v1);
-    temp_v0_2 = M2C_FIELD(arg2, u16 *, 2);
-    M2C_FIELD(D_8017E914, u16 *, 2) = temp_v0_2;
-    temp_v1_2 = M2C_FIELD(arg1, u16 *, 2);
-    M2C_FIELD(D_8017E910, u16 *, 2) = temp_v1_2;
-    M2C_FIELD(D_8017E91C, s16 *, 2) = (s16) (temp_v0_2 - temp_v1_2);
-    temp_v0_3 = M2C_FIELD(arg2, u16 *, 4);
-    M2C_FIELD(D_8017E914, u16 *, 4) = temp_v0_3;
-    temp_v1_3 = M2C_FIELD(arg1, u16 *, 4);
-    M2C_FIELD(D_8017E910, u16 *, 4) = temp_v1_3;
-    M2C_FIELD(D_8017E91C, s16 *, 4) = (s16) (temp_v0_3 - temp_v1_3);
-    D_80184130 = 0U;
-    var_v0 = 0;
-    if (func_80134A74(arg0 & 0xFFFF, (s16) M2C_FIELD(D_8017E910, u16 *, 0), (s16) M2C_FIELD(D_8017E910, u16 *, 4), D_80184120) != 0) {
-        M2C_FIELD(arg2, u16 *, 0) = (u16) M2C_FIELD(D_8017E918, u16 *, 0);
-        M2C_FIELD(arg2, u16 *, 2) = (u16) M2C_FIELD(D_8017E918, u16 *, 2);
-        var_v0 = 1;
-        M2C_FIELD(arg2, u16 *, 6) = (u16) D_80184130;
-        M2C_FIELD(arg2, u16 *, 4) = (u16) M2C_FIELD(D_8017E918, u16 *, 4);
+    extern u8 D_8017E914;
+    extern u8 D_8017E910;
+    extern s16 *D_8017E918;
+    extern u8 D_8017E91C;
+    register s16 *pb0 __asm__("$8");
+    register s16 *pac __asm__("$6");
+    register s16 *pb8 __asm__("$7");
+    u16 *pb4;
+    u16 a, b;
+    int a1v, a2v, d94;
+
+    pb0 = (*(s16 * *)&D_8017E914);
+    __asm__ __volatile__("" : : "r"(pb0));
+
+    a = p2[0]; pac = (*(s16 * *)&D_8017E910); pb0[0] = a; b = p1[0]; pb8 = (*(s16 * *)&D_8017E91C); pac[0] = b; pb8[0] = a - b;
+    a = p2[1]; pb0[1] = a; b = p1[1]; pac[1] = b; pb8[1] = a - b;
+    a = p2[2]; pb0[2] = a; b = p1[2]; pac[2] = b; pb8[2] = a - b;
+
+    a1v = pac[0]; a2v = pac[2]; d94 = D_80184120;
+    __asm__ __volatile__("" ::: "memory");
+    D_80184130 = 0;
+    if (func_80134A74(arg0, a1v, a2v, d94)) {
+        pb4 = (*(u16 * *)&D_8017E918);
+        p2[0] = pb4[0];
+        p2[1] = pb4[1];
+        p2[2] = pb4[2];
+        p2[3] = D_80184130;
+        return 1;
     }
-    return var_v0;
+    return 0;
 }

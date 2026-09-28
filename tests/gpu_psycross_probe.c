@@ -7,6 +7,7 @@
 #include "../tools/third_party/psycross/src/gpu/PsyX_GPU.h"
 #include "PsyX/PsyX_render.h"
 #include "PsyX/PsyX_public.h"
+void musashi_psyx_shutdown(void); /* pc_port/psyx_shutdown.cpp: GL teardown before window */
 
 extern int g_vertexIndex;
 extern char begin_scene_flag;
@@ -120,7 +121,7 @@ int main(void) {
     assert(!musashi_gpu_psycross_init(&gpu, &backend));
     PsyX_Initialise("Musashi GPU backend probe", 320, 240, 0);
     if (!SDL_GL_GetCurrentContext() || !SDL_GL_GetCurrentWindow()) {
-        PsyX_Shutdown();
+        musashi_psyx_shutdown();
         return 77;
     }
     assert(musashi_gpu_psycross_init(&gpu, &backend));
@@ -330,7 +331,7 @@ int main(void) {
     glDeleteFramebuffers(1, &borrowed_framebuffer);
     assert(musashi_gpu_psycross_shutdown(&gpu));
     assert(backend.ready(backend.userdata) < 0);
-    PsyX_Shutdown();
+    musashi_psyx_shutdown();
     puts("GPU BACKEND OBSERVED: actual drawenv/queue reset, VRAM preserved, blank output; display-on accepted");
     return 0;
 }

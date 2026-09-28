@@ -2,25 +2,28 @@
  * SHA256(span)=b71c659e394e2d7bda30c660ae793eda52600aca1d52f44f03d99d147a91e2ae.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-void func_80011A3C();                                  /* extern */
-void func_8002D4C8(s32, s32);                              /* extern */
-void func_80178608();                                 /* static */
-extern s16 D_800B99F2;
-extern s16 D_800B9A08;
+/* func_80128564 - byte-exact against retail at -O2 (tools/register_match.py). */
+#define currentLocationId D_800B9A08
+extern s16 currentLocationId;
+extern void func_8002D4C8(s32 a0, s32 a1);
+extern s32 func_80011A3C(void);
+extern short currentLocationId;
+extern short D_800B99F2;
 
 void func_80128564(void) {
-    *(void **)0x1F8003FC = sp;
-    func_80178608(0x1F8003FC);
-    if (D_800B9A08 == 0x300A) {
+    register s32 p __asm__("$6") = 0x1F8003FC;
+    __asm__ __volatile__(
+        "addu  $8, %0, $zero\n"
+        "sw    $sp, 0($8)\n"
+        "addiu $8, $8, -4\n"
+        "addu  $sp, $8, $zero\n"
+        "jal   func_80178608\n"
+        "addiu $sp, $sp, 4\n"
+        "lw    $sp, 0($sp)\n"
+        : : "r"(p) : "$8", "memory");
+    if (currentLocationId == 0x300A) {
         func_8002D4C8(6, 0);
     }
     func_80011A3C();

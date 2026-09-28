@@ -2,30 +2,19 @@
  * SHA256(span)=44e908b0224ffcbb18b50177e85747fbd148f6c531eb05e307ee60d97f101e47.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Sony PsyQ library routine (vendor/bfm-decomp keeps it as INCLUDE_ASM); C written from the retail disassembly. */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_8003E248 - byte-exact against retail at -O2 (tools/register_match.py). */
 
-void func_80041448(s16, s32);                    /* static */
-extern u8 D_800C73D8[];
+typedef struct { u8 pad0[0x14]; u8 unk14; u8 pad15[0x98 - 0x15]; u32 unk98; u8 padC[0xB0 - 0x9C]; } SndSeq;
+extern SndSeq *D_800C73D8[];
+extern void func_80041448(s16);
+void func_8003E248(s16 sep, s16 seq)
+{
+    SndSeq *p = &D_800C73D8[sep][seq];
 
-void func_8003E248(s32 arg0, s32 arg1) {
-    s32 *temp_s2;
-    s32 temp_a1;
-    s32 temp_s0;
-    void *temp_s0_2;
-    void *temp_s1;
-
-    temp_s2 = (s32 *) (((s32) (arg0 << 0x10) >> 0xE) + &D_800C73D8[0]);
-    temp_s0 = ((s16) arg1) * 0xB0;
-    temp_a1 = arg1 << 8;
-    temp_s1 = *temp_s2 + temp_s0;
-    func_80041448((s16) (arg0 | temp_a1), temp_a1);
-    M2C_FIELD(temp_s1, s8 *, 0x14) = 0;
-    temp_s0_2 = temp_s0 + *temp_s2;
-    M2C_FIELD(temp_s0_2, s32 *, 0x98) = (s32) (M2C_FIELD(temp_s0_2, s32 *, 0x98) & ~2);
+    func_80041448(sep | (seq << 8));
+    p->unk14 = 0;
+    D_800C73D8[sep][seq].unk98 &= ~2;
 }

@@ -29,6 +29,9 @@
 #include "musashi_disc_media.h"
 #include "musashi_cd_controller.h"
 #include "musashi_audio_sdl.h"
+#include "musashi_native_lane.h"
+/* Ordered PsyCross shutdown (pc_port/psyx_shutdown.cpp). */
+void musashi_psyx_shutdown(void);
 
 #include <SDL.h>
 #include <stdio.h>
@@ -57,6 +60,15 @@ static int log_sample(uint64_t *counter, uint64_t first, uint64_t stride) {
     if (*counter != UINT64_MAX) ++*counter;
     return n < first || (stride && (n % stride) == 0u);
 }
+
+#ifdef MUSASHI_WITH_BFM_PLAT
+#include "bfm_plat_gpu_bridge.h"
+/* MUSASHI_GPU=bfm_plat: GP0/GP1 are teed into the bfm_plat GPU bridge and
+ * drawn by the bfm_plat renderer (MUSASHI_RENDERER, default psycross); the
+ * controller keeps the port protocol with its rasteriser off. Default cpu. */
+static BfmGpuBridge g_gpu_bridge;
+static int g_gpu_bridge_on;
+#endif
 
 typedef struct NativeBoot {
     MusashiBootMemory memory;
@@ -145,12 +157,37 @@ typedef struct NativeBoot {
     uint32_t guest_pending_cycles;
 } NativeBoot;
 
+/* One presented frame: the bfm_plat renderer (via the GPU bridge) or the
+ * PsyCross scanout of the controller's VRAM. */
+static int present_frame(NativeBoot *boot) {
+#ifdef MUSASHI_WITH_BFM_PLAT
+    if (g_gpu_bridge_on) return bfm_gpu_bridge_vblank(&g_gpu_bridge) == 0;
+#endif
+    return musashi_gpu_psycross_present(&boot->gpu_renderer);
+}
+
+/* Overlay member signatures without retail words: FNV-1a 64 over two
+ * loaded words that differ between members, compared with the digest of the
+ * member the port's ranges were carved from. */
+#define OPENING_MEMBER0004_SIGNATURE 0xedc2f28bdda02a4eull
+#define TITLE_MEMBER0010_SIGNATURE 0xfc8191f97da7fd5eull
+static uint64_t loaded_pair_digest(MusashiBootMemory *memory, uint32_t address) {
+    uint32_t words[2] = {0, 0};
+    uint64_t h = 0xcbf29ce484222325ull;
+    unsigned i, b;
+    (void)musashi_boot_read32(memory, address, &words[0]);
+    (void)musashi_boot_read32(memory, address + 4u, &words[1]);
+    for (i = 0; i < 2u; ++i)
+        for (b = 0; b < 4u; ++b) {
+            h ^= (words[i] >> (8u * b)) & 0xffu;
+            h *= 0x100000001b3ull;
+        }
+    return h;
+}
+
 static int select_opening_overlay(NativeBoot *boot) {
-    uint32_t first, second;
     if (boot->opening_overlay_ready) return 1;
-    if (!musashi_boot_read32(&boot->memory,0x800ceec8u,&first) ||
-        !musashi_boot_read32(&boot->memory,0x800ceeccu,&second) ||
-        first != 0x3c02800cu || second != 0x944299e4u) return 0;
+    if (loaded_pair_digest(&boot->memory, 0x800ceec8u) != OPENING_MEMBER0004_SIGNATURE) return 0;
     musashi_boot_select_overlay_0004_words(1);
     boot->opening_overlay_ready = 1;
     fputs("native_boot: OVERLAY_SELECT member=4 source=GUEST_RAM bytes_replaced=0\n",stderr);
@@ -1407,7 +1444,7 @@ static int epoch_video_edge(void *userdata, uint64_t sequence, uint64_t cycle) {
             if (SDL_GL_GetCurrentContext() != boot->gpu_renderer.context)
                 SDL_GL_MakeCurrent((SDL_Window *)boot->gpu_renderer.window, boot->gpu_renderer.context);
         }
-        (void)musashi_gpu_psycross_present(&boot->gpu_renderer);
+        (void)present_frame(boot);
     }
     if (boot->scene1_reached && boot->gpu.display.width == 320u && boot->gpu.display.height == 240u) {
         if (boot->gte.write_count > 800u) {
@@ -1987,12 +2024,19 @@ static int vsync_wait_raise_tick(NativeBoot *boot, const void *continuation) {
 /* Opt-in refusal trace, off unless MUSASHI_TRACE_REFUSAL is set. Prints only:
  * the checkpoint's accept/refuse decision is unchanged either way. */
 static int checkpoint_refuse(const void *continuation, const char *why) {
+    /* A checkpoint refusal ends the run, so its reason is always printed
+     * (once); MUSASHI_TRACE_REFUSAL adds every later one. */
+    static int reported;
     MusashiCpuContext context;
     const char *trace = getenv("MUSASHI_TRACE_REFUSAL");
-    if (continuation &&
-        trace && trace[0] && trace[0] != '0' &&
-        musashi_boot_cpu_context(continuation, MUSASHI_CPU_CONTEXT_SOURCE, &context))
-        fprintf(stderr, "native_boot: CHECKPOINT_REFUSED pc=%08x why=%s\n", context.pc, why);
+    int verbose = trace && trace[0] && trace[0] != '0';
+    if (!reported++ || verbose) {
+        if (continuation &&
+            musashi_boot_cpu_context(continuation, MUSASHI_CPU_CONTEXT_SOURCE, &context))
+            fprintf(stderr, "native_boot: CHECKPOINT_REFUSED pc=%08x why=%s\n", context.pc, why);
+        else
+            fprintf(stderr, "native_boot: CHECKPOINT_REFUSED pc=unknown why=%s\n", why);
+    }
     return 0;
 }
 
@@ -2130,11 +2174,29 @@ static int checkpoint(void *userdata, const void *continuation) {
             !musashi_gte_owner_init(&boot->gte,boot->irq.cpu_status,epoch_owner,boot,context.identity))
             return checkpoint_refuse(continuation, "gte-init");
     }
-    if (!epoch_sync_flushed(boot)) return checkpoint_refuse(continuation, "epoch-sync");
+    if (!epoch_sync_flushed(boot)) {
+        static int reported;
+        if (!reported++)
+            fprintf(stderr, "native_boot: EPOCH_SYNC_REFUSED reason=%s clock=%s%s\n",
+                    boot->epoch.fault_reason ? boot->epoch.fault_reason : "unknown",
+                    boot->guest_clock ? "GUEST" : "HOST_PACED",
+                    boot->guest_clock ? "" : " hint=MUSASHI_GUEST_CLOCK=1 for loaded or headless hosts");
+        return checkpoint_refuse(continuation, "epoch-sync");
+    }
     if (!boot->irq.scheduler.installed) return 1;
     if (boot->irq.scheduler.pumping || boot->irq.scheduler.delivering) return 1;
     if (!vsync_wait_raise_tick(boot, continuation)) return checkpoint_refuse(continuation, "vsync-wait");
-    return musashi_psycross_irq_scheduler_dispatch_pending(&boot->irq.scheduler, continuation);
+    if (!musashi_psycross_irq_scheduler_dispatch_pending(&boot->irq.scheduler, continuation)) {
+        /* Always name the reason: this refusal ends the run. */
+        static int reported;
+        if (!reported++)
+            fprintf(stderr, "native_boot: IRQ_DISPATCH_REFUSED reason=%s clock=%s%s\n",
+                    boot->irq.scheduler.fault_reason ? boot->irq.scheduler.fault_reason : "unknown",
+                    boot->guest_clock ? "GUEST" : "HOST_PACED",
+                    boot->guest_clock ? "" : " hint=MUSASHI_GUEST_CLOCK=1 for loaded or headless hosts");
+        return checkpoint_refuse(continuation, "irq-dispatch");
+    }
+    return 1;
 }
 
 static int run_backup_unit(void *userdata, int32_t *guest_result) {
@@ -2786,22 +2848,17 @@ static void observe_entry(void *userdata, const MusashiEntryCpuSnapshot *cpu) {
     }
     if (cpu->pc == 0x800110ccu) {
         static uint64_t n;
-        uint32_t w0 = 0, w1 = 0;
         boot->title_scene_reached = 1;
         if (log_sample(&n, 8u, 4096u))
             fprintf(stderr, "native_boot: TITLE_SCENE pc=800110cc ra=%08x\n",
                     cpu->r[31]);
-        (void)musashi_boot_read32(&boot->memory, 0x800cedfcu, &w0);
-        (void)musashi_boot_read32(&boot->memory, 0x800cee00u, &w1);
-        if (w0 == 0x3c03800cu && w1 == 0x946399f0u)
+        if (loaded_pair_digest(&boot->memory, 0x800cedfcu) == TITLE_MEMBER0010_SIGNATURE)
             musashi_boot_select_overlay_0010_words(1);
     }
     if (cpu->pc == 0x8001125cu) {
         static int selected_0010;
-        uint32_t w0 = 0, w1 = 0;
-        (void)musashi_boot_read32(&boot->memory, 0x800cedfcu, &w0);
-        (void)musashi_boot_read32(&boot->memory, 0x800cee00u, &w1);
-        if (!selected_0010 && w0 == 0x3c03800cu && w1 == 0x946399f0u) {
+        if (!selected_0010 &&
+            loaded_pair_digest(&boot->memory, 0x800cedfcu) == TITLE_MEMBER0010_SIGNATURE) {
             selected_0010 = 1;
             musashi_boot_select_overlay_0010_words(1);
             fprintf(stderr, "native_boot: OVERLAY_SELECT member=10 dest=800cedf8 "
@@ -2974,6 +3031,49 @@ static int load_exe(NativeBoot *boot, const char *path) {
         musashi_boot_map_exe(&boot->memory, exe, size);
     free(exe);
     return accepted;
+}
+
+/* First-run disc check. Everything from the game (code, overlays, assets)
+ * is read from the user's own disc image; nothing retail ships with the
+ * port. When the supplied files are not the supported release, say so in
+ * terms a player can act on, instead of a bare refusal. */
+#define MUSASHI_EXPECTED_RELEASE "Brave Fencer Musashi (USA), SLUS-00726"
+#define MUSASHI_EXPECTED_EXE_SHA256 \
+    "66371c3a7517e9eabd7cb6cf0c5abffe7296bd4bac29c85b8bf7bb9db349714a"
+
+static void report_exe_identity(const char *path) {
+    FILE *file = fopen(path, "rb");
+    unsigned char digest[SHA256_DIGEST_LENGTH];
+    char hex[SHA256_DIGEST_LENGTH * 2 + 1];
+    long size = -1;
+    unsigned i;
+    fprintf(stderr,
+            "\nThis port needs your own copy of %s.\n"
+            "The game executable it was given is not that release:\n"
+            "  file:     %s\n", MUSASHI_EXPECTED_RELEASE, path);
+    if (!file) {
+        fputs("  problem:  cannot be opened\n", stderr);
+    } else {
+        SHA256_CTX ctx;
+        unsigned char buffer[65536];
+        size_t got;
+        SHA256_Init(&ctx);
+        size = 0;
+        while ((got = fread(buffer, 1, sizeof(buffer), file)) > 0) {
+            SHA256_Update(&ctx, buffer, got);
+            size += (long)got;
+        }
+        fclose(file);
+        SHA256_Final(digest, &ctx);
+        for (i = 0; i < SHA256_DIGEST_LENGTH; ++i) sprintf(hex + 2 * i, "%02x", digest[i]);
+        fprintf(stderr, "  size:     %ld bytes (expected 413696)\n"
+                        "  sha256:   %s\n", size, hex);
+    }
+    fprintf(stderr,
+            "  expected: SLUS_007.26, sha256 %s\n"
+            "Other regions, revisions, patched or re-built images are not supported.\n"
+            "Dump your disc to a .cue/.bin, extract SLUS_007.26 from it, and point the port at it.\n\n",
+            MUSASHI_EXPECTED_EXE_SHA256);
 }
 
 static uint32_t s_png_crc_table[256];
@@ -3285,13 +3385,191 @@ static void hold_window(NativeBoot *boot) {
         while (SDL_PollEvent(&event))
             if (event.type == SDL_QUIT) return;
         if (boot)
-            (void)musashi_gpu_psycross_present(&boot->gpu_renderer);
+            (void)present_frame(boot);
         SDL_Delay(16);
     }
 }
 
+#ifdef MUSASHI_NATIVE_LANE_TABLE
+#include <stddef.h>
+#include <sys/mman.h>
+#include "musashi_native_lane.h"
+#include "musashi_native_lane_psyq.h"
+#ifndef MAP_FIXED_NOREPLACE
+#define MAP_FIXED_NOREPLACE 0x100000
+#endif
+extern const MusashiNativeLaneEntry musashi_native_lane_generated[];
+extern const size_t musashi_native_lane_generated_count;
+_Static_assert(offsetof(NativeBoot, memory) == 0, "guest RAM leads the boot owner");
+
+/* Natively compiled decomp C dereferences 32-bit guest addresses directly,
+ * so the boot owner, whose first member is guest RAM, is placed at host
+ * 0x80000000. Without that window the lane stays off and the interpreter
+ * runs every word, exactly as without MUSASHI_NATIVE_LANE. */
+static NativeBoot *native_boot_owner(NativeBoot *fallback) {
+    const char *value = getenv("MUSASHI_NATIVE_LANE");
+    void *window;
+    if (value && value[0] == '0') return fallback;
+    window = mmap((void *)(uintptr_t)MUSASHI_NATIVE_LANE_GUEST_BASE, sizeof(NativeBoot),
+                  PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE,
+                  -1, 0);
+    if (window == MAP_FAILED || (uintptr_t)window != MUSASHI_NATIVE_LANE_GUEST_BASE) {
+        if (window != MAP_FAILED) munmap(window, sizeof(NativeBoot));
+        fprintf(stderr, "native_boot: NATIVE_LANE window unavailable; interpreter only\n");
+        return fallback;
+    }
+    {
+        /* Generated decomp C plus port-plat's PsyQ compat wrappers. The
+         * device-level wrappers bypass the emulated GPU/CD/IRQ timing, so
+         * they are taken only on the bfm_plat GPU path. */
+        const char *gpu = getenv("MUSASHI_GPU");
+        unsigned classes = musashi_native_lane_psyq_classes();
+        size_t count = 0;
+        const MusashiNativeLaneEntry *table;
+        MusashiNativeLaneEntry *merged;
+        if ((classes & MUSASHI_PSYQ_LANE_DEVICE) && !(gpu && strcmp(gpu, "bfm_plat") == 0)) {
+            fprintf(stderr, "native_boot: PSYQ_LANE device wrappers need MUSASHI_GPU=bfm_plat; "
+                            "pure only\n");
+            classes &= ~(unsigned)MUSASHI_PSYQ_LANE_DEVICE;
+        }
+        merged = musashi_native_lane_psyq_merge(musashi_native_lane_generated,
+                                                musashi_native_lane_generated_count,
+                                                classes, &count);
+        table = merged ? merged : musashi_native_lane_generated;
+        if (!merged) count = musashi_native_lane_generated_count;
+        if (musashi_native_lane_install(table, count) < 0) {
+            fprintf(stderr, "native_boot: NATIVE_LANE table rejected; interpreter only\n");
+            return window;
+        }
+        musashi_native_lane_psyq_bind(&((NativeBoot *)window)->memory, &((NativeBoot *)window)->gte);
+        fprintf(stderr, "native_boot: NATIVE_LANE entries=%u psyq=%u classes=%s\n",
+                (unsigned)count, (unsigned)(count - musashi_native_lane_generated_count),
+                classes == 0u ? "none" : (classes & MUSASHI_PSYQ_LANE_DEVICE) ? "all" : "pure");
+    }
+    return window;
+}
+#else
+static NativeBoot *native_boot_owner(NativeBoot *fallback) { return fallback; }
+#endif
+
+#ifdef MUSASHI_WITH_BFM_PLAT
+/* Platform layer (pc_port/platform, docs/ARCHITECTURE-PORT.md): mods,
+ * cheats and hook-site events see guest RAM and, at a hook, the live guest
+ * registers. native_boot still owns PsyCross/SDL, so bfm_plat runs with its
+ * null renderer/audio/input backends until the game-facing calls are
+ * routed through bfm_plat_*. */
+#include "bfm_plat.h"
+#include "bfm_plat_events.h"
+#include "musashi_native_lane.h"
+
+static const uint32_t *g_plat_hook_regs;
+
+static int plat_ram_read(void *user, uint32_t address, void *out, uint32_t size) {
+    const uint8_t *span = musashi_boot_ram_span(user, address, size);
+    if (!span) return -1;
+    memcpy(out, span, size);
+    return 0;
+}
+
+static int plat_ram_write(void *user, uint32_t address, const void *data, uint32_t size) {
+    uint8_t *span = musashi_boot_ram_span(user, address, size);
+    if (!span) return -1;
+    memcpy(span, data, size);
+    return 0;
+}
+
+static int plat_reg_read(void *user, unsigned reg, uint32_t *out) {
+    (void)user;
+    if (!g_plat_hook_regs || reg >= 32u) return -1;
+    *out = g_plat_hook_regs[reg];
+    return 0;
+}
+
+static void plat_entry_hook(void *user, uint32_t pc, const uint32_t *regs) {
+    (void)user;
+    if (!bfm_plat_hooks_has(pc)) return;
+    g_plat_hook_regs = regs;
+    (void)bfm_plat_hooks_at(pc);
+    g_plat_hook_regs = NULL;
+}
+
+static void plat_overlay_hook(void *user, const char *name) {
+    (void)user;
+    bfm_plat_hooks_set_overlay(name);
+}
+
+static void plat_start(MusashiBootMemory *memory) {
+    static BfmPlatGuestMemory ram;
+    static BfmPlatGuestRegs regs;
+    BfmPlatConfig cfg;
+    const char *off = getenv("MUSASHI_BFM_PLAT");
+    if (off && off[0] == '0') return;
+    bfm_plat_config_defaults(&cfg);
+    snprintf(cfg.renderer, sizeof cfg.renderer, "null");
+    snprintf(cfg.audio, sizeof cfg.audio, "null");
+    snprintf(cfg.input, sizeof cfg.input, "null");
+    cfg.disc_path[0] = 0;      /* native_boot owns the disc and its identity check */
+    cfg.disc_search[0] = 0;
+    {
+        /* The bridge's renderer opens after PsyCross is up (gpu_bridge_attach);
+         * bfm_plat starts on the null renderer like the cpu path. */
+        const char *gpu = getenv("MUSASHI_GPU");          /* cpu | bfm_plat */
+        if (gpu && strcmp(gpu, "bfm_plat") == 0) cfg.gpu_path = BFM_GPU_BFM_PLAT;
+    }
+    if (bfm_plat_init(&cfg) != 0) {
+        fprintf(stderr, "native_boot: BFM_PLAT init refused; platform layer off\n");
+        return;
+    }
+    ram.read = plat_ram_read;
+    ram.write = plat_ram_write;
+    ram.user = memory;
+    regs.read = plat_reg_read;
+    regs.user = NULL;
+    bfm_plat_guest_memory_bind(&ram);
+    bfm_plat_guest_regs_bind(&regs);
+    if (bfm_plat_hooks_register_known() != 0)
+        fprintf(stderr, "native_boot: BFM_PLAT hook sites refused\n");
+    fprintf(stderr, "native_boot: BFM_PLAT up hook_sites=%u\n", (unsigned)bfm_plat_hooks_count());
+
+    musashi_formatter_set_entry_hook(plat_entry_hook, NULL);
+    musashi_formatter_set_overlay_hook(plat_overlay_hook, NULL);
+}
+
+/* MUSASHI_GPU=bfm_plat, once PsyCross and the controller are up: open the
+ * bfm_plat renderer (MUSASHI_RENDERER, default psycross, drawing into the
+ * PsyCross context native_boot created) and tee the controller into the
+ * bridge. Any refusal leaves the cpu path. */
+static void gpu_bridge_attach(MusashiGpuController *gpu) {
+    const char *name = getenv("MUSASHI_RENDERER"), *selected = NULL;
+    BfmPlatOutput out;
+    if (!bfm_gpu_bridge_selected(bfm_plat_config())) return;
+    if (!name || !name[0]) name = "psycross";
+    memset(&out, 0, sizeof out);
+    out.window_width = 640;
+    out.window_height = 480;
+    out.internal_scale = 1;
+    out.aspect_num = 4;
+    out.aspect_den = 3;
+    if (bfm_plat_renderer_open(name, &out, &selected) != 0 || !selected ||
+        strcmp(selected, name) != 0) {
+        fprintf(stderr, "native_boot: GPU_PATH bfm_plat refused: renderer %s unavailable; cpu\n",
+                name);
+        (void)bfm_plat_renderer_open("null", &out, NULL);
+        return;
+    }
+    bfm_gpu_bridge_init(&g_gpu_bridge);
+    gpu->tap = bfm_gpu_bridge_tap;
+    gpu->tap_userdata = &g_gpu_bridge;
+    gpu->raster_disabled = 1;
+    g_gpu_bridge_on = 1;
+    fprintf(stderr, "native_boot: GPU_PATH bfm_plat renderer=%s\n", selected);
+}
+#endif
+
 int main(int argc, char **argv) {
-    static NativeBoot boot; /* One stable, zero-initialized owner. */
+    static NativeBoot boot_storage; /* One stable, zero-initialized owner. */
+    NativeBoot *const boot_owner = native_boot_owner(&boot_storage);
+#define boot (*boot_owner)
     MusashiEntryRunStop entry_stop = {0};
     MusashiResetGraphPrefixStop stop = {0};
     MusashiResetGraphPrefixStatus status;
@@ -3354,12 +3632,22 @@ int main(int argc, char **argv) {
     boot.exe_path = exe_path;
     boot.last_musashi_action = 0xffffu;
     if (!load_exe(&boot, exe_path)) {
+        report_exe_identity(exe_path);
         fputs("native_boot: pinned retail EXE rejected before startup\n", stderr);
         return 2;
     }
+#ifdef MUSASHI_WITH_BFM_PLAT
+    plat_start(&boot.memory);
+#endif
     if (cue_path && bin_path) {
         boot.media = musashi_disc_media_open_pinned(cue_path, bin_path);
         if (!boot.media) {
+            fprintf(stderr,
+                    "\nThis port needs your own disc image of %s.\n"
+                    "The disc image it was given is not that release (or is incomplete):\n"
+                    "  cue: %s\n  bin: %s\n"
+                    "Use an unmodified single-track .cue/.bin dump of the USA disc.\n\n",
+                    MUSASHI_EXPECTED_RELEASE, cue_path, bin_path);
             fputs("native_boot: pinned media rejected before startup\n", stderr);
             return 2;
         }
@@ -3389,7 +3677,7 @@ int main(int argc, char **argv) {
     if (!SDL_GL_GetCurrentWindow() || !g_intrMutex) {
         fputs("native_boot: PsyCross display unavailable; startup not observed\n", stderr);
         native_devices_shutdown(&boot);
-        PsyX_Shutdown();
+        musashi_psyx_shutdown();
         return 77;
     }
     host_window_inspect(SDL_GL_GetCurrentWindow());
@@ -3401,21 +3689,21 @@ int main(int argc, char **argv) {
     boot.trace_cd_timing = getenv("MUSASHI_NATIVE_CD_TIMING") != NULL;
     if (!musashi_bios_heap_init(&boot.heap,&boot.memory,&boot,epoch_owner)) {
         native_devices_shutdown(&boot);
-        PsyX_Shutdown();
+        musashi_psyx_shutdown();
         return 2;
     }
     boot.heap_device=(MusashiHeapDevice){&boot,init_heap};
     boot.gpu_io=(MusashiGpuIoDevice){&boot,gpu_io_read32,gpu_io_write32};
     if (!musashi_psycross_irq_runtime_init(&boot.irq, &boot.memory, NULL)) {
         native_devices_shutdown(&boot);
-        PsyX_Shutdown();
+        musashi_psyx_shutdown();
         return 2;
     }
     if (!musashi_bios_exception_init_selected(&boot.exception_image,&boot.memory,&boot.bios,boot.irq.cpu_status) ||
         !musashi_psycross_irq_scheduler_bind_context(&boot.irq.scheduler,native_cpu_context,&boot)) {
         fputs("native_boot: CPU/image ownership refused before CRT\n",stderr);
         native_devices_shutdown(&boot);
-        PsyX_Shutdown();
+        musashi_psyx_shutdown();
         return 2;
     }
     boot.cpu_transfer=(MusashiCpuTransferDevice){
@@ -3431,10 +3719,13 @@ int main(int argc, char **argv) {
         if (boot.gpu_renderer.initialized)
             musashi_gpu_psycross_shutdown(&boot.gpu_renderer);
         native_devices_shutdown(&boot);
-        PsyX_Shutdown();
+        musashi_psyx_shutdown();
         return 2;
     }
-    (void)musashi_gpu_psycross_present(&boot.gpu_renderer);
+#ifdef MUSASHI_WITH_BFM_PLAT
+    gpu_bridge_attach(&boot.gpu);
+#endif
+    (void)present_frame(&boot);
     if (boot.media) {
         const MusashiCdOwnedHardware hardware = {
             .userdata=&boot, .current_thread=epoch_owner,
@@ -3446,7 +3737,7 @@ int main(int argc, char **argv) {
             fputs("native_boot: owned CD initialization refused before CRT\n", stderr);
             musashi_gpu_psycross_shutdown(&boot.gpu_renderer);
             native_devices_shutdown(&boot);
-            PsyX_Shutdown();
+            musashi_psyx_shutdown();
             return 2;
         }
         boot.cd_registers = (MusashiCdRegisterDevice){.userdata=&boot,.read8=cd_read8,.write8=cd_write8};
@@ -3458,11 +3749,11 @@ int main(int argc, char **argv) {
             fputs("native_boot: real audio owner unavailable before CRT; startup NOT_RUN\n", stderr);
             native_devices_shutdown(&boot);
             musashi_gpu_psycross_shutdown(&boot.gpu_renderer);
-            PsyX_Shutdown();
+            musashi_psyx_shutdown();
             return 77;
         }
         if (!musashi_cd_owned_set_xa_sink(boot.cd_drive,submit_xa_pcm,&boot)) {
-            native_devices_shutdown(&boot);PsyX_Shutdown();return 2;
+            native_devices_shutdown(&boot);musashi_psyx_shutdown();return 2;
         }
         boot.cd_spu = (MusashiCdSpuDevice){&boot, spu_read16, spu_write16};
     }
@@ -3472,7 +3763,7 @@ int main(int argc, char **argv) {
             fputs("native_boot: fresh digital pad binding refused\n", stderr);
             musashi_gpu_psycross_shutdown(&boot.gpu_renderer);
             native_devices_shutdown(&boot);
-            PsyX_Shutdown();
+            musashi_psyx_shutdown();
             return 2;
         }
     }
@@ -3496,13 +3787,13 @@ int main(int argc, char **argv) {
     if (!musashi_bios_card_bind_start_device(&boot.card, &boot.card_device)) {
         fputs("native_boot: card device binding refused\n", stderr);
         native_devices_shutdown(&boot);
-        PsyX_Shutdown();
+        musashi_psyx_shutdown();
         return 2;
     }
     if (!musashi_bios_backup_unit_init(&boot.backup_unit, &boot.bios, &boot.card)) {
         fputs("native_boot: backup-unit ownership refused\n", stderr);
         native_devices_shutdown(&boot);
-        PsyX_Shutdown();
+        musashi_psyx_shutdown();
         return 2;
     }
     boot.irq.scheduler.raise_vblank = raise_vblank;
@@ -3523,7 +3814,7 @@ int main(int argc, char **argv) {
         fputs("native_boot: DMA interrupt owner binding refused before CRT\n", stderr);
         native_devices_shutdown(&boot);
         musashi_gpu_psycross_shutdown(&boot.gpu_renderer);
-        PsyX_Shutdown();
+        musashi_psyx_shutdown();
         return 2;
     }
     {
@@ -3533,7 +3824,7 @@ int main(int argc, char **argv) {
             fputs("native_boot: GPU DMA2 owner initialization refused before CRT\n",stderr);
             native_devices_shutdown(&boot);
             musashi_gpu_psycross_shutdown(&boot.gpu_renderer);
-            PsyX_Shutdown();
+            musashi_psyx_shutdown();
             return 2;
         }
         {
@@ -3543,7 +3834,7 @@ int main(int argc, char **argv) {
                 fputs("native_boot: DMA6 OTC owner initialization refused before CRT\n",stderr);
                 native_devices_shutdown(&boot);
                 musashi_gpu_psycross_shutdown(&boot.gpu_renderer);
-                PsyX_Shutdown();
+                musashi_psyx_shutdown();
                 return 2;
             }
         }
@@ -3556,7 +3847,7 @@ int main(int argc, char **argv) {
             fputs("native_boot: CD DMA3 owner initialization refused before CRT\n",stderr);
             native_devices_shutdown(&boot);
             musashi_gpu_psycross_shutdown(&boot.gpu_renderer);
-            PsyX_Shutdown();
+            musashi_psyx_shutdown();
             return 2;
         }
         boot.cd_registers.read32=cd_read32;
@@ -3606,7 +3897,7 @@ int main(int argc, char **argv) {
     if (!musashi_scanline_timer_init_paced(&boot.timer1, 0)) {
         native_devices_shutdown(&boot);
         musashi_gpu_psycross_shutdown(&boot.gpu_renderer);
-        PsyX_Shutdown();
+        musashi_psyx_shutdown();
         return 2;
     }
     boot.execution_clock.userdata = &boot;
@@ -3622,7 +3913,7 @@ int main(int argc, char **argv) {
         fputs("native_boot: CD interrupt owner binding refused before CRT\n", stderr);
         native_devices_shutdown(&boot);
         musashi_gpu_psycross_shutdown(&boot.gpu_renderer);
-        PsyX_Shutdown();
+        musashi_psyx_shutdown();
         return 2;
     }
     boot.input.clock = &boot.execution_clock;
@@ -3633,7 +3924,7 @@ int main(int argc, char **argv) {
                                 &boot.card, &boot.bios_input_device)) {
         fputs("native_boot: input ownership initialization refused\n", stderr);
         native_devices_shutdown(&boot);
-        PsyX_Shutdown();
+        musashi_psyx_shutdown();
         return 2;
     }
     {
@@ -3646,7 +3937,7 @@ int main(int argc, char **argv) {
         if (!musashi_device_epoch_init(&boot.epoch, &adapter)) {
             fputs("native_boot: fresh device epoch refused before CRT\n", stderr);
             native_devices_shutdown(&boot);
-            PsyX_Shutdown();
+            musashi_psyx_shutdown();
             return 2;
         }
     }
@@ -3669,7 +3960,7 @@ int main(int argc, char **argv) {
         fputs("native_boot: source IRQ execute binding refused before CRT\n", stderr);
         native_devices_shutdown(&boot);
         musashi_gpu_psycross_shutdown(&boot.gpu_renderer);
-        PsyX_Shutdown();
+        musashi_psyx_shutdown();
         return 2;
     }
     status = musashi_boot_run_entry_with_devices(&boot.memory, 0, &boot.startup_devices,
@@ -3888,6 +4179,7 @@ int main(int argc, char **argv) {
         if (boot.bios.events.records[index].status) event_used++;
     /* A returned bounded prefix is still a stop. Unhook before releasing
      * source registration and this owner's lifetime. */
+    musashi_trace_function_flush(); /* keep the ranking even if teardown faults */
     fprintf(stderr,
         "native_boot: STOP status=%d pc=%08x target=%08x IRQ_installed=%d "
         "I_STAT=%04x I_MASK=%04x DPCR=%08x DICR=%08x TIMER1_MODE=%04x "
@@ -4103,7 +4395,7 @@ int main(int argc, char **argv) {
         if (!removed) cleanup_ok=0;
     }
     dump_display_vram(&boot);
-    presentation_ok = musashi_gpu_psycross_present(&boot.gpu_renderer);
+    presentation_ok = present_frame(&boot);
     hold_window(&boot);
     gpu_removed = musashi_gpu_psycross_shutdown(&boot.gpu_renderer);
     fprintf(stderr, "native_boot: graphics_init=%s blank_presented=%d gpu_removed=%d\n",
@@ -4116,7 +4408,7 @@ int main(int argc, char **argv) {
         fprintf(stderr, "native_boot: OWNED_DEVICES removed=%d\n", devices_removed);
         if (!devices_removed) cleanup_ok = 0;
     }
-    PsyX_Shutdown();
+    musashi_psyx_shutdown();
     if (!cleanup_ok)
         fputs("native_boot: scheduler removal refused\n", stderr);
     /* The CPU path is proven to stop at the refusal boundary, so no menu was
@@ -4126,3 +4418,4 @@ int main(int argc, char **argv) {
           " visual_check=REQUIRED\n", stderr);
     return host_stop_signal ? 128 + host_stop_signal : 2;
 }
+#undef boot

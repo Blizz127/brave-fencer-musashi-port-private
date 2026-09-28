@@ -1,34 +1,29 @@
 /* Exact retail word export for [8003AF4C,8003AFF0); EXE and assembly verified. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Sony PsyQ library routine (vendor/bfm-decomp keeps it as INCLUDE_ASM); C written from the retail disassembly. */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_8003AF4C - byte-exact against retail at -O2 (tools/register_match.py). */
 
-extern s32 D_8006B54C;
 extern s32 D_8006B570;
+extern u32 D_8006B578;
+extern u32 D_8006B57C;
 extern s32 D_8006B574;
-extern s32 D_8006B578;
-extern s32 D_8006B57C;
+extern volatile u16 *D_8006B54C;
+u32 func_8003AF4C(s32 idx, u32 addr)
+{
+    u16 v;
 
-u32 func_8003AF4C(s32 arg0, u32 arg1) {
-    u32 temp_a3;
-    u32 var_a1;
-
-    var_a1 = arg1;
-    if ((D_8006B570 != 0) && ((var_a1 % (u32) D_8006B578) != 0)) {
-        var_a1 = (var_a1 + D_8006B578) & ~D_8006B57C;
+    if (D_8006B570 && (addr % D_8006B578)) {
+        addr += D_8006B578;
+        addr &= ~D_8006B57C;
     }
-    temp_a3 = var_a1 >> D_8006B574;
-    if (arg0 != -2) {
-        if (arg0 == -1) {
-            return temp_a3 & 0xFFFF;
-        }
-        *((arg0 * 2) + D_8006B54C) = (s16) temp_a3;
-        return var_a1;
+    v = addr >> D_8006B574;
+    switch (idx) {
+    case -1:
+        return v;
+    case -2:
+        return addr;
     }
-    return var_a1;
+    D_8006B54C[idx] = v;
+    return addr;
 }

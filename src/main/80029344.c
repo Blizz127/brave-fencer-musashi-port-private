@@ -1,53 +1,56 @@
 /* Exact retail word export for [80029344,8002941C); EXE and assembly verified. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80029344 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* Vendor typedefs this body depends on (copied from vendor/bfm-decomp). */
+typedef struct {
+    u16 unk00;
+    u8  pad[14];
+} T16;  /* 0x10 */
+typedef struct {
+    s32 words[38];
+} Blk98_80029274;
 
-extern s32 *D_80078E78;
 extern u16 D_80078E92;
-extern s8 D_80078EAE;
+extern u8 D_80078EAE;
+extern Blk98_80029274 D_80078E78;
 
 void func_80029344(void) {
-    s32 temp_v1;
-    s32 var_v0;
-    s8 var_v0_2;
+    s32 val;
+    u8* blk;
 
-    if ((u32) (D_80078E92 - 0x1A4) >= 0x2D0U) {
+    val = D_80078E92;
+    blk = (u8*)&D_80078E78;
+
+    if ((u32)(val - 0x1A4) >= 0x2D0) {
         D_80078EAE = 0;
-        var_v0 = D_80078E92 << 0x10;
     } else {
         D_80078EAE = 1;
-        var_v0 = D_80078E92 << 0x10;
     }
-    temp_v1 = var_v0 >> 0x10;
-    if (temp_v1 < 0x528) {
-        if (temp_v1 >= 0x474) {
-            var_v0_2 = 3;
-            goto block_13;
-        }
-        if (temp_v1 >= 0x3C0) {
-            var_v0_2 = 2;
-            goto block_13;
-        }
-        if (temp_v1 >= 0x1A4) {
-            var_v0_2 = 1;
-            goto block_13;
-        }
-        var_v0_2 = 4;
-        if (temp_v1 >= 0x12C) {
-            M2C_FIELD(&D_80078E78, s8 *, 0x37) = 0;
+
+    if ((s16)val < 0x528) {
+        if ((s16)val >= 0x474) {
+            blk[0x37] = 3;
         } else {
-            goto block_13;
+            if ((s16)val >= 0x3C0) {
+                blk[0x37] = 2;
+            } else {
+                if ((s16)val >= 0x1A4) {
+                    blk[0x37] = 1;
+                } else {
+                    if ((s16)val < 0x12C) {
+                        blk[0x37] = 4;
+                    } else {
+                        blk[0x37] = 0;
+                    }
+                }
+            }
         }
     } else {
-        var_v0_2 = 4;
-block_13:
-        M2C_FIELD(&D_80078E78, s8 *, 0x37) = var_v0_2;
+        blk[0x37] = 4;
     }
-    M2C_FIELD(&D_80078E78, s8 *, 0x39) = (s8) (D_80078E92 / 60);
-    M2C_FIELD(&D_80078E78, s8 *, 0x38) = (s8) (D_80078E92 % 60);
+
+    blk[0x39] = (s16)val / 60;
+    blk[0x38] = (s16)val % 60;
 }

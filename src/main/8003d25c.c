@@ -1,60 +1,44 @@
 /* Exact retail word export for [8003D25C,8003D32C); EXE and assembly verified. */
+/* Sony PsyQ library routine (vendor/bfm-decomp keeps it as INCLUDE_ASM); C written from the retail disassembly. */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_8003D25C - byte-exact against retail at -O2 (tools/register_match.py). */
 
-extern s32 D_8006B0E4;
-extern s32 D_8006B54C;
+typedef struct { u16 r[6]; u16 envx; u16 pad; } SpuVoiceReg;
+extern volatile SpuVoiceReg *D_8006B54C;
+extern u32 D_8006B0E4;
+s32 func_8003D25C(s32 min, s32 max, u8 *status)
+{
+    s32 i;
+    u16 env;
 
-s32 func_8003D25C(s32 arg0, s32 arg1, s32 arg2) {
-    s32 temp_a1;
-    s32 var_a0;
-    s32 var_a1;
-    s32 var_a3;
-    s32 var_v0;
-    s8 *var_a2;
-    u16 temp_v0;
-
-    var_a0 = arg0;
-    var_a1 = arg1;
-    var_v0 = var_a0 < 0x18;
-    if (var_a0 < 0) {
-        var_a0 = 0;
-        var_v0 = 0 < 0x18;
+    if (min < 0) {
+        min = 0;
     }
-    if (var_v0 != 0) {
-        if (var_a1 >= 0x18) {
-            var_a1 = 0x17;
-        }
-        if ((var_a1 < 0) || (var_a3 = var_a0, ((var_a1 < var_a0) != 0))) {
-            goto block_7;
-        }
-        temp_a1 = var_a1 + 1;
-        if (var_a3 < temp_a1) {
-            var_a2 = var_a3 + arg2;
-            do {
-                temp_v0 = M2C_FIELD(((var_a3 * 0x10) + D_8006B54C), u16 *, 0xC);
-                if (D_8006B0E4 & (1 << var_a3)) {
-                    if (temp_v0 != 0) {
-                        *var_a2 = 1;
-                    } else {
-                        *var_a2 = 3;
-                    }
-                } else if (temp_v0 != 0) {
-                    *var_a2 = 2;
-                } else {
-                    *var_a2 = 0;
-                }
-                var_a3 += 1;
-                var_a2 += 1;
-            } while (var_a3 < temp_a1);
-        }
-        return 0;
+    if (min >= 24) {
+        return -3;
     }
-block_7:
-    return -3;
+    if (max >= 24) {
+        max = 23;
+    }
+    if (max < 0 || max < min) {
+        return -3;
+    }
+    for (i = min; i < max + 1; i++) {
+        env = D_8006B54C[i].envx;
+        if (D_8006B0E4 & (1 << i)) {
+            if (env) {
+                status[i] = 1;
+            } else {
+                status[i] = 3;
+            }
+        } else {
+            if (env) {
+                status[i] = 2;
+            } else {
+                status[i] = 0;
+            }
+        }
+    }
+    return 0;
 }

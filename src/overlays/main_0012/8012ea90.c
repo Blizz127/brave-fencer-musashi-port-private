@@ -2,59 +2,50 @@
  * SHA256(span)=073f5964918652575c2f62ceb6eadeb5aa67626881763dcfe5255f298e0c6d05.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8012EA90 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* File-scope declarations from the vendor translation unit. */
+typedef struct { u32 a, b, c, d; } Blk16;
+typedef struct { s16 h[8]; } Buf;
+extern void func_80049CAC(s32 a0, s32 a1);
 
-void func_80049CAC(u16 *, void *, s32);          /* extern */
-
-void func_8012EA90(void *arg0, s32 arg1, void *arg2) {
-    u16 sp14;
-    u16 sp12;
-    u16 sp10;
-    s32 temp_a2_2;
-    s32 temp_a2_3;
-    s32 temp_s1;
-    void *temp_a2;
-    void *temp_s0;
-    void *temp_s1_2;
-
-    temp_a2 = M2C_FIELD(arg0, void **, 0x20);
-    temp_s1 = M2C_FIELD(temp_a2, s32 *, 0x20);
-    if (temp_s1 == 0) {
-        M2C_FIELD(arg2, s32 *, 0) = (s32) M2C_FIELD(temp_a2, s32 *, 0x34);
-        M2C_FIELD(arg2, s32 *, 4) = (s32) M2C_FIELD(temp_a2, s32 *, 0x38);
-        M2C_FIELD(arg2, s32 *, 8) = (s32) M2C_FIELD(temp_a2, s32 *, 0x3C);
-        M2C_FIELD(arg2, s32 *, 0xC) = (s32) M2C_FIELD(temp_a2, s32 *, 0x40);
-        M2C_FIELD(arg2, s32 *, 0x10) = (s32) M2C_FIELD(temp_a2, s32 *, 0x44);
-        M2C_FIELD(arg2, s32 *, 0x14) = (s32) M2C_FIELD(temp_a2, s32 *, 0x48);
-        M2C_FIELD(arg2, s32 *, 0x18) = (s32) M2C_FIELD(temp_a2, s32 *, 0x4C);
-        M2C_FIELD(arg2, s32 *, 0x1C) = (s32) M2C_FIELD(temp_a2, s32 *, 0x50);
-        return;
+/* func_8012EA90 — shared body (overlay slot 0x80128158, h_exact fae86808). ONE source: instantiated by #include at each
+ * member's site in address order; the members are recorded in config/dedup.us.yaml (Phase 35). */
+void func_8012EA90(s32 param_1, s32 param_2, s32 *param_3)
+{
+    Buf buf;
+    s32 iVar4;
+    register u32 v __asm__("$17");      /* $s1 */
+    iVar4 = *(s32 *)(param_1 + 0x20);
+    v = *(u32 *)(iVar4 + 0x20);
+    if (v == 0) {
+        *(Blk16 *)(param_3)        = *(Blk16 *)(iVar4 + 0x34);
+        *(Blk16 *)((s32)param_3 + 0x10) = *(Blk16 *)(iVar4 + 0x44);
+    } else if ((v & 0x1000000) != 0) {
+        register s32 p __asm__("$16");
+        s32 w;
+        p = (s32)(v & 0xfeffffff);
+        p = p + param_2 * 8;
+        buf.h[0] = *(s16 *)(p + 6);
+        w = *(s32 *)p;
+        buf.h[1] = (s16)(*(u8 *)(p + 1) | ((w & 0xf) << 8));
+        buf.h[2] = (s16)(((w >> 0x10) & 0xff) | ((w & 0xf0) << 4));
+        func_80049CAC((s32)&buf, (s32)param_3);
+        param_3[5] = *(s8 *)(p + 3);
+        param_3[6] = *(s8 *)(p + 4);
+        param_3[7] = *(s8 *)(p + 5);
+    } else {
+        s32 q;
+        v = v + param_2 * 0xc;
+        q = (s32)v;
+        buf.h[0] = *(s16 *)(q + 6);
+        buf.h[1] = *(s16 *)(q + 8);
+        buf.h[2] = *(s16 *)(q + 0xa);
+        func_80049CAC((s32)&buf, (s32)param_3);
+        param_3[5] = *(s16 *)(q + 0);
+        param_3[6] = *(s16 *)(q + 2);
+        param_3[7] = *(s16 *)(q + 4);
     }
-    if (temp_s1 & 0x01000000) {
-        temp_s0 = (temp_s1 & 0xFEFFFFFF) + (arg1 * 8);
-        sp10 = M2C_FIELD(temp_s0, u16 *, 6);
-        temp_a2_2 = M2C_FIELD(temp_s0, s32 *, 0);
-        temp_a2_3 = (temp_a2_2 & 0xF0) * 0x10;
-        sp12 = M2C_FIELD(temp_s0, u8 *, 1) | ((temp_a2_2 & 0xF) << 8);
-        sp14 = ((temp_a2_2 >> 0x10) & 0xFF) | temp_a2_3;
-        func_80049CAC(&sp10, arg2, temp_a2_3);
-        M2C_FIELD(arg2, s32 *, 0x14) = (s32) M2C_FIELD(temp_s0, s8 *, 3);
-        M2C_FIELD(arg2, s32 *, 0x18) = (s32) M2C_FIELD(temp_s0, s8 *, 4);
-        M2C_FIELD(arg2, s32 *, 0x1C) = (s32) M2C_FIELD(temp_s0, s8 *, 5);
-        return;
-    }
-    temp_s1_2 = temp_s1 + (arg1 * 0xC);
-    sp10 = M2C_FIELD(temp_s1_2, u16 *, 6);
-    sp12 = M2C_FIELD(temp_s1_2, u16 *, 8);
-    sp14 = M2C_FIELD(temp_s1_2, u16 *, 0xA);
-    func_80049CAC(&sp10, arg2, (s32) temp_a2);
-    M2C_FIELD(arg2, s32 *, 0x14) = (s32) M2C_FIELD(temp_s1_2, s16 *, 0);
-    M2C_FIELD(arg2, s32 *, 0x18) = (s32) M2C_FIELD(temp_s1_2, s16 *, 2);
-    M2C_FIELD(arg2, s32 *, 0x1C) = (s32) M2C_FIELD(temp_s1_2, s16 *, 4);
 }

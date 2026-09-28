@@ -5,29 +5,29 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_801319E0 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL of func_801319E0 (main_0012.s), decoded manually from
- * raw asm (fully visible; NOT verified against retail; C89-gated
- * only, promotion requires an oracle MATCH): incoming a1 is dead
- * (overwritten by the first jal delay slot). If
- * func_80131CA8(s0, 0x11) == 0: when word s0->unk78 != 0,
- * func_8002A04C(s0); then func_8012C218(s0). Returns void. */
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern void func_80131CA8(int a0, int a1);
+extern void func_8002A04C(s32 a0);
+extern void func_8012C218(void *a0);
 
-struct obj_801319E0 {
-    u8 pad[0x78];
-    u32 unk78;
-};
-
-extern s32 func_80131CA8(void *arg0, s32 arg1);
-extern void func_8002A04C(void *arg0);
-extern void func_8012C218(void *arg0);
-
-void func_801319E0(struct obj_801319E0 *arg0) {
-    if (func_80131CA8(arg0, 0x11) == 0) {
-        if (arg0->unk78 != 0) {
+void func_801319E0(s32 arg0) {
+    /* arg0 stays in $s0 (callee-saved) across all three calls -- live across each jal,
+     * so clean C allocates it there naturally (no register pin needed). */
+    if (((s32 (*)(int, int))func_80131CA8)(arg0, 0x11) == 0) {
+        if (*(s32 *)(arg0 + 0x78) != 0) {
             func_8002A04C(arg0);
         }
-        func_8012C218(arg0);
+        func_8012C218((void *)arg0);
     }
 }

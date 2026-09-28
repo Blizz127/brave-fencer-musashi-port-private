@@ -2,180 +2,182 @@
  * SHA256(span)=bfcd80b067bb83dd6b3c86563f8e34347af6552f1698a2b4402e2aa8f167a0ef.
  * Word export for the native seam; the body below is kept
  * byte-identical (wrap only, no rewrite). */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80027F4C - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-
-/* GTE/cop2 mnemonic overlay: ordinary C cannot emit coprocessor ops.
- * Verified by tools/match_function.py. */
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+/* GTE instruction macros (vendor/bfm-decomp/include/gte_macros.inc) for GNU as. */
 __asm__(
-    ".set noreorder\n"
-    ".globl func_80027F4C\n"
-    ".type func_80027F4C, @function\n"
-    "func_80027F4C:\n"
-    "lui $v1, %hi(D_800C7C74)\n"
-    "lh $v1, %lo(D_800C7C74)($v1)\n"
-    "addiu $sp, $sp, -0x58\n"
-    "sw $s4, 0x40($sp)\n"
-    "lw $s4, 0x68($sp)\n"
-    "sw $fp, 0x50($sp)\n"
-    "lw $fp, 0x70($sp)\n"
-    "sw $s5, 0x44($sp)\n"
-    "addu $s5, $a0, $zero\n"
-    "sw $s2, 0x38($sp)\n"
-    "addu $s2, $a1, $zero\n"
-    "sw $s3, 0x3C($sp)\n"
-    "addu $s3, $a2, $zero\n"
-    "sw $ra, 0x54($sp)\n"
-    "sw $s7, 0x4C($sp)\n"
-    "sw $s6, 0x48($sp)\n"
-    "sw $s1, 0x34($sp)\n"
-    "sw $s0, 0x30($sp)\n"
-    "sll $v0, $v1, 3\n"
-    "addu $v0, $v0, $v1\n"
-    "sll $v0, $v0, 2\n"
-    "addu $s1, $a3, $v0\n"
-    "addiu $s6, $sp, 0x18\n"
-    "addiu $s7, $zero, -0x1001\n"
-    "addiu $s0, $a0, 0x14\n"
-    ".L80027FB4:\n"
-    "lhu $a0, -0xA($s0)\n"
-    "lhu $v1, -0x6($s0)\n"
-    "lhu $v0, -0x2($s0)\n"
-    "sll $a0, $a0, 3\n"
-    "addu $a0, $s2, $a0\n"
-    "sll $v1, $v1, 3\n"
-    "addu $v1, $s2, $v1\n"
-    "sll $v0, $v0, 3\n"
-    "addu $v0, $s2, $v0\n"
-    "lwc2 $0, 0x0($a0)\n"
-    "lwc2 $1, 0x4($a0)\n"
-    "lwc2 $2, 0x0($v1)\n"
-    "lwc2 $3, 0x4($v1)\n"
-    "lwc2 $4, 0x0($v0)\n"
-    "lwc2 $5, 0x4($v0)\n"
-    "nop\n"
-    "nop\n"
-    "cfc2 $t4, $31\n"
-    "nop\n"
-    "sw $t4, 0x0($s6)\n"
-    "lw $v0, 0x18($sp)\n"
-    "nop\n"
-    "and $v0, $v0, $s7\n"
-    "nop\n"
-    "nop\n"
-    "nop\n"
-    "addiu $v0, $sp, 0x1C\n"
-    "swc2 $24, 0x0($v0)\n"
-    "lw $v0, 0x1C($sp)\n"
-    "nop\n"
-    "nop\n"
-    "swc2 $12, 0x8($s1)\n"
-    "swc2 $13, 0x10($s1)\n"
-    "swc2 $14, 0x18($s1)\n"
-    "lhu $v0, 0x2($s0)\n"
-    "nop\n"
-    "sll $v0, $v0, 3\n"
-    "addu $v0, $s2, $v0\n"
-    "lwc2 $0, 0x0($v0)\n"
-    "lwc2 $1, 0x4($v0)\n"
-    "nop\n"
-    "nop\n"
-    "cfc2 $t4, $31\n"
-    "nop\n"
-    "sw $t4, 0x0($s6)\n"
-    "lw $v0, 0x18($sp)\n"
-    "nop\n"
-    "and $v0, $v0, $s7\n"
-    "addiu $v0, $s1, 0x20\n"
-    "swc2 $14, 0x0($v0)\n"
-    "addiu $a1, $sp, 0x20\n"
-    "addiu $a0, $sp, 0x24\n"
-    "addiu $v1, $sp, 0x28\n"
-    "addiu $v0, $sp, 0x2C\n"
-    "swc2 $16, 0x0($a1)\n"
-    "swc2 $17, 0x0($a0)\n"
-    "swc2 $18, 0x0($v1)\n"
-    "swc2 $19, 0x0($v0)\n"
-    "lw $a1, 0x28($sp)\n"
-    "lw $v1, 0x2C($sp)\n"
-    "nop\n"
-    "slt $v0, $v1, $a1\n"
-    "nop\n"
-    "addu $a1, $v1, $zero\n"
-    ".L800280D0:\n"
-    "lw $v1, 0x20($sp)\n"
-    "lw $a0, 0x24($sp)\n"
-    "nop\n"
-    "slt $v0, $a0, $v1\n"
-    "slt $v0, $a1, $v1\n"
-    "addu $v1, $a0, $zero\n"
-    "slt $v0, $a1, $v1\n"
-    ".L800280F0:\n"
-    "sra $v0, $v1, 2\n"
-    "addu $v1, $a1, $zero\n"
-    "sra $v0, $v1, 2\n"
-    ".L80028100:\n"
-    "addiu $v0, $v0, -0x1\n"
-    "sw $v0, 0x1C($sp)\n"
-    "sw $zero, 0x1C($sp)\n"
-    ".L80028110:\n"
-    "addiu $v0, $s5, 0x4\n"
-    "lwc2 $6, 0x0($v0)\n"
-    "lhu $a0, -0xC($s0)\n"
-    "lhu $v1, -0x8($s0)\n"
-    "lhu $v0, -0x4($s0)\n"
-    "sll $a0, $a0, 3\n"
-    "addu $a0, $s3, $a0\n"
-    "sll $v1, $v1, 3\n"
-    "addu $v1, $s3, $v1\n"
-    "sll $v0, $v0, 3\n"
-    "addu $v0, $s3, $v0\n"
-    "lwc2 $0, 0x0($a0)\n"
-    "lwc2 $1, 0x4($a0)\n"
-    "lwc2 $2, 0x0($v1)\n"
-    "lwc2 $3, 0x4($v1)\n"
-    "lwc2 $4, 0x0($v0)\n"
-    "lwc2 $5, 0x4($v0)\n"
-    "nop\n"
-    "nop\n"
-    "swc2 $20, 0x4($s1)\n"
-    "swc2 $21, 0xC($s1)\n"
-    "swc2 $22, 0x14($s1)\n"
-    "lhu $v0, 0x0($s0)\n"
-    "nop\n"
-    "sll $v0, $v0, 3\n"
-    "addu $v0, $s3, $v0\n"
-    "lwc2 $0, 0x0($v0)\n"
-    "lwc2 $1, 0x4($v0)\n"
-    "nop\n"
-    "nop\n"
-    "addiu $v0, $s1, 0x1C\n"
-    "swc2 $22, 0x0($v0)\n"
-    "lui $v0, (0x8000000 >> 16)\n"
-    "lw $a2, 0x6C($sp)\n"
-    "addu $a0, $fp, $zero\n"
-    "sw $v0, 0x10($sp)\n"
-    "lw $a1, 0x1C($sp)\n"
-    "addu $a3, $s1, $zero\n"
-    ".L800281B4:\n"
-    "addiu $s4, $s4, -0x1\n"
-    "addiu $s0, $s0, 0x18\n"
-    "addiu $s5, $s5, 0x18\n"
-    "addiu $s1, $s1, 0x48\n"
-    ".L800281C8:\n"
-    "addu $v0, $s1, $zero\n"
-    "lw $ra, 0x54($sp)\n"
-    "lw $fp, 0x50($sp)\n"
-    "lw $s7, 0x4C($sp)\n"
-    "lw $s6, 0x48($sp)\n"
-    "lw $s5, 0x44($sp)\n"
-    "lw $s4, 0x40($sp)\n"
-    "lw $s3, 0x3C($sp)\n"
-    "lw $s2, 0x38($sp)\n"
-    "lw $s1, 0x34($sp)\n"
-    "lw $s0, 0x30($sp)\n"
-    "addiu $sp, $sp, 0x58\n"
-    "jr $ra\n"
-    "nop\n"
-    ".size func_80027F4C, .-func_80027F4C\n"
-    ".set reorder\n"
+    ".macro cop2op fake_op, op, gbg = 0, sf = 1, mx = 0, v = 0, cv = 0, lm = 0\n"
+    "    cop2 \\fake_op << 20 | \\gbg << 20 | \\sf << 19 | \\mx << 17 | \\v << 15 | \\cv << 13 | \\lm << 10 | \\op\n"
+    ".endm\n"
+    ".macro rtps\n"
+    "    cop2op 0x01, 0x01\n"
+    ".endm\n"
+    ".macro rtpt\n"
+    "    cop2op 0x02, 0x30\n"
+    ".endm\n"
+    ".macro nccs\n"
+    "    cop2op 0x10, 0x1B, lm = 1\n"
+    ".endm\n"
+    ".macro ncct\n"
+    "    cop2op 0x11, 0x3F, lm = 1\n"
+    ".endm\n"
+    ".macro nclip\n"
+    "    cop2op 0x14, 0x06, sf = 0\n"
+    ".endm\n"
+    ".macro op sf\n"
+    "    cop2op 0x17, 0x0C, sf = \\sf\n"
+    ".endm\n"
 );
+
+typedef struct { s16 vx, vy, vz, pad; } SVEC2;
+typedef struct {                                     /* 0x18 */
+    u32 w0;      /* 0x00 */
+    u32 rgb;     /* 0x04 */
+    u16 n0;      /* 0x08 */
+    u16 v0;      /* 0x0A */
+    u16 n1;      /* 0x0C */
+    u16 v1;      /* 0x0E */
+    u16 n2;      /* 0x10 */
+    u16 v2;      /* 0x12 */
+    u16 n3;      /* 0x14 */
+    u16 v3;      /* 0x16 */
+} Face3;
+typedef struct {                                     /* 0x24 */
+    u32 tag;     /* 0x00 */
+    u32 rgb0;    /* 0x04 */
+    s16 x0, y0;  /* 0x08 */
+    u32 rgb1;    /* 0x0C */
+    s16 x1, y1;  /* 0x10 */
+    u32 rgb2;    /* 0x14 */
+    s16 x2, y2;  /* 0x18 */
+    u32 rgb3;    /* 0x1C */
+    s16 x3, y3;  /* 0x20 */
+} G4P;
+#define gte_ldv0(r0) __asm__ volatile (          \
+    "lwc2 $0, 0( %0 );"                          \
+    "lwc2 $1, 4( %0 )"                           \
+    :                                            \
+    : "r"( r0 ) )
+#define gte_ldv3(r0, r1, r2) __asm__ volatile (  \
+    "lwc2 $0, 0( %0 );"                          \
+    "lwc2 $1, 4( %0 );"                          \
+    "lwc2 $2, 0( %1 );"                          \
+    "lwc2 $3, 4( %1 );"                          \
+    "lwc2 $4, 0( %2 );"                          \
+    "lwc2 $5, 4( %2 )"                           \
+    :                                            \
+    : "r"( r0 ), "r"( r1 ), "r"( r2 ) )
+#define gte_ldrgb(r0) __asm__ volatile (         \
+    "lwc2 $6, 0( %0 )"                           \
+    :                                            \
+    : "r"( r0 ) )
+#define gte_rtps()  __asm__ volatile ("nop;nop;rtps")
+#define gte_rtpt()  __asm__ volatile ("nop;nop;rtpt")
+#define gte_nclip() __asm__ volatile ("nop;nop;nclip")
+#define gte_ncct()  __asm__ volatile ("nop;nop;ncct")
+#define gte_nccs()  __asm__ volatile ("nop;nop;nccs")
+#define gte_stflg(r0) __asm__ volatile (         \
+    "cfc2 $12, $31;"                             \
+    "nop;"                                       \
+    "sw $12, 0( %0 )"                            \
+    :                                            \
+    : "r"( r0 )                                  \
+    : "$12", "memory" )
+#define gte_stopz(r0) __asm__ volatile (         \
+    "swc2 $24, 0( %0 )"                          \
+    :                                            \
+    : "r"( r0 )                                  \
+    : "memory" )
+#define gte_stsxy(r0) __asm__ volatile (         \
+    "swc2 $14, 0( %0 )"                          \
+    :                                            \
+    : "r"( r0 )                                  \
+    : "memory" )
+#define gte_strgb(r0) __asm__ volatile (         \
+    "swc2 $22, 0( %0 )"                          \
+    :                                            \
+    : "r"( r0 )                                  \
+    : "memory" )
+#define gte_stsz4(r0, r1, r2, r3) __asm__ volatile ( \
+    "swc2 $16, 0( %0 );"                         \
+    "swc2 $17, 0( %1 );"                         \
+    "swc2 $18, 0( %2 );"                         \
+    "swc2 $19, 0( %3 )"                          \
+    :                                            \
+    : "r"( r0 ), "r"( r1 ), "r"( r2 ), "r"( r3 ) \
+    : "memory" )
+#define gte_stsxy3_g4(r0) __asm__ volatile (     \
+    "swc2 $12, 8( %0 );"                         \
+    "swc2 $13, 16( %0 );"                        \
+    "swc2 $14, 24( %0 )"                         \
+    :                                            \
+    : "r"( r0 )                                  \
+    : "memory" )
+#define gte_strgb3_g4(r0) __asm__ volatile (     \
+    "swc2 $20, 4( %0 );"                         \
+    "swc2 $21, 12( %0 );"                        \
+    "swc2 $22, 20( %0 )"                         \
+    :                                            \
+    : "r"( r0 )                                  \
+    : "memory" )
+extern s16 D_800C7C74;
+extern void func_80028200(s32 a0, s32 a1, s32 a2, s32 a3, s32 stack_arg);
+
+G4P *func_80027F4C(Face3 *f, SVEC2 *verts, SVEC2 *norms, G4P *prims,
+                   s32 count, s32 shift, s32 ot)
+{
+    struct { s32 flag, opz, sz0, sz1, sz2, sz3; } g;
+    G4P *prim;
+    s32 z;
+    s32 w;
+    s32 i;
+
+    prim = &prims[D_800C7C74];
+
+    for (i = count; i != 0; i--, f++, prim += 2) {
+        gte_ldv3(&verts[f->v0], &verts[f->v1], &verts[f->v2]);
+        gte_rtpt();
+        gte_stflg(&g.flag);
+        if (!(g.flag & ~0x1000)) {
+            gte_nclip();
+            gte_stopz(&g.opz);
+            if (g.opz > 0) {
+                gte_stsxy3_g4(prim);
+                gte_ldv0(&verts[f->v3]);
+                gte_rtps();
+                gte_stflg(&g.flag);
+                if (!(g.flag & ~0x1000)) {
+                    gte_stsxy(&prim->x3);
+                    gte_stsz4(&g.sz0, &g.sz1, &g.sz2, &g.sz3);
+                    w = g.sz2;
+                    if (g.sz3 < w) { w = g.sz3; }
+                    z = g.sz0;
+                    if (g.sz1 < z) { z = g.sz1; }
+                    if (w < z) { z = w; }
+                    g.opz = (z >> 2) - 1;
+                    if (g.opz < 0) {
+                        g.opz = 0;
+                    }
+                    gte_ldrgb(&f->rgb);
+                    gte_ldv3(&norms[f->n0], &norms[f->n1], &norms[f->n2]);
+                    gte_ncct();
+                    gte_strgb3_g4(prim);
+                    gte_ldv0(&norms[f->n3]);
+                    gte_nccs();
+                    gte_strgb(&prim->rgb3);
+                    func_80028200(ot, g.opz, shift, (s32)prim, 0x08000000);
+                }
+            }
+        }
+    }
+
+    return prim;
+}

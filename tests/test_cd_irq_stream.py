@@ -3,7 +3,7 @@ from pathlib import Path
 import subprocess
 import pytest
 from test_cd_irq import ROOT, _media_and_flags
-from test_bios_event_callbacks import _generate_formatter_includes
+from test_bios_event_callbacks import _generate_formatter_includes, _sync_code_image
 
 
 @pytest.mark.parametrize("variant", ["baseline", "zero_pio_budget", "no_bank_renewal"])
@@ -39,10 +39,10 @@ def test_cd_irq_stream_source(tmp_path, variant):
         *[str(ROOT/'pc_port'/f'{name}.c') for name in ('boot_memory',
           'spu_cd_audio','cd_controller','cd_dma3','dma_controller','disc_media','bios_events','irq_controller','irq_scheduler','cpu_status','vblank_bindings')],
         *[str(ROOT/'src/main'/f'{name}.c') for name in
-          ('800427f4','80042ce8','8001096c','80042e08','80042f8c',
-           '800616d0','8006291c','80062988')],
+          ('8001096c',)],str(ROOT/'pc_port/libmcrd_vblank.c'),str(ROOT/'pc_port/libetc_irq_dispatch.c'),str(ROOT/'pc_port/libetc_dma_irq.c'),str(ROOT/'pc_port/libetc_vsync_handler.c'),str(ROOT/'pc_port/libetc_dma_registration.c'),
         '-lcrypto',*flags,'-o',str(exe)]
     subprocess.run(command, check=True, timeout=40)
+    _sync_code_image(generated)
     result = subprocess.run([str(exe),str(cue),str(binary)],capture_output=True,text=True,timeout=30)
     if variant == "zero_pio_budget":
         assert result.returncode != 0 and "budget=3" in result.stderr, result.stdout + result.stderr

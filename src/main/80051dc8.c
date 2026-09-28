@@ -1,33 +1,33 @@
 /* Main-exec range [80051DC8,80051EA0) from the SLUS executable.
  * SHA256(span)=3f56a62df186b06c6099961ac4ee17eea685ca51e31de9c9492b2d0874d99db7.
  * Word export for the native seam (m2c produced no draft). */
+/* Sony PsyQ library routine (vendor/bfm-decomp keeps it as INCLUDE_ASM); C written from the retail disassembly. */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_80051DC8 - byte-exact against retail at -O2 (tools/register_match.py). */
 
-void *func_80051EA0(void *, s32, s32, s32); /* static */
-extern void *D_800A5E60;
-extern u16 D_800A6548;
-extern u16 D_800A654A;
+typedef struct { u32 attribute; s16 x0, y0, x1, y1; u8 r, g, b; } GsLINE;
+typedef struct { u32 tag; u32 tpage; u8 r0, g0, b0, code; s16 x0, y0, x1, y1; } LinePkt;
+extern LinePkt *D_800A5E60;
+extern s16 D_800A6548;
+extern s16 D_800A654A;
+extern LinePkt *func_80051EA0(void *, void *, u16, u8);
+void func_80051DC8(GsLINE *lp, void *ot, u16 pri)
+{
+    s32 attr = lp->attribute;
+    LinePkt *p;
 
-void func_80051DC8(void *arg0, s32 arg1, s32 arg2) {
-    s32 temp_a1;
-
-    temp_a1 = M2C_FIELD(arg0, s32 *, 0);
-    if (temp_a1 >= 0) {
-        M2C_FIELD(D_800A5E60, s32 *, 4) = (s32) (((temp_a1 >> 0x17) & 0x60) | 0xE1000200);
-        M2C_FIELD(D_800A5E60, u8 *, 8) = (u8) M2C_FIELD(arg0, u8 *, 0xC);
-        M2C_FIELD(D_800A5E60, u8 *, 9) = (u8) M2C_FIELD(arg0, u8 *, 0xD);
-        M2C_FIELD(D_800A5E60, s8 *, 0xB) = (s8) (((temp_a1 >> 0x1D) & 2) | 0x40);
-        M2C_FIELD(D_800A5E60, u8 *, 0xA) = (u8) M2C_FIELD(arg0, u8 *, 0xE);
-        M2C_FIELD(D_800A5E60, s16 *, 0xC) = (s16) (M2C_FIELD(arg0, u16 *, 4) + D_800A6548);
-        M2C_FIELD(D_800A5E60, s16 *, 0xE) = (s16) (M2C_FIELD(arg0, u16 *, 6) + D_800A654A);
-        M2C_FIELD(D_800A5E60, s16 *, 0x10) = (s16) (M2C_FIELD(arg0, u16 *, 8) + D_800A6548);
-        M2C_FIELD(D_800A5E60, s16 *, 0x12) = (s16) (M2C_FIELD(arg0, u16 *, 0xA) + D_800A654A);
-        D_800A5E60 = func_80051EA0(D_800A5E60, arg1, arg2 & 0xFFFF, 4);
+    if (attr >= 0) {
+        p = D_800A5E60;
+        p->tpage = ((attr >> 23) & 0x60) | 0xE1000200;
+        p->r0 = lp->r;
+        p->g0 = lp->g;
+        p->b0 = lp->b;
+        p->code = ((attr >> 29) & 2) | 0x40;
+        p->x0 = lp->x0 + D_800A6548;
+        p->y0 = lp->y0 + D_800A654A;
+        p->x1 = lp->x1 + D_800A6548;
+        p->y1 = lp->y1 + D_800A654A;
+        D_800A5E60 = func_80051EA0(p, ot, pri, 4);
     }
 }

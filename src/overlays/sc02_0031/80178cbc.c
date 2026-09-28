@@ -4,16 +4,19 @@
  * Member-0012 C shape retargeted to this member: D_80184F38->D_801B70F0; D_80185C7C->D_801B7B0C.
  * Oracle MATCH re-earned against the resident image; Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80178CBC - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-
-/* Decompiled by m2c from main_0012.s, then verified byte-exact
- * against retail by tools/match_function.py. Types and signatures are
- * whatever reproduces the bytes; they are not evidence of the
- * original declaration. */
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
 extern s32 D_801B70F0;
-void func_80178D40(s32, s32);                          /* static */
-extern s16 D_801B7B0C;
+extern short D_801B7B0C;
 
 void func_80178CBC(s32 arg0, s32 arg1) {
     D_801B70F0 = arg1;
@@ -21,4 +24,3 @@ void func_80178CBC(s32 arg0, s32 arg1) {
         func_80178D40(arg0, D_801B70F0);
     } while (D_801B7B0C == 3);
 }
-

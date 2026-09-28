@@ -1,16 +1,31 @@
 /* Complete SC02 numeric helper; independently matched ordinary C.
  * C shift domain: current bounded callers only; MIPS words retain masked shifts. */
-unsigned int func_801783D0(int value, int shift)
-{
-    unsigned int packed = 0;
-    int remaining = value;
-    int position = 0;
-    while (remaining >= 10) {
-        value /= 10;
-        packed |= (unsigned int)(remaining - ((value << 1) + (value << 3))) << position;
-        remaining = value;
-        position += 4;
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_801783D0 - byte-exact against retail at -O2 (tools/register_match.py). */
+#include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+extern void func_8012A568(void (*a0)(void));
+
+u32 func_801783D0(s32 a0, s32 a1) {
+    s32 t0;
+    s32 a2;
+    s32 a3;
+    t0 = 0;
+    a2 = a0;
+    a3 = 0;
+    while (a2 >= 10) {
+        a0 = a0 / 10;
+        t0 = t0 | ((a2 - (a0 * 2 + a0 * 8)) << a3);
+        a2 = a0;
+        a3 += 4;
     }
-    packed |= (unsigned int)remaining << position;
-    return packed << shift;
+    t0 = t0 | (a2 << a3);
+    return t0 << a1;
 }

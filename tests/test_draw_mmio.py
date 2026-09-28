@@ -2,7 +2,7 @@
 from pathlib import Path
 import subprocess
 import pytest
-from test_bios_event_callbacks import _generate_formatter_includes
+from test_bios_event_callbacks import _generate_formatter_includes, _sync_code_image
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -38,7 +38,7 @@ def test_checked_draw_mmio_and_source_guards(tmp_path, mutation):
             old = "if (instruction != word || !musashi_boot_read32(memory,cell,&actual) || actual != expected ||\n            cpu->r[reg] != expected) return formatter_refuse0(__LINE__, cpu->pc);"
             new = "(void)cell; (void)actual; (void)expected; (void)reg; (void)word;"
         else:
-            old = ("if (instruction != 0x0040f809u ||\n"
+            old = ("if (!code_site(0x80042598u, 16u, instruction) ||\n"
                    "            !musashi_boot_read32(memory,0x8006cb84u,&table) || table != 0x8006cb64u ||\n"
                    "            !musashi_boot_read32(memory,table+0xcu,&target) || target != 0x80042718u ||\n"
                    "            cpu->r[2] != target) return formatter_refuse0(__LINE__, cpu->pc);")
@@ -55,6 +55,7 @@ def test_checked_draw_mmio_and_source_guards(tmp_path, mutation):
         str(ROOT / "pc_port/boot_memory.c"), str(ROOT / "pc_port/gpu_controller.c"),
         *extra, "-o", str(probe),
     ], check=True, timeout=40)
+    _sync_code_image(generated)
     run = subprocess.run([str(probe)], capture_output=True, text=True, timeout=15)
     if word_case:
         assert run.returncode == 0, run.stdout + run.stderr

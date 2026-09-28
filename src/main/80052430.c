@@ -2,17 +2,30 @@
  * SHA256(span)=e7c83d5bccd6bc52a2f15133283c464864c5087e31234fa07c436e2946e8eac4.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-#include "psx_types.h"
-#include "m2c_macros.h"
+/* Source: PsyQ library C derived from parasite-eve-decomp (src/main/psyq/libgte/mtx_07.c), same PsyQ object; symbols renamed to this build's addresses. Matching build only. */
+/* func_80052430 - byte-exact against retail at -O2 (tools/register_match.py). */
+typedef signed short s16;
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+typedef signed int s32;
 
-void *func_80052430(void *arg0, void *arg1) {
-    M2C_FIELD(arg0, s32 *, 0x14) = (s32) M2C_FIELD(arg1, s32 *, 0);
-    M2C_FIELD(arg0, s32 *, 0x18) = (s32) M2C_FIELD(arg1, s32 *, 4);
-    M2C_FIELD(arg0, s32 *, 0x1C) = (s32) M2C_FIELD(arg1, s32 *, 8);
-    return arg0;
+typedef struct GteMatrix {
+    s16 m[3][3];
+    s32 t[3];
+} GteMatrix;
+
+GteMatrix *func_80052430(GteMatrix *matrix, const int *v) {
+    register GteMatrix *m asm("$4") = matrix;
+    register int x asm("$8") = v[0];
+    register int y asm("$9") = v[1];
+    register int z asm("$10") = v[2];
+    GteMatrix *ret;
+    m->t[0] = x;
+    m->t[1] = y;
+    m->t[2] = z;
+
+    asm volatile("" : "=r"(m) : "0"(m), "m"(m->t[0]), "m"(m->t[1]), "m"(m->t[2]));
+    ret = m;
+
+    asm volatile("" : "=r"(ret) : "0"(ret));
+    return ret;
 }

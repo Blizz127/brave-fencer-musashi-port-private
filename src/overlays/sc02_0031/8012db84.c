@@ -4,23 +4,34 @@
  * Member-0012 C shape retargeted to this member: D_8017E6C4->D_80184FB4; D_8017E6CC->D_80184FBC.
  * Oracle MATCH re-earned against the resident image; Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8012DB84 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL of func_8012DB84 (main_0012.s), decoded manually from
- * raw asm (19 instructions; NOT verified against retail; C89-gated
- * only, promotion requires an oracle MATCH): calls func_8014C978,
- * then func_8012F568(1, 0xC001, 0, 0x3E8, &D_80184FB4, &D_80184FBC).
- * The two stack slots (0x10/0x14) are the 5th/6th call arguments,
- * and the lui/addiu pairs take the addresses of D_80184FB4/D_80184FBC,
- * matching the (s32, s32, s32, void *, void *, void *) prototype
- * already established by func_8012D664. */
+/* m2c compat (vendor/bfm-decomp/include/common.h). */
+typedef s32 M2C_UNK;
+typedef s8 M2C_UNK8;
+typedef s16 M2C_UNK16;
+typedef s32 M2C_UNK32;
+typedef s64 M2C_UNK64;
+#define M2C_FIELD(expr, type_ptr, offset) (*(type_ptr)((s8 *)(expr) + (offset)))
+#define M2C_BITWISE(type, expr) ((type)(expr))
 
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern void func_8012F568(s32 a0, s32 a1, s32 a2, s32 a3, s32 a4, s32 a5);
 extern void func_8014C978(void);
-extern u8 D_80184FB4;
-extern u8 D_80184FBC;
-extern s32 func_8012F568(s32 arg0, s32 arg1, s32 arg2, void *arg3, void *arg4, void *arg5);
+extern M2C_UNK D_80184FB4;
+extern M2C_UNK D_80184FBC;
 
-void func_8012DB84(void) {
+s32 func_8012DB84(void)
+{
     func_8014C978();
-    func_8012F568(1, 0xC001, 0, (void *) 0x3E8, &D_80184FB4, &D_80184FBC);
+    func_8012F568(1, 0xC001, 0, 0x3E8, &D_80184FB4, &D_80184FBC);
 }

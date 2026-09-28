@@ -2,16 +2,27 @@
  * Ahead leaf.
  * Words from pinned SC02.CD member31 PAC0 decode (live-guest identity).
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80148AFC - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-extern s32 ratan2(s32 a0, s32 a1);
+typedef s32 (*ActorFn)(void *);
+extern s32 func_8004CFEC(s32 a0, s32 a1);
 
 int func_80148AFC(void *a0) {
+
     extern s32 D_801151D4;
-    extern s32 (*D_80186768[])(void *);
+    extern ActorFn D_80186768[];
     s32 p = (s32)a0;
     s32 iVar5 = *(s32 *)(p + 0x20);
-    register s32 tmp __asm__("$5") = (ratan2(*(s32 *)(D_801151D4 + 0x44) - *(s32 *)(D_801151D4 + 0x50),
+    register s32 tmp __asm__("$5") = (func_8004CFEC(*(s32 *)(D_801151D4 + 0x44) - *(s32 *)(D_801151D4 + 0x50),
                         *(s32 *)(D_801151D4 + 0x48) - *(s32 *)(D_801151D4 + 0x3C)) - 0x400) & 0xFFF;
     s32 sVar3;
     u8 bVar1;
@@ -34,7 +45,7 @@ int func_80148AFC(void *a0) {
             if (lo != c80 || (hi = bb >> 8) != 0x80) {
                 s32 sVar4;
                 __asm__ __volatile__("" : : : "memory");
-                sVar4 = ratan2((*(u16 *)(p + 0xAE) & 0xFF) - 0x80, 0x80 - (*(u16 *)(p + 0xAE) >> 8));
+                sVar4 = func_8004CFEC((*(u16 *)(p + 0xAE) & 0xFF) - 0x80, 0x80 - (*(u16 *)(p + 0xAE) >> 8));
                 *(u16 *)(iVar5 + 0x12) = (sVar3 + sVar4) & 0xFFF;
                 return 1;
             }

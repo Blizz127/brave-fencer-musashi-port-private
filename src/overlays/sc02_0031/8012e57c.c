@@ -5,29 +5,33 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8012E57C - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL of func_8012E57C (main_0012.s), decoded manually from
- * raw asm (0x50 bytes; NOT verified against retail; C89-gated
- * only, promotion requires an oracle MATCH): pool find-first like
- * func_8012E504 but keyed on two fields: first u16 == arg0 and
- * s16 at +0x70 == arg1 (a1 is sign-extended via sll/sra in the
- * entry-branch delay slot, hence s16). Byte stride 0x10C,
- * +0x6480 bound, else 0. */
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern u8 D_801202A0[];
 
-extern u8 D_801202A0;
-
-u8 *func_8012E57C(s32 arg0, s16 arg1) {
-    u8 *v1;
-    u8 *end;
-
-    v1 = &D_801202A0;
-    end = &D_801202A0 + 0x6480;
-    while (v1 != end) {
-        if (*(u16 *) v1 == arg0 && *(s16 *) (v1 + 0x70) == arg1) {
-            return v1;
-        }
-        v1 += 0x10C;
+s32 func_8012E57C(s32 a0, s32 a1) {
+    u8 *p = D_801202A0;
+    u8 *end = D_801202A0 + 0x6480;
+    if (p != end) {
+        s32 key = (s16)a1;
+        do {
+            if (*(u16 *)(p + 0x0) == a0) {
+                if (*(s16 *)(p + 0x70) == key) {
+                    return (s32)p;
+                }
+            }
+            p += 0x10C;
+        } while (p != end);
     }
     return 0;
 }

@@ -6,7 +6,7 @@ import struct
 import subprocess
 import tempfile
 import pytest
-from test_bios_event_callbacks import _generate_formatter_includes
+from test_bios_event_callbacks import _generate_formatter_includes, _sync_code_image
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -46,8 +46,9 @@ def test_sound_outer_source():
             *[str(ROOT / "pc_port" / name) for name in (
                 "boot_memory.c", "callback_bindings.c", "bios_events.c",
                 "bios_kernel.c", "irq_controller.c", "dma_controller.c", "spu_cd_audio.c")],
-            str(ROOT / "src/main/80042c64.c"), "-lcrypto", "-o", str(probe),
+            "-lcrypto", "-o", str(probe),
         ], check=True, timeout=30)
+        _sync_code_image(generated)
         result = subprocess.run([str(probe), str(exe)], check=False, timeout=30,
                                 capture_output=True, text=True)
         assert result.returncode == 0, result.stdout + result.stderr

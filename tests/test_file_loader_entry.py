@@ -5,7 +5,7 @@ import struct
 import subprocess
 
 import pytest
-from test_bios_event_callbacks import _generate_formatter_includes
+from test_bios_event_callbacks import _generate_formatter_includes, _sync_code_image
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -34,6 +34,7 @@ def test_actual_file_loader_entry_and_cache_refresh(tmp_path):
         str(ROOT/"tests/file_loader_entry_probe.c"),str(ROOT/"pc_port/boot_memory.c"),
         "-lcrypto","-o",str(probe),
     ],check=True,timeout=30)
+    _sync_code_image(generated)
     run = subprocess.run([str(probe),str(exe)],capture_output=True,text=True,timeout=10)
     assert run.returncode == 0, run.stdout+run.stderr
     assert run.stdout == "FILE_LOADER_ENTRY_PASS fixture_only=1 sector=16 transfer=NOT_RUN\n"

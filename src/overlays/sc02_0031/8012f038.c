@@ -5,46 +5,28 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8012F038 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL of func_8012F038 (main_0012.s), decoded manually from
- * raw asm (0x84 bytes; NOT verified against retail; C89-gated
- * only, promotion requires an oracle MATCH): builds an s32 triple
- * of (s16)arg1[0/2/4] - (s32)arg0[0x14/0x18/0x1C] (lh/lw/subu),
- * runs func_8004D504(arg0, in, out) (a0 passes through: the jal
- * sets only a1/a2, verified against raw; m2c dropped it), and stores the three result words
- * as halfwords to out[0/2/4] (lw/sh). */
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern void func_8004D504(void *a0, void *a1, void *a2);
 
-struct in_8012F038 {
-    u8 pad[0x14];
-    s32 unk14;
-    s32 unk18;
-    s32 unk1C;
-};
-
-struct u16in_8012F038 {
-    s16 unk0;
-    s16 unk2;
-    s16 unk4;
-};
-
-struct out_8012F038 {
-    s16 unk0;
-    s16 unk2;
-    s16 unk4;
-};
-
-extern void func_8004D504(void *arg0, s32 *arg1, s32 *arg2);
-
-void func_8012F038(struct in_8012F038 *arg0, struct u16in_8012F038 *arg1, struct out_8012F038 *arg2) {
-    s32 in[3];
-    s32 out[3];
-
-    in[0] = arg1->unk0 - arg0->unk14;
-    in[1] = arg1->unk2 - arg0->unk18;
-    in[2] = arg1->unk4 - arg0->unk1C;
-    func_8004D504(arg0, in, out);
-    arg2->unk0 = (s16) out[0];
-    arg2->unk2 = (s16) out[1];
-    arg2->unk4 = (s16) out[2];
+void func_8012F038(int param_1, short *param_2, short *param_3) {
+    int in[3];
+    int out[3];
+    in[0] = (int)param_2[0] - *(int *)(param_1 + 0x14);
+    in[1] = (int)param_2[1] - *(int *)(param_1 + 0x18);
+    in[2] = (int)param_2[2] - *(int *)(param_1 + 0x1c);
+    func_8004D504((void *)param_1, in, out);
+    param_3[0] = out[0];
+    param_3[1] = out[1];
+    param_3[2] = out[2];
 }

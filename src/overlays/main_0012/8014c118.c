@@ -2,32 +2,32 @@
  * SHA256(span)=914cdf0e3c0a33b38a643a7c03e21084ee6563c116939ae35a623c9198a40a16.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-#include "m2c_macros.h"
+/* func_8014C118 - byte-exact against retail at -O2 (tools/register_match.py). */
+typedef struct {
+    u16 unk0;
+    u8 pad[0x6E];
+    s16 unk70;
+    u8 pad2[0x9A];
+} Entry8014C118;
+extern u8 D_801202A0[];
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-extern s32 *D_801202A0;
-
-void *func_8014C118(s32 arg1, s16 arg2) {
-    void *var_v0;
-    void *var_v1;
-    u32 var_a0;
-
-    var_a0 = 0;
-    var_v1 = &D_801202A0;
-loop_1:
-    if ((M2C_FIELD(var_v1, u16 *, 0) != arg1) || (var_v0 = var_v1, (M2C_FIELD(var_v1, s16 *, 0x70) != arg2))) {
-        var_a0 += 1;
-        var_v1 += 0x10C;
-        if (var_a0 >= 0x60U) {
-            var_v0 = 0;
-        } else {
-            goto loop_1;
+s32 func_8014C118(void * a0, s32 a1, s32 a2)
+{
+    Entry8014C118 *p;
+    s32 i;
+    i = 0;
+    a2 = (s16)a2;
+    p = (Entry8014C118 *)D_801202A0;
+    do {
+        if (p->unk0 == a1) {
+            if (p->unk70 == a2) {
+                return (s32)p;
+            }
         }
-    }
-    return var_v0;
+        i++;
+        p++;
+    } while ((u32)i < 0x60);
+    return 0;
 }

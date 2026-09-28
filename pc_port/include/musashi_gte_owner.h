@@ -107,6 +107,10 @@ int musashi_gte_owner_command(MusashiGteOwner *owner,
 
 /* Copies the whole shared control and data banks without advancing time or changing
  * GTE state.  A faulted but still-live owner remains inspectable. */
+/* Native-lane GTE lease for host libgte wrappers (see gte_owner.c). */
+int musashi_gte_owner_native_begin(MusashiGteOwner *owner);
+void musashi_gte_owner_native_end(MusashiGteOwner *owner, uint32_t commands);
+
 int musashi_gte_owner_snapshot(MusashiGteOwner *owner,
                                MusashiGteSnapshot *snapshot);
 

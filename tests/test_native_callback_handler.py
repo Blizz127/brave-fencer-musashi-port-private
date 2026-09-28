@@ -28,7 +28,7 @@ class NativeHandlerTests(unittest.TestCase):
             "cc", "-std=c99", "-O2", "-Wall", "-Wextra", "-Werror", "-shared", "-fPIC",
             "-DMUSASHI_NATIVE_CALLBACK_HANDLER=1",
             "-I", str(ROOT / "include"), "-I", str(ROOT / "pc_port/include"),
-            str(ROOT / "src/main/80042ce8.c"), str(ROOT / "pc_port/boot_memory.c"),
+            str(ROOT / "pc_port/libetc_vsync_handler.c"), str(ROOT / "pc_port/boot_memory.c"),
             "-lcrypto", "-o", str(library),
         ], check=True, capture_output=True, stdin=subprocess.DEVNULL, timeout=60)
         cls.library = C.CDLL(str(library))

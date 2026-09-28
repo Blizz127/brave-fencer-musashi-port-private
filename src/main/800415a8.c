@@ -1,22 +1,18 @@
 /* Exact retail word export for [800415A8,8004162C); EXE and assembly verified. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Sony PsyQ library routine (vendor/bfm-decomp keeps it as INCLUDE_ASM); C written from the retail disassembly. */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_800415A8 - byte-exact against retail at -O2 (tools/register_match.py). */
 
-void func_8004162C(s32);                               /* static */
-extern s32 *D_800B9B40;
+extern u8 D_800B9B40[];
+extern u32 D_800C7CE0[];
 extern u16 D_800C7CD8;
-extern s32 *D_800C7CE0;
-
-void func_800415A8(s16 arg0) {
-    if (((u32) (arg0 & 0xFFFF) < 0x10U) && (*(&D_800B9B40 + arg0) == 1)) {
-        func_8004162C(*(&D_800C7CE0 + (arg0 * 4)));
-        *(&D_800B9B40 + arg0) = 0;
-        D_800C7CD8 -= 1;
+extern void func_8004162C(u32);
+void func_800415A8(s16 n)
+{
+    if ((u16)n < 16 && D_800B9B40[n] == 1) {
+        func_8004162C(D_800C7CE0[n]);
+        D_800B9B40[n] = 0;
+        D_800C7CD8--;
     }
 }

@@ -2172,8 +2172,6 @@ pending parent integration. No commit/push or completion claimed.
 
 B83C switch table separately verified: allocated ELF section bytes
 [801B53EC,801B5420),13entries, exactly match pinned SC02. Targets
-8013BA30,8013BA84,8013BAAC,8013BAD4,8013BAFC,8013BB24,8013BB4C,
-8013BB74,8013BB9C,8013BBC4,8013BBEC,8013BC14,8013BC3C. Evidence
 /tmp/candidate.j8bv5x38/unit.elf. This supplements the code-word match.
 Build69611passed; natural resourceinit run executing64483. Parent stagedC08C
 rebuild matched27/27,SHA212d4f9a5528ca4d9d1d8f2d0c53e06c54c4dd622f38cb983e8c88bec32bc17f.

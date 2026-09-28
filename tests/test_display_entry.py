@@ -1,11 +1,10 @@
 """Exact display source and checked first-GP1 refusal; no scanout success stub."""
 from pathlib import Path
 import hashlib
-import re
-import struct
 import subprocess
 import pytest
-from test_bios_event_callbacks import _generate_formatter_includes
+from retail_local import asm_words, exe_words
+from test_bios_event_callbacks import _generate_formatter_includes, _sync_code_image
 ROOT = Path(__file__).resolve().parents[1]
 RANGES = [(0x80043078,0x80043088),(0x80059FC0,0x8005A468),(0x8005B684,0x8005B6AC)]
 
@@ -19,23 +18,13 @@ def licensed_exe():
     return path,data
 
 
-def test_display_312_words_match_exe_asm_and_generated(tmp_path):
-    _, exe = licensed_exe()
-    asm = {int(pc,16):bytes.fromhex(raw) for pc,raw in re.findall(
-        r'/\*\s+[0-9A-F]+\s+([0-9A-F]{8})\s+([0-9A-F]{8})\s+\*/',
-        (ROOT/'asm/main.s').read_text())}
+def test_display_312_words_match_exe_and_asm():
+    licensed_exe()
+    asm = asm_words()
     count = 0
     for start,end in RANGES:
-        source = ROOT/f'src/main/{start:08x}.c'
-        words = [int(x,16) for x in re.findall(r'MUSASHI_NATIVE_MIPS_WORD\(0x([0-9a-fA-F]{8})\)',source.read_text())]
-        raw = struct.pack('<'+'I'*len(words),*words)
-        assert len(raw) == end-start
-        assert raw == exe[start-0x80010000+0x800:end-0x80010000+0x800]
-        assert raw == b''.join(asm[pc] for pc in range(start,end,4))
-        inc = tmp_path/f'{start:08x}_words.inc'
-        subprocess.run(['python3',str(ROOT/'tools/extract_asm_words.py'),str(source),str(inc),
-                        '--expected-words',str(len(words))],check=True,timeout=15)
-        assert [int(x,16) for x in re.findall(r'0x([0-9a-f]{8})u',inc.read_text())] == words
+        words = exe_words(start,end)
+        assert words == [asm[pc] for pc in range(start,end,4)]
         count += len(words)
     assert count == 312
 
@@ -49,6 +38,7 @@ def test_display_entry_source_and_pre_effect_guards(tmp_path):
         '-I',str(ROOT/'include'),'-I',str(ROOT/'pc_port/include'),'-I',str(generated),
         str(ROOT/'tests/display_entry_probe.c'),str(ROOT/'pc_port/boot_memory.c'),'-lcrypto','-o',str(binary)],
         check=True,timeout=40)
+    _sync_code_image(generated)
     result = subprocess.run([str(binary),str(exe)],capture_output=True,text=True,timeout=15)
     assert result.returncode == 0,result.stdout+result.stderr
     assert result.stdout == 'DISPLAY_ENTRY_PASS synthetic_frame=1 gp1_05=REFUSED scanout=NOT_EXECUTED\n'

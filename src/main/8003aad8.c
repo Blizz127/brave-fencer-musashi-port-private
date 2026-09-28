@@ -2,30 +2,27 @@
  * SHA256(span)=dc1a73e617197db28fdccefc26869e740aa04f693b15952455d2c8574dc1af14.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Sony PsyQ library routine (vendor/bfm-decomp keeps it as INCLUDE_ASM); C written from the retail disassembly. */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_8003AAD8 - byte-exact against retail at -O2 (tools/register_match.py). */
 
-extern s32 D_8006B54C;
-extern s32 *D_8006B550;
-extern s32 *D_8006B554;
-extern s32 *D_8006B558;
+extern volatile u16 *D_8006B54C;
+extern volatile u32 *D_8006B550;
+extern volatile u32 *D_8006B554;
+extern volatile u32 *D_8006B558;
 extern s32 D_8006B59C;
-void func_8003B0B8();                            /* static */
-void func_8003B0E4();                            /* static */
-
-void func_8003AAD8(s32 arg0, s16 arg1, s32 arg2) {
-    M2C_FIELD(D_8006B54C, s16 *, 0x1A6) = arg1;
+extern void func_8003B0E4(void);
+extern void func_8003B0B8(void);
+void func_8003AAD8(u32 madr, u16 addr, s32 size)
+{
+    D_8006B54C[0xD3] = addr;
     func_8003B0E4();
-    M2C_FIELD(D_8006B54C, u16 *, 0x1AA) = (u16) (M2C_FIELD(D_8006B54C, u16 *, 0x1AA) | 0x30);
+    D_8006B54C[0xD5] |= 0x30;
     func_8003B0E4();
     func_8003B0B8();
-    *D_8006B550 = arg0;
-    *D_8006B554 = (arg2 << 0x10) | 0x10;
+    *D_8006B550 = madr;
+    *D_8006B554 = (size << 16) | 0x10;
     D_8006B59C = 1;
     *D_8006B558 = 0x01000200;
 }

@@ -5,29 +5,31 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8012E504 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL of func_8012E504 (main_0012.s), decoded manually from
- * raw asm (0x40 bytes; NOT verified against retail; C89-gated
- * only, promotion requires an oracle MATCH): scans the 96-entry
- * 0x10C-stride pool from &D_801202A0 to +0x6480, skipping arg0,
- * returning the first entry whose first u16 equals arg1 (lhu/beq;
- * arg1 kept s32 so the comparison is bit-exact), else 0 (NULL is
- * spelled 0: no hosted headers under the Psy-Q chain). */
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern u8 D_801202A0[];
 
-extern u8 D_801202A0;
-
-u8 *func_8012E504(void *arg0, s32 arg1) {
-    u8 *v1;
-    u8 *end;
-
-    v1 = &D_801202A0;
-    end = &D_801202A0 + 0x6480;
-    while (v1 != end) {
-        if (v1 != arg0 && *(u16 *) v1 == arg1) {
-            return v1;
+s32 func_8012E504(s32 a0, s32 a1) {
+    s32 p;
+    s32 end;
+    p = (s32)D_801202A0;
+    end = (s32)D_801202A0 + 0x6480;
+    for (; p != end; p += 0x10C) {
+        if (p != a0) {
+            if (*(u16*)p == a1) {
+                return p;
+            }
         }
-        v1 += 0x10C;
     }
     return 0;
 }

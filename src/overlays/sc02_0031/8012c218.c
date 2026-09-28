@@ -2,10 +2,20 @@
  * Object teardown helper (dep of 8496C).
  * Words from pinned SC02.CD member31 PAC0 decode (live-guest identity).
  */
-/* From vendor shared ov (types reproduce bytes). */
-/* func_8012C218 — shared body (overlay slot 0x80128158, h_exact ce41e186). ONE source: instantiated by #include at each
- * member's site in address order; the members are recorded in config/dedup.us.yaml (Phase 35). */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8012C218 - byte-exact against retail at -O2 (tools/register_match.py). */
+#include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
 extern void func_80016714(void *a0, s32 a1);
+
 void func_8012C218(void *a0) {
     u16 *p = ((u16 **)a0)[8];   /* 0x20/4 */
     if (p) {

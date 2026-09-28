@@ -3,7 +3,7 @@ from pathlib import Path
 import hashlib
 import subprocess
 import pytest
-from test_bios_event_callbacks import _generate_formatter_includes
+from test_bios_event_callbacks import _generate_formatter_includes, _sync_code_image
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -20,6 +20,7 @@ def test_source_context_delay_and_borrowed_registers(tmp_path):
         '-I', str(ROOT/'include'), '-I', str(ROOT/'pc_port/include'), '-I', str(generated),
         str(ROOT/'tests/cpu_context_probe.c'), str(ROOT/'pc_port/boot_memory.c'),
         '-lcrypto', '-o', str(probe)], check=True, timeout=40)
+    _sync_code_image(generated)
     run = subprocess.run([str(probe), str(exe)], text=True, capture_output=True, timeout=15)
     assert run.returncode == 0, run.stdout + run.stderr
     assert run.stdout == 'CPU_CONTEXT_PASS source_branches=7 host_physical_context=UNCLAIMED\n'

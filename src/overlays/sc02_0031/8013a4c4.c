@@ -5,56 +5,44 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8013A4C4 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL of func_8013A4C4 (main_0012.s), decoded manually from
- * raw asm (fully visible; NOT verified against retail; C89-gated
- * only, promotion requires an oracle MATCH): void (struct *),
- * 0x18 frame. a1 = lw(a0 + 4) (sub-object); h0E = 0 (sh).
- * a1->h28 -= 0x400; v0 = lhu(a1->h2A) - 0x400 (kept across
- * the test); sh(a1->h2A) = v0 rides the slti-branch delay
- * slot, landing on both edges (the fallthrough re-store
- * of the same value is unobservable, dropped). If
- * ((s16)lh(a1->h28-re-read) < 0x401, signed): a1->h2A = 0;
- * a1->h28 = 0; a0->h00 = 4; a0->h02 = 0;
- * w04 = NULL (sw rides the shared-epilogue jump delay
- * slot). Else (3A518): 3A530(a0) (a0 flows untouched).
- * h28/h2A are u16 (lhu) with one s16 re-read (same
- * mixed-view note as func_8013A448). Void: the sole
- * caller (func_8013A380) jumps away ignoring $v0. 3A530
- * decl void here (ret ignored; re-verify at staging). */
-
-struct h_8013A4C4 {
-    u8 pad00[0x28];
-    u16 h28;
-    u16 h2A;
+struct Inner8013A4C4 {
+    u8 pad28[0x28];
+    s16 unk28;     /* 0x28 */
+    s16 unk2A;     /* 0x2A */
 };
-
-struct st_8013A4C4 {
-    u16 h00;
-    u16 h02;
-    struct h_8013A4C4 *w04;
-    u8 pad08[6];
-    u16 h0E;
+struct S8013A4C4 {
+    s16 unk0;      /* 0x0 */
+    s16 unk2;      /* 0x2 */
+    struct Inner8013A4C4 *unk4;  /* 0x4 */
+    u8 padE[6];
+    s16 unkE;      /* 0xE */
 };
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern void func_8013A530();
 
-extern void func_8013A530(void *arg0);
-
-void func_8013A4C4(struct st_8013A4C4 *arg0) {
-    struct h_8013A4C4 *a1v = arg0->w04;
-    u16 sub;
-
-    arg0->h0E = 0;
-    a1v->h28 = (u16)(a1v->h28 - 0x400);
-    sub = (u16)(a1v->h2A - 0x400);
-    a1v->h2A = sub;
-    if ((s16)a1v->h28 < 0x401) {
-        a1v->h2A = 0;
-        a1v->h28 = 0;
-        arg0->h00 = 4;
-        arg0->h02 = 0;
-        arg0->w04 = 0;
+void func_8013A4C4(struct S8013A4C4 *a0) {
+    struct Inner8013A4C4 *a1 = a0->unk4;
+    a0->unkE = 0;
+    a1->unk28 -= 0x400;
+    a1->unk2A -= 0x400;
+    if (a1->unk28 < 0x401) {
+        a1->unk2A = 0;
+        a1->unk28 = 0;
+        a0->unk0 = 4;
+        a0->unk2 = 0;
+        a0->unk4 = 0;
     } else {
-        func_8013A530(arg0);
+        func_8013A530();
     }
 }

@@ -5,38 +5,22 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80128EA8 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL of func_80128EA8 (main_0012.s), decoded manually from
- * raw asm (fully visible; NOT verified against retail; C89-gated
- * only, promotion requires an oracle MATCH): stores arg1->unk0
- * = arg2 (sw), u16 arg1->unk4 = 0 (sh), u16 arg1->unk6 =
- * *(s32 *)(arg2 + 4) & 0x3F (lw/andi/sh), u16 arg0->unk28 =
- * lhu(arg2 + 0), u16 arg0->unk2A = lhu(arg2 + 2) (the last in
- * the jr delay slot). */
 
-struct obj_80128EA8 {
-    void *unk0;
-    u16 unk4;
-    u16 unk6;
-};
-
-struct src_80128EA8 {
-    u16 unk0;
-    u16 unk2;
-    s32 unk4;
-};
-
-struct dst_80128EA8 {
-    u8 pad[0x28];
-    u16 unk28;
-    u16 unk2A;
-};
-
-void func_80128EA8(struct dst_80128EA8 *arg0, struct obj_80128EA8 *arg1, struct src_80128EA8 *arg2) {
-    arg1->unk0 = arg2;
-    arg1->unk4 = 0;
-    arg1->unk6 = (u16) (arg2->unk4 & 0x3F);
-    arg0->unk28 = arg2->unk0;
-    arg0->unk2A = arg2->unk2;
+void func_80128EA8(s32 a0, s32 a1, s32 a2) {
+    *(s32 *)(a1 + 0x0) = a2;                       /* sw a2, 0x0(a1) */
+    *(s16 *)(a1 + 0x4) = 0;                         /* sh zero, 0x4(a1) */
+    *(s16 *)(a1 + 0x6) = (*(s32 *)(a2 + 0x4)) & 0x3F; /* lw; andi 0x3F; sh 0x6(a1) */
+    *(s16 *)(a0 + 0x28) = *(u16 *)(a2 + 0x0);      /* lhu 0x0(a2); sh 0x28(a0) */
+    *(s16 *)(a0 + 0x2A) = *(u16 *)(a2 + 0x2);      /* lhu 0x2(a2); sh 0x2A(a0) */
 }

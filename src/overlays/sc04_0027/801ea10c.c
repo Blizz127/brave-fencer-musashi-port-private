@@ -1,0 +1,23 @@
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_801EA10C - byte-exact against retail at -O2 (tools/register_match.py). */
+#include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+extern u8 D_801EBBAC[];
+void func_800167B8(int);
+void func_80175414(s32 _arg0);
+
+int func_801EA10C(u8 *arg) {
+    extern u8 *D_80126B10;
+    D_80126B10 = D_801EBBAC;
+    func_800167B8(0);
+    ((void (*)(void))func_80175414)();
+    arg[0x15]++;
+    return 0;
+}

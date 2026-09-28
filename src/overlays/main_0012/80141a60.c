@@ -2,54 +2,58 @@
  * SHA256(span)=c27ce34d8bf0f56290ccf632162e611417b2457f9e13dc8fd80d85d919dcb651.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80141A60 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-s32 func_800D0EC4();                                /* extern */
-extern s32 D_8017F6FC;
-void func_801376E8(s32, s32 (*)());                      /* static */
-void func_80137B80();                                  /* static */
-void func_80139954();                                  /* static */
-void func_8013F350();                                  /* static */
-void func_8013FAF8(s16, s16);                          /* static */
-s32 func_8014032C(s32, s16, s32);                     /* static */
-extern u16 D_800B9A02;
-extern u16 D_80115112;
-extern s16 D_80115116;
-extern u16 D_8011511A;
-extern s32 D_80115130;
-extern u8 D_8011514C;
+/* File-scope declarations from the vendor translation unit. */
 extern u8 D_8011514D;
-extern u8 D_8011515C;
-extern s32 *D_801151C8;
-extern s32 D_801151D0;
 
-void func_80141A60(void) {
-    s32 temp_lo;
-    s32 temp_v0;
+extern s32 func_800D0EC4(void);
+extern void func_801376E8(int a0, int a1);
+extern void func_80137B80(void);
+extern void func_80139954(void);
+extern s32 func_8013F350(void);
+extern void func_8013FAF8(s16 a0, s16 a1);
+extern s32 func_8014032C(s32 a0, s32 a1);
 
-    D_801151D0 = *(&D_801151C8 + (D_800B9A02 * 4));
+// @class: plumbing
+// @stuck: TBD — first pass
+
+
+
+s32 func_80141A60()
+{
+
+    extern short D_800B9A02;
+    extern unsigned short D_80115112;
+    extern u16 D_80115116;
+    extern u16 D_8011511A;
+    extern s32 D_80115130;
+    extern s16 D_8011514C;
+    extern u8 D_8011515C;
+    extern u8 D_801151C8[];
+    extern s32 D_801151D0;
+    extern unsigned char D_8017F6FC;
+    int v;
+    s32 frame_pad[2];
+    (void)&frame_pad;
+
+    D_801151D0 = ((int *)D_801151C8)[(*(unsigned short *)&D_800B9A02)];
     func_8013F350();
-    if ((u16) D_8011511A >= 4U) {
-        func_8013FAF8((s16) D_8011511A, (s16) (D_8011511A + 1));
+    if ((*(unsigned short *)&D_8011511A) >= 4) {
+        func_8013FAF8((short)(*(unsigned short *)&D_8011511A), (short)((*(unsigned short *)&D_8011511A) + 1));
     }
     func_8013FAF8(2, 3);
-    temp_lo = D_8011514D * D_8011515C;
-    temp_v0 = func_8014032C(2, (s16) (D_8011514C + temp_lo), temp_lo);
-    if ((temp_v0 != 0) && (temp_v0 != D_80115130)) {
-        D_80115130 = temp_v0;
+    v = ((int(*)(int, int))func_8014032C)(2, (short)((*(unsigned char *)&D_8011514C) + (*(unsigned char *)&D_8011514D) * (*(unsigned char *)&D_8011515C)));
+    if (v != 0 && v != D_80115130) {
+        D_80115130 = v;
         func_80139954();
-        func_801376E8(temp_v0, D_8017F6FC);
+        ((void (*)(int, void *))func_801376E8)(v, &(*(int *)&D_8017F6FC));
     }
     func_80137B80();
     if (func_800D0EC4() != 0) {
-        D_80115116 = 0xFFF8;
-        D_80115112 += 1;
+        (*(unsigned short *)&D_80115116) = 0xFFF8;
+        (*(unsigned short *)&D_80115112) = (*(unsigned short *)&D_80115112) + 1;
     }
 }

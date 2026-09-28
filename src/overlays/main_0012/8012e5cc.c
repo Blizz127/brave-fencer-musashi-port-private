@@ -2,30 +2,28 @@
  * SHA256(span)=d3d85af1d135e1f4116f6fe9dcb0c4208b91d3b16ffc217ceabf655bc5e3414c.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
+/* func_8012E5CC - byte-exact against retail at -O2 (tools/register_match.py). */
+#define RotTransPers func_8004955C
+extern void func_8002D4C8(s32 a0, s32 a1);
+extern s32 RotTransPers(s32, s32, s32 *, s32 *);
+extern void func_8004914C(void *);
+extern void func_800491AC(void *);
+extern u8 D_800AF648;
+extern void func_8004914C(void *a0);
+extern void func_800491AC(void *a0);
+extern s32 RotTransPers(s32 a0, s32 a1, s32 *a2, s32 *a3);
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-void func_8002D4C8(s32, s32);                          /* extern */
-void func_8004914C(void *);                               /* extern */
-void func_800491AC(void *);                               /* extern */
-void func_8004955C(s32, u16 *, void *, s32 *);            /* extern */
-extern s32 *D_800AF648;
-
-void func_8012E5CC(s32 arg0, s32 arg1, s32 arg2) {
-    s32 sp18;
-    s32 sp14;
-    u16 sp10;
-
-    func_8004914C(&D_800AF648);
+void func_8012E5CC(s32 param_1, u16 param_2, u16 param_3)
+{
+    struct { short xy[2]; int sp14; int flag; } f;
+    register void *p __asm__("$4");
+    p = &D_800AF648;
+    func_8004914C(p);
     func_800491AC(&D_800AF648);
-    func_8004955C(arg0, &sp10, &sp14, &sp18);
-    if ((sp18 >= 0) && ((u32) ((sp10 + 0xC7) & 0xFFFF) < 0x18FU) && ((u32) ((sp12 + 0xA9) & 0xFFFF) < 0x153U)) {
-        func_8002D4C8(arg1 & 0xFFFF, arg2 & 0xFFFF);
+    RotTransPers(param_1, (s32)f.xy, &f.sp14, &f.flag);
+    if (f.flag >= 0 && (u16)(f.xy[0] + 199) < 399 && (u16)(f.xy[1] + 0xA9) < 0x153) {
+        func_8002D4C8(param_2, param_3);
     }
 }

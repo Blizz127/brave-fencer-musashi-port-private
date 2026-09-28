@@ -1,45 +1,43 @@
 /* Exact retail word export for [80045940,800459E8); EXE-verified. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
-#include "psx_types.h"
+/* Source: PsyQ library C derived from parasite-eve-decomp (candidates/main/psyq/misc34.c), same PsyQ object; symbols renamed to this build's addresses. Matching build only. */
+/* func_80045940 - byte-exact against retail at -O2 (tools/register_match.py). */
+int func_8005C4DC(char *a, char *b);
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+extern int D_80076A04[];
 
-s32 func_8005C4DC(s32, void *);                          /* static */
-extern s32 *D_80076A04;
-extern s32 *D_80076A0C;
+extern char D_80076A0C[];
 
-s32 func_80045940(s32 arg0, s32 arg1) {
-    void *var_s2;
-    s32 temp_v0;
-    s32 var_s0;
-    s32 var_s1;
+int func_80045940(int dev, char *name) {
+    int saved_dev;
+    register char *saved_name asm("$20");
+    int i;
+    int offset;
+    register char *entry_name asm("$18");
+    int value;
+    saved_dev = dev;
+    saved_name = name;
+    i = 0;
+    entry_name = D_80076A0C;
+    offset = 0;
+    do {
+        value = *(int *)((char *)D_80076A04 + offset);
 
-    var_s0 = 0;
-    var_s2 = &D_80076A0C;
-    var_s1 = 0;
-loop_1:
-    temp_v0 = *(&D_80076A04 + var_s1);
-    if (temp_v0 != 0) {
-        if (temp_v0 == arg0) {
-            var_s2 += 0x2C;
-            if (func_8005C4DC(arg1, var_s2) == 0) {
-                return var_s0 + 1;
+        if (value == 0) {
+            return -1;
+        }
+        if (value == saved_dev) {
+            if (func_8005C4DC(saved_name, entry_name) == 0) {
+                return i + 1;
             }
-            goto block_6;
+            entry_name += 0x2C;
+        } else {
+            entry_name += 0x2C;
         }
-        var_s2 += 0x2C;
-block_6:
-        var_s0 += 1;
-        var_s1 += 0x2C;
-        if (var_s0 >= 0x80) {
-            goto block_7;
-        }
-        goto loop_1;
-    }
-block_7:
+        i++;
+        offset += 0x2C;
+    } while (i < 0x80);
+
     return -1;
 }
+
+int DS_cachefile(int index);

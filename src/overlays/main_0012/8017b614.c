@@ -2,68 +2,86 @@
  * SHA256(span)=c6574a19818e972ff3ee5a795b834afbff49930e77c16d42bc7d0cbf96fa5a3a.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8017B614 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* File-scope declarations from the vendor translation unit. */
+typedef struct { u8 b[8]; } Blk8_8017B614;
 
-extern s32 D_80181CC0;
-extern s32 D_8018534C;
-extern s32 D_801853BE;
-extern s32 D_801853C0;
-extern s32 D_801853C6;
-extern s32 D_801853C8;
-void func_80129CF8(s16, s16, s16, s16);                /* static */
-void func_8012A018(s32 (*)(), s32);                        /* static */
-void func_8012F214(s32, void *, void *);                  /* static */
-extern s32 func_8017BE60;
-extern s8 D_8012694C;
-extern s32 D_80126984;
-extern s32 D_80126988;
-extern s32 D_8012698C;
-extern s32 D_80126990;
-extern s32 D_80126994;
-extern s32 D_80126998;
-extern s32 D_801853BC;
-extern s32 D_801853C4;
-extern s16 D_80185C08;
+extern void func_8012A018(s32 a, s32 b);
 
-void func_8017B614(s32 arg0, u32 arg1) {
-    s32 sp1F;
-    s32 sp1B;
-    s32 sp18;
-    s32 sp17;
-    s32 sp13;
-    s32 sp10;
-    s32 temp_s0;
+// @class: regalloc-order + T1 memcpy-builtin→call re-crack
+// @stuck: 0 (iso). Register lever = $16 pin + in-place re-tie on the memcpy-branch src (keeps
+// param_2 in $a1 until the branch, then $s0 for the loads). Block-moves are align-1 struct-assigns
+// (u8[8]) so they lower via emit_block_move (movstrsi/move_by_pieces) with ZERO memcpy-symbol
+// reference — TU-independent, so the sibling TU's `extern memcpy` (which disables the builtin and
+// turned the old inlined block-move into a CALL) can no longer drift this.
 
-    if (arg1 >= 0xBU) {
-        sp13 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-        sp17 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-        sp1B = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-        sp1F = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
+
+
+
+s32 func_8017B614(s32 param_1, s32 param_2)
+{
+
+    extern s32 D_80126990;
+    extern s32 D_80126994;
+    extern s16 D_8018534C;
+    extern s16 D_80185C08;
+    extern void func_8012F214(s32 a0, s32 a1, s32 a2);
+    extern void func_80129CF8(void);
+    extern s32 func_8017BE60(void *a0);
+    extern u8 D_80181CC0[];
+    extern s16 D_801853C4;
+    extern s16 D_801853C6;
+    extern s16 D_801853C8;
+    extern s16 D_801853BC;
+    extern s16 D_801853BE;
+    extern s16 D_801853C0;
+    extern u8 D_8012694C;
+    extern s32 D_80126998;
+    extern s32 D_80126984;
+    extern s32 D_80126988;
+    extern s32 D_8012698C;
+
+    u8 buf[16];
+
+    if (((u32)param_2) >= 0xB) {
+        register u8 *src __asm__("$16");
+        __asm__ __volatile__("" : "=r"(src) : "0"((u8 *)((u32)param_2)));
+        *(Blk8_8017B614 *)&buf[0] = *(Blk8_8017B614 *)src;
+        *(Blk8_8017B614 *)&buf[8] = *(Blk8_8017B614 *)(src + 8);
     } else {
-        temp_s0 = arg1 * 0x10;
-        func_8012F214(arg0, temp_s0 + D_80181CC0, &sp10);
-        func_8012F214(arg0, temp_s0 + (D_80181CC0 + 8), &sp18);
+        s32 a1addr = (s32)&D_80181CC0[((u32)param_2) * 0x10];
+        s32 a2addr = (s32)&D_80181CC0[((u32)param_2) * 0x10 + 8];
+        func_8012F214(param_1, a1addr, (s32)&buf[0]);
+        func_8012F214(param_1, a2addr, (s32)&buf[8]);
     }
-    D_801853C4.unk3 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-    D_801853C4.unk7 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-    D_801853BC.unk3 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-    D_801853BC.unk7 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-    func_8012A018(func_8017BE60, 0);
-    D_8012694C = 0;
-    D_80185C08 = 1;
-    D_8018534C = 0x1E;
-    D_80126990 = (s32) D_801853C4.unk0;
-    D_80126994 = (s32) D_801853C6;
-    D_80126998 = (s32) D_801853C8;
-    D_80126984 = (s32) D_801853BC.unk0;
-    D_80126988 = (s32) D_801853BE;
-    D_8012698C = (s32) D_801853C0;
-    func_80129CF8(D_801853C6, D_801853C8, D_801853BC.unk0, D_801853BE);
+    {
+        s16 *p794 = &D_801853C4;
+        s16 *p78C = &D_801853BC;
+        *(Blk8_8017B614 *)p794 = *(Blk8_8017B614 *)&buf[0];
+        *(Blk8_8017B614 *)p78C = *(Blk8_8017B614 *)&buf[8];
+        func_8012A018((s32)func_8017BE60, 0);
+        {
+            s32 v794, v796, v798, v78C, v78E, v790;
+            D_8012694C = 0;
+            v794 = *p794;
+            v796 = D_801853C6;
+            v798 = D_801853C8;
+            v78C = *p78C;
+            v78E = D_801853BE;
+            v790 = D_801853C0;
+            __asm__ __volatile__("");
+            D_80185C08 = 1;
+            D_8018534C = 0x1E;
+            D_80126990 = v794;
+            D_80126994 = v796;
+            D_80126998 = v798;
+            D_80126984 = v78C;
+            D_80126988 = v78E;
+            D_8012698C = v790;
+        }
+        func_80129CF8();
+    }
 }

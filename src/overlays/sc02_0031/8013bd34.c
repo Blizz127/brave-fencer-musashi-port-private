@@ -4,17 +4,22 @@
  * Member-0012 C shape retargeted to this member: D_80185C10->D_801B7AA0.
  * Oracle MATCH re-earned against the resident image; Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8013BD34 - byte-exact against retail at -O0 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-extern void func_8013BD74(u8 *arg0, u8 *arg1);
-extern u8 D_801B7AA0[];
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern void func_8013BD74(void *a0, s32 a1);
 
-/* HAND MODEL of func_8013BD34 (main_0012.s), decoded manually from
- * raw asm (fully visible; NOT verified against retail; C89-gated
- * only, promotion requires an oracle MATCH): void (u8 *), 0x18
- * fp-frame. Thin wrapper: func_8013BD74(&D_801B7AA0, arg0). Void:
- * v0 after the jal is ignored. */
-void func_8013BD34(u8 *arg0)
-{
-    func_8013BD74(D_801B7AA0, arg0);
+void func_8013BD34(s32 a0) {
+
+    extern s32 D_801B7AA0;
+    func_8013BD74(&D_801B7AA0, a0);
 }

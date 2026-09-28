@@ -5,11 +5,30 @@
  * Donor shape: Druthulu ov_SC02_031_jr_8017AE2C func_80181224 (func_8016EE40(&D_80188DA4, 0x1000000)).
  * NOT in parked PAC0 hole 8014E934…80153C8C; later SC02 text in jr_8017AE2C.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80181224 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-extern void func_8016EE40(void *arg0, s32 arg1);
-extern s32 D_80188DA4;
+/* m2c compat (vendor/bfm-decomp/include/common.h). */
+typedef s32 M2C_UNK;
+typedef s8 M2C_UNK8;
+typedef s16 M2C_UNK16;
+typedef s32 M2C_UNK32;
+typedef s64 M2C_UNK64;
+#define M2C_FIELD(expr, type_ptr, offset) (*(type_ptr)((s8 *)(expr) + (offset)))
+#define M2C_BITWISE(type, expr) ((type)(expr))
+
+extern void func_8012A568(void (*a0)(void));
+extern void func_8016EE40(s32 a0, s32 a1, s32 a2);
+extern M2C_UNK D_80188DA4;
 
 void func_80181224(void) {
-    func_8016EE40(&D_80188DA4, 0x1000000);
+    ((void (*)(void *, s32))func_8016EE40)(&D_80188DA4, 0x1000000);
 }

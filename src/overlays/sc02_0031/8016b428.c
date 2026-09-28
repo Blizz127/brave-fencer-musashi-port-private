@@ -5,16 +5,20 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8016B428 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL of func_8016B428 (main_0012.s), decoded manually from
- * raw asm (0x20 bytes; m2c arg placement corrected: the jal delay
- * slot zeroes a1 while a0 still holds the incoming argument, so
- * the call is B448(arg0, 0), not B448(0); NOT verified against
- * retail; C89-gated only, promotion requires an oracle MATCH). */
+extern s32 func_8016B448(s32, s32);
+extern void func_8012A568(void (*a0)(void));
 
-extern void func_8016B448(void *arg0, s32 arg1);
-
-void func_8016B428(void *arg0) {
-    func_8016B448(arg0, 0);
+s32 func_8016B428(s32 a0) {
+    return func_8016B448(a0, 0);
 }

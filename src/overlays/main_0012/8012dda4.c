@@ -2,38 +2,33 @@
  * SHA256(span)=8e0d36f684ae0058590ef139652bdd4047a1878eae9b012e07e92f16eac65cd9.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
+/* func_8012DDA4 - byte-exact against retail at -O2 (tools/register_match.py). */
+typedef struct Entry_8012DDA4 {
+    u16 active;
+    unsigned char pad[0x10C - 2];
+} Entry_8012DDA4;
+extern u8 D_80126720[];
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+s32 func_8012DDA4()
+{
 
-extern s32 D_801840D0;
-extern s32 D_801840D4;
-extern s32 *D_80126720;
+    extern u8 D_80126720[];
+    extern Entry_8012DDA4 * D_801840D4;
+    extern Entry_8012DDA4 * D_801840D0;
 
-u16 *func_8012DDA4(void) {
-    u16 *temp_v0;
-    u16 *temp_v1;
+    Entry_8012DDA4 *p;
+    Entry_8012DDA4 *end = ((Entry_8012DDA4 *)D_80126720);
 
-    if (D_801840D4 != &D_80126720) {
-loop_2:
-        temp_v1 = D_801840D4;
-        if ((*temp_v1 != 0) && (temp_v1 != D_801840D0)) {
-            D_801840D4 = (u16 *) (temp_v1 + 0x10C);
-            return temp_v1;
+    while (D_801840D4 != end) {
+        p = D_801840D4;
+        if (p->active != 0 && p != D_801840D0) {
+            D_801840D4 = p + 1;
+            return p;
         }
-        temp_v0 = D_801840D4 + 0x10C;
-        D_801840D4 = temp_v0;
-        if (temp_v0 == &D_80126720) {
-            goto block_6;
-        }
-        goto loop_2;
+        D_801840D4++;
     }
-block_6:
     D_801840D4 = 0;
     return 0;
 }

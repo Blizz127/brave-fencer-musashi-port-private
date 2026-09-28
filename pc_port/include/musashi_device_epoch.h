@@ -36,6 +36,8 @@ typedef struct MusashiDeviceEpoch {
     int active;
     int busy;
     int faulted;
+    /* Which check faulted the epoch (static string), for diagnostics. */
+    const char *fault_reason;
 } MusashiDeviceEpoch;
 
 /* Fresh-storage constructor only: never reinitialize an active/faulted epoch

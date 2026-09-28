@@ -1,54 +1,38 @@
 /* Native retail instruction export [80052BEC,80052D00).
  * Verified against asm/main.s and the extracted EXE. No C match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Sony PsyQ library routine (vendor/bfm-decomp keeps it as INCLUDE_ASM); C written from the retail disassembly. */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_80052BEC - byte-exact against retail at -O2 (tools/register_match.py). */
 
-void func_8004921C(s16, s16);                          /* static */
-void func_80059D68(s16 *, u16);                        /* static */
-extern s16 D_800794E0;
-extern s16 D_800794E4;
-extern u16 D_800A5E50;
-extern u16 D_800A5E52;
-extern s16 D_800A6440;
-extern s16 D_800A6442;
+typedef struct { s16 x, y, w, h; } RECT;
+typedef struct { RECT clip; s16 ofs[2]; } DRAWENVh;
+extern s16 D_800C7C88;
+extern s16 D_800C7C74;
+extern s16 D_800794E0[];
+extern s16 D_800794E4[];
+extern s16 D_800A5E50;
+extern s16 D_800A5E52;
 extern s16 D_800A6548;
 extern s16 D_800A654A;
-extern s16 D_800C7C74;
-extern s16 D_800C7C88;
+extern DRAWENVh D_800A6438;
+extern void func_80059D68(DRAWENVh *);
+extern void func_8004921C(s32, s32);
+void func_80052BEC(void)
+{
+    s32 x, y;
 
-void func_80052BEC(void) {
-    s16 *var_v0;
-    s16 *var_v1;
-    s16 temp_s0;
-    s16 temp_s1;
-    u16 temp_a1;
-
-    if (D_800C7C88 != 0) {
-        temp_a1 = (u16) (&D_800794E0)[D_800C7C74];
+    if (D_800C7C88) {
         D_800A654A = 0;
         D_800A6548 = 0;
-        D_800A6440 = D_800A5E50 + temp_a1;
-        D_800A6442 = D_800A5E52 + (u16) (&D_800794E4)[D_800C7C74];
-        func_80059D68(&D_800A6440 - 8, temp_a1);
-        return;
+        D_800A6438.ofs[0] = D_800A5E50 + D_800794E0[D_800C7C74];
+        D_800A6438.ofs[1] = D_800A5E52 + D_800794E4[D_800C7C74];
+        func_80059D68(&D_800A6438);
+    } else {
+        x = D_800A5E50 + *(D_800C7C74 ? D_800794E0 : D_800794E0 + 1);
+        y = D_800A5E52 + *(D_800C7C74 ? D_800794E4 : D_800794E4 + 1);
+        func_8004921C(x, y);
+        D_800A6548 = x;
+        D_800A654A = y;
     }
-    var_v0 = &D_800794E0;
-    if (D_800C7C74 == 0) {
-        var_v0 = &D_800794E0 + 2;
-    }
-    var_v1 = &D_800794E4;
-    temp_s1 = (s16) D_800A5E50 + *var_v0;
-    if (D_800C7C74 == 0) {
-        var_v1 = &D_800794E4 + 2;
-    }
-    temp_s0 = (s16) D_800A5E52 + *var_v1;
-    func_8004921C(temp_s1, temp_s0);
-    D_800A6548 = temp_s1;
-    D_800A654A = temp_s0;
 }

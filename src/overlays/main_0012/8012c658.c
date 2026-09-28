@@ -2,66 +2,64 @@
  * SHA256(span)=7c88806187c34718caedaa7fa8ed6474baa69da635407d1f74aecb88c630a8d9.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-#include "m2c_macros.h"
+/* func_8012C658 - byte-exact against retail at -O2 (tools/register_match.py). */
+struct S8012C658 {
+    u16 unk0;
+    u16 unk2;
+    u16 unk4;
+    s16 unk6;
+    s16 unk8;
+    s16 unkA;
+    s16 unkC;
+    s16 unkE;
+    s32 unk10;
+};
+s16 arg1;
+u8 *arg2;
+extern u8 D_80126720[];
+extern s32 func_8012C890(s32 a0, s32 a1, s32 a2);
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-s32 func_8012C890(u16 *, u16 *);                    /* static */
-extern s32 *D_80126720;
-
-s32 func_8012C658(s16 arg0, s16 arg1, void *arg2) {
-    s32 sp20;
-    s16 sp1E;
-    s16 sp1C;
-    s16 sp1A;
-    s16 sp18;
-    s16 sp16;
-    u16 sp14;
-    u16 sp12;
-    u16 sp10;
+s32 func_8012C658(s32 arg0, s32 arg1, s32 arg2) {
+    struct S8012C658 sp;
     s32 var_v0;
     u16 *var_a1;
-
-    if ((arg2 != 0) && (M2C_FIELD(arg2, u16 *, 0) != 0)) {
-        sp10 = M2C_FIELD(arg2, u16 *, 6);
-        sp12 = M2C_FIELD(arg2, u16 *, 0xA);
-        sp14 = M2C_FIELD(arg2, u16 *, 0xE);
+    u16 *end;
+    u16 *param;
+    if ((arg2 != 0) && (*(u16 *)(arg2 + 0x0) != 0)) {
+        sp.unk0 = *(u16 *)(arg2 + 0x6);
+        sp.unk2 = *(u16 *)(arg2 + 0xA);
+        sp.unk4 = *(u16 *)(arg2 + 0xE);
     } else {
-        sp14 = 0;
-        sp12 = 0;
-        sp10 = 0;
+        sp.unk4 = 0;
+        sp.unk2 = 0;
+        sp.unk0 = 0;
     }
-    sp16 = arg0;
-    sp18 = arg1;
-    sp1A = 0;
-    sp20 = 0;
-    sp1E = 0;
-    sp1C = 0x7FFF;
+    sp.unk6 = (s16)arg0;
+    sp.unk8 = (s16)arg1;
+    sp.unkA = 0;
+    sp.unk10 = 0;
+    sp.unkE = 0;
+    sp.unkC = 0x7FFF;
+    param = &sp.unk0;
+    end = (u16 *)D_80126720;
     if (arg2 == 0) {
-        var_a1 = &D_80126720 - 0x6480;
+        var_a1 = (u16 *)((u8 *)end - 0x6480);
     } else {
-        var_a1 = arg2 + 0x10C;
+        var_a1 = (u16 *)(arg2 + 0x10C);
     }
-    if (var_a1 != &D_80126720) {
-loop_8:
-        if (*var_a1 != 0) {
-            var_a1 += 0x10C;
-            if (var_a1 == &D_80126720) {
-                goto block_10;
-            }
-            goto loop_8;
+    while (var_a1 != end) {
+        if (*var_a1 == 0) {
+            goto found;
         }
-    } else {
-block_10:
-        var_a1 = 0;
+        var_a1 = (u16 *)((u8 *)var_a1 + 0x10C);
     }
+    var_a1 = 0;
+found:
     var_v0 = 0;
     if (var_a1 != 0) {
-        var_v0 = func_8012C890(&sp10, var_a1);
+        var_v0 = ((s32 (*)(u16 *, u16 *))func_8012C890)(param, var_a1);
     }
     return var_v0;
 }

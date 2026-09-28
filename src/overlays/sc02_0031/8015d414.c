@@ -4,27 +4,31 @@
  * Member-0012 C shape retargeted to this member: D_8017FD30->D_80186620.
  * Oracle MATCH re-earned against the resident image; Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8015D414 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-void func_801553C0();
-void func_80154A74();
-extern s32 D_80186620;
-typedef struct Inner { u8 pad[0x10]; s16 u10; } Inner;
-typedef struct {
-    u8 pad[0xA]; s16 unkA;
-    u8 padC[0x14]; Inner *inner;
-    u8 pad24[0x14]; void *p38;
-    u8 pad3C[0xFC]; s16 u138, u13A, u13C, u13E;
-    u8 pad140[0x7D]; u8 u1BD;
-} T;
-void func_8015D414(T *p) {
-    p->u1BD = 8;
-    p->p38 = &D_80186620;
-    p->u138 = 0;
-    p->u13A = 0;
-    p->u13C = 0;
-    p->u13E = 0;
-    p->unkA += 0x48;
-    p->inner->u10 = 0;
-    func_801553C0(p);
-    func_80154A74(p, 0x11);
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+extern unsigned char D_80186620[];
+extern void func_801553C0(s32 a0);
+extern void func_80154A74(s32 a0, s32 a1);
+
+void func_8015D414(int param_1)
+{
+    *(unsigned char *)(param_1 + 0x1bd) = 8;
+    *(unsigned char **)(param_1 + 0x38) = D_80186620;
+    *(short *)(param_1 + 0x138) = 0;
+    *(short *)(param_1 + 0x13a) = 0;
+    *(short *)(param_1 + 0x13c) = 0;
+    *(short *)(param_1 + 0x13e) = 0;
+    *(short *)(param_1 + 0xA) = *(short *)(param_1 + 0xA) + 0x48;
+    *(short *)(*(int *)(param_1 + 0x20) + 0x10) = 0;
+    ((void (*)(void))func_801553C0)();
+    func_80154A74(param_1, 0x11);
 }

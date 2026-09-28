@@ -5,12 +5,21 @@
  * Donor shape: Druthulu shared/ov/func_80154A74.h (compare *(a0+0xD0) vs (*(s32**)(a0+0xCC))[a1]; else func_80154AB4).
  * NOT MAIN10; NOT in parked PAC0 hole 8014E934…80153C8C; later SC02 text near jr_80154C24 / shared OV body.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80154A74 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-extern void func_80154AB4(s32 arg0, s32 arg1);
+extern void func_80154AB4(s32 a0, s32 a1);
 
-void func_80154A74(s32 arg0, s32 arg1) {
-    if (*(s32 *)(arg0 + 0xD0) != ((s32 *)*(s32 **)(arg0 + 0xCC))[arg1]) {
-        func_80154AB4(arg0, arg1);
+void func_80154A74(s32 a0, s32 a1) {
+    if (*(s32 *)(a0 + 0xD0) != ((s32 *)*(s32 **)(a0 + 0xCC))[a1]) {
+        func_80154AB4(a0, a1);
     }
 }

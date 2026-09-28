@@ -2,70 +2,47 @@
  * SHA256(span)=7fb02279dcbb59647c77d9020f773b5a301468125a6f7d612fbdb2289b49b9fb.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8012CC88 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* File-scope declarations from the vendor translation unit. */
+typedef struct { s16 vx, vy, vz, pad; } SV3_8012CC88;
 
-s32 func_8012CEB0(u16 *, u16 *, s32, s32);  /* static */
-
-s32 func_8012CC88(void *arg0, s32 arg1, void *arg2) {
-    u16 sp1C;
-    u16 sp1A;
-    u16 sp18;
-    u16 sp14;
-    u16 sp12;
-    u16 sp10;
-    s32 temp_v0;
-    u16 temp_a0;
-    u16 temp_a0_2;
-    u16 temp_a1;
-    u16 temp_a1_2;
-    u16 temp_a1_3;
-    u16 temp_v1;
-    u16 temp_v1_2;
-    u16 temp_v1_3;
-    u16 temp_v1_4;
-
-    temp_v1 = M2C_FIELD(arg0, u16 *, 0x3A);
-    sp10 = temp_v1;
-    temp_a0 = M2C_FIELD(arg0, u16 *, 0x3E);
-    sp12 = temp_a0;
-    temp_a1 = M2C_FIELD(arg0, u16 *, 0x42);
-    sp14 = temp_a1;
-    sp10 = temp_v1 + M2C_FIELD(arg2, u16 *, 0);
-    sp12 = temp_a0 + M2C_FIELD(arg2, u16 *, 2);
-    sp14 = temp_a1 + M2C_FIELD(arg2, u16 *, 4);
-    M2C_FIELD(arg0, s32 *, 0x10) = (s32) (M2C_FIELD(arg0, s32 *, 0x10) + M2C_FIELD(arg0, s32 *, 0x44));
-    M2C_FIELD(arg0, s32 *, 0x14) = (s32) (M2C_FIELD(arg0, s32 *, 0x14) + M2C_FIELD(arg0, s32 *, 0x48));
-    M2C_FIELD(arg0, s32 *, 0x18) = (s32) (M2C_FIELD(arg0, s32 *, 0x18) + M2C_FIELD(arg0, s32 *, 0x4C));
-    M2C_FIELD(arg0, s32 *, 4) = (s32) (M2C_FIELD(arg0, s32 *, 4) + M2C_FIELD(arg0, s32 *, 0x10));
-    M2C_FIELD(arg0, s32 *, 8) = (s32) (M2C_FIELD(arg0, s32 *, 8) + M2C_FIELD(arg0, s32 *, 0x14));
-    temp_a0_2 = M2C_FIELD(arg0, u16 *, 6);
-    M2C_FIELD(arg0, s32 *, 0xC) = (s32) (M2C_FIELD(arg0, s32 *, 0xC) + M2C_FIELD(arg0, s32 *, 0x18));
-    sp18 = temp_a0_2;
-    temp_v1_2 = M2C_FIELD(arg0, u16 *, 0xA);
-    sp1A = temp_v1_2;
-    temp_a1_2 = M2C_FIELD(arg0, u16 *, 0xE);
-    sp1C = temp_a1_2;
-    sp18 = temp_a0_2 + M2C_FIELD(arg2, u16 *, 0);
-    sp1A = temp_v1_2 + M2C_FIELD(arg2, u16 *, 2);
-    sp1C = temp_a1_2 + M2C_FIELD(arg2, u16 *, 4);
-    temp_v0 = func_8012CEB0(&sp10, &sp18, arg1, arg1);
-    temp_a1_3 = sp18 - M2C_FIELD(arg2, u16 *, 0);
-    sp18 = temp_a1_3;
-    temp_v1_3 = sp1A - M2C_FIELD(arg2, u16 *, 2);
-    sp1A = temp_v1_3;
-    temp_v1_4 = sp1C - M2C_FIELD(arg2, u16 *, 4);
-    sp1C = temp_v1_4;
-    M2C_FIELD(arg0, u16 *, 6) = temp_a1_3;
-    M2C_FIELD(arg0, u16 *, 0xA) = temp_v1_3;
-    M2C_FIELD(arg0, u16 *, 0xE) = temp_v1_4;
-    if (temp_v0 & 0x6000) {
-        M2C_FIELD(arg0, s32 *, 0x14) = 0;
+/* func_8012CC88 — shared body (overlay slot 0x80128158, h_exact b65d6403). ONE source: instantiated by #include at each
+ * member's site in address order; the members are recorded in config/dedup.us.yaml (Phase 35). */
+extern s32 func_8012CEB0(s32 a0, s32 a1, s32 a2);
+s32 func_8012CC88(s32 a0, s32 a1, s32 a2) {
+    SV3_8012CC88 sp10;
+    SV3_8012CC88 sp18;
+    s32 v0;
+    sp10.vx = *(u16*)(a0 + 0x3A);
+    sp10.vy = *(u16*)(a0 + 0x3E);
+    sp10.vz = *(u16*)(a0 + 0x42);
+    sp10.vx += *(u16*)(a2 + 0);
+    sp10.vy += *(u16*)(a2 + 2);
+    sp10.vz += *(u16*)(a2 + 4);
+    *(s32*)(a0 + 0x10) += *(s32*)(a0 + 0x44);
+    *(s32*)(a0 + 0x14) += *(s32*)(a0 + 0x48);
+    *(s32*)(a0 + 0x18) += *(s32*)(a0 + 0x4C);
+    *(s32*)(a0 + 0x04) += *(s32*)(a0 + 0x10);
+    *(s32*)(a0 + 0x08) += *(s32*)(a0 + 0x14);
+    *(s32*)(a0 + 0x0C) += *(s32*)(a0 + 0x18);
+    sp18.vx = *(u16*)(a0 + 0x06);
+    sp18.vy = *(u16*)(a0 + 0x0A);
+    sp18.vz = *(u16*)(a0 + 0x0E);
+    sp18.vx += *(u16*)(a2 + 0);
+    sp18.vy += *(u16*)(a2 + 2);
+    sp18.vz += *(u16*)(a2 + 4);
+    v0 = func_8012CEB0((s32)&sp10, (s32)&sp18, a1);
+    sp18.vx -= *(u16*)(a2 + 0);
+    sp18.vy -= *(u16*)(a2 + 2);
+    sp18.vz -= *(u16*)(a2 + 4);
+    *(s16*)(a0 + 0x06) = sp18.vx;
+    *(s16*)(a0 + 0x0A) = sp18.vy;
+    *(s16*)(a0 + 0x0E) = sp18.vz;
+    if (v0 & 0x6000) {
+        *(s32*)(a0 + 0x14) = 0;
     }
-    return temp_v0;
+    return v0;
 }

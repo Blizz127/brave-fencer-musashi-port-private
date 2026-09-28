@@ -65,3 +65,31 @@ def _prefer_host_port_deps() -> None:
 
 
 _prefer_host_port_deps()
+
+
+def _prefer_local_code_image() -> None:
+    """Synthetic-RAM probes run main-executable words from the developer's own
+    extracted EXE (see MUSASHI_CODE_IMAGE in pc_port/mips_formatter.c); the
+    port and the repo carry none. tools/run_tests.sh sets the same default."""
+    exe = Path(__file__).resolve().parents[1] / "extracted/disc/files/SLUS_007.26"
+    if not os.environ.get("MUSASHI_CODE_IMAGE") and exe.is_file():
+        os.environ["MUSASHI_CODE_IMAGE"] = str(exe)
+
+
+_prefer_local_code_image()
+
+try:
+    import pytest
+
+    @pytest.fixture(autouse=True)
+    def _pristine_code_image():
+        """A mutation test's code image never leaks into the next test."""
+        saved = {k: os.environ.get(k) for k in ("MUSASHI_CODE_IMAGE", "MUSASHI_CODE_IMAGE_MUTANT", "MUSASHI_OVERLAY_DIR")}
+        yield
+        for key, value in saved.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+except ImportError:  # unittest-only runs
+    pass

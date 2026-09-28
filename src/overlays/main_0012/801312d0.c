@@ -2,27 +2,27 @@
  * SHA256(span)=caaf5be818fe92bf35e2de6a45178003f1c34861e867895a2c0195baeab96268.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
+/* func_801312D0 - byte-exact against retail at -O2 (tools/register_match.py). */
+struct M8;
+struct M8 { u8 b[8]; };
+typedef struct { char _b[8]; } M8;
+void *param_2;
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+s32 func_801312D0(s32 param_1, void *param_2)
+{
+    extern s32 func_80131CF4(s32);
+    extern M8 D_8017E838;
 
-s16 func_80131CF4(s32, s32);                          /* static */
+    int iVar5;
 
-void func_801312D0(void *arg0, void *arg1) {
-    s16 temp_v0;
-
-    temp_v0 = func_80131CF4(arg0->unkBC, 0x2E);
-    if (temp_v0 != 0) {
-        arg1->unk4 = 0;
-        arg1->unk0 = 0;
-        arg1->unk2 = temp_v0;
-        return;
+    iVar5 = ((int (*)(int, int))func_80131CF4)(*(int *)(((int)param_1) + 0xBC), 0x2E);
+    if (iVar5 != 0) {
+        ((short *)param_2)[2] = 0;
+        ((short *)param_2)[0] = 0;
+        ((short *)param_2)[1] = (short)iVar5;
+    } else {
+        *(M8 *)((short *)param_2) = D_8017E838;
     }
-    arg1->unk3 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-    arg1->unk7 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
 }

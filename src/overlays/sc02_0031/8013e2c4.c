@@ -5,57 +5,55 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8013E2C4 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-
-/* GTE/cop2 mnemonic overlay: ordinary C cannot emit coprocessor ops.
- * Verified by tools/match_function.py. */
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+/* GTE instruction macros (vendor/bfm-decomp/include/gte_macros.inc) for GNU as. */
 __asm__(
-    ".set noreorder\n"
-    ".globl func_8013E2C4\n"
-    ".type func_8013E2C4, @function\n"
-    "func_8013E2C4:\n"
-    "lui $v0,%hi(D_80126CAC)\n"
-    "lh $v0,%lo(D_80126CAC)($v0)\n"
-    "lh $v1,0x0($a0)\n"
-    "addiu $sp,$sp,-0x20\n"
-    "subu $v0,$v0,$v1\n"
-    "sw $v0,0x0($sp)\n"
-    "lui $v0,%hi(D_80126CAE)\n"
-    "lh $v0,%lo(D_80126CAE)($v0)\n"
-    "lh $v1,0x2($a0)\n"
-    "nop\n"
-    "subu $v0,$v0,$v1\n"
-    "sw $v0,0x4($sp)\n"
-    "lui $v0,%hi(D_80126CB0)\n"
-    "lh $v0,%lo(D_80126CB0)($v0)\n"
-    "lh $v1,0x4($a0)\n"
-    "nop\n"
-    "subu $v0,$v0,$v1\n"
-    "sw $v0,0x8($sp)\n"
-    "lwc2 $9,0x0($sp)\n"
-    "lwc2 $10,0x4($sp)\n"
-    "lwc2 $11,0x8($sp)\n"
-    "nop\n"
-    "nop\n"
-    "addiu $v0,$sp,0x10\n"
-    "swc2 $25,0x0($v0)\n"
-    "swc2 $26,0x4($v0)\n"
-    "swc2 $27,0x8($v0)\n"
-    "lui $a2,0xFFF6\n"
-    "ori $a2,$a2,0xFFFF\n"
-    "lui $v0,0x1\n"
-    "ori $v0,$v0,0x8FFE\n"
-    "lw $v1,0x10($sp)\n"
-    "lw $a0,0x14($sp)\n"
-    "lw $a1,0x18($sp)\n"
-    "addu $v1,$v1,$a0\n"
-    "addu $v1,$v1,$a1\n"
-    "addu $v1,$v1,$a2\n"
-    "sltu $v0,$v0,$v1\n"
-    "xori $v0,$v0,0x1\n"
-    "addiu $sp,$sp,0x20\n"
-    "jr $ra\n"
-    "nop\n"
-    ".size func_8013E2C4, .-func_8013E2C4\n"
-    ".set reorder\n"
+    ".macro cop2op fake_op, op, gbg = 0, sf = 1, mx = 0, v = 0, cv = 0, lm = 0\n"
+    "    cop2 \\fake_op << 20 | \\gbg << 20 | \\sf << 19 | \\mx << 17 | \\v << 15 | \\cv << 13 | \\lm << 10 | \\op\n"
+    ".endm\n"
+    ".macro sqr sf\n"
+    "    cop2op 0x0A, 0x28, sf = \\sf, lm = 1\n"
+    ".endm\n"
+    ".macro op sf\n"
+    "    cop2op 0x17, 0x0C, sf = \\sf\n"
+    ".endm\n"
 );
+
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern s16 D_80126CAC;
+extern short D_80126CAE;
+extern s16 D_80126CB0;
+
+int func_8013E2C4(short *a0) {
+    int in[3];
+    int out[3];
+    in[0] = D_80126CAC - a0[0];
+    in[1] = D_80126CAE - a0[1];
+    in[2] = D_80126CB0 - a0[2];
+    __asm__ __volatile__(
+        "lwc2 $9, 0(%0)\n"
+        "lwc2 $10, 4(%0)\n"
+        "lwc2 $11, 8(%0)\n"
+        "nop\n"
+        "nop\n"
+        "sqr 0\n"
+        : : "r"(&in[0]) : "$9", "$10", "$11", "memory");
+    {
+        register int *pout __asm__("$2") = &out[0];
+        __asm__ __volatile__(
+            "swc2 $25, 0(%0)\n"
+            "swc2 $26, 4(%0)\n"
+            "swc2 $27, 8(%0)\n"
+            : : "r"(pout) : "memory");
+    }
+    return (out[0] + out[1] + out[2]) - 0x90001U < 0x18FFF;
+}

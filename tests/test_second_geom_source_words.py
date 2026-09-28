@@ -1,14 +1,18 @@
-"""Compare second geometry source exports against asm and the pinned EXE."""
+"""Second geometry ranges and their fetch seam.
+
+Words come from the local disc extract (skipped when absent); retail code is
+no longer exported in src/ (tests/test_no_retail_words.py).
+"""
 
 from pathlib import Path
-import hashlib
-import json
 import re
 import struct
 
+from retail_local import asm_words, check_published_ranges, exe_words
+from retail_local import overlay as local_overlay
+
 
 ROOT = Path(__file__).resolve().parents[1]
-WORD_RE = re.compile(r"MUSASHI_NATIVE_MIPS_WORD\(0x([0-9A-Fa-f]{8})\)")
 EXPECTED = {
     "80014b10.c": (0x80014B10, 0x80014BFC, 59),
     "8002d8d4.c": (0x8002D8D4, 0x8002D904, 12),
@@ -411,189 +415,62 @@ def _dispatch_pos(fmt, symbol):
     return fmt.find(f"formatter_range_word({table},")
 
 
-def test_second_geometry_exports_match_asm_and_pinned_exe():
-    exe = (ROOT / "extracted/disc/files/SLUS_007.26").read_bytes()
-    assert hashlib.sha256(exe).hexdigest() == (
-        "66371c3a7517e9eabd7cb6cf0c5abffe7296bd4bac29c85b8bf7bb9db349714a"
-    )
-    asm_words = {
-        int(address, 16): int.from_bytes(bytes.fromhex(word), "little")
-        for address, word in re.findall(
-            r"/\* [0-9A-F]+ ([0-9A-F]{8}) ([0-9A-F]{8}) \*/",
-            (ROOT / "asm/main.s").read_text(),
-        )
-    }
-    manifest = json.loads(
-        (ROOT / "artifacts/second-geom-source-exports.json").read_text()
-    )
-    assert manifest["status"] == "SOURCE_EXPORTS_PUBLISHED"
-    assert manifest["total_words"] == 22483
-    assert manifest["c_match_claim"] is False
-    assert manifest["licensed_payload_copied"] is False
-
-    for name, (start, end, count) in EXPECTED.items():
-        source = (ROOT / "src/main" / name).read_text()
-        words = [int(word, 16) for word in WORD_RE.findall(source)]
-        assert len(words) == count
-        assert words == [asm_words[start + index * 4] for index in range(count)]
-        raw = b"".join(struct.pack("<I", word) for word in words)
-        offset = start - 0x80010000 + 0x800
-        assert raw == exe[offset:offset + len(raw)]
-        entry = next(item for item in manifest["exports"]
-                     if item["address"] == f"{start:08X}")
-        assert entry["end"] == f"{end:08X}"
-        assert entry["words"] == count
-        assert entry["raw_sha256"] == hashlib.sha256(raw).hexdigest()
-        assert entry["asm_match"] is True
-        assert entry["pinned_exe_match"] is True
-        assert entry["c_match_claim"] is False
-        body = source.split("#else\n", 1)[1]
-        assert "MUSASHI_NATIVE_MIPS_WORD" not in body
+def test_second_geometry_ranges_match_asm_and_manifest():
+    check_published_ranges("second-geom-source-exports.json", EXPECTED, 22483)
 
 
 def test_8005cea8_testevent_veneer_matches_pinned_exe():
     """SOURCE_IRQ TestEvent veneer [8005CEA8,8005CEB4) is B0:0B."""
-    exe = (ROOT / "extracted/disc/files/SLUS_007.26").read_bytes()
-    offset = 0x8005CEA8 - 0x80010000 + 0x800
-    expected = [0x240A00B0, 0x01400008, 0x2409000B]
-    raw = exe[offset:offset + 12]
-    words = list(struct.unpack("<3I", raw))
-    assert words == expected
-    source = (ROOT / "src/main/8005cea8.c").read_text()
-    assert [int(w, 16) for w in WORD_RE.findall(source)] == expected
+    assert exe_words(0x8005CEA8, 0x8005CEB4) == [0x240A00B0, 0x01400008, 0x2409000B]
     fmt = (ROOT / "pc_port/mips_formatter.c").read_text()
     assert "kFile8005CEA8Words" in fmt
     assert _range_in_fmt(fmt, 0x8005cea8, 0x8005ceb4)
 
 
-def test_8003ac08_sh_matches_pinned_exe_and_export():
+def test_8003ac08_sh_matches_pinned_exe_and_asm():
     """Live CD IRQ STOP at 8003AC08 is sh $v0, 0x1A6($v1) inside 8003AB84."""
-    exe = (ROOT / "extracted/disc/files/SLUS_007.26").read_bytes()
-    offset = 0x8003AC08 - 0x80010000 + 0x800
-    word = int.from_bytes(exe[offset:offset + 4], "little")
-    assert word == 0xA46201A6
-    source = (ROOT / "src/main/8003ab84.c").read_text()
-    words = [int(w, 16) for w in WORD_RE.findall(source)]
-    index = (0x8003AC08 - 0x8003AB84) // 4
-    assert words[index] == word
+    word, = exe_words(0x8003AC08, 0x8003AC0C)
+    assert word == 0xA46201A6 == asm_words()[0x8003AC08]
 
 
-def test_overlay_0010_800cefd0_matches_main_cd_member0010():
-    overlay = (ROOT / "extracted/overlays/main/0010.bin").read_bytes()
-    source = (ROOT / "src/overlays/main_0010/800cefd0.c").read_text()
-    words = [int(word, 16) for word in WORD_RE.findall(source)]
-    assert len(words) == 77
-    raw = b"".join(struct.pack("<I", word) for word in words)
-    offset = 0x20000 + (0x800CEFD0 - 0x800CEDF8)
-    assert raw == overlay[offset:offset + len(raw)]
-    dispatch = (ROOT / "src/overlays/main_0010/800cedfc.c").read_text()
-    dwords = [int(word, 16) for word in WORD_RE.findall(dispatch)]
-    assert len(dwords) == 194
-    draw = b"".join(struct.pack("<I", word) for word in dwords)
-    doff = 0x20000 + (0x800CEDFC - 0x800CEDF8)
-    assert draw == overlay[doff:doff + len(draw)]
+def test_overlay_0010_and_0012_ranges_are_dispatched():
+    """Title (member0010) and member0012 streams are on the fetch seam."""
     fmt = (ROOT / "pc_port/mips_formatter.c").read_text()
     assert "kOverlay0010_800CEDFCWords" in fmt
     assert _range_in_fmt(fmt, 0x800cedfc, 0x800cf104)
-    cf94c = (ROOT / "src/overlays/main_0010/800cf94c.c").read_text()
-    cwords = [int(word, 16) for word in WORD_RE.findall(cf94c)]
-    assert len(cwords) == 17
-    craw = b"".join(struct.pack("<I", word) for word in cwords)
-    coff = 0x20000 + (0x800CF94C - 0x800CEDF8)
-    assert craw == overlay[coff:coff + len(craw)]
     assert "kOverlay0010_800CF94CWords" in fmt
     assert _range_in_fmt(fmt, 0x800cf94c, 0x800cf990)
-    ov12 = (ROOT / "extracted/overlays/main/0012.bin").read_bytes()
-    s12 = (ROOT / "src/overlays/main_0012/80128228.c").read_text()
-    w12 = [int(word, 16) for word in WORD_RE.findall(s12)]
-    assert len(w12) == 8
-    raw12 = b"".join(struct.pack("<I", word) for word in w12)
-    off12 = 0x28000 + (0x80128228 - 0x80128158)
-    assert raw12 == ov12[off12:off12 + len(raw12)]
-    s12b = (ROOT / "src/overlays/main_0012/80128a28.c").read_text()
-    w12b = [int(word, 16) for word in WORD_RE.findall(s12b)]
-    assert len(w12b) == 51
-    raw12b = b"".join(struct.pack("<I", word) for word in w12b)
-    off12b = 0x28000 + (0x80128A28 - 0x80128158)
-    assert raw12b == ov12[off12b:off12b + len(raw12b)]
     assert "kOverlay0012_80128228Words" in fmt
     assert "kOverlay0012_80128A28Words" in fmt
-    s12c = (ROOT / "src/overlays/main_0012/8017bebc.c").read_text()
-    w12c = [int(word, 16) for word in WORD_RE.findall(s12c)]
-    assert len(w12c) == 10
-    raw12c = b"".join(struct.pack("<I", word) for word in w12c)
-    off12c = 0x28000 + (0x8017BEBC - 0x80128158)
-    assert raw12c == ov12[off12c:off12c + len(raw12c)]
-    assert "kOverlay0012_8017BEBCWords" in fmt
-    assert _range_in_fmt(fmt, 0x8017bebc, 0x8017bee4)
-    s12d = (ROOT / "src/overlays/main_0012/8017bee4.c").read_text()
-    w12d = [int(word, 16) for word in WORD_RE.findall(s12d)]
-    assert len(w12d) == 21
-    raw12d = b"".join(struct.pack("<I", word) for word in w12d)
-    off12d = 0x28000 + (0x8017BEE4 - 0x80128158)
-    assert raw12d == ov12[off12d:off12d + len(raw12d)]
-    assert "kOverlay0012_8017BEE4Words" in fmt
-    assert _range_in_fmt(fmt, 0x8017bee4, 0x8017bf38)
-    s12e = (ROOT / "src/overlays/main_0012/8017bf38.c").read_text()
-    w12e = [int(word, 16) for word in WORD_RE.findall(s12e)]
-    assert len(w12e) == 14
-    raw12e = b"".join(struct.pack("<I", word) for word in w12e)
-    off12e = 0x28000 + (0x8017BF38 - 0x80128158)
-    assert raw12e == ov12[off12e:off12e + len(raw12e)]
-    assert "kOverlay0012_8017BF38Words" in fmt
-    assert _range_in_fmt(fmt, 0x8017bf38, 0x8017bf70)
-    s12f = (ROOT / "src/overlays/main_0012/8017c008.c").read_text()
-    w12f = [int(word, 16) for word in WORD_RE.findall(s12f)]
-    assert len(w12f) == 30
-    raw12f = b"".join(struct.pack("<I", word) for word in w12f)
-    off12f = 0x28000 + (0x8017C008 - 0x80128158)
-    assert raw12f == ov12[off12f:off12f + len(raw12f)]
-    assert "kOverlay0012_8017C008Words" in fmt
-    assert _range_in_fmt(fmt, 0x8017c008, 0x8017c080)
+    for lo, hi, name in ((0x8017BEBC, 0x8017BEE4, "8017BEBC"),
+                         (0x8017BEE4, 0x8017BF38, "8017BEE4"),
+                         (0x8017BF38, 0x8017BF70, "8017BF38"),
+                         (0x8017C008, 0x8017C080, "8017C008")):
+        assert f"kOverlay0012_{name}Words" in fmt
+        assert _range_in_fmt(fmt, lo, hi)
 
 
-def test_overlay_800cedfc_matches_main_cd_member0000():
-    overlay = (ROOT / "extracted/overlays/main/0000.bin").read_bytes()
-    source = (ROOT / "src/overlays/main_0000/800cedfc.c").read_text()
-    words = [int(word, 16) for word in WORD_RE.findall(source)]
-    assert len(words) == 17
-    raw = b"".join(struct.pack("<I", word) for word in words)
-    assert raw == overlay[0x804:0x804 + len(raw)]
+def test_overlay_800cedfc_member0000_is_dispatched_by_shape():
+    overlay = local_overlay("main/0000")
     fmt = (ROOT / "pc_port/mips_formatter.c").read_text()
     assert "kOverlay800CEDFCWords" in fmt
     assert _range_in_fmt(fmt, 0x800cedfc, 0x800cee40)
     words2 = struct.unpack_from("<49I", overlay, 0x848)
     assert "kOverlay800CEE40Words" in fmt
     assert _range_in_fmt(fmt, 0x800cee40, 0x800cef04)
-    for word in words2:
-        assert f"0x{word:08x}u" in fmt.lower()
-    overlay_funcs = [
-        ("800cef54.c", 0x800CEF54, 21, 0x95C),
-        ("800cefa8.c", 0x800CEFA8, 19, 0x9B0),
-        ("800ceff4.c", 0x800CEFF4, 17, 0x9FC),
-        ("800cf038.c", 0x800CF038, 35, 0xA40),
-        ("800cf0c4.c", 0x800CF0C4, 20, 0xACC),
-        ("800cf114.c", 0x800CF114, 27, 0xB1C),
-        ("800cf180.c", 0x800CF180, 68, 0xB88),
-    ]
-    for name, start, count, offset in overlay_funcs:
-        source = (ROOT / "src/overlays/main_0000" / name).read_text()
-        words = [int(word, 16) for word in WORD_RE.findall(source)]
-        assert len(words) == count
-        raw = b"".join(struct.pack("<I", word) for word in words)
-        assert raw == overlay[offset:offset + len(raw)]
+    # Run off the disc: the formatter keeps the stream's shape, not its words.
+    assert re.search(rf"kOverlay800CEE40Words\[{len(words2)}\];", fmt)
+    assert f"0x{words2[0]:08x}u" not in fmt.lower()
+    for start in (0x800CEF54, 0x800CEFA8, 0x800CEFF4, 0x800CF038,
+                  0x800CF0C4, 0x800CF114, 0x800CF180):
         assert f"kOverlay{start:08X}Words" in fmt
 
 
-def test_overlay_800cee2c_matches_main_cd_member0007():
-    """Retained member0007 export matches its own bytes, not the opening overlay."""
-    overlay = (ROOT / "extracted/overlays/main/0007.bin").read_bytes()
-    source = (ROOT / "src/overlays/main_0007/800cee2c.c").read_text()
-    words = [int(word, 16) for word in WORD_RE.findall(source)]
-    assert len(words) == 128
-    raw = b"".join(struct.pack("<I", word) for word in words)
+def test_overlay_800cee2c_member0007_wins_its_pcs():
+    """Member0007 is served from its own bytes, not the opening overlay."""
+    overlay = local_overlay("main/0007")
     offset = 0x800CEE2C - 0x800CEDF8
-    assert raw == overlay[offset:offset + len(raw)]
+    words = struct.unpack_from("<128I", overlay, offset)
     fmt = (ROOT / "pc_port/mips_formatter.c").read_text()
     assert "kOverlay800CEE2CWords" in fmt
     assert _range_in_fmt(fmt, 0x800cee2c, 0x800cf02c)
@@ -615,15 +492,11 @@ def test_overlay_800cee2c_matches_main_cd_member0007():
     assert words[idx] == 0x27BDFFE8
 
 
-def test_overlay_800cf02c_remainder_matches_main_cd_member0007():
+def test_overlay_800cf02c_member0007_remainder_is_dispatched():
     """Rest of member0007 after 800CEE2C: 800CF02C dispatcher, OPDEMO, Start."""
-    overlay = (ROOT / "extracted/overlays/main/0007.bin").read_bytes()
-    source = (ROOT / "src/overlays/main_0007/800cf02c.c").read_text()
-    words = [int(word, 16) for word in WORD_RE.findall(source)]
-    assert len(words) == 2259
-    raw = b"".join(struct.pack("<I", word) for word in words)
+    overlay = local_overlay("main/0007")
     offset = 0x800CF02C - 0x800CEDF8
-    assert raw == overlay[offset:offset + len(raw)]
+    words = struct.unpack_from("<2259I", overlay, offset)
     fmt = (ROOT / "pc_port/mips_formatter.c").read_text()
     assert "kOverlay800CF02CWords" in fmt
     assert _range_in_fmt(fmt, 0x800cf02c, 0x800d1378)
@@ -698,8 +571,7 @@ def test_getpadbuf_returns_live_72990_padinfo():
     72990 is still 80088A48.
     """
     fmt = (ROOT / "pc_port/mips_formatter.c").read_text()
-    source = (ROOT / "src/main/8005f704.c").read_text()
-    words = [int(word, 16) for word in WORD_RE.findall(source)]
+    words = exe_words(0x8005F704, 0x8005F70C)
     assert words[0] == 0x3C028008
     assert words[1] == 0x24428A48
     assert "cpu->pc == 0x8005f704u" in fmt
@@ -711,65 +583,38 @@ def test_getpadbuf_returns_live_72990_padinfo():
     assert "cpu->pc = cpu->r[31]" in snippet
 
 
-def test_overlay_0010_800cfbbc_live_stop_matches_member():
-    overlay = (ROOT / 'extracted/overlays/main/0010.bin').read_bytes()
-    source = (ROOT / 'src/overlays/main_0010/800cfbbc.c').read_text()
-    words = [int(w, 16) for w in WORD_RE.findall(source)]
-    assert words == [0x3C018011, 0xA4204E70, 0x03E00008, 0]
+def test_overlay_0010_800cfbbc_live_stop_is_dispatched():
+    overlay = local_overlay('main/0010')
     offset = 0x20000 + 0x800CFBBC - 0x800CEDF8
-    assert struct.pack('<4I', *words) == overlay[offset:offset + 16]
+    assert struct.unpack_from('<4I', overlay, offset) == (0x3C018011, 0xA4204E70, 0x03E00008, 0)
     fmt = (ROOT / 'pc_port/mips_formatter.c').read_text()
     assert _range_in_fmt(fmt, 0x800cfbbc, 0x800cfbcc)
     assert 'kOverlay0010_800CFBBCWords' in fmt
 
 
-def test_overlay_0010_800cfbcc_800cfbe8_live_stop_matches_member():
+def test_overlay_0010_800cfbcc_800cfbe8_live_stop_is_dispatched():
     # Refused at 800CFBE8 on the room transition out of the New Game opening
-    # cutscene; the resident guest RAM there equals this member.
-    overlay = (ROOT / 'extracted/overlays/main/0010.bin').read_bytes()
+    # cutscene; the resident guest RAM there equals member0010.
     fmt = (ROOT / 'pc_port/mips_formatter.c').read_text()
     for start, end, name in ((0x800CFBCC, 0x800CFBE8, '800CFBCC'),
                              (0x800CFBE8, 0x800CFBF8, '800CFBE8')):
-        source = (ROOT / f'src/overlays/main_0010/{name.lower()}.c').read_text()
-        words = [int(w, 16) for w in WORD_RE.findall(source)]
-        assert len(words) == (end - start) // 4
-        offset = 0x20000 + start - 0x800CEDF8
-        assert struct.pack(f'<{len(words)}I', *words) == overlay[offset:offset + end - start]
         assert _range_in_fmt(fmt, start, end)
         assert f'kOverlay0010_{name}Words' in fmt
 
 
-def test_overlay_0010_800d0488_live_stop_matches_member():
-    overlay = (ROOT / 'extracted/overlays/main/0010.bin').read_bytes()
-    source = (ROOT / 'src/overlays/main_0010/800d0488.c').read_text()
-    words = [int(w, 16) for w in WORD_RE.findall(source)]
-    assert len(words) == 64
-    offset = 0x20000 + 0x800D0488 - 0x800CEDF8
-    assert struct.pack('<64I', *words) == overlay[offset:offset + 256]
+def test_overlay_0010_800d0488_live_stop_is_dispatched():
     fmt = (ROOT / 'pc_port/mips_formatter.c').read_text()
     assert _range_in_fmt(fmt, 0x800d0488, 0x800d0588)
     assert 'kOverlay0010_800D0488Words' in fmt
 
 
-def test_overlay_0010_800cf370_live_stop_matches_member():
-    overlay = (ROOT / 'extracted/overlays/main/0010.bin').read_bytes()
-    source = (ROOT / 'src/overlays/main_0010/800cf370.c').read_text()
-    words = [int(w, 16) for w in WORD_RE.findall(source)]
-    assert len(words) == 10
-    offset = 0x20000 + 0x800CF370 - 0x800CEDF8
-    assert struct.pack('<10I', *words) == overlay[offset:offset + 40]
+def test_overlay_0010_800cf370_live_stop_is_dispatched():
     fmt = (ROOT / 'pc_port/mips_formatter.c').read_text()
     assert _range_in_fmt(fmt, 0x800cf370, 0x800cf398)
     assert 'kOverlay0010_800CF370Words' in fmt
 
 
-def test_overlay_0010_800cf398_live_stop_matches_member():
-    overlay = (ROOT / 'extracted/overlays/main/0010.bin').read_bytes()
-    source = (ROOT / 'src/overlays/main_0010/800cf398.c').read_text()
-    words = [int(w, 16) for w in WORD_RE.findall(source)]
-    assert len(words) == 8
-    offset = 0x20000 + 0x800CF398 - 0x800CEDF8
-    assert struct.pack('<8I', *words) == overlay[offset:offset + 32]
+def test_overlay_0010_800cf398_live_stop_is_dispatched():
     fmt = (ROOT / 'pc_port/mips_formatter.c').read_text()
     assert _range_in_fmt(fmt, 0x800cf398, 0x800cf3b8)
     assert 'kOverlay0010_800CF398Words' in fmt
@@ -783,13 +628,9 @@ def test_title_overlay_unmapped_words_do_not_fall_back_to_member_zero():
     assert title < guard < fallback
 
 
-def test_overlay_0010_800cf3b8_live_stop_matches_member():
-    overlay = (ROOT / 'extracted/overlays/main/0010.bin').read_bytes()
-    source = (ROOT / 'src/overlays/main_0010/800cf3b8.c').read_text()
-    words = [int(w, 16) for w in WORD_RE.findall(source)]
-    assert len(words) == 49
-    offset = 0x20000 + 0x800CF3B8 - 0x800CEDF8
-    assert struct.pack('<49I', *words) == overlay[offset:offset + 196]
+def test_overlay_0010_800cf3b8_live_stop_is_dispatched():
     fmt = (ROOT / 'pc_port/mips_formatter.c').read_text()
     assert _range_in_fmt(fmt, 0x800cf3b8, 0x800cf47c)
     assert 'kOverlay0010_800CF3B8Words' in fmt
+
+

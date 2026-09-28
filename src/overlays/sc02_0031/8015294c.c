@@ -5,35 +5,54 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8015294C - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-void func_80149020();
-void func_801470B4();
-void func_801470AC();
-void func_80147A84();
-void func_801473EC();
-void func_80148038();
-void func_80147460();
-void func_801472C8();
-void func_8015369C();
-void func_80146CA0();
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+struct S {
+    u8  pad0[0x7E]; /* 0x0..0x7D */
+    u16 f7E;        /* 0x7E */
+};
 extern u16 D_800B99DA;
-typedef struct { u8 pad[0xDE]; u8 uDE; } T;
-void func_8015294C(T *p) {
-    func_80149020(p);
+extern void func_80149020(s32 *a0);
+extern void func_801470B4(s32 a0);
+extern void func_801470AC(s32 *a0);
+extern void func_80147A84(s32 arg0);
+extern void func_801473EC(s32 *a0);
+extern void func_80148038(s32 a0, s32 a1);
+extern void func_80147460(s32 a0);
+extern s32 func_801472C8(struct S *a0);
+extern void func_8015369C(s32 a0);
+extern void func_80146CA0(void *a0);
+
+void func_8015294C(s32 a0) {
+    s32 s0 = a0;
+    func_80149020((s32 *)s0);
     if (D_800B99DA & 1) {
-        func_801470B4(p);
+        func_801470B4(s0);
     } else {
-        func_801470AC(p);
+        func_801470AC((s32 *)s0);
     }
-    func_80147A84(p);
-    func_801473EC(p);
-    func_80148038(p, 0x18000);
-    func_80147460(p);
-    if (p->uDE-- == 0) {
-        p->uDE = 0x10;
-        func_801472C8(p);
-        func_801470B4(p);
-        func_8015369C(p);
-        func_80146CA0(p);
+    func_80147A84(s0);
+    func_801473EC((s32 *)s0);
+    func_80148038(s0, 0x18000);
+    func_80147460(s0);
+    {
+        u8 v = *(u8 *)(s0 + 0xDE);
+        *(u8 *)(s0 + 0xDE) = v + 0xFF;
+        if (v == 0) {
+            *(u8 *)(s0 + 0xDE) = 0x10;
+            func_801472C8((s32 *)s0);
+            func_801470B4(s0);
+            func_8015369C(s0);
+            func_80146CA0((void *)s0);
+        }
     }
 }

@@ -2,50 +2,56 @@
  * SHA256(span)=afac601eeb83467a44fe22afff52d9793fd5d48af8141e1e5a8a57b31f52bdb3.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8017B238 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* File-scope declarations from the vendor translation unit. */
+typedef struct { u8 b[8]; } Blk8_8017B238;
 
-extern s32 D_80181CC0;
-extern s32 D_8018534C;
-void func_8012A018(s32 (*)(), s32);                        /* static */
-void func_8012F214(s32, void *, void *);                  /* static */
-extern s32 func_8017BE60;
-extern s8 D_8012694C;
-extern s32 D_801853BC;
-extern s32 D_801853C4;
-extern s16 D_80185C08;
+extern void func_8012A018(s32 a, s32 b);
+typedef struct { s16 m[3][3]; s32 t[3]; } MTX_C974_8017B238;
 
-void func_8017B238(s32 arg0, u32 arg1) {
-    s32 sp1F;
-    s32 sp1B;
-    s32 sp18;
-    s32 sp17;
-    s32 sp13;
-    s32 sp10;
-    s32 temp_s0;
+// @class: regalloc-order — simplified sibling of matched func_8017B614.
+// @stuck: none. Block-moves are align-1 struct-assigns (u8[8]) -> emit_block_move
+// (unaligned lwl/lwr/swl/swr), ZERO memcpy-symbol reference, so the TU's `extern memcpy`
+// (which turned the old draft's memcpy into a CALL -> DIFF 64) can't drift this.
+// $16 pin + in-place re-tie keeps param_2 in $a1 until the >=0xB branch, then $s0 for loads.
 
-    if (arg1 >= 0xBU) {
-        sp13 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-        sp17 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-        sp1B = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-        sp1F = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
+
+s32 func_8017B238(s32 param_1, s32 param_2)
+{
+
+    extern s16 D_8018534C;
+    extern s16 D_80185C08;
+    extern void func_8012F214(s32 a0, s32 a1, s32 a2);
+    extern s32 func_8017BE60(void *a0);
+    extern u8 D_80181CC0[];
+    extern s16 D_801853C4;
+    extern s16 D_801853BC;
+    extern u8 D_8012694C;
+
+    u8 buf[16];
+
+    if (((u32)param_2) >= 0xB) {
+        register u8 *src __asm__("$16");
+        __asm__ __volatile__("" : "=r"(src) : "0"((u8 *)((u32)param_2)));
+        *(Blk8_8017B238 *)&buf[0] = *(Blk8_8017B238 *)src;
+        *(Blk8_8017B238 *)&buf[8] = *(Blk8_8017B238 *)(src + 8);
     } else {
-        temp_s0 = arg1 * 0x10;
-        func_8012F214(arg0, temp_s0 + D_80181CC0, &sp10);
-        func_8012F214(arg0, temp_s0 + (D_80181CC0 + 8), &sp18);
+        s32 a1addr = (s32)&D_80181CC0[((u32)param_2) * 0x10];
+        s32 a2addr = (s32)&D_80181CC0[((u32)param_2) * 0x10 + 8];
+        func_8012F214(param_1, a1addr, (s32)&buf[0]);
+        func_8012F214(param_1, a2addr, (s32)&buf[8]);
     }
-    D_801853C4.unk3 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-    D_801853C4.unk7 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-    D_801853BC.unk3 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-    D_801853BC.unk7 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-    func_8012A018(func_8017BE60, 0);
-    D_8012694C = 0;
-    D_80185C08 = 1;
-    D_8018534C = 0;
+    {
+        s16 *p794 = &D_801853C4;
+        s16 *p78C = &D_801853BC;
+        *(Blk8_8017B238 *)p794 = *(Blk8_8017B238 *)&buf[0];
+        *(Blk8_8017B238 *)p78C = *(Blk8_8017B238 *)&buf[8];
+        func_8012A018((s32)func_8017BE60, 0);
+        D_8012694C = 0;
+        D_80185C08 = 1;
+        D_8018534C = 0;
+    }
 }

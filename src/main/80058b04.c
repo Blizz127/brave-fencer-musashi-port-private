@@ -1,24 +1,27 @@
 /* Native retail instruction export [80058B04,80058B40).
  * Verified against asm/main.s and the extracted EXE. No C match claim. */
+/* Sony PsyQ library routine (vendor/bfm-decomp keeps it as INCLUDE_ASM); C written from the retail disassembly. */
+/* func_80058B04 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+typedef struct {
+    s16 x, y, w, h;
+    s16 a, b, c, d;
+    u8 e, f, g, i;
+} S80058B04;
 
-void func_80058B04(void *arg0, s16 arg1, s16 arg2, s16 arg3, s32 arg4) {
-    M2C_FIELD(arg0, s16 *, 0) = arg1;
-    M2C_FIELD(arg0, s16 *, 2) = arg2;
-    M2C_FIELD(arg0, s16 *, 4) = arg3;
-    M2C_FIELD(arg0, s16 *, 8) = 0;
-    M2C_FIELD(arg0, s16 *, 0xA) = 0;
-    M2C_FIELD(arg0, s16 *, 0xC) = 0;
-    M2C_FIELD(arg0, s16 *, 0xE) = 0;
-    M2C_FIELD(arg0, s8 *, 0x11) = 0;
-    M2C_FIELD(arg0, s8 *, 0x10) = 0;
-    M2C_FIELD(arg0, s8 *, 0x13) = 0;
-    M2C_FIELD(arg0, s8 *, 0x12) = 0;
-    M2C_FIELD(arg0, s16 *, 6) = (s16) arg4;
+S80058B04 *func_80058B04(S80058B04 *p, s16 x, s16 y, s16 w, s32 h) {
+    p->x = x;
+    p->y = y;
+    p->w = w;
+    p->a = 0;
+    p->b = 0;
+    p->c = 0;
+    p->d = 0;
+    p->f = 0;
+    p->e = 0;
+    p->i = 0;
+    p->g = 0;
+    p->h = h;
+    return p;
 }

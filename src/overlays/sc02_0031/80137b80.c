@@ -4,32 +4,27 @@
  * Member-0012 C shape retargeted to this member: D_8017E980->D_80185270.
  * Oracle MATCH re-earned against the resident image; Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80137B80 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL of func_80137B80 (main_0012.s), decoded manually from
- * raw asm (fully visible; NOT verified against retail; C89-gated
- * only, promotion requires an oracle MATCH): void (void), 0x18
- * frame. D_80127548 = 0x24, then if (D_801269F0[0].w0 != 0)
- * func_80138BE0(&D_801269F0[0]) (a0 = base throughout, no a-reg
- * writes precede the jal), then D_80185270++ (asm order: the
- * store precedes the call). Results ignored. Slot
- * view (0x4C stride, word 0) matches func_801379FC's; 38BE0 decl
- * likewise. */
-
-struct slot_80137B80 {
-    u32 w0;
-    u8 pad[0x48];
-};
-
-extern struct slot_80137B80 D_801269F0[];
-extern u32 D_80127548;
-extern s32 D_80185270;
-extern void func_80138BE0(struct slot_80137B80 *arg0);
+extern s32 D_80127548[];
+extern int D_80185270;
+extern int D_801269F0;
+extern void func_80138BE0(int p);
 
 void func_80137B80(void) {
-    D_80127548 = 0x24;
-    if (D_801269F0[0].w0 != 0) {
-        func_80138BE0(&D_801269F0[0]);
+    int *p = &D_801269F0;
+    (*(int *)&D_80127548) = 0x24;
+    if (*p != 0) {
+        ((void (*)(int *))func_80138BE0)(p);
     }
-    D_80185270++;
+    D_80185270 += 1;
 }

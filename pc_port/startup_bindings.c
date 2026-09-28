@@ -1,18 +1,12 @@
 #include "musashi_boot_memory.h"
 #include <string.h>
 
-/* Compiled from src/main/80043060.c, not a second implementation. */
-extern int32_t func_80043060_native(int32_t argument, int32_t *word);
-extern void func_8005C29C(uint8_t *destination, int32_t value, uint32_t count);
-extern void func_8005C388_native(int32_t value, uint8_t *classification,
-                                 int32_t *column, void *userdata);
-extern void func_8005CD48_native(uint8_t *source, uint8_t *fallback,
-                                 uint8_t *classification, int32_t *column,
-                                 void *userdata);
+#include "musashi_psyq_hle.h"
+
+/* PsyQ services (libetc/libc2) are port-owned HLE, never Sony code. */
 extern void func_80016714_native(uint8_t *destination, int32_t count);
 extern void func_80029044_native(uint8_t *destination);
 extern void func_8002906C_native(uint8_t *destination);
-extern uint8_t *func_8005CCC8(uint8_t *source, int32_t target, int32_t count);
 
 int musashi_boot_search_bytes(MusashiBootMemory *memory, uint32_t address,
                               int32_t target, int32_t count, uint32_t *result) {
@@ -25,7 +19,7 @@ int musashi_boot_search_bytes(MusashiBootMemory *memory, uint32_t address,
         if (!source)
             return 0;
     }
-    found = func_8005CCC8(source, target, count);
+    found = musashi_hle_find_byte(source, target, count);
     *result = found ? address + (uint32_t)(found - source) : 0;
     return 1;
 }
@@ -56,7 +50,7 @@ int musashi_boot_console_char(MusashiBootMemory *memory, int32_t value,
     memcpy(&column, &column_bits, sizeof(column));
     context.sink = sink;
     context.userdata = userdata;
-    func_8005C388_native(value, classification, &column, &context);
+    musashi_hle_console_putc(value, classification, &column, musashi_native_console_sink, &context);
     memcpy(&column_bits, &column, sizeof(column_bits));
     return musashi_boot_write32(memory, 0x80078978u, column_bits);
 }
@@ -96,7 +90,8 @@ int musashi_boot_console_string(MusashiBootMemory *memory, uint32_t address,
     memcpy(&column, &column_bits, sizeof(column));
     context.sink = sink;
     context.userdata = userdata;
-    func_8005CD48_native(source, fallback, classification, &column, &context);
+    musashi_hle_console_puts(source, fallback, classification, &column,
+                             musashi_native_console_sink, &context);
     memcpy(&column_bits, &column, sizeof(column_bits));
     return musashi_boot_write32(memory, 0x80078978u, column_bits);
 }
@@ -106,7 +101,7 @@ int musashi_boot_call_8005c29c(MusashiBootMemory *memory, uint32_t address,
     uint8_t *destination = musashi_boot_ram_span(memory, address, count ? count : 1);
     if (!destination)
         return 0;
-    func_8005C29C(destination, value, count);
+    musashi_hle_fill_bytes(destination, value, count);
     return 1;
 }
 
@@ -152,7 +147,7 @@ int musashi_boot_call_80043060(MusashiBootMemory *memory, int32_t argument,
      * signed conversion. No pointer into byte-backed RAM is dereferenced as
      * an int, and no persistent host global can diverge from the RAM image. */
     memcpy(&word, &bits, sizeof(word));
-    result = func_80043060_native(argument, &word);
+    result = musashi_hle_exchange_word(&word, argument);
     memcpy(&bits, &word, sizeof(bits));
     if (!musashi_boot_write32(memory, 0x8006cbe8u, bits))
         return 0;

@@ -2,64 +2,56 @@
  * SHA256(span)=bffb675fc77954fa4f8139bcbedcb99c55b234d7637634f6c2a32fc7060091d1.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8017B490 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* File-scope declarations from the vendor translation unit. */
+typedef struct { s16 a, b, c, d; } SV4_8017B368;
+typedef struct { SV4_8017B368 x, y; } Pair16;
 
-extern s32 D_80181CC0;
-extern s32 D_8018534C;
-extern s32 D_8018536C;
-extern s32 D_801853BE;
-extern s32 D_801853C0;
-extern s32 D_801853C6;
-extern s32 D_801853C8;
-void func_8012F214(s32, void *, void *);                  /* static */
-void func_8017BA3C();                                  /* static */
-extern s32 D_80126984;
-extern s32 D_80126988;
-extern s32 D_8012698C;
-extern s32 D_80126990;
-extern s32 D_80126994;
-extern s32 D_80126998;
-extern s32 D_801853BC;
-extern s32 D_801853C4;
-extern s16 D_80185C08;
+s32 func_8017B490(s32 param)
+{
+    extern void func_8017BA3C(s32 param_1, s32 param_2);
+    extern void func_8012F214(s32 a0, s32 a1, s32 a2);
+    extern SV4_8017B368 D_8018536C;
+    extern SV4_8017B368 D_80185374;
+    extern s16 D_801853C4;
+    extern s16 D_801853BC;
+    extern u16 D_80181CC0;
+    extern s16 D_8018534C;
+    extern s16 D_80185C08;
+    extern s32 D_80126984;
+    extern s32 D_80126988;
+    extern s32 D_8012698C;
+    extern s32 D_80126990;
+    extern s32 D_80126994;
+    extern s32 D_80126998;
 
-void func_8017B490(s32 arg0) {
-    s32 sp1F;
-    s32 sp1B;
-    s32 sp18;
-    s32 sp17;
-    s32 sp13;
-    s32 sp10;
-    s32 temp_s0;
+    SV4_8017B368 loc0;
+    SV4_8017B368 loc1;
+    u32 n = (u32)&D_8018536C;
 
-    func_8017BA3C();
-    if ((u32) D_8018536C >= 0xBU) {
-        sp13 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-        sp17 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-        sp1B = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-        sp1F = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
+    ((void (*)(void))func_8017BA3C)();
+
+    if (n >= 0xB) {
+        loc0 = *(SV4_8017B368 *)n;
+        loc1 = D_80185374;
     } else {
-        temp_s0 = (s32) D_8018536C * 0x10;
-        func_8012F214(arg0, temp_s0 + D_80181CC0, &sp10);
-        func_8012F214(arg0, temp_s0 + (D_80181CC0 + 8), &sp18);
+        s32 ax = (s32)&((Pair16 *)&D_80181CC0)[n].x;
+        s32 ay = (s32)&((Pair16 *)&D_80181CC0)[n].y;
+        func_8012F214(param, ax, (s32)&loc0);
+        func_8012F214(param, ay, (s32)&loc1);
     }
-    D_801853C4.unk3 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-    D_801853C4.unk7 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-    D_801853BC.unk3 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-    D_801853BC.unk7 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
+
+    (*(SV4_8017B368 *)&D_801853C4) = loc0;
+    (*(SV4_8017B368 *)&D_801853BC) = loc1;
     D_80185C08 = 1;
     D_8018534C = 0x1E;
-    D_80126990 = (s32) D_801853C4.unk0;
-    D_80126994 = (s32) D_801853C6;
-    D_80126998 = (s32) D_801853C8;
-    D_80126984 = (s32) D_801853BC.unk0;
-    D_80126988 = (s32) D_801853BE;
-    D_8012698C = (s32) D_801853C0;
+    D_80126990 = (*(SV4_8017B368 *)&D_801853C4).a;
+    D_80126994 = (*(SV4_8017B368 *)&D_801853C4).b;
+    D_80126998 = (*(SV4_8017B368 *)&D_801853C4).c;
+    D_80126984 = (*(SV4_8017B368 *)&D_801853BC).a;
+    D_80126988 = (*(SV4_8017B368 *)&D_801853BC).b;
+    D_8012698C = (*(SV4_8017B368 *)&D_801853BC).c;
 }

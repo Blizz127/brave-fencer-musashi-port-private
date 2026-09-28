@@ -2,156 +2,221 @@
  * SHA256(span)=6ae840a8077af0c27d5d20e89459df1c9dda3548b051ad7aa4f141125275647f.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-#if defined(__mips__)
-__asm__(
-    ".set	noreorder
-"
-    ".globl	func_8001820C
-"
-    ".ent	func_8001820C
-"
-    ".type	func_8001820C, @function
-"
-    "func_8001820C:
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-"
-    ".end	func_8001820C
-"
-    ".size	func_8001820C, .-func_8001820C
-"
-);
-#else
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build).
+   Vendor symbol names renamed to address symbols: AddPrim, GetTPage. */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_8001820C - byte-exact against retail at -O2 (tools/register_match.py). */
 
-void *func_80010A08();                       /* static */
-s32 func_80058B40(s32, s32, s32, s32);  /* static */
-void func_80058C6C(s32, void *);                 /* static */
-void func_8005A600(void *, s32, s32, s32, s32); /* static */
-extern s32 *D_800A651C;
-extern u16 D_800B9A02;
-
-void func_8001820C(void *arg0, u32 arg1, u32 arg2) {
-    s32 temp_s0;
-    s32 temp_s1;
-    u32 var_s1;
-    void *temp_s2;
-    void *temp_s2_2;
-
-    var_s1 = arg1;
-    if (arg2 & 0x40000000) {
-        M2C_FIELD(arg0, s32 *, 4) = (s32) (M2C_FIELD(arg0, s32 *, 4) | 0x02000000);
-    }
-    if (var_s1 >= 0x1000U) {
-        var_s1 = 0xFFF;
-    }
-    temp_s2 = func_80010A08(0xC);
-    temp_s0 = (arg2 >> 0x1C) & 3;
-    func_8005A600(temp_s2, 0, 0, func_80058B40(2, temp_s0, 0x280, 0) & 0xFFFF, 0);
-    temp_s1 = var_s1 * 4;
-    func_80058C6C(*(&D_800A651C + (D_800B9A02 * 0x14)) + temp_s1, temp_s2);
-    func_80058C6C(*(&D_800A651C + (D_800B9A02 * 0x14)) + temp_s1, arg0);
-    temp_s2_2 = func_80010A08(0xC);
-    func_8005A600(temp_s2_2, 0, 1, func_80058B40(2, temp_s0, 0x280, 0) & 0xFFFF, 0);
-    func_80058C6C(*(&D_800A651C + (D_800B9A02 * 0x14)) + temp_s1, temp_s2_2);
-}
+typedef float f32;
+#ifndef NULL
+#define NULL ((void *)0)
 #endif
 
+/* shared typedefs (vendor src/800_shared.h) */
+/* was: src/800.c */
+typedef struct Ent30D80 {
+    /* 0x00 */ s32 unk00;
+    /* 0x04 */ u8 pad04[6];
+    /* 0x0A */ u16 unk0A;
+    /* 0x0C */ u8 pad0C[0x34];
+    /* 0x40 */ void (*unk40)(s32, s32);
+    /* 0x44 */ s32 unk44;
+    /* 0x48 */ u8 pad48[6];
+    /* 0x4E */ u8 unk4E;
+    /* 0x4F */ u8 pad4F;
+    /* 0x50 */ u8 unk50;
+    /* 0x51 */ u8 unk51;
+} Ent30D80;
+
+/* was: src/800.c */
+typedef struct { u8  v; } W8;
+
+/* was: src/800.c */
+typedef struct Rec14 {
+    /* 0x00 */ u16 unk00;
+    /* 0x02 */ u16 unk02;
+    /* 0x04 */ u32 unk04;
+    /* 0x08 */ u32 unk08;
+    /* 0x0C */ u16 unk0C;
+    /* 0x0E */ u16 unk0E;
+    /* 0x10 */ u32 unk10;
+} Rec14; /* 0x14 */
+
+/* was: src/800.c */
+typedef struct Owner4EE8 {
+    /* 0x00 */ u8 pad00[0x14];
+    /* 0x14 */ Rec14 **unk14;
+} Owner4EE8;
+
+/* was: src/800.c */
+typedef struct Slot {
+    /* 0x00 */ s32 unk00;
+    /* 0x04 */ s32 unk04;
+    /* 0x08 */ u8 unk08[0xC];
+    /* 0x14 */ s16 unk14;
+    /* 0x16 */ u8 unk16[2];
+    /* 0x18 */ s16 unk18;
+    /* 0x1A */ u8 unk1A[0x26];
+    /* 0x40 */ s32 unk40;
+    /* 0x44 */ u8 unk44;
+    /* 0x45 */ u8 unk45[3];
+} Slot;
+
+/* was: src/800.c */
+typedef struct {
+    s16 unk00;
+    s16 unk02;
+    s16 unk04;
+    s16 unk06;
+    s16 unk08;
+    s16 unk0A;
+    s16 unk0C;
+    s16 unk0E;
+    u8  unk10;
+    u8  unk11;
+    u8  unk12;
+    u8  unk13;
+    s32 unk14;
+} Rsc24;                       /* 0x18 */
+
+/* was: src/800.c */
+typedef struct {
+    /* 0x00 */ u8 *unk00;
+    /* 0x04 */ u8  pad04[2];
+    /* 0x06 */ u8  unk06;
+    /* 0x07 */ u8  unk07;
+    /* 0x08 */ u8  unk08;
+    /* 0x09 */ u8  pad09[3];
+} A12; /* 0x0C */
+
+/* was: src/800.c */
+typedef struct {
+    /* 0x00 */ s32 unk00;
+    /* 0x04 */ s16 unk04;
+    /* 0x06 */ s16 unk06;
+    /* 0x08 */ s16 unk08;
+    /* 0x0A */ u8  unk0A;
+    /* 0x0B */ u8  unk0B;
+} B12; /* 0x0C */
+
+/* was: src/800.c */
+typedef struct {
+    /* 0x00 */ u8  pad00[4];
+    /* 0x04 */ u8  unk04;
+    /* 0x05 */ u8  pad05[11];
+    /* 0x10 */ u16 unk10;
+    /* 0x12 */ u16 unk12;
+    /* 0x14 */ u8  pad14[2];
+    /* 0x16 */ s16 unk16;
+    /* 0x18 */ u8  pad18[8];
+} C24; /* 0x20 */
+
+/* was: src/800.c */
+typedef struct {               /* 0x18 stride; D_800A463C + k*0x18 */
+    s32 unk00;
+    u8  unk04[0x14];
+} Ent24;
+
+/* was: src/800.c */
+typedef struct {              /* base 0x80064D49, stride 0x0C */
+    u8  unk00;
+    u8  pad[11];
+} Elm12;
+
+/* was: src/800.c */
+typedef struct {              /* base 0x80076240, stride 0x10 */
+    u16 unk00;
+    u16 unk02;
+    s32 unk04;
+    s32 unk08;
+    s32 unk0C;
+} Slot16A;
+
+/* was: src/800.c */
+typedef struct {
+    s32 unk00;
+    s32 unk04;
+    s32 unk08;
+    u8  unk0C;
+    u8  unk0D;
+    u8  unk0E;
+    u8  unk0F;
+} Slot16;                      /* 0x10 */
+
+/* was: src/800.c */
+typedef struct { s32 v; } W32;
+
+/* was: src/800.c */
+typedef struct Slot54 {
+    /* 0x00 */ s16 unk00;
+    /* 0x02 */ s16 unk02;
+    /* 0x04 */ s16 unk04;
+    /* 0x06 */ s16 unk06;
+    /* 0x08 */ u16 unk08;
+    /* 0x0A */ s8  unk0A;
+} Slot54;
+
+/* was: src/800.c */
+typedef struct { u16 f0; } H2; /* 0x2 */
+
+/* was: src/800.c */
+typedef struct {
+    s32 unk00;
+    u8  unk04;
+    u8  unk05;
+    u8  unk06;
+    u8  unk07;
+    u8  unk08;
+    u8  unk09;
+    u8  unk0A;
+    u8  unk0B;
+    s32 unk0C;
+} Rsc16;                      /* 0x10 */
+
+/* was: src/800_c.c */
+typedef struct { s16 v; } W16;
+
+/* was: src/800_c.c */
+typedef struct {
+    u8  unk00;
+    u8  unk01[11];
+} Rsc12;                      /* 0x0C */
+
+
+/* vendor TU-level declarations this function needs */
+typedef struct { s32 a; s32 b[4]; } OtBlk_80016450;
+
+void func_8001820C(void *a0, s32 a1, u32 a2)
+{
+    extern void *func_80010A08(s32);
+    extern s32 func_80058C6C(s32, void *);
+    extern s32 func_80058B40(s32, s32, s32, s32);
+    extern s32 func_8005A600(s32, s32, s32, s32, s32);
+    extern u16 D_800B9A02;
+    extern OtBlk_80016450 D_800A651C[];
+
+    void *p2;
+    s32 sz;
+    s32 tp;
+
+    sz = a1;
+    if ((u32)a2 & 0x40000000) {
+        *(u32 *)((u8 *)a0 + 4) = *(u32 *)((u8 *)a0 + 4) | 0x02000000;
+    }
+    if ((u32)sz >= 0x1000) {
+        sz = 0xFFF;
+    }
+
+    p2 = func_80010A08(0xC);
+    tp = func_80058B40(2, ((u32)a2 >> 28) & 3, 0x280, 0);
+    func_8005A600((s32)p2, 0, 0, (u16)tp, 0);
+    func_80058C6C(D_800A651C[D_800B9A02].a + sz * 4, p2);
+
+    func_80058C6C(D_800A651C[D_800B9A02].a + sz * 4, a0);
+
+    p2 = func_80010A08(0xC);
+    tp = func_80058B40(2, ((u32)a2 >> 28) & 3, 0x280, 0);
+    func_8005A600((s32)p2, 0, 1, (u16)tp, 0);
+    func_80058C6C(D_800A651C[D_800B9A02].a + sz * 4, p2);
+}

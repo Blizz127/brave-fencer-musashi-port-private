@@ -2,72 +2,65 @@
  * SHA256(span)=1e092e4f215f327cb844cea642c985f86cba371c4e0f7bee424fd07ad71b6553.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8016C998 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* File-scope declarations from the vendor translation unit. */
+typedef struct { s32 w[8]; } Blk32_998;
+typedef struct { u8 f0; u8 pad[0xc3]; } Slot_998;
 
-extern s32 D_801848D0[];
-void *func_80146A6C(s32, u16 *, s32, s32, s32, s32, void *); /* static */
-void func_8016CBC0();                            /* static */
-extern s32 D_80126B9C;
-extern s16 D_80126CE0;
+extern short func_8016CBC0(void);
+extern s32 func_80146A6C(s32 a0, void *a1, s32 a2, s32 a3, s32 a4, s32 a5, s32 a6);
 
-void func_8016C998(void *arg0) {
-    s16 temp_v0;
-    s16 var_s0;
-    s32 temp_a0;
-    s32 var_v0;
-    s32 var_v0_2;
-    u16 *temp_s3;
-    void *temp_v0_2;
 
-    temp_s3 = M2C_FIELD(arg0, u16 **, 0x34);
-    if (*temp_s3 != 1) {
-        M2C_FIELD(arg0, s16 *, 2) = 6;
+void func_8016C998(s32 param_1)
+{
+
+    extern s32 D_80126B9C;
+    extern s16 D_80126CE0;
+    u16 *psVar7;
+    s32 r;
+    short i;
+    extern Slot_998 D_801848D0[];
+
+    psVar7 = *(u16 **)(param_1 + 0x34);
+    if (*psVar7 != 1) {
+        *(s16 *)(param_1 + 2) = 6;
     }
     func_8016CBC0();
-    if ((M2C_FIELD(arg0, s16 *, 0x28) == M2C_FIELD(M2C_FIELD(arg0, void **, 0x30), s16 *, 0x36)) && (D_80126B9C & 0x20)) {
-        temp_a0 = M2C_FIELD(arg0, s32 *, 0x1C);
-        if ((temp_a0 == 0) || (var_v0 = temp_a0 - 1, ((M2C_FIELD(arg0, s16 *, 0x12) < D_80126CE0) != 0))) {
-            var_s0 = 0;
-            M2C_FIELD(arg0, s16 *, 0x12) = (s16) (u16) D_80126CE0;
-            var_v0_2 = 0 << 0x10;
-loop_7:
-            temp_v0 = var_s0 + 1;
-            if (*(D_801848D0 + ((var_v0_2 >> 0x10) * 0xC4)) != 0) {
-                var_s0 = temp_v0;
-                var_v0_2 = var_s0 << 0x10;
-                if (temp_v0 < 8) {
-                    goto loop_7;
-                }
+    if (*(s16 *)(param_1 + 0x28) != *(s16 *)(*(s32 *)(param_1 + 0x30) + 0x36)) {
+        return;
+    }
+    if ((D_80126B9C & 0x20) == 0) {
+        return;
+    }
+    if ((*(s32 *)(param_1 + 0x1c) == 0) ||
+        (*(s16 *)(param_1 + 0x12) < D_80126CE0)) {
+        *(s16 *)(param_1 + 0x12) = D_80126CE0;
+        i = 0;
+        do {
+            if (D_801848D0[i].f0 == 0) {
+                goto found;
             }
-            if (var_s0 < 8) {
-                temp_v0_2 = func_80146A6C(0x30, temp_s3, 0, 0, 0, 0x8000, M2C_FIELD(arg0, void **, 0x30));
-                if (temp_v0_2 != 0) {
-                    *(D_801848D0 + (var_s0 * 0xC4)) = 1;
-                    M2C_FIELD(temp_v0_2, s32 *, 0x38) = (s32) M2C_FIELD(arg0, s32 *, 0x38);
-                    M2C_FIELD(temp_v0_2, s32 *, 0x3C) = (s32) M2C_FIELD(arg0, s32 *, 0x3C);
-                    M2C_FIELD(temp_v0_2, s32 *, 0x40) = (s32) M2C_FIELD(arg0, s32 *, 0x40);
-                    M2C_FIELD(temp_v0_2, s32 *, 0x44) = (s32) M2C_FIELD(arg0, s32 *, 0x44);
-                    M2C_FIELD(temp_v0_2, s32 *, 0x48) = (s32) M2C_FIELD(arg0, s32 *, 0x48);
-                    M2C_FIELD(temp_v0_2, s32 *, 0x4C) = (s32) M2C_FIELD(arg0, s32 *, 0x4C);
-                    M2C_FIELD(temp_v0_2, s32 *, 0x50) = (s32) M2C_FIELD(arg0, s32 *, 0x50);
-                    M2C_FIELD(temp_v0_2, s32 *, 0x54) = (s32) M2C_FIELD(arg0, s32 *, 0x54);
-                    M2C_FIELD(temp_v0_2, s16 *, 0x2A) = var_s0;
-                    M2C_FIELD(temp_v0_2, u16 *, 6) = (u16) M2C_FIELD(arg0, u16 *, 6);
-                    M2C_FIELD(temp_v0_2, u16 *, 0xA) = (u16) M2C_FIELD(arg0, u16 *, 0xA);
-                    M2C_FIELD(temp_v0_2, u16 *, 0xE) = (u16) M2C_FIELD(arg0, u16 *, 0xE);
-                    var_v0 = 0x10;
-                    goto block_12;
-                }
-            }
-        } else {
-block_12:
-            M2C_FIELD(arg0, s32 *, 0x1C) = var_v0;
+            i++;
+        } while (i < 8);
+    found:
+        if (i >= 8) {
+            return;
         }
+        r = func_80146A6C(0x30, psVar7, 0, 0, 0, 0x8000, *(s32 *)(param_1 + 0x30));
+        if (r == 0) {
+            return;
+        }
+        D_801848D0[i].f0 = 1;
+        *(Blk32_998 *)(r + 0x38) = *(Blk32_998 *)(param_1 + 0x38);
+        *(s16 *)(r + 0x2a) = i;
+        *(s16 *)(r + 6) = *(s16 *)(param_1 + 6);
+        *(s16 *)(r + 0xa) = *(s16 *)(param_1 + 0xa);
+        *(s16 *)(r + 0xe) = *(s16 *)(param_1 + 0xe);
+        *(s32 *)(param_1 + 0x1c) = 0x10;
+    } else {
+        *(s32 *)(param_1 + 0x1c) = *(s32 *)(param_1 + 0x1c) - 1;
     }
 }

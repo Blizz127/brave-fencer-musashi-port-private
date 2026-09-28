@@ -4,10 +4,20 @@
  * Donor shape: Druthulu ov_SC02_031_jr_8017AE2C func_80180D74 (jump table D_80188D6C).
  * NOT in parked PAC0 hole 8014E934…80153C8C; later SC02 text in jr_8017AE2C.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80180D74 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-extern s32 (*D_80188D6C[])(void);
+extern void func_8012A568(void (*a0)(void));
+extern void (*D_80188D6C[])(void);
 
-s32 func_80180D74(u8 *arg0) {
-    return D_80188D6C[arg0[0x15]]();
+void func_80180D74(void *a0) {
+    D_80188D6C[*(u8 *)((s32)a0 + 0x15)]();
 }

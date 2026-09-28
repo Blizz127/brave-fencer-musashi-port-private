@@ -2,79 +2,84 @@
  * SHA256(span)=6e9052ed74d9bc98cef58ffb6852ce40946eec1243560509dea1634366ff08b8.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8013EF88 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* File-scope declarations from the vendor translation unit. */
+typedef struct {
+    unsigned short field0;   /* 0x00  D_80115118 */
+    unsigned char  _pad[0xAE];
+    int            arrB0[128];/* 0xB0 */
+} S115118;
 
-s32 func_800D0488(s16, s32, s32, s16);              /* extern */
-void func_800D2624();                            /* extern */
-extern s32 D_8017F6FA;
-void func_8013FAF8(s32, s32);            /* static */
-extern u16 D_800B9A02;
-extern u16 D_80115112;
-extern u16 D_80115114;
-extern u16 D_80115118;
-extern s16 D_80115124;
-extern s32 *D_80115168;
-extern s32 *D_80115188;
-extern s32 D_801151D0;
-extern u16 D_8017F6F8;
+extern void func_8013FAF8(s16 a0, s16 a1);
 
-void func_8013EF88(s32 arg1, s32 arg2, s16 arg3) {
-    s16 temp_v1;
-    s16 var_a3;
-    s32 temp_v0_2;
-    s32 var_a1;
-    s32 var_a2;
-    u16 temp_v0;
-    u16 temp_v0_3;
 
-    var_a1 = arg1;
-    var_a2 = arg2;
-    var_a3 = arg3;
-    temp_v0 = D_80115118 - 1;
-    if (D_80115118 != 0) {
-        D_80115118 = temp_v0;
-        if (temp_v0 & 0xFFFF) {
-            D_801151D0 = M2C_FIELD((&D_80115118 + (D_800B9A02 * 4)), s32 *, 0xB0);
-            func_8013FAF8(0, 5);
-            var_a3 = 0;
-            do {
-                var_a1 = (s32) (var_a3 << 0x10) >> 0xE;
-                temp_v1 = var_a3 + 1;
-                var_a3 = temp_v1;
-                var_a2 = *(&D_80115188 + var_a1);
-                temp_v0_2 = var_a2 * 3;
-                *(&D_80115188 + var_a1) = temp_v0_2;
-                *(&D_80115168 + var_a1) = *(&D_80115168 + var_a1) + temp_v0_2;
-            } while (temp_v1 < 5);
-            if ((u16) D_80115118 < 3U) {
-                D_8017F6FA = (u16) (D_8017F6FA - 1);
+// @class: struct
+// @stuck: none — MATCH (108 ins, relocation-masked)
+
+
+
+
+s32 func_8013EF88() {
+
+    extern short D_800B9A02;
+    extern unsigned short D_80115112;
+    extern u16 D_80115124;
+    extern s32 D_80115188;
+    extern s32 D_801151D0;
+    extern s16 D_8017F6F8;
+    extern s16 D_8017F6FA;
+    extern int func_800D0488(int);
+    extern void func_800D2624(void);
+    extern S115118 D_80115118;
+    extern int D_80115168;
+    extern unsigned short D_80115114;
+
+    unsigned short v;
+    short i;
+    register short *p124 __asm__("$16");
+
+    v = D_80115118.field0;
+    if (v != 0) {
+        v = v - 1;
+        D_80115118.field0 = v;
+        if (v != 0) {
+            (*(int*)&D_801151D0) = D_80115118.arrB0[(*(unsigned short*)&D_800B9A02)];
+            ((void(*)(int, int))func_8013FAF8)(0, 5);
+            for (i = 0; i < 5; i++) {
+                int a = *(int *)((char *)&(*(int*)&D_80115188) + (i << 2));
+                int b = *(int *)((char *)&D_80115168 + (i << 2));
+                int w = a * 3;
+                *(int *)((char *)&(*(int*)&D_80115188) + (i << 2)) = w;
+                *(int *)((char *)&D_80115168 + (i << 2)) = b + w;
             }
-            temp_v0_3 = D_8017F6F8 - 2;
-            D_8017F6F8 = temp_v0_3;
-            if (temp_v0_3 & 0x8000) {
-                D_8017F6F8 = 0;
+            if (D_80115118.field0 < 3) {
+                unsigned short *p96 = &(*(unsigned short*)&D_8017F6FA);
+                *p96 = *p96 - 1;
+            }
+            {
+                unsigned short *p94 = &(*(unsigned short*)&D_8017F6F8);
+                short t = *p94 - 2;
+                *p94 = t;
+                if (t < 0) *p94 = 0;
             }
         }
     }
-    if (D_80115124 != 0) {
-        if (func_800D0488(D_80115124, var_a1, var_a2, var_a3) != 0) {
-            D_80115124 = 0;
-            goto block_11;
+    p124 = &(*(short*)&D_80115124);
+    {
+        short x124 = *p124;
+        if (x124 != 0) {
+            if (func_800D0488(x124) == 0) return;
+            *p124 = 0;
         }
-    } else {
-block_11:
-        if (D_80115118 == 0) {
-            if (D_80115114 == (D_800B9A02 ^ 1)) {
-                func_800D2624();
-                return;
-            }
-            D_80115112 += 1;
+    }
+    if (D_80115118.field0 == 0) {
+        if (D_80115114 == ((*(unsigned short*)&D_800B9A02) ^ 1)) {
+            func_800D2624();
+        } else {
+            D_80115112 = D_80115112 + 1;
         }
     }
 }

@@ -5,28 +5,24 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8012B21C - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL from m2c draft of func_8012B21C (main_0012.s): NOT
- * verified against retail. C89-gated only; promotion requires an
- * oracle MATCH. All stores grounded as sw; unk48 tiny-const via ori 0xC000. */
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
 
-struct obj_8012B200 {
-    u8 pad[0x10];
-    s32 unk10;
-    s32 unk14;
-    s32 unk18;
-    u8 pad2[0x28];
-    s32 unk44;
-    s32 unk48;
-    s32 unk4C;
-};
-
-void func_8012B21C(struct obj_8012B200 *arg0) {
-    arg0->unk18 = 0;
-    arg0->unk14 = 0;
-    arg0->unk10 = 0;
-    arg0->unk4C = 0;
-    arg0->unk44 = 0;
-    arg0->unk48 = 0xC000;
+void func_8012B21C(void *a0) {
+    *(s32 *)((s32)a0 + 0x18) = 0;
+    *(s32 *)((s32)a0 + 0x14) = 0;
+    *(s32 *)((s32)a0 + 0x10) = 0;
+    *(s32 *)((s32)a0 + 0x4C) = 0;
+    *(s32 *)((s32)a0 + 0x44) = 0;
+    *(s32 *)((s32)a0 + 0x48) = 0xC000;
 }

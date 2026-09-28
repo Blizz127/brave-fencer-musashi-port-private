@@ -2,163 +2,143 @@
  * SHA256(span)=0ebecd03a3a9decfaf37482d7170ba921114ee61d2dfcac60f978cb03804a81c.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8013FAF8 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-void func_80024054(s32, void *);                          /* extern */
-void func_8005A600(s32 *, s32, s32, s32, s32);               /* extern */
-s32 *func_800D2650(s32 *, void *, s16, s16, s32, s32); /* extern */
-s32 func_800D27DC(s32, s32 *, void *, s32, s32);      /* extern */
-s32 *func_800D29F8(s32, s32, void *, s32, s32);       /* extern */
-extern s32 D_8017ED80;
-extern s32 D_8017F080;
-extern s32 D_8017F180;
-extern s32 D_8017F1F0;
-extern s32 D_8017F2E4;
-extern s32 D_8017F304;
-extern s32 D_8017F324;
-extern s32 D_8017F6FA;
-s32 *func_80137D08(s32 *, void *, s32);               /* static */
-s32 *func_8013AB54(s32 *, s32, s16 *, s32);           /* static */
-s32 func_8013FFD8(s32, s16, s32 *);                 /* static */
-s32 *func_80140958(s32 *, s16, s16);                /* static */
-void func_80140E6C();                                  /* static */
-void func_80140F00();                                  /* static */
-s32 *func_80141100(s32 *);                          /* static */
-s16 func_8014168C();                               /* static */
-extern u8 D_80078EC0;
-extern s32 *D_800AE7B8;
-extern s32 *D_800AE7BC;
-extern u16 D_800B9A02;
-extern u16 D_8011511A;
+/* File-scope declarations from the vendor translation unit. */
+typedef struct { s32 w[8]; } Blk20;
+typedef struct { u8 d[0x60]; } Blk60;
+typedef struct { s16 x; s16 y; } Hw4;
+typedef struct { u16 f0; s16 f2; } Prim4;
+typedef struct { s32 f0; u32 *f4; s32 f8; s32 fC; s32 f10; } Rec20;
+extern s16 D_800B9A02;
 extern s16 D_80115128;
-extern s32 *D_8011516A;
-extern s32 *D_801151D0;
-extern s16 D_8017F6F8;
+
+// @class: regalloc-order
+// @stuck: none — MATCH (312/312, relocation-masked)
+
+
+
+
+
+
+
+
+
+
+extern void  func_80140E6C(void);
+extern void  func_80140F00(void);
+extern s32  *func_80140958();
+extern int   func_80141100(int);
+extern s16   func_8014168C(s16);
+extern s32   func_8013FFD8(s16, s32, s32 *);
+extern void func_80024054(void *a0, void *a1);
+extern s32  *func_800D2650(s32 *, void *, s32, s32, s32, s32);
+extern s32 func_8005A600(s32, s32, s32, s32, s32);
+extern s32   func_800D27DC(s32, s32 *, void *, s32, s32);
+extern s32  *func_800D29F8(s32, s32, void *, s32, s32);
+extern int func_80137D08(int arg0, int arg1, short arg2);
+extern s32 func_8013AB54(s32 a0, s32 a1, s32 a2, s32 a3);
+
 
 void func_8013FAF8(s16 arg0, s16 arg1) {
-    s32 sp70;
-    s16 sp68;
-    s32 sp60;
-    s32 sp18;
-    s32 (*var_s1)();
-    s16 temp_a1;
-    s16 temp_s0;
-    s16 temp_v1;
-    s16 var_s4;
-    s16 var_s5;
-    s32 *var_a0_2;
-    s32 *var_s3;
-    s32 *var_s3_2;
-    s32 temp_a0;
-    s32 temp_a0_2;
-    s32 temp_s1_2;
-    s32 temp_s2;
-    s32 temp_v0;
-    s32 var_a0;
-    s32 var_s6;
-    s32 var_t0;
-    s32 var_v0;
-    s32 var_v0_2;
-    s32 var_v0_3;
-    void *temp_a3;
-    void *temp_s1;
+
+    extern s32    D_801151D0;
+    extern u16    D_8011511A;
+    extern Hw4    D_8011516A[];
+    extern u8     D_80078EC0;
+    extern Rec20  D_800AE7B8[];
+    extern Blk60  D_8017ED80[];
+    extern Blk20  D_8017F080[];
+    extern Prim4  D_8017F180[];
+    extern Prim4  D_8017F1F0[];
+    extern Prim4 *D_8017F2E4[];
+    extern s32    D_8017F304[];
+    extern u8 D_8017F324;
+    extern s16    D_8017F6F8;
+    extern s16    D_8017F6FA;
+    u8 sp18[72];
+    s32 sp60[2];
+    s32 *ot;
+    s16 i;
+    s16 j;
+    s32 flag;
+    s32 addr;
+    Prim4 *p;
+    s32 r;
+    s32 t;
+    s16 *pp;
+    s32 flag2;
+    register s32 flag3 __asm__("$18");
 
     func_80140E6C();
     func_80140F00();
-    var_s3 = func_80140958(D_801151D0, arg0, arg1);
-    sp68 = arg1;
-    if ((u16) D_8011511A < 6U) {
-        var_s3 = func_80141100(var_s3);
+    ot = func_80140958((s32 *)D_801151D0, arg0, arg1);
+    if (D_8011511A < 6) {
+        ot = (s32 *)func_80141100((int)ot);
     }
-    var_s5 = arg0;
-    if (arg0 < arg1) {
-        sp70 = 0xFFFFFF;
-        var_v0 = var_s5 << 0x10;
-        do {
-            temp_a0 = var_v0 >> 0x10;
-            if ((temp_a0 == D_8011511A) || (temp_a0 == 2) || (var_s6 = 0xFF, (temp_a0 == 4))) {
-                var_s6 = 0;
+    for (i = arg0; i < arg1; i++) {
+        if (i == D_8011511A || i == 2 || i == 4) {
+            flag = 0;
+        } else {
+            flag = 0xFF;
+        }
+        p = &D_8017F180[i];
+        if (i != 5) {
+            if (i == 2) {
+                addr = ((s32 *)&D_8017F324)[*(s16 *)&D_80115128];
+            } else {
+                addr = D_8017F304[i];
             }
-            temp_a0_2 = var_s5 * 4;
-            temp_s1 = temp_a0_2 + D_8017F180;
-            if (var_s5 != 5) {
-                if (var_s5 == 2) {
-                    var_a0 = *(D_8017F324 + (D_80115128 * 4));
-                } else {
-                    var_a0 = *(D_8017F304 + temp_a0_2);
+        } else {
+            addr = func_8013FFD8(2, func_8014168C(2), sp60);
+        }
+        func_80024054(addr, sp18);
+        ot = func_800D2650(ot, sp18, (s16)(p->f0 + (u16)D_8011516A[i].x), p->f2, 1,
+                           flag != 0 ? 0x585858 : 0x808080);
+        p = D_8017F2E4[i];
+        j = 0;
+        if (p != 0) {
+            if (i == 2 && *(s16 *)&D_80115128 != 0) {
+                p = D_8017F1F0;
+            }
+            flag2 = flag;
+            for (;;) {
+                r = func_8013FFD8(i, j++, sp60);
+                if (r == 0) {
+                    break;
                 }
-            } else {
-                var_a0 = func_8013FFD8(2, func_8014168C(2), &sp60);
-            }
-            func_80024054(var_a0, &sp18);
-            if (var_s6 != 0) {
-                var_v0_2 = 0x585858;
-            } else {
-                var_v0_2 = 0x808080;
-            }
-            var_s3_2 = func_800D2650(var_s3, &sp18, (s16) (temp_s1->unk0 + *(&D_8011516A + ((s32) (var_s5 << 0x10) >> 0xE))), temp_s1->unk2, var_v0_2);
-            var_s1 = *(D_8017F2E4 + (var_s5 * 4));
-            var_s4 = 0;
-            if (var_s1 != 0) {
-                if (var_s5 == 2) {
-                    var_v0_3 = var_s5 << 0x10;
-                    if (D_80115128 != 0) {
-                        var_s1 = D_8017F1F0;
-                        goto block_20;
+                if (r < 0) {
+                    func_80024054(r, sp18);
+                    t = 1;
+                    if (i == 0 && (D_80078EC0 & 0x7F) == j) {
+                        t = 0xB6;
                     }
-                } else {
-block_20:
-                    var_v0_3 = var_s5 << 0x10;
-                }
-                temp_s2 = var_v0_3 >> 0x10;
-loop_22:
-                temp_a1 = var_s4;
-                temp_s0 = temp_a1 + 1;
-                var_s4 = temp_s0;
-                temp_v0 = func_8013FFD8(temp_s2, temp_a1, &sp60);
-                var_a0_2 = var_s3_2;
-                if (temp_v0 != 0) {
-                    if (temp_v0 < 0) {
-                        func_80024054(temp_v0, &sp18);
-                        var_t0 = 1;
-                        if ((temp_s2 == 0) && ((D_80078EC0 & 0x7F) == temp_s0)) {
-                            var_t0 = 0xB6;
-                        }
-                        if (var_s6 != 0) {
-                            sp60 += 0xFFD7D7D8;
-                        }
-                        var_s3_2 = func_800D2650(var_s3_2, &sp18, (s16) (var_s1->unk0 + *(&D_8011516A + (temp_s2 * 4))), var_s1->unk2, var_t0, sp60);
+                    if (flag2 != 0) {
+                        sp60[0] += -0x282828;
                     }
-                    var_s1 += 4;
-                    goto loop_22;
+                    ot = func_800D2650(ot, sp18, (s16)(p->f0 + (u16)D_8011516A[i].x), p->f2, t, sp60[0]);
                 }
-            } else {
-                var_a0_2 = var_s3_2;
+                p++;
             }
-            func_8005A600(var_a0_2, 0, 0, 0x15, 0);
-            *var_s3_2 = 0x02000000;
-            temp_s1_2 = var_s5 * 4;
-            *var_s3_2 = ((*(&D_800AE7BC + (D_800B9A02 * 0x14)))->unk8 & sp70) | 0x02000000;
-            temp_a3 = *(&D_800AE7BC + (D_800B9A02 * 0x14));
-            temp_a3->unk8 = (s32) ((temp_a3->unk8 & 0xFF000000) | ((s32) var_s3_2 & sp70));
-            var_s3 = func_800D29F8(var_s6, func_800D27DC(var_s6 != 0, var_s3_2 + 0x28, (var_s5 * 0x60) + D_8017ED80, 8, (s32) *(&D_8011516A + temp_s1_2)), (var_s5 << 5) + D_8017F080, 2, (s32) *(&D_8011516A + temp_s1_2));
-            temp_v1 = var_s5 + 1;
-            var_s5 = temp_v1;
-            var_v0 = var_s5 << 0x10;
-        } while (temp_v1 < (s16) (u16) sp68);
+        }
+        func_8005A600((s32)ot, 0, 0, 0x15, 0);
+        flag3 = flag;
+        *ot = 0x2000000;
+        *ot = (D_800AE7B8[*(u16 *)&D_800B9A02].f4[2] & 0xFFFFFF) | 0x2000000;
+        D_800AE7B8[*(u16 *)&D_800B9A02].f4[2] =
+            (D_800AE7B8[*(u16 *)&D_800B9A02].f4[2] & 0xFF000000) | ((u32)ot & 0xFFFFFF);
+        ot = func_800D29F8(flag3,
+                           func_800D27DC(flag3 != 0, ot + 10, &D_8017ED80[i], 8, D_8011516A[i].x),
+                           &D_8017F080[i], 2, D_8011516A[i].x);
     }
-    if (D_8017F6F8 == 0xE) {
-        var_s3 = func_80137D08(var_s3, (D_800B9A02 * 0x14) + &D_800AE7B8, 2);
+    pp = &D_8017F6F8;
+    if (*pp == 0xE) {
+        ot = func_80137D08(ot, &D_800AE7B8[*(u16 *)&D_800B9A02], 2);
     }
-    if ((D_8017F6F8 != 0) && (D_8017F6FA != 0)) {
-        var_s3 = func_8013AB54(var_s3, *(&D_800AE7BC + (D_800B9A02 * 0x14)) + 8, &D_8017F6F8 - 4, 0x8000);
+    if (*pp != 0 && D_8017F6FA != 0) {
+        ot = func_8013AB54(ot, D_800AE7B8[*(u16 *)&D_800B9A02].f4 + 2, (s32)(pp - 2), 0x8000);
     }
-    D_801151D0 = var_s3;
+    D_801151D0 = (s32)ot;
 }

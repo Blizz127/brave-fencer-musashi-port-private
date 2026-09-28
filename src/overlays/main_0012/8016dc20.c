@@ -2,116 +2,102 @@
  * SHA256(span)=eec8a55e72f54d5e8341091f21634044394ded1504bc76e6dcde0a17f24ed9d6.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8016DC20 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* File-scope declarations from the vendor translation unit. */
+typedef struct {
+    u16 x, y, z, xpad;      /* 0x00 : in  -> sp+0x20 */
+    u16 vx, vy, vz, vpad;   /* 0x08 : out -> sp+0x28 */
+} Work8016;
 
-void func_800D1FC8(void *, s32);             /* extern */
-void func_800D20C0(u16 *, u16 *, s32);       /* extern */
-void *func_800D21C4(void *, s32 (*)(), s32); /* extern */
-void func_800D23D0(u16 *);                       /* extern */
-extern s32 D_80181684;
-extern s32 D_80181690;
-extern s32 D_80184EF0;
-extern s32 D_80184EF4;
-void func_80128EA8(void *, void *, s32 (*)()); /* static */
-void func_80128ED8(void *, void *);              /* static */
-void *func_80146A6C(s32, void *, s16, s16, s32, s32, s32); /* static */
-void func_80146C3C(void *);                      /* static */
-void func_80149374(void *, void *);              /* static */
-s32 func_801619D0(void *);                          /* static */
-extern u16 D_8011D030;
+extern void func_800D1FC8(s32 a0, s32 a1);
+extern void func_800D20C0(void *a0, void *a1, s32 a2);
+extern s32 func_800D21C4(s32 a0, void *a1, s32 a2);
+extern void func_800D23D0(void *a0);
+extern void func_80128EA8(s32 a0, s32 a1, s32 a2);
+extern s32 func_80128ED8(s32 param_1, s32 *param_2);
+extern s32 func_80146A6C(s32 a0, void *a1, s32 a2, s32 a3, s32 a4, s32 a5, s32 a6);
+extern void func_80146C3C(u8*);
+extern void func_80149374(s32 a0, s32 a1);
+extern s32 func_801619D0(void *a0);
 
-void func_8016DC20(void *arg0) {
-    u16 sp2A;
-    u16 sp28;
-    u16 sp24;
-    u16 sp22;
-    u16 sp20;
-    s16 temp_v0;
-    s16 var_s1;
-    s16 var_s1_2;
-    s16 var_s1_3;
-    s16 var_v0;
-    s16 var_v0_2;
-    u16 *var_v1;
-    u16 *var_v1_2;
-    void *temp_s0;
-    void *temp_s3;
-    void *temp_v0_2;
-    void *temp_v0_3;
 
-    var_s1 = 0;
-    var_v1 = &D_8011D030;
-    temp_s3 = M2C_FIELD(arg0, void **, 0x34);
-loop_1:
-    var_v0 = var_s1 + 1;
-    if ((var_v1 == arg0) || (var_v0 = var_s1 + 1, (*var_v1 != 0x34))) {
-        var_s1 = var_v0;
-        var_v1 += 0x58;
-        if (var_v0 >= 0x1E) {
-            func_80149374(temp_s3, arg0 + 4);
-            var_s1_2 = 0;
-            if (func_801619D0(temp_s3) != 0) {
-                var_v1_2 = &D_8011D030;
-loop_6:
-                temp_v0 = var_s1_2 + 1;
-                if (*var_v1_2 != 0x11) {
-                    var_s1_2 = temp_v0;
-                    var_v1_2 += 0x58;
-                    if (temp_v0 >= 0x1E) {
-                        var_s1_3 = 0;
-                        func_80146A6C(0x11, arg0, M2C_FIELD(arg0, s16 *, 6), (s16) (M2C_FIELD(arg0, u16 *, 0xA) - 8), (s32) M2C_FIELD(arg0, s16 *, 0xE), 0, 0);
-                        sp20 = (u16) M2C_FIELD(arg0, s16 *, 6);
-                        sp22 = M2C_FIELD(arg0, u16 *, 0xA);
-                        sp24 = (u16) M2C_FIELD(arg0, s16 *, 0xE);
-                        func_800D20C0(&sp20, &sp28, 0);
-                        sp2A = 0;
-                        func_800D23D0(&sp28);
-                        do {
-                            temp_v0_2 = func_80146A6C(0x12, arg0, M2C_FIELD(temp_s3, s16 *, 6), M2C_FIELD(temp_s3, s16 *, 0xA), (s32) M2C_FIELD(temp_s3, s16 *, 0xE), (s32) var_s1_3, 0);
-                            var_v0_2 = var_s1_3 + 2;
-                            if (temp_v0_2 != 0) {
-                                M2C_FIELD(temp_v0_2, u16 *, 0x12) = sp28;
-                                M2C_FIELD(temp_v0_2, s16 *, 0x1A) = 0;
-                                M2C_FIELD(temp_v0_2, u16 *, 0x16) = sp2A;
-                                var_v0_2 = var_s1_3 + 2;
-                            }
-                            var_s1_3 = var_v0_2;
-                        } while (var_v0_2 < 3);
-                        goto block_17;
-                    }
-                    goto loop_6;
-                }
-                goto block_13;
+s32 func_8016DC20(s32 param_1) {
+
+    extern s32  D_8011D030;
+    extern s16  D_80184EF0;
+    extern s16  D_80184EF4;
+    extern s32  D_80181684;
+    extern s32  D_80181690;
+    u16 *p;
+    short i;
+    s32 obj;
+    s32 r;
+    s32 node;
+    s32 e;
+    Work8016 w;
+
+    i = 0;
+    p = (u16 *)&D_8011D030;
+    obj = *(s32 *)(param_1 + 0x34);
+    do {
+        if ((p != (u16 *)param_1) && (*p == 0x34)) goto done;
+        i = i + 1;
+        p += 0x2c;
+    } while (i < 0x1e);
+
+    func_80149374(obj, param_1 + 4);
+    r = func_801619D0((void *)obj);
+    i = 0;
+    if (r != 0) {
+        p = (u16 *)&D_8011D030;
+        do {
+            if (*p == 0x11) goto ddb0;
+            i = i + 1;
+            p += 0x2c;
+        } while (i < 0x1e);
+
+        func_80146A6C(0x11, (void *)param_1, *(s16 *)(param_1 + 6),
+                      (s16)(*(u16 *)(param_1 + 0xA) - 8),
+                      *(s16 *)(param_1 + 0xE), 0, 0);
+        w.x = *(u16 *)(param_1 + 6);
+        w.y = *(u16 *)(param_1 + 0xA);
+        w.z = *(u16 *)(param_1 + 0xE);
+        func_800D20C0(&w.x, &w.vx, 0);
+        w.vy = 0;
+        func_800D23D0(&w.vx);
+        i = 0;
+        do {
+            e = func_80146A6C(0x12, (void *)param_1, *(s16 *)(obj + 6),
+                              *(s16 *)(obj + 0xA), *(s16 *)(obj + 0xE),
+                              i, 0);
+            if (e != 0) {
+                *(s16 *)(e + 0x12) = w.vx;
+                *(s16 *)(e + 0x16) = w.vy;
+                *(s16 *)(e + 0x1A) = 0;
             }
-block_13:
-            if ((D_80184EF0 != M2C_FIELD(temp_s3, s16 *, 6)) || (D_80184EF4 != M2C_FIELD(temp_s3, s16 *, 0xE))) {
-                temp_v0_3 = func_800D21C4(arg0, D_80181684, 0x18);
-                if (temp_v0_3 != 0) {
-                    D_80184EF0 = (s16) (u16) M2C_FIELD(temp_s3, s16 *, 6);
-                    D_80184EF4 = (s16) (u16) M2C_FIELD(temp_s3, s16 *, 0xE);
-                    func_800D1FC8(arg0, 7);
-                    temp_s0 = arg0 + 0x24;
-                    M2C_FIELD(arg0, void **, 0x20) = temp_v0_3;
-                    M2C_FIELD(temp_v0_3, s16 *, 0x1A) = 0x3000;
-                    M2C_FIELD(temp_v0_3, s16 *, 0x18) = 0x3000;
-                    M2C_FIELD(temp_v0_3, s8 *, 0x26) = 0xFF;
-                    M2C_FIELD(temp_v0_3, s32 *, 4) = (s32) (M2C_FIELD(temp_v0_3, s32 *, 4) | 0x50000000);
-                    func_80128EA8(temp_v0_3, temp_s0, D_80181690);
-                    func_80128ED8(temp_v0_3, temp_s0);
-                    M2C_FIELD(arg0, u16 *, 2) = (u16) (M2C_FIELD(arg0, u16 *, 2) + 1);
-                    return;
-                }
-            }
-            goto block_17;
-        }
-        goto loop_1;
+            i = i + 2;
+        } while (i < 3);
+        goto done;
     }
-block_17:
-    func_80146C3C(arg0);
+ddb0:
+    if (((D_80184EF0 != *(s16 *)(obj + 6)) || (D_80184EF4 != *(s16 *)(obj + 0xE)))
+        && (node = func_800D21C4(param_1, &D_80181684, 0x18), node != 0)) {
+        D_80184EF0 = *(u16 *)(obj + 6);
+        D_80184EF4 = *(u16 *)(obj + 0xE);
+        func_800D1FC8(param_1, 7);
+        *(s32 *)(param_1 + 0x20) = node;
+        *(u16 *)(node + 0x1A) = 0x3000;
+        *(u16 *)(node + 0x18) = 0x3000;
+        *(u8 *)(node + 0x26) = 0xFF;
+        *(u32 *)(node + 4) = *(u32 *)(node + 4) | 0x50000000;
+        func_80128EA8(node, param_1 + 0x24, (s32)&D_80181690);
+        ((s32 (*)(void *, void *))func_80128ED8)(node, param_1 + 0x24);
+        *(u16 *)(param_1 + 2) = *(u16 *)(param_1 + 2) + 1;
+        return;
+    }
+done:
+    ((void (*)(s32))func_80146C3C)(param_1);
 }

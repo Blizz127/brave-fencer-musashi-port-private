@@ -7,7 +7,7 @@ import struct
 import subprocess
 
 import pytest
-from test_bios_event_callbacks import _generate_formatter_includes
+from test_bios_event_callbacks import _generate_formatter_includes, _sync_code_image
 
 ROOT = Path(__file__).resolve().parents[1]
 EXE = ROOT / "extracted/disc/files/SLUS_007.26"
@@ -50,6 +50,7 @@ def test_draw_entry_streams_match_pinned_exe_and_execute(tmp_path):
         str(ROOT / "pc_port/boot_memory.c"),
         "-lcrypto", "-o", str(probe),
     ], check=True, timeout=30)
+    _sync_code_image(generated)
     run = subprocess.run([str(probe), str(EXE)], capture_output=True,
                          text=True, timeout=20)
     assert run.returncode == 0, run.stdout + run.stderr

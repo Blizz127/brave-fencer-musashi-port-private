@@ -1,188 +1,110 @@
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-
-/* GTE/cop2 mnemonic overlay: ordinary C cannot emit coprocessor ops.
- * Verified by tools/match_function.py. */
+/* GTE mnemonic macros, copied from vendor/bfm-decomp/include/gte_macros.inc (assembler-only, emit no code). */
 __asm__(
-    ".set noreorder\n"
-    ".globl func_8013B274\n"
-    ".type func_8013B274, @function\n"
-    "func_8013B274:\n"
-    "addiu $sp,$sp,-0x68\n"
-    "sw $s1,0x5C($sp)\n"
-    "addu $s1,$a0,$zero\n"
-    "sw $s0,0x58($sp)\n"
-    "addu $s0,$a1,$zero\n"
-    "sw $s2,0x60($sp)\n"
-    "addu $s2,$a2,$zero\n"
-    "sw $ra,0x64($sp)\n"
-    "addiu $a0,$zero,0x28\n"
-    "addu $a2,$v0,$zero\n"
-    "addiu $v0,$zero,0x9\n"
-    "sb $v0,0x3($a2)\n"
-    "addiu $v0,$zero,0x2C\n"
-    "sb $v0,0x7($a2)\n"
-    "addiu $v0,$zero,0x80\n"
-    "sb $v0,0x4($a2)\n"
-    "sb $v0,0x5($a2)\n"
-    "sb $v0,0x6($a2)\n"
-    "addiu $v0,$zero,0x37\n"
-    "sh $v0,0x16($a2)\n"
-    "addiu $v0,$zero,0x6FD6\n"
-    "sh $v0,0xE($a2)\n"
-    "addiu $v0,$zero,0xE0\n"
-    "addiu $v1,$zero,0xEF\n"
-    "sb $v0,0xC($a2)\n"
-    "sb $v0,0x1C($a2)\n"
-    "addiu $v0,$zero,0xF\n"
-    "sll $s0,$s0,16\n"
-    "sb $v0,0x1D($a2)\n"
-    "sb $v0,0x25($a2)\n"
-    "sra $v0,$s0,16\n"
-    "sb $zero,0xD($a2)\n"
-    "sb $v1,0x14($a2)\n"
-    "sb $zero,0x15($a2)\n"
-    "sb $v1,0x24($a2)\n"
-    "sh $zero,0x10($sp)\n"
-    ".L8013B310:\n"
-    "lh $v1,0x0($s2)\n"
-    "sll $v0,$v0,12\n"
-    "div $zero,$v0,$v1\n"
-    "nop\n"
-    ".L8013B328:\n"
-    "addiu $at,$zero,-0x1\n"
-    "lui $at,0x8000\n"
-    "nop\n"
-    ".L8013B340:\n"
-    "mflo $v0\n"
-    "lui $v1,%hi(D_8017EACA)\n"
-    "lh $v1,%lo(D_8017EACA)($v1)\n"
-    "addu $a1,$v0,$zero\n"
-    "sll $v0,$v0,16\n"
-    "sra $a0,$v0,16\n"
-    "slt $v1,$v1,$a0\n"
-    "nop\n"
-    "lui $v0,%hi(D_8017EAD0)\n"
-    "lh $v0,%lo(D_8017EAD0)($v0)\n"
-    "nop\n"
-    "slt $v0,$a0,$v0\n"
-    "nop\n"
-    "lui $v0,%hi(D_8017EACC)\n"
-    "lh $v0,%lo(D_8017EACC)($v0)\n"
-    "nop\n"
-    "addu $v1,$v0,$zero\n"
-    "slt $v0,$a0,$v0\n"
-    "nop\n"
-    "lui $v0,%hi(D_8017EACE)\n"
-    "lh $v0,%lo(D_8017EACE)($v0)\n"
-    "nop\n"
-    "addu $v1,$v0,$zero\n"
-    "slt $v0,$v0,$a0\n"
-    "nop\n"
-    "sh $a1,0x10($sp)\n"
-    ".L8013B3BC:\n"
-    "lui $v0,%hi(D_8017EAC8)\n"
-    "lh $v0,%lo(D_8017EAC8)($v0)\n"
-    "nop\n"
-    "addu $v1,$v0,$zero\n"
-    "slt $v0,$a0,$v0\n"
-    "nop\n"
-    "sh $a1,0x10($sp)\n"
-    ".L8013B3E0:\n"
-    "lui $v0,%hi(D_8017EAD2)\n"
-    "lh $v0,%lo(D_8017EAD2)($v0)\n"
-    "nop\n"
-    "addu $v1,$v0,$zero\n"
-    "slt $v0,$v0,$a0\n"
-    "nop\n"
-    ".L8013B3FC:\n"
-    "sh $v1,0x10($sp)\n"
-    ".L8013B404:\n"
-    "sh $a1,0x10($sp)\n"
-    "lui $v0,%hi(D_800D45F6)\n"
-    "lhu $v0,%lo(D_800D45F6)($v0)\n"
-    "nop\n"
-    "sh $v0,0x12($sp)\n"
-    "addiu $v0,$sp,0x10\n"
-    "lwc2 $0,0x0($v0)\n"
-    "lwc2 $1,0x4($v0)\n"
-    "nop\n"
-    "nop\n"
-    "addiu $v0,$sp,0x18\n"
-    "swc2 $25,0x0($v0)\n"
-    "swc2 $26,0x4($v0)\n"
-    "swc2 $27,0x8($v0)\n"
-    "lh $v0,0x2($s2)\n"
-    "nop\n"
-    "nop\n"
-    "lw $v0,0x1C($sp)\n"
-    "addiu $v0,$v0,-0x1\n"
-    ".L8013B45C:\n"
-    "lw $v0,0x1C($sp)\n"
-    "nop\n"
-    "addiu $v0,$v0,0x2\n"
-    "sw $v0,0x1C($sp)\n"
-    "addiu $v0,$zero,0x9\n"
-    "sh $v0,0x10($sp)\n"
-    "sh $v0,0x12($sp)\n"
-    "addiu $v0,$sp,0x10\n"
-    "lwc2 $0,0x0($v0)\n"
-    "lwc2 $1,0x4($v0)\n"
-    "nop\n"
-    "nop\n"
-    "addiu $v0,$sp,0x28\n"
-    "swc2 $25,0x0($v0)\n"
-    "swc2 $26,0x4($v0)\n"
-    "swc2 $27,0x8($v0)\n"
-    "lw $v0,0x18($sp)\n"
-    "nop\n"
-    "sh $v0,0x8($a2)\n"
-    "lw $v0,0x1C($sp)\n"
-    "nop\n"
-    "sh $v0,0xA($a2)\n"
-    "lw $v0,0x18($sp)\n"
-    "lw $v1,0x28($sp)\n"
-    "nop\n"
-    "addu $v0,$v0,$v1\n"
-    "sh $v0,0x10($a2)\n"
-    "lw $v0,0x1C($sp)\n"
-    "nop\n"
-    "sh $v0,0x12($a2)\n"
-    "lw $v0,0x18($sp)\n"
-    "nop\n"
-    "sh $v0,0x18($a2)\n"
-    "lw $v0,0x1C($sp)\n"
-    "lw $v1,0x2C($sp)\n"
-    "lui $a1,0xFF\n"
-    "addu $v0,$v0,$v1\n"
-    "sh $v0,0x1A($a2)\n"
-    "lw $v0,0x18($sp)\n"
-    "lw $v1,0x28($sp)\n"
-    "ori $a1,$a1,0xFFFF\n"
-    "addu $v0,$v0,$v1\n"
-    "sh $v0,0x20($a2)\n"
-    "lw $v0,0x1C($sp)\n"
-    "lw $a0,0x2C($sp)\n"
-    "lw $v1,0x0($a2)\n"
-    "addu $v0,$v0,$a0\n"
-    "lui $a0,0xFF00\n"
-    "sh $v0,0x22($a2)\n"
-    "lw $v0,0x0($s1)\n"
-    "and $v1,$v1,$a0\n"
-    "and $v0,$v0,$a1\n"
-    "or $v1,$v1,$v0\n"
-    "sw $v1,0x0($a2)\n"
-    "lw $v0,0x0($s1)\n"
-    "and $a1,$a2,$a1\n"
-    "and $v0,$v0,$a0\n"
-    "or $v0,$v0,$a1\n"
-    "sw $v0,0x0($s1)\n"
-    "lw $ra,0x64($sp)\n"
-    "lw $s2,0x60($sp)\n"
-    "lw $s1,0x5C($sp)\n"
-    "lw $s0,0x58($sp)\n"
-    "addiu $sp,$sp,0x68\n"
-    "jr $ra\n"
-    "nop\n"
-    ".size func_8013B274, .-func_8013B274\n"
-    ".set reorder\n"
+".macro cop2op fake_op, op, gbg = 0, sf = 1, mx = 0, v = 0, cv = 0, lm = 0\n"
+"    cop2 \\fake_op << 20 | \\gbg << 20 | \\sf << 19 | \\mx << 17 | \\v << 15 | \\cv << 13 | \\lm << 10 | \\op\n"
+".endm\n"
+".macro mvmva sf, mx, v, cv, lm\n"
+"    cop2op 0x04, 0x12, sf = \\sf, mx = \\mx, v = \\v, cv = \\cv, lm = \\lm\n"
+".endm\n"
 );
+/* func_8013B274 - byte-exact against retail at -O2 (tools/register_match.py). */
+typedef struct { u32 addr : 24; u32 len : 8; u8 r0, g0, b0, code; } P_TAG;
+typedef void (*code)(unsigned short *);
+extern void *func_80010A08(s32);
+
+void func_8013B274(s32 a0, s32 a1, void *a2)
+{
+
+    extern s16 D_8017EAC8, D_8017EACA, D_8017EACC, D_8017EACE, D_8017EAD0, D_8017EAD2;
+    extern u16 D_800D45F6;
+    u8 *p;
+    s32 L[10];
+    s16 sa;
+    s32 quot;
+    s16 ang;
+
+    p = (u8 *)func_80010A08(0x28);
+    p[3] = 9;
+    p[7] = 0x2C;
+    p[4] = 0x80;
+    p[5] = 0x80;
+    p[6] = 0x80;
+    *(s16 *)(p + 0x16) = 0x37;
+    *(s16 *)(p + 0xE) = 0x6FD6;
+    p[0xC] = 0xE0;
+    p[0xD] = 0;
+    p[0x14] = 0xEF;
+    p[0x15] = 0;
+    p[0x1C] = 0xE0;
+    p[0x1D] = 0xF;
+    p[0x24] = 0xEF;
+    p[0x25] = 0xF;
+
+    sa = (s16)a1;
+    if (sa == 0) {
+        *(s16 *)L = 0;
+    } else {
+        quot = ((s32)sa << 12) / ((s16*)a2)[0];
+        ang = (s16)quot;
+        if (!(D_8017EACA < ang)) goto outer_else;
+        if (!(ang < D_8017EAD0)) goto inner_else;
+        if (ang < D_8017EACC) { *(s16 *)L = D_8017EACC; goto done; }
+        if (D_8017EACE < ang) { *(s16 *)L = D_8017EACE; goto done; }
+        *(s16 *)L = quot;
+        goto done;
+    outer_else:
+        if (ang < D_8017EAC8) { *(s16 *)L = D_8017EAC8; goto done; }
+        *(s16 *)L = quot;
+        goto done;
+    inner_else:
+        if (D_8017EAD2 < ang) { *(s16 *)L = D_8017EAD2; goto done; }
+        *(s16 *)L = quot;
+    done: ;
+    }
+    *(s16 *)((u8 *)L + 2) = D_800D45F6;
+
+    __asm__ __volatile__(
+        "lwc2 $0, 0(%0)\n"
+        "lwc2 $1, 4(%0)\n"
+        "nop\n" "nop\n"
+        "mvmva 1, 0, 0, 0, 0\n"
+        : : "r"(L) : "memory");
+    __asm__ __volatile__(
+        "swc2 $25, 0(%0)\n"
+        "swc2 $26, 4(%0)\n"
+        "swc2 $27, 8(%0)\n"
+        : : "r"((u8 *)L + 8) : "memory");
+
+    if (((s16*)a2)[1] > 0)
+        *(s32 *)((u8 *)L + 0xC) -= 1;
+    else
+        *(s32 *)((u8 *)L + 0xC) += 2;
+
+    *(s16 *)L = 9;
+    *(s16 *)((u8 *)L + 2) = 9;
+    __asm__ __volatile__(
+        "lwc2 $0, 0(%0)\n"
+        "lwc2 $1, 4(%0)\n"
+        "nop\n" "nop\n"
+        "mvmva 1, 0, 0, 3, 0\n"
+        : : "r"(L) : "memory");
+    __asm__ __volatile__(
+        "swc2 $25, 0(%0)\n"
+        "swc2 $26, 4(%0)\n"
+        "swc2 $27, 8(%0)\n"
+        : : "r"((u8 *)L + 0x18) : "memory");
+
+    *(s16 *)(p + 8) = *(volatile s32 *)((u8 *)L + 8);
+    *(s16 *)(p + 0xA) = *(volatile s32 *)((u8 *)L + 0xC);
+    *(s16 *)(p + 0x10) = *(volatile s32 *)((u8 *)L + 8) + *(volatile s32 *)((u8 *)L + 0x18);
+    *(s16 *)(p + 0x12) = *(volatile s32 *)((u8 *)L + 0xC);
+    *(s16 *)(p + 0x18) = *(volatile s32 *)((u8 *)L + 8);
+    *(s16 *)(p + 0x1A) = *(volatile s32 *)((u8 *)L + 0xC) + *(volatile s32 *)((u8 *)L + 0x1C);
+    *(s16 *)(p + 0x20) = *(volatile s32 *)((u8 *)L + 8) + *(volatile s32 *)((u8 *)L + 0x18);
+    *(s16 *)(p + 0x22) = *(volatile s32 *)((u8 *)L + 0xC) + *(volatile s32 *)((u8 *)L + 0x1C);
+
+    ((P_TAG *)p)->addr = ((P_TAG *)a0)->addr;
+    ((P_TAG *)a0)->addr = (u32)p;
+}

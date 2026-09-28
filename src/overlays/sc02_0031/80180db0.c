@@ -4,14 +4,24 @@
  * Donor shape: Druthulu ov_SC02_031_jr_8017AE2C func_80180DB0 (func_80181224 + func_800167B8).
  * NOT in parked PAC0 hole 8014E934…80153C8C; later SC02 text in jr_8017AE2C.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80180DB0 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
+extern void func_8012A568(void (*a0)(void));
 extern void func_80181224(void);
-extern void func_800167B8(s32 arg0);
+extern void func_800167B8(s32 a0);
 
-s32 func_80180DB0(u8 *arg0) {
+s32 func_80180DB0(s32 a0) {
     func_80181224();
     func_800167B8(0);
-    arg0[0x15] = arg0[0x15] + 1;
+    *(u8 *)(a0 + 0x15) += 1;
     return 0;
 }

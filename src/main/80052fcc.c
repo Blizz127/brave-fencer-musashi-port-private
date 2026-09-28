@@ -1,22 +1,20 @@
 /* Exact retail word export for [80052FCC,80053050); EXE and assembly verified. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Sony PsyQ library routine (vendor/bfm-decomp keeps it as INCLUDE_ASM); C written from the retail disassembly. */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_80052FCC - byte-exact against retail at -O2 (tools/register_match.py). */
 
-void func_800484EC(s32, s32 *);                        /* static */
-void func_80048EAC(void *, void *);                    /* static */
+typedef struct { s16 m[3][3]; s32 t[3]; } MATRIX;
+typedef struct { s32 vx, vy, vz, pad; } VECTOR;
+extern void func_800484EC(MATRIX *, s32 *, VECTOR *);
+extern void func_80048EAC(MATRIX *, MATRIX *);
+void func_80052FCC(MATRIX *m1, MATRIX *m2)
+{
+    VECTOR v;
 
-void func_80052FCC(void *arg0, void *arg1) {
-    s32 sp10;
-
-    func_800484EC(arg1 + 0x14, &sp10);
-    func_80048EAC(arg0, arg1);
-    arg1->unk14 = (s32) (sp10 + arg0->unk14);
-    arg1->unk18 = (s32) (sp14 + arg0->unk18);
-    arg1->unk1C = (s32) (sp18 + arg0->unk1C);
+    func_800484EC(m1, m2->t, &v);
+    func_80048EAC(m1, m2);
+    m2->t[0] = v.vx + m1->t[0];
+    m2->t[1] = v.vy + m1->t[1];
+    m2->t[2] = v.vz + m1->t[2];
 }

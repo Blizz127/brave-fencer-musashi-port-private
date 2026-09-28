@@ -2,38 +2,34 @@
  * SHA256(span)=e8c46efaac053e5fa91e53d45868efb43026f12e9203ebd84bfb4686561cbcc0.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Sony PsyQ library routine (vendor/bfm-decomp keeps it as INCLUDE_ASM); C written from the retail disassembly. */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_8003D32C - byte-exact against retail at -O2 (tools/register_match.py). */
 
-extern s32 D_8006B0E4;
-extern s32 D_8006B54C;
+typedef struct { u16 r[6]; u16 envx; u16 pad; } SpuVoiceReg;
+extern volatile SpuVoiceReg *D_8006B54C;
+extern u32 D_8006B0E4;
+void func_8003D32C(u8 *status)
+{
+    s32 n = 24;
+    s32 i;
+    u16 env;
 
-void func_8003D32C(s8 *arg0) {
-    s32 var_a2;
-    s8 *var_a1;
-    u16 temp_v0;
-
-    var_a2 = 0;
-    var_a1 = arg0;
-    do {
-        temp_v0 = M2C_FIELD(((var_a2 * 0x10) + D_8006B54C), u16 *, 0xC);
-        if (D_8006B0E4 & (1 << var_a2)) {
-            if (temp_v0 != 0) {
-                *var_a1 = 1;
+    for (i = 0; i < n; i++) {
+        env = D_8006B54C[i].envx;
+        if (D_8006B0E4 & (1 << i)) {
+            if (env) {
+                status[i] = 1;
             } else {
-                *var_a1 = 3;
+                status[i] = 3;
             }
-        } else if (temp_v0 != 0) {
-            *var_a1 = 2;
         } else {
-            *var_a1 = 0;
+            if (env) {
+                status[i] = 2;
+            } else {
+                status[i] = 0;
+            }
         }
-        var_a2 += 1;
-        var_a1 += 1;
-    } while (var_a2 < 0x18);
+    }
 }

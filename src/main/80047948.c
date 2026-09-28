@@ -1,33 +1,29 @@
 /* Exact retail word export for [80047948,800479E8); EXE and assembly verified. */
-#include "psx_types.h"
-#include "m2c_macros.h"
+/* Source: PsyQ library C derived from parasite-eve-decomp (src/main/psyq/libgte/geo_01.c), same PsyQ object; symbols renamed to this build's addresses. Matching build only. */
+/* func_80047948 - byte-exact against retail at -O2 (tools/register_match.py). */
+extern short D_8006D0A8[], D_8006C8A8[], D_8006B8A8[];
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+int func_80047948(int angle) {
+    int value;
 
-extern s32 D_8006B8A8[];
-extern s32 D_8006C8A8[];
-extern s32 D_8006D0A8[];
-
-s16 func_80047948(s32 arg0) {
-    s32 temp_a0;
-    s32 var_a0;
-
-    var_a0 = arg0;
-    if (var_a0 < 0) {
-        var_a0 = -var_a0;
+    if (angle < 0) {
+        angle = (int)(0U - (unsigned int)angle);
     }
-    temp_a0 = var_a0 & 0xFFF;
-    if (temp_a0 < 0x801) {
-        if (temp_a0 < 0x401) {
-            return *(D_8006D0A8 + ((0x400 - temp_a0) * 2));
+
+    angle &= 0xFFF;
+    if (angle < 0x801) {
+        if (angle < 0x401) {
+            return D_8006D0A8[0x400 - angle];
         }
-        return -*(D_8006C8A8 + (temp_a0 * 2));
+
+        value = D_8006C8A8[angle];
+        return -value;
     }
-    if (temp_a0 >= 0xC01) {
-        return *(D_8006B8A8 + (temp_a0 * 2));
+
+    if (angle < 0xC01) {
+        value = D_8006D0A8[0xC00 - angle];
+        return -value;
     }
-    return -*(D_8006D0A8 + ((0xC00 - temp_a0) * 2));
+
+    return D_8006B8A8[angle];
 }

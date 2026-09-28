@@ -2,59 +2,33 @@
  * SHA256(span)=84de3e22cb2e275ee4c3aa2765eda0368a7bdd5104e62d798b56b2318059903b.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8012BA10 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* Vendor names mapped to address-named symbols for the link-by-address harness. */
+#define ratan2 func_8004CFEC
 
-s32 func_8004CFEC(s32, s32);                        /* extern */
-extern s16 D_80126B5E;
-extern s16 D_80126B66;
-
-s32 func_8012BA10(void *arg0, s16 arg1) {
-    s16 temp_s1;
-    s32 temp_a0;
-    s32 temp_lo;
-    s32 temp_lo_2;
-    s32 temp_s1_2;
-    s32 var_v0;
-    s32 var_v0_2;
-    s32 var_v1;
-    s32 var_v1_2;
-
-    temp_s1 = M2C_FIELD(M2C_FIELD(arg0, void **, 0x20), s16 *, 0x12);
-    temp_a0 = (func_8004CFEC(M2C_FIELD(arg0, s16 *, 0xE) - D_80126B66, D_80126B5E - M2C_FIELD(arg0, s16 *, 6)) - 0x400) & 0xFFF;
-    temp_s1_2 = temp_s1 & 0xFFF;
-    if (temp_s1_2 == temp_a0) {
-        return 0;
-    }
-    var_v1 = temp_a0 - temp_s1_2;
-    var_v0_2 = var_v1 < -0x800;
-    if (var_v1 >= 0x801) {
-        var_v1 = temp_a0 - (temp_s1_2 + 0x1000);
-        var_v0_2 = var_v1 < -0x800;
-    }
-    if (var_v0_2 != 0) {
-        var_v1 = temp_a0 - (temp_s1_2 - 0x1000);
-    }
-    if (var_v1 >= 0) {
-        temp_lo = var_v1 / arg1;
-        var_v0 = temp_lo;
-        if (temp_lo == 0) {
-            var_v1_2 = 1;
-            goto block_11;
-        }
-    } else {
-        temp_lo_2 = var_v1 / arg1;
-        var_v0 = temp_lo_2;
-        if (temp_lo_2 == 0) {
-            var_v1_2 = -1;
-block_11:
-            var_v0 = var_v1_2;
-        }
-    }
-    return var_v0;
+/* func_8012BA10 — shared body (overlay slot 0x80128158, h_exact 8bd6fb17). ONE source: instantiated by #include at each
+ * member's site in address order; the members are recorded in config/dedup.us.yaml (Phase 35). */
+extern s32 ratan2(s32 a0, s32 a1);
+s32 func_8012BA10(s32 arg0, s32 arg1) {
+    extern u16 D_80126B5E;
+    extern u16 D_80126B66;
+    register s32 d __asm__("$16");      /* $s0 -- pinned: divisor, live across the jal */
+    register s32 s1ang __asm__("$17");  /* $s1 -- pinned: ptr+0x12 angle, live across the jal */
+    s32 u5; s32 u6; s32 iVar4; s32 q; s32 t;
+    d = arg1;
+    s1ang = *(s16 *)(*(s32 *)(arg0 + 0x20) + 0x12);
+    u5 = (ratan2(*(s16 *)(arg0 + 0xE) - (s16)D_80126B66, (s16)D_80126B5E - *(s16 *)(arg0 + 6)) - 0x400) & 0xFFF;
+    __asm__ __volatile__("" : : "r"(u5));   /* scheduling barrier: anchor u5 before the (s16)d cast */
+    d = (s16)d;
+    u6 = s1ang & 0xFFF;
+    if (u6 == u5) return 0;
+    iVar4 = u5 - u6;
+    if (iVar4 > 0x800) { t = u6 + 0x1000; iVar4 = u5 - t; }
+    if (iVar4 < -0x800) { t = u6 - 0x1000; iVar4 = u5 - t; }
+    if (iVar4 >= 0) { q = iVar4 / d; if (q == 0) q = 1; }
+    else { q = iVar4 / d; if (q == 0) q = -1; }
+    return q;
 }

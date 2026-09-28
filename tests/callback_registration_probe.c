@@ -19,6 +19,7 @@ extern SDL_mutex *g_intrMutex;
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+void musashi_psyx_shutdown(void); /* pc_port/psyx_shutdown.cpp: GL teardown before window */
 
 typedef struct Fixture {
     MusashiBootMemory *memory;
@@ -218,7 +219,7 @@ int main(int argc, char **argv) {
         }
         assert(musashi_psycross_irq_scheduler_uninstall(&runtime.scheduler));
     assert(musashi_psycross_irq_runtime_close(&runtime));
-        PsyX_Shutdown();
+        musashi_psyx_shutdown();
         if (!observed) {
             fputs("callback registration: no live VBlank delivery observed\n", stderr);
             return 1;

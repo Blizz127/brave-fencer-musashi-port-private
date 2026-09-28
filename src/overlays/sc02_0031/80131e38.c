@@ -5,35 +5,25 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80131E38 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL of func_80131E38 (main_0012.s), decoded manually from
- * raw asm (fully visible; NOT verified against retail; C89-gated
- * only, promotion requires an oracle MATCH): s32 result, 0x18
- * frame. Flags byte 0xC1 = 0xF; if (word 0xB4 & 0x40000):
- * word 0x1C = 6, half 0x5C = 0. Tail-calls func_80131CA8(arg0,
- * 0x39) with a0 still live (no a-reg writes precede the jal) and
- * returns its result. Caller-side void* decl per the
- * func_80131D68 precedent. */
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern void func_80131CA8(int a0, int a1);
 
-struct st_80131E38 {
-    u8 pad[0x1C];
-    s32 w1C;
-    u8 pad20[0x3C];
-    u16 h5C;
-    u8 pad5E[0x56];
-    s32 wB4;
-    u8 padB8[0x9];
-    u8 bC1;
-};
-
-extern s32 func_80131CA8(void *arg0, s32 arg1);
-
-s32 func_80131E38(struct st_80131E38 *arg0) {
-    arg0->bC1 = 0xF;
-    if ((arg0->wB4 & 0x40000) != 0) {
-        arg0->w1C = 6;
-        arg0->h5C = 0;
+void func_80131E38(u8 *a0) {
+    *(s8 *)(a0 + 0xC1) = 0xF;
+    if (*(s32 *)(a0 + 0xB4) & 0x40000) {
+        *(s32 *)(a0 + 0x1C) = 6;
+        *(s16 *)(a0 + 0x5C) = 0;
     }
-    return func_80131CA8(arg0, 0x39);
+    func_80131CA8((int)a0, 0x39);
 }

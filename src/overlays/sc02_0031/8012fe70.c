@@ -5,43 +5,38 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8012FE70 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL of func_8012FE70 (main_0012.s), decoded manually from
- * raw asm (0x90 bytes; NOT verified against retail; C89-gated
- * only, promotion requires an oracle MATCH): FCC4-family with
- * unkC1 = 9: word unkC4 & 2 sets unkC1 = 1 and ends with
- * CA8(obj, 3); word unkC4 & 1 calls 31E00(obj, 1) and returns;
- * word unkB4 & 0x200 calls 80131170(obj, 0, 0) (both extra args
- * zeroed in the surrounding delay slots, a0 pass-through), then
- * ends with CA8(obj, 0x1E). */
-
-struct obj_8012FE70 {
-    u8 pad[0xB4];
-    s32 unkB4;
-    u8 pad2[0xC1 - 0xB8];
-    u8 unkC1;
-    u8 pad3[0xC4 - 0xC2];
-    s32 unkC4;
+struct S80131E00 {
+    char pad[0xB0];
+    s32 field_B0;
 };
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern void func_80131E00(struct S80131E00 *a0, s32 a1);
+extern void func_80131170(s32 a0, s32 a1, s32 a2);
+extern void func_80131CA8(int a0, int a1);
 
-extern void func_80131E00(void *arg0, s32 arg1);
-extern void func_80131170(void *arg0, void *arg1, s32 arg2);
-extern void func_80131CA8(void *arg0, s32 arg1);
-
-void func_8012FE70(struct obj_8012FE70 *arg0) {
-    arg0->unkC1 = 9;
-    if (arg0->unkC4 & 2) {
-        arg0->unkC1 = 1;
-        func_80131CA8(arg0, 3);
-        return;
+void func_8012FE70(s32 a0) {
+    s32 v1 = *(s32 *)(a0 + 0xC4);
+    *(u8 *)(a0 + 0xC1) = 9;
+    if (v1 & 2) {
+        *(u8 *)(a0 + 0xC1) = 1;
+        func_80131CA8(a0, 3);
+    } else if (v1 & 1) {
+        func_80131E00((struct S80131E00 *)a0, 1);
+    } else {
+        if (*(s32 *)(a0 + 0xB4) & 0x200) {
+            func_80131170(a0, 0, 0);
+        }
+        func_80131CA8(a0, 0x1E);
     }
-    if (arg0->unkC4 & 1) {
-        func_80131E00(arg0, 1);
-        return;
-    }
-    if (arg0->unkB4 & 0x200) {
-        func_80131170(arg0, 0, 0);
-    }
-    func_80131CA8(arg0, 0x1E);
 }

@@ -5,42 +5,33 @@
  * byte-identical between member 0012 and SC02_031.
  * Not MAIN10.
  */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8012FC30 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* HAND MODEL of func_8012FC30 (main_0012.s), decoded manually from
- * raw asm (NOT verified against retail; C89-gated only,
- * promotion requires an oracle MATCH): unconditionally sets byte
- * unkC1 = 0xA (sb in the beqz delay slot). When word unkB4 &
- * 0x400: calls 31B14(obj) (a0 set in the jal delay slot),
- * zeroes byte unkC2, calls B23C(obj) (unk98 = 0 in its jal delay
- * slot), calls 31A34(obj, 8), then 8002D4C8(0xA74, 0). Ends with
- * CA8(obj, 0x1A). */
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern void func_80131B14();
+extern void func_8012B23C(s32 a0);
+extern s32 func_80131A34(s32, s32);
+extern void func_8002D4C8(s32 a0, s32 a1);
+extern void func_80131CA8(int a0, int a1);
 
-struct obj_8012FC30 {
-    u8 pad[0x98];
-    u16 unk98;
-    u8 pad2[0xB4 - 0x9A];
-    s32 unkB4;
-    u8 pad3[0xC1 - 0xB8];
-    u8 unkC1;
-    u8 unkC2;
-};
-
-extern void func_80131B14(void *arg0);
-extern void func_8012B23C(void *arg0);
-extern s32 func_80131A34(void *arg0, s32 arg1);
-extern void func_8002D4C8(s32 arg0, s32 arg1);
-extern void func_80131CA8(void *arg0, s32 arg1);
-
-void func_8012FC30(struct obj_8012FC30 *arg0) {
-    arg0->unkC1 = 0xA;
-    if (arg0->unkB4 & 0x400) {
-        func_80131B14(arg0);
-        arg0->unkC2 = 0;
-        arg0->unk98 = 0;
-        func_8012B23C(arg0);
-        func_80131A34(arg0, 8);
+void func_8012FC30(s32 a0) {
+    *(s8 *)(a0 + 0xC1) = 0xA;
+    if (*(s32 *)(a0 + 0xB4) & 0x400) {
+        func_80131B14();
+        *(s8 *)(a0 + 0xC2) = 0;
+        *(u16 *)(a0 + 0x98) = 0;
+        func_8012B23C(a0);
+        func_80131A34(a0, 8);
         func_8002D4C8(0xA74, 0);
     }
-    func_80131CA8(arg0, 0x1A);
+    func_80131CA8(a0, 0x1A);
 }

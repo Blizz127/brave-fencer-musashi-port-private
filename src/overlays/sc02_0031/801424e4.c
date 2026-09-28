@@ -1,0 +1,52 @@
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_801424E4 - byte-exact against retail at -O2 (tools/register_match.py). */
+#include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern void func_8012C218(void *a0);
+
+void func_801424E4(short *param_1) {
+
+    extern void (*D_80186094[])(void);
+    short sVar1;
+    int iVar2;
+    register unsigned short t __asm__("$3");
+
+    (*D_80186094[(unsigned short)param_1[1]])();
+    if (*(unsigned short *)param_1 != 0) {
+        if (param_1[0x38] != 0) {
+            iVar2 = *(int *)(param_1 + 0x32);
+            if (iVar2 == 0) {
+                return;
+            }
+            *(int *)(param_1 + 2) = *(int *)(iVar2 + 4);
+            t = (unsigned short)param_1[0x7e];
+            sVar1 = *(unsigned short *)(iVar2 + 10) + t;
+            param_1[5] = sVar1;
+            *(int *)(param_1 + 6) = *(int *)(iVar2 + 0xc);
+        } else {
+            unsigned short a;
+            iVar2 = *(int *)(param_1 + 0x32);
+            if ((iVar2 != 0) && (*(short *)(iVar2 + 0x36) == param_1[0x7f])) {
+                *(int *)(param_1 + 2) = *(int *)(iVar2 + 4);
+                a = *(unsigned short *)(*(volatile int *)(param_1 + 0x32) + 10);
+                __asm__ __volatile__("" : : "r"(a));
+                t = (unsigned short)param_1[0x7e];
+                sVar1 = a + t;
+                iVar2 = *(volatile int *)(param_1 + 0x32);
+                param_1[5] = sVar1;
+                *(int *)(param_1 + 6) = *(int *)(iVar2 + 0xc);
+                return;
+            }
+            ((void (*)(short *))func_8012C218)(param_1);
+        }
+    }
+    return;
+}
