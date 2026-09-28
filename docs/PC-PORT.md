@@ -657,6 +657,23 @@ Routed through `bfm_plat_*` (opt-in; the defaults keep native_boot's own paths):
 | `MUSASHI_AUDIO=bfm_plat` | the SPU core's 44.1 kHz stereo output goes to `bfm_plat_audio` (backend `MUSASHI_AUDIO_BACKEND`, default `openal`; bfm_plat falls back to `null` when the device cannot open, and says so). The null backend drains at the platform clock's audio rate. STOP prints `AUDIO_SINK frames= nonsilent= peak=` and `SPU_KEYON writes=`. Headless: OpenAL Soft's `wave` driver (`ALSOFT_CONF` with `drivers=wave`) records the device output. Default audio (`MUSASHI_AUDIO` unset: SDL; `null`) is unchanged. |
 | `MUSASHI_TIMING=bfm_plat` | with `MUSASHI_GUEST_CLOCK=1` only: each guest VBlank calls `bfm_plat_timing_vsync(1)` (NTSC field pacing, fast-forward, `BFM_EVENT_VSYNC` for mods) in place of `guest_clock_wait`'s throttle; `MUSASHI_UNTHROTTLED` runs uncapped and still emits the events. Refused under host-paced time, which host time already paces. |
 
+## Debug forcing (divergences, off by default)
+
+native_boot writes no guest RAM behind the game's back by default. The
+following pokes run only with `MUSASHI_DEBUG_FORCE=1`, print a
+`DIVERGENCE` line when applied, and all act only after `SCENE1_REACHED`:
+
+| poke | what it bypasses |
+|---|---|
+| player `+0x4D` 2 -> 1 (with auto-dismiss, or after the fade) | the game's own control unlock after the opening dialogue |
+| `0x800B99F0` = 9 | the game-mode selector reaching gameplay by itself |
+| player `+0xA9` = 0x41 | the pad type the game copies every frame from `D_80078D98[port]` (`func_80148648` <- `func_80018C64` <- the pad buffer's ID byte, only when its status byte is 0) |
+
+A headless no-force boot reaches the title (8 `TITLE_LOAD`s, no
+refusals); gameplay, where the pokes would act, is not yet reached
+headless, so what each one covered for is not yet observed.
+`MUSASHI_GAMEPLAY_ACTION` scripted inputs are separate opt-in test drivers.
+
 ## Native lane: running matched decomp C on the host (2026-09-28)
 
 Goal: the port executes byte-matched decomp C (`src/main/<vram>.c`, the

@@ -112,6 +112,21 @@ static const MusashiSpuCdAudioBackend *plat_audio_attach(void) {
 }
 #endif
 
+/* Guest-RAM pokes that bypass the game's own logic are a divergence from
+ * 1:1 behaviour. They run only with MUSASHI_DEBUG_FORCE=1 (a debug switch,
+ * docs/PC-PORT.md "Debug forcing"); each applied poke is logged. */
+static int debug_force(void) {
+    static int cached = -1;
+    if (cached < 0) {
+        const char *v = getenv("MUSASHI_DEBUG_FORCE");
+        cached = v && v[0] == '1';
+        if (cached)
+            fprintf(stderr, "native_boot: DIVERGENCE MUSASHI_DEBUG_FORCE=1: guest RAM "
+                            "pokes enabled (not 1:1)\n");
+    }
+    return cached;
+}
+
 typedef struct NativeBoot {
     MusashiBootMemory memory;
     uint8_t list_tail_before[448];
@@ -1174,9 +1189,9 @@ static int sample_keyboard_pad(void *userdata, uint16_t *buttons) {
                     boot->dialogue_dismissed = 1;
                     boot->dialogue_active = 0;
                     uint8_t *p4d = musashi_boot_ram_span(&boot->memory, 0x80126B58u + 0x4Du, 1);
-                    if (p4d && *p4d == 2 && !getenv("MUSASHI_NO_FORCE")) {
+                    if (p4d && *p4d == 2 && debug_force()) {
                         *p4d = 1;
-                        fprintf(stderr, "native_boot: CONTROL_UNLOCK player unk4D transitioned 2 -> 1 (frame %u)\n",
+                        fprintf(stderr, "native_boot: DIVERGENCE CONTROL_UNLOCK player unk4D transitioned 2 -> 1 (frame %u)\n",
                                 boot->auto_dismiss_ticks);
                     }
                     fprintf(stderr, "native_boot: AUTO_DISMISS dialogue dismissed, player controls unlocked (frame %u)\n",
@@ -1550,8 +1565,9 @@ static int epoch_video_edge(void *userdata, uint64_t sequence, uint64_t cycle) {
                 (void)musashi_boot_read16(&boot->memory, 0x800B99E4u, &a3b4);
                 (void)musashi_boot_read16(&boot->memory, 0x800B99F0u, &mode);
                 (void)musashi_boot_read16(&boot->memory, 0x80126B58u, &act);
-                fprintf(stderr, "native_boot: L1 frame=%u scene=%04x a3b4=%04x mode=%04x p_act=%04x p_4d=%02x\n",
-                        boot->in_game_frames, scene, a3b4, mode, act, p4d ? *p4d : 0);
+                uint8_t *pa9 = musashi_boot_ram_span(&boot->memory, 0x80126B58u + 0xA9u, 1);
+                fprintf(stderr, "native_boot: L1 frame=%u scene=%04x a3b4=%04x mode=%04x p_act=%04x p_4d=%02x p_a9=%02x\n",
+                        boot->in_game_frames, scene, a3b4, mode, act, p4d ? *p4d : 0, pa9 ? *pa9 : 0);
             }
             if (boot->in_game_frames == 1u) {
                 for (int a = 0; a < 10; ++a) {
@@ -1562,20 +1578,24 @@ static int epoch_video_edge(void *userdata, uint64_t sequence, uint64_t cycle) {
             }
             /* Control unlock: Transition p->unk4D from 2 to 1 so func_80159A20 executes */
             uint8_t *p_unk4d = musashi_boot_ram_span(&boot->memory, 0x80126B58u + 0x4Du, 1);
-            if (p_unk4d && *p_unk4d == 2 && !getenv("MUSASHI_NO_FORCE")) {
+            if (p_unk4d && *p_unk4d == 2 && debug_force()) {
                 uint16_t fade = 0;
                 (void)musashi_boot_read16(&boot->memory, 0x800af7ceu, &fade);
                 if (fade >= 256u || boot->dialogue_dismissed || boot->in_game_frames >= 2u) {
                     *p_unk4d = 1;
                     musashi_boot_write16(&boot->memory, 0x800B99F0u, 9u); /* Gameplay mode */
-                    fprintf(stderr, "native_boot: CONTROL_UNLOCK player unk4D transitioned 2 -> 1, mode=9 (fade=%u in_game_frame=%u)\n",
+                    fprintf(stderr, "native_boot: DIVERGENCE CONTROL_UNLOCK player unk4D transitioned 2 -> 1, mode=9 (fade=%u in_game_frame=%u)\n",
                             (unsigned)fade, boot->in_game_frames);
                 }
             }
             /* Controller mode and control unlock in gameplay */
-            if (p_unk4d && *p_unk4d == 1 && !getenv("MUSASHI_NO_FORCE")) {
+            if (p_unk4d && *p_unk4d == 1 && debug_force()) {
                 uint8_t *p_act = musashi_boot_ram_span(&boot->memory, 0x80126B58u, 0x200);
                 if (p_act) {
+                    static int logged;
+                    if (p_act[0xA9] != 0x41u && !logged++)
+                        fprintf(stderr, "native_boot: DIVERGENCE PAD_MODE player+0xA9 %02x -> 41\n",
+                                p_act[0xA9]);
                     *(uint8_t *)(p_act + 0xA9) = 0x41u; /* Digital Pad controller mode */
                     *(uint8_t *)(p_act + 0x4D) = 1u;
                 }
