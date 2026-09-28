@@ -12488,17 +12488,6 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
         if (lane > 0) return 1;
         if (lane < 0) return formatter_refuse0(__LINE__, cpu->pc);
     }
-    /* 8005F704 words still return 80088A48+(a0&0xF0). After 8005F0C8,
-     * D_80072990 is the InitPAD PadInfo (80078A48); PadGetState jalrs
-     * this getter. Use the live record (identity when 72990==80088A48). */
-    if (cpu->pc == 0x8005f704u) {
-        uint32_t base = 0;
-        if (musashi_boot_read32(memory, 0x80072990u, &base) && base != 0) {
-            cpu->r[2] = base + (cpu->r[4] & 0xf0u);
-            cpu->pc = cpu->r[31];
-            cpu->npc = cpu->r[31] + 4u;
-        }
-    }
     if (cpu->pc == 0x80128158u) {
         g_overlay_sc02_0031_words = sc02_entry_matches(memory);
         g_overlay_sc01_0000_words = sc01_entry_matches(memory);

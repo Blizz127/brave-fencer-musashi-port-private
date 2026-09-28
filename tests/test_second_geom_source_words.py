@@ -563,24 +563,18 @@ def test_8005e374_e3ac_unmapped_tap_callees_are_fetched():
     assert "0x8005e34cu" in fmt and "0x8005e3acu" in fmt
 
 
-def test_getpadbuf_returns_live_72990_padinfo():
-    """8005F704 words stay 80088A48; the stepper returns [80072990]+(a0&0xF0).
-
-    After 8005F0C8, 72990 is the InitPAD PadInfo (80078A48). PadGetState
-    (8005D184) jalrs 8005F704; using the live record is identity when
-    72990 is still 80088A48.
-    """
+def test_getpadbuf_runs_the_retail_getter():
+    """8005F704 is lui 0x8008 / addiu 0x8A48: addiu sign-extends, so the retail
+    getter returns 80078A48 (+0xF0 when a0&0xF0), the InitPAD PadInfo itself.
+    The formatter once replaced its return with [80072990]+(a0&0xF0), read
+    from a misdecoded 80088A48; that diverged for port 2 and is gone."""
     fmt = (ROOT / "pc_port/mips_formatter.c").read_text()
     words = exe_words(0x8005F704, 0x8005F70C)
     assert words[0] == 0x3C028008
     assert words[1] == 0x24428A48
-    assert "cpu->pc == 0x8005f704u" in fmt
-    assert "musashi_boot_read32(memory, 0x80072990u" in fmt
-    start = fmt.find("if (cpu->pc == 0x8005f704u)")
-    assert start != -1
-    snippet = fmt[start:start + 500]
-    assert "cpu->r[2] = base + (cpu->r[4] & 0xf0u)" in snippet
-    assert "cpu->pc = cpu->r[31]" in snippet
+    assert (0x80080000 + ((words[1] & 0xFFFF) ^ 0x8000) - 0x8000) == 0x80078A48
+    assert "cpu->pc == 0x8005f704u" not in fmt
+    assert "cpu->r[2] = base + (cpu->r[4] & 0xf0u)" not in fmt
 
 
 def test_overlay_0010_800cfbbc_live_stop_is_dispatched():
