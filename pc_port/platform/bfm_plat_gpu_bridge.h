@@ -16,8 +16,10 @@
  *
  * Two ways to attach it:
  *   tee      the host keeps its GPU model for FIFO/status/DMA semantics and
- *            passes every port write to bfm_gpu_bridge_tap (the model's
- *            rasteriser can then be turned off);
+ *            passes every port write to bfm_gpu_bridge_tap. The model's
+ *            rasteriser is turned off, and its VRAM backend should be too:
+ *            fills/stores are the bridge's job, and reads go to
+ *            bfm_gpu_bridge_read_vram (both paths share one renderer VRAM);
  *   replace  the host routes its GP0/GP1/GPUREAD/GPUSTAT accesses to
  *            bfm_gpu_bridge_write32/read32 directly.
  * Selected at run time by [video] gpu = cpu | bfm_plat
@@ -64,6 +66,10 @@ typedef struct BfmGpuBridge {
     size_t nbatch;
     BfmGpuBridgeStats stats;
     int faulted;
+    /* VRAM as the renderer holds it, for hosts that read pixels back
+     * (bfm_gpu_bridge_read_vram); refreshed after anything was drawn */
+    uint16_t *snap;
+    int snap_dirty;
 } BfmGpuBridge;
 
 void bfm_gpu_bridge_init(BfmGpuBridge *b);
@@ -78,6 +84,13 @@ int bfm_gpu_bridge_tap(void *bridge, uint32_t address, uint32_t value);
 int bfm_gpu_bridge_vblank(BfmGpuBridge *b);
 /* Submits pending prims (done automatically before state changes). */
 int bfm_gpu_bridge_flush(BfmGpuBridge *b);
+/* One VRAM pixel as the renderer holds it: for a host GPU model whose
+ * rasteriser is off (tee mode) but that still answers VRAM reads (C0
+ * StoreImage, VRAM copies). The whole VRAM is downloaded once and reused
+ * until something is drawn, filled, uploaded or copied again. Returns 1. */
+int bfm_gpu_bridge_read_vram(BfmGpuBridge *b, uint16_t x, uint16_t y, uint16_t *pixel);
+/* GP1 03 display enable state (reset: disabled). */
+int bfm_gpu_bridge_display_enabled(const BfmGpuBridge *b);
 /* [video] gpu = bfm_plat */
 int bfm_gpu_bridge_selected(const BfmPlatConfig *cfg);
 

@@ -1088,6 +1088,38 @@ int bfm_gl_ref_draw(BfmGlVram *v, const BfmPlatDrawEnv *env, const BfmPlatPrim *
                                           ((uint32_t)p->v[0].b << 16)));
         return r.w * r.h;
     }
+    if (p->kind == BFM_PRIM_LINE_F || p->kind == BFM_PRIM_LINE_G) {
+        /* Bresenham with inclusive endpoints (the stepping native_boot's GPU
+         * controller uses), flat colour of v0, clipped to the drawing area */
+        int lx0 = p->v[0].x + env->offset_x, ly0 = p->v[0].y + env->offset_y;
+        int lx1 = p->v[1].x + env->offset_x, ly1 = p->v[1].y + env->offset_y;
+        int dx = lx1 >= lx0 ? lx1 - lx0 : lx0 - lx1, dy = ly1 >= ly0 ? ly1 - ly0 : ly0 - ly1;
+        int stx = lx0 < lx1 ? 1 : -1, sty = ly0 < ly1 ? 1 : -1, err = dx - dy, e2;
+        uint16_t front = (uint16_t)((p->v[0].r >> 3) | ((p->v[0].g >> 3) << 5) |
+                                    ((p->v[0].b >> 3) << 10));
+        int ln_semi = (p->flags & BFM_PRIM_FLAG_SEMI_TRANS) != 0;
+        int ln_mset = (p->flags & BFM_PRIM_FLAG_MASK_SET) != 0;
+        int ln_mcheck = (p->flags & BFM_PRIM_FLAG_MASK_CHECK) != 0;
+        int ln_abr = bfm_gl_decode_tpage(p->tpage).abr;
+        for (;;) {
+            if (lx0 >= env->clip.x && lx0 < env->clip.x + env->clip.w &&
+                ly0 >= env->clip.y && ly0 < env->clip.y + env->clip.h &&
+                lx0 >= 0 && lx0 < BFM_GL_VRAM_W && ly0 >= 0 && ly0 < BFM_GL_VRAM_H) {
+                uint16_t *d = ref_px(v, lx0, ly0), f = front;
+                if (!(ln_mcheck && (*d & 0x8000u))) {
+                    if (ln_semi) f = bfm_gl_blend_ref(ln_abr, (uint16_t)(*d & 0x7FFF), f);
+                    *d = (uint16_t)(f | (ln_mset ? 0x8000u : 0));
+                    n++;
+                }
+            }
+            if (lx0 == lx1 && ly0 == ly1) break;
+            e2 = 2 * err;
+            if (e2 > -dy) { err -= dy; lx0 += stx; }
+            if (e2 < dx) { err += dx; ly0 += sty; }
+        }
+        bfm_gl_vram_mark(v, 0, 0, BFM_GL_VRAM_W, BFM_GL_VRAM_H);
+        return n;
+    }
     if (p->kind != BFM_PRIM_TILE && p->kind != BFM_PRIM_SPRITE) return 0;
     textured = p->kind == BFM_PRIM_SPRITE;
     semi = (p->flags & BFM_PRIM_FLAG_SEMI_TRANS) != 0;

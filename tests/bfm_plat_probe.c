@@ -1781,6 +1781,13 @@ static void fill_sincos_table(void) {
     }
 }
 
+static void fill_atan_table(void) {
+    /* synthetic (not the retail data): round(atan(i / 1024) * 2048 / pi) */
+    unsigned i;
+    for (i = 0; i < 1026; i++)
+        put16(0x80071F1C + 2 * i, (uint16_t)(int16_t)lround(atan((double)i / 1024.0) * 2048.0 / 3.141592653589793));
+}
+
 static int group_libgte(void) {
     static const int16_t angles[][3] = {{0, 0, 0}, {0, 0, 1024}, {512, -300, 77}, {-4000, 4095, -1},
                                         {1234, 2345, 3456}, {-2048, -1024, 2048}};
@@ -1803,6 +1810,31 @@ static int group_libgte(void) {
         for (i = 0; i < 9; i++) printf(" %d", (int)(int16_t)(ram[0x1100 + 2 * i] | (ram[0x1101 + 2 * i] << 8)));
         printf("\n");
         CHECK(ram[0x1112] == 0xEE && r32(0x80001114) == 0xEEEEEEEE);
+    }
+    /* RotMatrixX/Y/Z multiply m in place (rows combined from the originals) */
+    fill_atan_table();
+    {
+        static const int32_t axis_angles[] = {0, 1024, -300, 4095, -4097, 77};
+        unsigned a, ax;
+        for (ax = 0; ax < 3; ax++)
+            for (a = 0; a < sizeof axis_angles / sizeof axis_angles[0]; a++) {
+                static const char *names[3] = {"RotMatrixX", "RotMatrixY", "RotMatrixZ"};
+                for (i = 0; i < 9; i++) put16(0x80002200 + 2 * i, (uint16_t)(int16_t)(1100 * (int)i - 4000));
+                CHECK(call(names[ax], (uint32_t)axis_angles[a], 0x80002200, 0, 0) && R[2] == 0x80002200);
+                printf("%s %d:", names[ax], axis_angles[a]);
+                for (i = 0; i < 9; i++) printf(" %d", (int)(int16_t)(ram[0x2200 + 2 * i] | (ram[0x2201 + 2 * i] << 8)));
+                printf("\n");
+            }
+    }
+    {   /* ratan2(y, x) */
+        static const int32_t yx[][2] = {{1, 1}, {0, 5}, {5, 0}, {0, 0}, {-3, 7}, {3, -7}, {-3, -7},
+                                        {100, 37}, {37, 100}, {0x3000000, 0x2000001},
+                                        {0x2000001, 0x3000000}, {-1, -1000000}, {1000000, 1}};
+        for (k = 0; k < sizeof yx / sizeof yx[0]; k++) {
+            CHECK(call("ratan2", (uint32_t)yx[k][0], (uint32_t)yx[k][1], 0, 0));
+            printf("ratan2 %d %d: %d\n", yx[k][0], yx[k][1], (int)(int32_t)R[2]);
+        }
+        CHECK(!call("ratan2", 0x80000000u, 1, 0, 0));   /* INT_MIN: retail code decides */
     }
     /* ScaleMatrix: column scaling; m[2][2] writes its whole word */
     for (i = 0; i < 9; i++) put16(0x80002000 + 2 * i, (uint16_t)(int16_t)(1000 * (int)i - 3000));

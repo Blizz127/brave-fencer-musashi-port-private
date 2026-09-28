@@ -886,7 +886,48 @@ bfm.on("frame_end", function() if seen.late == nil then
             m[6] = -mul12(sy, cz) + mul12(t, sz)
             return [s16(v) for v in m]
 
+        def rot_axis(m, ang, rp, rq, neg):   # retail RotMatrixX/Y/Z
+            s, c = sincos(ang)
+            t = -s if neg else s
+            m = list(m)
+            p = m[rp * 3:rp * 3 + 3]
+            q = m[rq * 3:rq * 3 + 3]
+            for j in range(3):
+                m[rp * 3 + j] = s16(s32(c * p[j] - t * q[j]) >> 12)
+                m[rq * 3 + j] = s16(s32(t * p[j] + c * q[j]) >> 12)
+            return m
+
+        atan = [int(math.floor(math.atan(i / 1024) * 2048 / math.pi + 0.5)) for i in range(1026)]
+
+        def ratan2(y, x):   # retail func_8004CFEC
+            nx, ny = x < 0, y < 0
+            x, y = abs(x), abs(y)
+            if x == 0 and y == 0:
+                return 0
+            def div(a, b):
+                return int(a / b)   # truncation, positive operands
+            if y < x:
+                idx = div(y, x >> 10) if y & 0x7FE00000 else div(y << 10, x)
+                v = atan[idx]
+            else:
+                idx = div(x, y >> 10) if x & 0x7FE00000 else div(x << 10, y)
+                v = 0x400 - atan[idx]
+            if nx:
+                v = 0x800 - v
+            if ny:
+                v = -v
+            return v
+
         out = self.run_probe("libgte")
+        base = [1100 * i - 4000 for i in range(9)]
+        for name, rp, rq, neg in (("RotMatrixX", 1, 2, False), ("RotMatrixY", 0, 2, True),
+                                  ("RotMatrixZ", 0, 1, False)):
+            for ang in (0, 1024, -300, 4095, -4097, 77):
+                want = " ".join(map(str, rot_axis(base, ang, rp, rq, neg)))
+                self.assertIn("%s %d: %s" % (name, ang, want), out)
+        for y, x in ((1, 1), (0, 5), (5, 0), (0, 0), (-3, 7), (3, -7), (-3, -7), (100, 37), (37, 100),
+                     (0x3000000, 0x2000001), (0x2000001, 0x3000000), (-1, -1000000), (1000000, 1)):
+            self.assertIn("ratan2 %d %d: %d" % (y, x, ratan2(y, x)), out)
         for ang in ((0, 0, 0), (0, 0, 1024), (512, -300, 77), (-4000, 4095, -1),
                     (1234, 2345, 3456), (-2048, -1024, 2048)):
             want = " ".join(str(v) for v in rotmatrix(*ang))
@@ -990,10 +1031,7 @@ bfm.on("frame_end", function() if seen.late == nil then
             str(psyc / "src/psx/INLINE_C.C")], "inline_c.o")
         cc(["g++", "-c", "-O1", "-w", *inc, str(psyc / "src/gte/PsyX_GTE.cpp")], "gte.o")
         cc(["g++", "-c", "-O1", "-w", *inc, str(psyc / "src/gte/half_float.cpp")], "half.o")
-        # BFM_PSYQ_PSYCROSS_ROTMATRIX: the probe also checks the table-backed
-        # PsyCross wrappers the shipped build leaves to the retail code.
         cc(["gcc", "-c", "-std=gnu11", "-Wall", "-Wextra", "-Werror", "-DBFM_PLAT_WITH_PSYCROSS",
-            "-DBFM_PSYQ_PSYCROSS_ROTMATRIX",
             "-include", "assert.h", "-I", str(PLAT), "-I", str(psyc / "include"),
             str(PLAT / "psyq/psyq_psycross.c")], "psyq_psycross.o")
         # only the compat table sees BFM_PLAT_WITH_PSYCROSS (the core would also try to

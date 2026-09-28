@@ -729,10 +729,9 @@ for the call). `MUSASHI_PSYQ_LANE` selects the classes:
 
 Rows the differential probe found to differ from the retail code are held
 back by PC (`kHeldBack`, with the reason; empty since port-plat 7935600a2). A wrapper that refuses leaves the
-interpreter to run the retail code, as does every table-backed PsyCross
-wrapper (ratan2, RotMatrixX/Y/Z/YXZ) unless `BFM_PSYQ_PSYCROSS_ROTMATRIX`:
-PsyCross's tables equal the game's, and linking them would put retail bytes
-in the binary.
+interpreter to run the retail code. ratan2 and RotMatrix* are exact HLE over
+the game's own tables in guest RAM, not PsyCross's copies: those equal the
+game's data and would put retail bytes in the binary (retail_content_guard).
 
 Bisecting: `MUSASHI_NATIVE_LANE_RANGE=lo-hi` (hex, hi exclusive) keeps only
 those guest PCs, and `MUSASHI_NATIVE_LANE_DENY=pc,pc,...` drops PCs. The

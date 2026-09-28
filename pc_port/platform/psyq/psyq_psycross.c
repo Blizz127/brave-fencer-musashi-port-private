@@ -44,39 +44,10 @@ static void put32(uint32_t addr, int32_t v) {
 
 /* ---- stateless ---- */
 
-/* PsyCross's ratan2 carries its own copy of the game's arctangent table
- * (retail_content_guard); same switch as the RotMatrix* wrappers below. */
-#ifdef BFM_PSYQ_PSYCROSS_ROTMATRIX
-int bfm_psyq_ratan2(uint32_t *r) {
-    r[2] = (uint32_t)ratan2((int)(int32_t)A(0), (int)(int32_t)A(1));
-    return 1;
-}
-#else
-int bfm_psyq_ratan2(uint32_t *r) { (void)r; return 0; }
-#endif
+/* ratan2 and RotMatrixX/Y/Z are exact HLE in bfm_psyq_libgte.c over the
+ * guest's own tables: linking PsyCross's versions would pull LIBGTE.C's
+ * rcossin/ratan tables (identical to the game's) into the port. */
 
-#define ROT1(fn, name)                                                   \
-    int name(uint32_t *r) {                                              \
-        MATRIX *m = (MATRIX *)P(A(1), sizeof(MATRIX));                   \
-        if (!m) return 0;                                                \
-        fn((int)(int32_t)A(0), m);                                       \
-        r[2] = A(1);                                                     \
-        return 1;                                                        \
-    }
-/* PsyCross's RotMatrix* read its own copy of the sin/cos table, which is
- * the game's data: linking them puts retail bytes in the port binary
- * (retail_content_guard). Off unless BFM_PSYQ_PSYCROSS_ROTMATRIX: the wrappers
- * refuse and the interpreter runs the retail code on the game's own table. */
-#ifdef BFM_PSYQ_PSYCROSS_ROTMATRIX
-ROT1(RotMatrixX, bfm_psyq_RotMatrixX)
-ROT1(RotMatrixY, bfm_psyq_RotMatrixY)
-ROT1(RotMatrixZ, bfm_psyq_RotMatrixZ)
-
-#else
-int bfm_psyq_RotMatrixX(uint32_t *r) { (void)r; return 0; }
-int bfm_psyq_RotMatrixY(uint32_t *r) { (void)r; return 0; }
-int bfm_psyq_RotMatrixZ(uint32_t *r) { (void)r; return 0; }
-#endif
 /* RotMatrixYXZ is exact in bfm_psyq_libgte.c: PsyCross's differs from the
  * retail code by 1-2 in some entries. */
 
