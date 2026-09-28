@@ -1,6 +1,7 @@
 #include "bfm_plat_renderer.h"
 #include "bfm_plat_mods.h"
 
+#include <stdlib.h>
 #include <string.h>
 
 #define MAX_BACKENDS 8
@@ -180,9 +181,31 @@ int bfm_plat_renderer_upload_vram(const BfmPlatRect *r, const uint16_t *px) {
     stats.uploads++;
     bfm_plat_mods_observe_texture(r, px);
     if (bfm_plat_mods_replace_texture(r, px, &img) == BFM_PLAT_OK) {
-        stats.replaced_uploads++;
-        if (active->upload_replacement)
+        if (active->upload_replacement) {
+            stats.replaced_uploads++;
             return active->upload_replacement(active->self, r, px, &img);
+        }
+        /* No HD path: a same-size replacement is folded back into 15-bit
+         * VRAM so PS1-accurate backends still show it. Larger ones need a
+         * backend with upload_replacement. */
+        if (img.width == (uint32_t)r->w && img.height == (uint32_t)r->h &&
+            active->upload_vram) {
+            size_t i, n = (size_t)r->w * (size_t)r->h;
+            uint16_t *conv = (uint16_t *)malloc(n * 2u);
+            if (conv) {
+                int res;
+                for (i = 0; i < n; i++) {
+                    const uint8_t *c = img.rgba + i * 4u;
+                    conv[i] = c[3] == 0 ? 0 : (uint16_t)(
+                        (c[0] >> 3) | ((c[1] >> 3) << 5) | ((c[2] >> 3) << 10) |
+                        (((c[0] | c[1] | c[2]) >> 3) == 0 ? 0x8000u : 0u));
+                }
+                res = active->upload_vram(active->self, r, conv);
+                free(conv);
+                stats.replaced_uploads++;
+                return res;
+            }
+        }
     }
     return active->upload_vram ? active->upload_vram(active->self, r, px)
                                : BFM_PLAT_UNSUPPORTED;
