@@ -59,11 +59,15 @@ typedef struct BfmPlatVertex {
 
 #define BFM_PRIM_FLAG_SEMI_TRANS 0x01u
 #define BFM_PRIM_FLAG_RAW_TEXTURE 0x02u  /* no colour modulation */
+/* GP0 E6 mask state in effect for the primitive: set bit 15 on every pixel
+ * written / leave pixels whose bit 15 is set untouched. */
+#define BFM_PRIM_FLAG_MASK_SET 0x04u
+#define BFM_PRIM_FLAG_MASK_CHECK 0x08u
 
 typedef struct BfmPlatPrim {
     uint8_t kind;              /* BfmPlatPrimKind */
     uint8_t flags;
-    uint16_t tpage;            /* textured prims */
+    uint16_t tpage;            /* texpage (E1) in effect; abr applies to all */
     uint16_t clut;
     uint16_t w, h;             /* TILE / SPRITE / FILL */
     uint32_t depth;            /* ordering-table slot, for sorting renderers */

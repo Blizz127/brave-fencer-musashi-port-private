@@ -338,6 +338,15 @@ static void uv(BfmPlatVertex *v, uint32_t w) {
     v->u = (uint8_t)w; v->v = (uint8_t)(w >> 8);
 }
 
+/* *tpage is the GP0 draw state carried across packets: bits 0-13 the E1
+ * texpage, bit 14 E6 mask-set, bit 15 E6 mask-check. Every prim gets the
+ * texpage in effect (untextured prims need its abr) and the mask flags. */
+#define STATE_TPAGE(s) ((uint16_t)((s) & 0x3FFFu))
+static uint8_t state_mask_flags(uint16_t s) {
+    return (uint8_t)(((s & 0x4000u) ? BFM_PRIM_FLAG_MASK_SET : 0) |
+                     ((s & 0x8000u) ? BFM_PRIM_FLAG_MASK_CHECK : 0));
+}
+
 size_t bfm_psyq_decode_packet(const uint32_t *w, size_t n, uint16_t *tpage,
                               BfmPlatPrim *out, size_t max) {
     size_t i = 0, count = 0;
@@ -356,7 +365,9 @@ size_t bfm_psyq_decode_packet(const uint32_t *w, size_t n, uint16_t *tpage,
                                         : (tex ? (quad ? BFM_PRIM_POLY_FT4 : BFM_PRIM_POLY_FT3)
                                                : (quad ? BFM_PRIM_POLY_F4 : BFM_PRIM_POLY_F3)));
             p->flags = (uint8_t)(((code & 2) ? BFM_PRIM_FLAG_SEMI_TRANS : 0) |
-                                 ((tex && (code & 1)) ? BFM_PRIM_FLAG_RAW_TEXTURE : 0));
+                                 ((tex && (code & 1)) ? BFM_PRIM_FLAG_RAW_TEXTURE : 0) |
+                                 state_mask_flags(*tpage));
+            p->tpage = STATE_TPAGE(*tpage);
             {
                 size_t j = i + 1;
                 for (k = 0; k < nv; k++) {
@@ -371,6 +382,10 @@ size_t bfm_psyq_decode_packet(const uint32_t *w, size_t n, uint16_t *tpage,
                     }
                 }
                 i = j;
+                /* a textured polygon's texpage becomes the current one */
+                if (tex)
+                    *tpage = (uint16_t)((*tpage & 0xC000u) | (p->tpage & 0x09FFu) |
+                                        (*tpage & 0x3600u));
             }
             count++;
         } else if (code >= 0x40 && code < 0x60) {          /* lines */
@@ -394,7 +409,9 @@ size_t bfm_psyq_decode_packet(const uint32_t *w, size_t n, uint16_t *tpage,
                     p = &out[count++];
                     memset(p, 0, sizeof *p);
                     p->kind = (uint8_t)(gouraud ? BFM_PRIM_LINE_G : BFM_PRIM_LINE_F);
-                    p->flags = (uint8_t)((code & 2) ? BFM_PRIM_FLAG_SEMI_TRANS : 0);
+                    p->flags = (uint8_t)(((code & 2) ? BFM_PRIM_FLAG_SEMI_TRANS : 0) |
+                                         state_mask_flags(*tpage));
+                    p->tpage = STATE_TPAGE(*tpage);
                     p->v[0] = a;
                     p->v[1] = b;
                 }
@@ -409,13 +426,14 @@ size_t bfm_psyq_decode_packet(const uint32_t *w, size_t n, uint16_t *tpage,
             if (i + need > n) break;
             p->kind = (uint8_t)(tex ? BFM_PRIM_SPRITE : BFM_PRIM_TILE);
             p->flags = (uint8_t)(((code & 2) ? BFM_PRIM_FLAG_SEMI_TRANS : 0) |
-                                 ((tex && (code & 1)) ? BFM_PRIM_FLAG_RAW_TEXTURE : 0));
+                                 ((tex && (code & 1)) ? BFM_PRIM_FLAG_RAW_TEXTURE : 0) |
+                                 state_mask_flags(*tpage));
+            p->tpage = STATE_TPAGE(*tpage);
             col(&p->v[0], cmd);
             vtx(&p->v[0], w[j++]);
             if (tex) {
                 uv(&p->v[0], w[j]);
                 p->clut = (uint16_t)(w[j] >> 16);
-                p->tpage = *tpage;
                 j++;
             }
             if (size == 0) {
@@ -437,9 +455,13 @@ size_t bfm_psyq_decode_packet(const uint32_t *w, size_t n, uint16_t *tpage,
             i += 3;
             count++;
         } else if (code == 0xE1) {                        /* texpage */
-            *tpage = (uint16_t)(cmd & 0xFFFFu);
+            *tpage = (uint16_t)((*tpage & 0xC000u) | (cmd & 0x3FFFu));
             i++;
-        } else if (code == 0x00 || code == 0x01 || (code >= 0xE2 && code <= 0xE6)) {
+        } else if (code == 0xE6) {                        /* mask bit setting */
+            *tpage = (uint16_t)((*tpage & 0x3FFFu) | ((cmd & 1u) ? 0x4000u : 0) |
+                                ((cmd & 2u) ? 0x8000u : 0));
+            i++;
+        } else if (code == 0x00 || code == 0x01 || (code >= 0xE2 && code <= 0xE5)) {
             i++;                                          /* nop, cache, env words: renderer env comes from PutDrawEnv */
         } else {
             stats.unknown_commands++;

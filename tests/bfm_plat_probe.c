@@ -1588,6 +1588,24 @@ static int group_psyq(int argc, char **argv) {
               p[1].flags == BFM_PRIM_FLAG_RAW_TEXTURE && p[1].v[0].u == 8 && p[1].v[0].r == 0x33);
         CHECK(bfm_psyq_decode_packet(w, 5, &tp, p, 4) == 0);   /* truncated FT4 */
     }
+    /* draw state: E6 mask bits and the texpage reach untextured prims; a
+     * textured polygon's texpage becomes current */
+    {
+        uint32_t w[] = {0xE6000003, 0x22102030, 0x00000000, 0x00000010, 0x00100000,
+                        0xE6000001, 0x2C808080, 0x00000000, 0x7FC00000, 0x00000010,
+                        0x00400010, 0x00100000, 0x00001000, 0x00100010, 0x00001010,
+                        0x62102030, 0x00000000, 0x00040004};
+        BfmPlatPrim p[4];
+        uint16_t tp = 0x0020;   /* abr 1 from an earlier E1 */
+        CHECK(bfm_psyq_decode_packet(w, 18, &tp, p, 4) == 3);
+        CHECK(p[0].kind == BFM_PRIM_POLY_F3 && p[0].tpage == 0x0020 &&
+              p[0].flags == (BFM_PRIM_FLAG_SEMI_TRANS | BFM_PRIM_FLAG_MASK_SET | BFM_PRIM_FLAG_MASK_CHECK));
+        CHECK(p[1].kind == BFM_PRIM_POLY_FT4 && p[1].tpage == 0x0040 &&
+              p[1].flags == BFM_PRIM_FLAG_MASK_SET);
+        CHECK(p[2].kind == BFM_PRIM_TILE && p[2].tpage == 0x0040 &&
+              p[2].flags == (BFM_PRIM_FLAG_SEMI_TRANS | BFM_PRIM_FLAG_MASK_SET));
+        CHECK(tp == (0x4000 | 0x0040));
+    }
 
     /* libcd */
     CHECK(call("CdIntToPos", 16, 0x80060000, 0, 0) && ram[0x60000] == 0x00 && ram[0x60001] == 0x02 && ram[0x60002] == 0x16);
