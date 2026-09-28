@@ -15,6 +15,7 @@
 #include <stdint.h>
 
 typedef enum BfmPlatResult {
+    BFM_PLAT_PAUSED = 1,        /* bfm_plat_frame_begin: don't advance the game */
     BFM_PLAT_OK = 0,
     BFM_PLAT_ERROR = -1,
     BFM_PLAT_UNSUPPORTED = -2,

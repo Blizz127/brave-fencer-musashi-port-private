@@ -8,7 +8,7 @@
  * Windows). A missing file is not an error; defaults apply.
  *
  *   [video]    widescreen, internal_scale, window_width, window_height,
- *              fullscreen, frame_rate (30|60), vsync
+ *              fullscreen, frame_rate (30|60), vsync, screenshot_dir
  *   [timing]   fast_forward_speed (x real speed, 0 = uncapped),
  *              fast_forward_toggle (0 hold / 1 toggle)
  *   [backends] renderer, audio, input, storage   (backend names)
@@ -44,6 +44,7 @@ typedef struct BfmPlatConfig {
     int fullscreen;
     int frame_rate;          /* 30 (retail pacing) or 60 (interpolated) */
     int vsync;
+    char screenshot_dir[BFM_PLAT_PATH_MAX];
     /* timing */
     double fast_forward_speed;
     int fast_forward_toggle;

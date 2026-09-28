@@ -28,6 +28,7 @@
 #include "bfm_plat_console.h"
 #include "bfm_plat_console_ui.h"
 #include "bfm_plat_events.h"
+#include "bfm_plat_image.h"
 
 typedef struct BfmPlatStatus {
     const char *renderer;
@@ -49,8 +50,29 @@ int bfm_plat_init(const BfmPlatConfig *cfg);
 void bfm_plat_shutdown(void);
 BfmPlatConfig *bfm_plat_config(void);
 
+/* Returns BFM_PLAT_PAUSED while paused: the caller skips its game logic and
+ * still calls bfm_plat_frame_end (which presents, draws "PAUSED" and paces
+ * without emitting FRAME_END). */
 int bfm_plat_frame_begin(void);
 int bfm_plat_frame_end(unsigned vsync_fields);
+/* Blocking form for call sites that cannot skip a frame (the FRAME_BEGIN
+ * hook site inside the game's own loop): loops frame_end/frame_begin while
+ * paused, so the game does not advance. Returns once running (or quitting). */
+int bfm_plat_frame_wait(void);
+/* End-of-frame work for the FRAME_END hook site: pending screenshot,
+ * FRAME_END (cheats) unless paused, overlays. No present, no pacing. */
+int bfm_plat_frame_hook_end(void);
+
+/* Hotkey actions, also exposed as console commands pause/screenshot/quit. */
+void bfm_plat_pause(int paused);
+int bfm_plat_is_paused(void);
+void bfm_plat_request_screenshot(void);
+/* Reads the current display area back from the renderer and writes a PNG
+ * (path NULL: next free [video] screenshot_dir/bfm_NNNNN.png). */
+int bfm_plat_screenshot(const char *path, char *out_path, size_t out_size);
+const char *bfm_plat_last_screenshot(void);
+int bfm_plat_quit_requested(void);
+void bfm_plat_request_quit(void);
 void bfm_plat_status(BfmPlatStatus *out);
 
 /* Events the runtime emits from the native dispatch table. */

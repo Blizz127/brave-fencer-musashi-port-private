@@ -80,6 +80,11 @@ static const BfmPlatRendererBackend *backends[MAX_BACKENDS] = {&null_backend};
 static unsigned backend_count = 1;
 static const BfmPlatRendererBackend *active;
 static BfmPlatRendererStats stats;
+static BfmPlatDispEnv last_disp = {{0, 0, 320, 240}, {0, 0, 256, 240}, 0, 0};
+
+void bfm_plat_renderer_last_disp_env(BfmPlatDispEnv *out) {
+    if (out) *out = last_disp;
+}
 
 const uint16_t *bfm_plat_renderer_null_vram(void) { return null_vram; }
 
@@ -157,6 +162,7 @@ int bfm_plat_renderer_set_disp_env(const BfmPlatDispEnv *e) {
     REQUIRE_ACTIVE();
     if (!e) return BFM_PLAT_INVALID;
     stats.disp_envs++;
+    last_disp = *e;
     return active->set_disp_env ? active->set_disp_env(active->self, e)
                                 : BFM_PLAT_UNSUPPORTED;
 }
@@ -244,4 +250,8 @@ void bfm_plat_renderer_reset(void) {
     bfm_plat_renderer_close();
     backend_count = 1;
     memset(&stats, 0, sizeof stats);
+    last_disp.disp.x = last_disp.disp.y = 0;
+    last_disp.disp.w = 320;
+    last_disp.disp.h = 240;
+    last_disp.rgb24 = 0;
 }

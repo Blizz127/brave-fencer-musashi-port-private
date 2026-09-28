@@ -148,6 +148,8 @@ int bfm_plat_renderer_download_vram(const BfmPlatRect *rect,
 int bfm_plat_renderer_present(void);
 int bfm_plat_renderer_overlay_text(int x, int y, const char *text);
 void bfm_plat_renderer_stats(BfmPlatRendererStats *out);
+/* The last display environment set (default 0,0 320x240, 15-bit). */
+void bfm_plat_renderer_last_disp_env(BfmPlatDispEnv *out);
 
 /* Rect must be non-empty and inside 1024x512 VRAM. */
 int bfm_plat_rect_valid(const BfmPlatRect *rect);

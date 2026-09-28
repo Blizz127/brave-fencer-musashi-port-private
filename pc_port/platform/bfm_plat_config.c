@@ -29,6 +29,7 @@ void bfm_plat_config_defaults(BfmPlatConfig *cfg) {
     copy_str(cfg->input, sizeof cfg->input, "host");
     copy_str(cfg->storage, sizeof cfg->storage, "image");
     copy_str(cfg->save_dir, sizeof cfg->save_dir, "saves");
+    copy_str(cfg->screenshot_dir, sizeof cfg->screenshot_dir, "screenshots");
     cfg->mods_enabled = 1;
     copy_str(cfg->mod_dirs, sizeof cfg->mod_dirs, "mods");
     copy_str(cfg->dump_dir, sizeof cfg->dump_dir, "dump");
@@ -124,6 +125,7 @@ int bfm_plat_config_set(BfmPlatConfig *cfg, const char *key,
     else if (strcmp(key, "video.window_height") == 0) r = set_int(&cfg->window_height, value, 240, 16384);
     else if (strcmp(key, "video.fullscreen") == 0) r = set_bool(&cfg->fullscreen, value);
     else if (strcmp(key, "video.vsync") == 0) r = set_bool(&cfg->vsync, value);
+    else if (strcmp(key, "video.screenshot_dir") == 0) r = set_path(cfg->screenshot_dir, sizeof cfg->screenshot_dir, value);
     else if (strcmp(key, "video.frame_rate") == 0) {
         long v;
         if (bfm_plat_ini_long(value, &v) && (v == 30 || v == 60)) cfg->frame_rate = (int)v;
@@ -277,9 +279,10 @@ int bfm_plat_config_save_file(const BfmPlatConfig *c, const char *path) {
     fprintf(f, "; Brave Fencer Musashi PC port configuration\n\n");
     fprintf(f, "[video]\nwidescreen = %d\ninternal_scale = %d\n"
                "window_width = %d\nwindow_height = %d\nfullscreen = %d\n"
-               "frame_rate = %d\nvsync = %d\n\n",
+               "frame_rate = %d\nvsync = %d\nscreenshot_dir = %s\n\n",
             c->widescreen, c->internal_scale, c->window_width,
-            c->window_height, c->fullscreen, c->frame_rate, c->vsync);
+            c->window_height, c->fullscreen, c->frame_rate, c->vsync,
+            c->screenshot_dir);
     fprintf(f, "[timing]\nfast_forward_speed = %g\nfast_forward_toggle = %d\n\n",
             c->fast_forward_speed, c->fast_forward_toggle);
     fprintf(f, "[backends]\nrenderer = %s\naudio = %s\ninput = %s\n"
