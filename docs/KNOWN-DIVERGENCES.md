@@ -63,17 +63,20 @@ Shadowing:
 
 | ID | Divergence | Where | Why | Status |
 |----|------------|-------|-----|--------|
-| D-001 | **Guest RAM is forced by default once the game is in play.** When scene 1 is reached (320x240 display, more than 800 GTE writes), the host writes the player object at 0x80126B58: `unk4D` goes 2 → 1 and the mode word 0x800B99F0 becomes 9 (gameplay). After that, every frame writes `+0xA9 = 0x41` (digital pad mode) and `+0x4D = 1`. Retail sets these itself. | `pc_port/native_boot.c`, "Control unlock", about lines 1606-1625 | It was a workaround to reach player control while the boot path was incomplete. It runs unless `MUSASHI_NO_FORCE` is set, so it is on by default. | open, and it must become opt-in or be removed |
-| D-002 | The auto-start and auto-dismiss paths (`MUSASHI_BOOT_AUTO_START`, `MUSASHI_AUTO_DISMISS`, which `--headless` and `--frames` both set) inject pad presses at chosen phases and also force `unk4D` (the same write as D-001). | `native_boot.c` about lines 1164-1235, 3796-3810 | For headless tests. | opt-in, but `--headless` turns it on; the `unk4D` write is a RAM change, not input |
-| D-003 | Host code shadows guest functions: at 0x8005F704 (the pad-record getter) the interpreter returns `0x80088A48 + (a0 & 0xF0)` or the live `D_80072990` record without running the retail instructions. | `pc_port/mips_formatter.c`, formatter_step | A boot-path workaround. | open; no differential |
+| D-001 | Guest RAM was forced by default once the game was in play: player `unk4D` 2 → 1, the mode word 0x800B99F0 = 9, and every frame player `+0xA9 = 0x41` (pad type) and `+0x4D = 1`. **Fixed on `port/native-lane` in b3b33befd.** Nothing is forced by default now. The same pokes run only with `MUSASHI_DEBUG_FORCE=1` (see D-005), and `MUSASHI_NO_FORCE` is removed. | `pc_port/native_boot.c` | Workaround from before the boot path was complete. | fixed on port/native-lane (merge into this branch pending) |
+| D-002 | The auto-start and auto-dismiss paths (`MUSASHI_BOOT_AUTO_START`, `MUSASHI_AUTO_DISMISS`, set by `--headless` and `--frames`) inject Start and dismiss presses. That is input only, like a player pressing buttons. Their `unk4D` RAM write is now behind `MUSASHI_DEBUG_FORCE` (b3b33befd). | `native_boot.c` | For headless tests. | opt-in (input only) |
+| D-003 | The interpreter replaced the retail pad-record getter at 0x8005F704 with host code. **Fixed on `port/native-lane` in 57199ef9c**: the retail getter runs. The retail code returns 0x80078A48 (addiu sign-extends) and adds 0xF0 whenever a0 & 0xF0 is nonzero, so the override differed only for port 2 (+0x10 where retail gives +0xF0). | `pc_port/mips_formatter.c` | Boot-path workaround. | fixed on port/native-lane (merge pending) |
 | D-004 | Memory cards are always disconnected. Saving and loading are unavailable, and the game takes its no-card path. | `pc_port/sio_controller.c` (`disconnected_cards = 1`) | No card image backend yet. | open |
+| D-005 | `MUSASHI_DEBUG_FORCE=1` (debug switch) pokes guest RAM after SCENE1_REACHED: player+0x4D 2 → 1 (control unlock), 0x800B99F0 = 9 (game mode), player+0xA9 = 0x41 (pad type). It prints a DIVERGENCE line at startup and once per poke. | `native_boot.c` (b3b33befd) | Debugging only. | opt-in (off by default) |
+| D-006 | `MUSASHI_GAMEPLAY_ACTION` (scripted test driver) writes pad words straight into guest RAM in gameplay (player +0xAA/+0xAC/+0xAE, 0x80078DCA, 0x80078DD2) and writes 0x800AE658. It prints a DIVERGENCE line when set (a6e3766f9). | `native_boot.c` | Automated gameplay tests. | opt-in (off by default) |
+| D-007 | **Unknown cause:** why the player's pad-type byte (+0xA9) needed forcing to 0x41 for control. The D-003 override returned the retail value for port 1, so it does not explain this by itself. Any explanation so far is a hypothesis. Port-int is running a lane-on no-force gameplay proof. | pad/SIO path | Not yet known. | open (untested) |
 
 ## Timing
 
 | ID | Divergence | Where | Why | Status |
 |----|------------|-------|-----|--------|
 | D-010 | On the default host clock, if the game waits in `VSync` (0x800424E4 polling 0x8006CBB8) and the tick hasn't advanced, the host latches VBlank in I_STAT. The VBlank then follows host pacing, not guest CPU cycles. `MUSASHI_GUEST_CLOCK=1` (the default for `--headless`) paces VBlank by guest cycles instead. | `native_boot.c` `vsync_wait_raise_tick` | Interactive runs are host-paced. Headless on the host clock, a boot refuses at irq-dispatch (pc 80018DF4) after about 21 s with all frames black (2026-09-28). | open (host clock); untested (guest clock vs hardware cycle counts) |
-| D-011 | The guest clock charges the interpreter's per-instruction cost and does not model the R3000A's cache, load delays or memory wait states. A native-lane call charges its entry's fixed `cost_cycles` (PsyQ entries: 16), not the retail instruction count. | `native_boot.c` guest-clock quantum; `mips_formatter.c` `lane_try` | Not modelled. | open; frame-timing differential not done |
+| D-011 | **Guest time differs from retail when the native lane is on.** A native-lane call charges a fixed cost: 2 × (size / 4) cycles for generated functions, 16 for PsyQ entries. The retail instructions it replaces would have cost their interpreted cycle count. So with the lane on, VBlank-relative timing, and anything else counted in guest cycles, drifts from the all-interpreted run. On top of that, the guest clock charges the interpreter's per-instruction cost and does not model the R3000A's cache, load delays or memory wait states. Fix direction: the lane should charge the interpreted cycle count (for example a per-function count measured on the interpreter, or the retail count from a cycle model), so lane-on timing is 1:1 with lane-off. | `mips_formatter.c` `lane_try` (`cost_cycles`); `tools/native_lane_gen.py` (`cost = 2 * (size // 4)`); `native_boot.c` guest clock | Not modelled yet. | open |
 | D-012 | Retail runs at 30 fps game logic. `[video] frame_rate = 60` is accepted by the config but has no effect. | `bfm_plat_config.c` | Design note only. | opt-in (no effect) |
 
 ## PsyQ library code (hand-written, not byte-matched)
@@ -118,12 +121,13 @@ inputs.
 | ID | Divergence | Where | Why | Status |
 |----|------------|-------|-----|--------|
 | D-040 | SPU and XA/CD-DA output come from the port's own SPU core. Neither sample accuracy nor timing has been compared with hardware or an emulator. Headless runs use `MUSASHI_AUDIO=null`, which produces no sound. | `pc_port/spu_*`, `native_boot.c` | | untested |
+| D-041 | Pre-title audio is silent in the headless run. 1200 s runs (native lane, guest clock) reach the Squaresoft logo, about 25-28 s of guest time. The only KON writes are libspu SpuInit's two passes over all 24 voices, at volume 0 and ADSR 0, on the silent block 0x0200. The sink receives about 340k frames, all zero. Whether retail plays anything during the publisher and Squaresoft logos is **untested**, pending an emulator or video reference. | SPU path | | untested |
 
 ## Opt-in (off by default)
 
 These change retail behaviour only when a user asks for them:
 - Cheats (`pc_port/mods/examples/cheat_pack`) and mods (docs/MODDING.md).
-- `MUSASHI_GAMEPLAY_ACTION` (scripted RAM writes and input for tests).
+- `MUSASHI_DEBUG_FORCE=1` (D-005) and `MUSASHI_GAMEPLAY_ACTION` (D-006): both write guest RAM and log DIVERGENCE.
 - `MUSASHI_HOLD_R1`, `MUSASHI_DISMISS_KEY`, `MUSASHI_PAUSE_*`, and the trace and dump switches. The trace and dump switches only observe.
 - Widescreen, the gl renderer, HD textures, fast-forward.
 

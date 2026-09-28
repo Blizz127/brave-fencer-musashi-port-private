@@ -86,14 +86,24 @@ def load_formatter_ranges(path):
 
 
 class Registry:
-    """Function lookup by guest PC. Main is unambiguous. Overlays share
-    addresses, so each overlay PC resolves to the region with the most
-    traced call targets matching its function starts (reported)."""
+    """Function lookup by guest PC. Main is unambiguous. Overlay members
+    (MAIN.CD members main_NNNN, scene overlays scNN_NNNN) share load
+    addresses, and a trace records PCs, not which member was resident. So
+    each overlay PC resolves to the member function containing it, choosing:
+    first a member whose containing function's entry was traced, then the
+    member with the most traced entries overall. This is an inference;
+    "overlay_attribution" in the output says so and lists the members used.
+    Registry gaps inside the main EXE are filled from the formatter's code
+    ranges (reported as unregistered); overlay addresses never are."""
 
     def __init__(self, matches, traced_targets, ranges=()):
         main = [m for m in matches if m["region"] == "main"]
+        lo_main = min(m["vram"] for m in main) if main else 0
+        hi_main = max(m["vram"] + max(m.get("size") or 4, 4) for m in main) if main else 0
         spans = sorted((m["vram"], m["vram"] + max(m.get("size") or 4, 4)) for m in main)
-        for lo, hi in ranges:  # fill registry gaps only
+        for lo, hi in ranges:  # fill main-EXE registry gaps only
+            if lo < lo_main or hi > hi_main:
+                continue
             i = bisect.bisect_left(spans, (lo, 0))
             if (i < len(spans) and spans[i][0] < hi) or (i and spans[i - 1][1] > lo):
                 continue
@@ -102,6 +112,8 @@ class Registry:
                          "recovery": None, "unregistered": True})
         self.main = sorted(main, key=lambda m: m["vram"])
         self.main_starts = [m["vram"] for m in self.main]
+        self.main_span = (lo_main, hi_main)
+        self.traced = traced_targets
         by_region = collections.defaultdict(list)
         for m in matches:
             if m["region"] != "main":
@@ -111,28 +123,27 @@ class Registry:
             n = sum(1 for m in ms if m["vram"] in traced_targets)
             if n:
                 self.hits[region] = n
-        # Best-hit regions claim their address ranges first; a lower-hit
-        # region's function overlapping a claimed range is dropped, which
-        # leaves a non-overlapping map for bisect.
-        kept = []
-        claimed = []  # sorted (start, end)
-        for region in sorted(self.hits, key=lambda r: -self.hits[r]):
-            for m in by_region[region]:
-                lo, hi = m["vram"], m["vram"] + max(m.get("size") or 4, 4)
-                i = bisect.bisect_left(claimed, (lo, 0))
-                if (i < len(claimed) and claimed[i][0] < hi) or (i and claimed[i - 1][1] > lo):
-                    continue
-                claimed.insert(i, (lo, hi))
-                kept.append(m)
-        self.overlay = sorted(kept, key=lambda m: m["vram"])
-        self.overlay_starts = [m["vram"] for m in self.overlay]
+        self.regions = {}
+        for region in self.hits:
+            ms = sorted(by_region[region], key=lambda m: m["vram"])
+            self.regions[region] = (ms, [m["vram"] for m in ms])
+        self.used = collections.Counter()
 
     def find(self, pc):
-        for starts, ms in ((self.main_starts, self.main), (self.overlay_starts, self.overlay)):
-            i = bisect.bisect_right(starts, pc) - 1
-            if i >= 0 and pc < ms[i]["vram"] + max(ms[i].get("size") or 4, 4):
-                return ms[i]
-        return None
+        i = bisect.bisect_right(self.main_starts, pc) - 1
+        if i >= 0 and pc < self.main[i]["vram"] + max(self.main[i].get("size") or 4, 4):
+            return self.main[i]
+        if self.main_span[0] <= pc < self.main_span[1]:
+            return None
+        best, score = None, None
+        for region, (ms, starts) in self.regions.items():
+            k = bisect.bisect_right(starts, pc) - 1
+            if k < 0 or pc >= ms[k]["vram"] + max(ms[k].get("size") or 4, 4):
+                continue
+            sc = (ms[k]["vram"] in self.traced, self.hits[region])
+            if score is None or sc > score:
+                best, score = ms[k], sc
+        return best
 
 
 def main(argv=None):
@@ -185,19 +196,22 @@ def main(argv=None):
     funcs = {}
     for r in counts:
         m = reg.find(r["pc"]) if r["pc"] >> 28 == 8 else None
-        funcs[r["pc"]] = {"pc": r["pc"], "calls": r["calls"], "steps": 0, "reg": m,
+        # keyed by (member, pc): overlay members share addresses
+        funcs[(m["region"] if m else None, r["pc"])] = {"pc": r["pc"], "calls": r["calls"], "steps": 0, "reg": m,
                           "lane_column": r["lane"]}
     unattributed_steps = 0
     if steps is not None:
         for pc, n in steps.items():
             m = reg.find(pc)
-            key = m["vram"] if m else None
+            key = (m["region"], m["vram"]) if m else None
+            if m is not None and m["region"] != "main":
+                reg.used[m["region"]] += n
             if key is None:
                 unattributed_steps += n
                 continue
             f = funcs.get(key)
             if f is None:
-                f = funcs[key] = {"pc": key, "calls": 0, "steps": 0, "reg": m, "lane_column": None}
+                f = funcs[key] = {"pc": key[1], "calls": 0, "steps": 0, "reg": m, "lane_column": None}
             f["steps"] += n
 
     for f in funcs.values():
@@ -329,7 +343,12 @@ def main(argv=None):
                    "unattributed_instructions": unattributed_steps},
         "classes": classes,
         "by_domain": domains,
-        "overlay_regions_inferred": dict(sorted(reg.hits.items(), key=lambda kv: -kv[1])[:12]),
+        "overlay_attribution": {
+            "method": "INFERRED per PC: the member whose containing function's entry was traced, "
+                      "then the member with most traced entries (the trace does not record residency)",
+            "entry_hits": dict(sorted(reg.hits.items(), key=lambda kv: -kv[1])),
+            "instructions_by_member": dict(reg.used.most_common()),
+        },
         "shadowed_executed": shadows,
         "shadowed_static": static_shadows,
         "port_shims_executed": shims,
@@ -338,6 +357,14 @@ def main(argv=None):
                                                                if u["why"] == w)}
                                        for w in sorted({u["why"] for u in unused})},
         "matched_c_unused_top": unused[:60],
+        # Game code whose matched C could replace what runs now (interpreted
+        # retail or host code); the batches of game-code switches draw on this.
+        "game_switch_candidates": sorted(
+            (dict(row(f), lane_detail=lane_fn.get(f["pc"], {}).get("detail"))
+             for f in funcs.values() if f.get("domain") == "game" and f["reg"] is not None
+             and f["reg"]["vram"] == f["pc"] and f["reg"]["recovery"] == "c"
+             and (f["why"].startswith("matched_c_unused") or f["why"] == "host_skipped")),
+            key=lambda r: -r["instructions"]),
         "lane_column_disagreements": lane_disagree,
     }
     text = json.dumps(result, indent=1)

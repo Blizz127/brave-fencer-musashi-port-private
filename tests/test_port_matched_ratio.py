@@ -100,7 +100,12 @@ class PortMatchedRatio(unittest.TestCase):
         self.assertEqual(r["totals"]["unattributed_instructions"], 8)
         self.assertEqual(r["totals"]["idle_instructions"], 1000)
         self.assertAlmostEqual(c["matched_c"]["instructions_share_excluding_idle"], round(40 / 140, 4))
-        self.assertEqual(r["overlay_regions_inferred"], {"sc01_0000": 1, "sc09_0001": 1})
+        att = r["overlay_attribution"]
+        self.assertIn("INFERRED", att["method"])
+        # both members have a function at 80180000; the traced entry ties, so
+        # the member with more entry hits... is equal here: attribution must
+        # still pick exactly one member for the 6 overlay steps
+        self.assertEqual(sum(att["instructions_by_member"].values()), 6)
         self.assertEqual([s["pc"] for s in r["shadowed_executed"]], ["80020010", "80020040"])
         self.assertEqual(r["shadowed_static"], ["80020010 memcpy"])
         dom = r["by_domain"]
@@ -115,6 +120,24 @@ class PortMatchedRatio(unittest.TestCase):
         self.assertIn("ESTIMATE", r["instructions_basis"])
         self.assertIn("ESTIMATED", summary)
         self.assertEqual(r["classes"]["matched_c"]["instructions"], 10 * 16 // 4)
+
+
+class ResidentMember(unittest.TestCase):
+    def test_entered_function_wins_over_hit_count(self):
+        sys.path.insert(0, str(ROOT / "tools"))
+        import port_matched_ratio as pmr
+        matches = [
+            {"name": "a_fn", "vram": 0x800D0000, "size": 0x100, "region": "main_0003", "recovery": "c"},
+            {"name": "b_big", "vram": 0x800CFF00, "size": 0x400, "region": "main_0010", "recovery": "c"},
+            {"name": "b_1", "vram": 0x800D1000, "size": 8, "region": "main_0010", "recovery": "c"},
+            {"name": "b_2", "vram": 0x800D1010, "size": 8, "region": "main_0010", "recovery": "c"},
+        ]
+        traced = {0x800D0000, 0x800D1000, 0x800D1010}
+        reg = pmr.Registry(matches, traced)
+        self.assertEqual(reg.hits, {"main_0003": 1, "main_0010": 2})
+        self.assertEqual(reg.find(0x800D0010)["name"], "a_fn")    # entered, fewer hits
+        self.assertEqual(reg.find(0x800D0200)["name"], "b_big")   # only b covers it
+        self.assertIsNone(reg.find(0x800E0000))
 
 
 if __name__ == "__main__":
