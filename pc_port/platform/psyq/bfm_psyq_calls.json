@@ -1,7 +1,7 @@
 {
  "meta": {
-  "asm_files": 141,
-  "callsites": 30670,
+  "asm_files": 150,
+  "callsites": 34603,
   "psyq_range": [
    "0x8003A444",
    "0x80062998"
@@ -625,8 +625,8 @@
    "evidence": null,
    "segment": "libgte1",
    "object": "GEO_00.o",
-   "callsites": 1101,
-   "binaries": 74
+   "callsites": 1234,
+   "binaries": 83
   },
   {
    "addr": "0x80047948",
@@ -635,8 +635,8 @@
    "evidence": null,
    "segment": "libgte1",
    "object": "GEO_01.o",
-   "callsites": 774,
-   "binaries": 74
+   "callsites": 874,
+   "binaries": 83
   },
   {
    "addr": "0x80047B3C",
@@ -645,8 +645,8 @@
    "evidence": null,
    "segment": "libgte1",
    "object": null,
-   "callsites": 65,
-   "binaries": 65
+   "callsites": 74,
+   "binaries": 74
   },
   {
    "addr": "0x80047BD8",
@@ -675,8 +675,8 @@
    "evidence": null,
    "segment": "libgte23",
    "object": null,
-   "callsites": 407,
-   "binaries": 67
+   "callsites": 461,
+   "binaries": 76
   },
   {
    "addr": "0x80047E58",
@@ -705,8 +705,8 @@
    "evidence": null,
    "segment": "libgte23",
    "object": null,
-   "callsites": 623,
-   "binaries": 67
+   "callsites": 706,
+   "binaries": 76
   },
   {
    "addr": "0x8004806C",
@@ -715,8 +715,8 @@
    "evidence": null,
    "segment": "libgte23",
    "object": null,
-   "callsites": 129,
-   "binaries": 65
+   "callsites": 147,
+   "binaries": 74
   },
   {
    "addr": "0x800480EC",
@@ -725,8 +725,8 @@
    "evidence": null,
    "segment": "libgte23",
    "object": null,
-   "callsites": 193,
-   "binaries": 65
+   "callsites": 220,
+   "binaries": 74
   },
   {
    "addr": "0x8004818C",
@@ -735,8 +735,8 @@
    "evidence": null,
    "segment": "libgte2",
    "object": null,
-   "callsites": 14,
-   "binaries": 13
+   "callsites": 16,
+   "binaries": 15
   },
   {
    "addr": "0x8004829C",
@@ -765,8 +765,8 @@
    "evidence": "func_80053050/80052FCC call it as (m, m2->t, &v) for the translation part of a coordinate product",
    "segment": "libgte3",
    "object": null,
-   "callsites": 732,
-   "binaries": 70
+   "callsites": 831,
+   "binaries": 79
   },
   {
    "addr": "0x8004864C",
@@ -775,8 +775,8 @@
    "evidence": null,
    "segment": "libgte3",
    "object": null,
-   "callsites": 197,
-   "binaries": 66
+   "callsites": 224,
+   "binaries": 75
   },
   {
    "addr": "0x8004867C",
@@ -785,8 +785,8 @@
    "evidence": null,
    "segment": "libgte3",
    "object": null,
-   "callsites": 5,
-   "binaries": 5
+   "callsites": 6,
+   "binaries": 6
   },
   {
    "addr": "0x8004871C",
@@ -795,8 +795,8 @@
    "evidence": null,
    "segment": "libgte3",
    "object": null,
-   "callsites": 5,
-   "binaries": 5
+   "callsites": 6,
+   "binaries": 6
   },
   {
    "addr": "0x800487BC",
@@ -805,8 +805,8 @@
    "evidence": null,
    "segment": "libgte3",
    "object": null,
-   "callsites": 5,
-   "binaries": 5
+   "callsites": 6,
+   "binaries": 6
   },
   {
    "addr": "0x8004880C",
@@ -835,8 +835,8 @@
    "evidence": null,
    "segment": "libgte4",
    "object": null,
-   "callsites": 144,
-   "binaries": 66
+   "callsites": 162,
+   "binaries": 75
   },
   {
    "addr": "0x80048CAC",
@@ -855,8 +855,8 @@
    "evidence": "func_80053050: rotation product into the first matrix (m1 = m1 * m2)",
    "segment": "libgte5",
    "object": null,
-   "callsites": 74,
-   "binaries": 72
+   "callsites": 83,
+   "binaries": 81
   },
   {
    "addr": "0x80048EAC",
@@ -865,8 +865,8 @@
    "evidence": "func_80052FCC: rotation product into the second matrix (m2 = m1 * m2); GsSetLightMatrix uses it too",
    "segment": "libgte5",
    "object": null,
-   "callsites": 1034,
-   "binaries": 66
+   "callsites": 1179,
+   "binaries": 75
   },
   {
    "addr": "0x80048FBC",
@@ -875,8 +875,8 @@
    "evidence": null,
    "segment": "libgte5",
    "object": null,
-   "callsites": 2112,
-   "binaries": 71
+   "callsites": 2401,
+   "binaries": 80
   },
   {
    "addr": "0x8004901C",
@@ -895,8 +895,8 @@
    "evidence": null,
    "segment": "libgte6",
    "object": null,
-   "callsites": 1442,
-   "binaries": 67
+   "callsites": 1624,
+   "binaries": 76
   },
   {
    "addr": "0x8004917C",
@@ -915,8 +915,8 @@
    "evidence": null,
    "segment": "libgte6",
    "object": null,
-   "callsites": 1374,
-   "binaries": 67
+   "callsites": 1547,
+   "binaries": 76
   },
   {
    "addr": "0x800491CC",
@@ -925,8 +925,8 @@
    "evidence": null,
    "segment": "libgte6",
    "object": null,
-   "callsites": 5,
-   "binaries": 5
+   "callsites": 6,
+   "binaries": 6
   },
   {
    "addr": "0x800491EC",
@@ -935,8 +935,8 @@
    "evidence": null,
    "segment": "libgte6",
    "object": null,
-   "callsites": 76,
-   "binaries": 64
+   "callsites": 86,
+   "binaries": 73
   },
   {
    "addr": "0x800491FC",
@@ -955,8 +955,8 @@
    "evidence": null,
    "segment": "libgte6",
    "object": null,
-   "callsites": 9,
-   "binaries": 5
+   "callsites": 11,
+   "binaries": 6
   },
   {
    "addr": "0x8004923C",
@@ -975,8 +975,8 @@
    "evidence": null,
    "segment": "libgte24",
    "object": null,
-   "callsites": 65,
-   "binaries": 65
+   "callsites": 74,
+   "binaries": 74
   },
   {
    "addr": "0x80049324",
@@ -985,8 +985,8 @@
    "evidence": null,
    "segment": "libgte24",
    "object": null,
-   "callsites": 144,
-   "binaries": 65
+   "callsites": 170,
+   "binaries": 74
   },
   {
    "addr": "0x80049440",
@@ -1005,8 +1005,8 @@
    "evidence": null,
    "segment": "libgte8",
    "object": null,
-   "callsites": 874,
-   "binaries": 68
+   "callsites": 988,
+   "binaries": 77
   },
   {
    "addr": "0x8004955C",
@@ -1015,8 +1015,8 @@
    "evidence": null,
    "segment": "libgte8",
    "object": null,
-   "callsites": 996,
-   "binaries": 66
+   "callsites": 1124,
+   "binaries": 75
   },
   {
    "addr": "0x8004958C",
@@ -1035,8 +1035,8 @@
    "evidence": null,
    "segment": "libgte9",
    "object": null,
-   "callsites": 5,
-   "binaries": 3
+   "callsites": 7,
+   "binaries": 4
   },
   {
    "addr": "0x8004961C",
@@ -1065,8 +1065,8 @@
    "evidence": null,
    "segment": "libgte11",
    "object": null,
-   "callsites": 5,
-   "binaries": 5
+   "callsites": 6,
+   "binaries": 6
   },
   {
    "addr": "0x8004978C",
@@ -1075,8 +1075,8 @@
    "evidence": "three angles through the packed sin/cos table D_8006DF1C into m; GsSortSprite calls it with (0, 0, rotate/360)",
    "segment": "libgte25",
    "object": "FGO_01.o",
-   "callsites": 139,
-   "binaries": 66
+   "callsites": 157,
+   "binaries": 75
   },
   {
    "addr": "0x80049A1C",
@@ -1085,8 +1085,8 @@
    "evidence": null,
    "segment": "libgte25",
    "object": null,
-   "callsites": 1938,
-   "binaries": 76
+   "callsites": 2211,
+   "binaries": 85
   },
   {
    "addr": "0x80049CAC",
@@ -1095,8 +1095,8 @@
    "evidence": null,
    "segment": "libgte25",
    "object": "FGO_03.o",
-   "callsites": 1208,
-   "binaries": 100
+   "callsites": 1361,
+   "binaries": 109
   },
   {
    "addr": "0x80049F3C",
@@ -1105,8 +1105,8 @@
    "evidence": null,
    "segment": "libgte25",
    "object": null,
-   "callsites": 196,
-   "binaries": 66
+   "callsites": 223,
+   "binaries": 75
   },
   {
    "addr": "0x8004A0DC",
@@ -1115,8 +1115,8 @@
    "evidence": null,
    "segment": "libgte25",
    "object": null,
-   "callsites": 277,
-   "binaries": 75
+   "callsites": 311,
+   "binaries": 84
   },
   {
    "addr": "0x8004A27C",
@@ -1125,8 +1125,8 @@
    "evidence": null,
    "segment": "libgte25",
    "object": null,
-   "callsites": 203,
-   "binaries": 72
+   "callsites": 224,
+   "binaries": 81
   },
   {
    "addr": "0x8004CFEC",
@@ -1135,8 +1135,8 @@
    "evidence": null,
    "segment": "libgte16",
    "object": null,
-   "callsites": 3687,
-   "binaries": 69
+   "callsites": 4204,
+   "binaries": 78
   },
   {
    "addr": "0x8004D504",
@@ -1145,8 +1145,8 @@
    "evidence": null,
    "segment": "libgte17",
    "object": null,
-   "callsites": 648,
-   "binaries": 66
+   "callsites": 739,
+   "binaries": 75
   },
   {
    "addr": "0x8005080C",
@@ -1155,8 +1155,8 @@
    "evidence": null,
    "segment": "libgs7",
    "object": null,
-   "callsites": 64,
-   "binaries": 64
+   "callsites": 73,
+   "binaries": 73
   },
   {
    "addr": "0x80051044",
@@ -1165,8 +1165,8 @@
    "evidence": null,
    "segment": "libgs7",
    "object": null,
-   "callsites": 64,
-   "binaries": 64
+   "callsites": 73,
+   "binaries": 73
   },
   {
    "addr": "0x80051DC8",
@@ -1175,8 +1175,8 @@
    "evidence": null,
    "segment": "libgs2",
    "object": null,
-   "callsites": 896,
-   "binaries": 64
+   "callsites": 1022,
+   "binaries": 73
   },
   {
    "addr": "0x80051F34",
@@ -1185,8 +1185,8 @@
    "evidence": null,
    "segment": "libgs2",
    "object": null,
-   "callsites": 64,
-   "binaries": 64
+   "callsites": 73,
+   "binaries": 73
   },
   {
    "addr": "0x80052460",
@@ -1195,8 +1195,8 @@
    "evidence": "libgs object 2D_SP1; builds E1 + SPRT (0x64) from a GsSPRITE without scale/rotate and links it into a GsOT",
    "segment": "libgs3",
    "object": null,
-   "callsites": 257,
-   "binaries": 65
+   "callsites": 293,
+   "binaries": 74
   },
   {
    "addr": "0x800525DC",
@@ -1225,8 +1225,8 @@
    "evidence": "copies GsIDMATRIX into coord, sets super, clears flag, links super->sub (repo src/main/80052d90.c)",
    "segment": "libgs4",
    "object": null,
-   "callsites": 85,
-   "binaries": 65
+   "callsites": 94,
+   "binaries": 74
   },
   {
    "addr": "0x80052E38",
@@ -1235,8 +1235,8 @@
    "evidence": "SetRotMatrix(m) + SetTransMatrix(m) (repo src/main/80052e38.c)",
    "segment": "libgs4",
    "object": null,
-   "callsites": 75,
-   "binaries": 64
+   "callsites": 85,
+   "binaries": 73
   },
   {
    "addr": "0x80052F04",
@@ -1285,8 +1285,8 @@
    "evidence": "libgs object GS_107; a SetGeomScreen(h) wrapper (repo src/main/80053308.c)",
    "segment": "libgs4",
    "object": "GS_107.o",
-   "callsites": 65,
-   "binaries": 65
+   "callsites": 74,
+   "binaries": 74
   },
   {
    "addr": "0x80053328",
@@ -1365,8 +1365,8 @@
    "evidence": "coordinate-hierarchy walk to a world matrix with the flag cache (repo src/main/80054514.c)",
    "segment": "libgs6",
    "object": "GS_133.o",
-   "callsites": 84,
-   "binaries": 65
+   "callsites": 93,
+   "binaries": 74
   },
   {
    "addr": "0x800547D8",
@@ -1375,8 +1375,8 @@
    "evidence": "GsGetLw-shaped walk, then multiplied with the world-screen matrix (repo src/main/800547d8.c)",
    "segment": "libgs6",
    "object": "GS_134.o",
-   "callsites": 74,
-   "binaries": 64
+   "callsites": 84,
+   "binaries": 73
   },
   {
    "addr": "0x80054AAC",
@@ -1395,8 +1395,8 @@
    "evidence": null,
    "segment": "libgs6",
    "object": null,
-   "callsites": 64,
-   "binaries": 64
+   "callsites": 73,
+   "binaries": 73
   },
   {
    "addr": "0x800553D8",
@@ -1485,8 +1485,8 @@
    "evidence": null,
    "segment": "libgpu",
    "object": null,
-   "callsites": 227,
-   "binaries": 65
+   "callsites": 256,
+   "binaries": 74
   },
   {
    "addr": "0x80058B7C",
@@ -1505,8 +1505,8 @@
    "evidence": null,
    "segment": "libgpu",
    "object": null,
-   "callsites": 444,
-   "binaries": 65
+   "callsites": 500,
+   "binaries": 74
   },
   {
    "addr": "0x80058CE4",
@@ -1535,8 +1535,8 @@
    "evidence": null,
    "segment": "libgpu",
    "object": null,
-   "callsites": 66,
-   "binaries": 65
+   "callsites": 75,
+   "binaries": 74
   },
   {
    "addr": "0x80058D84",
@@ -1615,8 +1615,8 @@
    "evidence": null,
    "segment": "libgpu",
    "object": null,
-   "callsites": 131,
-   "binaries": 65
+   "callsites": 149,
+   "binaries": 74
   },
   {
    "addr": "0x80058EB0",
@@ -1625,8 +1625,8 @@
    "evidence": null,
    "segment": "libgpu",
    "object": null,
-   "callsites": 66,
-   "binaries": 65
+   "callsites": 75,
+   "binaries": 74
   },
   {
    "addr": "0x80058EE4",
@@ -1695,8 +1695,8 @@
    "evidence": "main loop: func_800596F4(0) right before VSync (vendor src/boot.c)",
    "segment": "libgpu2",
    "object": "SYS.o",
-   "callsites": 72,
-   "binaries": 66
+   "callsites": 81,
+   "binaries": 75
   },
   {
    "addr": "0x80059888",
@@ -1705,8 +1705,8 @@
    "evidence": null,
    "segment": "libgpu2",
    "object": "SYS.o",
-   "callsites": 139,
-   "binaries": 66
+   "callsites": 157,
+   "binaries": 75
   },
   {
    "addr": "0x800599B8",
@@ -1715,8 +1715,8 @@
    "evidence": "called (RECT *, data) by func_800184F0 per texture record (vendor src/800.c:5761ff)",
    "segment": "libgpu2",
    "object": "SYS.o",
-   "callsites": 296,
-   "binaries": 68
+   "callsites": 323,
+   "binaries": 77
   },
   {
    "addr": "0x80059A1C",
@@ -1725,8 +1725,8 @@
    "evidence": null,
    "segment": "libgpu2",
    "object": null,
-   "callsites": 71,
-   "binaries": 65
+   "callsites": 80,
+   "binaries": 74
   },
   {
    "addr": "0x80059A80",
@@ -1735,8 +1735,8 @@
    "evidence": null,
    "segment": "libgpu2",
    "object": null,
-   "callsites": 290,
-   "binaries": 65
+   "callsites": 333,
+   "binaries": 74
   },
   {
    "addr": "0x80059BFC",
@@ -1785,8 +1785,8 @@
    "evidence": null,
    "segment": "libgpu2",
    "object": "SYS.o",
-   "callsites": 358,
-   "binaries": 70
+   "callsites": 406,
+   "binaries": 79
   },
   {
    "addr": "0x8005A658",
@@ -1795,8 +1795,8 @@
    "evidence": null,
    "segment": "libgpu2",
    "object": null,
-   "callsites": 128,
-   "binaries": 64
+   "callsites": 146,
+   "binaries": 73
   },
   {
    "addr": "0x8005C2C8",
@@ -1805,8 +1805,8 @@
    "evidence": "only function of Psy-Q object BZERO.o",
    "segment": "libc2_1",
    "object": "BZERO.o",
-   "callsites": 1,
-   "binaries": 1
+   "callsites": 2,
+   "binaries": 2
   },
   {
    "addr": "0x8005C2F8",
@@ -1825,8 +1825,8 @@
    "evidence": "symbols.resident.txt: memcpy = 0x8005C324 (libc2 MEMCPY.o)",
    "segment": "libc2_1",
    "object": "MEMSET.o",
-   "callsites": 321,
-   "binaries": 65
+   "callsites": 366,
+   "binaries": 74
   },
   {
    "addr": "0x8005C358",
@@ -1855,14 +1855,14 @@
    "evidence": null,
    "segment": "libc2_1",
    "object": null,
-   "callsites": 4782,
-   "binaries": 84
+   "callsites": 5322,
+   "binaries": 93
   },
   {
    "addr": "0x8005C4CC",
-   "name": "strcmp",
+   "name": "srand",
    "name_source": "inferred",
-   "evidence": "Psy-Q object STRCMP.o",
+   "evidence": "sw a0, D_80078980; jr ra (first function of the object at 8005C4CC)",
    "segment": "libc2_1",
    "object": "STRCMP.o",
    "callsites": 2,
@@ -1875,8 +1875,8 @@
    "evidence": null,
    "segment": "libc2_1",
    "object": null,
-   "callsites": 94,
-   "binaries": 69
+   "callsites": 105,
+   "binaries": 78
   },
   {
    "addr": "0x8005C604",

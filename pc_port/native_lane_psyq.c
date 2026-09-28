@@ -46,16 +46,12 @@ static const char *const kDeviceNames[] = {
 };
 
 /* Entries the differential probe (tests/native_lane_probe.c) found to
- * differ from the retail code; held back until port-plat's table is fixed.
- * The interpreter runs them. */
+ * differ from the retail code are held back here by PC with the reason,
+ * until port-plat's table is fixed; the interpreter runs them. The first 7
+ * (srand, strcpy, SetLineG4, CdIntToPos, RotMatrixYXZ, Push/PopMatrix) were
+ * fixed in port/platform-layer 7935600a2. */
 static const struct { uint32_t pc; const char *why; } kHeldBack[] = {
-    {0x8005C4CCu, "named strcmp but is srand (stores a0 to the seed 0x80078980)"},
-    {0x8005C540u, "strcpy: retail returns 0 when dst or src is NULL"},
-    {0x80058F24u, "SetLineG4: retail code byte is 0x5C, HLE writes 0x58"},
-    {0x80043A18u, "CdIntToPos: retail uses signed division (i + 150 < 0)"},
-    {0x80049A1Cu, "RotMatrixYXZ: PsyCross arithmetic differs from retail"},
-    {0x8004867Cu, "PushMatrix: PsyCross stack is host-side, retail stack is guest RAM"},
-    {0x8004871Cu, "PopMatrix: PsyCross stack is host-side, retail stack is guest RAM"},
+    {0u, NULL},
 };
 
 /* Generated with the lane table (tools/native_lane_gen.py psyq_hooked):
@@ -68,7 +64,7 @@ extern const size_t musashi_native_lane_hooked_psyq_count;
 const char *musashi_native_lane_psyq_held_back(uint32_t pc) {
     size_t i;
     for (i = 0; i < sizeof kHeldBack / sizeof kHeldBack[0]; ++i)
-        if (kHeldBack[i].pc == pc) return kHeldBack[i].why;
+        if (kHeldBack[i].why && kHeldBack[i].pc == pc) return kHeldBack[i].why;
     for (i = 0; i < musashi_native_lane_hooked_psyq_count; ++i)
         if (musashi_native_lane_hooked_psyq[i] == pc) return "body holds a port-sequenced PC";
     return NULL;

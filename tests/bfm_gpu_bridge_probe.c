@@ -211,6 +211,9 @@ static void run_controller(void) {
 static int controller_blends(void) {
     return (cvram[16 + 4][8 + 4] & 0x7fff) != (rgb15(8, 8, 8));
 }
+/* Does it draw raw-texture rects (0x65) and modulate textured rects? */
+static int controller_raw_rects(void) { return (cvram[0][81] & 0x7fff) != rgb15(6, 4, 2); }
+static int controller_modulates(void) { return (cvram[8][81] & 0x7fff) != rgb15(3, 28, 16); }
 #endif
 
 int main(void) {
@@ -220,6 +223,8 @@ int main(void) {
     unsigned i;
     memset(&out, 0, sizeof out);
     bfm_gl_vram_init(&rb.vram);
+    /* the GPU is PS1-exact: compare with the integer modulation formula */
+    bfm_gl_ref_set_ps1_modulation(1);
     CHECK(bfm_plat_renderer_register(&ref_backend) == BFM_PLAT_OK);
     CHECK(bfm_plat_renderer_open("ref", &out, NULL) == BFM_PLAT_OK);
     bfm_gpu_bridge_init(&b);
@@ -252,6 +257,7 @@ int main(void) {
     CHECK((rb.vram.px[0 * 1024 + 81] & 0x7fff) == rgb15(3, 28, 16));
     CHECK((rb.vram.px[4 * 1024 + 81] & 0x7fff) == rgb15(3, 28, 16));
     CHECK((rb.vram.px[8 * 1024 + 81] & 0x7fff) == rgb15(0, 3, 2));
+    CHECK((rb.vram.px[8 * 1024 + 80] & 0x7fff) == rgb15(0, 3, 2));   /* 31*16>>7 = 3, not 4 */
     CHECK(rb.vram.px[0 * 1024 + 83] == rgb15(6, 4, 2));  /* texel 3 transparent: fill shows */
     /* 4-bit sprite: CLUT index = texel nibble */
     CHECK((rb.vram.px[12 * 1024 + 85] & 0x7fff) == rgb15(5, 10, 26));   /* CLUT[5] */
@@ -283,7 +289,10 @@ int main(void) {
 #ifdef BFM_BRIDGE_WITH_CONTROLLER
     run_controller();
     {
-        typedef struct Region { const char *name; int x, y, w, h, semi, gap; } Region;
+        /* need: 0 always, 1 semi-transparency, 2 raw-texture rects,
+         * 3 rect modulation; a region whose feature the controller lacks is
+         * reported, not asserted */
+        typedef struct Region { const char *name; int x, y, w, h, semi, need; } Region;
         /* gap: a known difference of native-lane's gpu_controller (reported,
          * not asserted): raw-texture rects 0x65/67/.. are not drawn;
          * textured-rect colour modulation is not applied; polylines are
@@ -301,21 +310,32 @@ int main(void) {
             {"clipped tile", 296, 96, 40, 40, 0, 0},
             {"wrapped upload", 1020, 400, 4, 1, 0, 0},
             {"wrapped upload (wrap)", 0, 400, 2, 1, 0, 0},
-            {"raw 0x65 sprite", 80, 0, 5, 2, 0, 1},
-            {"raw 0x65 4-bit sprite", 80, 12, 8, 1, 0, 1},
-            {"raw semi 0x67 sprite", 80, 20, 5, 2, 1, 1},
-            {"modulated 0x64 0x101010", 80, 8, 5, 2, 0, 1},
+            {"raw 0x65 sprite", 80, 0, 5, 2, 0, 2},
+            {"raw 0x65 4-bit sprite", 80, 12, 8, 1, 0, 2},
+            {"raw semi 0x67 sprite", 80, 20, 5, 2, 1, 2},
+            {"modulated 0x64 0x101010", 80, 8, 5, 2, 0, 3},
         };
-        int blends = controller_blends(), r;
-        printf("controller %s semi-transparency\n", blends ? "applies" : "does not apply");
+        int has[4], r;
+        static const char *what[4] = {"", "semi-transparency", "raw-texture rects",
+                                      "rect modulation"};
+        has[0] = 1;
+        has[1] = controller_blends();
+        has[2] = controller_raw_rects();
+        has[3] = controller_modulates();
+        printf("controller: semi-transparency %s, raw-texture rects %s, rect modulation %s\n",
+               has[1] ? "yes" : "no", has[2] ? "yes" : "no", has[3] ? "yes" : "no");
         for (r = 0; r < (int)(sizeof regions / sizeof regions[0]); r++) {
             const Region *g = &regions[r];
             int d = compare_rect(g->name, g->x, g->y, g->w, g->h, 0);
-            const char *verdict = !d ? "match" : g->gap ? "differ (known controller gap)"
-                                  : g->semi && !blends ? "differ (controller without blend fix)"
-                                  : "DIFFER";
+            int ok = has[g->need] && (!g->semi || has[1]);
+            char verdict[96];
+            if (!d) snprintf(verdict, sizeof verdict, "match");
+            else if (!ok)
+                snprintf(verdict, sizeof verdict, "differ (controller lacks %s)",
+                         !has[g->need] ? what[g->need] : what[1]);
+            else snprintf(verdict, sizeof verdict, "DIFFER");
             printf("  %-26s %4d px differ  %s\n", g->name, d, verdict);
-            if (!g->gap && (!g->semi || blends)) CHECK(d == 0);
+            if (ok) CHECK(d == 0);
         }
     }
 #endif

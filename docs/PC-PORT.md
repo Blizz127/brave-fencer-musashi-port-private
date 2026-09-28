@@ -721,7 +721,7 @@ for the call). `MUSASHI_PSYQ_LANE` selects the classes:
 | `0` | none |
 
 Rows the differential probe found to differ from the retail code are held
-back by PC (`kHeldBack`, with the reason). A wrapper that refuses leaves the
+back by PC (`kHeldBack`, with the reason; empty since port-plat 7935600a2). A wrapper that refuses leaves the
 interpreter to run the retail code, as does every table-backed PsyCross
 wrapper (ratan2, RotMatrixX/Y/Z/YXZ) unless `BFM_PSYQ_PSYCROSS_ROTMATRIX`:
 PsyCross's tables equal the game's, and linking them would put retail bytes

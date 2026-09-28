@@ -1457,6 +1457,8 @@ static int call(const char *name, uint32_t a0, uint32_t a1, uint32_t a2, uint32_
     exit(1);
 }
 
+int bfm_psyq_strcmp(uint32_t *r);   /* not a table entry (no game call sites) */
+
 static int group_psyq(int argc, char **argv) {
     const BfmPsyqEntry *t;
     size_t n = bfm_psyq_table(&t), i, hle = 0;
@@ -1498,6 +1500,10 @@ static int group_psyq(int argc, char **argv) {
     CHECK(call("AddPrim", 0x8001000C, 0x80020000, 0, 0));
     CHECK(r32(0x8001000C) == 0x00020000 && r32(0x80020000) == 0x09010008);
     CHECK(call("SetLineG3", 0x80021000, 0, 0, 0) && r32(0x80021000 + 28) == 0x55555555);
+    CHECK(ram[0x21003] == 7 && ram[0x21007] == 0x58);
+    /* LineG4: len 9, code 0x5C, terminator at +0x24 */
+    CHECK(call("SetLineG4", 0x80021100, 0, 0, 0) && ram[0x21103] == 9 && ram[0x21107] == 0x5C &&
+          r32(0x80021100 + 0x24) == 0x55555555);
     CHECK(call("CatPrim", 0x80021000, 0x80022000, 0, 0) && (r32(0x80021000) & 0xFFFFFF) == 0x022000);
 
     /* SetDefDispEnv: 5th argument on the guest stack */
@@ -1615,6 +1621,12 @@ static int group_psyq(int argc, char **argv) {
     CHECK(call("CdIntToPos", 16, 0x80060000, 0, 0) && ram[0x60000] == 0x00 && ram[0x60001] == 0x02 && ram[0x60002] == 0x16);
     CHECK(call("CdPosToInt", 0x80060000, 0, 0, 0) && R[2] == 16);
     CHECK(call("CdIntToPos", 4500 * 3 + 75 * 7 + 3 - 150, 0x80060000, 0, 0) && ram[0x60000] == 0x03 && ram[0x60001] == 0x07 && ram[0x60002] == 0x03);
+    /* signed like the retail code: i + 150 = -50 -> s 0, frame -50 -> ((-5) << 4) + 0 */
+    CHECK(call("CdIntToPos", (uint32_t)-200, 0x80060000, 0, 0) && ram[0x60000] == 0x00 &&
+          ram[0x60001] == 0x00 && ram[0x60002] == 0xB0);
+    /* i + 150 = -4577: s = -61 (trunc), frame -2 -> 0xFE; minute -1 -> 0xFF; second -1 -> 0xFF */
+    CHECK(call("CdIntToPos", (uint32_t)-4727, 0x80060000, 0, 0) && ram[0x60000] == 0xFF &&
+          ram[0x60001] == 0xFF && ram[0x60002] == 0xFE);
     if (argc >= 1) {
         CHECK(bfm_plat_disc_open("image", argv[0]) == BFM_PLAT_OK);
         memcpy(ram + 0x61000, "\\DATA\\HELLO.TXT;1", 18);
@@ -1630,9 +1642,26 @@ static int group_psyq(int argc, char **argv) {
     CHECK(r32(0x80078980) == 1u * 0x41C64E6Du + 0x3039u);
     memcpy(ram + 0x63000, "musashi", 8);
     CHECK(call("strcpy", 0x80063100, 0x80063000, 0, 0) && strcmp((char *)ram + 0x63100, "musashi") == 0);
-    CHECK(call("strcmp", 0x80063100, 0x80063000, 0, 0) && R[2] == 0);
-    ram[0x63105] = 'z';
-    CHECK(call("strcmp", 0x80063100, 0x80063000, 0, 0) && (int32_t)R[2] > 0);
+    /* retail strcpy: NULL dst or src returns 0 and copies nothing */
+    ram[0x63400] = 'q';
+    CHECK(call("strcpy", 0x80063400, 0, 0, 0) && R[2] == 0 && ram[0x63400] == 'q');
+    CHECK(call("strcpy", 0, 0x80063000, 0, 0) && R[2] == 0);
+    /* srand stores the seed (the entry at 8005C4CC, once misnamed strcmp) */
+    CHECK(call("srand", 0x1234, 0, 0, 0) && r32(0x80078980) == 0x1234);
+    /* strcmp (8005C4DC) is not called by game code, so not in the table:
+     * the wrapper directly, with the retail NULL rules */
+    {
+        R[4] = 0x80063100; R[5] = 0x80063000;
+        CHECK(bfm_psyq_strcmp(R) && R[2] == 0);
+        ram[0x63105] = 'z';
+        CHECK(bfm_psyq_strcmp(R) && R[2] == (uint32_t)('z' - 'h'));
+        R[4] = 0; R[5] = 0;
+        CHECK(bfm_psyq_strcmp(R) && R[2] == 0);
+        R[4] = 0; R[5] = 0x80063000;
+        CHECK(bfm_psyq_strcmp(R) && R[2] == (uint32_t)-1);
+        R[4] = 0x80063000; R[5] = 0;
+        CHECK(bfm_psyq_strcmp(R) && R[2] == 1);
+    }
     CHECK(call("memset", 0x80063200, 0xAB, 16, 0) && ram[0x6320F] == 0xAB && ram[0x63210] == 0);
     CHECK(call("memcpy", 0x80063300, 0x80063200, 16, 0) && ram[0x6330F] == 0xAB);
     CHECK(call("bzero", 0x80063300, 8, 0, 0) && ram[0x63307] == 0 && ram[0x63308] == 0xAB);
@@ -1766,6 +1795,11 @@ static int group_libgte(void) {
         for (i = 0; i < 32; i++) ram[0x1100 + i] = 0xEE;          /* t and pad must survive */
         CHECK(call("RotMatrix", 0x80001000, 0x80001100, 0, 0) && R[2] == 0x80001100);
         printf("rot %d %d %d:", angles[k][0], angles[k][1], angles[k][2]);
+        for (i = 0; i < 9; i++) printf(" %d", (int)(int16_t)(ram[0x1100 + 2 * i] | (ram[0x1101 + 2 * i] << 8)));
+        printf("\n");
+        CHECK(ram[0x1112] == 0xEE && r32(0x80001114) == 0xEEEEEEEE);
+        CHECK(call("RotMatrixYXZ", 0x80001000, 0x80001100, 0, 0) && R[2] == 0x80001100);
+        printf("rotyxz %d %d %d:", angles[k][0], angles[k][1], angles[k][2]);
         for (i = 0; i < 9; i++) printf(" %d", (int)(int16_t)(ram[0x1100 + 2 * i] | (ram[0x1101 + 2 * i] << 8)));
         printf("\n");
         CHECK(ram[0x1112] == 0xEE && r32(0x80001114) == 0xEEEEEEEE);

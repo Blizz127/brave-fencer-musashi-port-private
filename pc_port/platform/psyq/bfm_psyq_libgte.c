@@ -75,6 +75,31 @@ void bfm_psyq_transmatrix(uint8_t *m, const int32_t v[3]) {
     w32(m + 0x1C, v[2]);
 }
 
+/* RotMatrixYXZ(SVECTOR *r, MATRIX *m) -> m: retail func_80049A1C term by
+ * term (same table and sign handling as RotMatrix; multu low 32 bits, then
+ * an arithmetic >> 12, stored as halfwords). */
+int bfm_psyq_RotMatrixYXZ(uint32_t *r) {
+    uint8_t *v = (uint8_t *)bfm_psyq_ptr(A(0), 6), *m = (uint8_t *)bfm_psyq_ptr(A(1), 32);
+    int32_t sx, cx, sy, cy, sz, cz, t;
+    if (!v || !m) return 0;
+    if (!sincos(s16at(v), &sx, &cx) || !sincos(s16at(v + 2), &sy, &cy) ||
+        !sincos(s16at(v + 4), &sz, &cz))
+        return 0;
+    w16(m + 0x0A, -sx);                           /* m[1][2] */
+    w16(m + 0x04, mul12(sy, cx));                 /* m[0][2] */
+    w16(m + 0x10, mul12(cy, cx));                 /* m[2][2] */
+    w16(m + 0x06, mul12(sz, cx));                 /* m[1][0] */
+    w16(m + 0x08, mul12(cz, cx));                 /* m[1][1] */
+    t = mul12(sy, sx);
+    w16(m + 0x00, mul12(cy, cz) + mul12(t, sz));  /* m[0][0] */
+    w16(m + 0x02, -mul12(cy, sz) + mul12(t, cz)); /* m[0][1] */
+    t = mul12(cy, sx);
+    w16(m + 0x0E, mul12(sy, sz) + mul12(t, cz));  /* m[2][1] */
+    w16(m + 0x0C, -mul12(sy, cz) + mul12(t, sz)); /* m[2][0] */
+    r[2] = A(1);
+    return 1;
+}
+
 /* RotMatrix(SVECTOR *r, MATRIX *m) -> m */
 int bfm_psyq_RotMatrix(uint32_t *r) {
     uint8_t *v = (uint8_t *)bfm_psyq_ptr(A(0), 6), *m = (uint8_t *)bfm_psyq_ptr(A(1), 32);

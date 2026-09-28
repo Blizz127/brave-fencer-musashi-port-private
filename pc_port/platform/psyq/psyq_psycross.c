@@ -65,28 +65,20 @@ int bfm_psyq_ratan2(uint32_t *r) { (void)r; return 0; }
     }
 /* PsyCross's RotMatrix* read its own copy of the sin/cos table, which is
  * the game's data: linking them puts retail bytes in the port binary
- * (retail_content_guard), and RotMatrixYXZ differs from the retail result
- * (native_lane_probe). Off unless BFM_PSYQ_PSYCROSS_ROTMATRIX: the wrappers
+ * (retail_content_guard). Off unless BFM_PSYQ_PSYCROSS_ROTMATRIX: the wrappers
  * refuse and the interpreter runs the retail code on the game's own table. */
 #ifdef BFM_PSYQ_PSYCROSS_ROTMATRIX
 ROT1(RotMatrixX, bfm_psyq_RotMatrixX)
 ROT1(RotMatrixY, bfm_psyq_RotMatrixY)
 ROT1(RotMatrixZ, bfm_psyq_RotMatrixZ)
 
-int bfm_psyq_RotMatrixYXZ(uint32_t *r) {
-    SVECTOR *v = (SVECTOR *)P(A(0), sizeof(SVECTOR));
-    MATRIX *m = (MATRIX *)P(A(1), sizeof(MATRIX));
-    if (!v || !m) return 0;
-    RotMatrixYXZ(v, m);
-    r[2] = A(1);
-    return 1;
-}
 #else
 int bfm_psyq_RotMatrixX(uint32_t *r) { (void)r; return 0; }
 int bfm_psyq_RotMatrixY(uint32_t *r) { (void)r; return 0; }
 int bfm_psyq_RotMatrixZ(uint32_t *r) { (void)r; return 0; }
-int bfm_psyq_RotMatrixYXZ(uint32_t *r) { (void)r; return 0; }
 #endif
+/* RotMatrixYXZ is exact in bfm_psyq_libgte.c: PsyCross's differs from the
+ * retail code by 1-2 in some entries. */
 
 /* ---- GTE state (bridge) ---- */
 
@@ -444,10 +436,8 @@ int bfm_psyq_PushMatrix(uint32_t *r) {
     int i;
     (void)r;
     if (!get32(GTE_MSTACK_OFS, &ofs) || !P(GTE_MSTACK_BASE, GTE_MSTACK_SIZE)) return 0;
-    if ((int32_t)ofs >= GTE_MSTACK_SIZE) {
-        bfm_plat_mods_log("libgte", 1, "PushMatrix: matrix stack full");
-        return 1;
-    }
+    /* full: the retail code saves $ra to D_8006DC0C and printf()s; let it */
+    if ((int32_t)ofs >= GTE_MSTACK_SIZE) return 0;
     GTE_BEGIN();
     for (i = 0; i < 8; i++) put32(GTE_MSTACK_BASE + ofs + 4u * (uint32_t)i, (int32_t)CFC2(i));
     GTE_END(0);
@@ -460,10 +450,8 @@ int bfm_psyq_PopMatrix(uint32_t *r) {
     int i;
     (void)r;
     if (!get32(GTE_MSTACK_OFS, &ofs) || !P(GTE_MSTACK_BASE, GTE_MSTACK_SIZE)) return 0;
-    if ((int32_t)ofs <= 0) {
-        bfm_plat_mods_log("libgte", 1, "PopMatrix: matrix stack empty");
-        return 1;
-    }
+    /* empty: the retail error path (saves $ra, printf) runs instead */
+    if ((int32_t)ofs <= 0) return 0;
     if (ofs > GTE_MSTACK_SIZE) return 0;             /* corrupt offset: let the retail code decide */
     ofs -= 0x20u;
     GTE_BEGIN();
