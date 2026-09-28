@@ -1,6 +1,5 @@
 #include "musashi_boot_memory.h"
-
-extern void func_80042C64_native(uint8_t *destination, uint32_t word_count);
+#include "musashi_psyq_hle.h"
 
 int musashi_boot_call_80042c64(MusashiBootMemory *memory, uint32_t address,
                                uint32_t word_count) {
@@ -15,7 +14,7 @@ int musashi_boot_call_80042c64(MusashiBootMemory *memory, uint32_t address,
     destination = musashi_boot_ram_span(memory, address, bytes ? bytes : 1u);
     if (!destination)
         return 0;
-    func_80042C64_native(destination, word_count);
+    musashi_hle_clear_words(destination, word_count);
     return 1;
 }
 

@@ -3682,8 +3682,7 @@ static const uint32_t kEventRegisterWords[121]; /* shape only: 121 words, fetche
 static const uint32_t kEventTestWords[66]; /* shape only: 66 words, fetched from guest RAM */
 static const uint32_t kEventCallbackWords[8][5]; /* shape only: 40 words, fetched from guest RAM */
 
-extern void func_8005C388_native(int32_t value, uint8_t *classification,
-                                 int32_t *column, void *userdata);
+#include "musashi_psyq_hle.h"
 
 /* The generated initializer is derived at configure time from the exact
  * inline-assembly overlay. Keeping it in the native build proves that no
@@ -7888,6 +7887,11 @@ typedef struct FormatterConsoleContext {
     void *userdata;
 } FormatterConsoleContext;
 
+static void formatter_console_write(void *userdata, const uint8_t *bytes, int32_t length) {
+    const FormatterConsoleContext *console = userdata;
+    console->sink(console->userdata, bytes, length);
+}
+
 static void *callback_hook_userdata(const MusashiCallbackDevice *device) {
     if (device->hook_entry_int_userdata)
         return device->hook_entry_int_userdata;
@@ -8182,7 +8186,8 @@ static int formatter_call(MusashiBootMemory *memory, FormatterCpu *cpu,
         if (!classes || !sink || !musashi_boot_read32(memory, 0x80078978u, &column_word))
             return 0;
         memcpy(&column, &column_word, sizeof(column));
-        func_8005C388_native((int32_t)cpu->r[4], classes, &column, userdata);
+        musashi_hle_console_putc((int32_t)cpu->r[4], classes, &column,
+                                 formatter_console_write, userdata);
         memcpy(&column_word, &column, sizeof(column_word));
         if (!musashi_boot_write32(memory, 0x80078978u, column_word))
             return 0;

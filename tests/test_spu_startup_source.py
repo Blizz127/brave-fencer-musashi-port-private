@@ -47,7 +47,6 @@ def test_spu_startup_source_fixture():
             *[str(ROOT / "pc_port" / name) for name in (
                 "boot_memory.c", "callback_bindings.c", "bios_events.c", "bios_kernel.c",
                 "irq_controller.c", "dma_controller.c", "spu_cd_audio.c")],
-            str(ROOT / "src/main/80042c64.c"),
             "-lcrypto", "-o", str(probe),
         ], check=True, timeout=30)
         _sync_code_image(generated)

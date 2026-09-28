@@ -224,15 +224,9 @@ if(MUSASHI_BUILD_PC_PORT)
         pc_port/sio_controller.c
         pc_port/scanline_timer.c
         pc_port/irq_policy.c
-        src/main/80043060.c
-        src/main/8005c29c.c
-        src/main/8005c388.c
-        src/main/8005ccc8.c
-        src/main/8005cd48.c
         src/main/8005c1c0.c
         src/main/8005bd7c.c
         src/main/800426fc.c
-        src/main/80042c64.c
         src/main/800429dc.c
         src/main/80042f8c.c
         src/main/800425b0.c
@@ -252,18 +246,10 @@ if(MUSASHI_BUILD_PC_PORT)
     )
     # Only this decomp-owned translation unit receives the native word binding.
     # Retail compiler/oracle builds do not define it and retain the original ABI.
-    set_source_files_properties(src/main/80043060.c PROPERTIES
-        COMPILE_DEFINITIONS MUSASHI_NATIVE_MEMORY_BINDING=1)
-    set_source_files_properties(src/main/8005c388.c PROPERTIES
-        COMPILE_DEFINITIONS MUSASHI_NATIVE_CONSOLE_BINDING=1)
-    set_source_files_properties(src/main/8005cd48.c PROPERTIES
-        COMPILE_DEFINITIONS MUSASHI_NATIVE_CONSOLE_BINDING=1)
     set_source_files_properties(src/main/8005c1c0.c PROPERTIES
         COMPILE_DEFINITIONS MUSASHI_NATIVE_DEVICE_BINDING=1)
     set_source_files_properties(src/main/8005bd7c.c src/main/800426fc.c PROPERTIES
         COMPILE_DEFINITIONS MUSASHI_NATIVE_DEVICE_BINDING=1)
-    set_source_files_properties(src/main/80042c64.c PROPERTIES
-        COMPILE_DEFINITIONS MUSASHI_NATIVE_WORD_CLEAR_BINDING=1)
     set_source_files_properties(src/main/800429dc.c PROPERTIES
         COMPILE_DEFINITIONS MUSASHI_NATIVE_CALLBACK_REGISTRATION=1)
     set_source_files_properties(src/main/80042f8c.c PROPERTIES

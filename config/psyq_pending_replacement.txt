@@ -7,17 +7,11 @@ src/main/800425e0.c libetc
 src/main/800426fc.c libetc
 src/main/800427f4.c libetc
 src/main/800429dc.c libetc
-src/main/80042c64.c libetc
 src/main/80042ce8.c libetc
 src/main/80042e08.c libetc
 src/main/80042f8c.c libetc
-src/main/80043060.c libetc
 src/main/8005bd7c.c libgpu2
 src/main/8005c1c0.c libgpu2
-src/main/8005c29c.c libgpu2
-src/main/8005c388.c libc2_1
-src/main/8005ccc8.c libc2_1
-src/main/8005cd48.c libc2_1
 src/main/800616d0.c libmcrd1
 src/main/8006291c.c libmcrd2
 src/main/80062988.c libmcrd2

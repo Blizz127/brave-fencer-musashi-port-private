@@ -575,7 +575,23 @@ over every `src/main` source of every target and fails configuration on any
 PsyQ-range source, except the bindings listed in
 `config/psyq_pending_replacement.txt` (19 today: libetc callback/IRQ/DMA,
 libgpu device ops, libc2 console/string, libmcrd VBlank), which are being
-replaced and are only ever removed from that list. The native lane never
+replaced and are only ever removed from that list.
+
+Replacement status (each entry: what now provides it):
+
+| PsyQ entry | service | provider |
+| --- | --- | --- |
+| 80042C64 | libetc word clear | port HLE `musashi_hle_clear_words` |
+| 8005C29C | libc2 memset | port HLE `musashi_hle_fill_bytes` |
+| 8005CCC8 | libc2 memchr | port HLE `musashi_hle_find_byte` |
+| 80043060 | libetc word exchange | port HLE `musashi_hle_exchange_word` |
+| 8005C388 / 8005CD48 | libc2 TTY putchar / puts | port HLE `musashi_hle_console_putc/puts` |
+| 800425B0 800425E0 800426FC 800427F4 800429DC 80042CE8 80042E08 80042F8C | libetc IRQ/callback/DMA chain | pending: port HLE on the emulated IRQ/DMA controllers (PsyCross's libetc drives host SDL timing, not a guest interrupt chain) |
+| 8005BD7C 8005C1C0 | libgpu device ops | pending: port HLE on the GPU device / PsyCross GPU backend |
+| 800616D0 8006291C 80062988 | libmcrd VBlank | pending: port HLE |
+
+The HLE (`pc_port/include/musashi_psyq_hle.h`, header-only) is written from
+the documented C-library/libetc behaviour, not from PsyQ code. The native lane never
 admits a PsyQ-range function: **469 of 655 game functions** are admitted
 (240 PsyQ candidates excluded); interpreted game code still runs the PsyQ
 words the user's own disc provides, which ship with nothing.
