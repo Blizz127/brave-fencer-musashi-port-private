@@ -628,6 +628,101 @@ Stubbed / next:
 - Routing the game's Psy-Q-shaped call sites (libgpu/libcd/libetc shims in
   the native lane) through `bfm_plat_*`.
 
+## Psy-Q compatibility layer
+
+`pc_port/platform/psyq/` is the Psy-Q → PsyCross/HLE layer that
+port/native-lane's native lane consumes. The generated coverage report is
+[PSYQ-COMPAT.md](PSYQ-COMPAT.md).
+
+**Enumeration.** `tools/psyq_callsites.py --vendor <vendor/bfm-decomp>` works
+as follows:
+- It takes the Psy-Q segment ranges from the vendor splat config (the
+  `snd*`, `lib*`, `apicard*` segments: `0x8003A444`–`0x80062998`).
+- It collects every `jal`/`j` target in the game code's committed
+  `MUSASHI_NATIVE_MIPS_WORD` exports (`src/main` `0x80010000`–`0x8003A444`
+  and all overlays), plus named C calls in files without an export.
+- It names targets from the vendor symbols, from libgte instruction shape,
+  or from `INFERRED` in `tools/psyq_compat_status.py`. Each inferred name
+  carries its call-context evidence, e.g. LoadImage/DrawOTag/PutDrawEnv
+  from the main loop.
+
+It writes `bfm_psyq_calls.json` (facts: addresses, names, counts),
+`bfm_psyq_compat.def` (the X-macro table), and `docs/PSYQ-COMPAT.md`. The
+first run found 212 entry points and 1,323 call sites, 116 of them named.
+`--check` fails if the committed outputs are stale, and the tests run it
+when the vendor tree is present.
+
+**Interface for the native lane.**
+```c
+/* bfm_psyq_compat.def: BFM_PSYQ(pc, name, status, argc, returns, wrapper) */
+#define BFM_PSYQ(pc, n, st, ac, ret, w) \
+    static int lane_##n(MusashiNativeLaneCall *c) { return w(c->r); }
+#include "psyq/bfm_psyq_compat.def"
+#undef BFM_PSYQ
+#define BFM_PSYQ(pc, n, st, ac, ret, w) {pc, 2 * 8, lane_##n, #n, ac, ret},
+static const MusashiNativeLaneEntry psyq_entries[] = {
+#include "psyq/bfm_psyq_compat.def"
+};
+```
+- Wrappers are `int wrapper(uint32_t *r)` over the o32 register file:
+  a0–a3 = `r[4..7]`, then words at guest `sp+0x10`; the result goes in
+  `r[2]`. They return 1 when done and 0 to refuse. `STUB` entries (and
+  `PSYCROSS` ones in a build without PsyCross) always refuse, so the whole
+  table can be installed: a refusal makes the interpreter run the retail
+  code from the user's disc.
+- `bfm_psyq_set_ram(phys0, size)` sets the host address of guest physical
+  0 (`(void *)0x80000000` under the lane's design (a)).
+  `bfm_psyq_set_scratchpad(p)` sets the 1 KiB scratchpad; the game puts
+  RECTs there. Guest pointers are masked to physical and bounds-checked.
+- `bfm_psyq_call(pc, r)` is a lookup-and-call for routers that don't
+  instantiate the table.
+
+**Status (first cut): 39 of 212 entry points, 380 of 1,323 call sites
+(28.7%).**
+- **HLE (38):** the libgpu packet helpers (GetTPage, GetClut, AddPrim,
+  CatPrim, SetSemiTrans, SetPoly*/SetLine*), ClearOTagR, SetDefDispEnv,
+  LoadImage/StoreImage/MoveImage, PutDrawEnv/PutDispEnv, DrawOTag,
+  DrawSync, SetDispMask; VSync; CdIntToPos/CdPosToInt/CdSearchFile; rand,
+  memcpy, memset, bzero, strcpy, strcmp, putchar.
+- **PsyCross (1):** ratan2 (111 call sites).
+- **Stub-TBD (173):** the sound driver, libgs, GTE-state libgte, the
+  remaining libcd, libapi/libpad/libmcrd/apicard (the device and BIOS HLE
+  run their guest code), callbacks, and printf.
+
+**Semantics differences to know about:**
+- **Pointer arguments** are guest addresses. The layer converts them. For
+  structures (RECT, DRAWENV 0x5C bytes, DISPENV 0x14, CdlFILE, OT/prim
+  packets) it reads and writes the guest layout field by field, never a
+  host struct cast.
+- **OT and primitives live in guest RAM**, with 24-bit links. PsyCross's
+  own P_TAG uses host-width pointers (`USE_EXTENDED_PRIM_POINTERS`), so a
+  guest OT can't be handed to PsyCross's `DrawOTag`. The HLE `DrawOTag`
+  walks the guest OT and decodes each GP0 packet into `BfmPlatPrim`:
+  polygons, lines and polylines, rectangles, VRAM fill, and texpage (E1)
+  state. The result goes to `bfm_plat_renderer_submit`, so every renderer
+  backend and texture replacement applies. Unknown commands are counted
+  (`bfm_psyq_stats`). E2–E6 inside packets are ignored; the draw
+  environment comes from PutDrawEnv.
+- **GTE state:** PsyCross's GTE keeps its own register file, separate from
+  the guest cop2 state that port-int's interpreter (`gte_owner.c`) uses. So
+  only stateless libgte math is mapped to PsyCross. Everything that reads
+  or writes GTE registers (SetRotMatrix, RotTransPers, InitGeom…) waits
+  for one shared GTE register file. PsyCross's `long *` out-parameters are
+  8 bytes on LP64, so those wrappers will need host temporaries.
+- **rand** updates the guest's own seed word (`0x80078980`), so native and
+  interpreted callers share one sequence.
+- **VSync:** mode > 1 waits n fields through `bfm_plat_timing_vsync`, 0
+  waits one, 1 returns 0 (there's no hsync counter on the host), and < 0
+  returns the platform's field counter.
+- **Callbacks** (DrawSyncCallback, VSyncCallback, DMACallback…) call guest
+  code and stay with port-int's IRQ HLE and `musashi_native_guest_call`.
+
+**Next:**
+- name the 96 unnamed entries (their Psy-Q objects are listed in the
+  report)
+- share the GTE register file, then map libgte to PsyCross
+- SetDrawEnv (DR_ENV packets) and printf (guest varargs)
+
 ## CMake wiring (note for port/native-lane)
 
 This branch doesn't touch `CMakeLists.txt`. To wire it into the build:
@@ -643,7 +738,8 @@ add_library(bfm_plat STATIC
     pc_port/platform/bfm_plat_console.c  pc_port/platform/bfm_plat_console_ui.c
     pc_port/platform/bfm_plat_events.c   pc_port/platform/bfm_plat_hook_sites.c
     pc_port/platform/bfm_plat_image.c    pc_port/platform/bfm_plat_font.c
-    pc_port/platform/bfm_plat_widescreen.c)
+    pc_port/platform/bfm_plat_widescreen.c
+    pc_port/platform/psyq/bfm_psyq_compat.c)        # + psyq/psyq_psycross.c with PsyCross
 target_include_directories(bfm_plat PUBLIC pc_port/platform)
 target_link_libraries(bfm_plat PUBLIC ${CMAKE_DL_LIBS} m)
 

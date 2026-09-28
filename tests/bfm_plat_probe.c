@@ -3,6 +3,7 @@
  * "ok GROUP" on success, or "FAIL file:line: expr" and exits 1. */
 #include "bfm_plat.h"
 #include "bfm_plat_font.h"
+#include "psyq/bfm_psyq_compat.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -1426,6 +1427,203 @@ static int group_disc_init(int argc, char **argv) {
     return 0;
 }
 
+
+/* ------------------------------------------------------------ psyq compat */
+static uint8_t spad[0x400];
+static uint32_t R[32];
+static void g32(uint32_t a, uint32_t v) { put32g(a, v); }
+static uint32_t r32(uint32_t a) {
+    a &= 0x1FFFFF;
+    return (uint32_t)ram[a] | ((uint32_t)ram[a + 1] << 8) | ((uint32_t)ram[a + 2] << 16) | ((uint32_t)ram[a + 3] << 24);
+}
+static int call(const char *name, uint32_t a0, uint32_t a1, uint32_t a2, uint32_t a3) {
+    const BfmPsyqEntry *t;
+    size_t n = bfm_psyq_table(&t), i;
+    R[4] = a0; R[5] = a1; R[6] = a2; R[7] = a3;
+    for (i = 0; i < n; i++)
+        if (strcmp(t[i].name, name) == 0) return bfm_psyq_call(t[i].pc, R);
+    printf("FAIL no entry %s\n", name);
+    exit(1);
+}
+
+static int group_psyq(int argc, char **argv) {
+    const BfmPsyqEntry *t;
+    size_t n = bfm_psyq_table(&t), i, hle = 0;
+    BfmPlatOutput o;
+    BfmPlatRendererStats st;
+    BfmPsyqStats ps;
+    BfmPlatClock fake;
+    reset_all();
+    memset(ram, 0, sizeof ram);
+    bfm_psyq_reset();
+    bfm_psyq_set_ram(ram, sizeof ram);
+    bfm_psyq_set_scratchpad(spad);
+    memset(&o, 0, sizeof o);
+    CHECK(bfm_plat_renderer_open("null", &o, NULL) == BFM_PLAT_OK);
+    fake.now_ns = probe_now; fake.sleep_ns = probe_sleep; fake.user = NULL;
+    bfm_plat_timing_set_clock(&fake);
+    bfm_plat_timing_init();
+    /* table: sorted, unique, stubs refuse */
+    for (i = 1; i < n; i++) CHECK(t[i - 1].pc < t[i].pc);
+    for (i = 0; i < n; i++) {
+        if (t[i].status == BFM_PSYQ_HLE) { CHECK(t[i].available); hle++; }
+        if (t[i].status == BFM_PSYQ_STUB) CHECK(!t[i].available && t[i].fn(R) == 0);
+    }
+    printf("table %u hle %u\n", (unsigned)n, (unsigned)hle);
+    CHECK(bfm_psyq_find(0x80010000) == NULL && bfm_psyq_call(0x80010000, R) == 0);
+
+    /* GetTPage / GetClut */
+    CHECK(call("GetTPage", 2, 1, 640, 256) && R[2] == ((2u << 7) | (1u << 5) | (1u << 4) | (640u >> 6)));
+    CHECK(call("GetTPage", 0, 0, 0, 512) && R[2] == (1u << 11));
+    CHECK(call("GetClut", 320, 480, 0, 0) && R[2] == ((480u << 6) | (320u >> 4)));
+
+    /* ClearOTagR + AddPrim + SetPolyFT4 + CatPrim */
+    CHECK(call("ClearOTagR", 0x80010000, 4, 0, 0) && R[2] == 0x80010000);
+    CHECK(r32(0x80010000) == 0x00FFFFFF && r32(0x8001000C) == 0x00010008);
+    CHECK(call("SetPolyFT4", 0x80020000, 0, 0, 0));
+    CHECK(ram[0x20003] == 9 && ram[0x20007] == 0x2C);
+    CHECK(call("SetSemiTrans", 0x80020000, 1, 0, 0) && ram[0x20007] == 0x2E);
+    CHECK(call("SetSemiTrans", 0x80020000, 0, 0, 0) && ram[0x20007] == 0x2C);
+    CHECK(call("AddPrim", 0x8001000C, 0x80020000, 0, 0));
+    CHECK(r32(0x8001000C) == 0x00020000 && r32(0x80020000) == 0x09010008);
+    CHECK(call("SetLineG3", 0x80021000, 0, 0, 0) && r32(0x80021000 + 28) == 0x55555555);
+    CHECK(call("CatPrim", 0x80021000, 0x80022000, 0, 0) && (r32(0x80021000) & 0xFFFFFF) == 0x022000);
+
+    /* SetDefDispEnv: 5th argument on the guest stack */
+    R[29] = 0x801FFF00;
+    g32(0x801FFF10, 240);
+    CHECK(call("SetDefDispEnv", 0x80030000, 0, 256, 320) && R[2] == 0x80030000);
+    CHECK(ram[0x30002] == 0 && ram[0x30003] == 1 && ram[0x30004] == 0x40 && ram[0x30006] == 240);
+
+    /* LoadImage from a scratchpad RECT, StoreImage, MoveImage */
+    {
+        uint16_t back[4];
+        BfmPlatRect rc = {512, 0, 2, 2};
+        spad[0] = 0; spad[1] = 2; spad[2] = 0; spad[3] = 0; spad[4] = 2; spad[5] = 0; spad[6] = 2; spad[7] = 0;
+        g32(0x80040000, 0x22221111); g32(0x80040004, 0x44443333);
+        CHECK(call("LoadImage", 0x1F800000, 0x80040000, 0, 0));
+        CHECK(bfm_plat_renderer_download_vram(&rc, back) == BFM_PLAT_OK && back[0] == 0x1111 && back[3] == 0x4444);
+        CHECK(call("StoreImage", 0x1F800000, 0x80041000, 0, 0) && r32(0x80041004) == 0x44443333);
+        CHECK(call("MoveImage", 0x1F800000, 600, 10, 0));
+        rc.x = 600; rc.y = 10;
+        CHECK(bfm_plat_renderer_download_vram(&rc, back) == BFM_PLAT_OK && back[1] == 0x2222);
+        spad[4] = 0; spad[5] = 8;                          /* w = 2048: invalid rect refuses */
+        CHECK(!call("LoadImage", 0x1F800000, 0x80040000, 0, 0));
+    }
+
+    /* PutDispEnv / PutDrawEnv reach the renderer */
+    CHECK(call("PutDispEnv", 0x80030000, 0, 0, 0) && R[2] == 0x80030000);
+    {
+        BfmPlatDispEnv d;
+        bfm_plat_renderer_last_disp_env(&d);
+        CHECK(d.disp.y == 256 && d.disp.w == 320 && d.disp.h == 240);
+    }
+    CHECK(call("PutDrawEnv", 0x80031000, 0, 0, 0));
+    bfm_plat_renderer_stats(&st);
+    CHECK(st.draw_envs == 1 && st.disp_envs == 1);
+
+    /* DrawOTag: an OT with every packet family */
+    {
+        uint32_t a = 0x80050000;
+        /* OT: 2 entries (reverse), entry1 -> p0 -> p1 -> ... -> entry0 -> end */
+        g32(0x80050000, 0x00FFFFFF);
+        /* p0 at 0x80051000: FT4 (9 words) */
+        g32(0x80051000, 0x09051100);
+        g32(0x80051004, 0x2C808080); g32(0x80051008, 0x00100010); g32(0x8005100C, 0x7FC00000);
+        g32(0x80051010, 0x00100020); g32(0x80051014, 0x000C0010); g32(0x80051018, 0x00200010);
+        g32(0x8005101C, 0x00001000); g32(0x80051020, 0x00200020); g32(0x80051024, 0x00001010);
+        /* p1 at 0x80051100: G3 (6), then E1 + SPRT16 (1 + 3) */
+        g32(0x80051100, 0x0A051200);
+        g32(0x80051104, 0x30FF0000); g32(0x80051108, 0x00000000);
+        g32(0x8005110C, 0x0000FF00); g32(0x80051110, 0x00000010);
+        g32(0x80051114, 0x00FF0000); g32(0x80051118, 0x00100000);
+        g32(0x8005111C, 0xE1000205);
+        g32(0x80051120, 0x7C808080); g32(0x80051124, 0x00400040); g32(0x80051128, 0x7FC00000);
+        /* p2 at 0x80051200: variable TILE (3), polyline G with 3 points (6+term), FILL (3), unknown 0x90 */
+        g32(0x80051200, 0x11050000);
+        g32(0x80051204, 0x60102030); g32(0x80051208, 0x00050005); g32(0x8005120C, 0x00030004);
+        g32(0x80051210, 0x58FF0000); g32(0x80051214, 0x00000000);
+        g32(0x80051218, 0x0000FF00); g32(0x8005121C, 0x00000010);
+        g32(0x80051220, 0x000000FF); g32(0x80051224, 0x00100010);
+        g32(0x80051228, 0x55555555);
+        g32(0x8005122C, 0x020000F8); g32(0x80051230, 0x01000100); g32(0x80051234, 0x00010002);
+        g32(0x80051238, 0x90000000);
+        g32(0x8005123C, 0x00000000); g32(0x80051240, 0x00000000); g32(0x80051244, 0x00000000);
+        g32(0x80050004, 0x00051000);
+        bfm_psyq_reset();
+        CHECK(call("DrawOTag", 0x80050004, 0, 0, 0));
+        (void)a;
+        bfm_psyq_stats(&ps);
+        bfm_plat_renderer_stats(&st);
+        printf("ot packets %u prims %u unknown %u (0x%02x)\n", (unsigned)ps.ot_packets, (unsigned)ps.prims,
+               (unsigned)ps.unknown_commands, ps.last_unknown_code);
+        CHECK(ps.ot_packets == 3 && ps.prims == 7 && ps.unknown_commands == 1 && ps.last_unknown_code == 0x90);
+        CHECK(st.prims_by_kind[BFM_PRIM_POLY_FT4] == 1 && st.prims_by_kind[BFM_PRIM_POLY_G3] == 1 &&
+              st.prims_by_kind[BFM_PRIM_SPRITE] == 1 && st.prims_by_kind[BFM_PRIM_TILE] == 1 &&
+              st.prims_by_kind[BFM_PRIM_LINE_G] == 2 && st.prims_by_kind[BFM_PRIM_FILL] == 1);
+        {   /* FILL landed in VRAM (null renderer), colour 0xF8 red -> 0x001F */
+            uint16_t px;
+            BfmPlatRect rc = {256, 256, 1, 1};
+            CHECK(bfm_plat_renderer_download_vram(&rc, &px) == BFM_PLAT_OK && px == 0x001F);
+        }
+    }
+    /* direct decoder: FT4 fields, sprite picks up the E1 tpage */
+    {
+        uint32_t w[] = {0x2C808080, 0x00100010, 0x7FC00000, 0x00100020, 0x000C0010,
+                        0x00200010, 0x00001000, 0x00200020, 0x00001010,
+                        0xE1000205, 0x7D112233, 0x00400040, 0x7FC00808};
+        BfmPlatPrim p[4];
+        uint16_t tp = 0;
+        CHECK(bfm_psyq_decode_packet(w, 13, &tp, p, 4) == 2);
+        CHECK(p[0].kind == BFM_PRIM_POLY_FT4 && p[0].clut == 0x7FC0 && p[0].tpage == 0x000C &&
+              p[0].v[1].x == 32 && p[0].v[3].u == 0x10 && p[0].v[3].v == 0x10);
+        CHECK(p[1].kind == BFM_PRIM_SPRITE && p[1].w == 16 && p[1].tpage == 0x0205 &&
+              p[1].flags == BFM_PRIM_FLAG_RAW_TEXTURE && p[1].v[0].u == 8 && p[1].v[0].r == 0x33);
+        CHECK(bfm_psyq_decode_packet(w, 5, &tp, p, 4) == 0);   /* truncated FT4 */
+    }
+
+    /* libcd */
+    CHECK(call("CdIntToPos", 16, 0x80060000, 0, 0) && ram[0x60000] == 0x00 && ram[0x60001] == 0x02 && ram[0x60002] == 0x16);
+    CHECK(call("CdPosToInt", 0x80060000, 0, 0, 0) && R[2] == 16);
+    CHECK(call("CdIntToPos", 4500 * 3 + 75 * 7 + 3 - 150, 0x80060000, 0, 0) && ram[0x60000] == 0x03 && ram[0x60001] == 0x07 && ram[0x60002] == 0x03);
+    if (argc >= 1) {
+        CHECK(bfm_plat_disc_open("image", argv[0]) == BFM_PLAT_OK);
+        memcpy(ram + 0x61000, "\\DATA\\HELLO.TXT;1", 18);
+        CHECK(call("CdSearchFile", 0x80062000, 0x80061000, 0, 0) && R[2] == 0x80062000);
+        CHECK(ram[0x62000] == 0x00 && ram[0x62001] == 0x02 && ram[0x62002] == 0x20 && r32(0x80062004) == 27 && strcmp((char *)ram + 0x62008, "HELLO.TXT;1") == 0);
+        memcpy(ram + 0x61000, "\\NOPE.BIN;1", 12);
+        CHECK(call("CdSearchFile", 0x80062000, 0x80061000, 0, 0) && R[2] == 0);
+    }
+
+    /* libc2: rand on the guest seed, string/memory helpers */
+    g32(0x80078980, 1);
+    CHECK(call("rand", 0, 0, 0, 0) && R[2] == ((1u * 0x41C64E6Du + 0x3039u) >> 16 & 0x7FFF));
+    CHECK(r32(0x80078980) == 1u * 0x41C64E6Du + 0x3039u);
+    memcpy(ram + 0x63000, "musashi", 8);
+    CHECK(call("strcpy", 0x80063100, 0x80063000, 0, 0) && strcmp((char *)ram + 0x63100, "musashi") == 0);
+    CHECK(call("strcmp", 0x80063100, 0x80063000, 0, 0) && R[2] == 0);
+    ram[0x63105] = 'z';
+    CHECK(call("strcmp", 0x80063100, 0x80063000, 0, 0) && (int32_t)R[2] > 0);
+    CHECK(call("memset", 0x80063200, 0xAB, 16, 0) && ram[0x6320F] == 0xAB && ram[0x63210] == 0);
+    CHECK(call("memcpy", 0x80063300, 0x80063200, 16, 0) && ram[0x6330F] == 0xAB);
+    CHECK(call("bzero", 0x80063300, 8, 0, 0) && ram[0x63307] == 0 && ram[0x63308] == 0xAB);
+    CHECK(!call("memcpy", 0x80063300, 0x801FFFF0, 64, 0));    /* past the end of RAM */
+    CHECK(call("putchar", 'h', 0, 0, 0) && call("putchar", 'i', 0, 0, 0) && call("putchar", '\n', 0, 0, 0));
+
+    /* VSync */
+    CHECK(call("VSync", 0xFFFFFFFF, 0, 0, 0) && R[2] == 0);
+    CHECK(call("VSync", 2, 0, 0, 0) && call("VSync", 0, 0, 0, 0));
+    CHECK(call("VSync", 0xFFFFFFFF, 0, 0, 0) && R[2] == 3);
+    CHECK(call("VSync", 1, 0, 0, 0) && R[2] == 0);
+
+    /* no RAM bound: HLE refuses without touching anything */
+    bfm_psyq_set_ram(NULL, 0);
+    CHECK(!call("AddPrim", 0x8001000C, 0x80020000, 0, 0));
+    bfm_psyq_stats(&ps);
+    CHECK(ps.refused >= 2);
+    return 0;
+}
+
 #ifdef BFM_PLAT_WITH_LUA
 /* lua MODSDIR: the pytest writes lua_hello + test mods there. */
 static int group_lua(int argc, char **argv) {
@@ -1546,6 +1744,7 @@ int main(int argc, char **argv) {
     else if (strcmp(g, "sha256") == 0) r = group_sha256();
     else if (strcmp(g, "disc_check") == 0) r = group_disc_check(argc - 2, argv + 2);
     else if (strcmp(g, "disc_init") == 0) r = group_disc_init(argc - 2, argv + 2);
+    else if (strcmp(g, "psyq") == 0) r = group_psyq(argc - 2, argv + 2);
     else if (strcmp(g, "watch") == 0) r = group_watch(argc - 2, argv + 2);
     else if (strcmp(g, "cheat_pack") == 0) r = group_cheat_pack(argc - 2, argv + 2);
 #ifdef BFM_PLAT_WITH_LUA

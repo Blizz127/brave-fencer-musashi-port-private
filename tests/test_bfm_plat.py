@@ -337,7 +337,7 @@ class BfmPlatTests(unittest.TestCase):
         cls.addClassCleanup(temp.cleanup)
         cls.tmp = Path(temp.name)
         cls.probe = cls.tmp / "bfm_plat_probe"
-        sources = sorted(str(p) for p in PLAT.glob("bfm_plat*.c"))
+        sources = sorted(str(p) for p in PLAT.glob("bfm_plat*.c")) + [str(PLAT / "psyq/bfm_psyq_compat.c")]
         subprocess.run(["cc", *CFLAGS, "-I", str(PLAT), *sources,
                         str(ROOT / "tests/bfm_plat_probe.c"), "-o",
                         str(cls.probe), "-ldl", "-lm"],
@@ -644,7 +644,7 @@ class BfmPlatTests(unittest.TestCase):
         subprocess.run(["cc", "-std=gnu99", "-O1", "-c", *lua_c], cwd=objdir, check=True,
                        stdin=subprocess.DEVNULL, timeout=300)
         probe = self.tmp / "bfm_plat_lua_probe"
-        sources = sorted(str(p) for p in PLAT.glob("bfm_plat*.c"))
+        sources = sorted(str(p) for p in PLAT.glob("bfm_plat*.c")) + [str(PLAT / "psyq/bfm_psyq_compat.c")]
         subprocess.run(["cc", *CFLAGS, "-DBFM_PLAT_WITH_LUA", "-I", str(PLAT), "-I", str(lua_src),
                         *sources, str(PLAT / "backends/script_lua.c"),
                         str(ROOT / "tests/bfm_plat_probe.c"), *sorted(map(str, objdir.glob("*.o"))),
@@ -818,6 +818,57 @@ bfm.on("frame_end", function() if seen.late == nil then
         for addr in ("0x80078EB4", "0x80078EB2", "0x80078EB8", "0x80078EB6", "0x80078E8C"):
             self.assertIn(addr, pack)
 
+    def test_psyq_hle_wrappers(self):
+        d = self.fresh("psyq")
+        (d / "g.iso").write_bytes(build_iso(FILE_TEXT))
+        out = self.run_probe("psyq", d / "g.iso")
+        self.assertIn("ot packets 3 prims 7 unknown 1 (0x90)", out)
+
+    def test_psyq_generated_table_is_current(self):
+        v = vendor_root()
+        if v is None:
+            self.skipTest("vendor/bfm-decomp not present")
+        proc = subprocess.run(["python3", str(ROOT / "tools/psyq_callsites.py"), "--vendor", str(v), "--check"],
+                              capture_output=True, text=True, timeout=600)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+
+    def test_psyq_table_consistency(self):
+        import json
+        import re
+        defs = re.findall(r"^BFM_PSYQ\((0x[0-9A-F]{8}), (\w+), BFM_PSYQ_(\w+), (\d+), (\d+), (\w+)\)$",
+                          (PLAT / "psyq/bfm_psyq_compat.def").read_text(), re.M)
+        data = json.loads((PLAT / "psyq/bfm_psyq_calls.json").read_text())
+        self.assertEqual([d[0] for d in defs], [e["addr"] for e in data["entries"]])
+        self.assertEqual(sorted(int(d[0], 16) for d in defs), [int(d[0], 16) for d in defs])
+        impl = (PLAT / "psyq/bfm_psyq_compat.c").read_text() + (PLAT / "psyq/psyq_psycross.c").read_text()
+        counts = {"PSYCROSS": 0, "HLE": 0, "STUB": 0}
+        sites = {"PSYCROSS": 0, "HLE": 0, "STUB": 0}
+        by_addr = {e["addr"]: e for e in data["entries"]}
+        for addr, name, status, argc, ret, wrapper in defs:
+            counts[status] += 1
+            sites[status] += by_addr[addr]["callsites"]
+            if status == "STUB":
+                self.assertEqual(wrapper, "bfm_psyq_stub", name)
+            else:
+                self.assertRegex(impl, rf"\bint {wrapper}\(uint32_t \*r\)", name)
+                self.assertTrue(0 <= int(argc) <= 8 and ret in ("0", "1"))
+        self.assertEqual(sum(sites.values()), data["meta"]["callsites"])
+        md = (ROOT / "docs/PSYQ-COMPAT.md").read_text()
+        self.assertIn("| hle | %d (" % counts["HLE"], md)
+        self.assertIn("| psycross | %d (" % counts["PSYCROSS"], md)
+        covered = counts["HLE"] + counts["PSYCROSS"]
+        self.assertIn("**%d / %d (" % (covered, len(defs)), md)
+        self.assertIn("**%d / %d (" % (sites["HLE"] + sites["PSYCROSS"], data["meta"]["callsites"]), md)
+        # every inferred name is used and carries evidence
+        import sys
+        sys.path.insert(0, str(ROOT / "tools"))
+        import psyq_compat_status as st
+        for addr, (name, ev) in st.INFERRED.items():
+            e = by_addr.get("0x%08X" % addr)
+            self.assertIsNotNone(e, name)
+            self.assertEqual((e["name"], e["name_source"]), (name, "inferred"))
+            self.assertTrue(ev)
+
     def test_overlay_font(self):
         self.run_probe("font")
 
@@ -842,6 +893,15 @@ bfm.on("frame_end", function() if seen.late == nil then
                                 str(backends / "input_sdl.c")],
                                check=True, stdin=subprocess.DEVNULL, timeout=60)
                 break
+        psyc = Path("/home/blizz/dev/brave-fencer-musashi-decomp/tools/third_party/psycross/include")
+        if (psyc / "psx/libgte.h").is_file():
+            subprocess.run(["cc", "-std=gnu11", "-Wall", "-Wextra", "-Werror", "-fsyntax-only",
+                            "-include", "assert.h", "-I", str(psyc), "-I", str(PLAT / "psyq"),
+                            str(PLAT / "psyq/psyq_psycross.c")],
+                           check=True, stdin=subprocess.DEVNULL, timeout=60)
+            subprocess.run(["cc", *CFLAGS, "-fsyntax-only", "-DBFM_PLAT_WITH_PSYCROSS", "-I", str(PLAT),
+                            str(PLAT / "psyq/bfm_psyq_compat.c")],
+                           check=True, stdin=subprocess.DEVNULL, timeout=60)
         for name in ("audio_sdl.c", "disc_pinned.c"):
             subprocess.run(["cc", *CFLAGS, "-fsyntax-only", "-I",
                             str(ROOT / "pc_port/include"), str(backends / name)],
