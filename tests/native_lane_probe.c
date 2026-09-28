@@ -152,9 +152,8 @@ int main(int argc, char **argv) {
     exe = malloc(0x65000u);
     exe_size = exe ? fread(exe, 1, 0x65000u, file) : 0;
     fclose(file);
-    memory = mmap((void *)(uintptr_t)MUSASHI_NATIVE_LANE_GUEST_BASE, sizeof(*memory),
-                  PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE, -1, 0);
-    if (memory == MAP_FAILED || (uintptr_t)memory != MUSASHI_NATIVE_LANE_GUEST_BASE) {
+    memory = musashi_native_lane_map_guest(sizeof(*memory), NULL);
+    if (!memory) {
         fprintf(stderr, "native_lane: host window at 0x80000000 unavailable; NOT_RUN\n");
         return 77;
     }

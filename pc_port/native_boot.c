@@ -129,6 +129,10 @@ static int debug_force(void) {
 
 typedef struct NativeBoot {
     MusashiBootMemory memory;
+    /* The scratchpad's page is also mapped at guest 0x1F800000 under the
+     * native lane (musashi_native_lane_map_guest); keep the rest of that page
+     * inert so a stray 1F800400+ access cannot reach host state. */
+    uint8_t scratchpad_page_tail[4096u - MUSASHI_SCRATCHPAD_SIZE];
     uint8_t list_tail_before[448];
     int list_tail_captured;
     MusashiPsyCrossIrqRuntime irq;
@@ -3545,13 +3549,15 @@ static NativeBoot *native_boot_owner(NativeBoot *fallback) {
     const char *value = getenv("MUSASHI_NATIVE_LANE");
     void *window;
     if (value && value[0] == '0') return fallback;
-    window = mmap((void *)(uintptr_t)MUSASHI_NATIVE_LANE_GUEST_BASE, sizeof(NativeBoot),
-                  PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE,
-                  -1, 0);
-    if (window == MAP_FAILED || (uintptr_t)window != MUSASHI_NATIVE_LANE_GUEST_BASE) {
-        if (window != MAP_FAILED) munmap(window, sizeof(NativeBoot));
-        fprintf(stderr, "native_boot: NATIVE_LANE window unavailable; interpreter only\n");
-        return fallback;
+    {
+        int aliased = 0;
+        window = musashi_native_lane_map_guest(sizeof(NativeBoot), &aliased);
+        if (!window) {
+            fprintf(stderr, "native_boot: NATIVE_LANE window unavailable; interpreter only\n");
+            return fallback;
+        }
+        if (!aliased)
+            fprintf(stderr, "native_boot: NATIVE_LANE scratchpad alias at 1f800000 unavailable\n");
     }
     {
         struct sigaction action;

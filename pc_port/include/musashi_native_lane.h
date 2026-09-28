@@ -98,6 +98,12 @@ void musashi_native_lane_suspend(int suspend);
 uint32_t musashi_native_guest_call(uint32_t target, unsigned argc,
                                    const uint32_t *args, uint32_t *v1);
 
+/* Maps size bytes of shared memory at MUSASHI_NATIVE_LANE_GUEST_BASE (the
+ * guest window: MusashiBootMemory first) and aliases its scratchpad page at
+ * guest 0x1F800000. Returns the window or NULL; *scratchpad_aliased says
+ * whether the alias took. */
+void *musashi_native_lane_map_guest(size_t size, int *scratchpad_aliased);
+
 /* Guest PC of the innermost running lane entry, or 0 (diagnostics). */
 uint32_t musashi_native_lane_current(void);
 
