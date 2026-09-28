@@ -160,7 +160,15 @@ build, fetched separately) unless marked "repo".
 **Unsited events: what was searched (2026-09-28).** Since then, `damage`,
 `bp_use`, `item_get` and `item_use` have code sites (above), and `money`
 plus figure and inventory `item_get` are also derived from the live state
-(below). Only battle boundaries are still open. There is no symbol,
+(below). Only battle boundaries are still open. The second pass walked the
+callers of the damage helpers: the shared player update `func_80153E00`
+and the per-overlay actor/attack code (e.g. `*_jr_801588CC`,
+`*_jr_8016AB6C`). No state that brackets a fight turned up. There is no
+boss HP gauge writer, enemy-active counter or music-change call that I
+could tie to a fight. `D_800B9A17` (cleared on death) is a general
+"player active" flag used ~3,700 times, not a battle marker. So
+`battle_start`/`battle_end` stay unsited. A runtime trace of a boss room
+(which globals change when the boss HP bar appears) is the next step. There is no symbol,
 comment or runtime note for battles or items in `vendor/bfm-decomp`
 (ov_MAIN_012, resident/, shared/ov, md_*, the main-exe TUs) or in this
 repository's docs. Candidates looked at and rejected:
@@ -236,13 +244,16 @@ vendor/bfm-decomp, and `tests/test_bfm_plat.py` pins every cited line.
 | figure prices | `0x800A6588` | u16[64] | drift between a base and 4× in `func_8002AC98`; the shop charges `D_800A6586[i]` (= entry i-1) | high |
 
 | inventory slots | script vars `0x2F`..`0x3A` (`0x800BA1E7`..`0x800BA1F2`) | u8 item id, 0 = empty (12 slots) | add `func_800D0F0C`, free-slot scan `func_800D0EC4` (`for (i = 0x2F; i < 0x3B; ...)`, `resident_jr_800D00E4.c:950-953`), find-by-item `func_800D0F8C`, use `func_800D11F0` | high |
-| slot times | halfword vars `0x14 + 2*slot` | u16 game clock when acquired | `func_800D0F0C` stamps `D_80078EAC`; `func_800D10EC` swaps an item for its aged form when `clock - time >= table[item*12]` (spoiling/maturing) | high |
-| game clock | `0x80078EAC` | s16 (live struct +0x34) | the value stamped into slots and compared in `func_800D10EC` | high (meaning as a clock: medium) |
+| slot times | halfword vars `0x14 + 2*slot` | u16 day acquired | `func_800D0F0C` stamps `D_80078EAC`; `func_800D10EC` swaps an item for its aged form when `day - stamp >= table[item*12]` (spoiling/maturing) | high |
+| day counter | `0x80078EAC` | u16 (live struct +0x34) | shown as the day on the save slot (cap 999); the NPC stamps below compute `day*24 + hour` from it | high |
+| time of day | `0x80078EB1` hour, `0x80078EB0` minute | u8, u8 | save slot shows `+0x39:+0x38` capped at 23:59 (`ov_MAIN_012_jr_8017CF3C.c`); `day*24 + D_80078EB1` in the NPC stamps | high |
+| location | `0x800B9A08` | s16 `currentLocationId` (named in `config/symbols.us.txt:1023`) | the resident location-change handler `func_800CF628` saves the old id and loads the next (`src/resident/resident.c:469`); warp `func_800D1D24` sets it and `D_800B9A0A = id & 0xF000` (region) (`resident_jr_800D128C.c:992`) | high (id semantics: medium; values look like `0x30NN`) |
+| NPC timestamps | `0x800BA2B8` | 24 × 4 bytes, s16 at +2 = `day*24 + hour` | written and read by object id (`obj->0xD0->0x10`) in the town/shop overlays (`ov_SC03_001_jr_801870B0.c:3407`, SC03_124/125, SC04_018/020, SC05_017); readers compare days elapsed (`ov_SC04_018_jr_80183E6C.c:3643-3650`) | medium: per-NPC "last seen" stamps, not equipment or key items |
 
 Item ids 1..119 are the cases of `func_800D128C`. The id-to-name table
-isn't needed by the platform, and its strings are retail data. Still
-unknown: what `D_800BA2B8`'s 0x60 bytes mean. It's saved with the state,
-so it may hold key items or equipment.
+isn't needed by the platform, and its strings are retail data. Where
+equipment and key items live is still open. They aren't in `D_800BA2B8`
+(which holds NPC stamps); the story flags are the likely home.
 
 ### Memory watches and derived events
 
