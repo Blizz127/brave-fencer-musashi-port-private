@@ -97,6 +97,31 @@ class GlRendererTests(unittest.TestCase):
         self.assertIn("textures 4/8/15-bit: 3072 texels, 3072 exact", out)
         self.assertIn("gl blend mode 1: vs PS1 992/992 exact", out)
 
+    def test_sdl_backend(self):
+        inc, sdl = gl_include(), sdl_include()
+        if not inc or not sdl or not (DEPS_LIB / "libSDL2.so").exists():
+            self.skipTest("SDL2 / GL headers not available")
+        smoke = self.build(
+            "gl_sdl", ["-DBFM_PLAT_WITH_GL", "-D_REENTRANT", "-I", inc, "-I", sdl],
+            CORE + EXEC + [str(PLAT / "backends/renderer_gl.c"), str(ROOT / "tests/bfm_gl_sdl_smoke.c")],
+            ["-L", str(DEPS_LIB), f"-Wl,-rpath-link={DEPS_LIB}", "-Wl,--allow-shlib-undefined", "-lSDL2"])
+        env = dict(os.environ, LD_LIBRARY_PATH=str(DEPS_LIB))
+        if not os.environ.get("DISPLAY") and not os.environ.get("WAYLAND_DISPLAY"):
+            egl = DEPS_LIB / "libEGL_mesa.so.0"
+            if not egl.exists():
+                self.skipTest("no display and no Mesa EGL for SDL's offscreen driver")
+            vendor = self.tmp / "50_mesa.json"
+            vendor.write_text('{"file_format_version":"1.0.0","ICD":{"library_path":"%s"}}' % egl)
+            # (LIBGL_ALWAYS_SOFTWARE here crashes Mesa 25.0's EGL inside
+            # SDL_CreateWindow; without it Mesa falls back to llvmpipe itself)
+            env.update(SDL_VIDEODRIVER="offscreen", __EGL_VENDOR_LIBRARY_FILENAMES=str(vendor),
+                       EGL_PLATFORM="surfaceless")
+            env.pop("LIBGL_ALWAYS_SOFTWARE", None)
+        out = self.run_bin([str(smoke)], env=env)
+        if out.startswith("skip"):
+            self.skipTest(out.strip())
+        self.assertIn("ok gl_sdl", out)
+
 
 if __name__ == "__main__":
     unittest.main()

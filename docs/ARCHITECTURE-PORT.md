@@ -390,6 +390,141 @@ whatever its pixel width.
   width (256-640) and a range of SX values against exact fractions, plus
   the config keys and the projection hook sites.
 
+### gl renderer (HD / restyle)
+
+`[backends] renderer = gl` selects a modern OpenGL 3.3 core backend
+(`backends/renderer_gl.c`, built with `BFM_PLAT_WITH_GL`). `psycross` stays
+the PS1 reference renderer. GL entry points come from
+`SDL_GL_GetProcAddress`; there is no loader library, and only the Khronos
+`GL/glcorearb.h` header is needed at compile time. There are three layers:
+
+- `backends/gl/bfm_gl_core.c`: the CPU side, with no GL. It holds the
+  VRAM mirror, texture-page/CLUT decode, the PS1 blend and dither
+  formulas, the batcher, hor+ routing, the HD replacement registry and the
+  24-bit display decode.
+- `backends/gl/bfm_gl_exec.c`: runs the core's command list on any current
+  GL 3.3 context, given a proc loader.
+- `backends/renderer_gl.c`: the SDL window, the context and the
+  `BfmPlatRendererBackend` vtable.
+
+How it works:
+
+- **VRAM.** A 1024x512 `R16UI` texture is fed from a CPU mirror by dirty
+  box. The mirror backs LoadImage, StoreImage and MoveImage; MoveImage is
+  StoreImage followed by LoadImage in the compat layer.
+  - An upload flushes the queued primitives first, because they still
+    sample the old texels. It then copies the rect into every render
+    target it lands in, so frame-buffer uploads (backgrounds, loading
+    screens) appear on screen.
+  - A download reads rendered pixels back into the mirror first (the
+    centre sample of each scaled pixel, STP = 0), but only where primitives
+    drew. StoreImage of a frame buffer therefore sees the frame, while
+    textures keep their STP bits.
+- **Render targets.**
+  - The *VRAM target* is RGBA8, `1024S x 512S` for internal scale S = 1..8
+    (`video.internal_scale`).
+  - Draw areas shaped like the display ("scene slots": the two frame
+    buffers, least-recently-used) render into their own
+    `(disp_w + 2m)S x disp_h S` targets instead, where m is the hor+
+    margin.
+  - Present shows the slot at the display origin, fitted to the window
+    with black bars, or the display rect of the VRAM target when no slot
+    matches.
+- **Primitives.** Every `BfmPlatPrim` kind is covered:
+  - flat, gouraud and textured polys;
+  - lines, as one-pixel quads with inclusive endpoints;
+  - tiles, sprites and fills.
+  The draw-env offset, clip rect (as scissor) and texture window apply.
+  Batches split only on target, blend mode, STP split, scissor, texture
+  window or replacement texture.
+- **Shader.** One shader decodes 4-, 8- and 15-bit pages through the CLUT
+  exactly as `bfm_gl_sample` does, and texel 0x0000 is transparent.
+  - Modulation is `(t * c) >> 7`, done in float; `RAW` skips it.
+  - Interpolation is affine (`noperspective`), like the PS1.
+  - Texels are sampled nearest at native texel size, so higher internal
+    scales sharpen the geometry, not the art.
+- **Semi-transparency.** All four modes use fixed-function blending:
+  | Mode | Formula | GL blend |
+  |---|---|---|
+  | 0 | B/2 + F/2 | `CONSTANT_COLOR` 0.5 / 0.5 |
+  | 1 | B + F | `ONE` / `ONE` |
+  | 2 | B − F | `ONE` / `ONE` with `FUNC_REVERSE_SUBTRACT` |
+  | 3 | B + F/4 | `CONSTANT_COLOR` 0.25 / `ONE` |
+  A textured semi primitive is drawn in two passes: texels without STP
+  opaque, then texels with STP blended. Modes 1 and 2 are bit-exact
+  against the PS1 formula. Modes 0 and 3 keep the fraction the PS1
+  truncates, so a channel can come out one 5-bit step higher. The target
+  holds 8 bits per channel; this is intended on the HD path.
+- **Dither.** The PS1 4x4 matrix is applied at native pixel granularity
+  (`gl_FragCoord / S`), and only to primitives the PS1 dithers: gouraud or
+  modulated-texture polys and lines, never rects. `video.dither = auto |
+  on | off`; `auto` dithers at 1x only, so HD output stays smooth.
+- **Widescreen.**
+  - hor+: margin `m = -visible_x0` from `bfm_plat_widescreen_compute`.
+    Scene-slot scissors are widened by m where the draw area touches the
+    frame buffer's left or right edge. Geometry the GTE puts left of 0 or
+    right of `disp_w` survives, and `clear_bg` fills clear the margins too.
+  - anamorphic: m = 0, and the image is stretched to the output aspect.
+- **HD replacement.** `upload_replacement` keeps the original pixels in the
+  mirror (for StoreImage and for backends without HD) and registers an
+  RGBA8 texture for the rect.
+  - A textured primitive whose whole texel footprint lies inside a
+    replaced rect samples that texture bilinear, in coordinates normalised
+    to the rect. This works for 4-, 8- and 15-bit pages alike, and any
+    image size or aspect is accepted.
+  - Alpha < 0.5 is transparent, and vertex colour still modulates the
+    image.
+  - A plain upload overlapping the rect retires the replacement.
+- **24-bit display** (`DispEnv.rgb24`, used by movies): the frame is
+  decoded from the mirror on the CPU and shown at 4:3.
+- **Overlay text.** The built-in font is drawn in display pixels after the
+  frame is composed, mapped onto the 4:3 area of the window. It never
+  touches game VRAM.
+
+Known limits:
+- Mask-bit set/check (GP0 E6) is not emulated.
+- Draws into off-screen VRAM that the game samples directly, without a
+  StoreImage/MoveImage in between, don't feed back into the texture: the
+  render-to-texture case.
+- Replacements ignore the texture window and the CLUT, so palette swaps of
+  one texture share its replacement. Semi-transparent replacements blend
+  every texel.
+- Frame-buffer effects that sample the previous frame need the readback
+  path.
+
+Tests (`tests/test_bfm_gl.py`, `tests/bfm_gl_probe.c`,
+`tests/bfm_gl_sdl_smoke.c`):
+- **core** always runs, headless. It covers:
+  - CLUT, sampler and texture window against hand-worked words;
+  - modulation against `(t*c)>>7`;
+  - the blend formulas against hand values;
+  - the GL blend state, evaluated for every 5-bit pair of every mode,
+    against the PS1 formula;
+  - the dither matrix and clamping;
+  - batching: merging, splitting, uv spans, line quads, fills into the
+    mirror;
+  - hor+ routing: slots, widened scissors, margins, LRU eviction, copies;
+  - replacement lookup, coordinates and retirement;
+  - VRAM move with overlap and wrap, and the 24-bit decode.
+- **exec** runs the real executor on an OSMesa (llvmpipe) GL 3.3 core
+  context, headless, compared pixel by pixel with the CPU reference. It
+  covers:
+  - 3,072 texels through 4, 8 and 15 bit at 1x and 3x, all exact;
+  - every blend mode with the STP split;
+  - dither at 2x;
+  - HD replacement;
+  - hor+ margins and present letterboxing;
+  - overlay placement;
+  - 24-bit image present.
+- **sdl** drives the whole backend through `bfm_plat_renderer_*` on SDL's
+  offscreen driver with Mesa EGL: double-buffered hor+ frames, StoreImage
+  readback, HD replacement, 24-bit mode, and a scale change.
+
+On a desktop the same code opens a real window; interactive use needs a
+display. Without one, `bfm_plat_renderer_open("gl")` fails cleanly and
+falls back to `null`. exec and sdl skip when their libraries are missing
+(`BFM_HOST_DEPS`, `BFM_GL_INCLUDE` and `BFM_OSMESA` override the search).
+
 ### First-run disc check
 
 `bfm_plat_disc_check.h` is the single disc check. The native lane calls
@@ -583,6 +718,9 @@ aspect.
 | PsyCross | `tools/third_party/psycross`, fetched by `tools/fetch_toolchains.sh` at `e56e4cde1c2b8a15e0d4e38b26cdd9202e0d17e6` from `github.com/OpenDriver2/PsyCross`; ignored by git | MIT, © 2020 REDRIVER2 Project | a reimplementation of the Psy-Q library API on SDL2/OpenAL/OpenGL. It is not Sony code. Bundles a glad-generated GL loader (`src/render/glad.c`; generated code under glad's permissive terms, Khronos GL registry Apache-2.0) |
 | in-house HLE device owners | `pc_port/*.c` (`gpu_psycross.c`, `audio_sdl.c`, `disc_media.c`, `bios_*.c`, …) | this repository | the `sdl` and `pinned` backends wrap these |
 | SDL2 (runtime dependency) | system / host-port-deps | zlib | not vendored |
+| Khronos `GL/glcorearb.h`, `KHR/khrplatform.h` (`gl` renderer, compile time) | system / host-port-deps headers | MIT (© 2013–2020 / 2008–2018 The Khronos Group) | headers only, not vendored; GL entry points are loaded at runtime through SDL, with no loader library |
+| OpenGL driver (`gl` renderer, runtime) | the user's system | the driver's own | dynamically loaded by SDL |
+| Mesa OSMesa / EGL (llvmpipe) | host-port-deps | MIT | tests only: headless GL for `tests/test_bfm_gl.py`, dlopened; never shipped |
 | OpenAL Soft (via PsyCross) | system | LGPL-2.1, dynamically linked | not vendored |
 | OpenSSL libcrypto (`disc_media.c` SHA-256) | system | Apache-2.0 | `pinned` backend only |
 | built-in 5x7 debug font (`bfm_plat_font.c`) | `pc_port/platform/` | this repository | original glyphs drawn for this port, not derived from PsyCross's `dbugfont` |
@@ -600,6 +738,8 @@ also clean under ASan/UBSan):
   plugins, the script seam, texture and file replacement, texture dump.
   Cheats (callback and poke), cheat-menu model, console. Frame loop with
   hotkeys and fast-forward.
+- `gl` renderer (GL 3.3 core via SDL). It runs headless in tests: the
+  OSMesa executor and the SDL offscreen/EGL smoke test.
 - `psycross`, `sdl` (audio), `sdl` (input) and `pinned` (disc) backends,
   compile-checked only against their headers. The PNG decoder is fully
   tested (zlib is present).
@@ -611,7 +751,10 @@ Stubbed / next:
   SDL2/OpenAL/GL dev libs, and their CMake wiring is not added yet (the
   top-level `CMakeLists.txt` belongs to the native-lane work).
 - The `psycross` renderer has no HD `upload_replacement` path, and
-  `set_output` is a no-op. PsyCross owns window size.
+  `set_output` is a no-op. PsyCross owns window size. HD is on `gl`.
+- `gl` limits: no mask bit, no render-to-texture feedback except through
+  StoreImage or MoveImage. Not yet run against the real game (that needs
+  the native lane's libgpu shim routed through `bfm_plat_renderer_*`).
 - The SDL input backend's rebinding at runtime (`set_bindings`) has no UI.
 - Overlay text on `psycross` is compile-checked only. It draws the
   built-in 5x7 font (`bfm_plat_font.c`, original to this repo) as TILE runs
@@ -622,8 +765,8 @@ Stubbed / next:
   exit is low-confidence. Registering the known sites and reporting the
   selected overlay from the native lane.
 - Anamorphic widescreen needs the GTE backend to call
-  `bfm_plat_widescreen_sx_current` and a stretching renderer. On PsyCross
-  it falls back to hor+. The hor+ edge culling is not patched.
+  `bfm_plat_widescreen_sx_current` and a stretching renderer (`gl`
+  stretches). On PsyCross it falls back to hor+. The hor+ edge culling is not patched.
 - 60 fps interpolation.
 - Routing the game's Psy-Q-shaped call sites (libgpu/libcd/libetc shims in
   the native lane) through `bfm_plat_*`.
@@ -855,6 +998,19 @@ if(EXISTS ${BFM_LUA_DIR}/lua.h)
 endif()
 # Optional: pc_port/platform/backends/disc_pinned.c + BFM_PLAT_WITH_PINNED_DISC
 # (links disc_media.c / OpenSSL::Crypto, already in musashi_pc_port).
+
+# Optional gl renderer: needs SDL2 and the Khronos GL headers only (entry
+# points come from SDL_GL_GetProcAddress; do not link libGL or a loader).
+find_path(BFM_GLCOREARB_DIR GL/glcorearb.h)
+if(TARGET SDL2::SDL2 AND BFM_GLCOREARB_DIR)
+    target_sources(bfm_plat PRIVATE
+        pc_port/platform/backends/renderer_gl.c
+        pc_port/platform/backends/gl/bfm_gl_core.c
+        pc_port/platform/backends/gl/bfm_gl_exec.c)
+    target_include_directories(bfm_plat PRIVATE ${BFM_GLCOREARB_DIR})
+    target_compile_definitions(bfm_plat PRIVATE BFM_PLAT_WITH_GL)
+    target_link_libraries(bfm_plat PRIVATE SDL2::SDL2)
+endif()
 ```
 
 Notes:

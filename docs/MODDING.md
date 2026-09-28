@@ -144,6 +144,22 @@ edit it, and save it under the same hash in your mod.
 - Transparency: alpha 0 becomes the PS1's transparent colour (0x0000).
   Opaque black keeps the PS1 "semi-transparency" bit, so it stays visible.
 
+HD replacements on the `gl` renderer (`[backends] renderer = gl`):
+- The image stands for the rect's **decoded texels**. A 4-bit texture
+  uploaded as a 16x64 VRAM rect is 64x64 texels, so draw it as a 64x64
+  picture or any multiple of that. The port samples it in coordinates
+  normalised to the rect, so any size works, and bilinear filtering
+  smooths it.
+- Alpha below 50% is transparent, and vertex colour still tints the image,
+  as on the PS1.
+- The palette is ignored. If the game draws one texture with several
+  CLUTs, every palette shows your image.
+- The dump (`.bfmi`) holds the upload's raw 16-bit words. For 4-bit and
+  8-bit textures that is index data, not a picture, so decode it with the
+  palette you see in game before editing.
+- When the game re-uploads different data to that rect, the replacement
+  is dropped until the hashed upload comes back.
+
 ### File replacements
 
 Put the replacement at `assets/files/<hash-of-the-original-file>.<any

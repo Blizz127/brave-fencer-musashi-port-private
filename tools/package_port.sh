@@ -79,6 +79,9 @@ SDL2 (zlib)                             windowing, input, audio; bundled in lib/
 OpenAL Soft (LGPL-2.1, dynamic link)    PsyCross audio; bundled in lib/ if present
 zlib (zlib)                             PNG texture decoder
 OpenSSL libcrypto (Apache-2.0)          optional pinned-disc backend
+Khronos GL headers (MIT)                gl renderer build-time API definitions
+                                        (glcorearb.h, khrplatform.h); the system
+                                        OpenGL driver is loaded at runtime
 
 The game (executable and disc data) is copyrighted by its rights holders and
 is not included. The port reads it from your own disc at runtime.
