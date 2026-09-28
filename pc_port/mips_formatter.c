@@ -13602,6 +13602,9 @@ static MusashiResetGraphPrefixStatus run_startup_cpu(
     frame.observer = observer;
     frame.observer_userdata = observer_userdata;
     g_lane_run_frames = &frame;
+    /* Checkpoints inspect the CPU (and fetch its instruction) before the
+     * first step; bind this run's guest memory up front. */
+    g_fetch_memory = memory;
     code_sites_invalidate();
     if (g_trace_state >= 0) musashi_trace_function_entry(cpu->pc, cpu->r[31], 'd');
     status = run_startup_cpu_loop(memory, cpu, sink, userdata, result, stop,
