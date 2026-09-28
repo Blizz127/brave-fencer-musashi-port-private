@@ -12292,6 +12292,35 @@ int musashi_native_lane_install(const MusashiNativeLaneEntry *entries, size_t co
                 return -1;
             }
     }
+    {
+        /* Diagnostics for bisecting live-boot behaviour: keep only guest PCs
+         * in MUSASHI_NATIVE_LANE_RANGE=lo-hi (hex, hi exclusive) and drop
+         * those listed in MUSASHI_NATIVE_LANE_DENY=pc,pc,... */
+        const char *range = getenv("MUSASHI_NATIVE_LANE_RANGE");
+        const char *deny = getenv("MUSASHI_NATIVE_LANE_DENY");
+        uint32_t lo = 0, hi = UINT32_MAX;
+        size_t kept = 0;
+        if (range && range[0]) {
+            char *end = NULL;
+            lo = (uint32_t)strtoul(range, &end, 16);
+            if (end && *end == '-') hi = (uint32_t)strtoul(end + 1, NULL, 16);
+        }
+        for (i = 0; i < count; ++i) {
+            int drop = copy[i].guest_pc < lo || copy[i].guest_pc >= hi;
+            if (!drop && deny && deny[0]) {
+                const char *p = deny;
+                while (*p && !drop) {
+                    char *end = NULL;
+                    uint32_t pc = (uint32_t)strtoul(p, &end, 16);
+                    if (end == p) break;
+                    drop = pc == copy[i].guest_pc;
+                    p = *end == ',' ? end + 1 : end;
+                }
+            }
+            if (!drop) copy[kept++] = copy[i];
+        }
+        count = kept;
+    }
     free(g_lane);
     g_lane = copy;
     g_lane_count = count;
@@ -12312,6 +12341,11 @@ static const MusashiNativeLaneEntry *lane_find(uint32_t pc) {
 }
 
 static int g_lane_suspended;
+
+void musashi_native_lane_suspend(int suspend) {
+    if (suspend) ++g_lane_suspended;
+    else if (g_lane_suspended > 0) --g_lane_suspended;
+}
 
 int musashi_native_lane_usable(const MusashiBootMemory *memory) {
     if (g_lane_env < 0) {

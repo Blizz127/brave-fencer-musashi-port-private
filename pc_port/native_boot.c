@@ -3394,6 +3394,7 @@ static void hold_window(NativeBoot *boot) {
 #include <stddef.h>
 #include <sys/mman.h>
 #include "musashi_native_lane.h"
+#include "musashi_native_lane_psyq.h"
 #ifndef MAP_FIXED_NOREPLACE
 #define MAP_FIXED_NOREPLACE 0x100000
 #endif
@@ -3417,13 +3418,34 @@ static NativeBoot *native_boot_owner(NativeBoot *fallback) {
         fprintf(stderr, "native_boot: NATIVE_LANE window unavailable; interpreter only\n");
         return fallback;
     }
-    if (musashi_native_lane_install(musashi_native_lane_generated,
-                                    musashi_native_lane_generated_count) < 0) {
-        fprintf(stderr, "native_boot: NATIVE_LANE table rejected; interpreter only\n");
-        return window;
+    {
+        /* Generated decomp C plus port-plat's PsyQ compat wrappers. The
+         * device-level wrappers bypass the emulated GPU/CD/IRQ timing, so
+         * they are taken only on the bfm_plat GPU path. */
+        const char *gpu = getenv("MUSASHI_GPU");
+        unsigned classes = musashi_native_lane_psyq_classes();
+        size_t count = 0;
+        const MusashiNativeLaneEntry *table;
+        MusashiNativeLaneEntry *merged;
+        if ((classes & MUSASHI_PSYQ_LANE_DEVICE) && !(gpu && strcmp(gpu, "bfm_plat") == 0)) {
+            fprintf(stderr, "native_boot: PSYQ_LANE device wrappers need MUSASHI_GPU=bfm_plat; "
+                            "pure only\n");
+            classes &= ~(unsigned)MUSASHI_PSYQ_LANE_DEVICE;
+        }
+        merged = musashi_native_lane_psyq_merge(musashi_native_lane_generated,
+                                                musashi_native_lane_generated_count,
+                                                classes, &count);
+        table = merged ? merged : musashi_native_lane_generated;
+        if (!merged) count = musashi_native_lane_generated_count;
+        if (musashi_native_lane_install(table, count) < 0) {
+            fprintf(stderr, "native_boot: NATIVE_LANE table rejected; interpreter only\n");
+            return window;
+        }
+        musashi_native_lane_psyq_bind(&((NativeBoot *)window)->memory, &((NativeBoot *)window)->gte);
+        fprintf(stderr, "native_boot: NATIVE_LANE entries=%u psyq=%u classes=%s\n",
+                (unsigned)count, (unsigned)(count - musashi_native_lane_generated_count),
+                classes == 0u ? "none" : (classes & MUSASHI_PSYQ_LANE_DEVICE) ? "all" : "pure");
     }
-    fprintf(stderr, "native_boot: NATIVE_LANE entries=%u\n",
-            (unsigned)musashi_native_lane_generated_count);
     return window;
 }
 #else

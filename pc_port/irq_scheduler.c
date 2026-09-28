@@ -1,3 +1,4 @@
+#include "musashi_native_lane.h"
 #include "musashi_irq_scheduler.h"
 
 #include <SDL.h>
@@ -223,7 +224,11 @@ static int scheduler_dispatch(MusashiPsyCrossIrqScheduler *scheduler,
         scheduler, scheduler_read16, scheduler_write16, scheduler_execute,
         scheduler_diagnostic, scheduler_return_from_exception
     };
+    /* IRQ callbacks stay interpreted: the dispatcher's return and the CD
+     * IRQ frame account for the guest calls they see. */
+    musashi_native_lane_suspend(1);
     scheduler->last_result = musashi_boot_call_800427f4(scheduler->memory, &dispatch_device);
+    musashi_native_lane_suspend(0);
     scheduler->deliveries++;
     if (scheduler->faulted ||
         scheduler->last_result != MUSASHI_IRQ_CONTEXT_RETURN_DELEGATED ||

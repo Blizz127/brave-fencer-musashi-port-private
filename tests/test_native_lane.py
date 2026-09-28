@@ -17,7 +17,9 @@ GEN = ROOT / "tools/native_lane_gen.py"
 
 # Each decision is pinned to the rule that must make it.
 EXPECT = {
-    0x8001903C: (True, None),        # leaf call into an unported callee (thunk)
+    0x80019064: (True, None),        # guest globals, absolute addresses
+    0x8001C044: (True, None),        # calls a bespoke-binding callee (thunk)
+    0x8001903C: (False, "hooks"),    # STARTUP_RECORD_CLEAR: host-sequenced (enum-named PC)
     0x80015310: (False, "memory"),   # volatile device access
     0x8002A088: (False, "abi"),      # passes 0 of 1 arguments to func_8002A108
     0x8001CFDC: (False, "irq"),      # loop with no store or call
@@ -61,12 +63,12 @@ class NativeLaneGeneratorTest(unittest.TestCase):
 
     def test_table_shape(self):
         # Admitted entry, marshalled through the register ABI.
-        self.assertIn('{0x8001903cu, 20u, wrap_8001903c, "func_8001903C", 0u, 0u},', self.table)
+        self.assertIn('{0x80019064u, 36u, wrap_80019064, "func_80019064", 1u, 0u},', self.table)
         # func_80016714 has a bespoke binding, so natively compiled callers
         # reach its guest words through the interpreter thunk.
         self.assertIn("musashi_native_guest_call(0x80016714u, 2u, args, NULL)", self.table)
         # Guest symbols are absolute guest addresses, never host relocations.
-        lane_ir = (self.out / "ir" / "8001903c.lane.ll").read_text()
+        lane_ir = (self.out / "ir" / "80019064.lane.ll").read_text()
         self.assertIn("inttoptr (i64 2147960768 to ptr)", lane_ir)  # D_800747C0
         self.assertNotIn("@D_800747C0", lane_ir)
 

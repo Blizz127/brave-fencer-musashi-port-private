@@ -551,6 +551,9 @@ if(MUSASHI_BUILD_PC_PORT)
         set(MUSASHI_LANE_DIR ${MUSASHI_GENERATED_DIR}/native_lane)
         file(GLOB MUSASHI_LANE_SOURCES CONFIGURE_DEPENDS
             ${CMAKE_CURRENT_SOURCE_DIR}/src/main/*.c)
+        # hooked_pcs() reads the port's sources; psyq_hooked() the compat table.
+        file(GLOB MUSASHI_LANE_HOOK_SOURCES CONFIGURE_DEPENDS
+            ${CMAKE_CURRENT_SOURCE_DIR}/pc_port/*.c)
         add_custom_command(
             OUTPUT ${MUSASHI_LANE_DIR}/native_lane_table.c
                    ${MUSASHI_LANE_DIR}/libmusashi_native_lane.a
@@ -559,6 +562,8 @@ if(MUSASHI_BUILD_PC_PORT)
             DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/tools/native_lane_gen.py
                     ${CMAKE_CURRENT_SOURCE_DIR}/provenance/matches.json
                     ${MUSASHI_LANE_SOURCES}
+                    ${MUSASHI_LANE_HOOK_SOURCES}
+                    ${CMAKE_CURRENT_SOURCE_DIR}/pc_port/platform/psyq/bfm_psyq_compat.def
             COMMENT "Checking and compiling native-lane decomp C"
             VERBATIM)
         add_custom_target(musashi_native_lane_gen
@@ -568,8 +573,11 @@ if(MUSASHI_BUILD_PC_PORT)
         set_target_properties(musashi_native_lane_funcs PROPERTIES
             IMPORTED_LOCATION ${MUSASHI_LANE_DIR}/libmusashi_native_lane.a)
         add_dependencies(musashi_native_lane_funcs musashi_native_lane_gen)
-        add_library(musashi_native_lane STATIC ${MUSASHI_LANE_DIR}/native_lane_table.c)
-        target_link_libraries(musashi_native_lane PUBLIC musashi_pc_port musashi_native_lane_funcs)
+        # + port-plat's PsyQ compat table as lane entries (native_lane_psyq.c)
+        add_library(musashi_native_lane STATIC ${MUSASHI_LANE_DIR}/native_lane_table.c
+            pc_port/native_lane_psyq.c)
+        target_link_libraries(musashi_native_lane PUBLIC musashi_pc_port musashi_native_lane_funcs
+            bfm_plat)
         target_include_directories(musashi_native_lane PRIVATE
             ${CMAKE_CURRENT_SOURCE_DIR}/pc_port/include)
 

@@ -57,6 +57,11 @@ int musashi_native_lane_install(const MusashiNativeLaneEntry *entries,
  * MUSASHI_NATIVE_LANE_GUEST_BASE for this memory. */
 int musashi_native_lane_usable(const MusashiBootMemory *memory);
 
+/* Nesting suspension: while suspended, every PC runs on the interpreter.
+ * Host routers whose checks count interpreted calls (the IRQ dispatcher)
+ * suspend the lane for their duration. */
+void musashi_native_lane_suspend(int suspend);
+
 /* Interpreter thunk for natively compiled code: call guest function target
  * with argc words (a0-a3, then guest stack), on the invoking CPU and its
  * run loop, and return v0 (v1 through *v1 when non-NULL). A refusal inside
