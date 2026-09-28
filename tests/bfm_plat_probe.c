@@ -1307,6 +1307,72 @@ static int group_cheat_pack(int argc, char **argv) {
     return 0;
 }
 
+
+/* ------------------------------------------------------------- disc check */
+static int group_sha256(void) {
+    char hex[65];
+    static char million[1000000];
+    bfm_plat_sha256_hex("", 0, hex);
+    CHECK(strcmp(hex, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855") == 0);
+    bfm_plat_sha256_hex("abc", 3, hex);
+    CHECK(strcmp(hex, "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad") == 0);
+    bfm_plat_sha256_hex("abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq", 56, hex);
+    CHECK(strcmp(hex, "248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1") == 0);
+    memset(million, 'a', sizeof million);
+    bfm_plat_sha256_hex(million, sizeof million, hex);
+    CHECK(strcmp(hex, "cdc76e5c9914fb9281a1c7e284d73e67f1809a48a497200e046d39ccc7112cd0") == 0);
+    return 0;
+}
+
+/* disc_check PATH [BOOT SHA]: prints status, boot name, sha, detail. */
+static int group_disc_check(int argc, char **argv) {
+    BfmPlatDiscCheck c;
+    char msg[800];
+    int r;
+    CHECK(argc >= 1);
+    reset_all();
+    if (argc >= 3) r = bfm_plat_disc_validate_ex(argv[0], argv[1], argv[2], &c);
+    else r = bfm_plat_disc_validate(argc && strcmp(argv[0], "-") ? argv[0] : NULL, &c);
+    CHECK((r == BFM_PLAT_OK) == (c.status == BFM_DISC_OK));
+    CHECK((bfm_plat_disc_backend() != NULL) == (c.status == BFM_DISC_OK));   /* open only on OK */
+    bfm_plat_disc_check_describe(&c, msg, sizeof msg);
+    printf("status %s boot=%s sha=%s tracks=%u sector=%u\n", bfm_plat_disc_status_name(c.status),
+           c.boot_name, c.boot_sha256, (unsigned)c.track_count, (unsigned)c.sector_size);
+    printf("message %s\n", msg);
+    return 0;
+}
+
+/* disc_init DISCDIR BADPATH: first-run autodetect + refusal through init. */
+static int group_disc_init(int argc, char **argv) {
+    BfmPlatConfig c;
+    CHECK(argc >= 2);
+    reset_all();
+    bfm_plat_config_defaults(&c);
+    c.mods_enabled = 0;
+    strcpy(c.renderer, "null");
+    snprintf(c.disc_search, sizeof c.disc_search, "/nonexistent;%s", argv[0]);
+    c.disc_validate = 1;
+    /* autodetect finds the .cue; retail validation refuses the fake EXE */
+    CHECK(bfm_plat_init(&c) == BFM_PLAT_INVALID);
+    CHECK(bfm_plat_disc_last_check()->status == BFM_DISC_BAD_DUMP);
+    printf("autodetected %s\n", bfm_plat_config()->disc_path);
+    /* validation off: boots with the image backend */
+    c.disc_validate = 0;
+    CHECK(bfm_plat_init(&c) == BFM_PLAT_OK && bfm_plat_disc_backend() != NULL);
+    bfm_plat_shutdown();
+    /* explicit bad path */
+    c.disc_validate = 1;
+    snprintf(c.disc_path, sizeof c.disc_path, "%s", argv[1]);
+    CHECK(bfm_plat_init(&c) == BFM_PLAT_INVALID);
+    CHECK(bfm_plat_disc_last_check()->status == BFM_DISC_UNREADABLE);
+    /* nothing configured, nothing found: fine (headless) */
+    c.disc_path[0] = '\0';
+    strcpy(c.disc_search, "/nonexistent");
+    CHECK(bfm_plat_init(&c) == BFM_PLAT_OK);
+    CHECK(bfm_plat_disc_last_check()->status == BFM_DISC_NO_PATH);
+    return 0;
+}
+
 #ifdef BFM_PLAT_WITH_LUA
 /* lua MODSDIR: the pytest writes lua_hello + test mods there. */
 static int group_lua(int argc, char **argv) {
@@ -1424,6 +1490,9 @@ int main(int argc, char **argv) {
     else if (strcmp(g, "pause_screenshot") == 0) r = group_pause_screenshot(argc - 2, argv + 2);
     else if (strcmp(g, "font") == 0) r = group_font();
     else if (strcmp(g, "widescreen") == 0) r = group_widescreen();
+    else if (strcmp(g, "sha256") == 0) r = group_sha256();
+    else if (strcmp(g, "disc_check") == 0) r = group_disc_check(argc - 2, argv + 2);
+    else if (strcmp(g, "disc_init") == 0) r = group_disc_init(argc - 2, argv + 2);
     else if (strcmp(g, "watch") == 0) r = group_watch(argc - 2, argv + 2);
     else if (strcmp(g, "cheat_pack") == 0) r = group_cheat_pack(argc - 2, argv + 2);
 #ifdef BFM_PLAT_WITH_LUA

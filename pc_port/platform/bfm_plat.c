@@ -23,6 +23,31 @@ int bfm_plat_script_lua_register(void);
 #endif
 
 static BfmPlatConfig cfg_copy;
+static BfmPlatDiscCheck disc_check;
+
+const BfmPlatDiscCheck *bfm_plat_disc_last_check(void) { return &disc_check; }
+
+static int open_disc(void) {
+    char msg[600];
+    memset(&disc_check, 0, sizeof disc_check);
+    disc_check.status = BFM_DISC_NO_PATH;
+    if (!cfg_copy.disc_path[0] && cfg_copy.disc_search[0]) {
+        char found[BFM_PLAT_PATH_MAX];
+        if (bfm_plat_disc_autodetect(cfg_copy.disc_search, found, sizeof found) == BFM_PLAT_OK)
+            snprintf(cfg_copy.disc_path, sizeof cfg_copy.disc_path, "%s", found);
+    }
+    if (!cfg_copy.disc_path[0]) return BFM_PLAT_OK;     /* no disc: headless/tools */
+    if (cfg_copy.disc_validate) {
+        if (bfm_plat_disc_validate(cfg_copy.disc_path, &disc_check) != BFM_PLAT_OK) {
+            bfm_plat_disc_check_describe(&disc_check, msg, sizeof msg);
+            bfm_plat_mods_log("disc", 0, msg);
+            return BFM_PLAT_INVALID;
+        }
+        if (strcmp(cfg_copy.storage, "image") == 0) return BFM_PLAT_OK;  /* stays open */
+        bfm_plat_disc_close();
+    }
+    return bfm_plat_disc_open(cfg_copy.storage, cfg_copy.disc_path);
+}
 static int up;
 static int mods_loaded;
 static uint64_t frames;
@@ -82,10 +107,8 @@ int bfm_plat_init(const BfmPlatConfig *cfg) {
     bfm_plat_timing_init();
     bfm_plat_timing_set_fast_forward_speed(cfg_copy.fast_forward_speed);
     bfm_plat_memcard_set_dir(cfg_copy.save_dir);
-    if (cfg_copy.disc_path[0]) {
-        r = bfm_plat_disc_open(cfg_copy.storage, cfg_copy.disc_path);
-        if (r != BFM_PLAT_OK) return r;
-    }
+    r = open_disc();
+    if (r != BFM_PLAT_OK) return r;
     bfm_plat_mods_set_config_getter(config_lookup);
 #ifdef BFM_PLAT_WITH_PNG
     bfm_plat_texture_png_register();

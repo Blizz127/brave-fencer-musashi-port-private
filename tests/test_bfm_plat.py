@@ -78,6 +78,29 @@ def build_iso(file_data: bytes) -> bytes:
     return b"".join(sectors)
 
 
+def build_iso_root(files):
+    """ISO9660 image with the given {name: bytes} files in the root."""
+    sectors = [bytes(2048)] * 16
+    root_lba, next_lba = 18, 19
+    recs, blobs = [_dirrec(b"\0", root_lba, 2048, True), _dirrec(b"\1", root_lba, 2048, True)], []
+    for name, data in files.items():
+        n = (len(data) + 2047) // 2048 or 1
+        recs.append(_dirrec(name.encode() + b";1", next_lba, len(data), False))
+        blobs.append(data.ljust(n * 2048, b"\0"))
+        next_lba += n
+    pvd = bytearray(2048)
+    pvd[0] = 1
+    pvd[1:6] = b"CD001"
+    pvd[6] = 1
+    pvd[156:156 + 34] = _dirrec(b"\0", root_lba, 2048, True)
+    term = bytearray(2048)
+    term[0] = 255
+    term[1:6] = b"CD001"
+    root = b"".join(recs)
+    assert len(root) <= 2048
+    return b"".join(sectors + [bytes(pvd), bytes(term), root.ljust(2048, b"\0")] + blobs)
+
+
 def _bcd(v):
     return ((v // 10) << 4) | (v % 10)
 
@@ -655,6 +678,75 @@ bfm.on("frame_end", function() if seen.late == nil then
         self.assertIn("ram efbeadde poke 5a", out)
         self.assertIn("turbo 2", out)
         self.assertIn("boom luaboom: script error", out)
+
+    def test_sha256_vectors(self):
+        self.run_probe("sha256")
+
+    def disc_status(self, *args):
+        out = self.run_probe("disc_check", *args)
+        return out.split("status ", 1)[1].split()[0], out
+
+    def test_disc_check_statuses_and_messages(self):
+        import hashlib
+        d = self.fresh("disccheck")
+        exe = b"PS-X EXE" + bytes(range(256)) * 40            # synthetic, not retail
+        exe_sha = hashlib.sha256(exe).hexdigest()
+        cnf = b"BOOT = cdrom:\\SLUS_007.26;1\r\nTCB = 4\r\nEVENT = 10\r\nSTACK = 801FFFF0\r\n"
+        good = build_iso_root({"SYSTEM.CNF": cnf, "SLUS_007.26": exe})
+        (d / "good.iso").write_bytes(good)
+        (d / "good.bin").write_bytes(iso_to_raw(good))
+        (d / "good.cue").write_text('FILE "good.bin" BINARY\n  TRACK 01 MODE2/2352\n    INDEX 01 00:00:00\n'
+                                    '  TRACK 02 AUDIO\n    INDEX 01 00:10:00\n')
+        # OK with the synthetic hash, through every container
+        for name in ("good.iso", "good.bin", "good.cue"):
+            st, out = self.disc_status(d / name, "SLUS_007.26", exe_sha)
+            self.assertEqual(st, "ok", out)
+            self.assertIn(f"boot=SLUS_007.26 sha={exe_sha}", out)
+        self.assertIn("tracks=2 sector=2352", self.disc_status(d / "good.cue", "SLUS_007.26", exe_sha)[1])
+        # the retail check: right name, wrong hash
+        st, out = self.disc_status(d / "good.iso")
+        self.assertEqual(st, "bad_dump")
+        self.assertIn("Re-dump the disc", out)
+        # region / other game / not a PS1 disc
+        for boot, want in (("SLPS_014.90", "wrong_region"), ("SLES_012.34", "wrong_region"),
+                           ("SLUS_000.01", "wrong_disc")):
+            img = build_iso_root({"SYSTEM.CNF": cnf.replace(b"SLUS_007.26", boot.encode()), boot: exe})
+            (d / "other.iso").write_bytes(img)
+            st, out = self.disc_status(d / "other.iso")
+            self.assertEqual(st, want, boot)
+            self.assertIn(boot, out)
+        self.assertIn("SLUS-00726", self.disc_status(d / "other.iso")[1])
+        (d / "nocnf.iso").write_bytes(build_iso_root({"README.TXT": b"x"}))
+        self.assertEqual(self.disc_status(d / "nocnf.iso")[0], "not_ps1")
+        (d / "noboot.iso").write_bytes(build_iso_root({"SYSTEM.CNF": b"TCB = 4\n"}))
+        self.assertEqual(self.disc_status(d / "noboot.iso")[0], "not_ps1")
+        (d / "noise.iso").write_bytes(bytes(2048 * 20))
+        self.assertEqual(self.disc_status(d / "noise.iso")[0], "not_ps1")
+        # containers that are broken
+        (d / "missing.cue").write_text('FILE "gone.bin" BINARY\n  TRACK 01 MODE2/2352\n')
+        st, out = self.disc_status(d / "missing.cue")
+        self.assertEqual(st, "missing_tracks")
+        self.assertIn("gone.bin", out)
+        (d / "short.bin").write_bytes(iso_to_raw(good)[:-100])
+        self.assertEqual(self.disc_status(d / "short.bin")[0], "unreadable")
+        raw = bytearray(iso_to_raw(good))
+        raw[16 * 2352] = 0x55                                   # break sector 16's sync
+        (d / "nosync.bin").write_bytes(bytes(raw))
+        self.assertEqual(self.disc_status(d / "nosync.bin")[0], "unreadable")
+        (d / "game.chd").write_bytes(b"MComprHD")
+        st, out = self.disc_status(d / "game.chd")
+        self.assertEqual(st, "unsupported_format")
+        self.assertIn("chdman extractcd", out)
+        self.assertEqual(self.disc_status(d / "nope.iso")[0], "unreadable")
+        self.assertEqual(self.disc_status("-")[0], "no_path")
+        # first run through bfm_plat_init
+        disc = d / "firstrun"
+        disc.mkdir()
+        (disc / "Brave Fencer Musashi.bin").write_bytes(iso_to_raw(good))
+        (disc / "Brave Fencer Musashi.cue").write_text(
+            'FILE "Brave Fencer Musashi.bin" BINARY\n  TRACK 01 MODE2/2352\n')
+        out = self.run_probe("disc_init", disc, d / "nope.cue")
+        self.assertIn("autodetected " + str(disc / "Brave Fencer Musashi.cue"), out)
 
     def test_memory_watches_and_derived_events(self):
         d = self.fresh("watchmods")

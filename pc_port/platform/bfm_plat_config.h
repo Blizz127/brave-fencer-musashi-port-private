@@ -15,6 +15,8 @@
  *              fast_forward_toggle (0 hold / 1 toggle)
  *   [backends] renderer, audio, input, storage   (backend names)
  *   [disc]     path       (the user's own disc image: .cue, .bin or .iso)
+ *              search (';'-separated dirs tried when path is empty),
+ *              validate (check SLUS_007.26 before booting, default 1)
  *   [storage]  save_dir   (memory card files)
  *   [mods]     enabled, dirs (';'-separated), dump_textures, dump_dir,
  *              watch_poll, derived_events
@@ -63,6 +65,8 @@ typedef struct BfmPlatConfig {
     char storage[BFM_PLAT_NAME_MAX];
     /* disc / storage */
     char disc_path[BFM_PLAT_PATH_MAX];
+    char disc_search[BFM_PLAT_PATH_MAX];  /* first-run autodetect dirs */
+    int disc_validate;       /* check the boot EXE before booting */
     char save_dir[BFM_PLAT_PATH_MAX];
     /* mods */
     int mods_enabled;

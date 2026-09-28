@@ -32,6 +32,8 @@ void bfm_plat_config_defaults(BfmPlatConfig *cfg) {
     copy_str(cfg->input, sizeof cfg->input, "host");
     copy_str(cfg->storage, sizeof cfg->storage, "image");
     copy_str(cfg->save_dir, sizeof cfg->save_dir, "saves");
+    copy_str(cfg->disc_search, sizeof cfg->disc_search, "disc");
+    cfg->disc_validate = 1;
     copy_str(cfg->screenshot_dir, sizeof cfg->screenshot_dir, "screenshots");
     cfg->mods_enabled = 1;
     copy_str(cfg->mod_dirs, sizeof cfg->mod_dirs, "mods");
@@ -162,6 +164,8 @@ int bfm_plat_config_set(BfmPlatConfig *cfg, const char *key,
     else if (strcmp(key, "backends.input") == 0) r = set_name(cfg->input, sizeof cfg->input, value);
     else if (strcmp(key, "backends.storage") == 0) r = set_name(cfg->storage, sizeof cfg->storage, value);
     else if (strcmp(key, "disc.path") == 0) r = set_path(cfg->disc_path, sizeof cfg->disc_path, value);
+    else if (strcmp(key, "disc.search") == 0) r = set_path(cfg->disc_search, sizeof cfg->disc_search, value);
+    else if (strcmp(key, "disc.validate") == 0) r = set_bool(&cfg->disc_validate, value);
     else if (strcmp(key, "storage.save_dir") == 0) r = set_path(cfg->save_dir, sizeof cfg->save_dir, value);
     else if (strcmp(key, "mods.enabled") == 0) r = set_bool(&cfg->mods_enabled, value);
     else if (strcmp(key, "mods.dirs") == 0) r = set_path(cfg->mod_dirs, sizeof cfg->mod_dirs, value);
@@ -315,8 +319,8 @@ int bfm_plat_config_save_file(const BfmPlatConfig *c, const char *path) {
     fprintf(f, "[backends]\nrenderer = %s\naudio = %s\ninput = %s\n"
                "storage = %s\n\n",
             c->renderer, c->audio, c->input, c->storage);
-    fprintf(f, "[disc]\npath = %s\n\n[storage]\nsave_dir = %s\n\n",
-            c->disc_path, c->save_dir);
+    fprintf(f, "[disc]\npath = %s\nsearch = %s\nvalidate = %d\n\n[storage]\nsave_dir = %s\n\n",
+            c->disc_path, c->disc_search, c->disc_validate, c->save_dir);
     fprintf(f, "[mods]\nenabled = %d\ndirs = %s\ndump_textures = %d\n"
                "dump_dir = %s\nwatch_poll = %d\nderived_events = %d\n\n",
             c->mods_enabled, c->mod_dirs, c->dump_textures, c->dump_dir,

@@ -31,6 +31,8 @@
 #include "bfm_plat_image.h"
 #include "bfm_plat_widescreen.h"
 #include "bfm_plat_watch.h"
+#include "bfm_plat_disc_check.h"
+#include "bfm_plat_sha256.h"
 
 typedef struct BfmPlatStatus {
     const char *renderer;
@@ -51,6 +53,10 @@ int bfm_plat_register_builtin_backends(void);
 int bfm_plat_init(const BfmPlatConfig *cfg);
 void bfm_plat_shutdown(void);
 BfmPlatConfig *bfm_plat_config(void);
+/* The disc check done by the last bfm_plat_init (status BFM_DISC_NO_PATH if
+ * none was configured or found). bfm_plat_init returns BFM_PLAT_INVALID and
+ * logs bfm_plat_disc_check_describe() when a configured disc fails. */
+const BfmPlatDiscCheck *bfm_plat_disc_last_check(void);
 
 /* Returns BFM_PLAT_PAUSED while paused: the caller skips its game logic and
  * still calls bfm_plat_frame_end (which presents, draws "PAUSED" and paces
