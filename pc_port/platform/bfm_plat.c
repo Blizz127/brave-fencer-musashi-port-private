@@ -2,6 +2,10 @@
 
 #include <string.h>
 
+#ifdef BFM_PLAT_WITH_PNG
+int bfm_plat_texture_png_register(void);
+#endif
+
 static BfmPlatConfig cfg_copy;
 static int up;
 static int mods_loaded;
@@ -57,7 +61,11 @@ int bfm_plat_init(const BfmPlatConfig *cfg) {
         if (r != BFM_PLAT_OK) return r;
     }
     bfm_plat_mods_set_config_getter(config_lookup);
+#ifdef BFM_PLAT_WITH_PNG
+    bfm_plat_texture_png_register();
+#endif
     bfm_plat_console_init(&cfg_copy);
+    bfm_plat_events_register_console();
     mods_loaded = 0;
     if (cfg_copy.mods_enabled) {
         BfmPlatModsOptions mo;
@@ -77,6 +85,7 @@ int bfm_plat_init(const BfmPlatConfig *cfg) {
 void bfm_plat_shutdown(void) {
     bfm_plat_mods_shutdown();
     bfm_plat_console_shutdown();
+    bfm_plat_console_ui_open(0);
     bfm_plat_disc_close();
     bfm_plat_input_close();
     bfm_plat_audio_close();
@@ -98,6 +107,8 @@ static void handle_hotkeys(void) {
     }
     if (pressed & BFM_HOTKEY_CHEAT_MENU)
         bfm_plat_cheat_menu_open(!bfm_plat_cheat_menu_is_open());
+    if ((pressed & BFM_HOTKEY_CONSOLE) && cfg_copy.console)
+        bfm_plat_console_ui_toggle();
 }
 
 int bfm_plat_frame_begin(void) {
@@ -106,6 +117,7 @@ int bfm_plat_frame_begin(void) {
     r = bfm_plat_input_poll();
     if (r != BFM_PLAT_OK) return r;
     handle_hotkeys();
+    if (bfm_plat_console_ui_is_open()) bfm_plat_console_ui_pump();
     bfm_plat_renderer_begin_frame();
     bfm_plat_mods_emit(BFM_EVENT_FRAME_BEGIN, NULL);
     return BFM_PLAT_OK;
@@ -116,6 +128,7 @@ int bfm_plat_frame_end(unsigned fields) {
     if (!up) return BFM_PLAT_NOT_READY;
     bfm_plat_mods_emit(BFM_EVENT_FRAME_END, NULL);
     bfm_plat_cheat_menu_draw();
+    bfm_plat_console_ui_draw();
     r = bfm_plat_renderer_present();
     bfm_plat_timing_vsync(fields ? fields : 1);
     frames++;
@@ -158,4 +171,10 @@ void bfm_plat_event_item_get(uint32_t item, int32_t count) {
     e.item = item;
     e.count = count;
     bfm_plat_mods_emit(BFM_EVENT_ITEM_GET, &e);
+}
+
+void bfm_plat_event_save(int load, uint32_t slot) {
+    BfmEventSave e;
+    e.slot = slot;
+    bfm_plat_mods_emit(load ? BFM_EVENT_LOAD : BFM_EVENT_SAVE, &e);
 }

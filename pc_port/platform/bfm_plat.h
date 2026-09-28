@@ -26,6 +26,8 @@
 #include "bfm_plat_timing.h"
 #include "bfm_plat_mods.h"
 #include "bfm_plat_console.h"
+#include "bfm_plat_console_ui.h"
+#include "bfm_plat_events.h"
 
 typedef struct BfmPlatStatus {
     const char *renderer;
@@ -56,5 +58,6 @@ void bfm_plat_event_room_enter(uint32_t area, uint32_t room);
 void bfm_plat_event_room_exit(uint32_t area, uint32_t room);
 void bfm_plat_event_battle(int start, uint32_t encounter, int32_t result);
 void bfm_plat_event_item_get(uint32_t item, int32_t count);
+void bfm_plat_event_save(int load, uint32_t slot);
 
 #endif
