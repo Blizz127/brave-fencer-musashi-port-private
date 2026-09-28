@@ -149,7 +149,31 @@ build, fetched separately) unless marked "repo".
 | `room_exit` | `0x80011B7C` | `func_80011B7C(mode)` (set major mode base+0xA3C0, clear phase) | the scene loop leaves with `func_80011B7C(8)`, `src/resident/resident.c:261`; body `src/boot.c:950` | fires when `$a0 == 8` while an `SC*` overlay is selected | low. ~400 call sites, and mode 8 is not proven unique to scene exit |
 | `save` | `0x8002B0B4` | `func_8002B0B4` (memory-card state machine; splat's `SaveLoadRoutine` is its case 0) | state 13 writes the slot's 0x300-byte game-state block, `src/800_b.c:301`, `:318`, then advances `D_800760AC` | fires on the edge into state 13 (s32 `0x800760AC`); slot = `$a1` | medium. A retried write could fire twice |
 | `load` | `0x8002B0B4` | same | states 17/32 read that block, `src/800_b.c:486-488` | fires on the edge into state 17 or 32; slot = `$a1` | medium |
-| `battle_start` / `battle_end` / `item_get` | TBD | none | no named symbol, comment or runtime note found in vendor/bfm-decomp or this repo | none | needs runtime tracing |
+| `projection` | `0x8004923C` | `func_8004923C` = libgte `SetGeomScreen` (`ctc2 $a0, $26`, repo `src/main/8004923c.c`) | game init `func_80014444` runs InitGeom (`func_80047CB4`), then `func_8004923C(0x3E8)`, storing 0x3E8 in `D_80126950` (`src/800.c:1787`) | h = `$a0 & 0xFFFF` | high (exact instruction shape) |
+| `projection` | `0x8004921C` | `func_8004921C` = libgte `SetGeomOffset` (`sll 16; ctc2 $24/$25`, repo `src/main/8004921c.c`) | called per draw buffer by the libgs offset routine `func_80052BEC` (repo) and by overlay camera code (`src/shared/ov/func_8017C530.h:14`) | ofx/ofy = `(int16)$a0/$a1` | high |
+| `battle_start` / `battle_end` / `item_get` | TBD | none | see "Unsited events" below | none | needs runtime tracing |
+
+**Unsited events: what was searched (2026-09-28).** There is no symbol,
+comment or runtime note for battles or items in `vendor/bfm-decomp`
+(ov_MAIN_012, resident/, shared/ov, md_*, the main-exe TUs) or in this
+repository's docs. Candidates looked at and rejected:
+- `func_8017CF3C` (ov_MAIN_012) formats the save-slot display. It gives the
+  slot record layout: play time, time of day, HP and BP cur/max capped at
+  999, money at +0x14 capped at 99999. It is a layout, not an event.
+- `func_80029ED4` is a monotonic counter (`D_80078F08`, capped at
+  9,999,999, which calls `func_8002A2D4` every 10 steps), not an
+  acquisition.
+- `D_80075CC0` is only the save staging copy (`func_8002AF70` /
+  `func_8002B00C` copy 0x2DC bytes in and out). The live state's address
+  comes from the save-menu modules' callers and wasn't traced.
+- Every location overlay's phase-2 exit chooses `func_80011B7C(0x13)` or
+  `func_80011B7C(4)` (e.g. `ov_SC02_000.c:374-376`). The meaning of the two
+  modes (continue vs game over?) isn't established.
+
+The next step is runtime tracing: watch the HP fields of the live state and
+the money word for writes, then attribute the writer PCs. Low-confidence
+guesses were not registered, because a wrong site fires wrong events for
+every mod.
 
 `tests/test_bfm_plat.py` pins these sites to their symbols, events and
 confidence. When the vendor tree is present, it also checks that every
@@ -175,6 +199,39 @@ How the native lane uses them:
 
 The `events` console command lists each event with its count and every
 registered site with its overlay and hits.
+
+### Widescreen
+
+Config: `[video] aspect = 4:3 | 16:9 | 16:10` and `widescreen_mode = hor+ |
+anamorphic` (`--aspect`; `widescreen = 1` / `--widescreen` mean 16:9).
+The maths is in `bfm_plat_widescreen.c`, in 16.16 fixed point so every
+backend rounds the same way. The PS1 display is always shown at 4:3,
+whatever its pixel width.
+
+- **hor+**: projection unchanged. The renderer shows a wider window with
+  unstretched pixels. Visible width in display pixels is
+  `disp_w * A / (4/3)`, centred: 428 wide starting at x = -54 for a
+  320-wide display at 16:9, and 384 starting at -32 at 16:10. The
+  PsyCross backend does this: with PGXP it maps the display unstretched
+  into a window of any aspect, so the backend sizes its window to the
+  aspect (`bfm_plat_widescreen_window`: 1280x720 at 16:9). Geometry the
+  GTE projects past the 4:3 edges then becomes visible. Objects the game
+  culls at those edges will pop at the sides; that is the known cost.
+- **anamorphic**: after perspective division, screen X is squeezed around
+  OFX by `k = (4/3)/A` (0.75 at 16:9, 0.8333 at 16:10), and the output is
+  stretched to A. The game's culling stays correct, but 2D HUD elements
+  are stretched. A GTE backend applies it with
+  `bfm_plat_widescreen_sx_current(sx)` on every projected SX (RTPS/RTPT).
+  The renderer must stretch. PsyCross can't, so `set_output` refuses
+  anamorphic there and `bfm_plat_init` falls back to hor+ with a log line.
+- The game's projection is known to the platform: hook sites at libgte
+  `SetGeomScreen`/`SetGeomOffset` (table above) record H/OFX/OFY
+  (`bfm_plat_projection_get`) and emit `BFM_EVENT_PROJECTION`. Retail sets
+  H = 1000 once at init (horizontal FOV 18.2° across 320 px; hor+ 16:9 shows
+  24.2°). `bfm_plat_projection_hfov_mdeg` computes these.
+- Tests: `test_widescreen_projection_maths` checks every aspect, display
+  width (256-640) and a range of SX values against exact fractions, plus
+  the config keys and the projection hook sites.
 
 ### Pause, screenshot, quit
 
@@ -226,10 +283,26 @@ registered site with its overlay and hits.
   into the binary and registered with
   `bfm_plat_mods_register_static_plugin` (for platforms without dlopen, and
   for tests). Sample: `pc_port/mods/examples/hello`.
-- **Lua later.** `BfmPlatScriptRuntime {name, extension, load, shutdown}`
-  is the seam. A Lua runtime registers for `.lua` and receives the same
-  `BfmPluginHost` table a C plugin gets. No runtime is built in yet, and a
-  mod naming a script logs "no script runtime".
+- **Lua** (optional, `-DBFM_PLAT_WITH_LUA`, `backends/script_lua.c`).
+  `tools/fetch_lua.sh` fetches Lua 5.4.9 into the ignored
+  `tools/third_party/lua`, verified against lua.org's published SHA-256.
+  Each mod whose manifest names a `.lua` script gets its own `lua_State`.
+  - Sandbox: base (no dofile/loadfile/load/require), table, string, math,
+    utf8 and coroutine. No io, os, package or debug. Text chunks only.
+  - Every load and callback runs under a 5M-instruction budget, so a
+    runaway script errors out instead of hanging the game.
+  - The global `bfm` table offers the same services as `BfmPluginHost`:
+    `bfm.on(event, fn)` / `bfm.off(id)` with payload tables (input is
+    editable: `pads[i].buttons`, sticks, `hotkeys`); `bfm.read8/16/32`,
+    `write8/16/32`, `read/write(addr, n|s)`; `bfm.cheat{...}` (poke or
+    `apply`/`on_toggle`); `bfm.set_cheat`; `bfm.command(name, help, fn)`;
+    `bfm.config`, `bfm.log`; `bfm.PAD_*` / `bfm.HOTKEY_*`.
+  - Cheats and commands can be registered only while the main chunk runs.
+    They belong to the mod and are dropped with it. Hooks made later are
+    dropped at mods shutdown too.
+  - Sample: `pc_port/mods/examples/lua_hello`.
+  - Without the define, a mod naming a script logs "no script runtime".
+  The same `BfmPlatScriptRuntime` seam takes other languages.
 - **Asset replacement, hash-keyed, from mods only.** The key is 16 hex digits
   of FNV-1a 64 over the original data:
   - textures: `le16 width, le16 height, width*height le16 pixels` of each
@@ -300,6 +373,7 @@ aspect.
 | OpenAL Soft (via PsyCross) | system | LGPL-2.1, dynamically linked | not vendored |
 | OpenSSL libcrypto (`disc_media.c` SHA-256) | system | Apache-2.0 | `pinned` backend only |
 | built-in 5x7 debug font (`bfm_plat_font.c`) | `pc_port/platform/` | this repository | original glyphs drawn for this port, not derived from PsyCross's `dbugfont` |
+| Lua 5.4.9 | `tools/third_party/lua`, fetched by `tools/fetch_lua.sh` (sha256 `2335b6c5…6fb8e6`); ignored by git | MIT, © 1994–2026 Lua.org, PUC-Rio | optional script runtime (`BFM_PLAT_WITH_LUA`) |
 | zlib (`texture_png.c` inflate) | system libz | zlib | PNG decoder only; the decoder itself is in-house, and no third-party PNG code is vendored |
 | Game data | the user's own disc image | © the rights holders | never committed or shipped |
 
@@ -331,11 +405,13 @@ Stubbed / next:
   over a semi-transparent backing, in the current draw environment's
   coordinates. It uses no VRAM texture, because PsyCross's `FntLoad` would
   overwrite game VRAM.
-- No Lua runtime (seam only).
 - Guest sites for battle start/end and item get (no evidence yet). Room
   exit is low-confidence. Registering the known sites and reporting the
   selected overlay from the native lane.
-- Widescreen projection and 60 fps interpolation.
+- Anamorphic widescreen needs the GTE backend to call
+  `bfm_plat_widescreen_sx_current` and a stretching renderer. On PsyCross
+  it falls back to hor+. The hor+ edge culling is not patched.
+- 60 fps interpolation.
 - Routing the game's Psy-Q-shaped call sites (libgpu/libcd/libetc shims in
   the native lane) through `bfm_plat_*`.
 
@@ -353,9 +429,10 @@ add_library(bfm_plat STATIC
     pc_port/platform/bfm_plat_timing.c   pc_port/platform/bfm_plat_mods.c
     pc_port/platform/bfm_plat_console.c  pc_port/platform/bfm_plat_console_ui.c
     pc_port/platform/bfm_plat_events.c   pc_port/platform/bfm_plat_hook_sites.c
-    pc_port/platform/bfm_plat_image.c    pc_port/platform/bfm_plat_font.c)
+    pc_port/platform/bfm_plat_image.c    pc_port/platform/bfm_plat_font.c
+    pc_port/platform/bfm_plat_widescreen.c)
 target_include_directories(bfm_plat PUBLIC pc_port/platform)
-target_link_libraries(bfm_plat PUBLIC ${CMAKE_DL_LIBS})
+target_link_libraries(bfm_plat PUBLIC ${CMAKE_DL_LIBS} m)
 
 if(MUSASHI_WITH_PSYCROSS)   # SDL2 / OpenAL / GL already found above
     target_sources(bfm_plat PRIVATE
@@ -377,6 +454,18 @@ if(ZLIB_FOUND)
     target_sources(bfm_plat PRIVATE pc_port/platform/backends/texture_png.c)
     target_compile_definitions(bfm_plat PRIVATE BFM_PLAT_WITH_PNG)
     target_link_libraries(bfm_plat PRIVATE ZLIB::ZLIB)
+endif()
+# Optional Lua (after tools/fetch_lua.sh): all of tools/third_party/lua/src/*.c
+# except lua.c and luac.c, as a separate C target without -Werror.
+set(BFM_LUA_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tools/third_party/lua/src)
+if(EXISTS ${BFM_LUA_DIR}/lua.h)
+    file(GLOB BFM_LUA_SOURCES ${BFM_LUA_DIR}/*.c)
+    list(FILTER BFM_LUA_SOURCES EXCLUDE REGEX "/(lua|luac)\\.c$")
+    add_library(bfm_lua STATIC ${BFM_LUA_SOURCES})
+    target_include_directories(bfm_lua PUBLIC ${BFM_LUA_DIR})
+    target_sources(bfm_plat PRIVATE pc_port/platform/backends/script_lua.c)
+    target_compile_definitions(bfm_plat PRIVATE BFM_PLAT_WITH_LUA)
+    target_link_libraries(bfm_plat PRIVATE bfm_lua)
 endif()
 # Optional: pc_port/platform/backends/disc_pinned.c + BFM_PLAT_WITH_PINNED_DISC
 # (links disc_media.c / OpenSSL::Crypto, already in musashi_pc_port).
