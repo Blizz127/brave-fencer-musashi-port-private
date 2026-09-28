@@ -19,14 +19,16 @@ GEN = ROOT / "tools/native_lane_gen.py"
 EXPECT = {
     0x80019064: (True, None),        # guest globals, absolute addresses
     0x8001C044: (True, None),        # calls a bespoke-binding callee (thunk)
-    0x8001903C: (False, "hooks"),    # STARTUP_RECORD_CLEAR: host-sequenced (enum-named PC)
+    0x800141F0: (False, "hooks"),    # STARTUP_ENTRY: host-sequenced (enum-named PC)
+    0x8001903C: (True, None),        # STARTUP_RECORD_CLEAR: a host intrinsic the lane may run
     0x80015498: (True, None),        # register-pinned locals (`__asm__("$N")`), no asm
     0x80015208: (True, None),        # register-pinned, only tied empty asm
     0x80015B6C: (False, "calls"),    # empty asm with an untied output
     0x80014CF8: (True, None),        # tied empty asm ("" : "=r"(x) : "0"(x)) is an identity
     0x80015310: (False, "memory"),   # volatile device access
     0x8002A088: (False, "abi"),      # passes 0 of 1 arguments to func_8002A108
-    0x8001CFDC: (False, "irq"),      # loop with no store or call
+    0x8001CFDC: (True, None),        # bounded read-only table search (walks memory)
+    0x80018384: (False, "irq"),      # for (;;); : a loop that reads nothing new
 }
 # Sony PsyQ entry points never enter the lane (config/psyq_ranges.txt).
 PSYQ = (0x800425B0, 0x8003B08C, 0x80046ABC)

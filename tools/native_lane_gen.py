@@ -102,6 +102,13 @@ def strip_empty_asm(text):
     return "".join(pieces), dropped
 
 
+# Host intrinsics (mips_formatter.c formatter_call) whose matched C may run
+# in the lane instead of the bespoke host implementation: their only port
+# reference is the entry PC the intrinsic dispatch compares, and their file's
+# only bespoke macro is a *_BINDING for that host implementation (compiled
+# here without it, i.e. the matched body).
+INTRINSIC_PCS = {0x80016714, 0x8001903C, 0x80029044, 0x8002906C, 0x80029094, 0x80029218}
+
 # Local register pinning in matched C: `register ... name __asm__("$N")`.
 REGISTER_PIN = re.compile(r'(\bregister\b[^;(){}]*?)\s*__asm__\s*\(\s*"\$\d+"\s*\)')
 
@@ -551,6 +558,33 @@ def check_optimized(ir, module_internal):
                     raise Reject("escape", f"host address passed to {name}")
 
 
+def loop_walks_memory(body):
+    """True when some load in the loop reads an address that changes each
+    iteration: its pointer derives (transitively, within the loop) from a phi
+    defined in the loop. Such a loop (a table search, a string scan) ends on
+    the data it reads; a polling loop re-reads the same address."""
+    tainted = set()
+    for l in body:
+        m = re.match(r"\s*(%[\w.$-]+)\s*=\s*phi\b", l)
+        if m:
+            tainted.add(m.group(1))
+    changed = True
+    while changed:
+        changed = False
+        for l in body:
+            m = re.match(r"\s*(%[\w.$-]+)\s*=\s*(.*)", l)
+            if not m or m.group(1) in tainted:
+                continue
+            if any(re.search(re.escape(t) + r"\b", m.group(2)) for t in tainted):
+                tainted.add(m.group(1))
+                changed = True
+    for l in body:
+        m = re.search(r"=\s*load\b[^,]*,\s*ptr\s+(%[\w.$-]+)", l)
+        if m and m.group(1) in tainted:
+            return True
+    return False
+
+
 def check_polling_loops(ir):
     """A native call runs to completion without IRQ delivery. A loop that
     neither stores nor calls can only make progress through state an IRQ or
@@ -573,7 +607,8 @@ def check_polling_loops(ir):
                     continue
                 body = lines[start: idx + 1]
                 if not any(re.search(r"\bstore\b", l) or
-                           (re.search(r"\bcall\b", l) and "@llvm." not in l) for l in body):
+                           (re.search(r"\bcall\b", l) and "@llvm." not in l) for l in body) \
+                        and not loop_walks_memory(body):
                     raise Reject("irq", "loop with no store or call (polling)")
 
 
@@ -647,7 +682,7 @@ def build_one(entry, out, symbols, hooks, clang):
     work = out / "ir"
     try:
         for pc in hooks:
-            if vram <= pc < vram + size:
+            if vram <= pc < vram + size and not (pc == vram and vram in INTRINSIC_PCS):
                 raise Reject("hooks", f"port references {pc:08x}")
         text = strip_comments(src.read_text(errors="replace"))
         body = text.split("#else", 1)[1] if "#else" in text else text
@@ -679,8 +714,11 @@ def build_one(entry, out, symbols, hooks, clang):
         sub = work / f"{tag}.sub.ll"
         sub.write_text(rewritten)
         opt = work / f"{tag}.opt.ll"
-        r = run([clang, f"--target={HOST_TARGET}", "-O2", "-S", "-emit-llvm", "-w",
-                 str(sub), "-o", str(opt)])
+        # No auto-vectorisation or unrolling: their splat and remainder idioms
+        # (insertelement poison, phi poison) trip
+        # the undef/poison check, and lane functions gain nothing from it.
+        r = run([clang, f"--target={HOST_TARGET}", "-O2", "-fno-vectorize", "-fno-slp-vectorize", "-fno-unroll-loops",
+                 "-S", "-emit-llvm", "-w", str(sub), "-o", str(opt)])
         if r.returncode:
             raise Reject("compile", "optimize: " + (r.stderr.strip().splitlines() or ["?"])[0][:160])
         optir = opt.read_text()
@@ -699,7 +737,7 @@ def build_one(entry, out, symbols, hooks, clang):
         final = work / f"{tag}.lane.ll"
         final.write_text(optir)
         obj = work / f"{tag}.o"
-        r = run([clang, f"--target={HOST_TARGET}", "-O2", "-c", "-fPIE", "-w", str(final), "-o", str(obj)])
+        r = run([clang, f"--target={HOST_TARGET}", "-O2", "-fno-vectorize", "-fno-slp-vectorize", "-fno-unroll-loops", "-c", "-fPIE", "-w", str(final), "-o", str(obj)])
         if r.returncode:
             raise Reject("compile", "object: " + (r.stderr.strip().splitlines() or ["?"])[0][:160])
         undefined = run(["nm", "-u", str(obj)]).stdout.split()
@@ -873,7 +911,8 @@ def candidates(only=None, excluded=None):
             continue
         text = src.read_text(errors="replace")
         other = set(re.findall(r"MUSASHI_NATIVE_[A-Z0-9_]+", text))
-        if other:
+        if other and not (m["vram"] in INTRINSIC_PCS and
+                          all(o.endswith("_BINDING") for o in other)):
             continue  # bespoke binding already owns this file
         if only and m["vram"] not in only:
             continue

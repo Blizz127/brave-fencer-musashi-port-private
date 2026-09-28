@@ -8195,10 +8195,21 @@ static int intrinsic_string(MusashiBootMemory *memory, const FormatterCpu *cpu,
     return 0;
 }
 
+static int lane_try(MusashiBootMemory *memory, FormatterCpu *cpu);
+static size_t g_lane_count;
+
 static int formatter_call(MusashiBootMemory *memory, FormatterCpu *cpu,
                            MusashiConsoleSink sink, void *userdata) {
     uint32_t address = cpu->pc;
     if (cpu->gte_load_pending) return 0;
+    /* A host intrinsic whose matched C the lane admitted runs as that C
+     * (tools/native_lane_gen.py INTRINSIC_PCS) instead of the bespoke host
+     * implementation below. */
+    if (g_lane_count) {
+        int lane = lane_try(memory, cpu);
+        if (lane > 0) return 1;
+        if (lane < 0) return 0;
+    }
     if (address == FORMATTER_CONSOLE_CHAR) {
         uint8_t *classes = musashi_boot_ram_span(memory, 0x800728a9u, 0x100u);
         uint32_t column_word;
