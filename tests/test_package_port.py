@@ -65,7 +65,7 @@ class PackageTests(unittest.TestCase):
             names = t.getnames()
         top = names[0].split("/")[0]
         for want in ("bin/bfm-port", "README.txt", "docs/ARCHITECTURE-PORT.md",
-                     "licenses/THIRD-PARTY.txt", "licenses/LICENSE-NOTES.md",
+                     "docs/MODDING.md", "licenses/THIRD-PARTY.txt", "licenses/LICENSE-NOTES.md",
                      "mods/README.md", "mods/examples/hello/hello_plugin.c",
                      "mods/examples/lua_hello/main.lua", "mods/examples/cheat_pack/cheats.ini",
                      "include/bfm_plugin.h", "disc/PUT-YOUR-DISC-HERE.txt"):

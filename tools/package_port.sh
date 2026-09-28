@@ -54,7 +54,7 @@ for l in $libs; do cp -L "$l" "$stage/lib/"; done
 for e in $extras; do cp "$e" "$stage/"; done
 
 # Docs and samples (source only: the sample plugin is built by the user).
-cp "$root/docs/ARCHITECTURE-PORT.md" "$stage/docs/"
+cp "$root/docs/ARCHITECTURE-PORT.md" "$root/docs/MODDING.md" "$stage/docs/"
 cp "$root/pc_port/mods/README.md" "$stage/mods/"
 for m in hello lua_hello cheat_pack; do
     [ -d "$root/pc_port/mods/examples/$m" ] && cp -R "$root/pc_port/mods/examples/$m" "$stage/mods/examples/"
@@ -96,7 +96,7 @@ This package contains no game data. You need your own copy of the US disc
   2. Run bin/bfm-port. The port checks the disc (the boot executable's
      SHA-256) and tells you what is wrong if it is not the US release.
 
-Mods go in mods/ (see mods/README.md and docs/ARCHITECTURE-PORT.md).
+Mods go in mods/ (see docs/MODDING.md and mods/README.md).
 TXT
 mkdir -p "$stage/disc"
 printf 'Put your own disc image (.cue + .bin, or .iso) here.\n' > "$stage/disc/PUT-YOUR-DISC-HERE.txt"
