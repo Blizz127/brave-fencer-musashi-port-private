@@ -15,6 +15,7 @@ Synthetic data only.
 """
 import ctypes.util
 import os
+import shutil
 from pathlib import Path
 import subprocess
 import tempfile
@@ -117,6 +118,52 @@ class GlRendererTests(unittest.TestCase):
             self.skipTest(out.strip())
         self.assertIn("ok bench", out)
         self.assertNotIn("FAIL", out)
+
+    def test_headless_boot_script(self):
+        # tools/run_headless_boot.sh: the capture shim builds; the script
+        # refuses missing inputs and an --out inside the tracked tree
+        script = ROOT / "tools/run_headless_boot.sh"
+        shim = self.tmp / "cap.so"
+        subprocess.run(["cc", "-std=c99", "-Wall", "-Wextra", "-Werror", "-O2", "-shared", "-fPIC",
+                        "-I", str(PLAT), str(ROOT / "tools/headless/bfm_swap_capture.c"),
+                        str(PLAT / "bfm_plat_image.c"), "-o", str(shim), "-ldl"],
+                       check=True, stdin=subprocess.DEVNULL, timeout=60)
+        proc = subprocess.run(["sh", str(script), "--binary", str(self.tmp / "nope"),
+                               "--disc", str(self.tmp)], capture_output=True, text=True,
+                              timeout=60, stdin=subprocess.DEVNULL)
+        self.assertEqual(proc.returncode, 2)
+        self.assertIn("missing", proc.stderr)
+        if not (DEPS_LIB / "libEGL_mesa.so.0").exists():
+            return
+        disc = self.tmp / "disc"
+        (disc / "files").mkdir(parents=True, exist_ok=True)
+        for f in ("files/SLUS_007.26", "disc.cue", "disc.bin"):
+            (disc / f).write_bytes(b"synthetic")
+        fake = self.tmp / "fake_boot"
+        fake.write_text("#!/bin/sh\nexit 0\n")
+        fake.chmod(0o755)
+        inside = ROOT / "pc_port/.headless-guard-test"
+        try:
+            proc = subprocess.run(["sh", str(script), "--binary", str(fake), "--disc", str(disc),
+                                   "--out", str(inside)], capture_output=True, text=True,
+                                  timeout=60, stdin=subprocess.DEVNULL,
+                                  env=dict(os.environ, BFM_HOST_DEPS=str(DEPS)))
+            self.assertEqual(proc.returncode, 2, proc.stdout + proc.stderr)
+            self.assertIn("not ignored", proc.stderr)
+            self.assertFalse(inside.exists())   # refused before creating anything
+        finally:
+            if inside.exists():
+                shutil.rmtree(inside)
+        # a scratch --out runs the fake binary and summarises
+        out = self.tmp / "hl"
+        proc = subprocess.run(["sh", str(script), "--binary", str(fake), "--disc", str(disc),
+                               "--out", str(out), "--timeout", "20"], capture_output=True,
+                              text=True, timeout=120, stdin=subprocess.DEVNULL,
+                              env=dict(os.environ, BFM_HOST_DEPS=str(DEPS)))
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertIn("exit: 0", proc.stdout)
+        for f in ("egl.json", "alsa.conf", "bfm_swap_capture.so", "out.log"):
+            self.assertTrue((out / f).exists(), f)
 
     def test_sdl_backend(self):
         inc, sdl = gl_include(), sdl_include()

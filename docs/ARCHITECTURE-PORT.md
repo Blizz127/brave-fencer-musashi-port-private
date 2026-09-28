@@ -644,6 +644,37 @@ CHD: libchdr (BSD-3-Clause) is the candidate reader. It needs zlib, LZMA,
 zstd and FLAC decoders, so it's left as a later storage backend, and `.chd`
 gets the conversion hint.
 
+### Headless live boot
+
+`tools/run_headless_boot.sh --binary BUILD/musashi_native_boot --disc
+EXTRACTED/disc [--out DIR] [--timeout S] [--capture-every N]` boots the
+real game (the user's own disc) with no display and no sound card.
+
+Everything the run writes goes to `--out` (default `headless-out/`,
+git-ignored), which must be outside the repository or git-ignored:
+- `out.log`;
+- `trace` and `trace.counts` (`MUSASHI_TRACE_FUNCS`);
+- `frames.log`: one line per presented frame, with its non-black pixel
+  count;
+- `frame_*.png` and `vram_*.png`.
+
+It ends by printing the stop line, any refusal, the boot markers
+(`TITLE_LOAD`, `SCENE1_REACHED`, …), the first non-black frame and the top
+of the call ranking.
+
+| Setting | Why | Status |
+|---|---|---|
+| `SDL_VIDEODRIVER=offscreen`, Mesa EGL via a vendor JSON, `EGL_PLATFORM=surfaceless` | real GL 3.3 context without a display (llvmpipe) | environment |
+| `LIBGL_ALWAYS_SOFTWARE` unset | setting it segfaults Mesa 25.0's EGL inside `SDL_CreateWindow` | Mesa bug; Mesa falls back to llvmpipe by itself |
+| ALSA `null` PCM (`ALSA_CONFIG_PATH`, `SDL_AUDIODRIVER=alsa`) | native_boot's audio gate refuses SDL's `dummy`/`disk` drivers on purpose | **workaround that papers over a real issue**: the gate is meant to require a real device, and a null PCM satisfies it with no audio. An explicit, logged headless audio mode is the honest fix (port-int) |
+| `MUSASHI_CODE_IMAGE=<EXE>` | instructions are fetched from the user's EXE | required. Without it the run refuses at `80010000` **and prints no reason**; the missing reason is a real issue (port-int) |
+| `MUSASHI_GUEST_CLOCK=1` (default; `--host-clock` to compare) | guest time advances with executed cycles | the host-paced clock, on a loaded host, ends in a silent IRQ-dispatch refusal in the SPU poll loop (`8003b118`); real issue (port-int) |
+| `LD_PRELOAD` of Mesa `libEGL`/`libEGL_mesa`/`libgallium` (`--no-preload` skips) | keeps Mesa mapped for PsyCross's shutdown | **workaround**: `GR_Shutdown` calls GL after the EGL libraries were unloaded and segfaults on every exit, losing `trace.counts`; shutdown ordering is the fix (port-int) |
+| `tools/headless/bfm_swap_capture.c` (`LD_PRELOAD`, `BFM_CAPTURE_*`) | hooks `SDL_GL_SwapWindow` | observation only. It reads the back buffer before the real swap, and optionally PsyCross's `vram` array, found by `nm` offset. PNGs use `bfm_plat_png_write` |
+
+Frames here are PsyCross presents, which only happen when native_boot
+flushes the display. They are not guest VBlanks.
+
 ### Packaging (no game data)
 
 `tools/package_port.sh --binary BIN --exe <your SLUS_007.26> --extracted
