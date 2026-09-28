@@ -9814,38 +9814,27 @@ static const CodeSiteGroup kCodeSiteGroups[] = {
 };
 enum { CODE_SITE_GROUPS = 203 };
 
-/* Group verification is cached until the code may have changed: a new
- * overlay selection, a different guest memory, or a new CPU run. */
-static unsigned g_code_epoch = 1u;
-static unsigned g_code_site_epoch[CODE_SITE_GROUPS];
-static int8_t g_code_site_ok[CODE_SITE_GROUPS];
-
-static void code_sites_invalidate(void) {
-    if (++g_code_epoch == 0) g_code_epoch = 1u;
-}
+/* A group is verified on every lookup (at most 64 words: one 256-byte
+ * window), so any change to a site's word in guest RAM, by an overlay load
+ * or anything else, refuses the site at once, exactly as the old per-site
+ * word comparison did. */
+static void code_sites_invalidate(void) {}
 
 static int code_site_group_ok(unsigned group) {
+    const CodeSiteGroup *g;
+    uint64_t h = 0xcbf29ce484222325ull;
+    unsigned i, b;
     if (group >= CODE_SITE_GROUPS) return 0;
-    if (g_code_site_epoch[group] != g_code_epoch) {
-        const CodeSiteGroup *g = &kCodeSiteGroups[group];
-        uint64_t h = 0xcbf29ce484222325ull;
-        int ok = 1;
-        unsigned i, b;
-        for (i = 0; i < g->count && ok; ++i) {
-            uint32_t word;
-            if (!code_word(g_fetch_memory, NULL, kCodeSitePcs[g->first + i], &word)) {
-                ok = 0;
-                break;
-            }
-            for (b = 0; b < 4u; ++b) {
-                h ^= (word >> (8u * b)) & 0xffu;
-                h *= 0x100000001b3ull;
-            }
+    g = &kCodeSiteGroups[group];
+    for (i = 0; i < g->count; ++i) {
+        uint32_t word;
+        if (!code_word(g_fetch_memory, NULL, kCodeSitePcs[g->first + i], &word)) return 0;
+        for (b = 0; b < 4u; ++b) {
+            h ^= (word >> (8u * b)) & 0xffu;
+            h *= 0x100000001b3ull;
         }
-        g_code_site_ok[group] = (int8_t)(ok && h == g->digest);
-        g_code_site_epoch[group] = g_code_epoch;
     }
-    return g_code_site_ok[group];
+    return h == g->digest;
 }
 
 static int code_site(uint32_t pc, unsigned group, uint32_t instruction) {
@@ -12815,7 +12804,7 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
         int exact_site = 0;
         int caller_gated = 0;
         for (i=0;i<sizeof(sites)/sizeof(sites[0]);++i)
-            if (sites[i][0]==cpu->pc && sites[i][1]==instruction) {
+            if (sites[i][0]==cpu->pc && code_site(cpu->pc, sites[i][1], instruction)) {
                 exact_site = 1;
                 caller_gated = 1;
                 break;
