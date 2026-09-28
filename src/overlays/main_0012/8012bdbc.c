@@ -2,24 +2,25 @@
  * SHA256(span)=cbe13a477501e594e06f7616a976fb2a6b60399f02f37bd30744c8141495f95d.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-#include "m2c_macros.h"
-
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-s32 func_8004CFEC(s32, s32);                        /* extern */
-extern s16 D_80126CB4;
+/* func_8012BDBC - byte-exact against retail at -O2 (tools/register_match.py). */
+#define ratan2 func_8004CFEC
+extern s32 ratan2(s32 a0, s32 a1);
+extern s32 ratan2(s32 x, s32 y);
 extern s16 D_80126CB8;
+extern s16 D_80126CB4;
 
-s32 func_8012BDBC(void *arg0, s16 arg1) {
-    s32 temp_a0;
-
-    temp_a0 = (((func_8004CFEC(M2C_FIELD(arg0, s16 *, 0xE) - D_80126CB8, D_80126CB4 - M2C_FIELD(arg0, s16 *, 6)) - 0x400) & 0xFFF) - M2C_FIELD(M2C_FIELD(arg0, void **, 0x20), s16 *, 0x12)) & 0xFFF;
-    if (temp_a0 >= 0x800) {
-        return (0x1000 - temp_a0) < arg1;
+s32 func_8012BDBC(s32 a0, s32 a1) {
+    s32 s0 = a0;
+    s32 v0;
+    s32 angle;
+    v0 = ratan2(*(s16 *)(s0 + 0xE) - D_80126CB8, D_80126CB4 - *(s16 *)(s0 + 0x6));
+    v0 = (v0 - 0x400) & 0xFFF;
+    v0 = v0 - *(s16 *)(*(s32 *)(s0 + 0x20) + 0x12);
+    angle = v0 & 0xFFF;
+    if (angle < 0x800) {
+        return angle < (s16)a1;
     }
-    return temp_a0 < arg1;
+    return (0x1000 - angle) < (s16)a1;
 }

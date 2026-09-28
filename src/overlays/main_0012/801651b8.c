@@ -2,31 +2,31 @@
  * SHA256(span)=387c6b9c6fd8f333e75d2585e224e32ecc0058c5a755e17bd1542811389f2492.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
+/* func_801651B8 - byte-exact against retail at -O2 (tools/register_match.py). */
+extern void func_80165240(void *param_1, void *param_2, void *param_3);
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+void func_801651B8(void * param_1)
+{
 
-extern s32 D_80184398;
-void func_80165240(s32, s32 (*)(), void *);              /* static */
+    extern s32 D_80184398;
+    register s32 *puVar1 __asm__("$16");  
+    register s32 iVar2 __asm__("$17");    
+    register s32 p __asm__("$18");         
 
-void func_801651B8(s32 arg0) {
-    s32 (*var_s0)();
-    s32 var_s1;
-
-    func_80165240(arg0 + 0x2C, arg0 + 0x50);
-    var_s1 = 0;
-    var_s0 = D_80184398;
+    p = param_1;
+    ((s32 (*)(s32, s32, s32))func_80165240)(p, p + 0x2c, p + 0x50);
+    iVar2 = 0;
+    puVar1 = &D_80184398;
     do {
-        if (var_s0->unkC != 0) {
-            func_80165240(arg0, var_s0, var_s0 + 8);
-            var_s0->unkC = (s32) (var_s0->unkC - 1);
+        if (puVar1[3] != 0) {
+            s32 a0v = p;
+            __asm__ __volatile__("" : "=r"(a0v) : "0"(a0v));
+            ((s32 (*)(s32, s32, s32))func_80165240)(a0v, (s32)puVar1, (s32)(puVar1 + 2));
+            puVar1[3] = puVar1[3] + -1;
         }
-        var_s1 += 1;
-        var_s0 += 0x10;
-    } while (var_s1 < 8);
+        iVar2 = iVar2 + 1;
+        puVar1 = puVar1 + 4;
+    } while (iVar2 < 8);
 }

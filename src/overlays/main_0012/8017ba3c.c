@@ -2,54 +2,57 @@
  * SHA256(span)=de7512b49dff2cc5f18fc05daf74ebd3647fb755a8a4b2906992e5a9e5fe8d51.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
+/* func_8017BA3C - byte-exact against retail at -O2 (tools/register_match.py). */
+#define RotTransSV func_8004945C
+typedef struct { s16 a, b, c, d; } SV4;
+typedef struct {
+    s16 m[3][3];
+    s16 pad;
+    s32 t[3];
+} MTX;
+extern void func_80049CAC(s32 a0, s32 a1);
+extern void func_8012F214(s32 a0, s32 a1, s32 a2);
+extern void func_8004914C(void *);
+extern void func_800491AC(void *);
+extern void func_80049CAC();
+extern void func_8004914C(void *a0);
+extern void func_800491AC(void *a0);
+extern void RotTransSV(s32 a0, s32 a1, void *a2);
+extern void func_8004914C();
+extern void func_800491AC();
+extern void RotTransSV(s32, s32, void*);
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+void func_8017BA3C(s32 param_1, s32 param_2)
+{
 
-void func_8004914C(void *, s16);                          /* extern */
-void func_800491AC(void *);                               /* extern */
-void func_8004945C(s16 *, void *, void *);                   /* extern */
-void func_80049CAC(s16 *, void *);                        /* extern */
-extern s32 D_8018536C;
-extern s32 D_80185374;
-void func_8012F214(s16 *);                             /* static */
+    extern SV4 D_8018536C;
+    extern SV4 D_80185374;
+    SV4 v0;             
+    MTX mtx;            
+    SV4 v1;             
+    SV4 svec;           
+    SV4 buf1;           
+    SV4 buf2;           
 
-void func_8017BA3C(void *arg1) {
-    s32 sp50;
-    s32 sp48;
-    s16 sp40;
-    s16 sp3C;
-    s16 sp3A;
-    s16 sp38;
-    s32 sp34;
-    s32 sp30;
-    s32 sp2C;
-    s32 sp18;
-    s16 sp14;
-    u16 sp12;
-    s16 sp10;
+    func_8012F214(param_1, param_2, (s32)&svec);
+    D_8018536C = svec;
 
-    func_8012F214(&sp40);
-    D_8018536C.unk3 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-    D_8018536C.unk7 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-    sp10 = -(s16) arg1->unkC;
-    sp14 = 0;
-    sp38 = 0;
-    sp3A = 0;
-    sp12 = arg1->unk8;
-    sp3C = -(s16) arg1->unkA;
-    func_80049CAC(&sp10, &sp18);
-    sp2C = (s32) sp40;
-    sp30 = (s32) (s16) sp42;
-    sp34 = (s32) sp44;
-    func_8004914C(&sp18, sp44);
-    func_800491AC(&sp18);
-    func_8004945C(&sp38, &sp48, &sp50);
-    D_80185374.unk3 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-    D_80185374.unk7 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
+    v0.a = -*(s16 *)(param_2 + 0xc);
+    v0.b = *(u16 *)(param_2 + 8);
+    v0.c = 0;
+    v1.a = 0;
+    v1.b = 0;
+    v1.c = -*(s16 *)(param_2 + 0xa);
+    ((void (*)(void *, void *))func_80049CAC)(&v0, &mtx);
+
+    mtx.t[0] = (s32)svec.a;
+    mtx.t[1] = (s32)svec.b;
+    mtx.t[2] = (s32)svec.c;
+    func_8004914C(&mtx);
+    func_800491AC(&mtx);
+
+    ((void (*)(void *, void *, void *))RotTransSV)(&v1, &buf1, &buf2);
+    D_80185374 = buf1;
 }

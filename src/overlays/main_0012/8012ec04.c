@@ -1,182 +1,113 @@
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-
-/* GTE/cop2 mnemonic overlay: ordinary C cannot emit coprocessor ops.
- * Verified by tools/match_function.py. */
+/* GTE mnemonic macros, copied from vendor/bfm-decomp/include/gte_macros.inc (assembler-only, emit no code). */
 __asm__(
-    ".set noreorder\n"
-    ".globl func_8012EC04\n"
-    ".type func_8012EC04, @function\n"
-    "func_8012EC04:\n"
-    "addiu $sp, $sp, -0x38\n"
-    "sw $s3, 0x2C($sp)\n"
-    "addu $s3, $a0, $zero\n"
-    "sw $s2, 0x28($sp)\n"
-    "addu $s2, $a2, $zero\n"
-    "sw $ra, 0x30($sp)\n"
-    "sw $s1, 0x24($sp)\n"
-    "sw $s0, 0x20($sp)\n"
-    "lw $a2, 0x20($s3)\n"
-    "nop\n"
-    "lw $s1, 0x20($a2)\n"
-    "nop\n"
-    "lui $v0, (0x1000000 >> 16)\n"
-    "lw $v0, 0x34($a2)\n"
-    "lw $v1, 0x38($a2)\n"
-    "lw $a0, 0x3C($a2)\n"
-    "lw $a1, 0x40($a2)\n"
-    "sw $v0, 0x0($s2)\n"
-    "sw $v1, 0x4($s2)\n"
-    "sw $a0, 0x8($s2)\n"
-    "sw $a1, 0xC($s2)\n"
-    "lw $v0, 0x44($a2)\n"
-    "lw $v1, 0x48($a2)\n"
-    "lw $a0, 0x4C($a2)\n"
-    "lw $a1, 0x50($a2)\n"
-    "sw $v0, 0x10($s2)\n"
-    "sw $v1, 0x14($s2)\n"
-    "sw $a0, 0x18($s2)\n"
-    "sw $a1, 0x1C($s2)\n"
-    "nop\n"
-    ".L8012EC84:\n"
-    "and $v0, $s1, $v0\n"
-    "lui $s0, (0xFEFFFFFF >> 16)\n"
-    "ori $s0, $s0, (0xFEFFFFFF & 0xFFFF)\n"
-    "and $s0, $s1, $s0\n"
-    "sll $v0, $a1, 3\n"
-    "addu $s0, $s0, $v0\n"
-    "addiu $a0, $sp, 0x10\n"
-    "lhu $v0, 0x6($s0)\n"
-    "addu $a1, $s2, $zero\n"
-    "sh $v0, 0x10($sp)\n"
-    "lw $a2, 0x0($s0)\n"
-    "lbu $v1, 0x1($s0)\n"
-    "andi $v0, $a2, 0xF\n"
-    "sll $v0, $v0, 8\n"
-    "or $v1, $v1, $v0\n"
-    "sra $v0, $a2, 16\n"
-    "andi $v0, $v0, 0xFF\n"
-    "andi $a2, $a2, 0xF0\n"
-    "sll $a2, $a2, 4\n"
-    "or $v0, $v0, $a2\n"
-    "sh $v1, 0x12($sp)\n"
-    "sh $v0, 0x14($sp)\n"
-    "lb $v0, 0x3($s0)\n"
-    "nop\n"
-    "sw $v0, 0x14($s2)\n"
-    "lb $v0, 0x4($s0)\n"
-    "nop\n"
-    "sw $v0, 0x18($s2)\n"
-    "lb $v0, 0x5($s0)\n"
-    "sw $v0, 0x1C($s2)\n"
-    ".L8012ED08:\n"
-    "sll $v0, $a1, 1\n"
-    "addu $v0, $v0, $a1\n"
-    "sll $v0, $v0, 2\n"
-    "addu $s1, $s1, $v0\n"
-    "lhu $v0, 0x6($s1)\n"
-    "nop\n"
-    "sh $v0, 0x10($sp)\n"
-    "lhu $v0, 0x8($s1)\n"
-    "addiu $a0, $sp, 0x10\n"
-    "sh $v0, 0x12($sp)\n"
-    "lhu $v0, 0xA($s1)\n"
-    "addu $a1, $s2, $zero\n"
-    "sh $v0, 0x14($sp)\n"
-    "lh $v0, 0x0($s1)\n"
-    "nop\n"
-    "sw $v0, 0x14($s2)\n"
-    "lh $v0, 0x2($s1)\n"
-    "nop\n"
-    "sw $v0, 0x18($s2)\n"
-    "lh $v0, 0x4($s1)\n"
-    "nop\n"
-    "sw $v0, 0x1C($s2)\n"
-    "lw $v0, 0x20($s3)\n"
-    "nop\n"
-    "addiu $v0, $v0, 0x34\n"
-    "lw $t4, 0x0($v0)\n"
-    "lw $t5, 0x4($v0)\n"
-    "ctc2 $t4, $0\n"
-    "ctc2 $t5, $1\n"
-    "lw $t4, 0x8($v0)\n"
-    "lw $t5, 0xC($v0)\n"
-    "lw $t6, 0x10($v0)\n"
-    "ctc2 $t4, $2\n"
-    "ctc2 $t5, $3\n"
-    "ctc2 $t6, $4\n"
-    "lhu $t4, 0x0($s2)\n"
-    "lhu $t5, 0x6($s2)\n"
-    "lhu $t6, 0xC($s2)\n"
-    "mtc2 $t4, $9\n"
-    "mtc2 $t5, $10\n"
-    "mtc2 $t6, $11\n"
-    "nop\n"
-    "nop\n"
-    "mfc2 $t4, $9\n"
-    "mfc2 $t5, $10\n"
-    "mfc2 $t6, $11\n"
-    "sh $t4, 0x0($s2)\n"
-    "sh $t5, 0x6($s2)\n"
-    "sh $t6, 0xC($s2)\n"
-    "addiu $v0, $s2, 0x2\n"
-    "lhu $t4, 0x0($v0)\n"
-    "lhu $t5, 0x6($v0)\n"
-    "lhu $t6, 0xC($v0)\n"
-    "mtc2 $t4, $9\n"
-    "mtc2 $t5, $10\n"
-    "mtc2 $t6, $11\n"
-    "nop\n"
-    "nop\n"
-    "mfc2 $t4, $9\n"
-    "mfc2 $t5, $10\n"
-    "mfc2 $t6, $11\n"
-    "sh $t4, 0x0($v0)\n"
-    "sh $t5, 0x6($v0)\n"
-    "sh $t6, 0xC($v0)\n"
-    "addiu $v0, $s2, 0x4\n"
-    "lhu $t4, 0x0($v0)\n"
-    "lhu $t5, 0x6($v0)\n"
-    "lhu $t6, 0xC($v0)\n"
-    "mtc2 $t4, $9\n"
-    "mtc2 $t5, $10\n"
-    "mtc2 $t6, $11\n"
-    "nop\n"
-    "nop\n"
-    "mfc2 $t4, $9\n"
-    "mfc2 $t5, $10\n"
-    "mfc2 $t6, $11\n"
-    "sh $t4, 0x0($v0)\n"
-    "sh $t5, 0x6($v0)\n"
-    "sh $t6, 0xC($v0)\n"
-    "lw $v0, 0x20($s3)\n"
-    "nop\n"
-    "addiu $v0, $v0, 0x34\n"
-    "lw $t4, 0x14($v0)\n"
-    "lw $t5, 0x18($v0)\n"
-    "ctc2 $t4, $5\n"
-    "lw $t6, 0x1C($v0)\n"
-    "ctc2 $t5, $6\n"
-    "ctc2 $t6, $7\n"
-    "addiu $v0, $s2, 0x14\n"
-    "lhu $t5, 0x4($v0)\n"
-    "lhu $t4, 0x0($v0)\n"
-    "sll $t5, $t5, 16\n"
-    "or $t4, $t4, $t5\n"
-    "mtc2 $t4, $0\n"
-    "lwc2 $1, 0x8($v0)\n"
-    "nop\n"
-    "nop\n"
-    "swc2 $25, 0x0($v0)\n"
-    "swc2 $26, 0x4($v0)\n"
-    "swc2 $27, 0x8($v0)\n"
-    "lw $ra, 0x30($sp)\n"
-    "lw $s3, 0x2C($sp)\n"
-    "lw $s2, 0x28($sp)\n"
-    "lw $s1, 0x24($sp)\n"
-    "lw $s0, 0x20($sp)\n"
-    "addiu $sp, $sp, 0x38\n"
-    "jr $ra\n"
-    "nop\n"
-    ".size func_8012EC04, .-func_8012EC04\n"
-    ".set reorder\n"
+".macro cop2op fake_op, op, gbg = 0, sf = 1, mx = 0, v = 0, cv = 0, lm = 0\n"
+"    cop2 \\fake_op << 20 | \\gbg << 20 | \\sf << 19 | \\mx << 17 | \\v << 15 | \\cv << 13 | \\lm << 10 | \\op\n"
+".endm\n"
+".macro mvmva sf, mx, v, cv, lm\n"
+"    cop2op 0x04, 0x12, sf = \\sf, mx = \\mx, v = \\v, cv = \\cv, lm = \\lm\n"
+".endm\n"
 );
+/* func_8012EC04 - byte-exact against retail at -O2 (tools/register_match.py). */
+typedef struct { u32 a, b, c, d; } Blk16;
+extern void func_80049CAC(s32 a0, s32 a1);
+extern void func_80049CAC();
+
+void func_8012EC04(s32 param_1, s32 param_2, s32 *param_3)
+{
+    struct { s16 h[8]; } buf;
+    s32 iVar4;
+    s32 M;
+    s32 c;
+    register u32 v __asm__("$17");    
+    iVar4 = *(s32 *)(param_1 + 0x20);
+    v = *(u32 *)(iVar4 + 0x20);
+    if (v == 0) {
+        *(Blk16 *)(param_3)             = *(Blk16 *)(iVar4 + 0x34);
+        *(Blk16 *)((s32)param_3 + 0x10) = *(Blk16 *)(iVar4 + 0x44);
+    } else if ((v & 0x1000000) != 0) {
+        register s32 p __asm__("$16");
+        s32 w;
+        p = (s32)(v & 0xfeffffff);
+        p = p + param_2 * 8;
+        buf.h[0] = *(s16 *)(p + 6);
+        w = *(s32 *)p;
+        buf.h[1] = (s16)(*(u8 *)(p + 1) | ((w & 0xf) << 8));
+        buf.h[2] = (s16)(((w >> 0x10) & 0xff) | ((w & 0xf0) << 4));
+        func_80049CAC((s32)&buf, (s32)param_3);
+        param_3[5] = *(s8 *)(p + 3);
+        param_3[6] = *(s8 *)(p + 4);
+        param_3[7] = *(s8 *)(p + 5);
+    } else {
+        s32 q;
+        v = v + param_2 * 0xc;
+        q = (s32)v;
+        buf.h[0] = *(s16 *)(q + 6);
+        buf.h[1] = *(s16 *)(q + 8);
+        buf.h[2] = *(s16 *)(q + 0xa);
+        func_80049CAC((s32)&buf, (s32)param_3);
+        param_3[5] = *(s16 *)(q + 0);
+        param_3[6] = *(s16 *)(q + 2);
+        param_3[7] = *(s16 *)(q + 4);
+    }
+     
+     
+    M = *(s32 *)(param_1 + 0x20) + 0x34;
+    __asm__ __volatile__(
+        "lw $12, 0(%0)\n" "lw $13, 4(%0)\n"
+        "ctc2 $12, $0\n" "ctc2 $13, $1\n"
+        "lw $12, 8(%0)\n" "lw $13, 12(%0)\n" "lw $14, 16(%0)\n"
+        "ctc2 $12, $2\n" "ctc2 $13, $3\n" "ctc2 $14, $4\n"
+        : : "r"(M) : "$12", "$13", "$14", "memory");
+     
+    __asm__ __volatile__(
+        "lhu $12, 0(%0)\n" "lhu $13, 6(%0)\n" "lhu $14, 12(%0)\n"
+        "mtc2 $12, $9\n" "mtc2 $13, $10\n" "mtc2 $14, $11\n"
+        "nop\n" "nop\n" "mvmva 1, 0, 3, 3, 0\n"
+        : : "r"((s32)param_3) : "$12", "$13", "$14", "memory");
+    __asm__ __volatile__(
+        "mfc2 $12, $9\n" "mfc2 $13, $10\n" "mfc2 $14, $11\n"
+        "sh $12, 0(%0)\n" "sh $13, 6(%0)\n" "sh $14, 12(%0)\n"
+        : : "r"((s32)param_3) : "$12", "$13", "$14", "memory");
+     
+    c = (s32)param_3 + 2;
+    __asm__ __volatile__(
+        "lhu $12, 0(%0)\n" "lhu $13, 6(%0)\n" "lhu $14, 12(%0)\n"
+        "mtc2 $12, $9\n" "mtc2 $13, $10\n" "mtc2 $14, $11\n"
+        "nop\n" "nop\n" "mvmva 1, 0, 3, 3, 0\n"
+        : : "r"(c) : "$12", "$13", "$14", "memory");
+    __asm__ __volatile__(
+        "mfc2 $12, $9\n" "mfc2 $13, $10\n" "mfc2 $14, $11\n"
+        "sh $12, 0(%0)\n" "sh $13, 6(%0)\n" "sh $14, 12(%0)\n"
+        : : "r"(c) : "$12", "$13", "$14", "memory");
+     
+    c = (s32)param_3 + 4;
+    __asm__ __volatile__(
+        "lhu $12, 0(%0)\n" "lhu $13, 6(%0)\n" "lhu $14, 12(%0)\n"
+        "mtc2 $12, $9\n" "mtc2 $13, $10\n" "mtc2 $14, $11\n"
+        "nop\n" "nop\n" "mvmva 1, 0, 3, 3, 0\n"
+        : : "r"(c) : "$12", "$13", "$14", "memory");
+    __asm__ __volatile__(
+        "mfc2 $12, $9\n" "mfc2 $13, $10\n" "mfc2 $14, $11\n"
+        "sh $12, 0(%0)\n" "sh $13, 6(%0)\n" "sh $14, 12(%0)\n"
+        : : "r"(c) : "$12", "$13", "$14", "memory");
+     
+    M = *(s32 *)(param_1 + 0x20) + 0x34;
+    __asm__ __volatile__(
+        "lw $12, 20(%0)\n" "lw $13, 24(%0)\n"
+        "ctc2 $12, $5\n" "lw $14, 28(%0)\n"
+        "ctc2 $13, $6\n" "ctc2 $14, $7\n"
+        : : "r"(M) : "$12", "$13", "$14", "memory");
+     
+    c = (s32)param_3 + 0x14;
+    __asm__ __volatile__(
+        "lhu $13, 4(%0)\n" "lhu $12, 0(%0)\n"
+        "sll $13, $13, 16\n" "or $12, $12, $13\n"
+        "mtc2 $12, $0\n" "lwc2 $1, 8(%0)\n"
+        "nop\n" "nop\n" "mvmva 1, 0, 0, 0, 0\n"
+        : : "r"(c) : "$12", "$13", "memory");
+    __asm__ __volatile__(
+        "swc2 $25, 0(%0)\n" "swc2 $26, 4(%0)\n" "swc2 $27, 8(%0)\n"
+        : : "r"(c) : "memory");
+}

@@ -34,7 +34,8 @@ ASM_BY_REGION = {
 
 
 def splat_function(region: str, vram: int):
-    asm = ASM_BY_REGION.get(region)
+    # Overlay regions follow the splat layout asm/overlays/<region>/<region>.s.
+    asm = ASM_BY_REGION.get(region, REPO / "asm/overlays" / region / f"{region}.s")
     if asm is None or not asm.is_file():
         raise RetailError(f"no splat disassembly known for region {region!r}")
     text = asm.read_text()

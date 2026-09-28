@@ -2,23 +2,20 @@
  * SHA256(span)=878e8b2edd286fa3aae75824e44ed9a2b5c02333c6adde8b377bf90f64ba6574.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
+/* func_8017A3B0 - byte-exact against retail at -O2 (tools/register_match.py). */
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-extern s32 D_80185348;
 
 s32 func_8017A3B0(void) {
-    s32 var_v0;
 
-    var_v0 = 1;
-    if ((D_80185348 != 0) && (D_80185348 == 1)) {
-        var_v0 = 0;
+    extern s16 D_80185348;
+    switch (D_80185348) {
+    case 0:
+        return 1;
+    case 1:
+        return 0;
+    default:
+        return 1;
     }
-    return var_v0;
 }

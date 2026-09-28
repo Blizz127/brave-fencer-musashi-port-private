@@ -286,16 +286,17 @@ class UniqueQualifyingCoverageTests(unittest.TestCase):
     recovered game code. The shipped reporter has to refuse both.
     """
 
-    def test_identified_code_bytes_are_the_three_split_regions(self) -> None:
+    def test_identified_code_bytes_are_the_split_regions(self) -> None:
         self.assertEqual(progress.IDENTIFIED_REGION_BYTES["main"], 411648)
         self.assertEqual(progress.IDENTIFIED_REGION_BYTES["main_0007"], 9600)
+        self.assertEqual(progress.IDENTIFIED_REGION_BYTES["main_0010"], 17932)
         self.assertEqual(progress.IDENTIFIED_REGION_BYTES["main_0012"], 385024)
         self.assertEqual(
             progress.IDENTIFIED_CODE_BYTES,
-            411648 + 9600 + 385024,
+            411648 + 9600 + 17932 + 385024,
         )
-        self.assertEqual(progress.IDENTIFIED_CODE_BYTES, 806272)
-        self.assertEqual(progress.COVERAGE_THRESHOLD_BYTES, 241882)
+        self.assertEqual(progress.IDENTIFIED_CODE_BYTES, 824204)
+        self.assertEqual(progress.COVERAGE_THRESHOLD_BYTES, 247262)
         self.assertEqual(
             progress.COVERAGE_THRESHOLD_BYTES,
             (progress.IDENTIFIED_CODE_BYTES * 3 + 9) // 10,
@@ -412,7 +413,7 @@ class UniqueQualifyingCoverageTests(unittest.TestCase):
             entry("skip", 200, recovery="c", extent="partial"),
         ])
         self.assertEqual(summary["unique_qualifying_bytes"], 40)
-        self.assertEqual(summary["identified_bytes"], 806272)
+        self.assertEqual(summary["identified_bytes"], 824204)
         self.assertFalse(summary["meets_coverage_threshold"])
 
     def test_c_only_subset_excludes_assembly(self) -> None:
@@ -425,6 +426,13 @@ class UniqueQualifyingCoverageTests(unittest.TestCase):
         self.assertEqual(
             progress.unique_qualifying_bytes(matches, progress.PORTABLE_RECOVERIES), 40
         )
+
+    def test_regions_outside_the_denominator_do_not_count(self) -> None:
+        matches = [
+            entry("in", 40, recovery="c", extent="function"),
+            entry("out", 100, region="main_0099", recovery="c", extent="function"),
+        ]
+        self.assertEqual(progress.unique_qualifying_bytes(matches), 40)
 
     def test_c_only_subset_unions_overlaps_per_region(self) -> None:
         matches = [
@@ -454,9 +462,9 @@ class UniqueQualifyingCoverageTests(unittest.TestCase):
             with contextlib.redirect_stdout(output):
                 self.assertEqual(progress.main(["--registry", str(path)]), 0)
             text = output.getvalue()
-            self.assertIn("56 / 806,272", text)
+            self.assertIn("56 / 824,204", text)
             self.assertIn("Portable C-only subset", text)
-            self.assertIn("40 / 806,272", text)
+            self.assertIn("40 / 824,204", text)
 
     def test_cli_prints_unique_qualifying_coverage_not_a_raw_percentage_of_all_rows(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -469,9 +477,9 @@ class UniqueQualifyingCoverageTests(unittest.TestCase):
             with contextlib.redirect_stdout(output):
                 self.assertEqual(progress.main(["--registry", str(path)]), 0)
             text = output.getvalue()
-            self.assertIn("40 / 806,272", text)
-            self.assertIn("241,882", text)
-            self.assertNotIn("440 / 806,272", text)
+            self.assertIn("40 / 824,204", text)
+            self.assertIn("247,262", text)
+            self.assertNotIn("440 / 824,204", text)
 
 
 if __name__ == "__main__":

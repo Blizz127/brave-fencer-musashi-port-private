@@ -2,31 +2,31 @@
  * SHA256(span)=59b5e8b8915e485b57e426322f2c04a78ce6ac63727f3f8fe9d0b2516672a3f8.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-#include "m2c_macros.h"
+/* func_801681FC - byte-exact against retail at -O2 (tools/register_match.py). */
+extern s32 func_80029178(s32);
+extern s32 func_80029178(s32 arg);
+extern s32 func_80029178(s32 a0);
+s32 a3;
+void func_80166F58(s32 param_1, s32 param_2, s32 param_3, s32 param_4);
+extern void func_80166F58(s32 arg0, s32 arg1, s32 arg2, s32 arg3);
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+void func_801681FC(s32 param_1) {
 
-s32 func_80029178();                         /* extern */
-extern s32 D_801812E5[];
-extern s32 D_80181314[];
-void func_80166F58(void *, s32, s32, s32); /* static */
-extern s32 *D_801812E4;
+    extern u8 D_80181314[];
+    extern u8 D_801812E4[];
+    extern u8 D_801812E5[];
+    s32 iVar3;
+    s32 a3;
 
-void func_801681FC(void *arg0) {
-    s16 temp_v0;
-    s32 temp_a3;
-
-    M2C_FIELD(arg0, s16 *, 0x28) = (s16) (func_80029178(0x81) & 0xFF);
-    temp_v0 = M2C_FIELD(arg0, s32 *, 0x2C) * 2;
-    M2C_FIELD(arg0, s32 *, 0x30) = (s32) *(D_80181314 + M2C_FIELD(arg0, s32 *, 0x2C));
-    M2C_FIELD(arg0, s16 *, 0x2A) = (s16) *(&D_801812E4 + temp_v0);
-    temp_a3 = M2C_FIELD(arg0, s32 *, 0x2C) & 1;
-    M2C_FIELD(arg0, s32 *, 0x2C) = temp_a3;
-    M2C_FIELD(arg0, s32 *, 0x1C) = (s32) *(D_801812E5 + temp_v0);
-    func_80166F58(arg0, 4, 4, temp_a3);
-    M2C_FIELD(arg0, u16 *, 2) = (u16) (M2C_FIELD(arg0, u16 *, 2) + 1);
+    *(s16 *)(param_1 + 0x28) = func_80029178(0x81) & 0xFF;
+    *(s32 *)(param_1 + 0x30) = D_80181314[*(s32 *)(param_1 + 0x2C)];
+    iVar3 = (*(s32 *)(param_1 + 0x2C) << 0x11) >> 0x10;
+    *(s16 *)(param_1 + 0x2A) = D_801812E4[iVar3];
+    *(s32 *)(param_1 + 0x1C) = D_801812E5[iVar3];
+    a3 = *(s32 *)(param_1 + 0x2C) & 1;
+    *(s32 *)(param_1 + 0x2C) = a3;
+    func_80166F58(param_1, 4, 4, a3);
+    *(s16 *)(param_1 + 2) = *(s16 *)(param_1 + 2) + 1;
 }

@@ -2,32 +2,42 @@
  * SHA256(span)=0d04ff05ed490a2f5c165c10a7ab123f76ed1b355b6dde8fe4bb2605eb7833af.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
+/* func_8012E688 - byte-exact against retail at -O2 (tools/register_match.py). */
+#define RotTransPers func_8004955C
+extern void func_8002D4C8(s32 a0, s32 a1);
+extern s32 RotTransPers(s32, s32, s32 *, s32 *);
+extern void func_8004914C(void *);
+extern void func_800491AC(void *);
+extern u8 D_800AF648;
+extern void func_8004914C(void *a0);
+extern void func_800491AC(void *a0);
+extern s32 RotTransPers(s32 a0, s32 a1, s32 *a2, s32 *a3);
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-void func_8002D4C8(s32, s32);                          /* extern */
-void func_8004914C(void *);                               /* extern */
-void func_800491AC(void *);                               /* extern */
-void func_8004955C(s16 *, u16 *, void *, s32 *);          /* extern */
-extern s32 *D_800AF648;
-
-void func_8012E688(void *arg0, s32 arg1, s32 arg2) {
-    s32 sp20;
-    s32 sp1C;
-    u16 sp18;
-    s16 sp14;
-    s16 sp12;
-    s16 sp10;
-    void *temp_v0;
-
-    temp_v0 = arg0->unk20;
-    if ((temp_v0 == 0) || ((sp10 = (s16) temp_v0->unk48, sp12 = (s16) arg0->unk20->unk4C, sp14 = (s16) arg0->unk20->unk50, func_8004914C(&D_800AF648), func_800491AC(&D_800AF648), func_8004955C(&sp10, &sp18, &sp1C, &sp20), (sp20 >= 0)) && ((u32) ((sp18 + 0xC7) & 0xFFFF) < 0x18FU) && ((u32) ((sp1A + 0xA9) & 0xFFFF) < 0x153U))) {
-        func_8002D4C8(arg1 & 0xFFFF, arg2 & 0xFFFF);
+void func_8012E688(s32 param_1, u16 param_2, u16 param_3)
+{
+    struct { short v[3]; short pad; short xy[2]; int sp1c; int flag; } f;
+    register void *p __asm__("$4");
+    register u16 a __asm__("$16") = param_2;
+    register u16 b __asm__("$17") = param_3;
+    if (*(s32 *)(param_1 + 0x20) != 0) {
+        f.v[0] = (short)*(s32 *)(*(s32 *)(param_1 + 0x20) + 0x48);
+        f.v[1] = (short)*(s32 *)(*(s32 *)(param_1 + 0x20) + 0x4C);
+        f.v[2] = (short)*(s32 *)(*(s32 *)(param_1 + 0x20) + 0x50);
+        p = &D_800AF648;
+        func_8004914C(p);
+        func_800491AC(&D_800AF648);
+        RotTransPers((s32)f.v, (s32)f.xy, &f.sp1c, &f.flag);
+        if (f.flag < 0) {
+            return;
+        }
+        if ((u16)(f.xy[0] + 199) >= 399) {
+            return;
+        }
+        if ((u16)(f.xy[1] + 0xA9) >= 0x153) {
+            return;
+        }
     }
+    func_8002D4C8(a, b);
 }

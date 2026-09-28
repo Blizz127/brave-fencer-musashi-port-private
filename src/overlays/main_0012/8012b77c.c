@@ -2,30 +2,35 @@
  * SHA256(span)=fc1c80f04e2c8e1636d3e46d05b9fcb754341cc066ca6dca460fc435b658e6e2.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
+/* func_8012B77C - byte-exact against retail at -O2 (tools/register_match.py). */
+#define ratan2 func_8004CFEC
+typedef struct {
+    u32 lo : 16;
+    u32 hi : 16;
+} Ang2_8012B77C_8012B77C;
+extern s32 ratan2(s32 a0, s32 a1);
+extern int func_80047948(int a0);
+extern int func_8004787C(int a0);
+extern s32 ratan2(s32 x, s32 y);
+extern s32 func_80047948(s32 a0);
+extern s32 func_8004787C(s32 a0);
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-s32 func_8004787C(s32);                             /* extern */
-s32 func_80047948(s32);                             /* extern */
-s32 func_8004CFEC(s32, s32);                        /* extern */
-
-void func_8012B77C(s32 *arg0, void *arg1, void *arg2) {
-    s32 temp_s0;
-    s32 temp_s0_2;
-    s32 temp_s1;
-    s32 temp_s2;
-    s32 temp_s5;
-
-    temp_s5 = arg2->unkA - arg1->unkA;
-    temp_s1 = arg2->unk2 - arg1->unk2;
-    temp_s2 = arg2->unk6 - arg1->unk6;
-    temp_s0 = (func_8004CFEC(-temp_s5, temp_s1) - 0x400) & 0xFFF;
-    temp_s0_2 = func_80047948(temp_s0);
-    *arg0 = (((saved_reg_s4 & 0xFFFF) | (temp_s0 << 0x10)) & 0xFFFF0000) | (func_8004CFEC(temp_s2, -((s32) ((temp_s5 * temp_s0_2) + (temp_s1 * func_8004787C(temp_s0))) >> 0xC)) & 0xFFFF);
+s32 func_8012B77C(s32 out, s32 from, s32 to) {
+    Ang2_8012B77C_8012B77C t;
+    s32 dx, dy, dz;
+    s32 ang;
+    s32 r1, r2;
+    dz = *(s16 *)(to + 0xA) - *(s16 *)(from + 0xA);
+    dx = *(s16 *)(to + 0x2) - *(s16 *)(from + 0x2);
+    dy = *(s16 *)(to + 0x6) - *(s16 *)(from + 0x6);
+    ang = (ratan2(-dz, dx) - 0x400) & 0xFFF;
+    t.hi = ang;
+    r1 = func_80047948(ang);
+    r2 = func_8004787C(ang);
+    dz = (dz * r1 + dx * r2) >> 12;
+    t.lo = ratan2(dy, -dz);
+    *(Ang2_8012B77C_8012B77C *)out = t;
+    return out;
 }

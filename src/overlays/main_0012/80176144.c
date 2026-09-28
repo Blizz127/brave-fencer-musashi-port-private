@@ -2,33 +2,35 @@
  * SHA256(span)=dca61a9505bbde362796fc44ada9c5364319b34d8cc644480e6675c2416f99a3.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
+/* func_80176144 - byte-exact against retail at -O2 (tools/register_match.py). */
+typedef struct { s32 g0; s32 pad[2]; } S_AF634;
+extern s32 (*D_801819EC[])(void *);
+extern u8  D_8011F7A8;
+extern s16 D_8011F7BC;
+extern s16 D_8011F7BE;
+extern u8 D_8011F7A8;
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-s32 func_80178004(s32, s16, s16);                   /* static */
-extern s32 *D_800AF634;
-extern s32 *D_800AF638;
-extern s32 *D_8011F7A8;
-extern u16 D_8011F7BC;
-extern u16 D_8011F7BE;
-
-void func_80176144(s16 arg0) {
-    s32 temp_a0;
-    s32 temp_s1;
-    s32 temp_v0;
-    void *temp_s0;
-
-    temp_s1 = arg0 * 0xC;
-    temp_a0 = *(&D_800AF638 + temp_s1) + (*(&D_800AF634 + temp_s1) * 4);
-    temp_s0 = (arg0 * 4) + &D_8011F7A8;
-    temp_s0->unk38 = temp_a0;
-    temp_v0 = func_80178004(temp_a0, (s16) (D_8011F7BC - 0x17), (s16) (D_8011F7BE + 0x65));
-    temp_s0->unk40 = (s32) (temp_v0 - 0x14);
-    *(&D_800AF634 + temp_s1) = *(&D_800AF634 + temp_s1) + ((s32) ((temp_v0 + 0x14) - temp_s0->unk38) >> 2);
+void func_80176144(s32 a0)
+{
+    extern S_AF634 aAF634[] __asm__("D_800AF634");
+    extern S_AF634 aAF638[] __asm__("D_800AF638");
+    extern u8  D_8011F7A8;
+    extern s16 D_8011F7BC;
+    extern s16 D_8011F7BE;
+    extern s32 func_80178004();
+    u32 *slot;
+    u32 *p;
+    s16 param_1 = (s16)a0;
+    p = (u32 *)(aAF638[param_1].g0 + aAF634[param_1].g0 * 4);
+    slot = (u32 *)(param_1 * 4 + (s32)&D_8011F7A8);
+    slot[14] = (u32)p;
+    __asm__("");
+    p = (u32 *)func_80178004((s32)p,
+                             (s16)((*(u16 *)&D_8011F7BC) - 0x17),
+                             (s16)((*(u16 *)&D_8011F7BE) + 0x65));
+    slot[16] = (u32)p - 0x14;
+    p += 5;
+    aAF634[param_1].g0 += ((s32)p - (s32)slot[14]) >> 2;
 }

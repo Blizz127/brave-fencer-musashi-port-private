@@ -2,21 +2,19 @@
  * SHA256(span)=6195aca52f7c72ebe8eb395af4e54331577430578e487a3badb4b57cf581f3f8.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
+/* func_80178B70 - byte-exact against retail at -O2 (tools/register_match.py). */
+extern void func_80178CBC(s32 a0, s32 a1);
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+s32 func_80178B70(s32 param_1, s32 param_2)
+{
+    extern void func_80178BF8();
+    extern void func_80178CBC();
+    extern int D_80181CBC;
 
-extern s32 D_80181CBC;
-void func_80178BF8();                                  /* static */
-void func_80178CBC(s32, void *);                       /* static */
-
-void func_80178B70(s32 arg0, s32 arg1) {
-    D_80181CBC = arg1;
+    int *p = &D_80181CBC;
+    *p = ((int)param_2);
     func_80178BF8();
-    func_80178CBC(arg0, D_80181CBC - 0xC);
+    func_80178CBC(((int)param_1), p - 3);
 }

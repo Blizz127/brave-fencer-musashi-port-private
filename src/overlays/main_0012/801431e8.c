@@ -2,49 +2,51 @@
  * SHA256(span)=0b04b6a0e6960a404ac80ad6895af10f570dd9e7edfc2ae89a5f6e705bf4154b.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
+/* func_801431E8 - byte-exact against retail at -O2 (tools/register_match.py). */
+extern void *memcpy(void *, const void *, unsigned int);
+extern void func_8012C1B8(void);
+extern void func_8012CAE4(void *a0);
+extern s32 func_8012E504(s32 a0, s32 a1);
+extern void *memcpy(void *, const void *, u32);
+void func_80142B2C(void *arg0);
+extern void func_80142B2C(void *arg0);
+extern int func_8001CA88(int, void *);
+extern void func_800233CC(void *, unsigned short);
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+void func_801431E8(s32 param_1) {
 
-void func_8001CA88(void *, void *);                       /* extern */
-void func_800233CC(void *, s32);                            /* extern */
-extern s32 D_801836A8;
-extern s32 D_80184204;
-void *func_8012C1B8(s32 (*)());                       /* static */
-void func_8012CAE4(void *);                            /* static */
-s32 func_8012E504(void *, s32);                       /* static */
-void func_80142B2C(void *);                            /* static */
-extern s32 *D_80184200;
+    extern u8 D_801836A8;
+    extern u8 D_80184200;
+    extern u8 D_80184204;
+    u8 buf[8];
+    s32 iVar5;
+    u16 uVar2;
+    s16 sVar4;
 
-void func_801431E8(void *arg0) {
-    s32 sp13;
-    s16 temp_v0_2;
-    void *temp_v0;
-
-    sp13 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
-    temp_v0 = func_8012C1B8(D_801836A8);
-    arg0->unk20 = temp_v0;
-    if (temp_v0 == 0) {
-        func_8012CAE4(arg0);
-        return;
-    }
-    func_8001CA88(temp_v0, &D_80184200);
-    temp_v0->unk76 = -0x10;
-    temp_v0_2 = ((arg0->unk70 & 0xF) * 0x600) + 0xC00;
-    temp_v0->unk1A = temp_v0_2;
-    temp_v0->unk18 = temp_v0_2;
-    temp_v0->unk4 = (s32) (temp_v0->unk4 | 0x50000000);
-    if (func_8012E504(arg0, 0x33) == 0) {
-        arg0->unkFC = 1;
-        func_800233CC(&D_80184200, 0x10);
-        D_80184204.unk3 = (unaligned s32) M2C_ERROR(/* Unable to handle lwr; missing a corresponding lwl */);
+    register s32 d __asm__("$16");
+    memcpy(buf, &D_801836A8, 4);
+    iVar5 = ((s32 (*)(void))func_8012C1B8)();
+    *(s32 *)(param_1 + 0x20) = iVar5;
+    d = iVar5;
+    if (iVar5 == 0) {
+        ((void (*)(s32))func_8012CAE4)(param_1);
     } else {
-        arg0->unkFC = 0;
+        ((void (*)(s32, void *))func_8001CA88)(d, &D_80184200);
+        uVar2 = *(u16 *)(param_1 + 0x70);
+        *(s16 *)(d + 0x76) = -0x10;
+        sVar4 = (uVar2 & 0xf) * 0x600 + 0xc00;
+        *(s16 *)(d + 0x1a) = sVar4;
+        *(s16 *)(d + 0x18) = sVar4;
+        *(u32 *)(d + 4) = *(u32 *)(d + 4) | 0x50000000;
+        if (func_8012E504(param_1, 0x33) == 0) {
+            *(s16 *)(param_1 + 0xfc) = 1;
+            func_800233CC(&D_80184200, 0x10);
+            memcpy(&D_80184204, buf, 4);
+        } else {
+            *(s16 *)(param_1 + 0xfc) = 0;
+        }
+        ((void (*)(s32))func_80142B2C)(param_1);
     }
-    func_80142B2C(arg0);
 }

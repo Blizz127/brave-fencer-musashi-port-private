@@ -1,23 +1,17 @@
 /* Native retail instruction export [8003AF04,8003AF4C).
  * Verified against asm/main.s and the extracted EXE. No C match claim. */
+/* Sony PsyQ library routine (vendor/bfm-decomp keeps it as INCLUDE_ASM); C written from the retail disassembly. */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_8003AF04 - byte-exact against retail at -O2 (tools/register_match.py). */
 
-extern s32 D_8006B54C;
+extern volatile u16 *D_8006B54C;
 extern s32 D_8006B574;
-
-void func_8003AF04(s32 arg0, u16 arg1, s32 arg2) {
-    s32 temp_v0;
-
-    temp_v0 = arg0 * 2;
-    if (arg2 == 0) {
-        *(s32 *) (temp_v0 + D_8006B54C) = arg1;
-        return;
+void func_8003AF04(s32 idx, u32 val, s32 mode)
+{
+    if (mode == 0) {
+        D_8006B54C[idx] = val;
+    } else {
+        D_8006B54C[idx] = val >> D_8006B574;
     }
-    *(s32 *) (temp_v0 + D_8006B54C) = (s16) (arg1 >> D_8006B574);
 }

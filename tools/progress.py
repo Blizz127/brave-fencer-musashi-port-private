@@ -24,11 +24,14 @@ EXTENTS = ("function", "partial", "unclassified")
 QUALIFYING_RECOVERIES = frozenset({"c", "assembly"})
 
 # Identified split code: SLUS_007.26 t_size + MAIN.CD member 0007 + member
-# 0012's code chunk [0x28000, 0x86000). Overlay members not yet shown to be
-# code are outside this denominator.
+# 0010's code [0x800CEDFC, 0x800D3408) + member 0012's code chunk
+# [0x28000, 0x86000). Overlay members not yet shown to be code are outside
+# this denominator, and so are their registered ranges: a region only counts
+# toward coverage once its code size is part of the denominator.
 IDENTIFIED_REGION_BYTES = {
     "main": 411648,
     "main_0007": 9600,
+    "main_0010": 17932,
     "main_0012": 385024,
 }
 IDENTIFIED_CODE_BYTES = sum(IDENTIFIED_REGION_BYTES.values())
@@ -159,6 +162,8 @@ def unique_qualifying_bytes(
     spans: dict[str, list[tuple[int, int]]] = {}
     for match in matches:
         if not _qualifies(match, recoveries):
+            continue
+        if match["region"] not in IDENTIFIED_REGION_BYTES:
             continue
         start = match["vram"]
         end = start + match["size"]

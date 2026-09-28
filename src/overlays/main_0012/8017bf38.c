@@ -2,19 +2,16 @@
  * member0012 (extracted/overlays/main/0012.bin offset 0x7BDE0, base 80128158).
  * Live STOP 8017BF38: table 80181D6C[0], jal 8017C008.
  */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
+/* func_8017BF38 - byte-exact against retail at -O2 (tools/register_match.py). */
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-void func_8017C008(s32, s32);                              /* static */
-extern u16 D_801853F0;
 
 void func_8017BF38(void) {
+    extern void func_8017C008(s32 a0, s32 a1);
+    extern u16 D_801853F0;
+    u16 *p = &D_801853F0;
+
     func_8017C008(0, 0);
-    D_801853F0 += 1;
+    *p = *p + 1;
 }

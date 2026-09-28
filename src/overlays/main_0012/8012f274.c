@@ -2,30 +2,30 @@
  * SHA256(span)=3dfc69ad580b53b6764763984806992d397abf51c95bada83ebe37a5ad49a6ce.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-#include "m2c_macros.h"
+/* func_8012F274 - byte-exact against retail at -O2 (tools/register_match.py). */
+#define RotTransSV func_8004945C
+extern void func_8004914C(void *);
+extern void func_800491AC(void *);
+extern void func_8004914C(void *a0);
+extern void func_800491AC(void *a0);
+extern void RotTransSV(s32 a0, s32 a1, void *a2);
+extern void func_80015978(s32 a0, s32 *a1);
+extern void func_80015954(s32 a0, s32 a1);
+static inline void tail_8012F274(s32 *in, s32 e) {
+    s32 out[2];
+    s32 flag[2];
+    ((void (*)(s32 *, s32 *, s32 *))RotTransSV)(in, out, flag);
+    ((void (*)(s32 *, s32))func_80015954)(out, e);
+}
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-void func_80015954(void *, s32);          /* extern */
-void func_80015978(s32, void *);          /* extern */
-void func_8004914C(s32);                         /* extern */
-void func_800491AC(s32);                         /* extern */
-void func_8004945C(void *, void *, void *); /* extern */
-
-void func_8012F274(void *arg0, s32 arg1) {
-    s32 sp20;
-    s32 sp18;
-    s32 sp10;
-    s32 temp_s0;
-
-    func_80015978(arg1, &sp10);
-    temp_s0 = M2C_FIELD(arg0, s32 *, 0x20) + 0x34;
-    func_8004914C(temp_s0);
-    func_800491AC(temp_s0);
-    func_8004945C(&sp10, &sp18, &sp20);
-    func_80015954(&sp18, arg1);
+void func_8012F274(s32 a0, s32 a1) {
+    s32 v[2];
+    s32 p;
+    func_80015978(a1, v);
+    p = *(s32 *)(a0 + 0x20) + 0x34;
+    func_8004914C((void *)p);
+    func_800491AC((void *)p);
+    tail_8012F274(v, a1);
 }

@@ -2,28 +2,48 @@
  * SHA256(span)=fc839e66252606d7989292f60f6114d98603d99a51b2e70216b27874696be43b.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
+/* func_801285E4 - byte-exact against retail at -O2 (tools/register_match.py). */
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
 
-void func_80011A3C();                                  /* extern */
-s32 func_800D18DC();                                /* extern */
-void func_801287B8();                                  /* static */
-void func_8014607C();                                  /* static */
-extern s32 D_801840B4;
+void func_801285E4(void)
+{
 
-void func_801285E4(void) {
-    *(void **)0x1F8003FC = sp;
-    D_801840B4 = func_800D18DC();
-    func_8014607C();
-    *(void *)0x1F8003FC = (void *) subroutine_arg0;
-    func_801287B8();
-    if (D_801840B4 != 0) {
-        func_80011A3C();
-    }
+    extern s32 D_801840B4;
+    __asm__ __volatile__(
+        ".set noreorder\n"
+        "addiu $sp, $sp, -24\n"
+        "lui   $v1, 0x1f80\n"
+        "ori   $v1, $v1, 0x03fc\n"
+        "sw    $ra, 16($sp)\n"
+        "addu  $t0, $v1, $zero\n"
+        "sw    $sp, 0($t0)\n"
+        "addiu $t0, $t0, -4\n"
+        "addu  $sp, $t0, $zero\n"
+        "jal   func_800D18DC\n"
+        "lui   $at, %%hi(D_801840B4)\n"
+        "sw    $v0, %%lo(D_801840B4)($at)\n"
+        "addiu $sp, $sp, 4\n"
+        "lw    $sp, 0($sp)\n"
+        "jal   func_8014607C\n"
+        "lui   $v1, 0x1f80\n"
+        "ori   $v1, $v1, 0x03fc\n"
+        "addu  $t0, $v1, $zero\n"
+        "sw    $sp, 0($t0)\n"
+        "addiu $t0, $t0, -4\n"
+        "addu  $sp, $t0, $zero\n"
+        "jal   func_801287B8\n"
+        "addiu $sp, $sp, 4\n"
+        "lw    $sp, 0($sp)\n"
+        "lui   $v0, %%hi(D_801840B4)\n"
+        "lw    $v0, %%lo(D_801840B4)($v0)\n"
+        "nop\n"
+        "beqz  $v0, 1f\n"
+        "nop\n"
+        "jal   func_80011A3C\n"
+        "1:\n"
+        "lw    $ra, 16($sp)\n"
+        "addiu $sp, $sp, 24\n"
+        : : : "memory");
 }

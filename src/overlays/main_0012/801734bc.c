@@ -1,43 +1,29 @@
 /* Overlay range [801734BC,80173544) from MAIN.CD member 0012.
  * SHA256(span)=cacb47b540c132b4038d1fd39b859bf20cc4636eaee9e5aaa99c7bbab0e35170.
  * Word export for the native seam (m2c produced no draft). */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-#include "m2c_macros.h"
-
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-extern s32 func_80173544;
-void func_80174684(s32 (*)());               /* static */
+/* func_801734BC - byte-exact against retail at -O2 (tools/register_match.py). */
+extern void func_80174684(void *);
 extern s16 D_80126B32;
 extern s16 D_80126B3E;
-extern s16 D_80126B40;
 
-void func_801734BC(u32 arg0) {
-    s16 var_v0;
+void func_801734BC(s32 arg0, s32 _unused1) {
+    extern void func_80173544(void);
+    extern s16 D_80126B40;
 
-    switch (arg0) {
-    case 0:
-        var_v0 = -4;
-block_7:
-        D_80126B32 = var_v0;
-        break;
-    case 1:
-        var_v0 = -8;
-        goto block_7;
-    case 2:
-        var_v0 = -0x12;
-        goto block_7;
-    case 3:
-        var_v0 = -0x18;
-        goto block_7;
-    case 4:
-        var_v0 = -0x1C;
-        goto block_7;
+    s16 temp;
+    switch (((u32)arg0)) {
+    case 0: temp = -0x4; break;
+    case 1: temp = -0x8; break;
+    case 2: temp = -0x12; break;
+    case 3: temp = -0x18; break;
+    case 4: temp = -0x1C; break;
+    default: goto after;
     }
+    D_80126B32 = temp;
+after:
     D_80126B3E = 0;
     D_80126B40 = 0;
-    func_80174684(func_80173544);
+    func_80174684(&func_80173544);
 }

@@ -1,21 +1,12 @@
 /* Exact retail word export for [8005386C,800538BC); EXE and assembly verified. */
+/* Sony PsyQ library routine (vendor/bfm-decomp keeps it as INCLUDE_ASM); C written from the retail disassembly. */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+/* func_8005386C - byte-exact against retail at -O2 (tools/register_match.py). */
 
-extern s32 *D_800A6558;
-
-void func_8005386C(void *arg0) {
-    M2C_FIELD(arg0, s32 *, 0) = (s32) M2C_FIELD(&D_800A6558, s32 *, 0);
-    M2C_FIELD(arg0, s32 *, 4) = (s32) M2C_FIELD(&D_800A6558, s32 *, 4);
-    M2C_FIELD(arg0, s32 *, 8) = (s32) M2C_FIELD(&D_800A6558, s32 *, 8);
-    M2C_FIELD(arg0, s32 *, 0xC) = (s32) M2C_FIELD(&D_800A6558, s32 *, 0xC);
-    M2C_FIELD(arg0, s32 *, 0x10) = (s32) M2C_FIELD(&D_800A6558, s32 *, 0x10);
-    M2C_FIELD(arg0, s32 *, 0x14) = (s32) M2C_FIELD(&D_800A6558, s32 *, 0x14);
-    M2C_FIELD(arg0, s32 *, 0x18) = (s32) M2C_FIELD(&D_800A6558, s32 *, 0x18);
-    M2C_FIELD(arg0, s32 *, 0x1C) = (s32) M2C_FIELD(&D_800A6558, s32 *, 0x1C);
+typedef struct { s32 w[8]; } Blk32;
+extern Blk32 D_800A6558;
+void func_8005386C(Blk32 *p)
+{
+    *p = D_800A6558;
 }

@@ -2,52 +2,49 @@
  * SHA256(span)=23139b2ac6638b167b36202987026764b59fa41f869084a198084239d04cffe9.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-s32 func_80029504();                                /* extern */
-void func_800D185C(s32 (*)());                           /* extern */
-extern s32 D_801807BC;
-extern s32 D_801807E0;
-extern s32 D_80180804;
-extern s32 D_80180828;
-extern s32 D_8018084C;
-extern s32 D_80180870;
-extern s32 D_80180894;
-extern s32 D_801808B8;
-void func_80145B24();                                  /* static */
+/* func_80145934 - byte-exact against retail at -O2 (tools/register_match.py). */
+extern s32 func_80029504(void);
+extern void func_800D185C(u8 *a0);
+extern void func_80145B24(void);
 
 void func_80145934(void) {
-    s32 (*var_a0)();
-    s32 temp_v0;
 
-    temp_v0 = func_80029504();
-    if (temp_v0 >= 0x6A4) {
-        var_a0 = D_801808B8;
-    } else if (temp_v0 >= 0x5DC) {
-        var_a0 = D_80180828;
-    } else if (temp_v0 >= 0x578) {
-        var_a0 = D_80180804;
-    } else if (temp_v0 >= 0x514) {
-        var_a0 = D_801807E0;
-    } else if (temp_v0 >= 0x384) {
-        var_a0 = D_801808B8;
-    } else if (temp_v0 >= 0x258) {
-        var_a0 = D_80180894;
-    } else if (temp_v0 >= 0xC8) {
-        var_a0 = D_80180870;
+    extern u8 D_801808B8;
+    extern u8 D_80180828;
+    extern u8 D_80180804;
+    extern u8 D_801807E0;
+    extern u8 D_80180894;
+    extern u8 D_80180870;
+    extern u8 D_8018084C;
+    extern u8 D_801807BC;
+    s32 v;
+    void *p;
+
+    v = func_80029504();
+    if (v >= 0x6A4) {
+        p = &D_801808B8;
+         
+
+        __asm__ __volatile__("" ::: "memory");
+    } else if (v >= 0x5DC) {
+        p = &D_80180828;
+    } else if (v >= 0x578) {
+        p = &D_80180804;
+    } else if (v >= 0x514) {
+        p = &D_801807E0;
+    } else if (v >= 0x384) {
+        p = &D_801808B8;
+    } else if (v >= 0x258) {
+        p = &D_80180894;
+    } else if (v >= 0xC8) {
+        p = &D_80180870;
+    } else if (v >= 0xA) {
+        p = &D_8018084C;
     } else {
-        var_a0 = D_801807BC;
-        if (temp_v0 >= 0xA) {
-            var_a0 = D_8018084C;
-        }
+        p = &D_801807BC;
     }
-    func_800D185C(var_a0);
+    ((void (*)(void *))func_800D185C)(p);
     func_80145B24();
 }

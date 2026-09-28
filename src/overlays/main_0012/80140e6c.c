@@ -2,29 +2,27 @@
  * SHA256(span)=7932bf38107f6aeb577459308be95eb54cf2378ef3e58bc9372282d6e2cb5dfa.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-s32 func_800D2CA8(u8, s32);                           /* extern */
-void func_800D2D10(s32, s32, s32, s32);                    /* extern */
-extern s32 D_8017F314;
-extern u8 D_80078E7D;
-extern u8 D_80078E7E;
-extern u8 D_80078E7F;
+/* func_80140E6C - byte-exact against retail at -O2 (tools/register_match.py). */
+typedef s32 M2C_UNK;
+extern int func_800D2CA8(int, int);
+extern void func_800D2D10(int, int, void *, int);
 
 void func_80140E6C(void) {
-    s32 temp_s0;
-    s32 temp_s1;
-    s32 temp_s2;
 
-    temp_s2 = D_8017F314;
-    temp_s1 = func_800D2CA8(D_80078E7F, 0x18);
-    temp_s0 = func_800D2CA8(D_80078E7E, 0xC);
-    func_800D2D10(temp_s1 | (temp_s0 | 0xB00000) | (func_800D2CA8(D_80078E7D, 0) | 0xB00), 8, temp_s2, 0);
+    extern unsigned char D_80078E7F;
+    extern unsigned char D_80078E7E;
+    extern unsigned char D_80078E7D;
+    extern M2C_UNK D_8017F314;
+    void *puVar1;
+    unsigned int uVar2;
+    unsigned int uVar3;
+    unsigned int uVar4;
+
+    puVar1 = (*(void * *)&D_8017F314);
+    uVar2 = func_800D2CA8(D_80078E7F, 0x18);
+    uVar3 = func_800D2CA8(D_80078E7E, 0xc);
+    uVar4 = func_800D2CA8(D_80078E7D, 0);
+    func_800D2D10(uVar2 | 0xb00000 | uVar3 | 0xb00 | uVar4, 8, puVar1, 0);
 }

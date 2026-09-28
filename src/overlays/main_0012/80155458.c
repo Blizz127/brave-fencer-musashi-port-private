@@ -2,23 +2,23 @@
  * SHA256(span)=9e1c51789b156a0cfab4e692cacc499f23d15153ec067c8564d39609062c5f7a.
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
+/* func_80155458 - byte-exact against retail at -O2 (tools/register_match.py). */
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
 
-extern s32 D_801801EC;
+s32 func_80155458(s32 param_1)
+{
 
-u8 func_80155458(void *arg0) {
-    u8 temp_v0;
+    extern int (*D_801801EC[])(void);
+    int idx;
 
-    temp_v0 = arg0->unk4E;
-    if ((temp_v0 != 0) && (*(D_801801EC + ((temp_v0 - 1) * 4))() == 0)) {
-        arg0->unk4E = 0U;
+    idx = *(unsigned char *)(param_1 + 0x4e);
+    if (idx != 0) {
+        idx = idx - 1;
+        if ((*D_801801EC[idx])() == 0) {
+            *(unsigned char *)(param_1 + 0x4e) = 0;
+        }
     }
-    return arg0->unk4E;
+    return *(unsigned char *)(param_1 + 0x4e);
 }
