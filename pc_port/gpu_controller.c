@@ -816,10 +816,41 @@ static int clip_box(const MusashiGpuController *controller,
     return *x0 <= *x1 && *y0 <= *y1;
 }
 
+/* PS1 semi-transparency, per 5-bit channel of back (B) and front (F):
+ * 0: B/2+F/2, 1: B+F, 2: B-F, 3: B+F/4, clamped to 0..31. */
+static uint16_t semi_blend(uint16_t back, uint16_t front, unsigned mode) {
+    uint16_t out = 0;
+    unsigned shift;
+    for (shift = 0; shift < 15u; shift += 5u) {
+        int b = (back >> shift) & 31, f = (front >> shift) & 31, c;
+        switch (mode & 3u) {
+        case 0: c = (b + f) >> 1; break;
+        case 1: c = b + f; break;
+        case 2: c = b - f; break;
+        default: c = b + (f >> 2); break;
+        }
+        if (c < 0) c = 0;
+        if (c > 31) c = 31;
+        out |= (uint16_t)(c << shift);
+    }
+    return out;
+}
+
+/* color bit 15 is the texel's STP bit for textured primitives; the stored
+ * pixel keeps bits 0-14 as before. */
 static int plot_drawn(MusashiGpuController *controller, int x, int y,
                       uint16_t color) {
     if (x < 0 || y < 0 || x > 1023 || y > 511) return 1;
     if (!controller->backend.store_vram) return 0;
+    if (controller->semi && (!controller->semi_textured || (color & 0x8000u))) {
+        uint16_t back = 0;
+        if (!controller->backend.read_vram ||
+            !controller->backend.read_vram(controller->backend.userdata,
+                                           (uint16_t)x, (uint16_t)y, &back))
+            return 0;
+        color = semi_blend(back, color, controller->semi_mode);
+    }
+    color &= 0x7fffu;
     if (!enter_callback(controller)) return 0;
     if (!finish_callback(controller,
             controller->backend.store_vram(controller->backend.userdata,
@@ -950,7 +981,7 @@ static int fill_textured_triangle(MusashiGpuController *controller,
                 if (b > 31u) b = 31u;
                 texel = (uint16_t)(r | (g << 5) | (b << 10) | (texel & 0x8000u));
             }
-            if (!plot_drawn(controller, x, y, (uint16_t)(texel & 0x7fffu))) return 0;
+            if (!plot_drawn(controller, x, y, texel)) return 0;
         }
     }
     return 1;
@@ -1081,7 +1112,7 @@ static int fill_textured_gouraud_triangle(MusashiGpuController *controller,
                 if (b > 31u) b = 31u;
                 texel = (uint16_t)(r | (g << 5) | (b << 10) | (texel & 0x8000u));
             }
-            if (!plot_drawn(controller, x, y, (uint16_t)(texel & 0x7fffu))) return 0;
+            if (!plot_drawn(controller, x, y, texel)) return 0;
         }
     }
     return 1;
@@ -1121,6 +1152,16 @@ static int draw_line(MusashiGpuController *controller,
 
 static int prim_commit(MusashiGpuController *controller) {
     uint32_t opcode = controller->prim_data[0] >> 24;
+    /* Bit 1 of every polygon/line/rectangle command selects semi-
+     * transparency. Textured polygons carry their own texpage (abr in bits
+     * 5-6); lines, rectangles and untextured polygons use the draw mode. */
+    controller->semi = (opcode >= 0x20u && opcode <= 0x7fu && (opcode & 2u)) ? 1u : 0u;
+    controller->semi_textured = (uint8_t)(((opcode >= 0x20u && opcode <= 0x3fu) ||
+                                           (opcode >= 0x60u && opcode <= 0x7fu)) && (opcode & 4u));
+    if (opcode >= 0x24u && opcode <= 0x3fu && (opcode & 4u))
+        controller->semi_mode = (uint8_t)((controller->prim_data[(opcode & 0x10u) ? 5 : 4] >> 21) & 3u);
+    else
+        controller->semi_mode = (uint8_t)((controller->draw_mode >> 5) & 3u);
     uint16_t color = (uint16_t)(((controller->prim_data[0] >> 3) & 0x1fu) |
         ((controller->prim_data[0] >> 6) & 0x3e0u) |
         ((controller->prim_data[0] >> 9) & 0x7c00u));
@@ -1208,7 +1249,7 @@ static int prim_commit(MusashiGpuController *controller) {
                     return 0;
                 if (!out)
                     continue;
-                if (!plot_drawn(controller, px, py, (uint16_t)(out & 0x7fffu)))
+                if (!plot_drawn(controller, px, py, out))
                     return 0;
             }
         }

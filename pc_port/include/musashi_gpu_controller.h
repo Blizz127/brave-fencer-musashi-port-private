@@ -97,6 +97,10 @@ typedef struct MusashiGpuController {
     uint8_t prim_needed, prim_got;
     uint32_t prim_data[12];
     uint64_t drawn_pixels;
+    /* Semi-transparency of the primitive being rasterized (psx-spx GPU):
+     * semi = command bit 1; semi_mode = abr 0..3; semi_textured = blend only
+     * texels whose bit 15 (STP) is set. */
+    uint8_t semi, semi_mode, semi_textured;
 } MusashiGpuController;
 
 /* Derive and validate a checked descriptor in place. The helper masks no
