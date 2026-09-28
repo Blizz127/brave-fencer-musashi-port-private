@@ -20,8 +20,17 @@
 
 #include <string.h>
 
-/* Defined in PsyCross LIBGTE.C but not declared in its libgte.h. */
+/* Defined in PsyCross LIBGTE.C but not declared in its libgte.h. Weak:
+ * builds that replace PsyCross's LIBGTE with their own GTE owner (native
+ * lane) don't link it, and the wrapper then refuses so the retail code
+ * runs instead. */
+#if defined(__GNUC__) || defined(__clang__)
+extern MATRIX *CompMatrixLV(MATRIX *m0, MATRIX *m1, MATRIX *m2) __attribute__((weak));
+#define BFM_HAVE_COMPMATRIXLV() (CompMatrixLV != NULL)
+#else
 extern MATRIX *CompMatrixLV(MATRIX *m0, MATRIX *m1, MATRIX *m2);
+#define BFM_HAVE_COMPMATRIXLV() 1
+#endif
 
 #define A(n) bfm_psyq_arg(r, n)
 #define P(addr, size) bfm_psyq_ptr((addr), (size))
@@ -35,10 +44,16 @@ static void put32(uint32_t addr, int32_t v) {
 
 /* ---- stateless ---- */
 
+/* PsyCross's ratan2 carries its own copy of the game's arctangent table
+ * (retail_content_guard); same switch as the RotMatrix* wrappers below. */
+#ifdef BFM_PSYQ_PSYCROSS_ROTMATRIX
 int bfm_psyq_ratan2(uint32_t *r) {
     r[2] = (uint32_t)ratan2((int)(int32_t)A(0), (int)(int32_t)A(1));
     return 1;
 }
+#else
+int bfm_psyq_ratan2(uint32_t *r) { (void)r; return 0; }
+#endif
 
 #define ROT1(fn, name)                                                   \
     int name(uint32_t *r) {                                              \
@@ -48,6 +63,12 @@ int bfm_psyq_ratan2(uint32_t *r) {
         r[2] = A(1);                                                     \
         return 1;                                                        \
     }
+/* PsyCross's RotMatrix* read its own copy of the sin/cos table, which is
+ * the game's data: linking them puts retail bytes in the port binary
+ * (retail_content_guard), and RotMatrixYXZ differs from the retail result
+ * (native_lane_probe). Off unless BFM_PSYQ_PSYCROSS_ROTMATRIX: the wrappers
+ * refuse and the interpreter runs the retail code on the game's own table. */
+#ifdef BFM_PSYQ_PSYCROSS_ROTMATRIX
 ROT1(RotMatrixX, bfm_psyq_RotMatrixX)
 ROT1(RotMatrixY, bfm_psyq_RotMatrixY)
 ROT1(RotMatrixZ, bfm_psyq_RotMatrixZ)
@@ -60,6 +81,12 @@ int bfm_psyq_RotMatrixYXZ(uint32_t *r) {
     r[2] = A(1);
     return 1;
 }
+#else
+int bfm_psyq_RotMatrixX(uint32_t *r) { (void)r; return 0; }
+int bfm_psyq_RotMatrixY(uint32_t *r) { (void)r; return 0; }
+int bfm_psyq_RotMatrixZ(uint32_t *r) { (void)r; return 0; }
+int bfm_psyq_RotMatrixYXZ(uint32_t *r) { (void)r; return 0; }
+#endif
 
 /* ---- GTE state (bridge) ---- */
 
@@ -159,7 +186,7 @@ int bfm_psyq_CompMatrix(uint32_t *r) {
 int bfm_psyq_CompMatrixLV(uint32_t *r) {
     MATRIX *a = (MATRIX *)P(A(0), sizeof(MATRIX)), *b = (MATRIX *)P(A(1), sizeof(MATRIX));
     MATRIX *c = (MATRIX *)P(A(2), sizeof(MATRIX));
-    if (!a || !b || !c) return 0;
+    if (!a || !b || !c || !BFM_HAVE_COMPMATRIXLV()) return 0;
     GTE_BEGIN();
     CompMatrixLV(a, b, c);
     GTE_END(4);

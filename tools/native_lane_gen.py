@@ -93,12 +93,25 @@ def hooked_pcs():
     continuation tests and case lists. Word-table range bounds and data
     addresses are not hooks."""
     pcs = set()
-    context = re.compile(r"\bpc\b|->pc|\.pc|r\[31\]|raw_cpu|_caller|\bcase 0x")
-    for path in (ROOT / "pc_port").glob("*.c"):
-        for line in path.read_text(errors="replace").splitlines():
+    context = re.compile(r"\bpc\b|->pc|\.pc|r\[31\]|raw_cpu|_caller|\bcase ")
+    # Named guest PCs (enum STARTUP_ENTRY = 0x800141f0u, ...) compared as
+    # `cpu->pc == STARTUP_ENTRY` are hooks too.
+    named = re.compile(r"\b([A-Z][A-Z0-9_]*)\s*=\s*0x(80[0-9a-fA-F]{6})u?\b")
+    texts = [path.read_text(errors="replace") for path in (ROOT / "pc_port").glob("*.c")]
+    enums = {}
+    for text in texts:
+        for m in named.finditer(text):
+            enums.setdefault(m.group(1), int(m.group(2), 16))
+    for text in texts:
+        for line in text.splitlines():
             if context.search(line):
                 for m in re.finditer(r"0x(80[0-9a-fA-F]{6})u?\b", line):
                     pcs.add(int(m.group(1), 16))
+                if named.search(line):
+                    continue  # a definition, not a comparison
+                for ident in re.findall(r"\b[A-Z][A-Z0-9_]*\b", line):
+                    if ident in enums:
+                        pcs.add(enums[ident])
     return pcs
 
 
@@ -633,6 +646,32 @@ def build_one(entry, out, symbols, hooks, clang):
                     rule=e.rule, detail=e.detail)
 
 
+def psyq_hooked(hooks):
+    """PsyQ compat-table entry points (pc_port/platform/psyq/bfm_psyq_compat.def)
+    whose body contains a PC the port sequences or observes: the lane must
+    not run those natively either. A body without a registry size ends at
+    the next known function start."""
+    defs = ROOT / "pc_port/platform/psyq/bfm_psyq_compat.def"
+    if not defs.exists():
+        return []
+    pcs = [int(m.group(1), 16) for m in
+           re.finditer(r"^BFM_PSYQ\((0x[0-9A-Fa-f]+),", defs.read_text(), flags=re.M)]
+    registry = json.loads((ROOT / "provenance/matches.json").read_text())["matches"]
+    sizes = {m["vram"]: m.get("size") for m in registry if m["region"] == "main"}
+    starts = sorted(set(sizes) | set(pcs))
+    blocked = []
+    for pc in sorted(set(pcs)):
+        size = sizes.get(pc)
+        if size:
+            end = pc + size
+        else:
+            later = [s for s in starts if s > pc]
+            end = later[0] if later else pc + 4
+        if any(pc <= h < end for h in hooks):
+            blocked.append(pc)
+    return blocked
+
+
 # ---- Emit wrappers, stubs and the table ------------------------------------
 
 def c_type(ty, ext):
@@ -818,6 +857,13 @@ def main():
     # the thunk runs the guest words. Duplicate definitions cannot occur:
     # each TU defines only its own registry function under lane_func_*.
     direct, thunk = emit_table(admitted, out)
+    blocked = psyq_hooked(hooks)
+    with open(out / "native_lane_table.c", "a") as table:
+        table.write("\n/* PsyQ compat entries whose body holds a port-sequenced PC. */\n")
+        table.write("const uint32_t musashi_native_lane_hooked_psyq[] = {\n")
+        table.write("".join(f"    0x{pc:08x}u,\n" for pc in blocked) or "    0u,\n")
+        table.write("};\n")
+        table.write(f"const size_t musashi_native_lane_hooked_psyq_count = {len(blocked)}u;\n")
     lib = out / "libmusashi_native_lane.a"
     if lib.exists():
         lib.unlink()
@@ -838,6 +884,7 @@ def main():
             rules[r["rule"]] = rules.get(r["rule"], 0) + 1
     report = dict(candidates=len(results), admitted=len(admitted), rejected_by_rule=rules,
                   psyq_excluded=len(psyq_excluded),
+                  psyq_hooked=[f"{pc:08x}" for pc in blocked],
                   call_stubs=dict(direct=direct, interpreter_thunk=thunk),
                   functions=[{k: v for k, v in r.items() if k not in ("obj", "defs", "stubs")}
                              for r in sorted(results, key=lambda r: r["vram"])])

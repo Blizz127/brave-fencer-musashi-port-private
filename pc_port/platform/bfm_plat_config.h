@@ -11,7 +11,9 @@
  *              anamorphic), widescreen (legacy: 1 = 16:9, 0 = 4:3),
  *              internal_scale, window_width, window_height, fullscreen,
  *              frame_rate (30|60), vsync, screenshot_dir,
- *              dither (auto | on | off; auto = PS1 dither at 1x only)
+ *              dither (auto | on | off; auto = PS1 dither at 1x only),
+ *              gpu (cpu | bfm_plat: native_boot's GPU ports rasterise on the
+ *              CPU, or feed bfm_plat_gpu_bridge -> the renderer backend)
  *   [timing]   fast_forward_speed (x real speed, 0 = uncapped),
  *              fast_forward_toggle (0 hold / 1 toggle)
  *   [backends] renderer, audio, input, storage   (backend names)
@@ -38,6 +40,8 @@
 
 #define BFM_WIDESCREEN_HOR_PLUS 0     /* wider view, unstretched pixels */
 #define BFM_WIDESCREEN_ANAMORPHIC 1
+#define BFM_GPU_CPU 0                 /* host's own GPU rasteriser */
+#define BFM_GPU_BFM_PLAT 1            /* bfm_plat_gpu_bridge -> renderer */
 #define BFM_DITHER_AUTO (-1)          /* dither at internal_scale 1 only */
 #define BFM_DITHER_OFF 0
 #define BFM_DITHER_ON 1   /* squeeze X in projection, stretch output */
@@ -59,6 +63,7 @@ typedef struct BfmPlatConfig {
     int frame_rate;          /* 30 (retail pacing) or 60 (interpolated) */
     int vsync;
     int dither;              /* BFM_DITHER_AUTO / _OFF / _ON (gl renderer) */
+    int gpu_path;            /* BFM_GPU_CPU / BFM_GPU_BFM_PLAT */
     char screenshot_dir[BFM_PLAT_PATH_MAX];
     /* timing */
     double fast_forward_speed;

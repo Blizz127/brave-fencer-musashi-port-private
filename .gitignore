@@ -106,3 +106,6 @@ vendor/
 
 # register_match.py write lock
 /provenance/matches.json.lock
+
+# tools/run_headless_boot.sh default output (logs, traces, captures)
+/headless-out/

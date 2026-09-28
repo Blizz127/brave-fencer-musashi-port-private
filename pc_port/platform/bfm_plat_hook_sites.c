@@ -171,7 +171,7 @@ static int read_s16(uint32_t a, int32_t *out) {
 
 /* func_8014BC80(obj, amount): HP -= amount, or HP = 0 when amount > HP. */
 static int fill_damage(void *u, BfmEvent e, BfmPlatEventPayload *p) {
-    uint32_t a1, max;
+    uint32_t a1, max = 0;   /* max stays 0 if the guest read fails */
     int32_t hp;
     (void)u;
     if (bfm_plat_guest_reg(BFM_GUEST_REG_A1, &a1) != BFM_PLAT_OK ||

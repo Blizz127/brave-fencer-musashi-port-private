@@ -14,6 +14,7 @@
 
 #include "PsyX/PsyX_public.h"
 #include "psx/libetc.h"
+void musashi_psyx_shutdown(void); /* pc_port/psyx_shutdown.cpp: GL teardown before window */
 
 extern SDL_mutex *g_intrMutex;
 
@@ -54,7 +55,7 @@ int main(void) {
     if (!musashi_psycross_irq_scheduler_hook_entry_int(&runtime.scheduler, 0x8006bb34u)) {
         fputs("irq_scheduler_live: scheduler installation refused\n", stderr);
         assert(musashi_psycross_irq_runtime_close(&runtime));
-        PsyX_Shutdown();
+        musashi_psyx_shutdown();
         return 1;
     }
     assert(GetVideoMode() == MODE_NTSC);
@@ -105,11 +106,11 @@ int main(void) {
     }
     if (!musashi_psycross_irq_scheduler_uninstall(&runtime.scheduler)) {
         fputs("irq_scheduler_live: scheduler removal refused\n", stderr);
-        PsyX_Shutdown();
+        musashi_psyx_shutdown();
         return 1;
     }
     assert(musashi_psycross_irq_runtime_close(&runtime));
-    PsyX_Shutdown();
+    musashi_psyx_shutdown();
     if (!observed) {
         fputs("irq_scheduler_live: no PsyCross VBlank delivery observed\n", stderr);
         return 1;

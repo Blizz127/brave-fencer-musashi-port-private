@@ -816,10 +816,46 @@ static int clip_box(const MusashiGpuController *controller,
     return *x0 <= *x1 && *y0 <= *y1;
 }
 
+/* PS1 semi-transparency, per 5-bit channel of back (B) and front (F):
+ * 0: B/2+F/2, 1: B+F, 2: B-F, 3: B+F/4, clamped to 0..31. */
+static uint16_t semi_blend(uint16_t back, uint16_t front, unsigned mode) {
+    uint16_t out = 0;
+    unsigned shift;
+    for (shift = 0; shift < 15u; shift += 5u) {
+        int b = (back >> shift) & 31, f = (front >> shift) & 31, c;
+        switch (mode & 3u) {
+        case 0: c = (b + f) >> 1; break;
+        case 1: c = b + f; break;
+        case 2: c = b - f; break;
+        default: c = b + (f >> 2); break;
+        }
+        if (c < 0) c = 0;
+        if (c > 31) c = 31;
+        out |= (uint16_t)(c << shift);
+    }
+    return out;
+}
+
+/* color bit 15 is the texel's STP bit for textured primitives.
+ * E6 (mask_flags): bit 1 skips pixels whose destination has bit 15 set;
+ * bit 0 forces bit 15 on stored pixels. Otherwise a textured pixel keeps its
+ * texel's STP bit and an untextured one stores bit 15 clear (psx-spx). */
 static int plot_drawn(MusashiGpuController *controller, int x, int y,
                       uint16_t color) {
+    uint16_t stp = controller->semi_textured ? (uint16_t)(color & 0x8000u) : 0u;
+    int blend = controller->semi && (!controller->semi_textured || (color & 0x8000u));
     if (x < 0 || y < 0 || x > 1023 || y > 511) return 1;
     if (!controller->backend.store_vram) return 0;
+    if (blend || (controller->mask_flags & 2u)) {
+        uint16_t back = 0;
+        if (!controller->backend.read_vram ||
+            !controller->backend.read_vram(controller->backend.userdata,
+                                           (uint16_t)x, (uint16_t)y, &back))
+            return 0;
+        if ((controller->mask_flags & 2u) && (back & 0x8000u)) return 1;
+        if (blend) color = semi_blend(back, color, controller->semi_mode);
+    }
+    color = (uint16_t)((color & 0x7fffu) | stp | ((controller->mask_flags & 1u) ? 0x8000u : 0u));
     if (!enter_callback(controller)) return 0;
     if (!finish_callback(controller,
             controller->backend.store_vram(controller->backend.userdata,
@@ -899,6 +935,20 @@ static int sample_texel(MusashiGpuController *controller,
     return 0;
 }
 
+/* Texture colour modulation: channel * rgb / 128, clamped; 0x808080 is
+ * identity. Keeps the texel's STP bit. */
+static uint16_t modulate_texel(uint16_t texel, uint32_t rgb) {
+    uint32_t r, g, b;
+    if ((rgb & 0xffffffu) == 0x808080u) return texel;
+    r = (((texel & 0x1fu) * (rgb & 0xffu)) >> 7);
+    g = ((((texel >> 5) & 0x1fu) * ((rgb >> 8) & 0xffu)) >> 7);
+    b = ((((texel >> 10) & 0x1fu) * ((rgb >> 16) & 0xffu)) >> 7);
+    if (r > 31u) r = 31u;
+    if (g > 31u) g = 31u;
+    if (b > 31u) b = 31u;
+    return (uint16_t)(r | (g << 5) | (b << 10) | (texel & 0x8000u));
+}
+
 static int fill_textured_triangle(MusashiGpuController *controller,
                                   int x0, int y0, unsigned u0, unsigned v0,
                                   int x1, int y1, unsigned u1, unsigned v1,
@@ -941,16 +991,8 @@ static int fill_textured_triangle(MusashiGpuController *controller,
                               (unsigned)u & 255u, (unsigned)v & 255u, &texel))
                 return 0;
             if (!texel) continue;
-            if (!raw_tex && (rgb & 0xffffffu) != 0x808080u) {
-                uint32_t r = (((texel & 0x1fu) * (rgb & 0xffu)) >> 7);
-                uint32_t g = ((((texel >> 5) & 0x1fu) * ((rgb >> 8) & 0xffu)) >> 7);
-                uint32_t b = ((((texel >> 10) & 0x1fu) * ((rgb >> 16) & 0xffu)) >> 7);
-                if (r > 31u) r = 31u;
-                if (g > 31u) g = 31u;
-                if (b > 31u) b = 31u;
-                texel = (uint16_t)(r | (g << 5) | (b << 10) | (texel & 0x8000u));
-            }
-            if (!plot_drawn(controller, x, y, (uint16_t)(texel & 0x7fffu))) return 0;
+            if (!raw_tex) texel = modulate_texel(texel, rgb);
+            if (!plot_drawn(controller, x, y, texel)) return 0;
         }
     }
     return 1;
@@ -1081,7 +1123,7 @@ static int fill_textured_gouraud_triangle(MusashiGpuController *controller,
                 if (b > 31u) b = 31u;
                 texel = (uint16_t)(r | (g << 5) | (b << 10) | (texel & 0x8000u));
             }
-            if (!plot_drawn(controller, x, y, (uint16_t)(texel & 0x7fffu))) return 0;
+            if (!plot_drawn(controller, x, y, texel)) return 0;
         }
     }
     return 1;
@@ -1121,6 +1163,17 @@ static int draw_line(MusashiGpuController *controller,
 
 static int prim_commit(MusashiGpuController *controller) {
     uint32_t opcode = controller->prim_data[0] >> 24;
+    if (controller->raster_disabled) return 1;   /* drawn by the bfm_plat bridge */
+    /* Bit 1 of every polygon/line/rectangle command selects semi-
+     * transparency. Textured polygons carry their own texpage (abr in bits
+     * 5-6); lines, rectangles and untextured polygons use the draw mode. */
+    controller->semi = (opcode >= 0x20u && opcode <= 0x7fu && (opcode & 2u)) ? 1u : 0u;
+    controller->semi_textured = (uint8_t)(((opcode >= 0x20u && opcode <= 0x3fu) ||
+                                           (opcode >= 0x60u && opcode <= 0x7fu)) && (opcode & 4u));
+    if (opcode >= 0x24u && opcode <= 0x3fu && (opcode & 4u))
+        controller->semi_mode = (uint8_t)((controller->prim_data[(opcode & 0x10u) ? 5 : 4] >> 21) & 3u);
+    else
+        controller->semi_mode = (uint8_t)((controller->draw_mode >> 5) & 3u);
     uint16_t color = (uint16_t)(((controller->prim_data[0] >> 3) & 0x1fu) |
         ((controller->prim_data[0] >> 6) & 0x3e0u) |
         ((controller->prim_data[0] >> 9) & 0x7c00u));
@@ -1150,25 +1203,23 @@ static int prim_commit(MusashiGpuController *controller) {
         return draw_line(controller, lx0, ly0, lx1, ly1, color);
     }
 
-    if (opcode == 0x60u || opcode == 0x62u || opcode == 0x68u || opcode == 0x6au ||
-        opcode == 0x70u || opcode == 0x72u || opcode == 0x78u || opcode == 0x7au) {
+    if (opcode >= 0x60u && opcode <= 0x7fu && !(opcode & 4u)) {
         int dest_x = (int)(int16_t)(controller->prim_data[1] & 0xffffu) + ox;
         int dest_y = (int)(int16_t)(controller->prim_data[1] >> 16) + oy;
         unsigned width, height;
-        if (opcode == 0x60u || opcode == 0x62u) {
+        if ((opcode & 0x18u) == 0x00u) {
             width = controller->prim_data[2] & 0xffffu;
             height = controller->prim_data[2] >> 16;
-        } else if (opcode == 0x68u || opcode == 0x6au) {
+        } else if ((opcode & 0x18u) == 0x08u) {
             width = 1; height = 1;
-        } else if (opcode == 0x70u || opcode == 0x72u) {
+        } else if ((opcode & 0x18u) == 0x10u) {
             width = 8; height = 8;
         } else {
             width = 16; height = 16;
         }
         return fill_rect(controller, dest_x, dest_y, width, height, color);
     }
-    if (opcode == 0x64u || opcode == 0x66u || opcode == 0x74u || opcode == 0x76u ||
-        opcode == 0x7cu || opcode == 0x7eu) {
+    if (opcode >= 0x60u && opcode <= 0x7fu && (opcode & 4u)) {
         unsigned tpage = controller->draw_mode & 0x1ffu;
         unsigned fmt = (tpage >> 7) & 3u;
         unsigned tx = (tpage & 15u) * 64u;
@@ -1181,10 +1232,12 @@ static int prim_commit(MusashiGpuController *controller) {
         unsigned u0 = controller->prim_data[2] & 0xffu;
         unsigned v0 = (controller->prim_data[2] >> 8) & 0xffu;
         unsigned width, height;
-        if (opcode == 0x64u || opcode == 0x66u) {
+        if ((opcode & 0x18u) == 0x00u) {
             width = controller->prim_data[3] & 0xffffu;
             height = controller->prim_data[3] >> 16;
-        } else if (opcode == 0x74u || opcode == 0x76u) {
+        } else if ((opcode & 0x18u) == 0x08u) {
+            width = 1; height = 1;
+        } else if ((opcode & 0x18u) == 0x10u) {
             width = 8; height = 8;
         } else {
             width = 16; height = 16;
@@ -1208,7 +1261,8 @@ static int prim_commit(MusashiGpuController *controller) {
                     return 0;
                 if (!out)
                     continue;
-                if (!plot_drawn(controller, px, py, (uint16_t)(out & 0x7fffu)))
+                if (!(opcode & 1u)) out = modulate_texel(out, controller->prim_data[0]);
+                if (!plot_drawn(controller, px, py, out))
                     return 0;
             }
         }
@@ -1458,11 +1512,11 @@ static int prim_word(MusashiGpuController *controller, uint32_t word) {
     else if (opcode >= 0x3cu && opcode <= 0x3fu) controller->prim_needed = 12;
     else if (opcode >= 0x40u && opcode <= 0x47u) controller->prim_needed = 3;
     else if (opcode >= 0x50u && opcode <= 0x57u) controller->prim_needed = 4;
-    else if (opcode == 0x60u || opcode == 0x62u) controller->prim_needed = 3;
-    else if (opcode == 0x68u || opcode == 0x6au || opcode == 0x70u ||
-             opcode == 0x72u || opcode == 0x78u || opcode == 0x7au) controller->prim_needed = 2;
-    else if (opcode == 0x64u || opcode == 0x66u) controller->prim_needed = 4;
-    else if (opcode == 0x74u || opcode == 0x76u || opcode == 0x7cu || opcode == 0x7eu) controller->prim_needed = 3;
+    /* Rectangles 0x60-0x7f: bits 3-4 size (variable/1/8/16), bit 2 textured
+     * (+1 word: uv/clut), bit 1 semi, bit 0 raw texture. */
+    else if (opcode >= 0x60u && opcode <= 0x7fu)
+        controller->prim_needed = (uint8_t)(2u + ((opcode & 0x18u) == 0 ? 1u : 0u) +
+                                            ((opcode & 4u) ? 1u : 0u));
     else return 0;
     controller->prim_data[0] = word;
     controller->prim_got = 1;
@@ -1482,6 +1536,9 @@ int musashi_gpu_controller_write32(MusashiGpuController *controller,
         return 0;
     }
     if (!backend_bound(controller) || controller->faulted) return 0;
+    if (controller->tap &&
+        (address == MUSASHI_GPU_GPUREAD || address == MUSASHI_GPU_GPUSTAT))
+        (void)controller->tap(controller->tap_userdata, address, value);
     if (address == MUSASHI_GPU_GPUREAD) {
         opcode = value >> 24;
         /* An open packet owns every following GP0 word. Pixel payloads may

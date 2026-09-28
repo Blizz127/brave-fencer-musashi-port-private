@@ -71,7 +71,11 @@ class Controller(C.Structure):
                 ("copy_dst", UINT32), ("copy_words", C.c_uint8),
                 ("copied_pixels", C.c_uint64), ("completed_copies", C.c_uint64),
                 ("prim_needed", C.c_uint8), ("prim_got", C.c_uint8),
-                ("prim_data", UINT32 * 12), ("drawn_pixels", C.c_uint64)]
+                ("prim_data", UINT32 * 12),
+                ("tap", C.c_void_p), ("tap_userdata", C.c_void_p),
+                ("raster_disabled", C.c_int), ("drawn_pixels", C.c_uint64),
+                ("semi", C.c_uint8), ("semi_mode", C.c_uint8),
+                ("semi_textured", C.c_uint8)]
 
 
 class GpuControllerTests(unittest.TestCase):
@@ -884,6 +888,10 @@ class GpuControllerTests(unittest.TestCase):
 
         self.store_cb = STORE(accept)
         self.controller.backend.store_vram = self.store_cb
+        # 0x2A is semi-transparent: black back buffer + additive (E1 abr=1).
+        self.read_cb = READ(lambda _, x, y, out: out.__setitem__(0, 0) or 1)
+        self.controller.backend.read_vram = self.read_cb
+        self.assertEqual(self.write(0xE1000020), 1)
         self.assertEqual(self.write(0xE3000000), 1)
         self.assertEqual(self.write(0xE403C13F), 1)  # 319,240
         self.assertEqual(self.write(0x2AFFFFFF), 1)
@@ -903,6 +911,15 @@ class GpuControllerTests(unittest.TestCase):
             stored = []
             self.store_cb = STORE(lambda _, x, y, p: stored.append((x, y, p)) or 1)
             self.controller.backend.store_vram = self.store_cb
+            # Semi-transparent variants (command bit 1) read the back buffer.
+            # With a black back buffer and additive blending (E1 abr=1),
+            # B+F == F, so the colours below hold for every variant.
+            back_reads = []
+            self.read_cb = READ(lambda _, x, y, out: back_reads.append((x, y))
+                                or out.__setitem__(0, 0) or 1)
+            self.controller.backend.read_vram = self.read_cb
+            if opcode & 2:
+                self.assertEqual(self.write(0xE1000020), 1)
             self.assertEqual(self.write(0xE3000000), 1)
             self.assertEqual(self.write(0xE403C13F), 1)  # 319, 240
             cmd = (opcode << 24) | 0x000000F8  # pure red (r=248 -> 31 -> 0x001F)
@@ -917,12 +934,22 @@ class GpuControllerTests(unittest.TestCase):
             self.assertTrue(all(p == 0x001F for _, _, p in stored))
             self.assertEqual(self.controller.drawn_pixels, len(stored))
 
+            self.assertEqual(bool(back_reads), bool(opcode & 2))
     def test_gp0_poly_f4_flat_quad_five_words(self):
         for opcode in (0x28, 0x29, 0x2A, 0x2B):
             self.setUp()
             stored = []
             self.store_cb = STORE(lambda _, x, y, p: stored.append((x, y, p)) or 1)
             self.controller.backend.store_vram = self.store_cb
+            # Semi-transparent variants (command bit 1) read the back buffer.
+            # With a black back buffer and additive blending (E1 abr=1),
+            # B+F == F, so the colours below hold for every variant.
+            back_reads = []
+            self.read_cb = READ(lambda _, x, y, out: back_reads.append((x, y))
+                                or out.__setitem__(0, 0) or 1)
+            self.controller.backend.read_vram = self.read_cb
+            if opcode & 2:
+                self.assertEqual(self.write(0xE1000020), 1)
             self.assertEqual(self.write(0xE3000000), 1)
             self.assertEqual(self.write(0xE403C13F), 1)  # 319, 240
             cmd = (opcode << 24) | 0x0000F800  # pure green (g=248 -> 31 -> 0x03E0)
@@ -938,12 +965,22 @@ class GpuControllerTests(unittest.TestCase):
             self.assertTrue(all(p == 0x03E0 for _, _, p in stored))
             self.assertEqual(self.controller.drawn_pixels, len(stored))
 
+            self.assertEqual(bool(back_reads), bool(opcode & 2))
     def test_gp0_poly_g3_gouraud_triangle(self):
         for opcode in (0x30, 0x31, 0x32, 0x33):
             self.setUp()
             stored = {}
             self.store_cb = STORE(lambda _, x, y, p: stored.__setitem__((x, y), p) or 1)
             self.controller.backend.store_vram = self.store_cb
+            # Semi-transparent variants (command bit 1) read the back buffer.
+            # With a black back buffer and additive blending (E1 abr=1),
+            # B+F == F, so the colours below hold for every variant.
+            back_reads = []
+            self.read_cb = READ(lambda _, x, y, out: back_reads.append((x, y))
+                                or out.__setitem__(0, 0) or 1)
+            self.controller.backend.read_vram = self.read_cb
+            if opcode & 2:
+                self.assertEqual(self.write(0xE1000020), 1)
             self.assertEqual(self.write(0xE3000000), 1)
             self.assertEqual(self.write(0xE403C13F), 1)  # 319, 240
             cmd = (opcode << 24) | 0x000000F8  # v0 red (r=248 -> 31)
@@ -966,12 +1003,22 @@ class GpuControllerTests(unittest.TestCase):
             self.assertGreater((mid >> 5) & 0x1F, 0)
             self.assertEqual((mid >> 10) & 0x1F, 0)
 
+            self.assertEqual(bool(back_reads), bool(opcode & 2))
     def test_gp0_poly_g4_gouraud_quad(self):
         for opcode in (0x38, 0x39, 0x3A, 0x3B):
             self.setUp()
             stored = {}
             self.store_cb = STORE(lambda _, x, y, p: stored.__setitem__((x, y), p) or 1)
             self.controller.backend.store_vram = self.store_cb
+            # Semi-transparent variants (command bit 1) read the back buffer.
+            # With a black back buffer and additive blending (E1 abr=1),
+            # B+F == F, so the colours below hold for every variant.
+            back_reads = []
+            self.read_cb = READ(lambda _, x, y, out: back_reads.append((x, y))
+                                or out.__setitem__(0, 0) or 1)
+            self.controller.backend.read_vram = self.read_cb
+            if opcode & 2:
+                self.assertEqual(self.write(0xE1000020), 1)
             self.assertEqual(self.write(0xE3000000), 1)
             self.assertEqual(self.write(0xE403C13F), 1)  # 319, 240
             cmd = (opcode << 24) | 0x000000F8  # v0 red
@@ -992,6 +1039,7 @@ class GpuControllerTests(unittest.TestCase):
             self.assertEqual(stored.get((0, 16)), 0x7C00)   # blue
             self.assertEqual(stored.get((16, 16)), 0x7FFF)  # white
 
+            self.assertEqual(bool(back_reads), bool(opcode & 2))
     def test_gp0_poly_gt3_textured_gouraud_triangle(self):
         for opcode in (0x34, 0x35):
             self.setUp()

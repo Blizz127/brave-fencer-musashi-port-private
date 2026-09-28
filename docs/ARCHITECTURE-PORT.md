@@ -443,18 +443,26 @@ How it works:
   - Interpolation is affine (`noperspective`), like the PS1.
   - Texels are sampled nearest at native texel size, so higher internal
     scales sharpen the geometry, not the art.
-- **Semi-transparency.** All four modes use fixed-function blending:
-  | Mode | Formula | GL blend |
+- **Semi-transparency.** The formulas are `bfm_gl_blend_state`'s:
+  | Mode | Formula | Factors (src / dst) |
   |---|---|---|
-  | 0 | B/2 + F/2 | `CONSTANT_COLOR` 0.5 / 0.5 |
-  | 1 | B + F | `ONE` / `ONE` |
-  | 2 | B − F | `ONE` / `ONE` with `FUNC_REVERSE_SUBTRACT` |
-  | 3 | B + F/4 | `CONSTANT_COLOR` 0.25 / `ONE` |
-  A textured semi primitive is drawn in two passes: texels without STP
-  opaque, then texels with STP blended. Modes 1 and 2 are bit-exact
-  against the PS1 formula. Modes 0 and 3 keep the fraction the PS1
-  truncates, so a channel can come out one 5-bit step higher. The target
-  holds 8 bits per channel; this is intended on the HD path.
+  | 0 | B/2 + F/2 | 0.5 / 0.5 |
+  | 1 | B + F | 1 / 1 |
+  | 2 | B − F | 1 / 1, reverse subtract |
+  | 3 | B + F/4 | 0.25 / 1 |
+  - Opaque prims and modes 0, 1 and 3 use GL 3.3 core **dual-source
+    blending**: the shader outputs `rgb * sf` and a second colour `df`,
+    with blend `ONE, SRC1_COLOR`. Each fragment picks its own factors:
+    opaque, or blended when the pixel is untextured, an STP texel or a
+    replacement texel. Opaque and semi prims therefore share draws in PS1
+    order, and textured semi prims need no second pass.
+  - Mode 2 needs `FUNC_REVERSE_SUBTRACT`, so it gets its own draws.
+    Textured mode 2 is drawn in two passes: texels without STP opaque,
+    then STP texels subtracted.
+  - Accuracy: modes 1 and 2 are bit-exact against the PS1 formula. Modes 0
+    and 3 keep the fraction the PS1 truncates, so a channel can come out
+    one 5-bit step higher. The target holds 8 bits per channel; this is
+    intended on the HD path.
 - **Dither.** The PS1 4x4 matrix is applied at native pixel granularity
   (`gl_FragCoord / S`), and only to primitives the PS1 dithers: gouraud or
   modulated-texture polys and lines, never rects. `video.dither = auto |
@@ -475,6 +483,42 @@ How it works:
   - Alpha < 0.5 is transparent, and vertex colour still modulates the
     image.
   - A plain upload overlapping the rect retires the replacement.
+- **Mask bit** (GP0 E6). The decoder carries E6 as the prim flags
+  `BFM_PRIM_FLAG_MASK_SET` and `_CHECK`.
+  - Every render target's alpha channel is bit 15 of its pixels: texel
+    STP | set-mask. Fills clear it, and uploads copy it in. Blending uses
+    separate functions, so alpha is always the fragment's bit and never a
+    blend.
+  - Check-mask uses a stencil. A target gets one (depth24/stencil8) the
+    first time it sees a check, and it is built once from alpha. A
+    temporary copy is used for that, because GL 3.3 can't sample a bound
+    target.
+  - After that, every draw keeps the stencil in step. A command whose
+    fragments can write both values runs two passes: written bit 0, then
+    written bit 1, where the written bit is STP | set-mask. Each fragment
+    is drawn once and writes its own bit. A test for "pixel bit 0" with
+    REPLACE of the written bit is `EQUAL 0` or `GREATER 1`.
+  - Only mask-check commands break batches, plus set-mask in textured
+    mode-2 commands.
+  - Readback returns bit 15 from alpha, so StoreImage sees mask bits.
+  - LoadImage ignores the mask settings; on the PS1 transfers honour them.
+- **Render feedback**: textures sampling pixels the GPU drew.
+  - A 16x16-tile map in the batcher records which target holds each VRAM
+    tile's newest pixels: the VRAM target, a scene slot, or the mirror.
+  - For a textured prim whose texture or CLUT footprint covers rendered
+    tiles:
+    - *15-bit pages* without wrap or texture window, all from one target,
+      get a `SNAPSHOT`. That is a GPU blit of the tile-aligned footprint
+      at device resolution, sampled nearest. Render-to-texture effects
+      keep their HD detail: at 3x, a triangle edge copied through a
+      snapshot matches device pixel for device pixel. A snapshot is reused
+      until something writes into its rect, and a list holds at most 32.
+    - *CLUT pages*, texture windows, wraps and mixed owners get a
+      `RESOLVE`: that tile run is read back into the mirror (all 16 bits)
+      and the VRAM texture re-uploaded, mid-list. GPU-drawn index data and
+      GPU-drawn CLUTs decode exactly.
+  - StoreImage (and so MoveImage) resolves the rendered tiles it covers.
+  - Fills and uploads mark fully covered tiles clean again.
 - **24-bit display** (`DispEnv.rgb24`, used by movies): the frame is
   decoded from the mirror on the CPU and shown at 4:3.
 - **Overlay text.** The built-in font is drawn in display pixels after the
@@ -482,15 +526,46 @@ How it works:
   touches game VRAM.
 
 Known limits:
-- Mask-bit set/check (GP0 E6) is not emulated.
-- Draws into off-screen VRAM that the game samples directly, without a
-  StoreImage/MoveImage in between, don't feed back into the texture: the
-  render-to-texture case.
+- The mask settings don't apply to LoadImage/MoveImage transfers.
+- A prim that samples the pixels it is drawing over sees them as they were
+  before it started (the PS1 reads them as it writes).
 - Replacements ignore the texture window and the CLUT, so palette swaps of
   one texture share its replacement. Semi-transparent replacements blend
   every texel.
-- Frame-buffer effects that sample the previous frame need the readback
-  path.
+
+Benchmark (`tools/gl_bench/run.sh [--prims N] [--frames N] [--scales 1,4]
+[--feedback] [--mask] [--opaque]`) runs on OSMesa, headless.
+- **Frame:** double-buffered 320x240 hor+ 16:9 with 4000 prims: half
+  gouraud-textured 4-bit quads, plus 8-bit triangles, flat and gouraud
+  polys, semi-transparent 15-bit quads, sprites, lines and semi tiles.
+  That is about 0.25 Mpx of fill at 1x. It is heavy for a PS1 scene but
+  within what the PS1 GPU drew at 30 fps.
+- **Options:** `--feedback` adds 4 off-screen render-to-texture panels per
+  frame; `--mask` puts set/check on 10% of the prims.
+- **Columns:** CPU batching, GPU execute, present, fps, process CPU time,
+  ns per rasterised pixel, and command/draw counts.
+
+Results on llvmpipe (Mesa 25.0.7, LLVM 19, 12 cores), with the host at
+load average 42–60 from other jobs. Wall-clock numbers there are
+contention-bound, so compare them relatively:
+
+| frame | scale | batch ms | gpu ms | present ms | fps | draws |
+|---|---|---|---|---|---|---|
+| default | 1x | 1.0 | 49 | 18 | 14.7 | 1 |
+| default | 4x | 1.5 | 257 | 26 | 3.5 | 1 |
+| --feedback | 1x | 1.0 | 43 | 17 | 16.2 | 6 |
+| --feedback | 4x | 1.2 | 263 | 25 | 3.5 | 6 |
+| --mask | 1x | 1.0 | 157 | 28 | 5.4 | 430 |
+| --mask | 4x | 1.0 | 597 | 57 | 1.5 | 430 |
+
+What the numbers say:
+- Batching is about 0.25 µs per prim on the CPU, independent of scale.
+- Dual-source blending took the default frame from 1,039 draws to 1, and
+  from 188 to 49 ms GPU at 1x on the same host.
+- Mask-check frames are about 3x the cost. Check prims break batches, and
+  the stencil upkeep doubles fragment work.
+- llvmpipe is a software floor: a desktop GPU does these frames in well
+  under a millisecond. Use the bench to compare changes on one host.
 
 Tests (`tests/test_bfm_gl.py`, `tests/bfm_gl_probe.c`,
 `tests/bfm_gl_sdl_smoke.c`):
@@ -506,9 +581,21 @@ Tests (`tests/test_bfm_gl.py`, `tests/bfm_gl_probe.c`,
   - hor+ routing: slots, widened scissors, margins, LRU eviction, copies;
   - replacement lookup, coordinates and retirement;
   - VRAM move with overlap and wrap, and the 24-bit decode.
+- **CPU reference rasteriser** (`bfm_gl_ref_draw`): the definition of
+  exact for TILE/SPRITE/FILL. It covers clip, offset, window, CLUT,
+  transparency, modulation, semi-transparency on untextured and STP
+  pixels, mask check/set, and bit 15 of written pixels.
 - **exec** runs the real executor on an OSMesa (llvmpipe) GL 3.3 core
   context, headless, compared pixel by pixel with the CPU reference. It
   covers:
+  - mask set/check scenes, exact in all 16 bits at 1x and 3x. A mutation
+    with the stencil test disabled fails them;
+  - render feedback, exact in all 16 bits against the reference:
+    - off-screen 15-bit render-to-texture through a snapshot;
+    - GPU-drawn 4-bit index data plus a GPU-drawn CLUT through a resolve;
+    - a hor+ frame buffer sampling itself;
+    - the whole 1024x512 VRAM resolved and compared, at 1x and 3x;
+  - HD detail preserved through a snapshot at 3x;
   - 3,072 texels through 4, 8 and 15 bit at 1x and 3x, all exact;
   - every blend mode with the STP split;
   - dither at 2x;
@@ -516,6 +603,8 @@ Tests (`tests/test_bfm_gl.py`, `tests/bfm_gl_probe.c`,
   - hor+ margins and present letterboxing;
   - overlay placement;
   - 24-bit image present.
+- **bench** builds `tools/gl_bench` at -O2 -Werror and runs 2 frames
+  with feedback and mask.
 - **sdl** drives the whole backend through `bfm_plat_renderer_*` on SDL's
   offscreen driver with Mesa EGL: double-buffered hor+ frames, StoreImage
   readback, HD replacement, 24-bit mode, and a scale change.
@@ -524,6 +613,57 @@ On a desktop the same code opens a real window; interactive use needs a
 display. Without one, `bfm_plat_renderer_open("gl")` fails cleanly and
 falls back to `null`. exec and sdl skip when their libraries are missing
 (`BFM_HOST_DEPS`, `BFM_GL_INCLUDE` and `BFM_OSMESA` override the search).
+
+### GPU bridge (native_boot → bfm_plat renderer)
+
+`bfm_plat_gpu_bridge.{h,c}` speaks the PS1 GPU's port protocol in front
+of the bfm_plat renderer. With it, native_boot, which emulates the GPU ports
+in `gpu_controller.c`, can draw through the `psycross` or `gl` backend
+instead of the controller's CPU rasteriser.
+
+| Input | Output |
+|---|---|
+| GP0 draw commands (polys, lines incl. polylines, rects, fill) | assembled by word count, decoded by `bfm_psyq_decode_packet` (E1/E6 state on the prims), batched into `bfm_plat_renderer_submit` |
+| GP0 E2–E5 | draw env: texture window, drawing area → clip, offset |
+| GP0 A0 / C0 / 80 | `upload_vram` / `download_vram` (answered on GPUREAD) / download + upload. Rects wrapping at the VRAM edge are split |
+| GP1 00/01/03/05/08/10 | reset, FIFO reset, display enable, display env (origin, 256–640 × 240/480, interlace, 24-bit), GPU info |
+| vblank | flush + `present` + `begin_frame` |
+
+- **Attach (tee):** `musashi_gpu_controller` gets a `tap` callback on
+  every GP0/GP1 port write and a `raster_disabled` flag. FIFO, GPUSTAT, fills
+  and VRAM transfers are unchanged, and only the CPU rasterisation stops.
+  native_boot then presents through `bfm_gpu_bridge_vblank`.
+- **Switch:** `MUSASHI_GPU=cpu|bfm_plat` (default `cpu`) and
+  `MUSASHI_RENDERER` (default `psycross`, which draws into native_boot's own
+  PsyCross context). The bfm_plat config key is `[video] gpu`.
+- **Patch:** `tools/patches/native-lane-gpu-bridge.patch` is the change,
+  against port/native-lane 5fecb1337. port-int owns `gpu_controller.c` and
+  `native_boot.c` and applies it: `git apply -p1`. It adds:
+  - the controller's tap and raster switch;
+  - native_boot's switch, attach and `present_frame`;
+  - CMake entries for `bfm_plat_gpu_bridge.c` and `psyq/psyq_psycross.c`.
+  The renderer opens after PsyCross is up; opening it inside `plat_start`
+  crashed in PsyCross `ResetGraph`, so that is called out in the patch.
+- **Tests:** `tests/test_bfm_gpu_bridge.py`.
+  - Synthetic streams go through the bridge into a reference backend
+    (`bfm_gl_ref_draw`), under ASan/UBSan: fill, opaque and semi tiles, the
+    `0x2A` fade quad (abr 2), raw, neutral and dim `0x64/0x65` sprites, a
+    4-bit CLUT sprite, a semi `0x67` sprite, a polyline, a VRAM copy, a
+    moved and clipped drawing area, a wrapped upload, the texture window,
+    C0 GPUREAD, GP1 info and vblank.
+  - When a `gpu_controller.c` is available (`BFM_GPU_CONTROLLER_DIR`), the
+    same streams also go through the controller and are compared region by
+    region. Against port/native-lane's controller with the blend fix
+    (572274c07), every region it implements matches. Semi regions differ
+    on main@ac0ec2dd1, which has no blend fix yet.
+- **Known controller gaps,** reported rather than asserted:
+  - raw-texture rects `0x65/67/75/77/7D/7F` are not drawn;
+  - textured-rect modulation is missing;
+  - polylines are unhandled, and the unhandled words desync the command
+    stream.
+- **Smoke:** the patched native-lane build engages the bridge
+  (`GPU_PATH bfm_plat renderer=psycross`) and runs normally. Rendering it
+  live needs a long boot run.
 
 ### First-run disc check
 
@@ -554,6 +694,50 @@ it too, rather than keeping its own.
 CHD: libchdr (BSD-3-Clause) is the candidate reader. It needs zlib, LZMA,
 zstd and FLAC decoders, so it's left as a later storage backend, and `.chd`
 gets the conversion hint.
+
+### Headless live boot
+
+`tools/run_headless_boot.sh --binary BUILD/musashi_native_boot --disc
+EXTRACTED/disc [--out DIR] [--timeout S] [--capture-every N]` boots the
+real game (the user's own disc) with no display and no sound card.
+
+Everything the run writes goes to `--out` (default `headless-out/`,
+git-ignored), which must be outside the repository or git-ignored:
+- `out.log`;
+- `trace` and `trace.counts` (`MUSASHI_TRACE_FUNCS`);
+- `frames.log`: one line per presented frame, with its non-black pixel
+  count;
+- `frame_*.png` and `vram_*.png`.
+
+It ends by printing the stop line, any refusal, the boot markers
+(`TITLE_LOAD`, `SCENE1_REACHED`, …), the first non-black frame and the top
+of the call ranking.
+
+| Setting | Why | Status |
+|---|---|---|
+| `SDL_VIDEODRIVER=offscreen`, Mesa EGL via a vendor JSON, `EGL_PLATFORM=surfaceless` | real GL 3.3 context without a display (llvmpipe) | environment |
+| `LIBGL_ALWAYS_SOFTWARE` unset | setting it segfaults Mesa 25.0's EGL inside `SDL_CreateWindow` | Mesa bug; Mesa falls back to llvmpipe by itself |
+| `MUSASHI_AUDIO=null` | explicit, logged null audio (port/native-lane 8edc1d55d) | used when the binary has it. Older builds (main before that merge) get the old **workaround**: an ALSA `null` PCM (`ALSA_CONFIG_PATH`, `SDL_AUDIODRIVER=alsa`), which satisfies an audio gate meant to require a real device. The script warns when it falls back |
+| `MUSASHI_CODE_IMAGE=<EXE>` | instructions are fetched from the user's EXE | needed on main@ac0ec2dd1: without it the run refused at `80010000` with no reason printed. That was a run-off-disc bug, fixed on port/native-lane in 7d483a31b (guest memory bound at run entry), after which it isn't needed. Setting it stays harmless |
+| `MUSASHI_GUEST_CLOCK=1` (default; `--host-clock` to compare) | guest time advances with executed cycles | on a loaded host the host-paced clock ends in an IRQ-dispatch refusal in the SPU poll loop (`8003b118`). Since 8edc1d55d it is printed: `IRQ_DISPATCH_REFUSED reason=source-overflow … hint=MUSASHI_GUEST_CLOCK=1` |
+| `LD_PRELOAD` of Mesa `libEGL`/`libEGL_mesa`/`libgallium` | keeps Mesa mapped for PsyCross's shutdown | only for builds without port-int's ordered shutdown (`musashi_psyx_shutdown`, 8edc1d55d), detected with `nm`. The old **workaround**: `GR_Shutdown` called GL after the EGL libraries were unloaded and segfaulted on every exit. `--no-preload` / `--preload` override |
+| `tools/headless/bfm_swap_capture.c` (`LD_PRELOAD`, `BFM_CAPTURE_*`) | hooks `SDL_GL_SwapWindow` | observation only. It reads the back buffer before the real swap, and optionally PsyCross's `vram` array, found by `nm` offset. PNGs use `bfm_plat_png_write` |
+
+Frames here are PsyCross presents, which only happen when native_boot
+flushes the display. They are not guest VBlanks.
+
+Diagnostics, none of which change the run:
+- `BFM_CAPTURE_OT_HEADS` / `BFM_CAPTURE_OT_FRAMES`: display-list walks in
+  guest RAM.
+- `BFM_CAPTURE_GPU`: the controller's committed prims (`prims.log`), via a
+  forwarding wrapper on its `store_vram` callback. The offsets come from
+  `offsetof()` against the same build.
+- `tools/headless/bfm_ot_replay.c`: replays a captured frame through
+  `bfm_gl_ref_draw` and the gl renderer, plus an opaque variant.
+- `tools/headless/gpu_semi_repro.c`: an 8-case semi-transparency repro
+  against native-lane's `gpu_controller.c`, which draws all four semi
+  modes as opaque. This caused the headless boot's white and grey fades:
+  the game fades with a subtractive (abr 2) full-screen `0x2A` quad.
 
 ### Packaging (no game data)
 
@@ -752,9 +936,8 @@ Stubbed / next:
   top-level `CMakeLists.txt` belongs to the native-lane work).
 - The `psycross` renderer has no HD `upload_replacement` path, and
   `set_output` is a no-op. PsyCross owns window size. HD is on `gl`.
-- `gl` limits: no mask bit, no render-to-texture feedback except through
-  StoreImage or MoveImage. Not yet run against the real game (that needs
-  the native lane's libgpu shim routed through `bfm_plat_renderer_*`).
+- `gl`: not yet run against the real game. That needs the native lane's
+  libgpu shim routed through `bfm_plat_renderer_*`.
 - The SDL input backend's rebinding at runtime (`set_bindings`) has no UI.
 - Overlay text on `psycross` is compile-checked only. It draws the
   built-in 5x7 font (`bfm_plat_font.c`, original to this repo) as TILE runs
@@ -956,7 +1139,8 @@ add_library(bfm_plat STATIC
     pc_port/platform/bfm_plat_console.c  pc_port/platform/bfm_plat_console_ui.c
     pc_port/platform/bfm_plat_events.c   pc_port/platform/bfm_plat_hook_sites.c
     pc_port/platform/bfm_plat_image.c    pc_port/platform/bfm_plat_font.c
-    pc_port/platform/bfm_plat_widescreen.c
+    pc_port/platform/bfm_plat_widescreen.c   pc_port/platform/bfm_plat_watch.c
+    pc_port/platform/bfm_plat_disc_check.c   pc_port/platform/bfm_plat_sha256.c
     pc_port/platform/psyq/bfm_psyq_compat.c
     pc_port/platform/psyq/bfm_psyq_libgs.c
     pc_port/platform/psyq/bfm_psyq_libgte.c)        # + psyq/psyq_psycross.c with PsyCross
@@ -1014,6 +1198,9 @@ endif()
 ```
 
 Notes:
+- The core list must match `pc_port/platform/bfm_plat*.c` exactly. A
+  `file(GLOB ... pc_port/platform/bfm_plat*.c)` keeps it in step as files
+  are added.
 - `bfm_plat.c` must be compiled with the same `BFM_PLAT_WITH_PNG` define as
   `texture_png.c`. Keep the definitions on the target, not per source.
 - `musashi_audio_sdl_*` comes from `pc_port/audio_sdl.c`. Link whichever

@@ -72,7 +72,9 @@ static int file_exists(const char *p) {
 
 static int set(BfmPlatDiscCheck *c, BfmPlatDiscStatus s, const char *detail) {
     c->status = s;
-    snprintf(c->detail, sizeof c->detail, "%s", detail ? detail : "");
+    /* long paths are cut to the detail buffer on purpose */
+    snprintf(c->detail, sizeof c->detail, "%.*s", (int)(sizeof c->detail - 1),
+             detail ? detail : "");
     return s == BFM_DISC_OK ? BFM_PLAT_OK : BFM_PLAT_INVALID;
 }
 

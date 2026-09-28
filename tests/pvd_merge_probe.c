@@ -276,7 +276,9 @@ static void test_movie_header_copy(void) {
 }
 
 static void test_movie_rectangle_copy(void) {
-    MusashiBootMemory memory={0};FormatterCpu cpu;Clock clock;unsigned offset,n;
+    static MusashiBootMemory memory;FormatterCpu cpu;Clock clock;unsigned offset,n;
+    memset(&memory,0,sizeof(memory));
+    probe_load_image(&memory,"MAIN_0004");  /* site groups verify the loaded code */
     for(offset=0;offset<4;offset++) {
         uint8_t *src=musashi_boot_ram_span(&memory,DATA_BASE,16);
         uint8_t *dst=musashi_boot_ram_span(&memory,DATA_BASE+0x40,16);
@@ -331,6 +333,8 @@ static void test_camera_snapshot_merge(void) {
         unsigned char before[64];
         for(n=0;n<64;n++)bytes[n]=(unsigned char)(n*7u+3u);
         memcpy(before,bytes,64);
+        probe_load_image(&memory,"SC02_031");
+        g_fetch_memory=&memory;code_sites_invalidate();
         init_cpu(&cpu,&clock,0x8012a0a4u);cpu.r[4]=base;
         g_overlay_sc02_0031_words=1;
         for(n=0;n<8;n++) {
@@ -349,6 +353,7 @@ static void test_camera_snapshot_merge(void) {
 static void palette_setup(MusashiBootMemory *memory,FormatterCpu *cpu,
                           Clock *clock,unsigned offset,unsigned last) {
     memset(memory,0,sizeof(*memory));memset(clock,0,sizeof(*clock));
+    probe_load_image(memory,"SC02_031");  /* site groups verify the loaded code */
     init_cpu(cpu,clock,0x8013d5fcu);
     cpu->r[1]=0x80180000u+offset;cpu->r[2]=offset;cpu->r[6]=0x801b79b8u;
     g_overlay_sc02_0031_words=1;
@@ -377,6 +382,8 @@ static void test_palette_copy_merge(void) {
     for(unsigned offset=0;offset<4;offset++)for(unsigned tail=0;tail<2;tail++) {
         FormatterCpu cpu;Clock clock;unsigned last=tail?0xff:0x80;
         palette_setup(&memory,&cpu,&clock,offset,last);
+        /* Site admission reads the verified code image: bind this memory. */
+        g_fetch_memory=&memory;code_sites_invalidate();
         for(unsigned i=0;i<sizeof(sites)/sizeof(sites[0]);i++) {
             uint32_t word=read_word(&memory,sites[i]);
             assert(merge_kind_for(sites[i],word)!=MERGE_NONE);

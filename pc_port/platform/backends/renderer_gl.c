@@ -10,7 +10,10 @@
  * Features: 1024x512 VRAM texture + CPU mirror (Load/Store/MoveImage),
  * batched flat/gouraud/textured prims with 4/8/15-bit CLUT decode in the
  * shader, the four semi-transparency modes (STP-split for textured prims),
- * PS1 dithering (video.dither), internal resolution 1x-8x
+ * the E6 mask bit (alpha = bit 15; stencil for check-mask), render
+ * feedback (textures sampling drawn VRAM: GPU snapshots for 15-bit pages,
+ * readback for CLUT pages), PS1 dithering (video.dither), internal
+ * resolution 1x-8x
  * (video.internal_scale), hor+ widescreen from the projection/widescreen
  * state, HD texture replacement (upload_replacement), overlay text. */
 
@@ -42,8 +45,6 @@ typedef struct GlRenderer {
     int rgb24;                   /* 24-bit display (movies) */
     uint8_t *rgb24_buf;
     double image_aspect;
-    /* the part of the VRAM target drawn by prims (not uploads) */
-    int drawn, dx0, dy0, dx1, dy1;
     char err[512];
 } GlRenderer;
 
@@ -84,31 +85,10 @@ static void layout(GlRenderer *s) {
     }
 }
 
-static void note_drawn(GlRenderer *s) {
-    size_t i;
-    for (i = 0; i < s->batch.nc; i++) {
-        const BfmGlCmd *c = &s->batch.c[i];
-        int x1, y1;
-        if (c->target != BFM_GL_TARGET_VRAM || c->copy) continue;
-        x1 = c->rect.x + c->rect.w;
-        y1 = c->rect.y + c->rect.h;
-        if (!s->drawn) {
-            s->drawn = 1;
-            s->dx0 = c->rect.x; s->dy0 = c->rect.y; s->dx1 = x1; s->dy1 = y1;
-            continue;
-        }
-        if (c->rect.x < s->dx0) s->dx0 = c->rect.x;
-        if (c->rect.y < s->dy0) s->dy0 = c->rect.y;
-        if (x1 > s->dx1) s->dx1 = x1;
-        if (y1 > s->dy1) s->dy1 = y1;
-    }
-}
-
 static int flush(GlRenderer *s) {
     int r;
     if (!s->x) return BFM_PLAT_NOT_READY;
     bfm_gl_exec_sync_vram(s->x, &s->vram);
-    note_drawn(s);
     r = bfm_gl_exec_run(s->x, &s->batch, dither_on(s));
     bfm_gl_batch_clear(&s->batch);
     return r;
@@ -195,8 +175,9 @@ static int gl_output(void *self, const BfmPlatOutput *o) {
         BfmPlatRect all = {0, 0, BFM_GL_VRAM_W, BFM_GL_VRAM_H};
         if (bfm_gl_exec_set_scale(s->x, o->internal_scale) != BFM_PLAT_OK)
             return BFM_PLAT_ERROR;
-        /* targets were reallocated: repaint what uploads put in VRAM */
-        s->drawn = 0;
+        /* targets were reallocated: rendered pixels are gone, repaint what
+         * the mirror holds */
+        memset(s->batch.owner, 0, sizeof s->batch.owner);
         bfm_gl_batch_add_copy(&s->batch, &all);
     }
     if (o->fullscreen != s->out.fullscreen)
@@ -266,50 +247,14 @@ static int gl_upload_replacement(void *self, const BfmPlatRect *r,
     return BFM_PLAT_OK;
 }
 
-/* Pulls rendered pixels overlapping r back into the mirror first, so
- * StoreImage of a frame buffer sees what was drawn. */
-static void resolve(GlRenderer *s, const BfmPlatRect *r) {
-    uint16_t *tmp;
-    BfmPlatRect in;
-    int i, x0, y0, x1, y1;
-    for (i = -1; i < BFM_GL_SCENE_SLOTS; i++) {
-        int ox, oy, target;
-        if (i < 0) {
-            if (!s->drawn) continue;
-            x0 = s->dx0; y0 = s->dy0; x1 = s->dx1; y1 = s->dy1;
-            ox = oy = 0;
-            target = BFM_GL_TARGET_VRAM;
-        } else {
-            const BfmGlScene *sc = &s->batch.scene[i];
-            if (!sc->used) continue;
-            x0 = sc->x; y0 = sc->y;
-            x1 = sc->x + s->batch.disp.w; y1 = sc->y + s->batch.disp.h;
-            ox = sc->x - s->batch.margin;
-            oy = sc->y;
-            target = BFM_GL_TARGET_SCENE0 + i;
-        }
-        if (x0 < r->x) x0 = r->x;
-        if (y0 < r->y) y0 = r->y;
-        if (x1 > r->x + r->w) x1 = r->x + r->w;
-        if (y1 > r->y + r->h) y1 = r->y + r->h;
-        if (x0 >= x1 || y0 >= y1) continue;
-        in.x = (int16_t)(x0 - ox); in.y = (int16_t)(y0 - oy);
-        in.w = (int16_t)(x1 - x0); in.h = (int16_t)(y1 - y0);
-        if (!(tmp = (uint16_t *)malloc((size_t)in.w * in.h * 2u))) return;
-        if (bfm_gl_exec_readback(s->x, &s->batch, target, &in, tmp) == BFM_PLAT_OK) {
-            BfmPlatRect v;
-            v.x = (int16_t)x0; v.y = (int16_t)y0; v.w = in.w; v.h = in.h;
-            bfm_gl_vram_upload(&s->vram, &v, tmp);
-        }
-        free(tmp);
-    }
-}
-
 static int gl_download(void *self, const BfmPlatRect *r, uint16_t *px) {
     GlRenderer *s = (GlRenderer *)self;
     if (!s->x) return BFM_PLAT_NOT_READY;
+    /* rendered tiles in r are read back into the mirror first, so
+     * StoreImage/MoveImage of a frame buffer or render target see the
+     * drawn pixels, mask bits included */
+    bfm_gl_batch_add_resolve(&s->batch, r);
     flush(s);
-    resolve(s, r);
     return bfm_gl_vram_download(&s->vram, r, px);
 }
 

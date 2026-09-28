@@ -16,6 +16,7 @@
 #define _GNU_SOURCE
 #include "musashi_boot_memory.h"
 #include "musashi_native_lane.h"
+#include "musashi_native_lane_psyq.h"
 
 #include <signal.h>
 #include <stdio.h>
@@ -138,7 +139,8 @@ int main(int argc, char **argv) {
     MusashiBootMemory *memory;
     uint8_t *image, *reference, *exe;
     FILE *file;
-    size_t exe_size, i;
+    size_t exe_size, i, table_count = 0;
+    MusashiNativeLaneEntry *table;
     unsigned counts[6] = {0}, functions_same = 0, functions_bad = 0;
     const char *only = getenv("MUSASHI_LANE_PROBE_ONLY");
     if (argc != 2) {
@@ -160,8 +162,14 @@ int main(int argc, char **argv) {
         fprintf(stderr, "native_lane: pinned EXE rejected\n");
         return 1;
     }
-    if (musashi_native_lane_install(musashi_native_lane_generated,
-                                    musashi_native_lane_generated_count) < 0) {
+    /* Generated decomp C plus port-plat's pure PsyQ wrappers (no GTE owner
+     * here, so the GTE-state wrappers refuse and prove only the fallback). */
+    table = musashi_native_lane_psyq_merge(musashi_native_lane_generated,
+                                           musashi_native_lane_generated_count,
+                                           MUSASHI_PSYQ_LANE_PURE, &table_count);
+    if (!table) return 1;
+    musashi_native_lane_psyq_bind(memory, NULL);
+    if (musashi_native_lane_install(table, table_count) < 0) {
         fprintf(stderr, "native_lane: table rejected\n");
         return 1;
     }
@@ -173,8 +181,8 @@ int main(int argc, char **argv) {
     reference = malloc(MUSASHI_RAM_SIZE);
     if (!image || !reference) return 1;
     memcpy(image, memory->bytes, MUSASHI_RAM_SIZE);
-    for (i = 0; i < musashi_native_lane_generated_count; ++i) {
-        const MusashiNativeLaneEntry *entry = &musashi_native_lane_generated[i];
+    for (i = 0; i < table_count; ++i) {
+        const MusashiNativeLaneEntry *entry = &table[i];
         unsigned pattern, same = 0, bad = 0;
         if (only && strtoul(only, NULL, 16) != entry->guest_pc) continue;
         for (pattern = 0; pattern < PATTERNS; ++pattern) {
@@ -221,9 +229,9 @@ int main(int argc, char **argv) {
         functions_same += same && !bad;
         functions_bad += bad != 0;
     }
-    printf("native_lane: entries=%zu cases same=%u different=%u native_failed=%u not_comparable=%u "
+    printf("native_lane: entries=%zu psyq=%zu cases same=%u different=%u native_failed=%u not_comparable=%u "
            "mirror_fault=%u wrap_fault=%u functions_verified=%u functions_bad=%u\n",
-           musashi_native_lane_generated_count, counts[SAME], counts[DIFFERENT],
+           table_count, table_count - musashi_native_lane_generated_count, counts[SAME], counts[DIFFERENT],
            counts[NATIVE_FAILED], counts[NOT_COMPARABLE], counts[MIRROR_FAULT], counts[WRAP_FAULT],
            functions_same, functions_bad);
     return functions_bad ? 1 : 0;

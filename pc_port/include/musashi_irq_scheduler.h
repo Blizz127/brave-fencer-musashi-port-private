@@ -39,6 +39,8 @@ typedef struct MusashiPsyCrossIrqScheduler {
     int installed;
     int delivering;
     int pumping;
+    /* Why the last dispatch refused (static string), for diagnostics. */
+    const char *fault_reason;
     uint64_t owner_thread;
     uint64_t source_vblanks; /* Owner-consumed source count, not deliveries. */
     uint32_t pending_vblanks; /* Protected by PsyCross source mutex. */

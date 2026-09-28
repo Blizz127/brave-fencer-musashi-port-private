@@ -96,7 +96,19 @@ typedef struct MusashiGpuController {
     /* Pending GP0 polygon/sprite packet. Reset 00/01 discards it. */
     uint8_t prim_needed, prim_got;
     uint32_t prim_data[12];
+    /* Optional tee for the bfm_plat GPU bridge (pc_port/platform/
+     * bfm_plat_gpu_bridge.h): every GP0/GP1 port write is passed on before
+     * it is processed. With raster_disabled set, draw commands are parsed
+     * and retired as usual but not rasterised (FIFO, GPUSTAT, fills and
+     * VRAM transfers are unchanged). Both default to off (zeroed). */
+    int (*tap)(void *userdata, uint32_t address, uint32_t value);
+    void *tap_userdata;
+    int raster_disabled;
     uint64_t drawn_pixels;
+    /* Semi-transparency of the primitive being rasterized (psx-spx GPU):
+     * semi = command bit 1; semi_mode = abr 0..3; semi_textured = blend only
+     * texels whose bit 15 (STP) is set. */
+    uint8_t semi, semi_mode, semi_textured;
 } MusashiGpuController;
 
 /* Derive and validate a checked descriptor in place. The helper masks no

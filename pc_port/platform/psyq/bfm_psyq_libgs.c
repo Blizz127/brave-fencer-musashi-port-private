@@ -138,10 +138,9 @@ int bfm_psyq_GsMapModelingData(uint32_t *r) {
     if ((int32_t)count > 0 && !g(table, count * 28u)) return 0;
     put32(p, flags | 1u);
     for (i = 0; (int32_t)i < (int32_t)count; i++) {
-        uint32_t e = table + i * 28u, v;
-        get32(e, &v); put32(e, v + table);
-        get32(e + 8, &v); put32(e + 8, v + table);
-        get32(e + 16, &v); put32(e + 16, v + table);
+        uint32_t e = table + i * 28u, v = 0, k;
+        for (k = 0; k < 24u; k += 8u)   /* vert_top, normal_top, primitive_top */
+            if (get32(e + k, &v)) put32(e + k, v + table);
     }
     return 1;
 }

@@ -29,6 +29,7 @@
 #include "psx/libgte.h"
 #include "psx/libgpu.h"
 #include "psx/libetc.h"
+void musashi_psyx_shutdown(void); /* pc_port/psyx_shutdown.cpp */
 
 #define SCREEN_W 320
 #define SCREEN_H 240
@@ -173,14 +174,14 @@ int main(int argc, char **argv) {
         || !sample(read_pixels, 8, 8, &outside)) {
         fputs("musashi_render_quad: could not read the framebuffer\n", stderr);
         PsyX_EndScene();
-        PsyX_Shutdown();
+        musashi_psyx_shutdown();
         return 1;
     }
 
     if (screenshot_path != 0 && !save_screenshot(read_pixels, screenshot_path)) {
         fprintf(stderr, "musashi_render_quad: could not write %s\n", screenshot_path);
         PsyX_EndScene();
-        PsyX_Shutdown();
+        musashi_psyx_shutdown();
         return 1;
     }
 
@@ -189,6 +190,6 @@ int main(int argc, char **argv) {
     fflush(stdout);
 
     PsyX_EndScene();
-    PsyX_Shutdown();
+    musashi_psyx_shutdown();
     return 0;
 }

@@ -57,6 +57,11 @@ int musashi_native_lane_install(const MusashiNativeLaneEntry *entries,
  * MUSASHI_NATIVE_LANE_GUEST_BASE for this memory. */
 int musashi_native_lane_usable(const MusashiBootMemory *memory);
 
+/* Nesting suspension: while suspended, every PC runs on the interpreter.
+ * Host routers whose checks count interpreted calls (the IRQ dispatcher)
+ * suspend the lane for their duration. */
+void musashi_native_lane_suspend(int suspend);
+
 /* Interpreter thunk for natively compiled code: call guest function target
  * with argc words (a0-a3, then guest stack), on the invoking CPU and its
  * run loop, and return v0 (v1 through *v1 when non-NULL). A refusal inside
@@ -78,6 +83,8 @@ int musashi_native_lane_reference_call(MusashiBootMemory *memory, uint32_t targe
  * for jal/jalr targets and CPU dispatch entries; exposed for host routers
  * that enter guest code without a jal. kind: 'j' jal, 'r' jalr, 'd' entry. */
 void musashi_trace_function_entry(uint32_t target, uint32_t caller, char kind);
+/* Write <path>.counts now (it is also written at exit). */
+void musashi_trace_function_flush(void);
 
 /* Guest function-entry hook for the platform layer (bfm_plat hook sites,
  * mods): called once when execution reaches a jal/jalr target, after the

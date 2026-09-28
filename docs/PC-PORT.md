@@ -555,14 +555,28 @@ into a binary.
   mutation tests push edits through `_sync_code_image`
   (`MUSASHI_CODE_IMAGE_MUTANT=1`, test-only).
 
-Still carrying retail words (follow-up): about 1.5k per-site admission
-pairs (pc plus exact word) for merge/GTE/DIV sites and about 100
-`instruction == 0x...` guards in `mips_formatter.c`, redundant now that the
-words come from the hash-checked image; and 21 BIOS-kernel words in
-`bios_exception.c`. Pytest-only white-box probes that seeded RAM from the
-compiled overlay tables (`carve_site`, `pvd_merge`, `gte_transform`,
-`input_digital_irq`, `file_loader_entry`, `overlay_identity`, `sc02_entry`)
-still need their overlay words from the local disc extract.
+No retail words remain in the port sources:
+- **Site admission** (merge/retire, GTE, DIV/SRAV and the other per-site
+  tables, 1,685 rows; 73 pc-bound guards) keeps only PCs plus a site-group
+  id. `code_site(pc, group, instruction)` admits an instruction only if it
+  equals the word the verified image holds at that PC *and* the group's
+  FNV-1a 64 digest (over the image words at the group's PCs) matches, so
+  a different overlay member or a changed word refuses exactly as the old
+  word comparison did. 203 groups (image set x 256-byte window) over
+  1,470 PCs, verified on every lookup (at most 64 words).
+- **Generic checks** (a call to a named target, `jr`/`jalr`, `syscall`,
+  a few load/store forms) use MIPS field encoders (`MIPS_JAL`, `MIPS_I`...).
+- The 16-entry **switch jump-table copy** (8003C5EC/8003C6B4) is case-body
+  arithmetic; member **signatures** in native_boot and the SC01/SC02
+  identity are digests.
+- **bios_exception.c** carries no BIOS code: the handler/continuation come
+  from the user's ROM when supplied, else zero stand-ins (exception entry is
+  serviced natively and never executes them); the game's own PATCHGTE
+  handler is recognised by digest.
+- CTest `retail_content_guard` runs `tools/retail_guard.py` over the shipped
+  outputs (native boot, port libraries, lane archive) against the local EXE
+  and every MAIN.CD member; it passes with the lane off and on and skips
+  without a disc.
 
 ## PsyQ exclusion (2026-09-28)
 
@@ -684,6 +698,38 @@ fail-closed stop the interpreter gives.
 
 The existing bespoke bindings (`MUSASHI_NATIVE_*` defines) are unchanged;
 their files are excluded from the table.
+
+**Host-sequenced PCs stay interpreted.** native_boot drives startup and
+observes the game at specific guest PCs (`run_startup_cpu_loop`'s
+observer list, the formatter's `cpu->pc ==` gates and named ranges such as
+`STARTUP_ENTRY`). A function whose body holds one of those PCs is refused
+by the generator (`hooks` rule, which resolves enum names too), and PsyQ
+entries whose body holds one are listed in `musashi_native_lane_hooked_psyq`
+and skipped. The IRQ dispatcher suspends the lane
+(`musashi_native_lane_suspend`), so IRQ callbacks are always interpreted.
+
+**PsyQ entries (port-plat's compat table).** `pc_port/native_lane_psyq.c`
+installs the non-STUB rows of `pc_port/platform/psyq/bfm_psyq_compat.def`
+next to the generated entries and binds guest RAM, the scratchpad and the
+GTE bridge (`musashi_gte_owner_native_begin/_end`, which take the cop2 lease
+for the call). `MUSASHI_PSYQ_LANE` selects the classes:
+
+| value | installed |
+|---|---|
+| unset, `pure` | libc, packet helpers, OT clear, CD position maths, GTE-state libgte |
+| `all` | pure + VSync, DrawSync, DrawOTag, Load/Store/MoveImage, Put{Draw,Disp}Env, SetDispMask, CdSearchFile, putchar; only with `MUSASHI_GPU=bfm_plat` (otherwise pure) |
+| `0` | none |
+
+Rows the differential probe found to differ from the retail code are held
+back by PC (`kHeldBack`, with the reason). A wrapper that refuses leaves the
+interpreter to run the retail code, as does every table-backed PsyCross
+wrapper (ratan2, RotMatrixX/Y/Z/YXZ) unless `BFM_PSYQ_PSYCROSS_ROTMATRIX`:
+PsyCross's tables equal the game's, and linking them would put retail bytes
+in the binary.
+
+Bisecting: `MUSASHI_NATIVE_LANE_RANGE=lo-hi` (hex, hi exclusive) keeps only
+those guest PCs, and `MUSASHI_NATIVE_LANE_DENY=pc,pc,...` drops PCs. The
+tracer (`MUSASHI_TRACE_FUNCS`) marks each entry `native` or `interp`.
 
 ### Memory model: guest RAM at host 0x80000000 (design (a))
 

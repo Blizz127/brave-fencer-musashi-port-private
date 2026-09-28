@@ -107,7 +107,7 @@ int musashi_cpu_status_write_source(MusashiCpuStatus *o,
         (value != o->state.sr && value != (o->state.sr | UINT32_C(0x40000000)) &&
          /* PSX SwC has no observed cache effect; preserve its status bit.
           * Authority: psx-spx CPU specifications, cop0r12 bit 17. */
-         !(c->pc == 0x800d3534u && c->instruction == 0x40896000u &&
+         !(c->pc == 0x800d3534u && c->instruction == ((0x10u << 26) | (4u << 21) | (9u << 16) | (12u << 11)) /* mtc0 $9, $12 */ &&
            value == (o->state.sr | UINT32_C(0x00020000)))))
         return refuse(o);
     o->state.sr = value; return leave(o, 1);
