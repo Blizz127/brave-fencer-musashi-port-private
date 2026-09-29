@@ -82,7 +82,7 @@ Shadowing:
 | D-004 | Memory cards are always disconnected. Saving and loading are unavailable, and the game takes its no-card path. | `pc_port/sio_controller.c` (`disconnected_cards = 1`) | No card image backend yet. | open |
 | D-005 | `MUSASHI_DEBUG_FORCE=1` (debug switch) pokes guest RAM after SCENE1_REACHED: player+0x4D 2 → 1 (control unlock), 0x800B99F0 = 9 (game mode), player+0xA9 = 0x41 (pad type). It prints a DIVERGENCE line at startup and once per poke. | `native_boot.c` (b3b33befd) | Debugging only. | opt-in (off by default) |
 | D-006 | `MUSASHI_GAMEPLAY_ACTION` (scripted test driver) writes pad words straight into guest RAM in gameplay (player +0xAA/+0xAC/+0xAE, 0x80078DCA, 0x80078DD2) and writes 0x800AE658. It prints a DIVERGENCE line when set (a6e3766f9). | `native_boot.c` | Automated gameplay tests. | opt-in (off by default) |
-| D-007 | **Unknown cause:** why the player's pad-type byte (+0xA9) needed forcing to 0x41 for control. The D-003 override returned the retail value for port 1, so it does not explain this by itself. Any explanation so far is a hypothesis. Port-int is running a lane-on no-force gameplay proof. | pad/SIO path | Not yet known. | open (untested) |
+| D-007 | ~~Unknown cause of the pad-type byte (+0xA9) forcing.~~ **Resolved:** the game itself writes player+0xA9 = 0x73 (analog). The port's SIO pad emulates a DualShock: the game's 0x43 config command switches it to analog and it reports ID 0x73; BFM supports the DualShock. The removed 0x41 poke (D-001) forced "digital pad" and masked the correct DualShock behaviour; it was not covering a pad-emulation bug. Evidence: port-int's lane-on, no-force gameplay run on port/native-lane. Still under observation in that run: whether the game unlocks control (+0x4D 2 → 1) by itself. | pad/SIO path | | closed (the +0x4D unlock is still being observed) |
 
 ## Timing
 
@@ -147,4 +147,14 @@ These change retail behaviour only when a user asks for them:
 
 ## Closed
 
-(none yet)
+- D-007: the +0xA9 pad type. The game writes 0x73 (DualShock analog)
+  itself; see the table entry.
+- Native-lane correctness fixes found on the way to gameplay (all on
+  port/native-lane). Each was a case where native execution was not 1:1
+  and could crash or diverge:
+  - 557d4a171: guest-clock host-VBlank overflow;
+  - 522b7b6c7: the scratchpad mapped at 0x1F800000 for native code;
+  - a232c39c1: bodies that load device-register pointers from globals
+    are refused, since they would dereference a device address on the
+    host. This hit main_0003's 800D2E64, 800D2EF8 and 800D30B8;
+  - 75e6700c1: a scratchpad-resident stack in the lane's o32 adapter.
