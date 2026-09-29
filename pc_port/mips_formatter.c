@@ -643,6 +643,117 @@ _Static_assert(sizeof(kOverlay0010_800CFE60Words) / sizeof(uint32_t) == 237, "ov
 static const uint32_t kOverlay0010_800CF94CWords[17]; /* shape only: 17 words, fetched from guest RAM */
 _Static_assert(sizeof(kOverlay0010_800CF94CWords) / sizeof(uint32_t) == 17,
                "overlay 0010 800CF94C source span changed");
+/* The rest of member 0010, admitted whole: every function in it is
+ * registered byte-exact C (provenance/matches.json, main_0010), and the
+ * opening scene reaches 800CF990 through the mode 0x13 dispatch. */
+static const uint32_t kOverlay0010_800CF104AdmWords[72]; /* shape only: 72 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800CF224AdmWords[5]; /* shape only: 5 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800CF238AdmWords[73]; /* shape only: 73 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800CF35CAdmWords[5]; /* shape only: 5 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800CF804AdmWords[5]; /* shape only: 5 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800CF818AdmWords[5]; /* shape only: 5 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800CF82CAdmWords[5]; /* shape only: 5 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800CF840AdmWords[5]; /* shape only: 5 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800CF854AdmWords[4]; /* shape only: 4 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800CF864AdmWords[20]; /* shape only: 20 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800CF990AdmWords[80]; /* shape only: 80 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800CFAD0AdmWords[59]; /* shape only: 59 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D0214AdmWords[43]; /* shape only: 43 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D02C0AdmWords[4]; /* shape only: 4 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D02D0AdmWords[110]; /* shape only: 110 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D0588AdmWords[24]; /* shape only: 24 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D05E8AdmWords[18]; /* shape only: 18 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D0630AdmWords[11]; /* shape only: 11 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D065CAdmWords[14]; /* shape only: 14 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D0694AdmWords[14]; /* shape only: 14 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D06CCAdmWords[7]; /* shape only: 7 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D06E8AdmWords[344]; /* shape only: 344 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D0C48AdmWords[11]; /* shape only: 11 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D0C74AdmWords[11]; /* shape only: 11 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D0CA0AdmWords[16]; /* shape only: 16 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D0CE0AdmWords[39]; /* shape only: 39 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D0D7CAdmWords[45]; /* shape only: 45 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D0E30AdmWords[37]; /* shape only: 37 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D0EC4AdmWords[18]; /* shape only: 18 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D0F0CAdmWords[16]; /* shape only: 16 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D0F4CAdmWords[16]; /* shape only: 16 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D0F8CAdmWords[21]; /* shape only: 21 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D0FE0AdmWords[8]; /* shape only: 8 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D1000AdmWords[10]; /* shape only: 10 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D1028AdmWords[11]; /* shape only: 11 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D1054AdmWords[9]; /* shape only: 9 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D1078AdmWords[9]; /* shape only: 9 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D109CAdmWords[11]; /* shape only: 11 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D10C8AdmWords[9]; /* shape only: 9 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D10ECAdmWords[65]; /* shape only: 65 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D11F0AdmWords[39]; /* shape only: 39 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D128CAdmWords[243]; /* shape only: 243 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D1658AdmWords[47]; /* shape only: 47 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D1714AdmWords[4]; /* shape only: 4 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D1724AdmWords[4]; /* shape only: 4 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D1734AdmWords[4]; /* shape only: 4 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D1744AdmWords[4]; /* shape only: 4 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D1754AdmWords[25]; /* shape only: 25 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D17B8AdmWords[41]; /* shape only: 41 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D185CAdmWords[32]; /* shape only: 32 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D18DCAdmWords[23]; /* shape only: 23 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D1938AdmWords[19]; /* shape only: 19 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D1984AdmWords[22]; /* shape only: 22 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D19DCAdmWords[5]; /* shape only: 5 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D19F0AdmWords[72]; /* shape only: 72 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D1B10AdmWords[28]; /* shape only: 28 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D1B80AdmWords[22]; /* shape only: 22 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D1BD8AdmWords[8]; /* shape only: 8 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D1BF8AdmWords[75]; /* shape only: 75 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D1D24AdmWords[28]; /* shape only: 28 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D1D94AdmWords[7]; /* shape only: 7 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D1DB0AdmWords[28]; /* shape only: 28 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D1E20AdmWords[2]; /* shape only: 2 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D1E28AdmWords[37]; /* shape only: 37 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D1EBCAdmWords[39]; /* shape only: 39 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D1F58AdmWords[14]; /* shape only: 14 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D1F90AdmWords[14]; /* shape only: 14 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D1FC8AdmWords[62]; /* shape only: 62 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D222CAdmWords[26]; /* shape only: 26 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D2294AdmWords[20]; /* shape only: 20 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D2318AdmWords[46]; /* shape only: 46 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D2460AdmWords[2]; /* shape only: 2 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D2468AdmWords[14]; /* shape only: 14 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D24A0AdmWords[87]; /* shape only: 87 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D25FCAdmWords[10]; /* shape only: 10 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D2624AdmWords[11]; /* shape only: 11 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D2650AdmWords[99]; /* shape only: 99 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D27DCAdmWords[135]; /* shape only: 135 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D29F8AdmWords[172]; /* shape only: 172 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D2CA8AdmWords[26]; /* shape only: 26 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D2D10AdmWords[39]; /* shape only: 39 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D2DACAdmWords[20]; /* shape only: 20 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D2DFCAdmWords[9]; /* shape only: 9 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D2E20AdmWords[19]; /* shape only: 19 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D2E6CAdmWords[31]; /* shape only: 31 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D2EE8AdmWords[9]; /* shape only: 9 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D2F0CAdmWords[15]; /* shape only: 15 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D2F48AdmWords[17]; /* shape only: 17 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D2F8CAdmWords[9]; /* shape only: 9 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D2FB0AdmWords[15]; /* shape only: 15 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D2FECAdmWords[16]; /* shape only: 16 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D302CAdmWords[31]; /* shape only: 31 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D30A8AdmWords[8]; /* shape only: 8 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D30C8AdmWords[15]; /* shape only: 15 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D3104AdmWords[7]; /* shape only: 7 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D3120AdmWords[31]; /* shape only: 31 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D319CAdmWords[9]; /* shape only: 9 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D31C0AdmWords[15]; /* shape only: 15 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D31FCAdmWords[15]; /* shape only: 15 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D3238AdmWords[15]; /* shape only: 15 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D3274AdmWords[24]; /* shape only: 24 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D32D4AdmWords[21]; /* shape only: 21 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D3328AdmWords[8]; /* shape only: 8 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D3348AdmWords[15]; /* shape only: 15 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D3384AdmWords[5]; /* shape only: 5 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D3398AdmWords[8]; /* shape only: 8 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D33B8AdmWords[10]; /* shape only: 10 words, fetched from guest RAM */
+static const uint32_t kOverlay0010_800D33E0AdmWords[10]; /* shape only: 10 words, fetched from guest RAM */
 static const uint32_t kOverlaySc02_80128420Words[38]; /* shape only: 38 words, fetched from guest RAM */
 static const uint32_t kOverlaySc02_80129220Words[10]; /* shape only: 10 words, fetched from guest RAM */
 static const uint32_t kOverlaySc02_80129248Words[4]; /* shape only: 4 words, fetched from guest RAM */
@@ -2755,6 +2866,10 @@ static const uint32_t kOverlaySc01_CodeWords[128483]; /* shape only: 128483 word
 /* SC01.CD member 1: the Allucaneet castle interior the New Game opening
  * (member 0) fades into. Both load at 80128158. */
 static const uint32_t kOverlaySc01Member1CodeWords[207899]; /* shape only: 207899 words, fetched from guest RAM */
+/* SC01.CD member 77: the opening scene continues in it after the mode 7
+ * transition; its second player script releases control (retail observation,
+ * 2026-09-29: 80147060 called from 8017E090). Also loads at 80128158. */
+static const uint32_t kOverlaySc01Member77CodeWords[182901]; /* shape only: 182901 words, fetched from guest RAM */
 /* The SC01 lane (g_overlay_sc01_0000_words) executes whichever member image
  * sc01_entry_matches found resident; every fetched word is still compared
  * with guest RAM before it runs. */
@@ -5617,22 +5732,130 @@ static const FormatterRange kFormatterRanges4[] = {
 
 static const FormatterRange kFormatterRanges5[] = {
     { 0x800cedfcu, 0x800cf104u, kOverlay0010_800CEDFCWords },
+    { 0x800cf104u, 0x800cf224u, kOverlay0010_800CF104AdmWords },
+    { 0x800cf224u, 0x800cf238u, kOverlay0010_800CF224AdmWords },
+    { 0x800cf238u, 0x800cf35cu, kOverlay0010_800CF238AdmWords },
+    { 0x800cf35cu, 0x800cf370u, kOverlay0010_800CF35CAdmWords },
     { 0x800cf370u, 0x800cf398u, kOverlay0010_800CF370Words },
     { 0x800cf398u, 0x800cf3b8u, kOverlay0010_800CF398Words },
     { 0x800cf3b8u, 0x800cf47cu, kOverlay0010_800CF3B8Words },
     { 0x800cf47cu, 0x800cf4d4u, kOverlay0010_800CF47CWords },
     { 0x800cf4d4u, 0x800cf804u, kOverlay0010_800CF4D4Words },
+    { 0x800cf804u, 0x800cf818u, kOverlay0010_800CF804AdmWords },
+    { 0x800cf818u, 0x800cf82cu, kOverlay0010_800CF818AdmWords },
+    { 0x800cf82cu, 0x800cf840u, kOverlay0010_800CF82CAdmWords },
+    { 0x800cf840u, 0x800cf854u, kOverlay0010_800CF840AdmWords },
+    { 0x800cf854u, 0x800cf864u, kOverlay0010_800CF854AdmWords },
+    { 0x800cf864u, 0x800cf8b4u, kOverlay0010_800CF864AdmWords },
     { 0x800cf8b4u, 0x800cf8ccu, kOverlay0010_800CF8B4Words },
     { 0x800cf8ccu, 0x800cf8e4u, kOverlay0010_800CF8CCWords },
     { 0x800cf8e4u, 0x800cf94cu, kOverlay0010_800CF8E4Words },
     { 0x800cf94cu, 0x800cf990u, kOverlay0010_800CF94CWords },
+    { 0x800cf990u, 0x800cfad0u, kOverlay0010_800CF990AdmWords },
+    { 0x800cfad0u, 0x800cfbbcu, kOverlay0010_800CFAD0AdmWords },
     { 0x800cfbbcu, 0x800cfbccu, kOverlay0010_800CFBBCWords },
     { 0x800cfbccu, 0x800cfbe8u, kOverlay0010_800CFBCCWords },
     { 0x800cfbe8u, 0x800cfbf8u, kOverlay0010_800CFBE8Words },
     { 0x800cfbf8u, 0x800cfde8u, kOverlay0010_800CFBF8Words },
     { 0x800cfde8u, 0x800cfe60u, kOverlay0010_800CFDE8Words },
     { 0x800cfe60u, 0x800d0214u, kOverlay0010_800CFE60Words },
+    { 0x800d0214u, 0x800d02c0u, kOverlay0010_800D0214AdmWords },
+    { 0x800d02c0u, 0x800d02d0u, kOverlay0010_800D02C0AdmWords },
+    { 0x800d02d0u, 0x800d0488u, kOverlay0010_800D02D0AdmWords },
     { 0x800d0488u, 0x800d0588u, kOverlay0010_800D0488Words },
+    { 0x800d0588u, 0x800d05e8u, kOverlay0010_800D0588AdmWords },
+    { 0x800d05e8u, 0x800d0630u, kOverlay0010_800D05E8AdmWords },
+    { 0x800d0630u, 0x800d065cu, kOverlay0010_800D0630AdmWords },
+    { 0x800d065cu, 0x800d0694u, kOverlay0010_800D065CAdmWords },
+    { 0x800d0694u, 0x800d06ccu, kOverlay0010_800D0694AdmWords },
+    { 0x800d06ccu, 0x800d06e8u, kOverlay0010_800D06CCAdmWords },
+    { 0x800d06e8u, 0x800d0c48u, kOverlay0010_800D06E8AdmWords },
+    { 0x800d0c48u, 0x800d0c74u, kOverlay0010_800D0C48AdmWords },
+    { 0x800d0c74u, 0x800d0ca0u, kOverlay0010_800D0C74AdmWords },
+    { 0x800d0ca0u, 0x800d0ce0u, kOverlay0010_800D0CA0AdmWords },
+    { 0x800d0ce0u, 0x800d0d7cu, kOverlay0010_800D0CE0AdmWords },
+    { 0x800d0d7cu, 0x800d0e30u, kOverlay0010_800D0D7CAdmWords },
+    { 0x800d0e30u, 0x800d0ec4u, kOverlay0010_800D0E30AdmWords },
+    { 0x800d0ec4u, 0x800d0f0cu, kOverlay0010_800D0EC4AdmWords },
+    { 0x800d0f0cu, 0x800d0f4cu, kOverlay0010_800D0F0CAdmWords },
+    { 0x800d0f4cu, 0x800d0f8cu, kOverlay0010_800D0F4CAdmWords },
+    { 0x800d0f8cu, 0x800d0fe0u, kOverlay0010_800D0F8CAdmWords },
+    { 0x800d0fe0u, 0x800d1000u, kOverlay0010_800D0FE0AdmWords },
+    { 0x800d1000u, 0x800d1028u, kOverlay0010_800D1000AdmWords },
+    { 0x800d1028u, 0x800d1054u, kOverlay0010_800D1028AdmWords },
+    { 0x800d1054u, 0x800d1078u, kOverlay0010_800D1054AdmWords },
+    { 0x800d1078u, 0x800d109cu, kOverlay0010_800D1078AdmWords },
+    { 0x800d109cu, 0x800d10c8u, kOverlay0010_800D109CAdmWords },
+    { 0x800d10c8u, 0x800d10ecu, kOverlay0010_800D10C8AdmWords },
+    { 0x800d10ecu, 0x800d11f0u, kOverlay0010_800D10ECAdmWords },
+    { 0x800d11f0u, 0x800d128cu, kOverlay0010_800D11F0AdmWords },
+    { 0x800d128cu, 0x800d1658u, kOverlay0010_800D128CAdmWords },
+    { 0x800d1658u, 0x800d1714u, kOverlay0010_800D1658AdmWords },
+    { 0x800d1714u, 0x800d1724u, kOverlay0010_800D1714AdmWords },
+    { 0x800d1724u, 0x800d1734u, kOverlay0010_800D1724AdmWords },
+    { 0x800d1734u, 0x800d1744u, kOverlay0010_800D1734AdmWords },
+    { 0x800d1744u, 0x800d1754u, kOverlay0010_800D1744AdmWords },
+    { 0x800d1754u, 0x800d17b8u, kOverlay0010_800D1754AdmWords },
+    { 0x800d17b8u, 0x800d185cu, kOverlay0010_800D17B8AdmWords },
+    { 0x800d185cu, 0x800d18dcu, kOverlay0010_800D185CAdmWords },
+    { 0x800d18dcu, 0x800d1938u, kOverlay0010_800D18DCAdmWords },
+    { 0x800d1938u, 0x800d1984u, kOverlay0010_800D1938AdmWords },
+    { 0x800d1984u, 0x800d19dcu, kOverlay0010_800D1984AdmWords },
+    { 0x800d19dcu, 0x800d19f0u, kOverlay0010_800D19DCAdmWords },
+    { 0x800d19f0u, 0x800d1b10u, kOverlay0010_800D19F0AdmWords },
+    { 0x800d1b10u, 0x800d1b80u, kOverlay0010_800D1B10AdmWords },
+    { 0x800d1b80u, 0x800d1bd8u, kOverlay0010_800D1B80AdmWords },
+    { 0x800d1bd8u, 0x800d1bf8u, kOverlay0010_800D1BD8AdmWords },
+    { 0x800d1bf8u, 0x800d1d24u, kOverlay0010_800D1BF8AdmWords },
+    { 0x800d1d24u, 0x800d1d94u, kOverlay0010_800D1D24AdmWords },
+    { 0x800d1d94u, 0x800d1db0u, kOverlay0010_800D1D94AdmWords },
+    { 0x800d1db0u, 0x800d1e20u, kOverlay0010_800D1DB0AdmWords },
+    { 0x800d1e20u, 0x800d1e28u, kOverlay0010_800D1E20AdmWords },
+    { 0x800d1e28u, 0x800d1ebcu, kOverlay0010_800D1E28AdmWords },
+    { 0x800d1ebcu, 0x800d1f58u, kOverlay0010_800D1EBCAdmWords },
+    { 0x800d1f58u, 0x800d1f90u, kOverlay0010_800D1F58AdmWords },
+    { 0x800d1f90u, 0x800d1fc8u, kOverlay0010_800D1F90AdmWords },
+    { 0x800d1fc8u, 0x800d20c0u, kOverlay0010_800D1FC8AdmWords },
+    { 0x800d222cu, 0x800d2294u, kOverlay0010_800D222CAdmWords },
+    { 0x800d2294u, 0x800d22e4u, kOverlay0010_800D2294AdmWords },
+    { 0x800d2318u, 0x800d23d0u, kOverlay0010_800D2318AdmWords },
+    { 0x800d2460u, 0x800d2468u, kOverlay0010_800D2460AdmWords },
+    { 0x800d2468u, 0x800d24a0u, kOverlay0010_800D2468AdmWords },
+    { 0x800d24a0u, 0x800d25fcu, kOverlay0010_800D24A0AdmWords },
+    { 0x800d25fcu, 0x800d2624u, kOverlay0010_800D25FCAdmWords },
+    { 0x800d2624u, 0x800d2650u, kOverlay0010_800D2624AdmWords },
+    { 0x800d2650u, 0x800d27dcu, kOverlay0010_800D2650AdmWords },
+    { 0x800d27dcu, 0x800d29f8u, kOverlay0010_800D27DCAdmWords },
+    { 0x800d29f8u, 0x800d2ca8u, kOverlay0010_800D29F8AdmWords },
+    { 0x800d2ca8u, 0x800d2d10u, kOverlay0010_800D2CA8AdmWords },
+    { 0x800d2d10u, 0x800d2dacu, kOverlay0010_800D2D10AdmWords },
+    { 0x800d2dacu, 0x800d2dfcu, kOverlay0010_800D2DACAdmWords },
+    { 0x800d2dfcu, 0x800d2e20u, kOverlay0010_800D2DFCAdmWords },
+    { 0x800d2e20u, 0x800d2e6cu, kOverlay0010_800D2E20AdmWords },
+    { 0x800d2e6cu, 0x800d2ee8u, kOverlay0010_800D2E6CAdmWords },
+    { 0x800d2ee8u, 0x800d2f0cu, kOverlay0010_800D2EE8AdmWords },
+    { 0x800d2f0cu, 0x800d2f48u, kOverlay0010_800D2F0CAdmWords },
+    { 0x800d2f48u, 0x800d2f8cu, kOverlay0010_800D2F48AdmWords },
+    { 0x800d2f8cu, 0x800d2fb0u, kOverlay0010_800D2F8CAdmWords },
+    { 0x800d2fb0u, 0x800d2fecu, kOverlay0010_800D2FB0AdmWords },
+    { 0x800d2fecu, 0x800d302cu, kOverlay0010_800D2FECAdmWords },
+    { 0x800d302cu, 0x800d30a8u, kOverlay0010_800D302CAdmWords },
+    { 0x800d30a8u, 0x800d30c8u, kOverlay0010_800D30A8AdmWords },
+    { 0x800d30c8u, 0x800d3104u, kOverlay0010_800D30C8AdmWords },
+    { 0x800d3104u, 0x800d3120u, kOverlay0010_800D3104AdmWords },
+    { 0x800d3120u, 0x800d319cu, kOverlay0010_800D3120AdmWords },
+    { 0x800d319cu, 0x800d31c0u, kOverlay0010_800D319CAdmWords },
+    { 0x800d31c0u, 0x800d31fcu, kOverlay0010_800D31C0AdmWords },
+    { 0x800d31fcu, 0x800d3238u, kOverlay0010_800D31FCAdmWords },
+    { 0x800d3238u, 0x800d3274u, kOverlay0010_800D3238AdmWords },
+    { 0x800d3274u, 0x800d32d4u, kOverlay0010_800D3274AdmWords },
+    { 0x800d32d4u, 0x800d3328u, kOverlay0010_800D32D4AdmWords },
+    { 0x800d3328u, 0x800d3348u, kOverlay0010_800D3328AdmWords },
+    { 0x800d3348u, 0x800d3384u, kOverlay0010_800D3348AdmWords },
+    { 0x800d3384u, 0x800d3398u, kOverlay0010_800D3384AdmWords },
+    { 0x800d3398u, 0x800d33b8u, kOverlay0010_800D3398AdmWords },
+    { 0x800d33b8u, 0x800d33e0u, kOverlay0010_800D33B8AdmWords },
+    { 0x800d33e0u, 0x800d3408u, kOverlay0010_800D33E0AdmWords },
 };
 
 static const FormatterRange kFormatterRanges6[] = {
@@ -10577,6 +10800,9 @@ static int gte_load_successor(uint8_t reg, uint32_t pc, uint32_t word) {
             return 1;
     }
     static const struct { uint8_t reg; uint32_t pc, grp; } successors[] = {
+        {8, 0x80048decu, 35u /* site group */},
+        {8, 0x80048e1cu, 36u /* site group */},
+        {8, 0x80048e50u, 36u /* site group */},
         {2, 0x80049470u, 42u /* site group */},
         {3, 0x80049474u, 42u /* site group */},
         {2, 0x80049484u, 42u /* site group */},
@@ -11857,6 +12083,7 @@ static int gte_load_successor_pc(uint32_t pc) {
     if (gte_decode_lane(pc))
         return 1;
     static const uint32_t pcs[] = {
+        0x80048decu, 0x80048e1cu, 0x80048e50u,
         0x80049470u, 0x80049474u, 0x80049484u,
         0x80047d4cu,
         0x80048e04u, 0x80048e08u, 0x80048e0cu,
@@ -12012,6 +12239,7 @@ enum { SC_ENTRY_WORDS = 178 };
 #define SC02_0031_ENTRY_DIGEST 0x8126b01f303e7772ull
 #define SC01_MEMBER0_ENTRY_DIGEST 0x2e23652929d54c5dull
 #define SC01_MEMBER1_ENTRY_DIGEST 0x2f4fe7577616c703ull
+#define SC01_MEMBER77_ENTRY_DIGEST 0x894a0ad4f0316a9cull
 _Static_assert(sizeof(kOverlaySc02_80128158Words) / sizeof(uint32_t) == SC_ENTRY_WORDS,
                "SC02 entry span");
 _Static_assert(sizeof(kOverlaySc01_80128158Words) / sizeof(uint32_t) == SC_ENTRY_WORDS,
@@ -12025,20 +12253,24 @@ static int sc02_entry_matches(MusashiBootMemory *memory) {
 
 static int sc01_entry_matches(MusashiBootMemory *memory) {
     uint64_t digest;
-    int member0, member1;
+    int member0, member1, member77;
     /* Both members open with the same prologue and first diverge at word 85
      * (801282AC), so the whole 178-word entry span identifies the image. */
     if (!span_digest(memory, 0x80128158u, SC_ENTRY_WORDS, &digest)) return 0;
     member0 = digest == SC01_MEMBER0_ENTRY_DIGEST;
     member1 = digest == SC01_MEMBER1_ENTRY_DIGEST;
+    member77 = digest == SC01_MEMBER77_ENTRY_DIGEST;
     if (member0) {
         g_sc01_code = kOverlaySc01_CodeWords;
         g_sc01_code_bytes = sizeof(kOverlaySc01_CodeWords);
     } else if (member1) {
         g_sc01_code = kOverlaySc01Member1CodeWords;
         g_sc01_code_bytes = sizeof(kOverlaySc01Member1CodeWords);
+    } else if (member77) {
+        g_sc01_code = kOverlaySc01Member77CodeWords;
+        g_sc01_code_bytes = sizeof(kOverlaySc01Member77CodeWords);
     }
-    return member0 || member1;
+    return member0 || member1 || member77;
 }
 
 /* A DIV is only admitted when the retail image carries GCC's canonical
@@ -13356,8 +13588,11 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
                    (gte_20f34_caller(cpu->r[31]) &&
                     gte_20f34_site(cpu->pc, instruction, &eac_cmd_slot) &&
                     eac_cmd_slot == 4u) ||
-                   (cpu->pc == 0x80049334u && code_site(0x80049334u, 41u, instruction) &&
-                    gte_49324_caller(cpu->r[31])) ||
+                   (gte_49324_site(cpu->pc, instruction, &eac_cmd_slot) &&
+                    eac_cmd_slot == 1u) ||
+                   (gte_484ec_caller(cpu->r[31]) &&
+                    gte_484ec_site(cpu->pc, instruction, &eac_cmd_slot) &&
+                    eac_cmd_slot == 2u) ||
                    (gte_48eac_caller(cpu->r[31]) &&
                     gte_48eac_site(cpu->pc, instruction, &eac_cmd_slot) &&
                     eac_cmd_slot == 4u) ||

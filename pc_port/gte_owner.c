@@ -271,6 +271,7 @@ int musashi_gte_owner_read_data(MusashiGteOwner *owner,
          selector != 10u && selector != 11u && selector != 12u &&
          selector != 13u && selector != 14u && selector != 16u &&
          selector != 17u && selector != 18u && selector != 19u &&
+         selector != 20u && selector != 21u && selector != 22u &&
          selector != 24u && selector != 25u && selector != 26u &&
          selector != 27u && selector != 29u && selector != 30u &&
          selector != 31u) ||
@@ -280,7 +281,9 @@ int musashi_gte_owner_read_data(MusashiGteOwner *owner,
      * upper halves. MFC2 also preserves raw MAC/LZCS/LZCR read semantics.
      * The selector list is the union of the registers retail MFC2/SWC2 sites
      * actually read: VZ2, RGB, OTZ, IR0, SXY0/1/2, SZ3, MAC1..3, ORGB, LZCS and
-     * LZCR. */
+     * LZCR, plus the RGB0..2 colour FIFO: libgs GsTMDfastG3GL stores RGB2 with
+     * SWC2 (80057A58, reached at the opening scene's mode 7->8 transition).
+     * RGB0..2 read back as plain words, as PsyCross's MFC2 does. */
     local = MFC2((int)selector);
     owner->data_read_count++;
     *value = local;

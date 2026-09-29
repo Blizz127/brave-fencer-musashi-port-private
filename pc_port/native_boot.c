@@ -1226,6 +1226,12 @@ static int sample_keyboard_pad(void *userdata, uint16_t *buttons) {
             if (gameplay_action && boot->in_game_frames >= 5u) {
                 if (strcmp(gameplay_action, "walk") == 0) {
                     sampled &= (uint16_t)~(1u << 4); /* Up: walk forward */
+                } else if (strcmp(gameplay_action, "mash") == 0) {
+                    /* Cross for 4 of every 30 frames, the way a player taps
+                     * through dialogue; the stimulus the retail opening
+                     * observation used. Input only. */
+                    if ((boot->in_game_frames % 30u) < 4u)
+                        sampled &= (uint16_t)~(1u << 14);
                 } else if (strcmp(gameplay_action, "jump") == 0) {
                     if (boot->in_game_frames >= 13u && boot->in_game_frames <= 24u) {
                         sampled &= (uint16_t)~(1u << 14); /* Cross */
