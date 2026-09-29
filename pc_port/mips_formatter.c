@@ -13473,9 +13473,16 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
                 ? !cpu->cpu_transfer->read_control(cpu->cpu_transfer->userdata,
                                                    &context, rt, &control)
                 : !cpu->cpu_transfer->read_data(cpu->cpu_transfer->userdata,
-                                                &context, rt, &control))
+                                                &context, rt, &control)) {
+            fprintf(stderr, "native_boot: SWC2_REFUSED pc=%08x why=gte-read reg=%u identity=%p\n",
+                    cpu->pc, (unsigned)rt, context.identity);
             goto gte_transfer_refused;
-        if (!cpu_write32(memory, cpu, cpu->r[rs] + (int32_t)signed_immediate, control)) goto gte_transfer_refused;
+        }
+        if (!cpu_write32(memory, cpu, cpu->r[rs] + (int32_t)signed_immediate, control)) {
+            fprintf(stderr, "native_boot: SWC2_REFUSED pc=%08x why=store address=%08x\n",
+                    cpu->pc, cpu->r[rs] + (uint32_t)(int32_t)signed_immediate);
+            goto gte_transfer_refused;
+        }
         break;
     }
     default: return formatter_refuse0(__LINE__, cpu->pc);
