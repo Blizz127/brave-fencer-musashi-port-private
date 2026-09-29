@@ -45,7 +45,10 @@ static void setup(const uint8_t *exe,size_t size) {
         word(VERTEX+8*i,(uint16_t)vertices[i][0]|((uint32_t)(uint16_t)vertices[i][1]<<16));
         word(VERTEX+8*i+4,(uint16_t)vertices[i][2]);
     }
-    for(unsigned i=0;i<3;i++){word(NORMAL+8*i,0x04000400);word(NORMAL+8*i+4,0x400);}
+    /* Distinct normal vectors expose RGB FIFO order and all three NCCT inputs. */
+    word(NORMAL,0x400);word(NORMAL+4,0);
+    word(NORMAL+8,0x08000000);word(NORMAL+12,0);
+    word(NORMAL+16,0);word(NORMAL+20,0xc00);
     word(FACE+4,0x30ffffff);word(FACE+8,0);word(FACE+12,0x00010001);word(FACE+16,0x00020002);
     word(CONFIG+4,OT);word(CONFIG+8,0);word(OT+511*4,0x00abcdef);
     for(unsigned i=0;i<7;i++)word(PACKET+4*i,0xcccccccc);
@@ -64,12 +67,12 @@ int main(int argc,char **argv) {
     while(f.cpu.pc!=0x80056600 && steps++<130)assert(formatter_step(&f.memory,&f.cpu));
     assert(f.cpu.pc==0x80056600 && f.cpu.r[2]==FACE+20);
     assert(read_word(PACKET)==0x06abcdef);
-    assert(read_word(PACKET+4)==0x303f3f3f);
+    assert(read_word(PACKET+4)==0x3000003f);
     assert(read_word(PACKET+8)==((115u<<16)|155));
     assert(read_word(PACKET+16)==((115u<<16)|165));
     assert(read_word(PACKET+24)==((125u<<16)|160));
-    assert(read_word(PACKET+12)==0x303f3f3f);
-    assert(read_word(PACKET+20)==0x303f3f3f);
+    assert(read_word(PACKET+12)==0x30007f00);
+    assert(read_word(PACKET+20)==0x30bf0000);
     assert(read_word(OT+511*4)==(PACKET&0x00ffffff));
     close_fixture();
     setup(exe,(size_t)n);
