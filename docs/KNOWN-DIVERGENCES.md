@@ -64,6 +64,17 @@ residency (tools/patches/trace-resident.patch).
   - Under the owner's rule, PsyQ/SDK stays platform code. The target is
     shims proven faithful, not matched C.
 
+Overlay lane (port/native-lane 863b067fb onward). An overlay function
+runs natively only when guest RAM over its extent hashes to its member's
+digest, checked on every call.
+- Before the title: verified=0, refused=124 (863b067fb). The refusals
+  are logo-time calls at addresses main_0001 occupies. Why the
+  then-admitted 800D2EF8 (main-context, about 1760 calls) never verified
+  is still open; the diagnostic is tools/patches/lane-overlay-diagnostics.patch.
+- 800D2EF8 has since been refused by a232c39c1 (device pointer).
+- Gameplay run with a232c39c1: verified=285, refused=437. Overlay entries
+  do run natively once their member is resident.
+
 Shadowing:
 - 31 active PsyQ shims shadow a registered matched-C function. 9 of
   them ran: memcpy, ClearOTagR, CdIntToPos, CdPosToInt, CatPrim, memset,
