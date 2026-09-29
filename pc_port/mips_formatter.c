@@ -9848,6 +9848,21 @@ static const uint32_t kCodeSitePcs[] = {
     0x80183e04u, 0x80183e08u, 0x80183e14u, 0x80183e18u, 0x80183e1cu, 0x80183e20u,
     0x80183f04u, 0x80183f08u, 0x80183f74u, 0x80183f7cu, 0x80184ac8u, 0x80184accu,
     0x80184adcu, 0x80184ae0u, 0x80184ae4u, 0x80184af0u, 0x80184af8u, 0x80184afcu,
+    /* func_8004A660: complete 77-word primitive leaf. */
+    0x8004a660u, 0x8004a664u, 0x8004a668u, 0x8004a66cu, 0x8004a670u, 0x8004a674u,
+    0x8004a678u, 0x8004a67cu, 0x8004a680u, 0x8004a684u, 0x8004a688u, 0x8004a68cu,
+    0x8004a690u, 0x8004a694u, 0x8004a698u, 0x8004a69cu, 0x8004a6a0u, 0x8004a6a4u,
+    0x8004a6a8u, 0x8004a6acu, 0x8004a6b0u, 0x8004a6b4u, 0x8004a6b8u, 0x8004a6bcu,
+    0x8004a6c0u, 0x8004a6c4u, 0x8004a6c8u, 0x8004a6ccu, 0x8004a6d0u, 0x8004a6d4u,
+    0x8004a6d8u, 0x8004a6dcu, 0x8004a6e0u, 0x8004a6e4u, 0x8004a6e8u, 0x8004a6ecu,
+    0x8004a6f0u, 0x8004a6f4u, 0x8004a6f8u, 0x8004a6fcu, 0x8004a700u, 0x8004a704u,
+    0x8004a708u, 0x8004a70cu, 0x8004a710u, 0x8004a714u, 0x8004a718u, 0x8004a71cu,
+    0x8004a720u, 0x8004a724u, 0x8004a728u, 0x8004a72cu, 0x8004a730u, 0x8004a734u,
+    0x8004a738u, 0x8004a73cu, 0x8004a740u, 0x8004a744u, 0x8004a748u, 0x8004a74cu,
+    0x8004a750u, 0x8004a754u, 0x8004a758u, 0x8004a75cu, 0x8004a760u, 0x8004a764u,
+    0x8004a768u, 0x8004a76cu, 0x8004a770u, 0x8004a774u, 0x8004a778u, 0x8004a77cu,
+    0x8004a780u, 0x8004a784u, 0x8004a788u, 0x8004a78cu, 0x8004a790u,
+
 };
 static const CodeSiteGroup kCodeSiteGroups[] = {
     {0xdb56c555aeccf5f9ull, 0u, 21u}, /* MAIN */
@@ -10053,8 +10068,10 @@ static const CodeSiteGroup kCodeSiteGroups[] = {
     {0x414e4c79fe6c3e23ull, 1451u, 7u}, /* SC02_031 */
     {0x9500b8354d16db90ull, 1458u, 4u}, /* MAIN_0012 */
     {0x69d0452a3fc1e7fcull, 1462u, 8u}, /* SC02_031 */
+    {0xcf36f6f23c69e9acull, 1470u, 64u}, /* func_8004A660 */
+    {0xf7fe1c000183bf71ull, 1534u, 13u}, /* func_8004A660 */
 };
-enum { CODE_SITE_GROUPS = 203 };
+enum { CODE_SITE_GROUPS = 205 };
 
 /* A group is verified on every lookup (at most 64 words: one 256-byte
  * window), so any change to a site's word in guest RAM, by an overlay load
@@ -10785,6 +10802,12 @@ int musashi_boot_continuation_host_context(const void *continuation,
  * the instruction, not by per-PC or per-caller lists; the decode rules still
  * refuse a real load-delay hazard. The lists refused every new caller. */
 static int gte_decode_lane(uint32_t pc) {
+    /* The 77-word primitive reached from func_80056524's JALR (RA
+     * 8005652C) loads three vertices, runs RTPT/NCLIP/AVSZ3/NCCS and
+     * stores a flat triangle. Admit its architectural GTE transfers only
+     * while both instruction-image windows match the licensed EXE. */
+    if (pc >= 0x8004a660u && pc < 0x8004a794u)
+        return code_site_group_ok(203u) && code_site_group_ok(204u);
     return (g_overlay_sc01_0000_words && pc >= 0x80128158u &&
             pc < (0x80128158u + g_sc01_code_bytes)) ||
            ((pc >= 0x80010000u && pc < 0x80074800u) &&
