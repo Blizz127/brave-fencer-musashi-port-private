@@ -11266,8 +11266,8 @@ static __attribute__((unused)) int gte_exported_srav_site(uint32_t pc, uint32_t 
 }
 
 /* func_80049324 is the exported ten-word GTE vector leaf [80049324,8004934C):
- * three LWC2 loads carry a 12-byte vector into IR1..IR3, the 4AA00428 MVMVA
- * transforms it, and three SWC2 stores publish MAC1..MAC3. Its five retail
+ * three LWC2 loads carry a 12-byte vector into IR1..IR3, the 4AA00428 SQR
+ * squares it, and three SWC2 stores publish MAC1..MAC3. Its five retail
  * callers are JAL sites (return aliases 80013274, 80013308, 8001339C,
  * 80013430, 8002C710). Slots: 0 = data write, 1 = command, 2 = data read. */
 static int gte_49324_site(uint32_t pc, uint32_t word, unsigned *slot) {
@@ -11281,8 +11281,12 @@ static int gte_49324_site(uint32_t pc, uint32_t word, unsigned *slot) {
 }
 
 static int gte_49324_caller(uint32_t ra) {
+    /* SC01 member 77 calls Square0 at 8012BCA4 (RA 8012BCAC).
+     * The same address in another resident overlay is not this caller. */
     return ra == 0x80013274u || ra == 0x80013308u || ra == 0x8001339cu ||
-           ra == 0x80013430u || ra == 0x8002c710u;
+           ra == 0x80013430u || ra == 0x8002c710u ||
+           (ra == 0x8012bcacu && g_overlay_sc01_0000_words &&
+            g_sc01_code == kOverlaySc01Member77CodeWords);
 }
 
 /* func_80048EAC is the second exported main-exec GTE bank routine
@@ -13183,7 +13187,7 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
                 cpu->cpu_transfer->command != NULL &&
                 cpu->pc == 0x80133ffcu && code_site(0x80133ffcu, 109u, instruction) &&
                 cpu->r[31] == 0x80133fb8u;
-            /* func_80049324's own MVMVA. The leaf is main-exec code, so the
+            /* func_80049324's own SQR. The leaf is main-exec code, so the
              * gate is the exact site plus its audited caller aliases. */
             transform_leaf = cpu->cpu_transfer->command != NULL &&
                 cpu->pc == 0x80049334u && code_site(0x80049334u, 41u, instruction) &&
