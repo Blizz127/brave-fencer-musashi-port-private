@@ -1,5 +1,16 @@
 # Todo — plan 4
 
+## Known issues — 2026-09-29
+
+- [ ] `tests/test_gte_transform_source.py` and `tests/test_gte_data_source.py`
+  fail at run time: `SWC2_REFUSED pc=80049474 why=gte-read reg=11` inside
+  `transform_failures` (`tests/gte_transform_source_probe.c:119`). They had not
+  compiled since `mips_formatter.c` started using `syscall`/`ftruncate` under
+  `-std=c99`; f60666fa9 fixed the build and exposed this. It fails the same with
+  `pc_port/gte_owner.c` at HEAD, so it predates the RGB0..2 admission change.
+  It is probably the probe's own transfer/owner setup, not a runtime bug; not yet
+  investigated.
+
 ## Current priority — real native menu boot
 
 ### Current mounted CD continuation — 2026-09-06
