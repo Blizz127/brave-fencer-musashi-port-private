@@ -10842,6 +10842,80 @@ int musashi_boot_continuation_host_context(const void *continuation,
  * LWC2/SWC2 and MFC2 load-delay successors there are admitted by decoding
  * the instruction, not by per-PC or per-caller lists; the decode rules still
  * refuse a real load-delay hazard. The lists refused every new caller. */
+/* The libgs TMD primitive routines: func_8004A27C's entries D_8004A2E0 ..
+ * D_8004CC24 and the second family D_8004D6BC .. D_800503F0. Handwritten
+ * library code: every COP2 op in them is RTPS/RTPT, NCLIP, AVSZ3/4,
+ * NCCS/NCCT, NCDS/NCDT or an LWC2/SWC2/MFC2/CFC2/MTC2 transfer, and no
+ * load feeds its own delay slot (MFC2 successors are checked per step).
+ * The four NCCT/NCDT sites that follow an LWC2 of VZ0 need that write
+ * applied at once, as LWC2 is here and on hardware. A site is admitted only
+ * while its 64-word window matches the licensed EXE
+ * (tools/gen_libgs_prim_windows.py). */
+static const uint64_t kLibgsPrim8004A27C[] = {
+    0x51c7d83c58657dd8ull, 0xd00d59d08899f0d4ull, 0x4b69ceeba490e1cbull,
+    0xc417e588241699c9ull, 0xa52650067e8a80aaull, 0x967d9a07583d7a69ull,
+    0x7eced95c6350f13dull, 0xdcf7f9a465a20dd6ull, 0x3e991961a109fe80ull,
+    0x2917eb1d1bfb4b14ull, 0x12e048ee90df4a62ull, 0x0fa30fab6f47a126ull,
+    0xf259cb81fb18d3d2ull, 0x026e1356a735dacbull, 0x279bef25309e90fbull,
+    0x8d78cabc5a7b25beull, 0x7ac0178991e3de8full, 0x4bfa128df0716154ull,
+    0x4dcab634f14dd818ull, 0x945a3f5388d65649ull, 0x2cd39fc3144c71c8ull,
+    0x5e77b429915253dbull, 0xf229fc6d50c5dcc7ull, 0x1e676285a84dc412ull,
+    0x47defb6453a9a399ull, 0x481f1573211c7154ull, 0x50e03684ab33ede9ull,
+    0x4fca8c4d326ef0eaull, 0xf4cf619bd4697990ull, 0xb4526a497e144bc5ull,
+    0x23c27037b7a98befull, 0x20ec679306780becull, 0xc9b877f84614b235ull,
+    0x8565fd348ca178cbull, 0x20ddb1f856f2d960ull, 0x011713dcb8831d54ull,
+    0x280c5c62d7c0f056ull, 0x2d76fda5a2ff6152ull, 0x359062e3a7d55aafull,
+    0x47ae4f3b33fdfe77ull, 0x6aeca44ce2019450ull, 0xb1054e53a0581ff8ull,
+    0xbd878f271495b6a3ull, 0xb976d7dcaf6c0650ull, 0x0afa101c90c361e5ull,
+    0xfb77a61a3246a7b5ull,
+};
+static const uint64_t kLibgsPrim8004D6BC[] = {
+    0x62d2281f4ff96864ull, 0xac5a367a7fe80fe3ull, 0x33bdcdf75498432eull,
+    0x6dc4d9e948aa0b0eull, 0x0ffafe2f38679f43ull, 0x7f2beb8b7c84ab0aull,
+    0x4b11a746630aea57ull, 0xf75e762f1283de4eull, 0x3b1c6636c60ddff6ull,
+    0x137134d0e315a70eull, 0x34b8699477282519ull, 0x85c7d8235901242bull,
+    0x735eb5cf86f5fd3cull, 0x5b34925329b30447ull, 0x85c1ebe81b16ece2ull,
+    0xcdb9755584219bbcull, 0x821335757223ad29ull, 0xd82a239fb5ee69bcull,
+    0x7f62eadd09f0d107ull, 0xfd3c0ca8226aabe0ull, 0x44fc3bbf2608d929ull,
+    0x463a2c8455ad983dull, 0x67799b3bb070a1caull, 0xc13c3939ded6a9dcull,
+    0xb23c17479490db9eull, 0xd123051ddd0a61c5ull, 0xb70896184a6ca590ull,
+    0x6be5e06e46c65917ull, 0xd306c0c481b8b108ull, 0xf577683f7915aaebull,
+    0x0e64c8be1c2d5555ull, 0x0ce7268c56cbe5dfull, 0x2c332796ae356834ull,
+    0x1ff9913ee44ee835ull, 0xef10bc9712da16bfull, 0x2830e699e10d29aaull,
+    0xe60ec753557bf462ull, 0x81148b68942cc561ull, 0x990257a0c4e6c338ull,
+    0x7202ec28134ad113ull, 0xad99b7dd578ecc8dull, 0x5debd47d136ceaafull,
+    0x0d6af3ea8d489737ull, 0xa30667bc3a20930full, 0x0d8a42ba44b931b1ull,
+    0xf0643f7069b37aa6ull, 0xf81ea23387f5cb2cull, 0x818800582f94e2cbull,
+    0x0f42aeffb7b45adfull, 0x9e38dcf1c06dbb27ull, 0x0b32b01d14d9c94aull,
+    0xc283b07f4f45af5eull,
+};
+static const struct { uint32_t lo, hi; const uint64_t *digests; } kLibgsPrimSpans[] = {
+    {0x8004a27cu, 0x8004cfecu, kLibgsPrim8004A27C},
+    {0x8004d6bcu, 0x800509c0u, kLibgsPrim8004D6BC},
+};
+
+static int libgs_prim_window_ok(uint32_t pc) {
+    unsigned s;
+    for (s = 0; s < sizeof kLibgsPrimSpans / sizeof kLibgsPrimSpans[0]; ++s) {
+        uint32_t lo = kLibgsPrimSpans[s].lo, hi = kLibgsPrimSpans[s].hi, w, end, a;
+        uint64_t h = 0xcbf29ce484222325ull;
+        if (pc < lo || pc >= hi) continue;
+        w = lo + ((pc - lo) & ~0xffu);
+        end = w + 256u < hi ? w + 256u : hi;
+        for (a = w; a < end; a += 4u) {
+            uint32_t word;
+            unsigned b;
+            if (!code_word(g_fetch_memory, NULL, a, &word)) return 0;
+            for (b = 0; b < 4u; ++b) {
+                h ^= (word >> (8u * b)) & 0xffu;
+                h *= 0x100000001b3ull;
+            }
+        }
+        return h == kLibgsPrimSpans[s].digests[(pc - lo) >> 8];
+    }
+    return 0;
+}
+
 static int gte_decode_lane(uint32_t pc) {
     /* The 77-word primitive reached from func_80056524's JALR (RA
      * 8005652C) loads three vertices, runs RTPT/NCLIP/AVSZ3/NCCS and
@@ -10857,13 +10931,26 @@ static int gte_decode_lane(uint32_t pc) {
      * fields prepared by its caller, using constant 0x808080 modulation. */
     if (pc >= 0x8004c658u && pc < 0x8004c7ecu)
         return code_site_group_ok(207u) && code_site_group_ok(208u);
+    if ((pc >= 0x8004a27cu && pc < 0x8004cfecu) || (pc >= 0x8004d6bcu && pc < 0x800509c0u))
+        return libgs_prim_window_ok(pc);
     return (g_overlay_sc01_0000_words && pc >= 0x80128158u &&
             pc < (0x80128158u + g_sc01_code_bytes)) ||
            ((pc >= 0x80010000u && pc < 0x80074800u) &&
             !(pc >= 0x80047000u && pc < 0x80055000u));
 }
 
+/* The four libgs quad FLAG checks: CFC2 v0, FLAG then BLTZ v0 in its load
+ * delay slot, so the branch tests the previous FLAG (already known
+ * non-negative there) and the new one is never tested. The load retires
+ * after the branch executes, as on the R3000A. */
+static int libgs_prim_delayed_branch(uint32_t pc) {
+    return (pc == 0x8004b710u || pc == 0x8004b8dcu ||
+            pc == 0x8004cd38u || pc == 0x8004cf18u) && libgs_prim_window_ok(pc);
+}
+
 static int gte_load_successor(uint8_t reg, uint32_t pc, uint32_t word) {
+    if (reg == 2u && libgs_prim_delayed_branch(pc) && (word >> 26) == 1u &&
+        ((word >> 21) & 0x1fu) == 2u && ((word >> 16) & 0x1fu) == 0u) return 1;
     if (gte_decode_lane(pc)) {
         uint32_t op = word >> 26;
         uint32_t rs = (word >> 21) & 0x1fu;
@@ -13513,11 +13600,15 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
          * pinned contract that any refusal leaves the whole CPU unchanged.
          * A successor that is itself an MFC2 schedules its own fresh
          * pending load in the epilogue below. */
-        if (cpu->gte_load_reg) cpu->r[cpu->gte_load_reg] = cpu->gte_load_value;
-        cpu->gte_load_value = 0;
-        cpu->gte_load_next_pc = 0;
-        cpu->gte_load_reg = 0;
-        cpu->gte_load_pending = 0;
+        if (!libgs_prim_delayed_branch(cpu->pc)) {
+            if (cpu->gte_load_reg) cpu->r[cpu->gte_load_reg] = cpu->gte_load_value;
+            cpu->gte_load_value = 0;
+            cpu->gte_load_next_pc = 0;
+            cpu->gte_load_reg = 0;
+            cpu->gte_load_pending = 0;
+        }
+        /* At a libgs delayed branch the epilogue retires the load after
+         * the branch has read the old register. */
     }
     old_npc = cpu->npc;
     target_npc = old_npc + 4u;

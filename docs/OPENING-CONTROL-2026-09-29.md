@@ -45,3 +45,28 @@ Native lane ON, RelWithDebInfo, Linux x86_64. Runtime RUNPATH is
 The launcher bundle contains no BIOS, disc image or game data. Owner data
 must supply `files/SLUS_007.26`, `disc.cue` and `disc.bin` under the configured
 disc directory. Legion Go hardware remains untested.
+
+## libgs TMD primitive block (run 14)
+
+Run 13 (cbcea882e) stopped at 8004b644 in D_8004B614, the next libgs
+primitive after the three admitted one by one. Instead of one routine per
+run, both TMD primitive families are admitted together:
+`[8004A27C,8004CFEC)` (func_8004A27C's entries D_8004A2E0 .. D_8004CC24) and
+`[8004D6BC,800509C0)` (D_8004D6BC .. D_800503F0), 6,173 words.
+
+Audit (asm/main.s, every word in both spans):
+- COP2 ops used: RTPS/RTPT, NCLIP, AVSZ3/4, NCCS/NCCT, NCDS/NCDT and
+  LWC2/SWC2/MFC2/CFC2/MTC2. All are PsyCross GTE commands already exercised
+  by the admitted routines' fixtures. No COP2 op sits in a branch delay slot.
+- Four NCCT/NCDT sites follow an LWC2 of VZ0 directly (8004B740, 8004B90C,
+  8004CD64, 8004CF44). The formatter applies LWC2 at once, as Sony's code
+  requires of the hardware.
+- Four MFC2/CFC2 results feed their own delay slot: `cfc2 v0, FLAG; bltz v0`
+  at 8004B70C, 8004B8D8, 8004CD34, 8004CF14. The R3000A branch reads the old
+  v0 (the previous FLAG, already known non-negative), so the new FLAG is never
+  tested there. The load now retires after those four branches, not before
+  (Codex found the first one in its 8004B614 quad fixture; the fixture and its
+  mutants are `tests/gte_quad_source_probe.c`).
+- Each site is admitted only while its own 64-word window matches the
+  licensed EXE (FNV-1a digests from `tools/gen_libgs_prim_windows.py`, checked
+  by `tests/test_libgs_prim_windows.py`): one window hash per lookup.
