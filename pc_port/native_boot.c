@@ -133,6 +133,10 @@ typedef struct NativeBoot {
      * native lane (musashi_native_lane_map_guest); keep the rest of that page
      * inert so a stray 1F800400+ access cannot reach host state. */
     uint8_t scratchpad_page_tail[4096u - MUSASHI_SCRATCHPAD_SIZE];
+    /* On the PS1, 0x80200000-0x807FFFFF mirrors main RAM. Under the native
+     * lane this range is made PROT_NONE, so a native access there faults
+     * (HOST_FAULT) instead of silently touching the host state that follows. */
+    uint8_t ram_mirror_guard[0x800000u - MUSASHI_RAM_SIZE - 4096u];
     uint8_t list_tail_before[448];
     int list_tail_captured;
     MusashiPsyCrossIrqRuntime irq;
@@ -3520,6 +3524,10 @@ static void lane_overlay_report(void) {
             (unsigned long long)verified, (unsigned long long)refused);
 }
 _Static_assert(offsetof(NativeBoot, memory) == 0, "guest RAM leads the boot owner");
+_Static_assert(offsetof(NativeBoot, ram_mirror_guard) == 0x201000u,
+               "mirror guard starts on the page after the scratchpad page");
+_Static_assert(sizeof(((NativeBoot *)0)->ram_mirror_guard) % 4096u == 0u,
+               "mirror guard is whole pages");
 
 /* Natively compiled decomp C dereferences 32-bit guest addresses directly,
  * so the boot owner, whose first member is guest RAM, is placed at host
@@ -3559,6 +3567,9 @@ static NativeBoot *native_boot_owner(NativeBoot *fallback) {
         }
         if (!aliased)
             fprintf(stderr, "native_boot: NATIVE_LANE scratchpad alias at 1f800000 unavailable\n");
+        if (mprotect(((NativeBoot *)window)->ram_mirror_guard,
+                     sizeof(((NativeBoot *)window)->ram_mirror_guard), PROT_NONE) != 0)
+            fprintf(stderr, "native_boot: NATIVE_LANE mirror guard unavailable\n");
     }
     {
         struct sigaction action;
