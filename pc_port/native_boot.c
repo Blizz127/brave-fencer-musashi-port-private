@@ -1198,8 +1198,9 @@ static int sample_keyboard_pad(void *userdata, uint16_t *buttons) {
                         fprintf(stderr, "native_boot: DIVERGENCE CONTROL_UNLOCK player unk4D transitioned 2 -> 1 (frame %u)\n",
                                 boot->auto_dismiss_ticks);
                     }
-                    fprintf(stderr, "native_boot: AUTO_DISMISS dialogue dismissed, player controls unlocked (frame %u)\n",
-                            boot->auto_dismiss_ticks);
+                    fprintf(stderr, "native_boot: AUTO_DISMISS dialogue dismissed (frame %u)%s\n",
+                            boot->auto_dismiss_ticks,
+                            debug_force() ? "; controls unlocked by DEBUG_FORCE" : "");
                 } else {
                     ++boot->auto_dismiss_ticks;
                     if (boot->auto_dismiss_ticks == 1u)
