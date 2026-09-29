@@ -12010,10 +12010,11 @@ static int gte_20f34_caller(uint32_t ra) {
             (ra == 0x80132928u || ra == 0x80165fdcu || ra == 0x8016c0b0u));
 }
 
-/* member-0031 callers of the func_8004914C / func_800491AC GTE bank pair.
- * Every alias is the return address of a JAL into one of the two routines. */
+/* Callers of the func_8004914C / func_800491AC GTE bank pair.
+ * Member-0031 aliases are JAL returns into the two routines. Main
+ * func_80052E38 also calls both; 80052E4C/80052E54 are its JAL returns. */
 static int gte_491_pair_caller(uint32_t ra) {
-    return ra == 0x8012cfecu || ra == 0x8012d400u || ra == 0x8012d520u ||
+    return ra == 0x80052e4cu || ra == 0x80052e54u || ra == 0x8012cfecu || ra == 0x8012d400u || ra == 0x8012d520u ||
            ra == 0x8012e348u || ra == 0x8012e5f8u || ra == 0x8012e6e8u ||
            ra == 0x8012f170u || ra == 0x8012f240u || ra == 0x8012f2acu ||
            ra == 0x8012f434u || ra == 0x8012f4c8u || ra == 0x8012f4f4u ||
