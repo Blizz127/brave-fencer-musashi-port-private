@@ -12533,10 +12533,36 @@ int musashi_native_lane_usable(const MusashiBootMemory *memory) {
         (uintptr_t)memory->bytes == (uintptr_t)MUSASHI_NATIVE_LANE_GUEST_BASE;
 }
 
+/* Guest stack words for the lane's o32 adapter. The game may run with sp in
+ * the scratchpad (1F800000-1F8003FF), which musashi_boot_read32 does not
+ * cover; the interpreter does. */
+static uint8_t *lane_stack_word(MusashiBootMemory *memory, uint32_t address) {
+    uint32_t phys = address & 0x1fffffffu;
+    if ((address & 3u) != 0u) return NULL;
+    if (phys >= 0x1f800000u && phys + 4u <= 0x1f800000u + MUSASHI_SCRATCHPAD_SIZE)
+        return memory->scratchpad + (phys - 0x1f800000u);
+    return musashi_boot_ram_span(memory, address, 4u);
+}
+
+static int lane_stack_read(MusashiBootMemory *memory, uint32_t address, uint32_t *value) {
+    const uint8_t *p = lane_stack_word(memory, address);
+    if (!p) return 0;
+    *value = (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
+    return 1;
+}
+
+static int lane_stack_write(MusashiBootMemory *memory, uint32_t address, uint32_t value) {
+    uint8_t *p = lane_stack_word(memory, address);
+    if (!p) return 0;
+    p[0] = (uint8_t)value; p[1] = (uint8_t)(value >> 8);
+    p[2] = (uint8_t)(value >> 16); p[3] = (uint8_t)(value >> 24);
+    return 1;
+}
+
 uint32_t musashi_native_lane_arg(const MusashiNativeLaneCall *call, unsigned n) {
     uint32_t value = 0;
     if (n < 4u) return call->r[4u + n];
-    if (!musashi_boot_read32(call->memory, call->r[29] + 0x10u + (n - 4u) * 4u, &value)) {
+    if (!lane_stack_read(call->memory, call->r[29] + 0x10u + (n - 4u) * 4u, &value)) {
         if (g_lane_active) longjmp(g_lane_active->abort, 2);
     }
     return value;
@@ -12562,7 +12588,7 @@ uint32_t musashi_native_guest_call(uint32_t target, unsigned argc,
     sp = (saved_sp - 0x10u - extra * 4u) & ~7u;
     for (i = 0; i < argc; ++i) {
         if (i < 4u) cpu->r[4u + i] = args[i];
-        else if (!musashi_boot_write32(active->memory, sp + 0x10u + (i - 4u) * 4u, args[i]))
+        else if (!lane_stack_write(active->memory, sp + 0x10u + (i - 4u) * 4u, args[i]))
             longjmp(active->abort, 3);
     }
     cpu->r[29] = sp;
@@ -12622,10 +12648,19 @@ static int lane_try(MusashiBootMemory *memory, FormatterCpu *cpu) {
     call.memory = memory;
     call.r = cpu->r;
     g_lane_active = &active;
-    if (setjmp(active.abort) == 0)
-        outcome = entry->fn(&call) ? 1 : 0;
-    else
-        outcome = -1;
+    {
+        int code = setjmp(active.abort);
+        if (code == 0) {
+            outcome = entry->fn(&call) ? 1 : 0;
+        } else {
+            outcome = -1;
+            /* 3/4/5: a guest call from native code refused or stopped;
+             * 6: musashi_native_lane_abort (e.g. a trapping divisor). */
+            fprintf(stderr, "native_boot: NATIVE_LANE_ABORT_DETAIL pc=%08x code=%d a0=%08x a1=%08x "
+                    "a2=%08x a3=%08x ra=%08x sp=%08x\n", entry->guest_pc, code,
+                    cpu->r[4], cpu->r[5], cpu->r[6], cpu->r[7], ra, sp);
+        }
+    }
     g_lane_active = active.prev;
     g_lane_run_frames = saved_frames;
     if (outcome < 0) {
