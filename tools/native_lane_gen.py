@@ -207,6 +207,41 @@ def member_info(member):
     return dict(member=member, path=path, vram=vram, start=start, code=code, data=path.read_bytes())
 
 
+MAIN_EXE = ROOT / "extracted/disc/files/SLUS_007.26"
+_MAIN_EXE_BYTES = None
+IO_LO, IO_HI = 0x1F801000, 0x1F803000
+
+
+def guest_word(addr, info=None):
+    """Initial 32-bit word at a guest address, from the user's own local
+    extract: the member file for overlay data, else the main EXE (loaded at
+    0x80010000 after its 0x800-byte header). None when unknown."""
+    global _MAIN_EXE_BYTES
+    if info:
+        off = addr - info["vram"] + info["start"]
+        if 0 <= off <= len(info["data"]) - 4:
+            return int.from_bytes(info["data"][off:off + 4], "little")
+    if _MAIN_EXE_BYTES is None:
+        _MAIN_EXE_BYTES = MAIN_EXE.read_bytes() if MAIN_EXE.exists() else b""
+    off = addr - 0x80010000 + 0x800
+    if 0x800 <= off <= len(_MAIN_EXE_BYTES) - 4:
+        return int.from_bytes(_MAIN_EXE_BYTES[off:off + 4], "little")
+    return None
+
+
+def check_device_pointers(ir, info=None):
+    """The decompiled C often keeps device-register pointers in plain globals
+    (`extern s32 *D_800DB674`, holding 1F8010F0) that no volatile marks. A
+    native body dereferencing them would touch host memory at the MMIO
+    address. Refuse a function that loads a guest global whose initial word
+    (in the user's EXE or member file) is an I/O register address."""
+    for m in re.finditer(r"load (?:i32|ptr), ptr inttoptr \(i64 (\d+) to ptr\)", ir):
+        addr = int(m.group(1))
+        word = guest_word(addr, info)
+        if word is not None and IO_LO <= word < IO_HI:
+            raise Reject("memory", f"device pointer {addr:08x} -> {word:08x}")
+
+
 def member_digest(info, pc, size):
     off = pc - info["vram"] + info["start"]
     if off < 0 or off + size > len(info["data"]):
@@ -946,6 +981,7 @@ def build_one(entry, out, symbols, hooks, clang, info=None):
         optir, icalls = rewrite_indirect_calls(opt.read_text())
         internal = set(re.findall(r"^define internal [^@]*@([\w.$]+)\(", optir, flags=re.M))
         check_optimized(optir, internal)
+        check_device_pointers(optir, info)
         check_polling_loops(optir)
         defs = lane_names(optir)
         own = f"lane_{qualify(member, name)}"
