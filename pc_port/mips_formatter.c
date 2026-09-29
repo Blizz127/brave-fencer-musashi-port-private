@@ -3039,6 +3039,7 @@ static const uint32_t kMain8004A0DCWords[102]; /* shape only: 102 words, fetched
 static const uint32_t kMain8004A27CWords[102]; /* shape only: 102 words, fetched from guest RAM */
 static const uint32_t kMain8004A41CWords[72]; /* shape only: 72 words, fetched from guest RAM */
 static const uint32_t kMain8004A53CWords[73]; /* shape only: 73 words, fetched from guest RAM */
+static const uint32_t kMain8004B078Words[96]; /* shape only, licensed image fetch */
 static const uint32_t kMain8004A660Words[77]; /* shape only: 77 words, fetched from guest RAM */
 static const uint32_t kMain8004A794Words[77]; /* shape only: 77 words, fetched from guest RAM */
 static const uint32_t kMain8004A8CCWords[83]; /* shape only: 83 words, fetched from guest RAM */
@@ -5185,6 +5186,7 @@ static const FormatterRange kFormatterRanges0[] = {
     { 0x8004a41cu, 0x8004a53cu, kMain8004A41CWords },
     { 0x8004a53cu, 0x8004a660u, kMain8004A53CWords },
     { 0x8004a660u, 0x8004a794u, kMain8004A660Words },
+    { 0x8004b078u, 0x8004b1f8u, kMain8004B078Words },
     { 0x8004a794u, 0x8004a8c8u, kMain8004A794Words },
     { 0x8004a8ccu, 0x8004aa18u, kMain8004A8CCWords },
     { 0x8004aa18u, 0x8004ab68u, kMain8004AA18Words },
@@ -9863,6 +9865,23 @@ static const uint32_t kCodeSitePcs[] = {
     0x8004a768u, 0x8004a76cu, 0x8004a770u, 0x8004a774u, 0x8004a778u, 0x8004a77cu,
     0x8004a780u, 0x8004a784u, 0x8004a788u, 0x8004a78cu, 0x8004a790u,
 
+    0x8004b078u, 0x8004b07cu, 0x8004b080u, 0x8004b084u, 0x8004b088u, 0x8004b08cu,
+    0x8004b090u, 0x8004b094u, 0x8004b098u, 0x8004b09cu, 0x8004b0a0u, 0x8004b0a4u,
+    0x8004b0a8u, 0x8004b0acu, 0x8004b0b0u, 0x8004b0b4u, 0x8004b0b8u, 0x8004b0bcu,
+    0x8004b0c0u, 0x8004b0c4u, 0x8004b0c8u, 0x8004b0ccu, 0x8004b0d0u, 0x8004b0d4u,
+    0x8004b0d8u, 0x8004b0dcu, 0x8004b0e0u, 0x8004b0e4u, 0x8004b0e8u, 0x8004b0ecu,
+    0x8004b0f0u, 0x8004b0f4u, 0x8004b0f8u, 0x8004b0fcu, 0x8004b100u, 0x8004b104u,
+    0x8004b108u, 0x8004b10cu, 0x8004b110u, 0x8004b114u, 0x8004b118u, 0x8004b11cu,
+    0x8004b120u, 0x8004b124u, 0x8004b128u, 0x8004b12cu, 0x8004b130u, 0x8004b134u,
+    0x8004b138u, 0x8004b13cu, 0x8004b140u, 0x8004b144u, 0x8004b148u, 0x8004b14cu,
+    0x8004b150u, 0x8004b154u, 0x8004b158u, 0x8004b15cu, 0x8004b160u, 0x8004b164u,
+    0x8004b168u, 0x8004b16cu, 0x8004b170u, 0x8004b174u, 0x8004b178u, 0x8004b17cu,
+    0x8004b180u, 0x8004b184u, 0x8004b188u, 0x8004b18cu, 0x8004b190u, 0x8004b194u,
+    0x8004b198u, 0x8004b19cu, 0x8004b1a0u, 0x8004b1a4u, 0x8004b1a8u, 0x8004b1acu,
+    0x8004b1b0u, 0x8004b1b4u, 0x8004b1b8u, 0x8004b1bcu, 0x8004b1c0u, 0x8004b1c4u,
+    0x8004b1c8u, 0x8004b1ccu, 0x8004b1d0u, 0x8004b1d4u, 0x8004b1d8u, 0x8004b1dcu,
+    0x8004b1e0u, 0x8004b1e4u, 0x8004b1e8u, 0x8004b1ecu, 0x8004b1f0u, 0x8004b1f4u,
+
 };
 static const CodeSiteGroup kCodeSiteGroups[] = {
     {0xdb56c555aeccf5f9ull, 0u, 21u}, /* MAIN */
@@ -10070,8 +10089,10 @@ static const CodeSiteGroup kCodeSiteGroups[] = {
     {0x69d0452a3fc1e7fcull, 1462u, 8u}, /* SC02_031 */
     {0xcf36f6f23c69e9acull, 1470u, 64u}, /* func_8004A660 */
     {0xf7fe1c000183bf71ull, 1534u, 13u}, /* func_8004A660 */
+    {0xbc2634f691c20251ull, 1547u, 64u}, /* D_8004B078 */
+    {0xa302aa8ac0c3f8f8ull, 1611u, 32u}, /* D_8004B078 */
 };
-enum { CODE_SITE_GROUPS = 205 };
+enum { CODE_SITE_GROUPS = 207 };
 
 /* A group is verified on every lookup (at most 64 words: one 256-byte
  * window), so any change to a site's word in guest RAM, by an overlay load
@@ -10808,6 +10829,10 @@ static int gte_decode_lane(uint32_t pc) {
      * while both instruction-image windows match the licensed EXE. */
     if (pc >= 0x8004a660u && pc < 0x8004a794u)
         return code_site_group_ok(203u) && code_site_group_ok(204u);
+    /* Gouraud triangle dispatcher observed at RA 80056600: RTPT,
+     * NCLIP, AVSZ3, NCCT and three RGB/SXY stores, exact 96-word image. */
+    if (pc >= 0x8004b078u && pc < 0x8004b1f8u)
+        return code_site_group_ok(205u) && code_site_group_ok(206u);
     return (g_overlay_sc01_0000_words && pc >= 0x80128158u &&
             pc < (0x80128158u + g_sc01_code_bytes)) ||
            ((pc >= 0x80010000u && pc < 0x80074800u) &&
@@ -12041,7 +12066,11 @@ static int gte_20f34_caller(uint32_t ra) {
  * Member-0031 aliases are JAL returns into the two routines. Main
  * func_80052E38 also calls both; 80052E4C/80052E54 are its JAL returns. */
 static int gte_491_pair_caller(uint32_t ra) {
-    return ra == 0x80052e4cu || ra == 0x80052e54u || ra == 0x8012cfecu || ra == 0x8012d400u || ra == 0x8012d520u ||
+    /* Member 77's func_8017FD14 calls the same rotation/translation pair
+     * at 8017FD44/8017FD4C; require that resident member for its aliases. */
+    return (g_overlay_sc01_0000_words && g_sc01_code == kOverlaySc01Member77CodeWords &&
+            (ra == 0x8017fd4cu || ra == 0x8017fd54u)) ||
+           ra == 0x80052e4cu || ra == 0x80052e54u || ra == 0x8012cfecu || ra == 0x8012d400u || ra == 0x8012d520u ||
            ra == 0x8012e348u || ra == 0x8012e5f8u || ra == 0x8012e6e8u ||
            ra == 0x8012f170u || ra == 0x8012f240u || ra == 0x8012f2acu ||
            ra == 0x8012f434u || ra == 0x8012f4c8u || ra == 0x8012f4f4u ||
