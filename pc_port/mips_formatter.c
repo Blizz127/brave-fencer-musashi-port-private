@@ -9882,6 +9882,24 @@ static const uint32_t kCodeSitePcs[] = {
     0x8004b1c8u, 0x8004b1ccu, 0x8004b1d0u, 0x8004b1d4u, 0x8004b1d8u, 0x8004b1dcu,
     0x8004b1e0u, 0x8004b1e4u, 0x8004b1e8u, 0x8004b1ecu, 0x8004b1f0u, 0x8004b1f4u,
 
+    0x8004c658u, 0x8004c65cu, 0x8004c660u, 0x8004c664u, 0x8004c668u, 0x8004c66cu,
+    0x8004c670u, 0x8004c674u, 0x8004c678u, 0x8004c67cu, 0x8004c680u, 0x8004c684u,
+    0x8004c688u, 0x8004c68cu, 0x8004c690u, 0x8004c694u, 0x8004c698u, 0x8004c69cu,
+    0x8004c6a0u, 0x8004c6a4u, 0x8004c6a8u, 0x8004c6acu, 0x8004c6b0u, 0x8004c6b4u,
+    0x8004c6b8u, 0x8004c6bcu, 0x8004c6c0u, 0x8004c6c4u, 0x8004c6c8u, 0x8004c6ccu,
+    0x8004c6d0u, 0x8004c6d4u, 0x8004c6d8u, 0x8004c6dcu, 0x8004c6e0u, 0x8004c6e4u,
+    0x8004c6e8u, 0x8004c6ecu, 0x8004c6f0u, 0x8004c6f4u, 0x8004c6f8u, 0x8004c6fcu,
+    0x8004c700u, 0x8004c704u, 0x8004c708u, 0x8004c70cu, 0x8004c710u, 0x8004c714u,
+    0x8004c718u, 0x8004c71cu, 0x8004c720u, 0x8004c724u, 0x8004c728u, 0x8004c72cu,
+    0x8004c730u, 0x8004c734u, 0x8004c738u, 0x8004c73cu, 0x8004c740u, 0x8004c744u,
+    0x8004c748u, 0x8004c74cu, 0x8004c750u, 0x8004c754u, 0x8004c758u, 0x8004c75cu,
+    0x8004c760u, 0x8004c764u, 0x8004c768u, 0x8004c76cu, 0x8004c770u, 0x8004c774u,
+    0x8004c778u, 0x8004c77cu, 0x8004c780u, 0x8004c784u, 0x8004c788u, 0x8004c78cu,
+    0x8004c790u, 0x8004c794u, 0x8004c798u, 0x8004c79cu, 0x8004c7a0u, 0x8004c7a4u,
+    0x8004c7a8u, 0x8004c7acu, 0x8004c7b0u, 0x8004c7b4u, 0x8004c7b8u, 0x8004c7bcu,
+    0x8004c7c0u, 0x8004c7c4u, 0x8004c7c8u, 0x8004c7ccu, 0x8004c7d0u, 0x8004c7d4u,
+    0x8004c7d8u, 0x8004c7dcu, 0x8004c7e0u, 0x8004c7e4u, 0x8004c7e8u,
+
 };
 static const CodeSiteGroup kCodeSiteGroups[] = {
     {0xdb56c555aeccf5f9ull, 0u, 21u}, /* MAIN */
@@ -10091,8 +10109,10 @@ static const CodeSiteGroup kCodeSiteGroups[] = {
     {0xf7fe1c000183bf71ull, 1534u, 13u}, /* func_8004A660 */
     {0xbc2634f691c20251ull, 1547u, 64u}, /* D_8004B078 */
     {0xa302aa8ac0c3f8f8ull, 1611u, 32u}, /* D_8004B078 */
+    {0x25b941314b54ffc6ull, 1643u, 64u}, /* D_8004C658 */
+    {0x8c7d9126d717fb20ull, 1707u, 37u}, /* D_8004C658 */
 };
-enum { CODE_SITE_GROUPS = 207 };
+enum { CODE_SITE_GROUPS = 209 };
 
 /* A group is verified on every lookup (at most 64 words: one 256-byte
  * window), so any change to a site's word in guest RAM, by an overlay load
@@ -10833,6 +10853,10 @@ static int gte_decode_lane(uint32_t pc) {
      * NCLIP, AVSZ3, NCCT and three RGB/SXY stores, exact 96-word image. */
     if (pc >= 0x8004b078u && pc < 0x8004b1f8u)
         return code_site_group_ok(205u) && code_site_group_ok(206u);
+    /* Textured Gouraud triangle at RA 80056650; retains UV/CLUT/TPAGE
+     * fields prepared by its caller, using constant 0x808080 modulation. */
+    if (pc >= 0x8004c658u && pc < 0x8004c7ecu)
+        return code_site_group_ok(207u) && code_site_group_ok(208u);
     return (g_overlay_sc01_0000_words && pc >= 0x80128158u &&
             pc < (0x80128158u + g_sc01_code_bytes)) ||
            ((pc >= 0x80010000u && pc < 0x80074800u) &&
