@@ -1,3 +1,8 @@
+/* syscall(SYS_memfd_create) and ftruncate for the guest window are POSIX/GNU,
+ * hidden under a strict -std=c99 build (the probe tests compile this file so). */
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 #include "musashi_boot_memory.h"
 #include "musashi_callback_registration.h"
 #include "musashi_mips_div.h"
