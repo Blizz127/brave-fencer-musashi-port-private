@@ -452,6 +452,26 @@ static int blit_vram(MusashiGpuPsyCross *gpu) {
     return 1;
 }
 
+/* Host-only overlay (the opt-in dev menu): drawn into the back buffer after
+ * the VRAM blit, never into VRAM, so the guest frame is untouched. */
+static MusashiGpuPsyCrossOverlay g_overlay;
+static void *g_overlay_user;
+static int g_overlay_height;
+
+void musashi_gpu_psycross_set_overlay(MusashiGpuPsyCrossOverlay fn, void *user) {
+    g_overlay = fn;
+    g_overlay_user = user;
+}
+
+/* Valid inside the overlay callback only; (x, y) from the top-left. */
+void musashi_gpu_psycross_overlay_rect(int x, int y, int w, int h,
+                                       uint8_t r, uint8_t g, uint8_t b) {
+    if (w <= 0 || h <= 0) return;
+    glScissor(x, g_overlay_height - y - h, w, h);
+    glClearColor(r / 255.f, g / 255.f, b / 255.f, 1.f);
+    glClear(GL_COLOR_BUFFER_BIT);
+}
+
 int musashi_gpu_psycross_present(MusashiGpuPsyCross *gpu) {
     GLint framebuffer, draw_buffer;
     GLfloat clear_color[4];
@@ -486,6 +506,12 @@ int musashi_gpu_psycross_present(MusashiGpuPsyCross *gpu) {
         glClear(GL_COLOR_BUFFER_BIT);
         if (gpu->display_enabled)
             blit_ok = blit_vram(gpu);
+        if (g_overlay) {
+            g_overlay_height = dh;
+            glEnable(GL_SCISSOR_TEST);
+            g_overlay(g_overlay_user, dw, dh);
+            glDisable(GL_SCISSOR_TEST);
+        }
         glViewport(prev_viewport[0], prev_viewport[1],
                    prev_viewport[2], prev_viewport[3]);
     }

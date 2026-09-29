@@ -330,6 +330,11 @@ if(MUSASHI_BUILD_PC_PORT)
     target_link_libraries(musashi_event_registration_cpu_probe PRIVATE musashi_pc_port)
     add_test(NAME event_registration_source_cpu COMMAND musashi_event_registration_cpu_probe)
 
+    add_executable(musashi_dev_menu_probe tests/dev_menu_probe.c pc_port/dev_menu.c)
+    target_compile_features(musashi_dev_menu_probe PRIVATE c_std_99)
+    target_include_directories(musashi_dev_menu_probe PRIVATE pc_port/include)
+    add_test(NAME dev_menu_model COMMAND musashi_dev_menu_probe)
+
     add_executable(musashi_mips_formatter_probe tests/mips_formatter_probe.c)
     target_compile_features(musashi_mips_formatter_probe PRIVATE c_std_99)
     target_link_libraries(musashi_mips_formatter_probe PRIVATE musashi_pc_port)
@@ -559,7 +564,7 @@ if(MUSASHI_BUILD_PC_PORT)
     if(TARGET musashi_native_boot)
         target_link_libraries(musashi_native_boot PRIVATE bfm_plat)
         target_compile_definitions(musashi_native_boot PRIVATE MUSASHI_WITH_BFM_PLAT=1)
-        target_sources(musashi_native_boot PRIVATE pc_port/plat_audio_sink.c)
+        target_sources(musashi_native_boot PRIVATE pc_port/plat_audio_sink.c pc_port/dev_menu.c)
     endif()
     # SPU core -> plat_audio_sink -> bfm_plat null sink, in-process: a CD tone
     # and an ADPCM voice (SPU RAM upload, KON) must reach the sink non-silent.

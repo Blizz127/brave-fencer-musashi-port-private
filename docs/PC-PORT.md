@@ -657,6 +657,24 @@ Routed through `bfm_plat_*` (opt-in; the defaults keep native_boot's own paths):
 | `MUSASHI_AUDIO=bfm_plat` | the SPU core's 44.1 kHz stereo output goes to `bfm_plat_audio` (backend `MUSASHI_AUDIO_BACKEND`, default `openal`; bfm_plat falls back to `null` when the device cannot open, and says so). The null backend drains at the platform clock's audio rate. STOP prints `AUDIO_SINK frames= nonsilent= peak=` and `SPU_KEYON writes=`. Headless: OpenAL Soft's `wave` driver (`ALSOFT_CONF` with `drivers=wave`) records the device output. Default audio (`MUSASHI_AUDIO` unset: SDL; `null`) is unchanged. |
 | `MUSASHI_TIMING=bfm_plat` | with `MUSASHI_GUEST_CLOCK=1` only: each guest VBlank calls `bfm_plat_timing_vsync(1)` (NTSC field pacing, fast-forward, `BFM_EVENT_VSYNC` for mods) in place of `guest_clock_wait`'s throttle; `MUSASHI_UNTHROTTLED` runs uncapped and still emits the events. Refused under host-paced time, which host time already paces. |
 
+## Port Dev Menu (opt-in, off by default)
+
+`BFM_DEV_MENU=1` (or `--dev-menu`) turns it on; without it nothing in
+`pc_port/dev_menu.c` runs. F1, or L3+R3 (or Guide) on a controller, opens
+it; Up/Down (d-pad, left stick, arrows) move, Cross/A or Enter/C select,
+Circle/B or Esc/Backspace go back. It is drawn over the presented frame with
+the built-in 5x7 font (`musashi_gpu_psycross_set_overlay`, scissored GL
+clears; VRAM is not touched), and while it is open the game reads a neutral
+pad. "DEV" stays in the corner while any cheat is on.
+
+| page | entries |
+|---|---|
+| Cheats | Infinite HP (current 80078EB4 = max 80078EB2, the game's refill in func_8014BC44), Infinite BP (80078EB8 = 80078EB6), Max Drans (80078E8C = 99999, the game's cap). Applied once per VBlank, only after the first scene is reached. |
+| Warps | Only warps tested working in the port are listed (`kWarps`). None yet: the port does not reach player control. |
+
+`BFM_DEV_MENU_KEYS="frame:KEY,..."` (TOGGLE, UP, DOWN, OK, BACK) drives it
+headless. The model test is `tests/dev_menu_probe.c` (ctest `dev_menu_model`).
+
 ## Debug forcing (divergences, off by default)
 
 native_boot writes no guest RAM behind the game's back by default. The

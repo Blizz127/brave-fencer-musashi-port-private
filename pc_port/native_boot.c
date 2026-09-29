@@ -67,6 +67,8 @@ static int log_sample(uint64_t *counter, uint64_t first, uint64_t stride) {
 #include "bfm_plat_timing.h"
 #include "bfm_plat_audio.h"
 #include "musashi_plat_audio_sink.h"
+#include "bfm_plat_font.h"
+#include "musashi_dev_menu.h"
 /* MUSASHI_GPU=bfm_plat: GP0/GP1 are teed into the bfm_plat GPU bridge and
  * drawn by the bfm_plat renderer (MUSASHI_RENDERER, default psycross); the
  * controller keeps the port protocol with its rasteriser off. Default cpu. */
@@ -1044,6 +1046,11 @@ static int sample_keyboard_pad(void *userdata, uint16_t *buttons) {
      * require a current GL context; refusing here leaves analog idle. */
     if (!SDL_WasInit(SDL_INIT_VIDEO) || boot->keyboard_polls == UINT64_MAX)
         return 1;
+#ifdef MUSASHI_WITH_BFM_PLAT
+    /* The opt-in dev menu owns the pad while it is on screen. */
+    if (musashi_dev_menu_is_open())
+        return 1;
+#endif
     /* Do not PumpEvents here: on Xwayland that re-asserts XSetInputFocus
      * from TAP/SIO and steals the desktop keyboard. HOLD_* env is enough. */
 #ifdef MUSASHI_WITH_BFM_PLAT
@@ -1071,9 +1078,14 @@ static int sample_keyboard_pad(void *userdata, uint16_t *buttons) {
         /* Gamepad / GameController support */
         {
             static SDL_GameController *s_gamepad = NULL;
-            static int s_gamepad_searched = 0;
-            if (!s_gamepad_searched) {
-                s_gamepad_searched = 1;
+            static unsigned s_gamepad_retry = 0;
+            /* Look again about once a second until a controller is attached,
+             * so one connected after start (or reconnected) is picked up. */
+            if (s_gamepad && !SDL_GameControllerGetAttached(s_gamepad)) {
+                SDL_GameControllerClose(s_gamepad);
+                s_gamepad = NULL;
+            }
+            if (!s_gamepad && s_gamepad_retry++ % 60u == 0u) {
                 if (!SDL_WasInit(SDL_INIT_GAMECONTROLLER))
                     SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER);
                 for (int c = 0; c < SDL_NumJoysticks(); ++c) {
@@ -1112,6 +1124,10 @@ static int sample_keyboard_pad(void *userdata, uint16_t *buttons) {
                     sampled &= (uint16_t)~(1u << 10); /* L1 */
                 if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_RIGHTSHOULDER))
                     sampled &= (uint16_t)~(1u << 11); /* R1 */
+                if (SDL_GameControllerGetAxis(s_gamepad, SDL_CONTROLLER_AXIS_TRIGGERLEFT) > 16000)
+                    sampled &= (uint16_t)~(1u << 8); /* L2 */
+                if (SDL_GameControllerGetAxis(s_gamepad, SDL_CONTROLLER_AXIS_TRIGGERRIGHT) > 16000)
+                    sampled &= (uint16_t)~(1u << 9); /* R2 */
 
                 int16_t axis_x = SDL_GameControllerGetAxis(s_gamepad, SDL_CONTROLLER_AXIS_LEFTX);
                 int16_t axis_y = SDL_GameControllerGetAxis(s_gamepad, SDL_CONTROLLER_AXIS_LEFTY);
@@ -1535,6 +1551,127 @@ static int epoch_advance_devices(void *userdata, uint64_t cycle) {
 
 static void host_window_inspect(SDL_Window *window);
 
+#ifdef MUSASHI_WITH_BFM_PLAT
+/* Opt-in Port Dev Menu (musashi_dev_menu.h): guest access, host keys and
+ * the overlay. Inert unless BFM_DEV_MENU=1 or --dev-menu. */
+static int dev_menu_read16(void *u, uint32_t a, uint16_t *v) {
+    return musashi_boot_read16(&((NativeBoot *)u)->memory, a, v);
+}
+static int dev_menu_write16(void *u, uint32_t a, uint16_t v) {
+    return musashi_boot_write16(&((NativeBoot *)u)->memory, a, v);
+}
+static int dev_menu_read32(void *u, uint32_t a, uint32_t *v) {
+    return musashi_boot_read32(&((NativeBoot *)u)->memory, a, v);
+}
+static int dev_menu_write32(void *u, uint32_t a, uint32_t v) {
+    return musashi_boot_write32(&((NativeBoot *)u)->memory, a, v);
+}
+
+/* Edges of F1/arrows/Enter/Esc and of the first controller's L3+R3 (or
+ * Guide), d-pad, left stick, A and B. Reads state only; native_boot's own
+ * VBlank SDL_PollEvent keeps it current. */
+static unsigned dev_menu_poll_keys(void) {
+    static SDL_GameController *pad;
+    static unsigned prev, retry;
+    unsigned held = 0, pressed;
+    int n = 0;
+    const Uint8 *k = SDL_GetKeyboardState(&n);
+    if (k && n > SDL_SCANCODE_F1) {
+        if (k[SDL_SCANCODE_F1]) held |= MUSASHI_DEV_KEY_TOGGLE;
+        if (k[SDL_SCANCODE_UP]) held |= MUSASHI_DEV_KEY_UP;
+        if (k[SDL_SCANCODE_DOWN]) held |= MUSASHI_DEV_KEY_DOWN;
+        if (k[SDL_SCANCODE_RETURN] || k[SDL_SCANCODE_KP_ENTER] || k[SDL_SCANCODE_C])
+            held |= MUSASHI_DEV_KEY_OK;
+        if (k[SDL_SCANCODE_ESCAPE] || k[SDL_SCANCODE_BACKSPACE] || k[SDL_SCANCODE_V])
+            held |= MUSASHI_DEV_KEY_BACK;
+    }
+    if (pad && !SDL_GameControllerGetAttached(pad)) {
+        SDL_GameControllerClose(pad);
+        pad = NULL;
+    }
+    if (!pad && SDL_WasInit(SDL_INIT_GAMECONTROLLER) && retry++ % 60u == 0u) {
+        int j;
+        for (j = 0; j < SDL_NumJoysticks() && !pad; ++j)
+            if (SDL_IsGameController(j)) pad = SDL_GameControllerOpen(j);
+    }
+    if (pad) {
+        int ly = SDL_GameControllerGetAxis(pad, SDL_CONTROLLER_AXIS_LEFTY);
+        if ((SDL_GameControllerGetButton(pad, SDL_CONTROLLER_BUTTON_LEFTSTICK) &&
+             SDL_GameControllerGetButton(pad, SDL_CONTROLLER_BUTTON_RIGHTSTICK)) ||
+            SDL_GameControllerGetButton(pad, SDL_CONTROLLER_BUTTON_GUIDE))
+            held |= MUSASHI_DEV_KEY_TOGGLE;
+        if (SDL_GameControllerGetButton(pad, SDL_CONTROLLER_BUTTON_DPAD_UP) || ly < -16000)
+            held |= MUSASHI_DEV_KEY_UP;
+        if (SDL_GameControllerGetButton(pad, SDL_CONTROLLER_BUTTON_DPAD_DOWN) || ly > 16000)
+            held |= MUSASHI_DEV_KEY_DOWN;
+        if (SDL_GameControllerGetButton(pad, SDL_CONTROLLER_BUTTON_A)) held |= MUSASHI_DEV_KEY_OK;
+        if (SDL_GameControllerGetButton(pad, SDL_CONTROLLER_BUTTON_B)) held |= MUSASHI_DEV_KEY_BACK;
+    }
+    pressed = held & ~prev;
+    prev = held;
+    return pressed;
+}
+
+static void dev_menu_text_at(int x, int y, int scale, const char *text,
+                             uint8_t r, uint8_t g, uint8_t b) {
+    for (; *text; ++text, x += BFM_FONT_CELL_W * scale) {
+        const uint8_t *rows = bfm_plat_font_glyph(*text);
+        int row, col;
+        if (*text == ' ' || !rows) continue;
+        for (row = 0; row < BFM_FONT_GLYPH_H; ++row)
+            for (col = 0; col < BFM_FONT_GLYPH_W;) {
+                int run = 0;
+                while (col + run < BFM_FONT_GLYPH_W && (rows[row] >> (4 - col - run)) & 1u) ++run;
+                if (run) {
+                    musashi_gpu_psycross_overlay_rect(x + col * scale, y + row * scale,
+                                                      run * scale, scale, r, g, b);
+                    col += run;
+                } else {
+                    ++col;
+                }
+            }
+    }
+}
+
+static void dev_menu_overlay(void *user, int width, int height) {
+    const char *lines[16];
+    int highlight, scale = height / 320, cell_h, i, cols = 0;
+    size_t n = musashi_dev_menu_text(lines, 16, &highlight);
+    (void)user;
+    if (!n) return;
+    if (scale < 2) scale = 2;
+    cell_h = (BFM_FONT_CELL_H + 2) * scale;
+    for (i = 0; i < (int)n; ++i)
+        if ((int)strlen(lines[i]) > cols) cols = (int)strlen(lines[i]);
+    if (!musashi_dev_menu_is_open()) {
+        /* Badge while any cheat is on and the menu is closed. */
+        int w = (cols * BFM_FONT_CELL_W + 4) * scale;
+        musashi_gpu_psycross_overlay_rect(width - w - 8 * scale, 4 * scale, w, cell_h, 96, 0, 0);
+        dev_menu_text_at(width - w - 6 * scale, 5 * scale, scale, lines[0], 255, 255, 255);
+        return;
+    }
+    musashi_gpu_psycross_overlay_rect(6 * scale, 6 * scale, (cols * BFM_FONT_CELL_W + 8) * scale,
+                                      (int)n * cell_h + 6 * scale, 12, 12, 40);
+    for (i = 0; i < (int)n; ++i) {
+        int y = 9 * scale + i * cell_h;
+        if (i == highlight)
+            musashi_gpu_psycross_overlay_rect(8 * scale, y - scale,
+                                              (cols * BFM_FONT_CELL_W + 4) * scale, cell_h, 60, 60, 150);
+        dev_menu_text_at(10 * scale, y + scale, scale, lines[i],
+                         i == 0 ? 255 : 230, i == 0 ? 210 : 230, i == 0 ? 90 : 230);
+    }
+}
+
+static void dev_menu_vblank(NativeBoot *boot, int display) {
+    uint16_t scene = 0, mode = 0;
+    if (!musashi_dev_menu_enabled()) return;
+    if (display) musashi_dev_menu_keys(dev_menu_poll_keys());
+    (void)musashi_boot_read16(&boot->memory, 0x800B99DEu, &scene);
+    (void)musashi_boot_read16(&boot->memory, 0x800B99F0u, &mode);
+    musashi_dev_menu_vblank(boot->scene1_reached, scene, mode);
+}
+#endif
+
 static int epoch_video_edge(void *userdata, uint64_t sequence, uint64_t cycle) {
     NativeBoot *boot = userdata;
     (void)sequence;
@@ -1554,6 +1691,7 @@ static int epoch_video_edge(void *userdata, uint64_t sequence, uint64_t cycle) {
         }
 #ifdef MUSASHI_WITH_BFM_PLAT
         if (g_plat_input_on) (void)bfm_plat_input_poll();
+        dev_menu_vblank(boot, 1);
 #endif
         if (boot->gpu_renderer.window && boot->gpu_renderer.context) {
             if (SDL_GL_GetCurrentContext() != boot->gpu_renderer.context)
@@ -1561,6 +1699,10 @@ static int epoch_video_edge(void *userdata, uint64_t sequence, uint64_t cycle) {
         }
         (void)present_frame(boot);
     }
+#ifdef MUSASHI_WITH_BFM_PLAT
+    else
+        dev_menu_vblank(boot, 0);
+#endif
     if (boot->scene1_reached && boot->gpu.display.width == 320u && boot->gpu.display.height == 240u) {
         if (boot->gte.write_count > 800u) {
             const char *pause_in_game = getenv("MUSASHI_PAUSE_IN_GAME");
@@ -3838,7 +3980,9 @@ int main(int argc, char **argv) {
     const char *bin_path = NULL;
 
     for (int i = 1; i < argc; ++i) {
-        if (strcmp(argv[i], "--headless") == 0) {
+        if (strcmp(argv[i], "--dev-menu") == 0) {
+            setenv("BFM_DEV_MENU", "1", 1);
+        } else if (strcmp(argv[i], "--headless") == 0) {
             setenv("MUSASHI_BOOT_AUTO_START", "1", 1);
             setenv("MUSASHI_AUTO_DISMISS", "1", 1);
             setenv("MUSASHI_TRACE_REFUSAL", "1", 1);
@@ -3987,6 +4131,13 @@ int main(int argc, char **argv) {
 #ifdef MUSASHI_WITH_BFM_PLAT
     gpu_bridge_attach(&boot.gpu);
     plat_input_attach();
+    {
+        const MusashiDevMenuGuest guest = {
+            &boot, dev_menu_read16, dev_menu_write16, dev_menu_read32, dev_menu_write32
+        };
+        if (musashi_dev_menu_init(&guest, 0))
+            musashi_gpu_psycross_set_overlay(dev_menu_overlay, NULL);
+    }
 #endif
     (void)present_frame(&boot);
     if (boot.media) {
