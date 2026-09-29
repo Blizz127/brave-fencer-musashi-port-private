@@ -1,3 +1,6 @@
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
 /* Exact retail transfer leaf plus the camera sqrt tail, explicit fixture
  * caller frame and real shared CPU/image/GTE owners. No native claim. */
 #include <stdint.h>

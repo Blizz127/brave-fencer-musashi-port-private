@@ -105,9 +105,9 @@ static void transform_failures(const uint8_t *exe,size_t size) {
         reject=2;refusal();close_fixture();
     }
     const uint32_t sites[]={0x80049160,0x800491b8,0x8004945c,0x80049468,0x8004946c,0x80049474,0x80049480};
-    /* Exact-site admissions need no caller and no SC02 overlay selection:
-     * bank slot 0 for the InitGeom CTC2 pair, library_vector for the
-     * 0x8004945c LWC2. The transfer and clock guards refuse everywhere. */
+    /* Rotation/translation require their audited caller and selected
+     * SC02 identity. The exact library_vector LWC2 at 8004945c is
+     * caller independent. Transfer and clock failures refuse at all sites. */
     for(unsigned i=0;i<7;i++)for(unsigned kind=0;kind<4;kind++) {
         setup(exe,size,0);
         position(sites[i],i==0?0x8012f170:i==1?0x8012f178:0x8012f188);
@@ -115,7 +115,7 @@ static void transform_failures(const uint8_t *exe,size_t size) {
         else if(kind==1)f.cpu.cpu_transfer=NULL;
         else if(kind==2)f.refuse_clock_pc=sites[i];
         else g_overlay_sc02_0031_words=0;
-        if((kind==0||kind==3)&&i<3) {
+        if((kind==0||kind==3)&&i==2) {
             assert(formatter_step(&f.memory,&f.cpu)); assert(f.cpu.pc==sites[i]+4u);
         } else refusal();
         close_fixture();
