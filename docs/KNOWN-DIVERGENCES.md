@@ -141,7 +141,7 @@ inputs.
 
 These change retail behaviour only when a user asks for them:
 - Cheats (`pc_port/mods/examples/cheat_pack`) and mods (docs/MODDING.md).
-- The Port Dev Menu (`BFM_DEV_MENU=1` or `--dev-menu`, `pc_port/dev_menu.c`; docs/PC-PORT.md): cheats that write the game's own HP/BP/Drans/clock state in the field only, and warps through the game's own exit request, listed once verified. Off, it writes nothing, reads no input and draws nothing; enabled with every cheat off it writes zero guest bytes (`tests/dev_menu_probe.c`); while open, the game reads a neutral pad. `BFM_CHEATS=0` disables it completely.
+- The Port Dev Menu (on by default through the package's `launch.sh`; `BFM_DEV_MENU=1` or `--dev-menu`, `pc_port/dev_menu.c`; docs/PC-PORT.md): cheats that write the game's own HP/BP/Drans/clock state in the field only, and warps through the game's own exit request, listed once verified. Off, it writes nothing, reads no input and draws nothing; enabled with every cheat off it writes zero guest bytes (`tests/dev_menu_probe.c`); while open, the game reads a neutral pad. `BFM_CHEATS=0` disables it completely.
 - `MUSASHI_DEBUG_FORCE=1` (D-005) and `MUSASHI_GAMEPLAY_ACTION` (D-006): both write guest RAM and log DIVERGENCE.
 - `MUSASHI_HOLD_R1`, `MUSASHI_DISMISS_KEY`, `MUSASHI_PAUSE_*`, and the trace and dump switches. The trace and dump switches only observe.
 - Widescreen, the gl renderer, HD textures, fast-forward.

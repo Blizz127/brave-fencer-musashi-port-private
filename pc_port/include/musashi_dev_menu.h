@@ -4,8 +4,9 @@
 /* Port Dev Menu (shared port spec v1, ~/release-staging/port-dev-menu):
  * a host-only playtest menu. Root: Warp > Finish Area > Cheats > Options.
  *
- * Off by default. BFM_DEV_MENU=1 (or --dev-menu) enables the menu and its
- * F-keys; BFM_CHEATS=0 hard-disables everything, including the always-on
+ * Off unless asked: BFM_DEV_MENU=1 (or --dev-menu) enables the menu and its
+ * F-keys (the packaged launch.sh sets BFM_DEV_MENU=1 unless it is 0 or the
+ * dev-menu-off file exists); BFM_CHEATS=0 hard-disables everything, including the always-on
  * fast-forward and screenshot keys. Disabled, no entry point writes guest
  * RAM, consumes input or draws. Enabled with every cheat off, the per-frame
  * pass writes zero guest bytes (the retail-parity gate).

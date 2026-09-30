@@ -148,9 +148,14 @@ export LD_LIBRARY_PATH="$HERE/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 export MUSASHI_INTERACTIVE=${MUSASHI_INTERACTIVE:-1}
 export MUSASHI_GUEST_CLOCK=${MUSASHI_GUEST_CLOCK:-1}
 export MUSASHI_HOLD_WINDOW_MS=${MUSASHI_HOLD_WINDOW_MS:-3000}
-# Port Dev Menu opt-in without editing launch options: an empty file
-# ~/.config/bfm-port/dev-menu turns it on (Select+Start or F8 opens it).
-[ -f "$CONF/dev-menu" ] && export BFM_DEV_MENU=${BFM_DEV_MENU:-1}
+# Port Dev Menu is on by default (Select+Start or F8 opens it). BFM_DEV_MENU=0
+# or an empty file ~/.config/bfm-port/dev-menu-off turns it off; BFM_CHEATS=0
+# disables it completely. The older dev-menu file is harmless (already on).
+if [ -f "$CONF/dev-menu-off" ]; then
+  export BFM_DEV_MENU=${BFM_DEV_MENU:-0}
+else
+  export BFM_DEV_MENU=${BFM_DEV_MENU:-1}
+fi
 # Local route journal of your own play (room entries and story progress),
 # used to build Finish Current Step; stays on this machine.
 export BFM_ROUTE_JOURNAL=${BFM_ROUTE_JOURNAL:-$STATE/route.jsonl}
@@ -202,11 +207,13 @@ Log of the last run: ~/.local/state/bfm-port/last-run.log (its first line
 says which build ran: the faster musashi_native_boot.x86-64-v3 on CPUs with
 AVX2/BMI2/FMA, else the portable one; BFM_BASELINE=1 forces the portable
 one). Every 10 s of play it logs a PERF line (game speed, fps).
-Dev menu (off by default). Turn it on with an empty file
-~/.config/bfm-port/dev-menu (or BFM_DEV_MENU=1 ./launch.sh). Open it with
-Select+Start on the controller (Back+Start) or F8; d-pad or left stick
-moves, A selects, B goes back; F1 lists the keys. BFM_CHEATS=0 turns it
-off completely.
+Dev menu (on by default). Open it with Select+Start on the controller
+(Back+Start) or F8; d-pad or left stick moves, A selects, B goes back; F1
+lists the keys. To turn it off, run with BFM_DEV_MENU=0 ./launch.sh or make
+an empty file ~/.config/bfm-port/dev-menu-off. BFM_CHEATS=0 disables it
+completely (fast-forward and screenshot keys too). Warp lists only rooms
+verified on test machines, in area folders; Finish Area and Finish Current
+Step have no verified entries yet, so they are empty.
 TXT
 } > "$stage/README.txt"
 
