@@ -10,8 +10,9 @@ hash code_site_group_ok uses. Digests only: no instruction word is emitted.
 import sys
 
 # func_8004A27C's primitive entries (D_8004A2E0 .. D_8004CC24) and the second
-# family D_8004D6BC .. D_800503F0 (asm/main.s labels).
-SPANS = ((0x8004A27C, 0x8004CFEC), (0x8004D6BC, 0x800509C0))
+# family D_8004D6BC .. D_800503F0 (asm/main.s labels), plus the handwritten
+# vector leaf func_8004806C (IR0-scaled GPF accumulate over an SVECTOR list).
+SPANS = ((0x8004A27C, 0x8004CFEC), (0x8004D6BC, 0x800509C0), (0x8004806C, 0x800480EC))
 BASE, TEXT = 0x80010000, 0x800
 
 

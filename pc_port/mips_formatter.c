@@ -10904,9 +10904,15 @@ static const uint64_t kLibgsPrim8004D6BC[] = {
     0x0f42aeffb7b45adfull, 0x9e38dcf1c06dbb27ull, 0x0b32b01d14d9c94aull,
     0xc283b07f4f45af5eull,
 };
+/* func_8004806C: handwritten vector leaf (IR0 scale, then per SVECTOR:
+ * MTC2 IR1..IR3, GPF sf=1, MFC2 IR1..IR3 added into the output vector). */
+static const uint64_t kLibgsPrim8004806C[] = {
+    0xab707e990dce0957ull,
+};
 static const struct { uint32_t lo, hi; const uint64_t *digests; } kLibgsPrimSpans[] = {
     {0x8004a27cu, 0x8004cfecu, kLibgsPrim8004A27C},
     {0x8004d6bcu, 0x800509c0u, kLibgsPrim8004D6BC},
+    {0x8004806cu, 0x800480ecu, kLibgsPrim8004806C},
 };
 
 static int libgs_prim_window_ok(uint32_t pc) {
@@ -10946,7 +10952,8 @@ static int gte_decode_lane(uint32_t pc) {
      * fields prepared by its caller, using constant 0x808080 modulation. */
     if (pc >= 0x8004c658u && pc < 0x8004c7ecu)
         return code_site_group_ok(207u) && code_site_group_ok(208u);
-    if ((pc >= 0x8004a27cu && pc < 0x8004cfecu) || (pc >= 0x8004d6bcu && pc < 0x800509c0u))
+    if ((pc >= 0x8004a27cu && pc < 0x8004cfecu) || (pc >= 0x8004d6bcu && pc < 0x800509c0u) ||
+        (pc >= 0x8004806cu && pc < 0x800480ecu))
         return libgs_prim_window_ok(pc);
     return (g_overlay_sc01_0000_words && pc >= 0x80128158u &&
             pc < (0x80128158u + g_sc01_code_bytes)) ||
