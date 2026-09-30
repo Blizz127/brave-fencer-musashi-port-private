@@ -106,3 +106,5 @@ in this repository. See [LICENSE-NOTES.md](LICENSE-NOTES.md).
 
 - Thanks to u/SandmansSlave on Reddit for the idea of the no-grind assists
   (x2/x3 progression, God Mode), first suggested for Parasite Eve.
+- Thanks to u/stellarola on Reddit for the movement-speed enhancement idea
+  (Parasite Eve).
