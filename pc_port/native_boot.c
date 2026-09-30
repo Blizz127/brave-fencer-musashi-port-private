@@ -231,6 +231,9 @@ typedef struct NativeBoot {
     /* Lazy device epoch (MUSASHI_EPOCH_LAZY, see lazy_skip). */
     int lazy, lazy_check;
     uint64_t lazy_fast, lazy_slow, lazy_syncs, lazy_checked;
+    /* Why checkpoints committed: host service or frame, pending IRQ, no
+     * valid deadline (invalidated or not quiescent), deadline reached. */
+    uint64_t lazy_slow_host, lazy_slow_irq, lazy_slow_stale, lazy_slow_due;
     /* Device-observation trace (MUSASHI_TRACE_DEVICE_OBS, see devobs_*). */
     int devobs;
     FILE *devobs_file;
@@ -2256,22 +2259,33 @@ static void perf_log(NativeBoot *boot) {
     {
         double wall = (double)(now - window_start) / (double)freq;
         double guest = (double)(boot->guest_tick - window_cycle) / (double)MUSASHI_DEVICE_CLOCK_HZ;
-        static uint64_t last_fast, last_slow, last_syncs;
+        static uint64_t last_fast, last_slow, last_syncs, last_host, last_irq, last_stale, last_due,
+                        last_unsettled;
         fprintf(stderr, "native_boot: PERF vblanks=%u wall_s=%.2f guest_s=%.2f speed=%.0f%% "
                 "fps=%.1f idle=%.0f%% present_ms=%.2f\n", vblanks, wall, guest,
                 wall > 0 ? 100.0 * guest / wall : 0.0, wall > 0 ? vblanks / wall : 0.0,
                 wall > 0 ? 100.0 * (double)g_perf_slept / (double)freq / wall : 0.0,
                 1000.0 * (double)g_perf_present / (double)freq / vblanks);
         if (boot->lazy)
-            fprintf(stderr, "native_boot: PERF_EPOCH lazy skipped=%llu committed=%llu syncs=%llu "
-                    "checked=%llu\n",
+            fprintf(stderr, "native_boot: PERF_EPOCH lazy skipped=%llu committed=%llu "
+                    "(host=%llu irq=%llu stale=%llu due=%llu) unsettled=%llu syncs=%llu checked=%llu\n",
                     (unsigned long long)(boot->lazy_fast - last_fast),
                     (unsigned long long)(boot->lazy_slow - last_slow),
+                    (unsigned long long)(boot->lazy_slow_host - last_host),
+                    (unsigned long long)(boot->lazy_slow_irq - last_irq),
+                    (unsigned long long)(boot->lazy_slow_stale - last_stale),
+                    (unsigned long long)(boot->lazy_slow_due - last_due),
+                    (unsigned long long)(boot->epoch.lazy_unsettled - last_unsettled),
                     (unsigned long long)(boot->lazy_syncs - last_syncs),
                     (unsigned long long)boot->lazy_checked);
         last_fast = boot->lazy_fast;
         last_slow = boot->lazy_slow;
         last_syncs = boot->lazy_syncs;
+        last_host = boot->lazy_slow_host;
+        last_irq = boot->lazy_slow_irq;
+        last_stale = boot->lazy_slow_stale;
+        last_due = boot->lazy_slow_due;
+        last_unsettled = boot->epoch.lazy_unsettled;
     }
     vblanks = 0;
     window_start = now;
@@ -2669,13 +2683,20 @@ static int lazy_skip(NativeBoot *boot, const void *continuation, int dispatch) {
     boot->guest_pending_cycles = 0;
     /* A host service or frame observes devices; a pending IRQ must be
      * dispatched. Either way commit now (the commit refreshes the cache). */
-    if (musashi_formatter_pc_host_handled(raw_cpu[34]) || boot->irq.cd_frame.busy ||
-        boot->bios_callback_frame.busy ||
-        (dispatch && (boot->irq.controller.status & boot->irq.controller.mask)))
-        musashi_device_epoch_lazy_invalidate(&boot->epoch);
-    if (!musashi_device_epoch_lazy_defer(&boot->epoch, pending)) {
-        ++boot->lazy_slow;
-        return 0;
+    {
+        int host = musashi_formatter_pc_host_handled(raw_cpu[34]) || boot->irq.cd_frame.busy ||
+                   boot->bios_callback_frame.busy;
+        int irq = dispatch && (boot->irq.controller.status & boot->irq.controller.mask);
+        int stale = !boot->epoch.lazy_valid || boot->epoch.lazy_cuts != boot->epoch.cuts;
+        if (host || irq) musashi_device_epoch_lazy_invalidate(&boot->epoch);
+        if (!musashi_device_epoch_lazy_defer(&boot->epoch, pending)) {
+            ++boot->lazy_slow;
+            if (host) ++boot->lazy_slow_host;
+            else if (irq) ++boot->lazy_slow_irq;
+            else if (stale) ++boot->lazy_slow_stale;
+            else ++boot->lazy_slow_due;
+            return 0;
+        }
     }
     if (boot->lazy_check) {
         uint64_t fresh = 0;

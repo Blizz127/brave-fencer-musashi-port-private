@@ -55,6 +55,8 @@ typedef struct MusashiDeviceEpoch {
     uint64_t lazy_last_target;
     int lazy_valid;
     uint64_t lazy_deferrals, lazy_commits;
+    /* Refreshes the adapter reported not quiescent (or already due). */
+    uint64_t lazy_unsettled;
 } MusashiDeviceEpoch;
 
 /* Fresh-storage constructor only: never reinitialize an active/faulted epoch

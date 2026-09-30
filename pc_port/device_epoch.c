@@ -187,10 +187,12 @@ int musashi_device_epoch_sync(MusashiDeviceEpoch *epoch) {
 static void lazy_refresh(MusashiDeviceEpoch *epoch) {
     uint64_t due = 0;
     epoch->lazy_valid = 0;
-    if (epoch->lazy_deferred || !epoch->adapter.next_deadline ||
-        !epoch->adapter.next_deadline(epoch->adapter.userdata, epoch->cycle, &due) ||
-        due <= epoch->cycle)
+    if (epoch->lazy_deferred || !epoch->adapter.next_deadline) return;
+    if (!epoch->adapter.next_deadline(epoch->adapter.userdata, epoch->cycle, &due) ||
+        due <= epoch->cycle) {
+        ++epoch->lazy_unsettled;
         return;
+    }
     epoch->lazy_due = due;
     epoch->lazy_cuts = epoch->cuts;
     epoch->lazy_valid = 1;
