@@ -171,6 +171,7 @@ typedef struct NativeBoot {
     MusashiSioController sio;
     MusashiBiosBackupUnit backup_unit;
     MusashiBiosMemcard memcard;
+    MusashiVblankExecutor card_requests;
     const void *continuation;
     MusashiGpuController gpu;
     MusashiGpuPsyCross gpu_renderer;
@@ -3481,6 +3482,32 @@ static int checkpoint(void *userdata, const void *continuation) {
             fprintf(stderr, "native_boot: CALL_80147078 p=%08x act=%u ra=%08x frame=%u\n",
                     raw_cpu[4], raw_cpu[5], raw_cpu[31], boot->in_game_frames);
         }
+        /* Harness only: MUSASHI_TRACE_PCS=hex[,hex...] logs every entry to
+         * those guest PCs (interpreted code) with a0-a3, ra and the frame. */
+        {
+            static uint32_t trace_pcs[32];
+            static int trace_pcs_n = -1;
+            int ti;
+            if (trace_pcs_n < 0) {
+                const char *ts = getenv("MUSASHI_TRACE_PCS");
+                trace_pcs_n = 0;
+                while (ts && *ts && trace_pcs_n < 32) {
+                    char *te;
+                    unsigned long tv = strtoul(ts, &te, 16);
+                    if (te == ts) break;
+                    trace_pcs[trace_pcs_n++] = (uint32_t)tv;
+                    ts = (*te == ',') ? te + 1 : NULL;
+                }
+            }
+            for (ti = 0; ti < trace_pcs_n; ++ti) {
+                if (trace_pcs[ti] == raw_cpu[34]) {
+                    fprintf(stderr, "native_boot: TRACE_PC pc=%08x a0=%08x a1=%08x a2=%08x a3=%08x ra=%08x frame=%u\n",
+                            raw_cpu[34], raw_cpu[4], raw_cpu[5], raw_cpu[6], raw_cpu[7], raw_cpu[31],
+                            boot->in_game_frames);
+                    break;
+                }
+            }
+        }
         if (raw_cpu[34] == 0x80159c84u) {
             uint8_t *p_act = musashi_boot_ram_span(&boot->memory, raw_cpu[4], 0x200);
             int16_t u1c8 = p_act ? *(int16_t *)(p_act + 0x1C8) : 0;
@@ -3648,6 +3675,39 @@ static void console_bytes(void *userdata, const uint8_t *bytes, int32_t length) 
         fputs("native_boot: console output failed\n", stderr);
         exit(2);
     }
+}
+
+static int card_request_call(void *userdata, MusashiBootMemory *memory,
+    uint32_t target, uint32_t first, uint32_t second, int32_t *result) {
+    NativeBoot *boot = userdata;
+    MusashiResetGraphPrefixStop stop = {0};
+    MusashiResetGraphPrefixStatus status;
+    if (!boot->irq.scheduler.delivering || !boot->irq.scheduler.active_continuation)
+        return 0;
+    status = musashi_boot_execute_source_call(memory, &boot->startup_devices,
+        target, first, second, result, console_bytes, NULL, &stop);
+    if (status != MUSASHI_RESETGRAPH_PREFIX_COMPLETE) {
+        boot->irq.failed_target = stop.target_address ? stop.target_address : target;
+        fprintf(stderr, "native_boot: CARD_REQUEST_REFUSED target=%08x stop=%08x status=%d\n",
+                target, stop.target_address, (int)status);
+        return 0;
+    }
+    return 1;
+}
+
+static int card_request_one(void *userdata, MusashiBootMemory *memory,
+    uint32_t target, uint32_t argument, uint32_t *result) {
+    int32_t value = 0;
+    if (!result || !card_request_call(userdata, memory, target, argument, 0, &value))
+        return 0;
+    *result = (uint32_t)value;
+    return 1;
+}
+
+static int card_request_two(void *userdata, MusashiBootMemory *memory,
+    uint32_t target, uint32_t first, uint32_t second) {
+    int32_t value = 0;
+    return card_request_call(userdata, memory, target, first, second, &value);
 }
 
 static int source_irq_execute(void *userdata, MusashiBootMemory *memory, uint32_t target) {
@@ -5325,7 +5385,8 @@ int main(int argc, char **argv) {
     }
     boot.heap_device=(MusashiHeapDevice){&boot,init_heap};
     boot.gpu_io=(MusashiGpuIoDevice){&boot,gpu_io_read32,gpu_io_write32};
-    if (!musashi_psycross_irq_runtime_init(&boot.irq, &boot.memory, NULL)) {
+    boot.card_requests = (MusashiVblankExecutor){&boot, card_request_one, card_request_two};
+    if (!musashi_psycross_irq_runtime_init(&boot.irq, &boot.memory, &boot.card_requests)) {
         native_devices_shutdown(&boot);
         musashi_psyx_shutdown();
         return 2;

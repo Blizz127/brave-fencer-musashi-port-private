@@ -14797,8 +14797,8 @@ static MusashiResetGraphPrefixStatus run_startup_cpu_loop(
             formatter_return(cpu);
             continue;
         }
-        if (entry_stop && (cpu->pc == CD_B0_5B || cpu->pc == CD_B0_4A ||
-            cpu->pc == CD_B0_4B || cpu->pc == CD_A0_70 || memcard_pc(cpu->pc))) {
+        if ((entry_stop && (cpu->pc == CD_B0_5B || cpu->pc == CD_B0_4A ||
+            cpu->pc == CD_B0_4B || cpu->pc == CD_A0_70)) || memcard_pc(cpu->pc)) {
             const MusashiCdDevice *cd = cpu->cd_device;
             int32_t service_result;
             int accepted = 0;
@@ -16270,13 +16270,13 @@ int musashi_native_lane_reference_call(MusashiBootMemory *memory, uint32_t targe
     return status == MUSASHI_RESETGRAPH_PREFIX_COMPLETE && cpu.npc != UINT_MAX;
 }
 
-MusashiResetGraphPrefixStatus musashi_boot_execute_source_function(
+MusashiResetGraphPrefixStatus musashi_boot_execute_source_call(
     MusashiBootMemory *memory, const MusashiStartupPrefixDevice *devices,
-    uint32_t target, MusashiConsoleSink sink, void *sink_userdata,
+    uint32_t target, uint32_t first, uint32_t second, int32_t *result,
+    MusashiConsoleSink sink, void *sink_userdata,
     MusashiResetGraphPrefixStop *stop) {
     FormatterCpu cpu = {0};
-    int32_t result = 0;
-    if (!memory || !devices || !devices->callback || !sink || !stop || (target & 3u))
+    if (!memory || !devices || !devices->callback || !sink || !stop || !result || (target & 3u))
         return MUSASHI_RESETGRAPH_PREFIX_INVALID_INPUT;
     cpu.callback_device = devices->callback;
     cpu.cd_device = devices->cd;
@@ -16291,11 +16291,22 @@ MusashiResetGraphPrefixStatus musashi_boot_execute_source_function(
     cpu.bios_image = devices->bios_image;
     cpu.pc = target;
     cpu.npc = target + 4u;
+    cpu.r[4] = first;
+    cpu.r[5] = second;
     cpu.r[28] = 0x80074750u;
     cpu.r[29] = cpu.r[30] = 0x801ff000u;
     cpu.r[31] = UINT_MAX;
-    return run_startup_cpu(memory, &cpu, sink, sink_userdata, &result, stop,
+    return run_startup_cpu(memory, &cpu, sink, sink_userdata, result, stop,
                            NULL, NULL, NULL);
+}
+
+MusashiResetGraphPrefixStatus musashi_boot_execute_source_function(
+    MusashiBootMemory *memory, const MusashiStartupPrefixDevice *devices,
+    uint32_t target, MusashiConsoleSink sink, void *sink_userdata,
+    MusashiResetGraphPrefixStop *stop) {
+    int32_t result = 0;
+    return musashi_boot_execute_source_call(memory, devices, target, 0, 0,
+                                            &result, sink, sink_userdata, stop);
 }
 
 MusashiResetGraphPrefixStatus musashi_boot_run_8005fc68_prefix(

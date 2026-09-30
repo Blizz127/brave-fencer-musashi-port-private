@@ -423,6 +423,12 @@ MusashiResetGraphPrefixStatus musashi_boot_execute_source_function(
     MusashiBootMemory *, const MusashiStartupPrefixDevice *, uint32_t target,
     MusashiConsoleSink, void *sink_userdata, MusashiResetGraphPrefixStop *);
 
+/* Same nested guest execution, with a0/a1 and the returned v0. */
+MusashiResetGraphPrefixStatus musashi_boot_execute_source_call(
+    MusashiBootMemory *, const MusashiStartupPrefixDevice *, uint32_t target,
+    uint32_t first, uint32_t second, int32_t *result,
+    MusashiConsoleSink, void *sink_userdata, MusashiResetGraphPrefixStop *);
+
 /* userdata is MusashiBootMemory*. Only the eight exact 800617CC..80061858
  * five-word BIOS flag callback entry points are accepted. No checkpoint or
  * interrupted CPU is consumed; intended guest flag stores are retained. */

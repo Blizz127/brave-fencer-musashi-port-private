@@ -102,3 +102,41 @@ before extending BIOS bindings. No reliable save/title-load completion ETA
 can be given from the present probe. A search of `pc_port/`, tests, the launch
 wrapper, and `PC-PORT.md` found no existing quicksave/savestate implementation
 to regress; that is a search result, not a compatibility claim for other tools.
+
+## Recovered inn traces and request executor (16:30 CDT)
+
+The later probes correct the tentative room identification above: room **2017**
+loads the inn overlay `sc03_0076`. W1 from runner
+`20260930-161436-bfm-r31-inn-trace3-1873581` visibly reaches “Would you like
+to save?” and calls `801EF6E4`, `801EF750`, `801EF800(1,1)` and `8005FD58`.
+The reproducible input is `mash 1800`, `tap X 4 116 4`, `tap D 4 116 1`,
+`tap X 4 116 20`. W2 selects another rental-menu entry. T1 and V2/V3 probe
+rental/exit paths; they are not save acceptance. All those jobs finished.
+
+W1 then refuses IRQ dispatch at `8004251C`, with `failed_target=8005FDD4`.
+The native runtime passed NULL as its libmcrd request executor, so an active
+request could not call its guest handler. The candidate connects the one-
+and two-argument request calls to the existing nested guest interpreter,
+preserving guest results and refusing incomplete calls. The previous no-
+argument source-function interface remains available.
+
+Runner `20260930-162646-bfm-r31-card-request-run-2149342` verified that the
+handler now executes, then exposed a second boundary at BIOS vector `A0`:
+file-device BIOS interception was limited to top-level continuous entry.
+The candidate now also handles those exact memory-card stub PCs during
+nested source calls. This does not enable other BIOS calls indiscriminately.
+A dedicated source-call probe verifies TestEvent argument/result/refusal,
+and nested `_card_info` with both argument registers and the returned word.
+
+The first build job `20260930-162523-bfm-r31-card-request-gate-2111826`
+finished with rc=6 because its synthetic event fixture ran without the
+required code image. The same fixture passes locally with the code image;
+that job did not run the game and is not acceptance evidence. The separate
+29 card/event/VBlank/IRQ tests pass. The dedicated CTest also passes.
+
+Save-menu verification of the second correction is running as
+`20260930-162925-bfm-r31-card-request-seam-2205757`. Do not duplicate it.
+Actual disk save and cold title Continue remain unverified until its results
+are inspected and a separate cold-load comparison succeeds. No tag,
+publication, one-hit/assist/movement completion, or Chapter 1 acceptance is
+claimed by this checkpoint.

@@ -345,6 +345,11 @@ if(MUSASHI_BUILD_PC_PORT)
         ${CMAKE_CURRENT_SOURCE_DIR}/extracted/disc/files/SLUS_007.26)
     set_tests_properties(heap_continuation_source_cpu PROPERTIES SKIP_RETURN_CODE 77)
 
+    add_executable(musashi_source_call_cpu_probe tests/source_call_cpu_probe.c)
+    target_compile_features(musashi_source_call_cpu_probe PRIVATE c_std_99)
+    target_link_libraries(musashi_source_call_cpu_probe PRIVATE musashi_pc_port)
+    add_test(NAME nested_source_call_cpu COMMAND musashi_source_call_cpu_probe)
+
     add_executable(musashi_event_registration_cpu_probe tests/event_registration_cpu_probe.c)
     target_compile_features(musashi_event_registration_cpu_probe PRIVATE c_std_99)
     target_include_directories(musashi_event_registration_cpu_probe PRIVATE "${MUSASHI_GENERATED_DIR}")
