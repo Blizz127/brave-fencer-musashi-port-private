@@ -1101,12 +1101,15 @@ static SDL_GameController *game_pad_select(void) {
 }
 
 /* In Steam Game Mode, InputPlumber turns the Legion Go pad into a virtual
- * Deck controller (28de:1205) and Steam passes its ignore list to children,
- * so SDL would see only Steam's virtual gamepad, which stays silent unless
+ * Deck-style controller (28de:1205; 28de:12fb "Legion Go 2 Controller" on
+ * the Go 2, hidraw only) and Steam passes its ignore list to children, so
+ * SDL would see only Steam's virtual gamepad, which stays silent unless
  * Steam Input is on for the shortcut. Before SDL starts, drop 28de:1205,
- * 28de:1206 and every 17ef (Lenovo) entry from
+ * 28de:1206, 28de:12f0-12ff and every 17ef (Lenovo) entry from
  * SDL_GAMECONTROLLER_IGNORE_DEVICES; game_pad_select still prefers the
- * virtual pad whenever it is the one sending input. */
+ * virtual pad whenever it is the one sending input. SDL 2.32 has no driver
+ * for 12fb, so on the Go 2 this only matters once one exists; the
+ * HOST_INPUT_DEVICE lines show what SDL actually opened. */
 static void sanitize_controller_ignore_list(void) {
     const char *in = getenv("SDL_GAMECONTROLLER_IGNORE_DEVICES");
     char out[4096] = "", item[64];
@@ -1118,7 +1121,8 @@ static void sanitize_controller_ignore_list(void) {
         unsigned vid = 0, pid = 0;
         snprintf(item, sizeof item, "%.*s", (int)(n < sizeof item ? n : sizeof item - 1), p);
         if (sscanf(item, " 0x%x/0x%x", &vid, &pid) == 2 &&
-            ((vid == 0x28deu && (pid == 0x1205u || pid == 0x1206u)) || vid == 0x17efu)) {
+            ((vid == 0x28deu && (pid == 0x1205u || pid == 0x1206u || (pid >= 0x12f0u && pid <= 0x12ffu))) ||
+             vid == 0x17efu)) {
             ++dropped;
         } else if (item[0]) {
             if (out[0]) strncat(out, ",", sizeof out - strlen(out) - 1);
@@ -1943,12 +1947,28 @@ static void dev_menu_vblank(NativeBoot *boot, int display) {
 }
 #endif
 
-/* Field diagnostics for "the pad does nothing": window focus changes, pad
- * hot-plug and the first presses, from the events the VBlank poll already
- * drains. SDL drops joystick presses while it thinks no window has focus
- * unless background events are allowed (set in main). */
+/* Field diagnostics for "the pad does nothing": window focus, every input
+ * device SDL can see (name, GUID, ids, path, Steam handle) and a capped
+ * trace of key, mouse, pad and joystick events, from the events the VBlank
+ * poll already drains. The first 64 input events are logged one per line,
+ * then a count line at most every 600 polls. SDL drops joystick presses
+ * while it thinks no window has focus unless background events are
+ * allowed (set in main). */
+static void host_device_log(const char *why, int index) {
+    char guid[33];
+    SDL_JoystickGetGUIDString(SDL_JoystickGetDeviceGUID(index), guid, sizeof guid);
+    fprintf(stderr, "native_boot: HOST_INPUT_DEVICE %s index=%d name=\"%s\" guid=%s id=%04x:%04x "
+            "gamecontroller=%d path=%s\n", why, index,
+            SDL_JoystickNameForIndex(index) ? SDL_JoystickNameForIndex(index) : "?", guid,
+            (unsigned)SDL_JoystickGetDeviceVendor(index), (unsigned)SDL_JoystickGetDeviceProduct(index),
+            SDL_IsGameController(index) ? 1 : 0,
+            SDL_JoystickPathForIndex(index) ? SDL_JoystickPathForIndex(index) : "?");
+}
+
 static void host_event_log(const SDL_Event *ev) {
-    static unsigned presses;
+    static unsigned logged, unlogged, polls;
+    int input = 0;
+    char line[160] = "";
     switch (ev->type) {
     case SDL_WINDOWEVENT:
         if (ev->window.event == SDL_WINDOWEVENT_FOCUS_GAINED ||
@@ -1958,26 +1978,58 @@ static void host_event_log(const SDL_Event *ev) {
                     ev->window.event == SDL_WINDOWEVENT_FOCUS_GAINED ? "focus_gained" :
                     ev->window.event == SDL_WINDOWEVENT_FOCUS_LOST ? "focus_lost" : "close");
         break;
-    case SDL_CONTROLLERDEVICEADDED:
-    case SDL_CONTROLLERDEVICEREMOVED:
-        fprintf(stderr, "native_boot: HOST_PAD_EVENT %s which=%d\n",
-                ev->type == SDL_CONTROLLERDEVICEADDED ? "added" : "removed", (int)ev->cdevice.which);
+    case SDL_JOYDEVICEADDED:
+        host_device_log("added", ev->jdevice.which);
+        break;
+    case SDL_JOYDEVICEREMOVED:
+        fprintf(stderr, "native_boot: HOST_INPUT_DEVICE removed id=%d\n", (int)ev->jdevice.which);
         break;
     case SDL_CONTROLLERBUTTONDOWN:
-        if (presses < 16u) {
-            ++presses;
-            fprintf(stderr, "native_boot: HOST_PAD_PRESS id=%d button=%s\n", (int)ev->cbutton.which,
-                    SDL_GameControllerGetStringForButton((SDL_GameControllerButton)ev->cbutton.button));
+    case SDL_CONTROLLERBUTTONUP:
+        input = 1;
+        snprintf(line, sizeof line, "pad id=%d %s %s", (int)ev->cbutton.which,
+                 SDL_GameControllerGetStringForButton((SDL_GameControllerButton)ev->cbutton.button),
+                 ev->type == SDL_CONTROLLERBUTTONDOWN ? "down" : "up");
+        break;
+    case SDL_CONTROLLERAXISMOTION:
+        /* Only crossings of half deflection, not every sample. */
+        if (ev->caxis.value > 16000 || ev->caxis.value < -16000) {
+            input = 1;
+            snprintf(line, sizeof line, "pad id=%d axis %s=%d", (int)ev->caxis.which,
+                     SDL_GameControllerGetStringForAxis((SDL_GameControllerAxis)ev->caxis.axis),
+                     (int)ev->caxis.value);
         }
         break;
+    case SDL_JOYBUTTONDOWN:
+        input = 1;
+        snprintf(line, sizeof line, "joystick id=%d button %d down", (int)ev->jbutton.which,
+                 (int)ev->jbutton.button);
+        break;
     case SDL_KEYDOWN:
-        if (presses < 16u && !ev->key.repeat) {
-            ++presses;
-            fprintf(stderr, "native_boot: HOST_KEY_PRESS key=%s\n", SDL_GetScancodeName(ev->key.keysym.scancode));
+    case SDL_KEYUP:
+        if (!ev->key.repeat) {
+            input = 1;
+            snprintf(line, sizeof line, "key %s %s", SDL_GetScancodeName(ev->key.keysym.scancode),
+                     ev->type == SDL_KEYDOWN ? "down" : "up");
         }
+        break;
+    case SDL_MOUSEBUTTONDOWN:
+        input = 1;
+        snprintf(line, sizeof line, "mouse button %d down", (int)ev->button.button);
         break;
     default:
         break;
+    }
+    if (!input) return;
+    if (logged < 64u) {
+        ++logged;
+        fprintf(stderr, "native_boot: HOST_INPUT %s\n", line);
+    } else {
+        ++unlogged;
+    }
+    if (unlogged && ++polls >= 600u) {
+        fprintf(stderr, "native_boot: HOST_INPUT more=%u (not logged individually)\n", unlogged);
+        unlogged = polls = 0;
     }
 }
 
