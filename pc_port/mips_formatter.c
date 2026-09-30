@@ -15571,11 +15571,14 @@ static int cd_irq_call(MusashiBootMemory *memory, const FormatterCpu *cpu,
     case 0x80041690u:
         return list && depth == 4 && parent == 0x800415f4u &&
             target == 0x800416a8u && sp == saved_sp-0xd8u;
+    /* LoadImage (800599B8) is reached from both list callbacks that call
+     * it: 8001A720 (return 8001A728) and 8001A494 (return 8001A49C, the
+     * toy shop 2013's image load). */
     case 0x800599d8u:
-        return list && depth == 2 && parent == 0x8001a728u &&
+        return list && depth == 2 && (parent == 0x8001a728u || parent == 0x8001a49cu) &&
             target == 0x80059760u && sp == saved_sp-0xa8u;
     case 0x800599fcu:
-        return list && depth == 2 && parent == 0x8001a728u &&
+        return list && depth == 2 && (parent == 0x8001a728u || parent == 0x8001a49cu) &&
             target == 0x8005b7b0u && sp == saved_sp-0xa8u &&
             cpu->gpu_io_device && cpu->gpu_io_device->write32;
     case 0x8005b7d4u:
