@@ -57,6 +57,9 @@ static volatile sig_atomic_t host_stop_signal;
  * "Exit Game", timeout, Ctrl+C), SDL's quit event, or a test stop. */
 enum { HOST_STOP_SIGNAL = 1, HOST_STOP_SDL_QUIT, HOST_STOP_IN_GAME_TARGET, HOST_STOP_MENU_PREVIEW };
 static volatile sig_atomic_t host_stop_source;
+/* PERF window (host time, SDL performance counter ticks): time slept by the
+ * guest clock because the guest was ahead, and time spent presenting. */
+static uint64_t g_perf_slept, g_perf_present;
 static void request_host_stop(int signal_number) {
     host_stop_signal = signal_number;
     host_stop_source = HOST_STOP_SIGNAL;
@@ -1530,12 +1533,13 @@ static int guest_clock_wait(NativeBoot *boot, uint64_t target_cycle) {
         due = boot->guest_host_origin +
             (uint64_t)((double)target_cycle * (double)freq / (double)MUSASHI_DEVICE_CLOCK_HZ);
 #endif
-        uint64_t now = SDL_GetPerformanceCounter();
+        uint64_t now = SDL_GetPerformanceCounter(), slept_from = now;
         /* Sleep only when the guest is a whole millisecond ahead. */
         while (now + freq / 1000u < due) {
             SDL_Delay(1);
             now = SDL_GetPerformanceCounter();
         }
+        g_perf_slept += now - slept_from;
     }
     return 1;
 }
@@ -2081,6 +2085,36 @@ static void route_log(NativeBoot *boot) {
     last_live = mode == 9u ? live : 0;
 }
 
+/* Every 600 guest VBlanks (10 s of NTSC game time), one PERF line: game
+ * speed against real time, the share of host time the guest clock slept
+ * (the guest was ahead: headroom) and the average present (render) time.
+ * speed < 100% with idle near 0% means the host cannot keep up. */
+static void perf_log(NativeBoot *boot) {
+    static uint64_t window_start, window_cycle;
+    static unsigned vblanks;
+    uint64_t now = SDL_GetPerformanceCounter(), freq = SDL_GetPerformanceFrequency();
+    if (!window_start) {
+        window_start = now;
+        window_cycle = boot->guest_tick;
+        g_perf_slept = g_perf_present = 0;
+        return;
+    }
+    if (++vblanks < 600u) return;
+    {
+        double wall = (double)(now - window_start) / (double)freq;
+        double guest = (double)(boot->guest_tick - window_cycle) / (double)MUSASHI_DEVICE_CLOCK_HZ;
+        fprintf(stderr, "native_boot: PERF vblanks=%u wall_s=%.2f guest_s=%.2f speed=%.0f%% "
+                "fps=%.1f idle=%.0f%% present_ms=%.2f\n", vblanks, wall, guest,
+                wall > 0 ? 100.0 * guest / wall : 0.0, wall > 0 ? vblanks / wall : 0.0,
+                wall > 0 ? 100.0 * (double)g_perf_slept / (double)freq / wall : 0.0,
+                1000.0 * (double)g_perf_present / (double)freq / vblanks);
+    }
+    vblanks = 0;
+    window_start = now;
+    window_cycle = boot->guest_tick;
+    g_perf_slept = g_perf_present = 0;
+}
+
 static int epoch_video_edge(void *userdata, uint64_t sequence, uint64_t cycle) {
     NativeBoot *boot = userdata;
     (void)sequence;
@@ -2110,13 +2144,18 @@ static int epoch_video_edge(void *userdata, uint64_t sequence, uint64_t cycle) {
             if (SDL_GL_GetCurrentContext() != boot->gpu_renderer.context)
                 SDL_GL_MakeCurrent((SDL_Window *)boot->gpu_renderer.window, boot->gpu_renderer.context);
         }
-        (void)present_frame(boot);
+        {
+            uint64_t t0 = SDL_GetPerformanceCounter();
+            (void)present_frame(boot);
+            g_perf_present += SDL_GetPerformanceCounter() - t0;
+        }
     }
 #ifdef MUSASHI_WITH_BFM_PLAT
     else
         dev_menu_vblank(boot, 0);
 #endif
     route_log(boot);
+    perf_log(boot);
     if (boot->scene1_reached && boot->gpu.display.width == 320u && boot->gpu.display.height == 240u) {
         if (boot->gte.write_count > 800u) {
             const char *pause_in_game = getenv("MUSASHI_PAUSE_IN_GAME");
