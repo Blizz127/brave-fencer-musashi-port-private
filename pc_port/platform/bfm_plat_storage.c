@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 #define MAX_BACKENDS 8
 
@@ -355,10 +356,13 @@ int bfm_plat_memcard_load(unsigned slot, uint8_t *card, size_t size) {
         !card_path(slot, path, sizeof path, ""))
         return BFM_PLAT_INVALID;
     f = fopen(path, "rb");
-    if (!f) return BFM_PLAT_NOT_FOUND;
+    if (!f) return errno == ENOENT ? BFM_PLAT_NOT_FOUND : BFM_PLAT_ERROR;
     got = fread(card, 1, size, f);
     extra = fgetc(f);
-    fclose(f);
+    {
+        int failed = ferror(f);
+        if (fclose(f) != 0 || failed) return BFM_PLAT_ERROR;
+    }
     return (got == size && extra == EOF) ? BFM_PLAT_OK : BFM_PLAT_INVALID;
 }
 

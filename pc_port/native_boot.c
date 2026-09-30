@@ -21,6 +21,7 @@
 #include "musashi_bios_card.h"
 #include "musashi_sio_controller.h"
 #include "musashi_bios_backup_unit.h"
+#include "musashi_bios_memcard.h"
 #include "musashi_bios_input.h"
 #include "musashi_source_clock.h"
 #include "musashi_timer2.h"
@@ -45,6 +46,7 @@ void musashi_psyx_shutdown(void);
 #include <sys/stat.h>
 #include <math.h>
 #include <time.h>
+#include <errno.h>
 
 #include "musashi_x11_nograb.h"
 #include "PsyX/PsyX_public.h"
@@ -84,6 +86,7 @@ static int log_sample(uint64_t *counter, uint64_t first, uint64_t stride) {
 #ifdef MUSASHI_WITH_BFM_PLAT
 #include "bfm_plat_gpu_bridge.h"
 #include "bfm_plat_input.h"
+#include "bfm_plat_storage.h"
 #include "bfm_plat_timing.h"
 #include "bfm_plat_audio.h"
 #include "musashi_plat_audio_sink.h"
@@ -167,6 +170,7 @@ typedef struct NativeBoot {
     MusashiBiosCardStartDevice card_device;
     MusashiSioController sio;
     MusashiBiosBackupUnit backup_unit;
+    MusashiBiosMemcard memcard;
     const void *continuation;
     MusashiGpuController gpu;
     MusashiGpuPsyCross gpu_renderer;
@@ -480,8 +484,155 @@ static int unavailable_bios_cd(void *userdata, uint16_t pending) {
     return 0;
 }
 
+/* ---- BIOS memory-card file device (bios_memcard.c) ---------------------- */
+static int memcard_persist(void *userdata, const uint8_t *image, size_t size) {
+    (void)userdata;
+#ifdef MUSASHI_WITH_BFM_PLAT
+    if (bfm_plat_memcard_save(0, image, size) != BFM_PLAT_OK) {
+        fprintf(stderr, "native_boot: MEMCARD save refused\n");
+        return 0;
+    }
+#else
+    (void)image; (void)size;
+    return 0;
+#endif
+    return 1;
+}
+
+/* Card directory: $BFM_SAVE_DIR, else the user's state dir
+ * ($XDG_STATE_HOME/bfm-port, ~/.local/state/bfm-port, %APPDATA%\\bfm-port). */
+static int memcard_dir(char *out, size_t size) {
+    const char *env = getenv("BFM_SAVE_DIR");
+    int n;
+    if (env && *env) n = snprintf(out, size, "%s", env);
+    else {
+#ifdef MUSASHI_WITH_BFM_PLAT
+        BfmPlatConfig cfg;
+        char config_path[512];
+        bfm_plat_config_defaults(&cfg);
+        if (bfm_plat_config_default_path(config_path, sizeof config_path))
+            (void)bfm_plat_config_load_file(&cfg, config_path);
+        if (strcmp(cfg.save_dir, "saves") != 0) {
+            n = snprintf(out, size, "%s", cfg.save_dir);
+            return n > 0 && (size_t)n < size;
+        }
+#endif
+#ifdef _WIN32
+        const char *appdata = getenv("APPDATA");
+        if (!appdata || !*appdata) return 0;
+        n = snprintf(out, size, "%s\\bfm-port", appdata);
+#else
+        const char *xdg = getenv("XDG_STATE_HOME"), *home = getenv("HOME");
+        if (xdg && *xdg) n = snprintf(out, size, "%s/bfm-port", xdg);
+        else if (home && *home) n = snprintf(out, size, "%s/.local/state/bfm-port", home);
+        else return 0;
+#endif
+    }
+    return n > 0 && (size_t)n < size;
+}
+
+static int memcard_mkdirs(char *dir) {
+    char *p;
+    struct stat st;
+    for (p = dir + 1; ; p++) {
+        char saved = *p;
+        if (saved != '/' && saved != 0) continue;
+        *p = 0;
+        if (mkdir(dir, 0700) != 0 && errno != EEXIST) { *p = saved; return 0; }
+        if (stat(dir, &st) != 0 || !S_ISDIR(st.st_mode)) { *p = saved; return 0; }
+        *p = saved;
+        if (!saved) return 1;
+    }
+}
+
+static int memcard_setup(NativeBoot *boot) {
+    const char *off = getenv("MUSASHI_MEMCARD");
+    char dir[512] = "-";
+    int present = !(off && strcmp(off, "0") == 0), loaded = 0;
+#ifndef MUSASHI_WITH_BFM_PLAT
+    present = 0; /* This build has no persistent storage backend. */
+#endif
+    musashi_bios_memcard_init(&boot->memcard, present);
+    boot->memcard.persist = memcard_persist;
+    boot->memcard.persist_userdata = boot;
+    if (present) {
+        if (!memcard_dir(dir, sizeof dir) || !memcard_mkdirs(dir)) {
+            fprintf(stderr, "native_boot: MEMCARD save directory unavailable\n");
+            return 0;
+        }
+#ifdef MUSASHI_WITH_BFM_PLAT
+        static uint8_t image[MUSASHI_MEMCARD_SIZE];
+        int r;
+        if (bfm_plat_memcard_set_dir(dir) != BFM_PLAT_OK) return 0;
+        r = bfm_plat_memcard_load(0, image, sizeof image);
+        if (r == BFM_PLAT_OK) loaded = musashi_bios_memcard_load_image(&boot->memcard, image, sizeof image);
+        else if (r == BFM_PLAT_NOT_FOUND) {
+            if (!memcard_persist(boot, boot->memcard.image, MUSASHI_MEMCARD_SIZE)) return 0;
+        } else {
+            fprintf(stderr, "native_boot: MEMCARD image unreadable (%d); refusing to replace it\n", r);
+            return 0;
+        }
+#endif
+    }
+    if (present && !musashi_bios_memcard_install_device_table(&boot->memory)) {
+        fprintf(stderr, "native_boot: MEMCARD device table refused\n");
+        return 0;
+    }
+    fprintf(stderr, "native_boot: MEMCARD port0=%s image=%s formatted=%d dir=%s\n",
+            present ? "PRESENT" : "ABSENT", loaded ? "LOADED" : "FRESH",
+            musashi_bios_memcard_is_formatted(boot->memcard.image), present ? dir : "-");
+    return 1;
+}
+
+static int memcard_call(void *userdata, uint32_t pc, const uint32_t *r, int32_t *result) {
+    NativeBoot *boot = userdata;
+    MusashiBiosMemcard *mc = &boot->memcard;
+    MusashiBootMemory *m = &boot->memory;
+    int accepted = 0;
+    const char *name = "?";
+    if (!lazy_sync(boot)) return 0; /* host device access: eager time */
+    switch (pc) {
+    case 0x80061f48u: name = "open"; accepted = musashi_bios_memcard_open(mc, m, r[4], r[5], result); break;
+    case 0x80061f58u: name = "lseek"; accepted = musashi_bios_memcard_lseek(mc, (int32_t)r[4], (int32_t)r[5], (int32_t)r[6], result); break;
+    case 0x8005cf28u: name = "read"; accepted = musashi_bios_memcard_read(mc, m, (int32_t)r[4], r[5], r[6], result); break;
+    case 0x8005cf38u: name = "write"; accepted = musashi_bios_memcard_write(mc, m, (int32_t)r[4], r[5], r[6], result); break;
+    case 0x80061f68u: name = "close"; accepted = musashi_bios_memcard_close(mc, (int32_t)r[4], result); break;
+    case 0x80061f78u: name = "format"; accepted = musashi_bios_memcard_format(mc, m, r[4], result); break;
+    case 0x80062248u: name = "firstfile"; accepted = musashi_bios_memcard_firstfile(mc, m, r[4], r[5], result); break;
+    case 0x80061f88u: name = "nextfile"; accepted = musashi_bios_memcard_nextfile(mc, m, r[4], result); break;
+    case 0x80061f98u: name = "erase"; accepted = musashi_bios_memcard_erase(mc, m, r[4], result); break;
+    case 0x80062258u: name = "_card_info";
+        if (mc->present && !musashi_bios_memcard_install_device_table(m)) return 0;
+        accepted = musashi_bios_memcard_card_info(mc, (int32_t)r[4], result); break;
+    case 0x80062278u: name = "_card_write"; accepted = musashi_bios_memcard_card_write(mc, m, (int32_t)r[4], (int32_t)r[5], r[6], result); break;
+    case 0x80062288u: name = "_new_card"; accepted = musashi_bios_memcard_new_card(mc, result); break;
+    default: return 0;
+    }
+    fprintf(stderr, "native_boot: MEMCARD %s a0=%08x a1=%08x a2=%08x -> %s%d pending=%04x\n", name,
+            r[4], r[5], r[6], accepted ? "" : "REFUSED ", accepted ? *result : 0, mc->pending_spec);
+    return accepted;
+}
+
+static int close_event(void *userdata, int32_t handle, int32_t *result) {
+    NativeBoot *boot = userdata;
+    return musashi_bios_events_close(&boot->bios.events, handle, result);
+}
+
+static int disable_event(void *userdata, int32_t handle, int32_t *result) {
+    NativeBoot *boot = userdata;
+    return musashi_bios_events_disable(&boot->bios.events, handle, result);
+}
+
 static int before_irq_dispatch(void *userdata, uint16_t pending) {
     NativeBoot *boot = userdata;
+    /* The memory card completes its file operations at VBlank, through the
+     * event vector, before the kernel's own dispatch (as the card driver's
+     * completion would). */
+    if ((pending & 1u) && boot->memcard.pending_spec &&
+        !musashi_bios_memcard_vblank(&boot->memcard, &boot->bios.events, execute_event, boot)) {
+        fprintf(stderr, "native_boot: MEMCARD completion refused\n");
+        return 0;
+    }
     /* BIOS SIO can own and acknowledge VBlank while ChangeClearPad is 1.
      * Let its verifier/handler run, then check the remaining guest route. */
     if (!musashi_bios_kernel_dispatch_with_context(&boot->bios, pending,
@@ -2350,7 +2501,7 @@ static void dev_menu_vblank(NativeBoot *boot, int display) {
     musashi_dev_menu_vblank(boot->scene1_reached, scene, mode, in_field);
     if (musashi_dev_menu_used())
         fprintf(stderr, "[DEV_MENU] dev menu used: a save made from now on may not match a "
-                        "normal playthrough (memory cards are not connected in this build)\n");
+                        "normal playthrough\n");
 }
 #endif
 
@@ -5372,10 +5523,18 @@ int main(int argc, char **argv) {
     boot.cd.b0_4a = init_card;
     boot.cd.b0_4b = start_card;
     boot.cd.a0_70 = init_backup_unit;
+    boot.cd.memcard_call = memcard_call;
+    if (!memcard_setup(&boot)) {
+        native_devices_shutdown(&boot);
+        musashi_psyx_shutdown();
+        return 2;
+    }
     boot.event.userdata = &boot;
     boot.event.open_event = open_event;
     boot.event.enable_event = enable_event;
     boot.event.b0_0b = test_event;
+    boot.event.close_event = close_event;
+    boot.event.disable_event = disable_event;
     boot.input.userdata = &boot;
     boot.input.dequeue_irq_result = input_dequeue;
     boot.input.enqueue_irq_result = input_enqueue;

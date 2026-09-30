@@ -8030,6 +8030,19 @@ enum {
     CD_B0_4A = 0x800627d8u,
     CD_B0_4B = 0x800627e8u,
     CD_A0_70 = 0x80061f38u,
+    /* libapi stubs of the BIOS memory-card file device (bios_memcard.c). */
+    MEMCARD_B0_32_OPEN = 0x80061f48u,
+    MEMCARD_B0_33_LSEEK = 0x80061f58u,
+    MEMCARD_B0_34_READ = 0x8005cf28u,
+    MEMCARD_B0_35_WRITE = 0x8005cf38u,
+    MEMCARD_B0_36_CLOSE = 0x80061f68u,
+    MEMCARD_B0_41_FORMAT = 0x80061f78u,
+    MEMCARD_B0_42_FIRSTFILE = 0x80062248u,
+    MEMCARD_B0_43_NEXTFILE = 0x80061f88u,
+    MEMCARD_B0_45_ERASE = 0x80061f98u,
+    MEMCARD_A0_AB_CARD_INFO = 0x80062258u,
+    MEMCARD_B0_4E_CARD_WRITE = 0x80062278u,
+    MEMCARD_B0_50_NEW_CARD = 0x80062288u,
     EVENT_START = 0x8005fcb8u,
     EVENT_START_END = 0x8005fd18u,
     EVENT_RESET = 0x80062888u,
@@ -10924,6 +10937,10 @@ int musashi_boot_continuation_host_context(const void *continuation,
     case CD_B0_4A: accepted = cd && cd->b0_4a; break;
     case CD_B0_4B: accepted = cd && cd->b0_4b; break;
     case CD_A0_70: accepted = cd && cd->a0_70; break;
+    case MEMCARD_B0_32_OPEN: case MEMCARD_B0_33_LSEEK: case MEMCARD_B0_34_READ: case MEMCARD_B0_35_WRITE: case MEMCARD_B0_36_CLOSE: case MEMCARD_B0_41_FORMAT: case MEMCARD_B0_42_FIRSTFILE: case MEMCARD_B0_43_NEXTFILE: case MEMCARD_B0_45_ERASE: case MEMCARD_A0_AB_CARD_INFO: case MEMCARD_B0_4E_CARD_WRITE: case MEMCARD_B0_50_NEW_CARD:
+        accepted = cd && cd->memcard_call; break;
+    case 0x8005ce88u: accepted = event && event->close_event; break;
+    case 0x8005cec8u: accepted = event && event->disable_event; break;
     case RESETGRAPH_GPU_CW:
         accepted = callback && callback->gpu_cw; break;
     case RESETGRAPH_DEVICE_RESET:
@@ -13222,6 +13239,16 @@ uint32_t musashi_native_guest_call(uint32_t target, unsigned argc,
 
 /* 1: the lane ran the call and returned to ra; 0: not a lane call here
  * (the interpreter proceeds); -1: the native call aborted (refuse). */
+/* The libapi stubs the BIOS memory-card file device answers. */
+static int memcard_pc(uint32_t pc) {
+    switch (pc) {
+    case MEMCARD_B0_32_OPEN: case MEMCARD_B0_33_LSEEK: case MEMCARD_B0_34_READ: case MEMCARD_B0_35_WRITE: case MEMCARD_B0_36_CLOSE: case MEMCARD_B0_41_FORMAT: case MEMCARD_B0_42_FIRSTFILE: case MEMCARD_B0_43_NEXTFILE: case MEMCARD_B0_45_ERASE: case MEMCARD_A0_AB_CARD_INFO: case MEMCARD_B0_4E_CARD_WRITE: case MEMCARD_B0_50_NEW_CARD:
+        return 1;
+    default:
+        return 0;
+    }
+}
+
 static int lane_try(MusashiBootMemory *memory, FormatterCpu *cpu) {
     const MusashiNativeLaneEntry *entry;
     LaneActive active;
@@ -14478,6 +14505,8 @@ int musashi_formatter_pc_host_handled(uint32_t pc) {
     case CALLBACK_CLEAR: case CALLBACK_EXIT_CRITICAL: case CALLBACK_EXIT_CRITICAL + 4u:
     case CALLBACK_INSTALLER: case CALLBACK_INSTALLER_CLEAR: case CALLBACK_REGISTER_WRAPPER:
     case CD_A0_70: case CD_B0_4A: case CD_B0_4B: case CD_B0_5B:
+    case MEMCARD_B0_32_OPEN: case MEMCARD_B0_33_LSEEK: case MEMCARD_B0_34_READ: case MEMCARD_B0_35_WRITE: case MEMCARD_B0_36_CLOSE: case MEMCARD_B0_41_FORMAT: case MEMCARD_B0_42_FIRSTFILE: case MEMCARD_B0_43_NEXTFILE: case MEMCARD_B0_45_ERASE: case MEMCARD_A0_AB_CARD_INFO: case MEMCARD_B0_4E_CARD_WRITE: case MEMCARD_B0_50_NEW_CARD:
+    case 0x8005ce88u: case 0x8005cec8u:
     case CD_ENTER_CRITICAL + 4u: case CD_INITIALIZER_STRING_EMIT:
     case EVENT_REGISTER:
     case FORMATTER_CONSOLE_CHAR: case FORMATTER_SEARCH: case FORMATTER_STRING_LENGTH:
@@ -14726,12 +14755,16 @@ static MusashiResetGraphPrefixStatus run_startup_cpu_loop(
         }
         if ((entry_stop || cpu->event_device) &&
             (cpu->pc == 0x8005ce78u || cpu->pc == 0x8005ceb8u ||
-             cpu->pc == 0x8005cea8u)) {
+             cpu->pc == 0x8005cea8u || cpu->pc == 0x8005ce88u || cpu->pc == 0x8005cec8u)) {
             const MusashiEventDevice *event = cpu->event_device;
             int32_t service_result;
             int accepted = 0;
             if (event) {
-                if (cpu->pc == 0x8005ce78u && event->open_event)
+                if (cpu->pc == 0x8005ce88u && event->close_event)
+                    accepted = event->close_event(event->userdata, (int32_t)cpu->r[4], &service_result);
+                else if (cpu->pc == 0x8005cec8u && event->disable_event)
+                    accepted = event->disable_event(event->userdata, (int32_t)cpu->r[4], &service_result);
+                else if (cpu->pc == 0x8005ce78u && event->open_event)
                     accepted = event->open_event(event->userdata, cpu->r[4], cpu->r[5],
                                                 cpu->r[6], cpu->r[7], &service_result);
                 else if (cpu->pc == 0x8005ceb8u && event->enable_event)
@@ -14765,12 +14798,14 @@ static MusashiResetGraphPrefixStatus run_startup_cpu_loop(
             continue;
         }
         if (entry_stop && (cpu->pc == CD_B0_5B || cpu->pc == CD_B0_4A ||
-            cpu->pc == CD_B0_4B || cpu->pc == CD_A0_70)) {
+            cpu->pc == CD_B0_4B || cpu->pc == CD_A0_70 || memcard_pc(cpu->pc))) {
             const MusashiCdDevice *cd = cpu->cd_device;
             int32_t service_result;
             int accepted = 0;
             if (cd) {
-                if (cpu->pc == CD_B0_5B && cd->b0_5b)
+                if (memcard_pc(cpu->pc) && cd->memcard_call)
+                    accepted = cd->memcard_call(cd->userdata, cpu->pc, cpu->r, &service_result);
+                else if (cpu->pc == CD_B0_5B && cd->b0_5b)
                     accepted = cd->b0_5b(cd->userdata, (int32_t)cpu->r[4], &service_result);
                 else if (cpu->pc == CD_B0_4A && cd->b0_4a)
                     accepted = cd->b0_4a(cd->userdata, (int32_t)cpu->r[4], &service_result);

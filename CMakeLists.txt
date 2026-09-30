@@ -249,6 +249,7 @@ if(MUSASHI_BUILD_PC_PORT)
         pc_port/bios_heap.c
         pc_port/bios_card.c
         pc_port/bios_backup_unit.c
+        pc_port/bios_memcard.c
         pc_port/bios_input.c
         pc_port/source_clock.c
         pc_port/timer2.c

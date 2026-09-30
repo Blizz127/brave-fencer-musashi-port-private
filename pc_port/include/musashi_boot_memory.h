@@ -231,6 +231,10 @@ typedef struct MusashiCdDevice {
     int (*b0_4a)(void *userdata, int32_t argument, int32_t *result);
     int (*b0_4b)(void *userdata, int32_t *result);
     int (*a0_70)(void *userdata, int32_t *result);
+    /* Memory-card file device (bu00:): open/lseek/read/write/close, format,
+     * firstfile/nextfile, erase, _card_info, _card_write, _new_card. `pc` is
+     * the libapi stub the guest called; `r` its registers (a0..a3 = r[4..7]). */
+    int (*memcard_call)(void *userdata, uint32_t pc, const uint32_t *r, int32_t *result);
     /* Continuous execution requires SYS1's guest return value. The legacy
      * acceptance-only callback above remains for old diagnostic wrappers. */
     int (*enter_critical_result)(void *userdata, int32_t *result);
@@ -269,6 +273,9 @@ typedef struct MusashiEventDevice {
     int (*enable_event)(void *userdata, int32_t handle, int32_t *result);
     int (*b0_0b)(void *userdata, int32_t handle, int32_t *result);
     int (*exit_critical_section)(void *userdata, int32_t *result);
+    /* B0:09 CloseEvent and B0:0D DisableEvent (libmcrd teardown). */
+    int (*close_event)(void *userdata, int32_t handle, int32_t *result);
+    int (*disable_event)(void *userdata, int32_t handle, int32_t *result);
 } MusashiEventDevice;
 
 /* Owner-thread relative source execution timeline. The selected reference
