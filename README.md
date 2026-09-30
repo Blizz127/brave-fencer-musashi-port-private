@@ -101,3 +101,8 @@ which `chdman` ran is provenance a relative path would lose.
 
 No copyrighted game code, executable, textures, audio, or disc image belongs
 in this repository. See [LICENSE-NOTES.md](LICENSE-NOTES.md).
+
+## Thanks
+
+- Thanks to u/SandmansSlave on Reddit for the idea of the no-grind assists
+  (x2/x3 progression, God Mode), first suggested for Parasite Eve.
