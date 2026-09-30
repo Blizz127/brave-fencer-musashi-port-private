@@ -11092,6 +11092,7 @@ static int gte_load_successor(uint8_t reg, uint32_t pc, uint32_t word) {
         {2, 0x80049470u, 42u /* site group */},
         {3, 0x80049474u, 42u /* site group */},
         {2, 0x80049484u, 42u /* site group */},
+        {0, 0x80049604u, 42u /* site group: NormalClip's MFC2 after NCLIP */},
         {2, 0x80049608u, 42u /* site group: NormalClip's jr ra after MFC2 v0 */},
         {2, 0x80047d4cu, 26u /* site group */},
         {11, 0x80048e04u, 36u /* site group */},
@@ -12425,7 +12426,7 @@ static int gte_load_successor_pc(uint32_t pc) {
         return 1;
     static const uint32_t pcs[] = {
         0x80048decu, 0x80048e1cu, 0x80048e50u,
-        0x80049470u, 0x80049474u, 0x80049484u, 0x80049608u,
+        0x80049470u, 0x80049474u, 0x80049484u, 0x80049604u, 0x80049608u,
         0x80047d4cu,
         0x80048e04u, 0x80048e08u, 0x80048e0cu,
         0x80048e38u, 0x80048e3cu, 0x80048e40u,
