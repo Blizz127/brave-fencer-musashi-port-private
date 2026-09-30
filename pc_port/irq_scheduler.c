@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "musashi_native_lane.h"
 #include "musashi_irq_scheduler.h"
 
@@ -212,7 +213,20 @@ static int scheduler_dispatch(MusashiPsyCrossIrqScheduler *scheduler,
         return 1;
     }
     if (!musashi_cpu_status_begin(scheduler->cpu_status, MUSASHI_CPU_EXCEPTION_IRQ,
-            &context, 0x400u, &scheduler->active_exception)) { why = "exception-begin"; goto fault; }
+            &context, 0x400u, &scheduler->active_exception)) {
+        MusashiCpuStatusSnapshot now;
+        int have = musashi_cpu_status_snapshot(scheduler->cpu_status, &now);
+        /* Name the refused shape: the checkpoint context and the CPU owner. */
+        fprintf(stderr, "native_boot: IRQ_EXCEPTION_BEGIN_REFUSED pc=%08x npc=%08x instruction=%08x "
+                "instruction_valid=%d delay_slot=%d branch_pc=%08x provenance=%d gpr0=%08x "
+                "identity=%d sr=%08x active=%d sequence=%llu pending=%04x\n",
+                context.pc, context.npc, context.instruction, context.instruction_valid,
+                context.delay_slot, context.branch_pc, (int)context.provenance,
+                context.gpr ? context.gpr[0] : 0xffffffffu, context.identity != NULL,
+                have ? now.sr : 0u, have ? now.active : -1,
+                have ? (unsigned long long)now.sequence : 0ull, (unsigned)(status & mask));
+        why = "exception-begin"; goto fault;
+    }
     scheduler->active_continuation = continuation;
     scheduler->delivering = 1;
     scheduler->return_consumed = 0;

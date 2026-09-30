@@ -13088,8 +13088,26 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
         if (lane < 0) return formatter_refuse0(__LINE__, cpu->pc);
     }
     if (cpu->pc == 0x80128158u) {
+        static int last_sc01 = -1, last_sc02 = -1;
+        static uint64_t last_digest;
+        uint64_t digest = 0;
         g_overlay_sc02_0031_words = sc02_entry_matches(memory);
         g_overlay_sc01_0000_words = sc01_entry_matches(memory);
+        (void)span_digest(memory, 0x80128158u, SC_ENTRY_WORDS, &digest);
+        if (digest != last_digest || g_overlay_sc01_0000_words != last_sc01 ||
+            g_overlay_sc02_0031_words != last_sc02) {
+            uint16_t location = 0;
+            (void)musashi_boot_read16(memory, 0x800b9a08u, &location);
+            fprintf(stderr, "native_boot: OVERLAY_IDENTITY location=%04x entry_digest=%016llx "
+                    "sc01=%s sc02_0031=%d\n", (unsigned)location, (unsigned long long)digest,
+                    !g_overlay_sc01_0000_words ? "none" :
+                    g_sc01_code == kOverlaySc01Member77CodeWords ? "member77" :
+                    g_sc01_code == kOverlaySc01Member1CodeWords ? "member1" : "member0",
+                    g_overlay_sc02_0031_words);
+            last_digest = digest;
+            last_sc01 = g_overlay_sc01_0000_words;
+            last_sc02 = g_overlay_sc02_0031_words;
+        }
         overlay_changed();
     }
     if (memory != g_fetch_memory) {
