@@ -11092,8 +11092,6 @@ static int gte_load_successor(uint8_t reg, uint32_t pc, uint32_t word) {
         {2, 0x80049470u, 42u /* site group */},
         {3, 0x80049474u, 42u /* site group */},
         {2, 0x80049484u, 42u /* site group */},
-        {0, 0x80049604u, 42u /* site group: NormalClip's MFC2 after NCLIP */},
-        {2, 0x80049608u, 42u /* site group: NormalClip's jr ra after MFC2 v0 */},
         {2, 0x80047d4cu, 26u /* site group */},
         {11, 0x80048e04u, 36u /* site group */},
         {12, 0x80048e08u, 36u /* site group */},
@@ -11272,31 +11270,6 @@ static int jal_caller_of(uint32_t ra, uint32_t entry) {
     if (!admitted || !code_word(g_fetch_memory, NULL, site, &word)) return 0;
     return (word >> 26) == 3u &&
            (((site + 4u) & 0xf0000000u) | ((word & 0x03ffffffu) << 2)) == entry;
-}
-
-/* func_800495EC, libgte NormalClip: MTC2 a0/a1/a2 into SXY0/SXY1/SXY2,
- * NCLIP, MFC2 MAC0 into v0. Its words are checked as those operations (no
- * stored words); the libgte region is pinned by site group 42's digest.
- * Slot 3 = data write, 4 = command, 1 = data read. The attract demo reaches
- * it from room 3050's code (STEP_REFUSED pc=800495ec). */
-static const uint32_t kGteEntry800495EC = 0x800495ecu;
-#define MIPS_COP2_MOVE(rs, rt, rd) \
-    ((18u << 26) | ((uint32_t)(rs) << 21) | ((uint32_t)(rt) << 16) | ((uint32_t)(rd) << 11))
-static int gte_495ec_site(uint32_t pc, uint32_t instruction, unsigned *slot) {
-    static const struct { uint32_t pc, word; unsigned slot; } sites[] = {
-        {0x800495ecu, MIPS_COP2_MOVE(4u, 4u, 12u), 3u},   /* mtc2 a0, SXY0 */
-        {0x800495f0u, MIPS_COP2_MOVE(4u, 6u, 14u), 3u},   /* mtc2 a2, SXY2 */
-        {0x800495f4u, MIPS_COP2_MOVE(4u, 5u, 13u), 3u},   /* mtc2 a1, SXY1 */
-        {0x80049600u, (18u << 26) | (1u << 25) | 0x01400006u, 4u}, /* nclip (COP2 command) */
-        {0x80049604u, MIPS_COP2_MOVE(0u, 2u, 24u), 1u},   /* mfc2 v0, MAC0 */
-    };
-    unsigned i;
-    for (i = 0; i < sizeof sites / sizeof sites[0]; ++i)
-        if (sites[i].pc == pc && sites[i].word == instruction && code_site_group_ok(42u)) {
-            *slot = sites[i].slot;
-            return 1;
-        }
-    return 0;
 }
 
 /* 80048D9C COP2 sites: (PC, word, slot). Slot 0 is MTC2 into V0/V1 via
@@ -12426,7 +12399,7 @@ static int gte_load_successor_pc(uint32_t pc) {
         return 1;
     static const uint32_t pcs[] = {
         0x80048decu, 0x80048e1cu, 0x80048e50u,
-        0x80049470u, 0x80049474u, 0x80049484u, 0x80049604u, 0x80049608u,
+        0x80049470u, 0x80049474u, 0x80049484u,
         0x80047d4cu,
         0x80048e04u, 0x80048e08u, 0x80048e0cu,
         0x80048e38u, 0x80048e3cu, 0x80048e40u,
@@ -13575,14 +13548,7 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
         int trans_leaf = 0;
         int bank = 0;
         int lib_gte = 0;
-        int nclip = 0;
         if (cpu->cpu_transfer) {
-            unsigned nclip_slot = 99;
-            nclip = jal_caller_of(cpu->r[31], kGteEntry800495EC) &&
-                gte_495ec_site(cpu->pc, instruction, &nclip_slot) &&
-                ((nclip_slot == 1u && cpu->cpu_transfer->read_data != NULL) ||
-                 (nclip_slot == 3u && cpu->cpu_transfer->write_data != NULL) ||
-                 (nclip_slot == 4u && cpu->cpu_transfer->command != NULL));
             /* The func_80012558 library sites carry a stale RA, so they are
              * admitted by exact PC/word with the transfer binding the site
              * needs (slot 1 = data read, 3 = data write, 4 = command). */
@@ -13664,7 +13630,7 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
             cpu->npc != cpu->pc+4u ||
             cpu->delay_slot || cpu->branch_pc ||
             (!leaf && !camera && !camera2 && !transform && !vector_command &&
-             !transform_leaf && !trans_leaf && !bank && !lib_gte && !nclip)) return formatter_refuse0(__LINE__, cpu->pc);
+             !transform_leaf && !trans_leaf && !bank && !lib_gte)) return formatter_refuse0(__LINE__, cpu->pc);
     } else if (opcode == 18u) {
         static const uint32_t sites[][2] = {
             {0x80047ce8u,25u /* site group */},{0x80047cf4u,25u /* site group */},
