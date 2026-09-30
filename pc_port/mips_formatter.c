@@ -12597,7 +12597,8 @@ static int identified_module(uint32_t pc) {
                     kCodeModules[i].base, kCodeModules[i].bytes);
             return 1;
         }
-        return 0;
+        /* Modules share load addresses (the boss room's and the shops'
+         * overlap): try the next one that covers pc. */
     }
     return 0;
 }

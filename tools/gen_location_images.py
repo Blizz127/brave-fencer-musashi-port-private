@@ -24,6 +24,13 @@ MODULE_DIGEST_BYTES = 64 * 4
 # at 801E4C60, confirmed from a guest RAM dump of that room (its references,
 # e.g. 801E663C, land inside it and its 0x11480 bytes end at 801F60E0).
 MODULE_BASES = {"sc02/0009": 0x801E4C60}
+# Grillin' Village (area 2) shops 2013..201A (sc03_0073..0079) keep their code
+# in the member's last chunk (type 257: type 1 with the last-chunk flag
+# 0x100), uncompressed, linked for 801EF468: a guest RAM dump taken in the
+# toy shop 2013 holds sc03_0073's 0x71B8 bytes there byte for byte. The other
+# shops share the shop engine's load address; a row whose digest does not
+# match guest RAM there is simply never admitted.
+MODULE_BASES.update({"sc03/%04d" % m: 0x801EF468 for m in range(73, 80)})
 root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 
 
@@ -64,12 +71,12 @@ def main():
     for path in sorted(glob.glob(os.path.join(root, "extracted/overlays/sc0*/[0-9][0-9][0-9][0-9].bin"))):
         member = os.path.relpath(path, os.path.join(root, "extracted/overlays"))[:-len(".bin")]
         for kind, payload in pac_chunks(open(path, "rb").read()):
-            if kind != 1 or len(payload) < ENTRY_BYTES:
+            if (kind & 0xFF) != 1 or len(payload) < ENTRY_BYTES:
                 continue
             if member in MODULE_BASES:
                 modules.append((member, MODULE_BASES[member], len(payload) & ~3,
                                 fnv1a64(payload[:MODULE_DIGEST_BYTES])))
-            elif (struct.unpack_from("<I", payload, 0)[0] & 0xFFFF8000) == 0x27BD8000:
+            elif kind == 1 and (struct.unpack_from("<I", payload, 0)[0] & 0xFFFF8000) == 0x27BD8000:
                 digest = fnv1a64(payload[:ENTRY_BYTES])
                 names, best = rows.get(digest, ([], 0))
                 rows[digest] = (names + [member.replace("/", "_") + "(raw)"], max(best, len(payload) & ~3))

@@ -145,5 +145,12 @@ enum { LOCATION_IMAGE_MAX_BYTES = 854540 };
  * 64 words, checked against guest RAM before any of it is admitted. */
 static const struct { uint32_t base, bytes; uint64_t digest; } kCodeModules[] = {
     { 0x801e4c60u,  70784u, 0x9c303e3ef65ac880ull }, /* sc02_0009 */
+    { 0x801ef468u,  29112u, 0x73ddbaabc2d7c3f1ull }, /* sc03_0073 */
+    { 0x801ef468u,  27296u, 0xc17159cc54d65337ull }, /* sc03_0074 */
+    { 0x801ef468u,  30792u, 0xef449f9f702cd519ull }, /* sc03_0075 */
+    { 0x801ef468u,  43760u, 0x2bba7d0e364eb1ceull }, /* sc03_0076 */
+    { 0x801ef468u,  32768u, 0x7c91c899cb8fc90cull }, /* sc03_0077 */
+    { 0x801ef468u,  15676u, 0x3b323858bbc8d714ull }, /* sc03_0078 */
+    { 0x801ef468u,  39340u, 0x919d6749693fecfcull }, /* sc03_0079 */
 };
 #endif
