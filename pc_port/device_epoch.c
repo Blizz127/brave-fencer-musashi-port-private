@@ -135,10 +135,11 @@ static int collect_and_commit(MusashiDeviceEpoch *epoch) {
     return 1;
 }
 
-static int advance(MusashiDeviceEpoch *epoch, uint32_t cost) {
+static int advance(MusashiDeviceEpoch *epoch, uint64_t cost) {
     uint64_t reserved, target_tick;
     int ok = 0;
     if (!owned(epoch) || epoch->busy || epoch->faulted) return 0;
+    epoch->lazy_valid = 0;
     epoch->busy = 1;
     if (epoch->cycle > UINT64_MAX - cost) goto done;
     reserved = epoch->cycle + cost;
@@ -165,12 +166,84 @@ done:
     return ok;
 }
 
+/* A direct commit while cycles are deferred would reorder device time. */
+static int refuse_deferred(MusashiDeviceEpoch *epoch) {
+    if (!epoch || !epoch->lazy_deferred) return 0;
+    epoch->fault_reason = "lazy-deferred";
+    epoch->faulted = 1;
+    return 1;
+}
+
 int musashi_device_epoch_advance_cost(void *userdata, uint32_t cost) {
+    if (refuse_deferred(userdata)) return 0;
     return advance(userdata, cost);
 }
 
 int musashi_device_epoch_sync(MusashiDeviceEpoch *epoch) {
+    if (refuse_deferred(epoch)) return 0;
     return advance(epoch, 0);
+}
+
+static void lazy_refresh(MusashiDeviceEpoch *epoch) {
+    uint64_t due = 0;
+    epoch->lazy_valid = 0;
+    if (epoch->lazy_deferred || !epoch->adapter.next_deadline ||
+        !epoch->adapter.next_deadline(epoch->adapter.userdata, epoch->cycle, &due) ||
+        due <= epoch->cycle)
+        return;
+    epoch->lazy_due = due;
+    epoch->lazy_cuts = epoch->cuts;
+    epoch->lazy_valid = 1;
+}
+
+int musashi_device_epoch_lazy_defer(MusashiDeviceEpoch *epoch, uint32_t cost) {
+    uint64_t target;
+    if (!epoch || epoch->faulted) return 0;
+    if (epoch->lazy_deferred > UINT64_MAX - cost - epoch->cycle) {
+        epoch->lazy_valid = 0;
+        return 0;
+    }
+    epoch->lazy_deferred += cost;
+    target = epoch->cycle + epoch->lazy_deferred;
+    if (!epoch->lazy_valid || epoch->lazy_cuts != epoch->cuts || target >= epoch->lazy_due)
+        return 0;
+    epoch->lazy_last_target = target;
+    ++epoch->lazy_deferrals;
+    return 1;
+}
+
+int musashi_device_epoch_lazy_commit_part(MusashiDeviceEpoch *epoch, uint64_t cycles) {
+    uint64_t rest;
+    if (!epoch || cycles > epoch->lazy_deferred) return 0;
+    rest = epoch->lazy_deferred - cycles;
+    /* The eager sequence: guest_clock_flush's advance_cost (only for a
+     * nonzero charge), then sync. */
+    epoch->lazy_deferred = 0;
+    if ((cycles && !advance(epoch, cycles)) || !advance(epoch, 0)) {
+        epoch->lazy_deferred = rest;
+        return 0;
+    }
+    epoch->lazy_deferred = rest;
+    ++epoch->lazy_commits;
+    lazy_refresh(epoch);
+    return 1;
+}
+
+int musashi_device_epoch_lazy_commit(MusashiDeviceEpoch *epoch) {
+    return epoch && musashi_device_epoch_lazy_commit_part(epoch, epoch->lazy_deferred);
+}
+
+void musashi_device_epoch_lazy_invalidate(MusashiDeviceEpoch *epoch) {
+    if (epoch) epoch->lazy_valid = 0;
+}
+
+int musashi_device_epoch_lazy_verify(MusashiDeviceEpoch *epoch, uint64_t *fresh_due) {
+    uint64_t due = 0;
+    int quiescent;
+    if (!epoch || !epoch->lazy_valid || !epoch->adapter.next_deadline) return 0;
+    quiescent = epoch->adapter.next_deadline(epoch->adapter.userdata, epoch->cycle, &due);
+    if (fresh_due) *fresh_due = quiescent ? due : 0;
+    return quiescent && due == epoch->lazy_due;
 }
 
 int musashi_device_epoch_shutdown(MusashiDeviceEpoch *epoch) {
