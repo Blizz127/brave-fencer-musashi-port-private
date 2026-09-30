@@ -659,48 +659,72 @@ Routed through `bfm_plat_*` (opt-in; the defaults keep native_boot's own paths):
 
 ## Port Dev Menu (opt-in, off by default)
 
-`BFM_DEV_MENU=1` (or `--dev-menu`) turns it on; without it nothing in
-`pc_port/dev_menu.c` runs. F1, or L3+R3 (or Guide) on a controller, opens
-it; Up/Down (d-pad, left stick, arrows) move, Cross/A or Enter/C select,
-Circle/B or Esc/Backspace go back. It is drawn over the presented frame with
-the built-in 5x7 font (`musashi_gpu_psycross_set_overlay`, scissored GL
-clears; VRAM is not touched), and while it is open the game reads a neutral
-pad. "DEV" stays in the corner while any cheat is on.
+The shared port spec (`~/release-staging/port-dev-menu/DEV_MENU_SPEC.md`)
+applied to BFM; model in `pc_port/dev_menu.c`, host glue in
+`pc_port/native_boot.c` (`dev_menu_*`).
+
+- **Switches.** `BFM_DEV_MENU=1` (or `--dev-menu`) enables the menu and its
+  F-keys. `BFM_CHEATS=0` hard-disables everything, including the
+  always-on fast-forward and screenshot keys, the legacy cheat registry,
+  `cheats.ini` and the console's `poke`. Disabled, nothing in the menu
+  writes guest RAM, consumes input or draws.
+- **Keys.** F8, or Back+Start pressed together on one controller, opens
+  and closes it. With the menu enabled, a controller's Back and Start reach
+  the game as a short press when released (so a lone Start still works,
+  held Start does not). Up/Down move, Enter/A select, Esc/B go
+  back, F1 shows the key list. F2 God Mode, F3 BP Max, F6 or L3
+  fast-forward toggle, Backspace or R3 hold, F7 fast-forward speed
+  (2x/4x/8x/max), F10 screenshot to `~/Pictures/bfm-port/`.
+- **Pages.** Warp > · Finish Area > · Cheats > · Options >. While the menu
+  is open the game reads a neutral pad. A `CHEATS` badge stays on screen
+  while any cheat is on.
 
 | page | entries |
 |---|---|
-| Cheats | Infinite HP (current 80078EB4 = max 80078EB2, the game's refill in func_8014BC44), Infinite BP (80078EB8 = 80078EB6), Max Drans (80078E8C = 99999, the game's cap). Applied once per VBlank, only after the first scene is reached. |
-| Warps | Only warps tested working in the port are listed (`kWarps`). None yet: the port does not reach player control. |
+| Warp | Verified entries only (`kWarps`); empty until the warp sweep passes them. |
+| Finish Area | Verified entries only (`kFinish`); empty until built from recorded exit diffs. |
+| Cheats | God Mode (HP current 80078EB4 = max 80078EB2, the game's refill in func_8014BC44), BP Max (80078EB8 = 80078EB6), Add 10000 Drans (80078E8C, capped at the game's 99999), Time +1 hour (80078EB1; refused at 23:00). Toggles re-apply each VBlank; everything acts only in the field (a scene is up, mode 9, player+0x4D == 1); one-shots elsewhere are refused with a toast. |
+| Options | Fast-forward, fast-forward speed, screenshot. |
 
-`BFM_DEV_MENU_KEYS="frame:KEY,..."` (TOGGLE, UP, DOWN, OK, BACK) drives it
-headless. The model test is `tests/dev_menu_probe.c` (ctest `dev_menu_model`).
+**Warps** are the game's own exit request, never a direct location write:
+the 0x24-byte exit record the attract demo hands `func_800D1724`
+(`D_800D3A68`: resident fade-out `800D30C8`, spawn argument `8010F5C8`,
+no-op callbacks `800D1E20`), aimed at the target location and entrance,
+written to `80078E50` (where `func_801458E8` builds its own), then the
+active exit pointer `800AE6B0` = `80078E50`. The mode-9 poll
+(`func_800D1754`) then fades, commits `800B9A08`, loads, spawns at door E
+and plays the walk-in. A warp is sent only when program state `800B99DE`
+is 0xB, mode `800B99F0` is 9, the room is live (`800B9A10` = 1), the player
+has control (+0x4D = 1) and is idle (+0x4E = 0), no exit is active or
+queued (`800AE6B0`/`800AE6A8`), none of the mode-diverting flags
+(`80074780`, `800760C8`, `80114E70`, `80075838`) is set, and the current
+room is not 0x3069; it waits (logged) until then. It is reported arrived
+when mode 9 resumes in the target with the room live. Entrances are
+checked against `pc_port/dev_menu_locations.h` (163 location ids and door
+counts). `BFM_DEV_MENU_WARP_TEST=LLLL:E` is the harness-only request the
+sweep uses.
 
-## Debug forcing (divergences, off by default)
+**Route record.** Every run logs `ROUTE enter location= entrance=
+progress= flags= vars=` each time a room goes live (read-only; FNV-1a
+digests of the 512 story flags at 800AE648 and the 256 script vars at
+800BA1B8). Warp entries take their destination and progression values
+from these lines.
 
-native_boot writes no guest RAM behind the game's back by default. The
-following pokes run only with `MUSASHI_DEBUG_FORCE=1`, print a
-`DIVERGENCE` line when applied, and all act only after `SCENE1_REACHED`:
+Logs: `[DEV_MENU]`, `[CHEATS]` and `[WARP]` lines in the run log.
+`BFM_DEV_MENU_KEYS="frame:KEY,..."` (TOGGLE UP DOWN OK BACK HELP GOD
+RESOURCE FF FFSPEED SHOT) drives it headless. The model test is
+`tests/dev_menu_probe.c` (ctest `dev_menu_model`): off inert, hard
+disable, zero guest writes over 1000 VBlanks with every cheat off, field
+gating, refusals, the warp's record and arrival.
 
-| poke | what it bypasses |
-|---|---|
-| player `+0x4D` 2 -> 1 (with auto-dismiss, or after the fade) | the game's own control unlock after the opening dialogue |
-| `0x800B99F0` = 9 | the game-mode selector reaching gameplay by itself |
-| player `+0xA9` = 0x41 | the pad type the game copies every frame from `D_80078D98[port]` (`func_80148648` <- `func_80018C64` <- the pad buffer's ID byte, only when its status byte is 0) |
+## Test-only drivers
 
-A headless no-force boot reaches the title (8 `TITLE_LOAD`s, no
-refusals); gameplay, where the pokes would act, is not yet reached
-headless, so what each one covered for is not yet observed.
-`MUSASHI_GAMEPLAY_ACTION` scripted inputs are separate opt-in test drivers:
-they write pad words (player `+0xAA/AC/AE`, `80078DCA/DD2`) and `800AE658`
-straight into guest RAM in gameplay, and print a `DIVERGENCE` line when set.
-
-What the `+0xA9` poke covered for is unproven until a gameplay run. The
-game writes 0x41 itself when the port-1 pad record takes the buffer's ID
-byte (status 0, PadGetState reporting a pad). The removed non-retail
-`8005F704` PadInfo getter differed from the retail code only for port 2
-(`a0 & 0xF0` nonzero), so it does not by itself explain a wrong port-1
-type; the proof is a lane-on gameplay run without forcing where `+0xA9`
-reads 0x41 from the game.
+native_boot writes no guest RAM behind the game's back. The former
+`MUSASHI_DEBUG_FORCE` pokes are gone (812101d58).
+`MUSASHI_GAMEPLAY_ACTION` (walk, mash, jump, slash, combo, ...) is a
+test-only scripted pad for headless verification runs: it presses buttons
+through the SIO pad sampler, writes no guest RAM, prints a `DIVERGENCE`
+line when set, and is never set by `launch.sh`.
 
 ## Native lane: running matched decomp C on the host (2026-09-28)
 
