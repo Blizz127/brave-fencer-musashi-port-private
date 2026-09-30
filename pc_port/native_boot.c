@@ -3943,7 +3943,14 @@ static void host_window_inspect(SDL_Window *window) {
         if (dpy && xid)
             musashi_x11_spectator(dpy, xid);
     }
-    musashi_x11_spectator_focused();
+    /* Only an x11 window of our own can be the focused one here. Under the
+     * offscreen (headless) or Wayland drivers there is none, and the X focus
+     * belongs to some other application on the desktop: never touch it. */
+    {
+        const char *driver = SDL_GetCurrentVideoDriver();
+        if (driver && strcmp(driver, "x11") == 0)
+            musashi_x11_spectator_focused();
+    }
     if (interactive)
         SDL_RaiseWindow(window);
 }
