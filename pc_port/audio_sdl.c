@@ -19,18 +19,31 @@ struct MusashiAudioSdl {
      * sound is produced; queued frames drain at 44.1 kHz of wall time so the
      * SPU/CD pacing sees a real-rate consumer. Always logged. */
     int null_mode;
+    /* MUSASHI_AUDIO=null_instant: the null sink consumes every frame at
+     * once instead, so what the SPU renders does not depend on how fast the
+     * host runs (determinism tests that run faster than real time). */
+    int null_instant;
     size_t null_queued;
     Uint64 null_last;
 };
 
 static int null_audio_requested(void) {
     const char *mode = getenv("MUSASHI_AUDIO");
-    return mode && !strcmp(mode, "null");
+    return mode && (!strcmp(mode, "null") || !strcmp(mode, "null_instant"));
+}
+
+static int null_instant_requested(void) {
+    const char *mode = getenv("MUSASHI_AUDIO");
+    return mode && !strcmp(mode, "null_instant");
 }
 
 static void null_drain(MusashiAudioSdl *audio) {
     Uint64 now = SDL_GetPerformanceCounter(), freq = SDL_GetPerformanceFrequency();
     Uint64 frames = freq ? (now - audio->null_last) * 44100u / freq : 0;
+    if (audio->null_instant) {
+        audio->null_queued = 0;
+        return;
+    }
     if (!frames) return;
     audio->null_last += frames * freq / 44100u;
     audio->null_queued = frames >= audio->null_queued ? 0 : audio->null_queued - (size_t)frames;
@@ -133,6 +146,7 @@ int musashi_audio_sdl_open(MusashiAudioSdl *audio) {
     if (!audio || audio->opened || audio->subsystem_ref) return 0;
     if (null_audio_requested()) {
         audio->null_mode = 1;
+        audio->null_instant = null_instant_requested();
         audio->null_queued = 0;
         audio->null_last = SDL_GetPerformanceCounter();
         audio->owner_thread = (uint64_t)SDL_ThreadID();
@@ -145,8 +159,10 @@ int musashi_audio_sdl_open(MusashiAudioSdl *audio) {
         audio->backend.status = sdl_status_backend;
         audio->backend.queue = sdl_queue_backend;
         audio->opened = audio->owner_thread != 0;
-        fprintf(stderr, "native_boot: AUDIO backend=NULL (MUSASHI_AUDIO=null: headless, "
-                        "no sound output; 44100 Hz wall-clock drain)\n");
+        fprintf(stderr, "native_boot: AUDIO backend=NULL (MUSASHI_AUDIO=%s: headless, "
+                        "no sound output; %s)\n", audio->null_instant ? "null_instant" : "null",
+                audio->null_instant ? "instant drain, host-speed independent"
+                                    : "44100 Hz wall-clock drain");
         return audio->opened;
     }
     if (SDL_InitSubSystem(SDL_INIT_AUDIO) != 0) return 0;
