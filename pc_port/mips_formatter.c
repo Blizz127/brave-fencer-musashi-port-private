@@ -11127,34 +11127,12 @@ static int gte_48d9c_caller(uint32_t ra) {
             (OVERLAY_SC_ACTIVE && ra == 0x8017c248u);
 }
 
-static int gte_47d3c_caller(uint32_t ra) {
-    /* 0x801338A4 is func_80133784's return alias: the SC02_031 function is
-     * carved from the resident image and oracle-verified byte-for-byte, and its
-     * 0x8013389C jal 0x80047D3C with an addu delay slot is the same call shape
-     * as the three main-executable callers. Everything else in this gate
-     * (transfer binding, no pending merge, npc/delay/branch state) still
-     * applies. */
-    return ra == 0x80054050u || ra == 0x800540d8u || ra == 0x800533e4u ||
-           ra == 0x801338a4u ||
-           /* The five JAL sites inside the exported func_80054DCC range
-            * [80054DCC,800553D8) call the same leaf. */
-           ra == 0x80054eccu || ra == 0x80054fd8u || ra == 0x80054fe4u ||
-           ra == 0x800550b0u || ra == 0x800551a0u ||
-           /* The JAL site inside the exported func_80013294 range. */
-           ra == 0x800132acu ||
-           /* The remaining JAL sites into this leaf (80013218, 80013340,
-            * 800133D4, 80013468, 8002C7A4); each is an exact return alias
-            * taken from the retail image. */
-           ra == 0x80013218u || ra == 0x80013340u || ra == 0x800133d4u ||
-           ra == 0x80013468u || ra == 0x8002c7a4u ||
-           /* SC01/SC02 JAL return aliases into this leaf. */
-           (OVERLAY_SC_ACTIVE &&
-            (ra == 0x8012a720u || ra == 0x80148894u || ra == 0x8014c66cu ||
-             ra == 0x801629ccu || ra == 0x801646d4u)) ||
-           /* MAIN.CD member 0010 callers of the same leaf. */
-           (g_overlay_0010_words &&
-            (ra == 0x800d2384u || ra == 0x800d2418u));
-}
+/* func_80047D3C (libgte SquareRoot0) is a pure leaf: a0 in, v0 out, the
+ * GTE LZCS/LZCR pair and a table lookup, no stack. Its result cannot depend
+ * on the caller, so its sites are gated by the instruction image (group 26)
+ * and the transfer binding alone. The caller list it once had refused matched
+ * C calling it from the native lane (RA is the lane's sentinel there):
+ * func_80013294 from SC code at 8014BE58 right after the opening unlock. */
 
 /* func_80012558 is a PSY-Q GTE library routine (26 COP2 sites: CTC2 control
  * 0..4, MTC2 data 9..11, the 4A49E012 command, MFC2 data 9..11) that the guest
@@ -13398,8 +13376,7 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
                    cpu->cpu_transfer->write_data != NULL) ||
                   (cpu->pc == 0x8004944cu && code_site(0x8004944cu, 42u, instruction) &&
                    cpu->cpu_transfer->read_data != NULL)) ||
-                 (gte_47d3c_caller(cpu->r[31]) &&
-                ((cpu->pc == 0x80047d3cu && code_site(0x80047d3cu, 26u, instruction) &&
+                 (((cpu->pc == 0x80047d3cu && code_site(0x80047d3cu, 26u, instruction) &&
                   cpu->cpu_transfer->write_data) ||
                  (cpu->pc == 0x80047d48u && code_site(0x80047d48u, 26u, instruction) &&
                   cpu->cpu_transfer->read_data))));
@@ -13685,8 +13662,7 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
             if (!((g_overlay_0004_words && cpu->pc >= 0x800d3234u &&
                    cpu->pc < 0x800d3540u) ||
                   (((cpu->pc == 0x80047d68u && code_site(0x80047d68u, 26u, instruction)) ||
-                    (cpu->pc == 0x80047d88u && code_site(0x80047d88u, 26u, instruction))) &&
-                   gte_47d3c_caller(cpu->r[31])) ||
+                    (cpu->pc == 0x80047d88u && code_site(0x80047d88u, 26u, instruction)))) ||
                   (gte_47ec8_integer_caller(cpu->r[31]) &&
                    gte_47ec8_sub_site(cpu->pc, instruction))))
                 return formatter_refuse0(__LINE__, cpu->pc);

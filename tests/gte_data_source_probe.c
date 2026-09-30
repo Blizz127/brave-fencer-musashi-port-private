@@ -112,7 +112,10 @@ static void data_case(const uint8_t *exe,size_t size,uint32_t input,uint32_t cou
 static void data_refusals(const uint8_t *exe,size_t size) {
     for(unsigned which=0;which<8;++which) {
         setup_data(exe,size,90000);
-        if(which==0){f.cpu.r[31]=0x80050000u;unchanged_refusal(0);}
+        /* SquareRoot0 is caller independent: the native lane calls it
+         * with its sentinel RA (func_80013294 after the opening unlock). */
+        if(which==0){f.cpu.r[31]=0xffffffffu;step_at(0x80047d3c);
+            assert(gteRegs.CP2D.p[30].d==90000 && gteRegs.CP2D.p[31].d==15);close_fixture();continue;}
         if(which==1){f.transfer.write_data=NULL;unchanged_refusal(0);}
         if(which==2){f.refuse_clock_pc=f.cpu.pc;unchanged_refusal(1);}
         if(which==3){refuse_write=1;FormatterCpu saved=f.cpu;assert(!formatter_step(&f.memory,&f.cpu));assert(!memcmp(&saved,&f.cpu,sizeof(saved)));}
@@ -120,7 +123,8 @@ static void data_refusals(const uint8_t *exe,size_t size) {
             step_at(0x80047d3c);step_at(0x80047d40);step_at(0x80047d44);
             if(which==4){f.refuse_clock_pc=f.cpu.pc;unchanged_refusal(1);}
             else if(which==6){f.transfer.read_data=NULL;unchanged_refusal(0);}
-            else if(which==7){f.cpu.r[31]=0x80050000u;unchanged_refusal(0);}
+            else if(which==7){f.cpu.r[31]=0xffffffffu;step_at(0x80047d48);
+                assert(f.cpu.gte_load_pending && f.cpu.gte_load_value==15);close_fixture();continue;}
             else {refuse_read=1;FormatterCpu saved=f.cpu;assert(!formatter_step(&f.memory,&f.cpu));assert(!memcmp(&saved,&f.cpu,sizeof(saved)));}
             assert(gteRegs.CP2D.p[30].d==90000 && gteRegs.CP2D.p[31].d==15);
         } else assert(gteRegs.CP2D.p[30].d==0x7654001e && gteRegs.CP2D.p[31].d==0x7654001f);
