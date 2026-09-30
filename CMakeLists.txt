@@ -596,7 +596,8 @@ if(MUSASHI_BUILD_PC_PORT)
         option(MUSASHI_LANE_OWN_CODE_ONLY "Native lane compiles only owner-authored C" OFF)
         set(MUSASHI_LANE_OWN_CODE_FLAG)
         if(MUSASHI_LANE_OWN_CODE_ONLY)
-            set(MUSASHI_LANE_OWN_CODE_FLAG --own-code-only)
+            set(MUSASHI_LANE_OWN_CODE_FLAG --own-code-only
+                --only ${CMAKE_CURRENT_SOURCE_DIR}/config/lane_own_code_allow.txt)
         endif()
         add_custom_command(
             OUTPUT ${MUSASHI_LANE_DIR}/native_lane_table.c
