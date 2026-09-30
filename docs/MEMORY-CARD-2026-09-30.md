@@ -184,3 +184,18 @@ isolated tree). These failures must not be reported as passing checks.
 An isolated rerun using formatter checkpoint `8112e48db2` reproduces the
 same palette-refusal assertion (exit -6), before the new merge admissions.
 That failure therefore predates this merge change.
+
+### Save-menu GPU command boundary
+
+Scratchpad probe `20260930-163935-bfm-r31-card-scratchpad-2428154` completed:
+the guest enumerates the empty directory without a card refusal, then the
+GPU rejects `09098F44` at payload `00098F4C` while drawing the save menu.
+Captured RAM shows the retail draw-mode packet has two payload words: E1
+and that 09 word. The card remains all fifteen free directories and zero
+file-data bytes. This is still not a save.
+
+The [DuckStation GPU command table](https://raw.githubusercontent.com/stenzek/duckstation/master/src/core/gpu.cpp)
+maps GP0 04..1E to one-word NOP. The candidate adds only the observed GP0 09
+case. Its test checks that GPU state is unchanged except the accepted-word
+counter. Unsupported command handling elsewhere stays checked. Next native
+probe is `20260930-164413-bfm-r31-save-menu-gp009-2561088`; do not duplicate.

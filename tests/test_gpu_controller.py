@@ -782,6 +782,14 @@ class GpuControllerTests(unittest.TestCase):
             C.byref(fresh), GPUSTAT, C.byref(output)), 0)
         self.assertEqual(output.value, 0xDEADBEEF)
 
+    def test_save_menu_gp0_09_nop_preserves_gpu_state(self):
+        before = bytes(self.controller)
+        self.assertEqual(self.write(0x09098F44), 1)
+        self.assertEqual(self.controller.accepted_gp0_words, 1)
+        self.controller.accepted_gp0_words = 0
+        self.assertEqual(bytes(self.controller), before)
+        self.assertFalse(any(call[0] == "draw" for call in self.calls))
+
     def test_unsupported_commands_and_addresses_refuse_without_effects(self):
         before = bytes(self.controller)
         for value, address in ((0x1F000000, GPUREAD),

@@ -1663,10 +1663,12 @@ int musashi_gpu_controller_write32(MusashiGpuController *controller,
             (opcode >= 0x60u && opcode <= 0x7fu))
             return prim_word(controller, value);
 
-        candidate = opcode == 0 || opcode == 1u || (opcode >= 0xe1u && opcode <= 0xe6u);
+        /* GP0:09 is a one-word NOP in the reference GPU command table.
+         * The retail save-menu draw-mode packet includes this word. */
+        candidate = opcode == 0 || opcode == 1u || opcode == 9u || (opcode >= 0xe1u && opcode <= 0xe6u);
         if (candidate && controller->accepted_gp0_words == UINT64_MAX)
             return 0;
-        if (opcode == 0 || opcode == 1u) {
+        if (opcode == 0 || opcode == 1u || opcode == 9u) {
             if (!backend_ready(controller, &ready) || !ready) {
                 fprintf(stderr, "gpu_controller: opcode %u not ready: backend_ready=%d ready=%d faulted=%d\n",
                         opcode, backend_ready(controller, &ready), ready, controller->faulted);
