@@ -13657,7 +13657,8 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
             if (load) vector = 1; else store_vector = 1;
         }
         if ((!leaf && !library_vector && !OVERLAY_SC_ACTIVE) ||
-            (!vector && !store_vector && cpu->r[31] != 0x8012f188u && cpu->r[31] != 0x80166c14u) ||
+            (!vector && !store_vector && cpu->r[31] != 0x8012f188u && cpu->r[31] != 0x80166c14u &&
+             !jal_caller_of(cpu->r[31], kGteEntry8004945C)) ||
             !cpu->cpu_transfer || cpu->merge_pending ||
             cpu->npc != cpu->pc+4u || cpu->delay_slot || cpu->branch_pc ||
             (address & 3u) || !cpu_ram_span(memory, cpu, address, 4u) ||
