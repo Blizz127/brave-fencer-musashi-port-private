@@ -11164,6 +11164,7 @@ static const uint32_t kGteEntry8004914C = 0x8004914cu;
 static const uint32_t kGteEntry800491AC = 0x800491acu;
 static const uint32_t kGteEntry80049324 = 0x80049324u;
 static const uint32_t kGteEntry8004D504 = 0x8004d504u;
+static const uint32_t kGteEntry8004945C = 0x8004945cu;
 
 /* A GTE routine's caller is also admitted when it is a genuine JAL to that
  * routine's entry from admitted code: the word at RA-8 (main EXE text, or
@@ -13448,7 +13449,8 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
             transform_leaf = cpu->cpu_transfer->command != NULL &&
                 cpu->pc == 0x80049334u && code_site(0x80049334u, 41u, instruction) &&
                 gte_49324_caller(cpu->r[31]);
-            transform = OVERLAY_SC_ACTIVE && (cpu->r[31] == 0x8012f188u || cpu->r[31] == 0x80166c14u) &&
+            transform = ((OVERLAY_SC_ACTIVE && (cpu->r[31] == 0x8012f188u || cpu->r[31] == 0x80166c14u)) ||
+                         jal_caller_of(cpu->r[31], kGteEntry8004945C)) &&
                 (((cpu->pc == 0x8004946cu && code_site(0x8004946cu, 42u, instruction)) ||
                   (cpu->pc == 0x80049470u && code_site(0x80049470u, 42u, instruction))) ?
                      cpu->cpu_transfer->read_data != NULL :
