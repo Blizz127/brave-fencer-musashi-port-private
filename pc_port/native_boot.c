@@ -1533,6 +1533,17 @@ static int guest_clock_wait(NativeBoot *boot, uint64_t target_cycle) {
         due = boot->guest_host_origin +
             (uint64_t)((double)target_cycle * (double)freq / (double)MUSASHI_DEVICE_CLOCK_HZ);
 #endif
+        /* Read the host clock at most once per 0.5 ms of guest time: this
+         * runs on every instruction charge, and the clock read was a
+         * leading host cost in play. The guest can get at most 0.5 ms
+         * ahead of a check; the sleep below still starts at 1 ms ahead. */
+        {
+            static uint64_t last_checked;
+            if (target_cycle >= last_checked &&
+                target_cycle - last_checked < MUSASHI_DEVICE_CLOCK_HZ / 2000u)
+                return 1;
+            last_checked = target_cycle;
+        }
         uint64_t now = SDL_GetPerformanceCounter(), slept_from = now;
         /* Sleep only when the guest is a whole millisecond ahead. */
         while (now + freq / 1000u < due) {
