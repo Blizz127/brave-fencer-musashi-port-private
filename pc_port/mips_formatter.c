@@ -11286,7 +11286,7 @@ static int gte_495ec_site(uint32_t pc, uint32_t instruction, unsigned *slot) {
         {0x800495ecu, MIPS_COP2_MOVE(4u, 4u, 12u), 3u},   /* mtc2 a0, SXY0 */
         {0x800495f0u, MIPS_COP2_MOVE(4u, 6u, 14u), 3u},   /* mtc2 a2, SXY2 */
         {0x800495f4u, MIPS_COP2_MOVE(4u, 5u, 13u), 3u},   /* mtc2 a1, SXY1 */
-        {0x80049600u, (18u << 26) | 0x01400006u, 4u},     /* nclip */
+        {0x80049600u, (18u << 26) | (1u << 25) | 0x01400006u, 4u}, /* nclip (COP2 command) */
         {0x80049604u, MIPS_COP2_MOVE(0u, 2u, 24u), 1u},   /* mfc2 v0, MAC0 */
     };
     unsigned i;
