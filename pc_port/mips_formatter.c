@@ -14329,9 +14329,12 @@ static MusashiResetGraphPrefixStatus run_startup_cpu_loop(
     MusashiEntryObserver observer, void *observer_userdata) {
     FormatterConsoleContext console;
     const MusashiCallbackDevice *device = cpu->callback_device;
-    unsigned step;
-    /* 2e9 exhausted in GPU clip after overlay Start; keep unsigned. */
-    const unsigned step_limit = entry_stop ? 4000000000u : FORMATTER_STEP_LIMIT;
+    uint64_t step;
+    /* The game run itself (entry_stop) has no instruction budget: a PS1 game
+     * runs until it is quit, and a 4e9-step cap ended play after a few
+     * minutes with "cannot run yet" (runner rooms 3009 and 1011 reached it).
+     * Bounded runs (tests, startup probes) keep FORMATTER_STEP_LIMIT. */
+    const uint64_t step_limit = entry_stop ? UINT64_MAX : FORMATTER_STEP_LIMIT;
     console.sink = sink;
     console.userdata = userdata;
     for (step = 0; step < step_limit; ++step) {
