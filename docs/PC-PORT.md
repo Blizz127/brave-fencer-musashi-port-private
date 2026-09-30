@@ -657,14 +657,17 @@ Routed through `bfm_plat_*` (opt-in; the defaults keep native_boot's own paths):
 | `MUSASHI_AUDIO=bfm_plat` | the SPU core's 44.1 kHz stereo output goes to `bfm_plat_audio` (backend `MUSASHI_AUDIO_BACKEND`, default `openal`; bfm_plat falls back to `null` when the device cannot open, and says so). The null backend drains at the platform clock's audio rate. STOP prints `AUDIO_SINK frames= nonsilent= peak=` and `SPU_KEYON writes=`. Headless: OpenAL Soft's `wave` driver (`ALSOFT_CONF` with `drivers=wave`) records the device output. Default audio (`MUSASHI_AUDIO` unset: SDL; `null`) is unchanged. |
 | `MUSASHI_TIMING=bfm_plat` | with `MUSASHI_GUEST_CLOCK=1` only: each guest VBlank calls `bfm_plat_timing_vsync(1)` (NTSC field pacing, fast-forward, `BFM_EVENT_VSYNC` for mods) in place of `guest_clock_wait`'s throttle; `MUSASHI_UNTHROTTLED` runs uncapped and still emits the events. Refused under host-paced time, which host time already paces. |
 
-## Port Dev Menu (opt-in, off by default)
+## Port Dev Menu (on by default in the package)
 
 The shared port spec (`~/release-staging/port-dev-menu/DEV_MENU_SPEC.md`)
 applied to BFM; model in `pc_port/dev_menu.c`, host glue in
 `pc_port/native_boot.c` (`dev_menu_*`).
 
 - **Switches.** `BFM_DEV_MENU=1` (or `--dev-menu`) enables the menu and its
-  F-keys. `BFM_CHEATS=0` hard-disables everything, including the
+  F-keys. The package's `launch.sh` sets it by default (owner policy for the
+  public builds, 2026-09-30); `BFM_DEV_MENU=0` or an empty
+  `~/.config/bfm-port/dev-menu-off` turns it off. The binary alone (test
+  harnesses) still defaults to off. `BFM_CHEATS=0` hard-disables everything, including the
   always-on fast-forward and screenshot keys, the legacy cheat registry,
   `cheats.ini` and the console's `poke`. Disabled, nothing in the menu
   writes guest RAM, consumes input or draws.
@@ -681,7 +684,7 @@ applied to BFM; model in `pc_port/dev_menu.c`, host glue in
 
 | page | entries |
 |---|---|
-| Warp | Verified entries only (`kWarps`); empty until the warp sweep passes them. |
+| Warp | Verified entries only (`kWarps`), in area folders (Area 1: castle and Spiral Tower; Area 2: the village and forests; Area 2: Twinpeak and Hell's Valley): the 29 rooms the r29 warp sweep (2026-09-30) reached with no refusal. |
 | Finish Area | Verified entries only (`kFinish`); empty until built from recorded exit diffs. |
 | Cheats | God Mode (HP current 80078EB4 = max 80078EB2, the game's refill in func_8014BC44), BP Max (80078EB8 = 80078EB6), Add 10000 Drans (80078E8C, capped at the game's 99999), Time +1 hour (80078EB1; refused at 23:00). Toggles re-apply each VBlank; everything acts only in the field (a scene is up, mode 9, player+0x4D == 1); one-shots elsewhere are refused with a toast. |
 | Options | Fast-forward, fast-forward speed, screenshot. |
