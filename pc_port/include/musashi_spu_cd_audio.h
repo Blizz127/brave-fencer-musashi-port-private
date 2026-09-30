@@ -117,6 +117,11 @@ int musashi_spu_cd_audio_submit_cd_pcm(MusashiSpuCdAudio *audio,
                                        const int16_t *stereo_pcm,
                                        size_t frames);
 
+/* Owner-thread timing only, no host backend call: the core clock, the
+ * device cycle of the next sample boundary (the next cycle at which advance
+ * renders PCM) and the pending CD PCM frames. 0 when faulted. */
+int musashi_spu_cd_audio_timing(const MusashiSpuCdAudio *audio, uint64_t *cycle,
+                                uint64_t *next_sample_cycle, size_t *pending_frames);
 int musashi_spu_cd_audio_snapshot(const MusashiSpuCdAudio *audio,
                                   MusashiSpuCdAudioSnapshot *snapshot);
 /* Refuses cross-thread or callback-reentrant destruction; returns nonzero only

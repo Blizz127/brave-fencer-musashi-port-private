@@ -372,6 +372,11 @@ if(MUSASHI_BUILD_PC_PORT)
     target_link_libraries(musashi_irq_controller_probe PRIVATE musashi_pc_port)
     add_test(NAME irq_controller_boundary COMMAND musashi_irq_controller_probe)
 
+    add_executable(musashi_device_epoch_probe tests/device_epoch_probe.c)
+    target_compile_features(musashi_device_epoch_probe PRIVATE c_std_99)
+    target_link_libraries(musashi_device_epoch_probe PRIVATE musashi_pc_port)
+    add_test(NAME device_epoch_boundary COMMAND musashi_device_epoch_probe)
+
     if(MUSASHI_WITH_PSYCROSS)
         # Own pinned entry state and IRQ lifetime in an executable. This
         # currently stops at the first missing device; it is not a menu demo.

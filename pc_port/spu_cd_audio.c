@@ -663,6 +663,18 @@ int musashi_spu_cd_audio_snapshot(const MusashiSpuCdAudio *audio,
     return 1;
 }
 
+int musashi_spu_cd_audio_timing(const MusashiSpuCdAudio *audio, uint64_t *cycle,
+                                uint64_t *next_sample_cycle, size_t *pending_frames) {
+    if (!audio || !audio->initialized || audio->faulted || !cycle || !next_sample_cycle ||
+        !pending_frames || audio->sample_index == UINT64_MAX ||
+        audio->sample_index + 1u > (UINT64_MAX - audio->epoch) / MUSASHI_SPU_CD_AUDIO_SAMPLE_CYCLES)
+        return 0;
+    *cycle = audio->cycle;
+    *next_sample_cycle = audio->epoch + (audio->sample_index + 1u) * MUSASHI_SPU_CD_AUDIO_SAMPLE_CYCLES;
+    *pending_frames = audio->pending_count;
+    return 1;
+}
+
 int musashi_spu_cd_audio_copy_ram(const MusashiSpuCdAudio *a, uint32_t offset,
                                 void *dst, size_t length) {
     if(!a || (!dst && length) || !a->initialized || !owner_thread_for_cleanup(a) ||
