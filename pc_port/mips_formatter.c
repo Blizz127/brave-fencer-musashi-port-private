@@ -36,6 +36,8 @@
 static int code_site(uint32_t pc, unsigned group, uint32_t instruction);
 static int refusal_trace(void);
 static int code_site_group_ok(unsigned group);
+static int in_identified_image(uint32_t pc);
+static int identified_module(uint32_t pc);
 
 /* MIPS I field encoders for generic checks (a call to a named target, a
  * register jump, a syscall): they state the operation, not stored words. */
@@ -8826,7 +8828,7 @@ static int merge_kind_for(uint32_t pc, uint32_t instruction) {
         uint32_t op = instruction >> 26;
         if (op != 34u && op != 38u && op != 42u && op != 46u) return MERGE_NONE;
     }
-    if (g_overlay_sc01_0000_words && pc >= 0x80128158u && pc < (0x80128158u + g_sc01_code_bytes)) {
+    if (in_identified_image(pc)) {
         uint32_t op = instruction >> 26;
         if (op == 34u) return MERGE_LWL;
         if (op == 38u) return MERGE_LWR;
@@ -9449,8 +9451,7 @@ static int merge_pending_matches(const FormatterCpu *cpu, uint32_t instruction) 
                 sites[i].reg == cpu->merge_reg && sites[i].kind == cpu->merge_kind) return 1;
         return 0;
     }
-    if (g_overlay_sc01_0000_words && cpu->pc >= 0x80128158u &&
-        cpu->pc < (0x80128158u + g_sc01_code_bytes)) {
+    if (in_identified_image(cpu->pc)) {
         uint32_t op = instruction >> 26;
         uint32_t rs = (instruction >> 21) & 0x1fu;
         uint32_t rt = (instruction >> 16) & 0x1fu;
@@ -10392,6 +10393,8 @@ static int formatter_admitted(const FormatterCpu *cpu, uint32_t *out) {
              cpu->pc < (0x80128158u + g_sc01_code_bytes)) {
         instruction = g_sc01_code[(cpu->pc - 0x80128158u) / 4u];
     }
+    else if (identified_module(cpu->pc))
+        instruction = 0u;   /* shape only: verified module, fetched from guest RAM */
     else if (g_overlay_sc02_0031_words &&
              formatter_range_word(kFormatterRanges6,
              sizeof kFormatterRanges6 / sizeof kFormatterRanges6[0], cpu->pc,
@@ -10969,8 +10972,7 @@ static int gte_decode_lane(uint32_t pc) {
     if ((pc >= 0x8004a27cu && pc < 0x8004cfecu) || (pc >= 0x8004d6bcu && pc < 0x800509c0u) ||
         (pc >= 0x8004806cu && pc < 0x800480ecu))
         return libgs_prim_window_ok(pc);
-    return (g_overlay_sc01_0000_words && pc >= 0x80128158u &&
-            pc < (0x80128158u + g_sc01_code_bytes)) ||
+    return in_identified_image(pc) ||
            ((pc >= 0x80010000u && pc < 0x80074800u) &&
             !(pc >= 0x80047000u && pc < 0x80055000u));
 }
@@ -11175,9 +11177,7 @@ static int jal_caller_of(uint32_t ra, uint32_t entry) {
     uint32_t site = ra - 8u, word;
     int admitted;
     if (ra < 0x80000008u || (ra & 3u) || !g_fetch_memory) return 0;
-    admitted = (site >= 0x80010000u && site < 0x80074800u) ||
-               (g_overlay_sc01_0000_words && site >= 0x80128158u &&
-                site < 0x80128158u + g_sc01_code_bytes);
+    admitted = (site >= 0x80010000u && site < 0x80074800u) || in_identified_image(site);
     if (!admitted || !code_word(g_fetch_memory, NULL, site, &word)) return 0;
     return (word >> 26) == 3u &&
            (((site + 4u) & 0xf0000000u) | ((word & 0x03ffffffu) << 2)) == entry;
@@ -12462,6 +12462,37 @@ static int span_digest(MusashiBootMemory *memory, uint32_t address, unsigned wor
 }
 
 enum { SC_ENTRY_WORDS = 178 };
+
+/* A fixed-address code module (location_images.h kCodeModules) is admitted
+ * once its first 64 words in guest RAM match the module the developer's disc
+ * holds. Positive checks last until the overlay identity changes (a room
+ * load); a failed check is retried, since a room loads its module after the
+ * room's own entry. */
+static int identified_module(uint32_t pc) {
+    static uint32_t verified_generation[sizeof kCodeModules / sizeof kCodeModules[0]];
+    size_t i;
+    for (i = 0; i < sizeof kCodeModules / sizeof kCodeModules[0]; ++i) {
+        uint64_t digest;
+        if (pc < kCodeModules[i].base || pc - kCodeModules[i].base >= kCodeModules[i].bytes) continue;
+        if (verified_generation[i] == g_admit_generation) return 1;
+        if (g_fetch_memory && span_digest(g_fetch_memory, kCodeModules[i].base, 64u, &digest) &&
+            digest == kCodeModules[i].digest) {
+            verified_generation[i] = g_admit_generation;
+            fprintf(stderr, "native_boot: CODE_MODULE identified base=%08x bytes=%u\n",
+                    kCodeModules[i].base, kCodeModules[i].bytes);
+            return 1;
+        }
+        return 0;
+    }
+    return 0;
+}
+
+/* Code the formatter identified as a known image: the current SC location
+ * member at 0x80128158 or a verified fixed-address module. */
+static int in_identified_image(uint32_t pc) {
+    return (g_overlay_sc01_0000_words && pc >= 0x80128158u &&
+            pc < 0x80128158u + g_sc01_code_bytes) || identified_module(pc);
+}
 #define SC02_0031_ENTRY_DIGEST 0x8126b01f303e7772ull
 #define SC01_MEMBER0_ENTRY_DIGEST 0x2e23652929d54c5dull
 #define SC01_MEMBER1_ENTRY_DIGEST 0x2f4fe7577616c703ull

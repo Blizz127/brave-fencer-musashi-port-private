@@ -29,6 +29,7 @@ static const struct { uint64_t entry_digest; uint32_t code_bytes; } kLocationIma
     { 0x81876a8cd992ac2aull,  701668u }, /* sc02_0028 */
     { 0x8126b01f303e7772ull,  588212u }, /* sc02_0031 */
     { 0x9c9b4ec74f83714full,  616684u }, /* sc02_0035 */
+    { 0x959728280735dcb3ull,  661900u }, /* sc02_0037(raw) */
     { 0xdf00fdf482b50039ull,  494756u }, /* sc02_0039 */
     { 0x9a90009eccaa4a7dull,  595324u }, /* sc02_0041 */
     { 0x60c39eab05f78a20ull,  815884u }, /* sc03_0001 */
@@ -64,6 +65,7 @@ static const struct { uint64_t entry_digest; uint32_t code_bytes; } kLocationIma
     { 0x81a0ea0c050fb8dcull,  642172u }, /* sc03_0103 */
     { 0x40eb7124f47f00ceull,  623420u }, /* sc03_0104 */
     { 0xe688a60910ab3a44ull,  609220u }, /* sc03_0105 */
+    { 0xd134a17e191880d3ull,  474084u }, /* sc03_0107(raw) */
     { 0x0bc8ae36f2d37321ull,  497996u }, /* sc03_0108 */
     { 0xcade4c86b036ff13ull,  467796u }, /* sc03_0109 */
     { 0x5eb30617c2a73f64ull,  500612u }, /* sc03_0110 */
@@ -139,4 +141,9 @@ static const struct { uint64_t entry_digest; uint32_t code_bytes; } kLocationIma
     { 0xd0c4499da5ec7edbull,  426916u }, /* sc07_0011 */
 };
 enum { LOCATION_IMAGE_MAX_BYTES = 854540 };
+/* Fixed-address code modules: link base, size, FNV-1a 64 of the first
+ * 64 words, checked against guest RAM before any of it is admitted. */
+static const struct { uint32_t base, bytes; uint64_t digest; } kCodeModules[] = {
+    { 0x801e4c60u,  70784u, 0x9c303e3ef65ac880ull }, /* sc02_0009 */
+};
 #endif
