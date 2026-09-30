@@ -5,11 +5,10 @@ plugins. The port's internals are in [ARCHITECTURE-PORT.md](ARCHITECTURE-PORT.md
 Everything here is also in the headers under `pc_port/platform/`, which are
 the reference.
 
-Three sample mods ship with the port and are the worked examples:
+Two sample mods ship with the port and are the worked examples:
 
 | Sample | Shows |
 |---|---|
-| [`examples/cheat_pack`](../pc_port/mods/examples/cheat_pack) | cheats.ini only: poke and copy cheats on the known state addresses |
 | [`examples/hello`](../pc_port/mods/examples/hello) | a C plugin: events, a callback cheat that edits input, a console command, config |
 | [`examples/lua_hello`](../pc_port/mods/examples/lua_hello) | the same plugin written in Lua |
 
@@ -91,9 +90,10 @@ enabled = 0
 - Names can't contain spaces. A cheat with a bad width is skipped, with a
   log line.
 
-[`examples/cheat_pack/cheats.ini`](../pc_port/mods/examples/cheat_pack/cheats.ini)
-has infinite HP/BP, max money and max HP gauge, all off by default. The
-addresses come from the table in section 8.
+Mod cheats (cheats.ini and plugin/Lua cheats) only load when the Port Dev
+Menu is opted in (`BFM_DEV_MENU=1`, and not `BFM_CHEATS=0`); otherwise they
+register nothing. For playtesting use the Port Dev Menu itself
+(docs/PC-PORT.md).
 
 ## 4. Replacing textures and files
 

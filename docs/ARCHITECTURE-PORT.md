@@ -367,14 +367,13 @@ too). In poll mode several changes within one frame collapse into one
 event. `battle_start`/`battle_end` are still unsited; a sustained
 `damage` run is a hint, not a battle boundary.
 
-### Cheat pack
+### Mod cheats
 
-`pc_port/mods/examples/cheat_pack/cheats.ini` holds `infinite_hp` and
-`infinite_bp` (copy cheats: current = max each frame), `max_money` (poke
-99999, the game's own cap) and `max_hp_gauge` (poke 500, the game's cap).
-All are disabled by default. `cheats.ini` supports poke cheats
-(`address`, `value`, `width`) and copy cheats (`address`, `copy_from`,
-`width`).
+`cheats.ini` supports poke cheats (`address`, `value`, `width`) and copy
+cheats (`address`, `copy_from`, `width`). The registry, `cheats.ini` loading
+and the console's `poke` only work with the Port Dev Menu opt-in
+(`BFM_DEV_MENU=1`, not `BFM_CHEATS=0`; `bfm_plat_legacy_cheats_allowed`).
+The former sample `cheat_pack` is replaced by the dev menu's own cheats.
 
 ### 60 fps (design note, not implemented)
 

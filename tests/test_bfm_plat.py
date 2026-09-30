@@ -12,6 +12,10 @@ import tempfile
 import unittest
 import zlib
 
+# The legacy cheat registry only works behind the Port Dev Menu opt-in.
+NO_DEV_MENU_ENV = {k: v for k, v in os.environ.items() if k not in ("BFM_DEV_MENU", "BFM_CHEATS")}
+DEV_MENU_ENV = dict(NO_DEV_MENU_ENV, BFM_DEV_MENU="1")
+
 ROOT = Path(__file__).resolve().parents[1]
 PLAT = ROOT / "pc_port/platform"
 CFLAGS = ["-std=c99", "-Wall", "-Wextra", "-Werror", "-pedantic", "-O0", "-g"]
@@ -467,8 +471,8 @@ class BfmPlatTests(unittest.TestCase):
         self.assertEqual(len(dumped), 8 + 16)
         self.assertEqual(dumped[8 + 12:], bytes(4))   # 0x0000 -> transparent
 
-    def test_mods_loader_plugin_cheats_console(self):
-        d = self.fresh("mods")
+    def make_mods_tree(self, name):
+        d = self.fresh(name)
         mods = d / "mods"
         hello = mods / "hello"
         hello.mkdir(parents=True)
@@ -491,7 +495,11 @@ class BfmPlatTests(unittest.TestCase):
         (mods / "evil").mkdir()
         (mods / "evil/mod.ini").write_text("[mod]\nname = evil\nplugin = ../../x\n")
         (mods / "not_a_mod").mkdir()          # no manifest: skipped
-        out = self.run_probe("mods", mods)
+        return mods
+
+    def test_mods_loader_plugin_cheats_console(self):
+        mods = self.make_mods_tree("mods")
+        out = self.run_probe("mods", mods, env=DEV_MENU_ENV)
         lines = [l for l in out.splitlines() if l.startswith("mod ")]
         names = [l.split()[2] for l in lines]
         self.assertEqual(names, ["static", "evil", "hello", "off", "scripted"])
@@ -686,7 +694,7 @@ bfm.command("luaboom", "luaboom", function() error("boom") end)
 bfm.on("frame_end", function() if seen.late == nil then
   seen.late = pcall(bfm.cheat, {name = "late", address = 0, value = 0, width = 1}) end end)
 """)
-        out = self.run_probe("lua", d, probe=probe)
+        out = self.run_probe("lua", d, probe=probe, env=DEV_MENU_ENV)
         self.assertIn("mod lua_hello script=1", out)
         self.assertIn("mod luatest script=1", out)
         self.assertIn("mod luabad script=-1", out)
@@ -775,15 +783,14 @@ bfm.on("frame_end", function() if seen.late == nil then
         (d / "w/mod.ini").write_text("[mod]\nname = w\nplugin = watcher\n")
         self.run_probe("watch", d)
 
-    def test_cheat_pack_sample(self):
-        d = self.fresh("cheatpack")
-        shutil.copytree(ROOT / "pc_port/mods/examples/cheat_pack", d / "cheat_pack")
-        ini = (d / "cheat_pack/cheats.ini").read_text()
-        self.assertEqual(ini.count("enabled = 0"), 4)
-        self.assertNotIn("enabled = 1", ini)
-        out = self.run_probe("cheat_pack", d)
-        for name in ("infinite_hp", "infinite_bp", "max_money", "max_hp_gauge"):
-            self.assertIn(f"[on]  {name}", out)
+    def test_legacy_cheats_refused_without_dev_menu(self):
+        """Off means off: without BFM_DEV_MENU=1 (or with BFM_CHEATS=0) a mod's
+        cheats.ini registers nothing."""
+        mods = self.make_mods_tree("cheatgate")
+        for env in (NO_DEV_MENU_ENV, dict(DEV_MENU_ENV, BFM_CHEATS="0")):
+            proc = subprocess.run([str(self.probe), "mods", str(mods)], capture_output=True,
+                                  text=True, timeout=60, env=env, stdin=subprocess.DEVNULL)
+            self.assertIn("mod 2 hello prio=100 enabled=1 plugin=1 script=0 cheats=0", proc.stdout)
 
     def test_gauge_site_overlay_list_matches_dedup(self):
         import re
@@ -814,11 +821,8 @@ bfm.on("frame_end", function() if seen.late == nil then
         modding = (ROOT / "docs/MODDING.md").read_text()
         for name, value in want.items():
             self.assertIn(value.rstrip("u").replace("0x", "0x"), modding, name)
-        for sample in ("examples/cheat_pack", "examples/hello", "examples/lua_hello"):
+        for sample in ("examples/hello", "examples/lua_hello"):
             self.assertIn(sample, modding)
-        pack = (ROOT / "pc_port/mods/examples/cheat_pack/cheats.ini").read_text()
-        for addr in ("0x80078EB4", "0x80078EB2", "0x80078EB8", "0x80078EB6", "0x80078E8C"):
-            self.assertIn(addr, pack)
 
     def test_psyq_hle_wrappers(self):
         d = self.fresh("psyq")

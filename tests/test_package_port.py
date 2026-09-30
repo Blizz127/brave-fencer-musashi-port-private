@@ -67,7 +67,7 @@ class PackageTests(unittest.TestCase):
         for want in ("bin/bfm-port", "README.txt", "docs/ARCHITECTURE-PORT.md",
                      "docs/MODDING.md", "licenses/THIRD-PARTY.txt", "licenses/LICENSE-NOTES.md",
                      "mods/README.md", "mods/examples/hello/hello_plugin.c",
-                     "mods/examples/lua_hello/main.lua", "mods/examples/cheat_pack/cheats.ini",
+                     "mods/examples/lua_hello/main.lua",
                      "include/bfm_plugin.h", "disc/PUT-YOUR-DISC-HERE.txt"):
             self.assertIn(f"{top}/{want}", names)
         for n in names:
