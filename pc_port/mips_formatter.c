@@ -14268,6 +14268,18 @@ static MusashiResetGraphPrefixStatus run_startup_cpu_loop(
     console.sink = sink;
     console.userdata = userdata;
     for (step = 0; step < step_limit; ++step) {
+        /* A real return to the sentinel ends this run before any checkpoint:
+         * no guest instruction of it is left, and the checkpoint cannot fetch
+         * one. An IRQ pending here is taken at the enclosing run's next
+         * checkpoint. (Run 20: a CD IRQ refused as a native-lane guest call
+         * returned.) A host stop parks npc at the sentinel too and still
+         * reaches the checkpoint. */
+        if (cpu->pc == UINT_MAX && cpu->npc != UINT_MAX) {
+            stop->call_address = 0;
+            stop->target_address = UINT_MAX;
+            *result = (int32_t)cpu->r[2];
+            return MUSASHI_RESETGRAPH_PREFIX_COMPLETE;
+        }
         /* Also identify an instruction/device refusal. A missing MMIO
          * provider can stop before reaching any of the named call gates. */
         stop->call_address = cpu->pc;
