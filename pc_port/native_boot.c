@@ -296,6 +296,15 @@ static void devobs_istat(NativeBoot *boot, uint64_t cycle, uint32_t pc) {
     boot->devobs_istat = now;
 }
 
+/* I_STAT changed by host code (outside a device pass or CPU access) is
+ * attributed before anything can start a commit (checkpoint, lazy_sync,
+ * instruction charge), at the time committed so far plus the deferred
+ * time: equal for both epochs. A device pass would notice it at the pass
+ * cycle, which is older under the lazy epoch. */
+static void devobs_host(NativeBoot *boot, uint32_t pc) {
+    if (boot->devobs) devobs_istat(boot, boot->epoch.cycle + boot->epoch.lazy_deferred, pc);
+}
+
 /* Overlay member signatures without retail words: FNV-1a 64 over two
  * loaded words that differ between members, compared with the digest of the
  * member the port's ranges were carved from. */
@@ -2663,6 +2672,7 @@ static void devobs_access(void *userdata, uint32_t pc, uint32_t address, uint32_
 /* Before anything outside a commit observes or changes a device. */
 static int lazy_sync(void *userdata) {
     NativeBoot *boot = userdata;
+    if (!boot->epoch.busy) devobs_host(boot, 0);
     if (!boot->lazy || boot->epoch.busy) return 1;
     if (boot->epoch.lazy_deferred) {
         ++boot->lazy_syncs;
@@ -2722,6 +2732,7 @@ static int advance_source_clock(void *userdata, uint32_t cycles) {
     NativeBoot *boot = userdata;
     uint64_t cycle;
     if (host_stop_signal) return 1;
+    devobs_host(boot, 0);
     if (boot->trace_cd_timing) {
         if (boot->irq.cd_frame.busy && !boot->cd_timing_active) {
             boot->cd_timing_active = 1;
@@ -3083,12 +3094,7 @@ static int checkpoint(void *userdata, const void *continuation) {
             render_calls++;
         }
     }
-    /* I_STAT changed by host code since the last observation: attribute it
-     * to this checkpoint's eager time (the pass that would otherwise notice
-     * it runs at an older cycle when the epoch is lazy). */
-    if (boot->devobs)
-        devobs_istat(boot, boot->epoch.cycle + boot->epoch.lazy_deferred +
-                     boot->guest_pending_cycles, ((const uint32_t *)continuation)[34]);
+    devobs_host(boot, ((const uint32_t *)continuation)[34]);
     if (boot->continuation && boot->continuation != continuation) {
         /* Nested IRQ source function: keep the interrupted CPU identity and
          * do not dispatch while the owner pump is already delivering. */
@@ -3180,7 +3186,8 @@ static int run_backup_unit(void *userdata, int32_t *guest_result) {
         /* Under the guest clock the suspended CPU is spinning in the BIOS
          * card wait, so each poll spends guest cycles; nothing else would
          * move device time forward. */
-        if (boot->continuation != continuation ||
+        /* The previous dispatch's IRQ code may have left deferred time. */
+        if (boot->continuation != continuation || !lazy_sync(boot) ||
             !(boot->guest_clock ? musashi_device_epoch_advance_cost(&boot->epoch, 1024u)
                                 : musashi_device_epoch_sync(&boot->epoch)) ||
             !musashi_psycross_irq_scheduler_dispatch_pending(&boot->irq.scheduler, continuation))
@@ -5159,7 +5166,7 @@ int main(int argc, char **argv) {
             boot.devobs_istat = boot.irq.controller.status;
             fprintf(stderr, "native_boot: EPOCH_LAZY %s check=%d devobs=%d\n",
                     boot.lazy ? "on" : "off", boot.lazy_check, boot.devobs);
-            musashi_formatter_set_device_hooks(boot.lazy ? lazy_sync : NULL,
+            musashi_formatter_set_device_hooks(boot.lazy || boot.devobs ? lazy_sync : NULL,
                                                boot.devobs ? devobs_access : NULL, &boot);
 #ifdef MUSASHI_NATIVE_LANE_TABLE
             musashi_native_lane_psyq_set_device_sync(boot.lazy ? lazy_sync : NULL, &boot);
