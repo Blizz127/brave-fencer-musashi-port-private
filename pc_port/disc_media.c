@@ -155,6 +155,158 @@ MusashiDiscMedia *musashi_disc_media_open_pinned(const char *cue_path,
     return media;
 }
 
+static int ends_with(const char *path, const char *ext) {
+    size_t n = strlen(path), m = strlen(ext), i;
+    if (n < m) return 0;
+    for (i = 0; i < m; ++i) {
+        char c = path[n - m + i];
+        if (c >= 'A' && c <= 'Z') c = (char)(c - 'A' + 'a');
+        if (c != ext[i]) return 0;
+    }
+    return 1;
+}
+
+static long file_size(const char *path) {
+    FILE *file = fopen(path, "rb");
+    long length = -1;
+    if (!file) return -1;
+    if (fseek(file, 0, SEEK_END) == 0) length = ftell(file);
+    fclose(file);
+    return length;
+}
+
+/* Up to eight FILE entries of a cue sheet, resolved against its folder. */
+static int cue_files(const char *cue_path, char files[][4096], int max) {
+    FILE *cue = fopen(cue_path, "r");
+    char line[4096], dir[4096];
+    const char *slash = strrchr(cue_path, '/');
+    int count = 0;
+    if (!cue) return -1;
+    snprintf(dir, sizeof dir, "%.*s", slash ? (int)(slash - cue_path) : 0, cue_path);
+    while (fgets(line, sizeof line, cue)) {
+        char *p = line, *name, *end;
+        while (*p == ' ' || *p == '\t') ++p;
+        if (strncmp(p, "FILE", 4) != 0 || (p[4] != ' ' && p[4] != '\t')) continue;
+        p += 5;
+        while (*p == ' ' || *p == '\t') ++p;
+        if (*p == '"') {
+            name = ++p;
+            end = strchr(p, '"');
+        } else {
+            name = p;
+            end = strpbrk(p, " \t\r\n");
+        }
+        if (!end || end == name || count >= max) { fclose(cue); return -1; }
+        *end = '\0';
+        if (name[0] == '/' || !slash) snprintf(files[count], 4096, "%s", name);
+        else snprintf(files[count], 4096, "%s/%s", dir, name);
+        ++count;
+    }
+    fclose(cue);
+    return count;
+}
+
+MusashiDiscMedia *musashi_disc_media_open_image(const char *path, char *why,
+                                                size_t why_size) {
+    char files[8][4096];
+    int count, i;
+    size_t offset = 0;
+    unsigned char *image;
+    MusashiDiscMedia *media;
+#define REFUSE(...) do { if (why && why_size) snprintf(why, why_size, __VA_ARGS__); return NULL; } while (0)
+    if (!path || !path[0]) REFUSE("No disc image was given.");
+    if (ends_with(path, ".iso"))
+        REFUSE("%s is an .iso (2048-byte sectors). PlayStation games need the raw "
+               "2352-byte dump: use the .cue/.bin of your disc.", path);
+    if (ends_with(path, ".cue")) {
+        count = cue_files(path, files, 8);
+        if (count <= 0) REFUSE("%s could not be read as a cue sheet.", path);
+    } else {
+        snprintf(files[0], sizeof files[0], "%s", path);
+        count = 1;
+    }
+    for (i = 0; i < count; ++i) {
+        long length = file_size(files[i]);
+        if (length < 0) REFUSE("The disc image file %s is missing.", files[i]);
+        if ((unsigned long)length > PINNED_BIN_SIZE - offset) offset = PINNED_BIN_SIZE + 1u;
+        else offset += (size_t)length;
+    }
+    if (offset != PINNED_BIN_SIZE)
+        REFUSE("%s is not a complete image of Brave Fencer Musashi (USA, SLUS-00726): "
+               "the size does not match.", path);
+    image = malloc(PINNED_BIN_SIZE);
+    if (!image) REFUSE("Not enough memory to load the disc image.");
+    for (offset = 0, i = 0; i < count; ++i) {
+        size_t length = (size_t)file_size(files[i]);
+        if (!read_file_bytes(files[i], image + offset, length)) {
+            free(image);
+            REFUSE("The disc image file %s could not be read.", files[i]);
+        }
+        offset += length;
+    }
+    if (!sha256_matches(image, PINNED_BIN_SIZE,
+                        "0a53702937d74e20d99fee9a29a80f7e91da762e66958819d531173939a50879")) {
+        free(image);
+        REFUSE("%s is not an unmodified image of Brave Fencer Musashi (USA, SLUS-00726).", path);
+    }
+    media = calloc(1, sizeof(*media));
+    if (!media) {
+        free(image);
+        REFUSE("Not enough memory to load the disc image.");
+    }
+#undef REFUSE
+    media->image = image;
+    fill_info(&media->info);
+    return media;
+}
+
+/* ISO 9660 in Mode 2 Form 1 sectors: user data starts 24 bytes in. */
+static const unsigned char *iso_sector(const MusashiDiscMedia *media, uint32_t lba) {
+    if (lba >= media->info.tracks[0].end_frame) return NULL;
+    return media->image + (size_t)lba * MUSASHI_DISC_RAW_SECTOR_SIZE + 24u;
+}
+
+static uint32_t le32(const unsigned char *p) {
+    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
+}
+
+int musashi_disc_media_read_root_file(const MusashiDiscMedia *media, const char *name,
+                                      uint8_t *out, size_t max, size_t *size) {
+    const unsigned char *pvd, *root;
+    uint32_t dir_lba, dir_size, pos;
+    size_t name_len;
+    if (!media || !media->image || !name || !out || !size) return 0;
+    name_len = strlen(name);
+    pvd = iso_sector(media, 16);
+    if (!pvd || pvd[0] != 1 || memcmp(pvd + 1, "CD001", 5) != 0) return 0;
+    root = pvd + 156;
+    dir_lba = le32(root + 2);
+    dir_size = le32(root + 10);
+    for (pos = 0; pos < dir_size;) {
+        const unsigned char *sector = iso_sector(media, dir_lba + pos / 2048u);
+        const unsigned char *rec;
+        if (!sector) return 0;
+        rec = sector + pos % 2048u;
+        if (rec[0] == 0) { pos = (pos / 2048u + 1u) * 2048u; continue; }
+        if (rec[32] >= name_len && !memcmp(rec + 33, name, name_len) &&
+            (rec[32] == name_len || rec[33 + name_len] == ';')) {
+            uint32_t lba = le32(rec + 2), length = le32(rec + 10), done = 0;
+            if (length > max) return 0;
+            while (done < length) {
+                const unsigned char *data = iso_sector(media, lba + done / 2048u);
+                uint32_t chunk = length - done < 2048u ? length - done : 2048u;
+                if (!data) return 0;
+                memcpy(out + done, data, chunk);
+                done += chunk;
+            }
+            *size = length;
+            return 1;
+        }
+        pos += rec[0];
+    }
+    return 0;
+}
+
 int musashi_disc_media_get_info(const MusashiDiscMedia *media,
                                 MusashiDiscMediaInfo *info) {
     if (!media || !media->image || !info) return 0;

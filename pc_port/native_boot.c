@@ -41,6 +41,7 @@ void musashi_psyx_shutdown(void);
 #include <openssl/sha.h>
 #include <signal.h>
 #include <unistd.h>
+#include <sys/stat.h>
 #include <math.h>
 
 #include "musashi_x11_nograb.h"
@@ -3270,6 +3271,47 @@ static void observe_entry(void *userdata, const MusashiEntryCpuSnapshot *cpu) {
                 guest_irq_enabled(boot));
 }
 
+/* A problem the player has to act on: stderr always, and an on-screen
+ * dialog when a person is playing (MUSASHI_INTERACTIVE, set by launch.sh). */
+static void user_error(const char *message) {
+    const char *interactive = getenv("MUSASHI_INTERACTIVE");
+    fprintf(stderr, "\n%s\n\n", message);
+    if (interactive && interactive[0] == '1')
+        (void)SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Brave Fencer Musashi", message, NULL);
+}
+
+/* --disc PATH: the EXE is read from the image itself (ISO 9660 root) into
+ * $XDG_CACHE_HOME/bfm-port/SLUS_007.26 (default ~/.cache/bfm-port), so a
+ * player only needs the .cue/.bin. Returns the cached path or NULL. */
+static const char *cache_exe_from_disc(const MusashiDiscMedia *media) {
+    static char path[4096];
+    char dir[4096];
+    const char *cache = getenv("XDG_CACHE_HOME"), *home = getenv("HOME");
+    uint8_t *exe = malloc(0x65000u);
+    size_t size = 0;
+    FILE *file;
+    int ok;
+    if (!exe) return NULL;
+    if (!musashi_disc_media_read_root_file(media, "SLUS_007.26", exe, 0x65000u, &size)) {
+        free(exe);
+        return NULL;
+    }
+    if (cache && cache[0]) snprintf(dir, sizeof dir, "%s/bfm-port", cache);
+    else snprintf(dir, sizeof dir, "%s/.cache/bfm-port", home ? home : ".");
+    {
+        char parent[4096];
+        snprintf(parent, sizeof parent, "%.*s", (int)(strrchr(dir, '/') - dir), dir);
+        (void)mkdir(parent, 0755);
+        (void)mkdir(dir, 0755);
+    }
+    snprintf(path, sizeof path, "%s/SLUS_007.26", dir);
+    file = fopen(path, "wb");
+    ok = file && fwrite(exe, 1, size, file) == size;
+    if (file && fclose(file) != 0) ok = 0;
+    free(exe);
+    return ok ? path : NULL;
+}
+
 static int load_exe(NativeBoot *boot, const char *path) {
     /* Bound reads to the pinned file size; the loader verifies every byte
      * before writing RAM. No retail bytes are included in this executable. */
@@ -3978,10 +4020,13 @@ int main(int argc, char **argv) {
     const char *exe_path = NULL;
     const char *cue_path = NULL;
     const char *bin_path = NULL;
+    const char *disc_path = NULL;
 
     for (int i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "--dev-menu") == 0) {
             setenv("BFM_DEV_MENU", "1", 1);
+        } else if (strcmp(argv[i], "--disc") == 0 && i + 1 < argc) {
+            disc_path = argv[++i];
         } else if (strcmp(argv[i], "--headless") == 0) {
             setenv("MUSASHI_BOOT_AUTO_START", "1", 1);
             setenv("MUSASHI_AUTO_DISMISS", "1", 1);
@@ -4022,6 +4067,24 @@ int main(int argc, char **argv) {
                             "guest-RAM pad writes in gameplay (test driver, not 1:1)\n", action);
     }
 
+    if (disc_path) {
+        char why[1024], message[1400];
+        boot.media = musashi_disc_media_open_image(disc_path, why, sizeof why);
+        if (!boot.media) {
+            snprintf(message, sizeof message,
+                     "Brave Fencer Musashi could not start from your disc image.\n\n%s\n\n"
+                     "Use an unmodified .cue/.bin dump of the USA disc (SLUS-00726).", why);
+            user_error(message);
+            return 2;
+        }
+        exe_path = cache_exe_from_disc(boot.media);
+        if (!exe_path) {
+            user_error("Brave Fencer Musashi could not read SLUS_007.26 from your disc image "
+                       "or save it to ~/.cache/bfm-port/.");
+            return 2;
+        }
+        if (!getenv("MUSASHI_CODE_IMAGE")) setenv("MUSASHI_CODE_IMAGE", exe_path, 1);
+    }
     if (!exe_path) {
         if (access("extracted/disc/files/SLUS_007.26", R_OK) == 0) {
             exe_path = "extracted/disc/files/SLUS_007.26";
@@ -4030,7 +4093,8 @@ int main(int argc, char **argv) {
             if (!bin_path && access("extracted/disc/disc.bin", R_OK) == 0)
                 bin_path = "extracted/disc/disc.bin";
         } else {
-            fputs("usage: musashi_native_boot <pinned SLUS_007.26> [pinned cue pinned bin]\n", stderr);
+            fputs("usage: musashi_native_boot --disc <your .cue or .bin>\n"
+                  "       musashi_native_boot <SLUS_007.26> [cue bin]\n", stderr);
             return 2;
         }
     }
@@ -4039,13 +4103,15 @@ int main(int argc, char **argv) {
     boot.last_musashi_action = 0xffffu;
     if (!load_exe(&boot, exe_path)) {
         report_exe_identity(exe_path);
+        user_error("Brave Fencer Musashi: the game executable is not the USA release "
+                   "(SLUS-00726). Use an unmodified dump of your USA disc.");
         fputs("native_boot: pinned retail EXE rejected before startup\n", stderr);
         return 2;
     }
 #ifdef MUSASHI_WITH_BFM_PLAT
     plat_start(&boot.memory);
 #endif
-    if (cue_path && bin_path) {
+    if (!boot.media && cue_path && bin_path) {
         boot.media = musashi_disc_media_open_pinned(cue_path, bin_path);
         if (!boot.media) {
             fprintf(stderr,
@@ -4054,6 +4120,8 @@ int main(int argc, char **argv) {
                     "  cue: %s\n  bin: %s\n"
                     "Use an unmodified single-track .cue/.bin dump of the USA disc.\n\n",
                     MUSASHI_EXPECTED_RELEASE, cue_path, bin_path);
+            user_error("Brave Fencer Musashi: the disc image is not an unmodified dump of the "
+                       "USA release (SLUS-00726).");
             fputs("native_boot: pinned media rejected before startup\n", stderr);
             return 2;
         }
@@ -4428,6 +4496,14 @@ int main(int argc, char **argv) {
             status==MUSASHI_RESETGRAPH_PREFIX_STEP_LIMIT ? "STEP_LIMIT" :
             status==MUSASHI_RESETGRAPH_PREFIX_COMPLETE ? "RETURNED" :
             status==MUSASHI_RESETGRAPH_PREFIX_UNSUPPORTED_CALL ? "UNBOUND_CALL" : "REFUSED");
+    if (!host_stop_signal && status != MUSASHI_RESETGRAPH_PREFIX_COMPLETE) {
+        char message[320];
+        snprintf(message, sizeof message,
+                 "This early preview has reached a part of the game it cannot run yet "
+                 "(code address %08X), so it has to stop here.\n\nThe log is in "
+                 "~/.local/state/bfm-port/last-run.log.", entry_stop.cpu.pc);
+        user_error(message);
+    }
     fprintf(stderr,"native_boot: MDEC_SETUP command=%08x remaining=%u transfers=%llu "
             "control=%08x dma0=%08x dma1=%08x\n",boot.mdec.command,
             boot.mdec.remaining,(unsigned long long)boot.mdec.transfers,

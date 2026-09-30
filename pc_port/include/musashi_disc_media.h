@@ -41,6 +41,20 @@ typedef struct MusashiDiscMediaInfo {
 MusashiDiscMedia *musashi_disc_media_open_pinned(const char *cue_path,
                                                  const char *bin_path);
 
+/* Opens the user's own image from one path: a .cue (any file names; its
+ * FILE entries are joined in order, e.g. a one-bin or a per-track dump) or a
+ * bare .bin. The joined bytes must still be the supported release (the same
+ * size and SHA-256 as the pinned image). On refusal `why` gets a sentence a
+ * player can act on. A 2048-byte .iso is refused: it has no XA subheaders. */
+MusashiDiscMedia *musashi_disc_media_open_image(const char *path, char *why,
+                                                size_t why_size);
+
+/* Copies a file from the image's ISO 9660 root directory (e.g.
+ * "SLUS_007.26"); *size receives its length. Returns zero if absent or
+ * larger than max. */
+int musashi_disc_media_read_root_file(const MusashiDiscMedia *media, const char *name,
+                                      uint8_t *out, size_t max, size_t *size);
+
 /* Copies immutable metadata into caller storage. Returns zero on refusal. */
 int musashi_disc_media_get_info(const MusashiDiscMedia *media,
                                 MusashiDiscMediaInfo *info);
