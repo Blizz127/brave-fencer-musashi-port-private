@@ -29,7 +29,28 @@ static void discard_fill(MusashiGpuController *controller) {
     controller->fill_words = 0;
 }
 
+/* Diagnostics: MUSASHI_DUMP_UPLOADS=<dir> writes every CPU->VRAM upload
+ * rectangle the GPU receives as <dir>/upload-NNNNN-xX-yY-wW-hH.bin (raw
+ * 15-bit pixels, row-major). Evidence output only; never an input. */
+static FILE *g_upload_dump;
+static unsigned g_upload_dumps;
+static void upload_dump_begin(const MusashiGpuController *c) {
+    const char *dir = getenv("MUSASHI_DUMP_UPLOADS");
+    char path[512];
+    if (!dir || !*dir || g_upload_dump || g_upload_dumps >= 6000u) return;
+    snprintf(path, sizeof path, "%s/upload-%05u-x%u-y%u-w%u-h%u.bin", dir, g_upload_dumps++,
+             c->store_x, c->store_y, c->store_w, c->store_h);
+    g_upload_dump = fopen(path, "wb");
+}
+static void upload_dump_pixel(uint16_t pixel) {
+    if (g_upload_dump) fwrite(&pixel, 2, 1, g_upload_dump);
+}
+static void upload_dump_end(void) {
+    if (g_upload_dump) { fclose(g_upload_dump); g_upload_dump = NULL; }
+}
+
 static void discard_store(MusashiGpuController *controller) {
+    upload_dump_end();
     controller->store_command = controller->store_xy = controller->store_wh = 0;
     controller->store_x = controller->store_y = 0;
     controller->store_w = controller->store_h = 0;
@@ -538,6 +559,7 @@ static int store_word(MusashiGpuController *controller, uint32_t word) {
         controller->store_px = controller->store_py = 0;
         controller->store_remaining = width * height;
         controller->store_phase = 3;
+        upload_dump_begin(controller);
         controller->accepted_gp0_words++;
         if (!controller->store_remaining) discard_store(controller);
         return controller->faulted ? 0 : 1;
@@ -556,6 +578,7 @@ static int store_word(MusashiGpuController *controller, uint32_t word) {
                                                x, y, pixels[i])))
             return 0;
         if (controller->stored_pixels == UINT64_MAX) return 0;
+        upload_dump_pixel(pixels[i]);
         controller->stored_pixels++;
         controller->store_remaining--;
         controller->store_px++;

@@ -1,5 +1,7 @@
 #ifndef MUSASHI_MDEC_DECODE_H
 #define MUSASHI_MDEC_DECODE_H
+#include <stdio.h>
+#include <stdlib.h>
 /* Integer reference model of the documented PSX MDEC pipeline.
  * https://psx-spx.consoledev.net/macroblockdecodermdec/
  * Uses the uploaded quantization and scale tables. Numeric rounding follows
@@ -69,6 +71,17 @@ static int mdec_decode_frame(MusashiMdecController *d) {
             } else for(i=0;i<3;i++)out[i]=(uint8_t)rgb[i];
         }
         d->output_size+=bytes;
+    }
+    {
+        /* Diagnostics: MUSASHI_DUMP_MDEC=<dir> writes each decoded frame as
+         * <dir>/mdec-NNNNN-dD-B.bin (D = depth, B = bytes); evidence only. */
+        static unsigned frames;
+        const char *dir=getenv("MUSASHI_DUMP_MDEC");
+        if(dir && *dir && d->output_size && frames<6000u) {
+            char path[512]; FILE *f;
+            snprintf(path,sizeof path,"%s/mdec-%05u-d%u-%u.bin",dir,frames++,depth,d->output_size);
+            if((f=fopen(path,"wb"))) { fwrite(d->output,1,d->output_size,f); fclose(f); }
+        }
     }
     return d->output_size!=0;
 }
