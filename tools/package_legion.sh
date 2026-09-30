@@ -160,7 +160,8 @@ choice is remembered in ~/.config/bfm-port/disc. One-bin and per-track dumps
 both work. A 2048-byte .iso does not (it lacks the CD-XA data).
 No BIOS is needed: the port provides its own kernel services.
 
-Controls: a game controller (first connected SDL GameController) or keyboard.
+Controls: a game controller (the one you press buttons on; in Steam Game Mode,
+  Steam's controller) or keyboard.
   Controller: A Cross, B Circle, X Square, Y Triangle, Start, Back Select,
   LB/RB L1/R1, d-pad or left stick.
   Keyboard: arrows or WASD d-pad; C Cross, X Square, V Circle, Z Triangle
@@ -170,7 +171,8 @@ Controls: a game controller (first connected SDL GameController) or keyboard.
 Requires glibc 2.38+ and the system's OpenGL, X11 or Wayland, and ALSA or
 PulseAudio/PipeWire libraries. Run ./launch.sh; extra arguments go to the port.
 Log of the last run: ~/.local/state/bfm-port/last-run.log.
-Dev menu (off by default): BFM_DEV_MENU=1 ./launch.sh, then F1 or L3+R3.
+Dev menu (off by default): BFM_DEV_MENU=1 ./launch.sh, then F8 or Back+Start
+(F1 lists the keys). BFM_CHEATS=0 turns it off completely.
 TXT
 } > "$stage/README.txt"
 
