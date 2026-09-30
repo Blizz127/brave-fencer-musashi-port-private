@@ -34,6 +34,7 @@
  * loaded) and the site's group digest confirms that image is the one the
  * site was carved from. */
 static int code_site(uint32_t pc, unsigned group, uint32_t instruction);
+static int refusal_trace(void);
 
 /* MIPS I field encoders for generic checks (a call to a named target, a
  * register jump, a syscall): they state the operation, not stored words. */
@@ -8602,12 +8603,18 @@ static int spu_source_guard(MusashiBootMemory *memory, const FormatterCpu *cpu) 
         /* Channel 4 is the SPU DMA complete callback. Channel 2 is the GPU
          * queue/DrawOTag callback registered from 8005B8F8 / cleared from
          * 8005BA90. MAIN4 registers its loaded MDEC-output handler on channel1. */
-        return (cpu->r[4] == 4u && cpu->r[5] == 0x8003aa18u) ||
+    {
+        int ok = (cpu->r[4] == 4u && cpu->r[5] == 0x8003aa18u) ||
                (cpu->r[4] == 2u && (cpu->r[5] == 0x8005ba90u || cpu->r[5] == 0)) ||
                (g_overlay_0004_words && cpu->r[4] == 1u &&
                 (cpu->r[5] == 0x800d24d0u || cpu->r[5] == 0)) ||
                (g_overlay_0004_words && cpu->r[4] == 3u &&
                 (cpu->r[5] == 0x800469ccu || cpu->r[5] == 0));
+        if (!ok && refusal_trace())
+            fprintf(stderr, "native_boot: DMA_CALLBACK_REFUSED channel=%u handler=%08x ra=%08x\n",
+                    cpu->r[4], cpu->r[5], cpu->r[31]);
+        return ok;
+    }
     case 0x80042fc8u:
         /* The source has already published CBD4 before this device read. */
         return cpu->r[5] == 0x1f8010f4u;
