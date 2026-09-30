@@ -1,8 +1,10 @@
 /* Private XA decode implementation. Source: PSX-SPX CDROM Format,
  * XA-ADPCM and 25-point zigzag coefficient table. Integer filter rounding
  * follows the documented model; physical sample/phase bit parity is unproven.
- * Observed opening format: 4-bit stereo37800Hz, no emphasis. Other formats
- * refuse before changing history or output. Initial interpolation phase is6.
+ * Formats: 4-bit 37800Hz stereo (the opening) and 4-bit 37800Hz mono (room
+ * music, e.g. the Spiral Tower top 300B and field 3012), no emphasis. Other
+ * formats refuse before changing history or output. Initial interpolation
+ * phase is 6.
  */
 #ifndef MUSASHI_XA_DECODE_H
 #define MUSASHI_XA_DECODE_H
@@ -49,15 +51,42 @@ static int16_t xa_clamp(int32_t v) { return (int16_t)(v<-32768?-32768:v>32767?32
 static int32_t xa_floor_shift(int32_t v,unsigned n) {
     return v>=0?v/(1<<n):-(((-v)+(1<<n)-1)/(1<<n));
 }
-/* Output is interleaved2016-frame37800Hz stereo. Every header is checked
- * before the first decoder-history update. Audio/realtime and Form2 required. */
-static int xa_decode_samples(MusashiXaDecode *d,const uint8_t raw[2352],int16_t pcm[4032]) {
+/* Output is interleaved 37800Hz stereo: 2016 frames for a stereo sector,
+ * 4032 for a mono one (its sample in both channels); *frames receives the
+ * count. Every header is checked before the first decoder-history update.
+ * Audio/realtime and Form2 required. */
+static int xa_decode_samples(MusashiXaDecode *d,const uint8_t raw[2352],int16_t pcm[8064],
+                             unsigned *frames) {
     static const int f0[4]={0,60,115,98},f1[4]={0,0,-52,-55};
     unsigned group,block,ch,j,frame=0;
-    if(raw[15]!=2 || (raw[18]&0x64u)!=0x64u || raw[19]!=1 ||
+    if(raw[15]!=2 || (raw[18]&0x64u)!=0x64u || (raw[19]!=0 && raw[19]!=1) ||
        memcmp(raw+16,raw+20,4))return 0;
     for(group=0;group<18;group++)for(block=0;block<8;block++)
         if((raw[24+group*128+4+block]&15u)>12u)return 0;
+    if(raw[19]==0) {
+        /* Mono: eight sound units per group in time order, one history;
+         * unit u's header is p[4+u], its nibbles p[16+u/2+j*4] (u&1: high). */
+        for(group=0;group<18;group++) {
+            const uint8_t *p=raw+24+group*128;
+            for(block=0;block<8;block++) {
+                unsigned param=p[4+block],shift=param&15u,filter=(param>>4)&3u;
+                for(j=0;j<28;j++) {
+                    int32_t nibble=(p[16+(block>>1)+j*4]>>((block&1u)*4))&15;
+                    int32_t value;
+                    int16_t out;
+                    if(nibble&8)nibble-=16;
+                    value=nibble*(1<<(12-shift))+
+                        xa_floor_shift(d->old[0]*f0[filter]+d->older[0]*f1[filter]+32,6);
+                    out=xa_clamp(value);
+                    pcm[(frame+j)*2]=pcm[(frame+j)*2+1]=out;
+                    d->older[0]=d->old[0];d->old[0]=out;
+                }
+                frame+=28;
+            }
+        }
+        *frames=frame;
+        return 1;
+    }
     for(group=0;group<18;group++) {
         const uint8_t *p=raw+24+group*128;
         for(block=0;block<4;block++) {
@@ -76,12 +105,15 @@ static int xa_decode_samples(MusashiXaDecode *d,const uint8_t raw[2352],int16_t 
             frame+=28;
         }
     }
+    *frames=frame;
     return 1;
 }
-static int xa_decode(MusashiXaDecode *d,const uint8_t raw[2352],int16_t pcm[4704]) {
-    int16_t samples[4032];unsigned n,ch,phase,tap,out=0;
-    if(!xa_decode_samples(d,raw,samples))return 0;
-    for(n=0;n<2016;n++) {
+/* 37800 -> 44100 Hz: 2352 output frames for a stereo sector, 4704 for a mono
+ * one; returns that count, 0 when the sector is refused. */
+static unsigned xa_decode(MusashiXaDecode *d,const uint8_t raw[2352],int16_t pcm[9408]) {
+    int16_t samples[8064];unsigned n,ch,phase,tap,out=0,frames=0;
+    if(!xa_decode_samples(d,raw,samples,&frames))return 0;
+    for(n=0;n<frames;n++) {
         for(ch=0;ch<2;ch++)d->ring[ch][d->position&31u]=samples[n*2+ch];
         ++d->position;
         if(--d->phase)continue;
@@ -97,6 +129,6 @@ static int xa_decode(MusashiXaDecode *d,const uint8_t raw[2352],int16_t pcm[4704
             ++out;
         }
     }
-    return out==2352;
+    return out==frames*7u/6u ? out : 0u;
 }
 #endif

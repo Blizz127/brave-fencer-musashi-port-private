@@ -337,19 +337,19 @@ static int owned_sector(MusashiCdOwned *c, uint64_t event) {
         return s->fault==MUSASHI_CD_OWNED_OK;
     }
     if ((s->mode&0x40u) && (raw[18]&0x44u)==0x44u) {
-        int16_t pcm[4704];unsigned i;
+        int16_t pcm[9408];unsigned i,frames;
         if (!c->xa_sink || s->xa_sectors==UINT64_MAX ||
-            s->xa_frames>UINT64_MAX-2352u || c->xa_stream_frames>UINT64_MAX-2352u ||
-            !xa_decode(&c->xa,raw,pcm))
+            s->xa_frames>UINT64_MAX-4704u || c->xa_stream_frames>UINT64_MAX-4704u ||
+            !(frames=xa_decode(&c->xa,raw,pcm)))
             return owned_fault(c,MUSASHI_CD_OWNED_BAD_ACCESS);
-        for(i=0;i<2352;i++) {
+        for(i=0;i<frames;i++) {
             int32_t l=pcm[i*2],r=pcm[i*2+1];
             pcm[i*2]=s->muted?0:owned_attenuate(l*s->volume[0]+r*s->volume[2]);
             pcm[i*2+1]=s->muted?0:owned_attenuate(l*s->volume[1]+r*s->volume[3]);
         }
-        if (!c->xa_sink(c->xa_userdata,event,c->xa_stream_frames,pcm,2352u))
+        if (!c->xa_sink(c->xa_userdata,event,c->xa_stream_frames,pcm,frames))
             return owned_fault(c,MUSASHI_CD_OWNED_BACKEND_LOST);
-        ++s->xa_sectors;s->xa_frames+=2352u;c->xa_stream_frames+=2352u;
+        ++s->xa_sectors;s->xa_frames+=frames;c->xa_stream_frames+=frames;
         s->position_lba=s->next_lba++;s->position_valid=1;
         ++s->sectors_fetched;c->first_sector_pending=0;
         s->sector_due=event+225792u;

@@ -204,6 +204,7 @@ typedef struct NativeBoot {
     uint32_t spu_dma_madr, spu_dma_bcr, spu_dma_chcr;
     uint64_t cd_irq_requests;
     uint64_t xa_sample_anchor;
+    uint32_t xa_sector_frames;   /* frames of the last XA sector (0: none yet = 2352) */
     MusashiSpuCdAudio *spu;
     MusashiAudioSdl *audio;
     MusashiCdSpuDevice cd_spu;
@@ -774,6 +775,7 @@ static int submit_xa_pcm(void *userdata,uint64_t cycle,uint64_t first_frame,
                 (unsigned long long)gap,(unsigned long long)first_frame);
         boot->xa_sample_anchor+=gap;
     }
+    boot->xa_sector_frames=(uint32_t)frames;
     if (!musashi_spu_cd_audio_submit_cd_pcm(boot->spu,boot->xa_sample_anchor+first_frame,pcm,frames)) {
         fprintf(stderr,"native_boot: XA_PCM_REFUSED frame=%llu sample=%llu current=%llu\n",
                 (unsigned long long)first_frame,(unsigned long long)(boot->xa_sample_anchor+first_frame),
@@ -1606,7 +1608,9 @@ static int advance_cd_devices(NativeBoot *boot, uint64_t cycle) {
         if (!musashi_spu_cd_audio_snapshot(boot->spu,&audio)) return 0;
         /* Bound native producer catch-up by real PCM queue capacity. The
          * SPU continues consuming on the epoch; no sector/audio is dropped. */
-        if (audio.pending_frames > MUSASHI_SPU_CD_AUDIO_QUEUE_LIMIT-2352u)
+        /* Room for one more sector of the format last delivered: 2352 frames
+         * stereo, 4704 mono (the stereo threshold is unchanged). */
+        if (audio.pending_frames > MUSASHI_SPU_CD_AUDIO_QUEUE_LIMIT-(boot->xa_sector_frames ? boot->xa_sector_frames : 2352u))
             return musashi_cd_dma3_advance(boot->cd_dma,cycle);
     }
     /* A streaming IRQ's host execution/logging cost is not guest CD time.
