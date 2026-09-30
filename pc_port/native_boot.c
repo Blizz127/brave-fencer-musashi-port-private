@@ -1698,12 +1698,15 @@ static int epoch_advance_devices(void *userdata, uint64_t cycle) {
                 musashi_cd_owned_get_state(boot->cd_drive, &cd))
                 fprintf(stderr, "native_boot: CD_STATE fault=%d command=%02x phase=%u reading=%d "
                         "interrupt=%u responses=%u incoming=%d announced=%d/%d fifo=%d cycle=%llu "
-                        "due=%llu sector_due=%llu publish_due=%llu\n",
+                        "due=%llu sector_due=%llu publish_due=%llu next_lba=%u mode=%02x "
+                        "filter=%u/%u\n",
                         (int)cd.fault, (unsigned)cd.command, (unsigned)cd.phase, (int)cd.reading,
                         (unsigned)cd.interrupt, (unsigned)cd.response_count, (int)cd.incoming_valid,
                         (int)cd.announced_valid, (int)cd.announced_claimed, (int)cd.fifo_valid,
                         (unsigned long long)cd.cycle, (unsigned long long)cd.due,
-                        (unsigned long long)cd.sector_due, (unsigned long long)cd.sector_publish_due);
+                        (unsigned long long)cd.sector_due, (unsigned long long)cd.sector_publish_due,
+                        (unsigned)cd.next_lba, (unsigned)cd.mode, (unsigned)cd.filter_file,
+                        (unsigned)cd.filter_channel);
         }
     }
     if (boot->gpu_dma && musashi_gpu_dma2_get_state(boot->gpu_dma,&gpu) &&
