@@ -34,6 +34,7 @@
 void musashi_psyx_shutdown(void);
 
 #include <SDL.h>
+#include "musashi_host_chord.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1514,7 +1515,7 @@ static int sample_keyboard_pad(void *userdata, uint16_t *buttons) {
                     sampled &= (uint16_t)~(1u << 12); /* Triangle */
 #ifdef MUSASHI_WITH_BFM_PLAT
                 /* With the dev menu on, the pad's Back/Start are reserved for
-                 * its combo; a lone press reaches the game on release. */
+                 * its combo; a lone press reaches the game after 300 ms. */
                 if (!dev_menu_reserves_back_start())
 #endif
                 {
@@ -2110,41 +2111,48 @@ static int dev_menu_write32(void *u, uint32_t a, uint32_t v) {
     return musashi_boot_write32(&((NativeBoot *)u)->memory, a, v);
 }
 
-/* Up to eight SDL GameControllers, reconciled by instance id each poll. */
+/* Mapped controllers and unmapped joysticks, reconciled by instance id. */
 #define DEV_MENU_PADS 8
 static struct {
     SDL_GameController *pad[DEV_MENU_PADS];
+    SDL_Joystick *joy[DEV_MENU_PADS];
+    MusashiHostChord chord[DEV_MENU_PADS];
     SDL_JoystickID id[DEV_MENU_PADS];
     unsigned prev[DEV_MENU_PADS];       /* last held menu keys per pad */
-    int combo[DEV_MENU_PADS];           /* Back/Start held for the combo */
     int neutral_wait[DEV_MENU_PADS];    /* connected with buttons held */
     unsigned retry;
     unsigned kb_prev;
     int drain;                          /* after closing: wait for release */
-    unsigned tap_select, tap_start;     /* frames of a released lone Back/Start */
+    unsigned game_buttons;             /* delayed lone Back/Start */
 } g_devpad;
 
 static void dev_menu_pads_reconcile(void) {
     int j, k;
     for (k = 0; k < DEV_MENU_PADS; ++k)
-        if (g_devpad.pad[k] && !SDL_GameControllerGetAttached(g_devpad.pad[k])) {
-            SDL_GameControllerClose(g_devpad.pad[k]);
+        if (g_devpad.joy[k] && !SDL_JoystickGetAttached(g_devpad.joy[k])) {
+            if (g_devpad.pad[k]) SDL_GameControllerClose(g_devpad.pad[k]);
+            else SDL_JoystickClose(g_devpad.joy[k]);
             g_devpad.pad[k] = NULL;
-            g_devpad.combo[k] = 0;
+            g_devpad.joy[k] = NULL;
+            memset(&g_devpad.chord[k], 0, sizeof g_devpad.chord[k]);
             g_devpad.prev[k] = 0;
         }
     if (!SDL_WasInit(SDL_INIT_GAMECONTROLLER) || g_devpad.retry++ % 30u) return;
     for (j = 0; j < SDL_NumJoysticks(); ++j) {
         SDL_JoystickID id;
         int known = 0, free_slot = -1;
-        if (!SDL_IsGameController(j)) continue;
         id = SDL_JoystickGetDeviceInstanceID(j);
         for (k = 0; k < DEV_MENU_PADS; ++k) {
-            if (g_devpad.pad[k] && g_devpad.id[k] == id) known = 1;
-            if (!g_devpad.pad[k] && free_slot < 0) free_slot = k;
+            if (g_devpad.joy[k] && g_devpad.id[k] == id) known = 1;
+            if (!g_devpad.joy[k] && free_slot < 0) free_slot = k;
         }
         if (known || free_slot < 0) continue;
-        g_devpad.pad[free_slot] = SDL_GameControllerOpen(j);
+        if (SDL_IsGameController(j)) {
+            g_devpad.pad[free_slot] = SDL_GameControllerOpen(j);
+            if (g_devpad.pad[free_slot])
+                g_devpad.joy[free_slot] = SDL_GameControllerGetJoystick(g_devpad.pad[free_slot]);
+        } else g_devpad.joy[free_slot] = SDL_JoystickOpen(j);
+        if (!g_devpad.joy[free_slot]) continue;
         g_devpad.id[free_slot] = id;
         g_devpad.neutral_wait[free_slot] = 1;
         g_devpad.prev[free_slot] = 0;
@@ -2152,7 +2160,7 @@ static void dev_menu_pads_reconcile(void) {
 }
 
 static int dev_pad_button(int k, SDL_GameControllerButton b) {
-    return SDL_GameControllerGetButton(g_devpad.pad[k], b) != 0;
+    return musashi_host_pad_button(g_devpad.pad[k], g_devpad.joy[k], b);
 }
 
 /* One poll per guest VBlank (state only; native_boot's SDL_PollEvent keeps
@@ -2183,13 +2191,14 @@ static unsigned dev_menu_poll_keys(int *ff_hold, int *any_held) {
     pressed |= kb & ~g_devpad.kb_prev;
     g_devpad.kb_prev = kb;
     dev_menu_pads_reconcile();
+    g_devpad.game_buttons = 0;
     for (k = 0; k < DEV_MENU_PADS; ++k) {
         unsigned held = 0;
         int back, start, ly, any = 0;
         SDL_GameControllerButton b;
-        if (!g_devpad.pad[k]) continue;
+        if (!g_devpad.joy[k]) continue;
         for (b = 0; b < SDL_CONTROLLER_BUTTON_MAX; ++b) any |= dev_pad_button(k, b);
-        ly = SDL_GameControllerGetAxis(g_devpad.pad[k], SDL_CONTROLLER_AXIS_LEFTY);
+        ly = musashi_host_pad_y(g_devpad.pad[k], g_devpad.joy[k]);
         if (ly < -12000 || ly > 12000) any = 1;
         if (any) *any_held = 1;
         if (g_devpad.neutral_wait[k]) {          /* connected with buttons held */
@@ -2199,19 +2208,13 @@ static unsigned dev_menu_poll_keys(int *ff_hold, int *any_held) {
         back = dev_pad_button(k, SDL_CONTROLLER_BUTTON_BACK);
         start = dev_pad_button(k, SDL_CONTROLLER_BUTTON_START);
         if (musashi_dev_menu_enabled()) {
-            if (back && start && !g_devpad.combo[k]) { held |= MUSASHI_DEV_KEY_TOGGLE; g_devpad.combo[k] = 1; }
-            else if (g_devpad.combo[k]) {
-                held |= MUSASHI_DEV_KEY_TOGGLE;  /* still held: no new edge */
-                if (!back && !start) g_devpad.combo[k] = 0;
-            } else {
-                /* A lone Back/Start released without the other: give the
-                 * game a short press (they are reserved while held). */
-                if ((g_devpad.prev[k] & 0x10000u) && !back) g_devpad.tap_select = 4;
-                if ((g_devpad.prev[k] & 0x20000u) && !start) g_devpad.tap_start = 4;
+            if (musashi_host_chord_step(&g_devpad.chord[k], (back ? 1u : 0u) | (start ? 2u : 0u), SDL_GetTicks())) {
+                pressed |= MUSASHI_DEV_KEY_TOGGLE;
+                fprintf(stderr, "[DEV_MENU] controller chord instance=%d source=%s\n",
+                        (int)g_devpad.id[k], g_devpad.pad[k] ? "GameController" : "joystick");
             }
-            if (back) held |= 0x10000u;
-            if (start) held |= 0x20000u;
-        }
+            g_devpad.game_buttons |= g_devpad.chord[k].game;
+        } else memset(&g_devpad.chord[k], 0, sizeof g_devpad.chord[k]);
         if (dev_pad_button(k, SDL_CONTROLLER_BUTTON_LEFTSTICK)) held |= MUSASHI_DEV_KEY_FF;
         if (dev_pad_button(k, SDL_CONTROLLER_BUTTON_RIGHTSTICK)) *ff_hold = 1;
         if (musashi_dev_menu_is_open()) {
@@ -2234,8 +2237,11 @@ static int dev_menu_reserves_back_start(void) {
     return musashi_dev_menu_enabled();
 }
 static void dev_menu_apply_taps(uint16_t *sampled) {
-    if (g_devpad.tap_select) { *sampled &= (uint16_t)~(1u << 0); --g_devpad.tap_select; }
-    if (g_devpad.tap_start) { *sampled &= (uint16_t)~(1u << 3); --g_devpad.tap_start; }
+    if (dev_menu_reserves_back_start()) {
+        if (g_plat_input_on) *sampled |= (1u << 0) | (1u << 3);
+        if (g_devpad.game_buttons & 1) *sampled &= (uint16_t)~(1u << 0);
+        if (g_devpad.game_buttons & 2) *sampled &= (uint16_t)~(1u << 3);
+    }
 }
 
 static void dev_menu_text_at(int x, int y, int scale, const char *text,
@@ -4998,6 +5004,7 @@ static void plat_timing_attach(int guest_clock, int unthrottled) {
 #endif
 
 int main(int argc, char **argv) {
+    musashi_host_pad_hints();
     sanitize_controller_ignore_list();
     static NativeBoot boot_storage; /* One stable, zero-initialized owner. */
     NativeBoot *const boot_owner = native_boot_owner(&boot_storage);

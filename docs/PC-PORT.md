@@ -671,10 +671,14 @@ applied to BFM; model in `pc_port/dev_menu.c`, host glue in
   always-on fast-forward and screenshot keys, the legacy cheat registry,
   `cheats.ini` and the console's `poke`. Disabled, nothing in the menu
   writes guest RAM, consumes input or draws.
-- **Keys.** F8, or Back+Start pressed together on one controller, opens
-  and closes it. With the menu enabled, a controller's Back and Start reach
-  the game as a short press when released (so a lone Start still works,
-  held Start does not). Up/Down move, Enter/A select, Esc/B go
+- **Keys.** F8, or Back+Start on one controller, opens and closes it.
+  Either order works: hold both, or press the second within 300 ms of the
+  first, including after releasing the first. With the menu enabled, lone
+  Back/Start presses reach the game after that window; short taps replay
+  for their original length (at least two frames), and held presses remain
+  held. Mapped SDL controllers (including Steam Input and XInput) and
+  unmapped joysticks with the Linux Xbox button layout are supported.
+  Steam virtual pads and background pad events are enabled before SDL starts. Up/Down move, Enter/A select, Esc/B go
   back, F1 shows the key list. F2 God Mode, F3 BP Max, F6 or L3
   fast-forward toggle, Backspace or R3 hold, F7 fast-forward speed
   (2x/4x/8x/max), F10 screenshot to `~/Pictures/bfm-port/`.

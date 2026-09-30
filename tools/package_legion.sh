@@ -210,7 +210,8 @@ says which build ran: the faster musashi_native_boot.x86-64-v3 on CPUs with
 AVX2/BMI2/FMA, else the portable one; BFM_BASELINE=1 forces the portable
 one). Every 10 s of play it logs a PERF line (game speed, fps).
 Dev menu (on by default). Open it with Select+Start on the controller
-(Back+Start) or F8; d-pad or left stick moves, A selects, B goes back; F1
+(Back+Start, either order within 300 ms or hold both) or F8. Single presses
+still reach the game. D-pad or left stick moves, A selects, B goes back; F1
 lists the keys. To turn it off, run with BFM_DEV_MENU=0 ./launch.sh or make
 an empty file ~/.config/bfm-port/dev-menu-off. BFM_CHEATS=0 disables it
 completely (fast-forward and screenshot keys too). Warp lists only rooms
