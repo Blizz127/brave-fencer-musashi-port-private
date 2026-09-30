@@ -35,6 +35,7 @@
  * site was carved from. */
 static int code_site(uint32_t pc, unsigned group, uint32_t instruction);
 static int refusal_trace(void);
+static int code_site_group_ok(unsigned group);
 
 /* MIPS I field encoders for generic checks (a call to a named target, a
  * register jump, a syscall): they state the operation, not stored words. */
@@ -9426,7 +9427,9 @@ static int merge_kind_for(uint32_t pc, uint32_t instruction) {
 static int merge_pending_matches(const FormatterCpu *cpu, uint32_t instruction) {
     if (!cpu->merge_pending) return 1;
     if (cpu->pc != cpu->merge_next_pc) return 0;
-    if (cpu->pc >= 0x8013d5fcu && cpu->pc < 0x8013d680u) {
+    /* This audited member's window only (site group 124); the same addresses
+     * in another location image fall through to the decode rule below. */
+    if (cpu->pc >= 0x8013d5fcu && cpu->pc < 0x8013d680u && code_site_group_ok(124u)) {
         /* Retail nine-byte copies: the first pairs retire across LUI;
          * the second copy interleaves adjacent pairs and their stores. */
         static const struct { uint32_t pc, grp; uint8_t reg, kind; } sites[] = {
