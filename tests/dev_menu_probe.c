@@ -1,6 +1,6 @@
 /* Port Dev Menu model (shared spec v1): inert when off, hard-disable, the
  * retail-parity gate, field-only cheats through the game's own state,
- * refusals, navigation, no unverified warps. */
+ * refusals, navigation, only the verified warps in area folders. */
 #include "musashi_dev_menu.h"
 
 #include <assert.h>
@@ -97,7 +97,9 @@ int main(void) {
     musashi_dev_menu_vblank(1, 0x000b, 9, 1);
     musashi_dev_menu_state(&st);
     assert(st.open && st.page == 1);                          /* WARP > */
-    assert(musashi_dev_menu_warp_count() == 0 && musashi_dev_menu_finish_count() == 0);
+    assert(musashi_dev_menu_warp_count() == 29 && musashi_dev_menu_finish_count() == 0);
+    assert(strstr(highlighted(), "AREA 1: CASTLE"));
+    musashi_dev_menu_keys(MUSASHI_DEV_KEY_UP, 0);             /* wraps to BACK */
     assert(strstr(highlighted(), "BACK"));
     musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);             /* back to root, on WARP */
     assert(strstr(highlighted(), "WARP"));
@@ -107,6 +109,97 @@ int main(void) {
     assert(strstr(highlighted(), "CHEATS"));
     musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
     assert(strstr(highlighted(), "OPTIONS"));
+
+    /* Warp folders: root -> WARP -> folder -> room row queues a warp; BACK
+     * leaves the folder for the list, then the list for the root. Every
+     * page fits the 24 lines the renderer is given. */
+    start("1", NULL, "1:TOGGLE,2:OK");
+    musashi_dev_menu_vblank(1, 0x000b, 9, 1);
+    musashi_dev_menu_vblank(1, 0x000b, 9, 1);
+    assert(musashi_dev_menu_text(lines, 24, &hl, &badge) == 3u + 3u + 1u + 2u);
+    assert(strstr(lines[3], "AREA 1: CASTLE & SPIRAL TOWER >"));
+    assert(strstr(lines[4], "AREA 2: GRILLIN' VILLAGE & FORESTS >"));
+    assert(strstr(lines[5], "AREA 2: TWINPEAK & HELL'S VALLEY >"));
+    assert(strstr(lines[6], "BACK"));
+    for (i = 0; i < 3; ++i) {
+        size_t rows, k;
+        static const size_t expect[3] = { 10, 11, 8 };
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN * (i > 0), 0);   /* folder i */
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
+        rows = musashi_dev_menu_text(lines, 24, &hl, &badge);
+        assert(rows == 3u + expect[i] + 1u + 2u && rows <= 24u);
+        for (k = 0; k < rows; ++k) assert(strlen(lines[k]) < 56u);
+        assert(strstr(lines[3 + expect[i]], "BACK") && strstr(highlighted(), lines[3]));
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_BACK, 0);             /* B: the folder list */
+        assert(strstr(highlighted(), "AREA"));
+        musashi_dev_menu_state(&st);
+        assert(st.page == 1 && st.selection == (int)i);
+    }
+    musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);                   /* AREA 2 (twinpeak) */
+    assert(strstr(highlighted(), "HELL'S VALLEY - SKULLPION"));
+    musashi_dev_menu_keys(MUSASHI_DEV_KEY_UP, 0);                   /* BACK row */
+    assert(strstr(highlighted(), "BACK"));
+    musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);                   /* to the folder list */
+    musashi_dev_menu_state(&st);
+    assert(st.page == 1 && st.selection == 2 && strstr(highlighted(), "TWINPEAK"));
+    musashi_dev_menu_keys(MUSASHI_DEV_KEY_UP, 0);
+    musashi_dev_menu_keys(MUSASHI_DEV_KEY_UP, 0);                   /* AREA 1 */
+    musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
+    musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+    musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+    musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+    assert(strstr(highlighted(), "CASTLE (4, THRONE ROOM)"));
+    musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);                   /* queues 3003.0 */
+    musashi_dev_menu_state(&st);
+    assert(st.warp_state == 1 && st.refusals == 0 && writes == 0);
+    put16(0x800b99deu, 0x000b); put16(0x800b99f0u, 9); *at(0x800b9a10u) = 1;
+    musashi_dev_menu_vblank(1, 0x000b, 9, 1);                       /* safe point: sent */
+    assert(get16(0x80078e50u) == 0x3003 && *at(0x80078e52u) == 0);
+    /* Backing out of the whole menu from a folder reaches the root first. */
+    musashi_dev_menu_keys(MUSASHI_DEV_KEY_BACK, 0);
+    musashi_dev_menu_keys(MUSASHI_DEV_KEY_BACK, 0);
+    musashi_dev_menu_state(&st);
+    assert(st.page == 0 && st.open && st.selection == 0);
+
+    /* Every verified row is a known room with entrance 0; 2013 is absent. */
+    start("1", NULL, NULL);
+    musashi_dev_menu_keys(MUSASHI_DEV_KEY_TOGGLE | MUSASHI_DEV_KEY_OK, 0);
+    {
+        unsigned f, r, seen = 0;
+        for (f = 0; f < 3; ++f) {
+            musashi_dev_menu_keys(MUSASHI_DEV_KEY_TOGGLE, 0);
+            musashi_dev_menu_keys(MUSASHI_DEV_KEY_TOGGLE, 0);       /* root, closed then open */
+            musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);           /* WARP */
+            for (r = 0; r < f; ++r) musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+            musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);           /* folder f */
+            for (;;) {
+                size_t rows = musashi_dev_menu_text(lines, 24, &hl, &badge);
+                if (strstr(lines[hl], "BACK")) break;
+                seen++;
+                assert(!strstr(lines[hl], "TOY"));
+                assert(rows <= 24u);
+                musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+            }
+        }
+        assert(seen == musashi_dev_menu_warp_count());
+    }
+
+    /* The hard-disable still wins with the menu asked for two ways. */
+    start("1", "0", "1:TOGGLE,2:OK,3:OK,4:OK");
+    musashi_dev_menu_state(&st);
+    assert(st.hard_disabled && !st.enabled);
+    for (i = 0; i < 10; ++i) {
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_TOGGLE | MUSASHI_DEV_KEY_OK, 0);
+        musashi_dev_menu_vblank(1, 0x000b, 9, 1);
+    }
+    musashi_dev_menu_state(&st);
+    assert(!st.open && st.warp_state == 0 && writes == 0);
+    assert(musashi_dev_menu_text(lines, 24, &hl, &badge) == 0);
+    setenv("BFM_DEV_MENU", "1", 1);
+    setenv("BFM_CHEATS", "0", 1);
+    musashi_dev_menu_reset();
+    assert(musashi_dev_menu_init(&guest, 1) == 0);            /* --dev-menu too */
+    assert(musashi_dev_menu_hard_disabled() && !musashi_dev_menu_enabled());
 
     /* God mode (F2): HP refilled from the game's own max, only in the field. */
     start("1", NULL, NULL);
@@ -245,6 +338,6 @@ int main(void) {
     unsetenv("BFM_DEV_MENU_FINISH_TEST");
 #endif
 
-    puts("DEV_MENU_PASS off_inert=1 hard_disable=1 parity=1 cheats=game_state warps=0 finish=0");
+    puts("DEV_MENU_PASS off_inert=1 hard_disable=1 parity=1 cheats=game_state warps=29 folders=3 finish=0");
     return 0;
 }

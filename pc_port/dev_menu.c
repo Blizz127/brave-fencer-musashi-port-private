@@ -62,7 +62,40 @@ typedef struct DevJump {
     uint8_t entrance;
     uint8_t preset;   /* Finish Area: the retail debug menu's AREA preset applied first */
 } DevJump;
-static const DevJump kWarps[] = { { NULL, NULL, 0, 0, 0 } };
+/* Warp rows, grouped by the folders below (kWarps is in folder order).
+ * Every row was added after its warp passed the runner sweep with no
+ * refusal (r29 sweep, 2026-09-30); all use entrance 0. Not listed: 2013
+ * (toy shop) or any room the sweep has not passed. */
+#define W(loc, name) { NULL, name, loc, 0, 0 }
+static const DevJump kWarps[] = {
+    /* AREA 1: CASTLE & SPIRAL TOWER */
+    W(0x3000, "ALLUCANEET CASTLE (1)"), W(0x3001, "CASTLE (2)"),
+    W(0x3002, "CASTLE (3)"), W(0x3003, "CASTLE (4, THRONE ROOM)"),
+    W(0x3004, "CASTLE (5, GONDOLA SIDE)"), W(0x3009, "SPIRAL TOWER ENTRANCE"),
+    W(0x300A, "SPIRAL TOWER INTERIOR"), W(0x300B, "SPIRAL TOWER TOP"),
+    W(0x300D, "CASTLE GATE"), W(0x300E, "STEAM KNIGHT'S ROOM"),
+    /* AREA 2: GRILLIN' VILLAGE & FORESTS */
+    W(0x1010, "GRILLIN' VILLAGE (1)"), W(0x1011, "GRILLIN' VILLAGE (2)"),
+    W(0x3012, "VILLAGE RESTART POINT"), W(0x3014, "SOMNOLENT FOREST (HUB)"),
+    W(0x301C, "SOMNOLENT FOREST (3)"), W(0x301D, "STEAMWOOD INTERIOR"),
+    W(0x301E, "STEAMWOOD"), W(0x301F, "STEAMWOOD TOP"),
+    W(0x3021, "ISLAND OF DRAGONS"), W(0x3022, "CEMETERY"),
+    W(0x3023, "PLACE OF WIND"),
+    /* AREA 2: TWINPEAK & HELL'S VALLEY */
+    W(0x3024, "HELL'S VALLEY - SKULLPION"), W(0x302B, "HELL'S VALLEY APPROACH"),
+    W(0x3025, "TWINPEAK FOOT"), W(0x3026, "TWINPEAK PEAK B"),
+    W(0x3027, "TWINPEAK INTERIOR"), W(0x3028, "TWINPEAK SCARY BRIDGE"),
+    W(0x3029, "TWINPEAK PEAK A"), W(0x302A, "TWINPEAK RAPIDS"),
+};
+#undef W
+/* Warp page folders: a run of kWarps rows each. A folder page is title,
+ * status, blank, its rows, BACK, blank, toast: at most LINES_MAX - 6 rows. */
+static const struct { const char *name; unsigned first, count; } kFolders[] = {
+    { "AREA 1: CASTLE & SPIRAL TOWER >", 0, 10 },
+    { "AREA 2: GRILLIN' VILLAGE & FORESTS >", 10, 11 },
+    { "AREA 2: TWINPEAK & HELL'S VALLEY >", 21, 8 },
+};
+enum { FOLDER_COUNT = sizeof kFolders / sizeof kFolders[0] };
 static const DevJump kFinish[] = { { NULL, NULL, 0, 0, 0 } };
 /* Finish Area candidates (the sweep's targets): the state the developers'
  * own debug menu writes for "AREA N+1" (func_800CFCBC, cumulative), then
@@ -76,12 +109,13 @@ static const DevJump kFinishCandidates[] = {
     { "AREA 4", "FINISH AREA 4 (DEVELOPER PRESET)", 0x3076, 0, 5 },
     { "AREA 5", "FINISH AREA 5 (DEVELOPER PRESET)", 0x3081, 0, 6 },
 };
-enum { WARP_COUNT = 0, FINISH_COUNT = 0 };
+enum { WARP_COUNT = sizeof kWarps / sizeof kWarps[0], FINISH_COUNT = 0 };
 
 static const char *const kRoot[] = { "WARP >", "FINISH AREA >", "CHEATS >", "OPTIONS >" };
 
 static struct {
     int inited, enabled, hard_disabled, open, page, selection, help;
+    int folder;   /* Warp page: 0 the folder list, else the open folder + 1 */
     int god, resource, ff_toggle, ff_hold, used, used_reported;
     unsigned ff_speed_index, shot_requests;
     unsigned vblanks, cheat_writes, one_shots, refusals;
@@ -182,7 +216,7 @@ void musashi_dev_menu_toast(const char *message) {
 
 static unsigned page_rows(void) {
     switch (M.page) {
-    case PAGE_WARP: return WARP_COUNT + 1u;
+    case PAGE_WARP: return (M.folder ? kFolders[M.folder - 1].count : (unsigned)FOLDER_COUNT) + 1u;
     case PAGE_FINISH: return FINISH_COUNT + 1u;
     case PAGE_CHEATS: return 5u;
     case PAGE_OPTIONS: return 4u;
@@ -212,6 +246,11 @@ static void cycle_ff_speed(void) {
 
 static void select_row(void) {
     unsigned n = page_rows();
+    if (M.page == PAGE_WARP && M.folder && (unsigned)M.selection + 1u == n) {
+        M.selection = M.folder - 1;   /* BACK: the folder list, on the folder it left */
+        M.folder = 0;
+        return;
+    }
     if (M.page != PAGE_ROOT && (unsigned)M.selection + 1u == n) {
         M.selection = M.page - 1;   /* back to the root row it came from */
         M.page = PAGE_ROOT;
@@ -220,6 +259,7 @@ static void select_row(void) {
     switch (M.page) {
     case PAGE_ROOT:
         M.page = PAGE_WARP + M.selection;
+        M.folder = 0;
         M.selection = 0;
         break;
     case PAGE_CHEATS:
@@ -236,8 +276,13 @@ static void select_row(void) {
         else ++M.shot_requests;
         break;
     case PAGE_WARP:
-        if (WARP_COUNT)
-            warp_request(kWarps[M.selection].location, kWarps[M.selection].entrance, kWarps[M.selection].label, 0);
+        if (!M.folder) {
+            M.folder = M.selection + 1;
+            M.selection = 0;
+        } else {
+            const DevJump *w = &kWarps[kFolders[M.folder - 1].first + (unsigned)M.selection];
+            warp_request(w->location, w->entrance, w->label, 0);
+        }
         break;
     case PAGE_FINISH:
         if (FINISH_COUNT) finish_request(&kFinish[M.selection], 0);
@@ -260,6 +305,7 @@ void musashi_dev_menu_keys(unsigned pressed, int ff_hold) {
     if (pressed & MUSASHI_DEV_KEY_TOGGLE) {
         M.open = !M.open;
         M.page = PAGE_ROOT;
+        M.folder = 0;
         M.selection = 0;
         M.help = 0;
         fprintf(stderr, "[DEV_MENU] %s vblank=%u\n", M.open ? "open" : "closed", M.vblanks);
@@ -277,7 +323,10 @@ void musashi_dev_menu_keys(unsigned pressed, int ff_hold) {
     else if (pressed & MUSASHI_DEV_KEY_BACK) {
         if (M.help) M.help = 0;
         else if (M.page == PAGE_ROOT) M.open = 0;
-        else {
+        else if (M.page == PAGE_WARP && M.folder) {
+            M.selection = M.folder - 1;
+            M.folder = 0;
+        } else {
             M.selection = M.page - 1;
             M.page = PAGE_ROOT;
         }
@@ -577,10 +626,17 @@ size_t musashi_dev_menu_text(const char **lines, size_t max, int *highlight, int
         first = n;
         if (M.page == PAGE_ROOT) {
             for (i = 0; i < 4u; ++i) line(&n, "  %s", kRoot[i]);
-        } else if (M.page == PAGE_WARP || M.page == PAGE_FINISH) {
-            const DevJump *t = M.page == PAGE_WARP ? kWarps : kFinish;
-            unsigned count = M.page == PAGE_WARP ? WARP_COUNT : FINISH_COUNT;
-            for (i = 0; i < count; ++i) line(&n, "  %s: %s", t[i].chapter, t[i].label);
+        } else if (M.page == PAGE_WARP) {
+            if (M.folder) {
+                for (i = 0; i < kFolders[M.folder - 1].count; ++i)
+                    line(&n, "  %s", kWarps[kFolders[M.folder - 1].first + i].label);
+            } else {
+                for (i = 0; i < (size_t)FOLDER_COUNT; ++i) line(&n, "  %s", kFolders[i].name);
+            }
+            line(&n, "  BACK");
+        } else if (M.page == PAGE_FINISH) {
+            unsigned count = FINISH_COUNT;
+            for (i = 0; i < count; ++i) line(&n, "  %s: %s", kFinish[i].chapter, kFinish[i].label);
             if (!count) {
                 line(&n, "  (NONE VERIFIED IN THE PORT YET)");
                 ++first;
