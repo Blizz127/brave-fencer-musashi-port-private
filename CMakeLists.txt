@@ -592,12 +592,19 @@ if(MUSASHI_BUILD_PC_PORT)
         # hooked_pcs() reads the port's sources; psyq_hooked() the compat table.
         file(GLOB MUSASHI_LANE_HOOK_SOURCES CONFIGURE_DEPENDS
             ${CMAKE_CURRENT_SOURCE_DIR}/pc_port/*.c)
+        # Release builds: native code only from owner-authored matched C.
+        option(MUSASHI_LANE_OWN_CODE_ONLY "Native lane compiles only owner-authored C" OFF)
+        set(MUSASHI_LANE_OWN_CODE_FLAG)
+        if(MUSASHI_LANE_OWN_CODE_ONLY)
+            set(MUSASHI_LANE_OWN_CODE_FLAG --own-code-only)
+        endif()
         add_custom_command(
             OUTPUT ${MUSASHI_LANE_DIR}/native_lane_table.c
                    ${MUSASHI_LANE_DIR}/libmusashi_native_lane.a
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/native_lane_gen.py
                     --out ${MUSASHI_LANE_DIR} --clang ${MUSASHI_CLANG} --ar ${CMAKE_AR} --jobs 4
                     --overlay-members "${MUSASHI_LANE_OVERLAY_MEMBERS}"
+                    ${MUSASHI_LANE_OWN_CODE_FLAG}
             DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/tools/native_lane_gen.py
                     ${CMAKE_CURRENT_SOURCE_DIR}/provenance/matches.json
                     ${MUSASHI_LANE_SOURCES}

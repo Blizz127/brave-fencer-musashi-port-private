@@ -1207,6 +1207,20 @@ def emit_table(admitted, out):
     return direct, thunk
 
 
+# --own-code-only: a registry entry is third-party-derived when its origin or
+# its source's header names the upstream decomp (Druthulu/BFM-decomp, whose
+# src/ carries no license) or another project's PsyQ C. Such functions stay
+# interpreted from the player's disc, so the binary compiles none of them.
+THIRD_PARTY_MARK = re.compile(r"vendor|Druthulu|BFM-decomp|psyq|Sony|parasite|xenogears", re.I)
+
+
+def third_party_derived(m):
+    if THIRD_PARTY_MARK.search(m.get("origin") or ""):
+        return True
+    src = ROOT / m["source"]
+    return src.exists() and bool(THIRD_PARTY_MARK.search(src.read_text(errors="replace")[:2000]))
+
+
 def candidates(only=None, excluded=None):
     """Game-code candidates. Sony PsyQ library ranges (config/psyq_ranges.txt)
     never enter the lane: their entry points belong to PsyCross/HLE."""
@@ -1250,6 +1264,8 @@ def main():
     ap.add_argument("--jobs", type=int, default=4)
     ap.add_argument("--only", help="file of guest PCs (hex, one per line) to consider, e.g. a trace")
     ap.add_argument("--exclude", help="file of guest PCs (hex) never to admit")
+    ap.add_argument("--own-code-only", action="store_true",
+                    help="compile only owner-authored matched C (see third_party_derived)")
     ap.add_argument("--overlay-members", default="",
                     help="comma-separated overlay members to compile (e.g. main_0003); each needs "
                          "config/overlay_<m>.yaml and its extracted member file for the digests")
@@ -1265,6 +1281,11 @@ def main():
     hooks = hooked_pcs()
     psyq_excluded = []
     todo = [m for m in candidates(only, psyq_excluded) if m["vram"] not in exclude]
+    if args.own_code_only:
+        kept = [m for m in todo if not third_party_derived(m)]
+        print(f"native_lane_gen: own-code-only: {len(todo) - len(kept)} third-party-derived "
+              f"candidates left to the interpreter")
+        todo = kept
     infos, missing = {}, []
     for mem in [m for m in args.overlay_members.split(",") if m]:
         info = member_info(mem)
@@ -1273,6 +1294,11 @@ def main():
         else:
             infos[mem] = info
     ovl_todo = [m for m in overlay_candidates(set(infos), only) if m["vram"] not in exclude]
+    if args.own_code_only:
+        ovl_kept = [m for m in ovl_todo if not third_party_derived(m)]
+        print(f"native_lane_gen: own-code-only: {len(ovl_todo) - len(ovl_kept)} third-party-derived "
+              f"overlay candidates left to the interpreter")
+        ovl_todo = ovl_kept
     msyms = {mem: load_symbol_addrs(mem) for mem in infos}
     with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, args.jobs)) as pool:
         results = list(pool.map(lambda m: build_one(m, out, symbols, hooks, args.clang), todo))
