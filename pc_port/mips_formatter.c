@@ -11128,6 +11128,22 @@ static int gte_load_successor(uint8_t reg, uint32_t pc, uint32_t word) {
     return 0;
 }
 
+/* Entry addresses of the audited GTE routines for jal_caller_of. They are
+ * routine entries, not host hooks: kept off the caller lines so
+ * tools/native_lane_gen.py does not take them for hooked PCs (which would
+ * keep those routines out of the native lane). */
+static const uint32_t kGteEntry80020F34 = 0x80020f34u;
+static const uint32_t kGteEntry80047EC8 = 0x80047ec8u;
+static const uint32_t kGteEntry800484EC = 0x800484ecu;
+static const uint32_t kGteEntry8004864C = 0x8004864cu;
+static const uint32_t kGteEntry80048B6C = 0x80048b6cu;
+static const uint32_t kGteEntry80048D9C = 0x80048d9cu;
+static const uint32_t kGteEntry80048EAC = 0x80048eacu;
+static const uint32_t kGteEntry8004914C = 0x8004914cu;
+static const uint32_t kGteEntry800491AC = 0x800491acu;
+static const uint32_t kGteEntry80049324 = 0x80049324u;
+static const uint32_t kGteEntry8004D504 = 0x8004d504u;
+
 /* A GTE routine's caller is also admitted when it is a genuine JAL to that
  * routine's entry from admitted code: the word at RA-8 (main EXE text, or
  * the identified SC location image) is `jal entry`. The routines' own sites
@@ -11150,7 +11166,7 @@ static int jal_caller_of(uint32_t ra, uint32_t entry) {
  * the MVMVA vector core via command. Callers are the six audited JAL
  * sites bound by gte_48d9c_caller; the slot function must be bound too. */
 static int gte_48d9c_caller(uint32_t ra) {
-    if (jal_caller_of(ra, 0x80048d9cu)) return 1;
+    if (jal_caller_of(ra, kGteEntry80048D9C)) return 1;
     return ra == 0x8002c520u || ra == 0x80052edcu || ra == 0x80053080u ||
            ra == 0x80053bbcu || ra == 0x80054138u || ra == 0x800541ecu ||
            /* The two JAL sites inside the exported func_80054DCC range. */
@@ -11338,7 +11354,7 @@ static int gte_lib_command_site(uint32_t pc, uint32_t word) {
  * here: the two signed SUBs and the four SRAVs. SUB keeps its signed overflow
  * trap and SRAV shifts by the low five bits of the source register. */
 static int gte_47ec8_integer_caller(uint32_t ra) {
-    if (jal_caller_of(ra, 0x80047ec8u)) return 1;
+    if (jal_caller_of(ra, kGteEntry80047EC8)) return 1;
     return ra == 0x80047e84u || ra == 0x80047eb4u || ra == 0x80048018u ||
            ra == 0x80048038u || ra == 0x80048054u;
 }
@@ -11454,7 +11470,7 @@ static int gte_49324_site(uint32_t pc, uint32_t word, unsigned *slot) {
 static int gte_49324_caller(uint32_t ra) {
     /* SC01 member 77 calls Square0 at 8012BCA4 (RA 8012BCAC).
      * The same address in another resident overlay is not this caller. */
-    if (jal_caller_of(ra, 0x80049324u)) return 1;
+    if (jal_caller_of(ra, kGteEntry80049324)) return 1;
     return ra == 0x80013274u || ra == 0x80013308u || ra == 0x8001339cu ||
            ra == 0x80013430u || ra == 0x8002c710u ||
            (ra == 0x8012bcacu && g_overlay_sc01_0000_words &&
@@ -11490,7 +11506,7 @@ static int gte_48eac_site(uint32_t pc, uint32_t word, unsigned *slot) {
 /* The retail call sites of func_80048EAC: five JAL sites in the executable
  * plus the member-0031 sites in the resident image. */
 static int gte_48eac_caller(uint32_t ra) {
-    if (jal_caller_of(ra, 0x80048eacu)) return 1;
+    if (jal_caller_of(ra, kGteEntry80048EAC)) return 1;
     return ra == 0x80017e1cu || ra == 0x80017e54u || ra == 0x8002c530u ||
            ra == 0x80052f20u || ra == 0x80052ffcu ||
            (OVERLAY_SC_ACTIVE &&
@@ -11523,7 +11539,7 @@ static int gte_4d504_site(uint32_t pc, uint32_t word, unsigned *slot) {
 }
 
 static int gte_4d504_caller(uint32_t ra) {
-    if (jal_caller_of(ra, 0x8004d504u)) return 1;
+    if (jal_caller_of(ra, kGteEntry8004D504)) return 1;
     return ra == 0x8002c5b4u ||
            (OVERLAY_SC_ACTIVE &&
             (ra == 0x8012f084u || ra == 0x8012f114u || ra == 0x8012f33cu ||
@@ -11549,7 +11565,7 @@ static int gte_48b6c_site(uint32_t pc, uint32_t word, unsigned *slot) {
 }
 
 static int gte_48b6c_caller(uint32_t ra) {
-    if (jal_caller_of(ra, 0x80048b6cu)) return 1;
+    if (jal_caller_of(ra, kGteEntry80048B6C)) return 1;
     return ra == 0x8002c578u ||
            (OVERLAY_SC_ACTIVE &&
             (ra == 0x8013568cu || ra == 0x80135790u));
@@ -11566,7 +11582,7 @@ static int gte_4864c_site(uint32_t pc, uint32_t word, unsigned *slot) {
 }
 
 static int gte_4864c_caller(uint32_t ra) {
-    if (jal_caller_of(ra, 0x8004864cu)) return 1;
+    if (jal_caller_of(ra, kGteEntry8004864C)) return 1;
     return ra == 0x8002c568u ||
            (OVERLAY_SC_ACTIVE &&
             (ra == 0x801356f4u || ra == 0x80135740u || ra == 0x80136af4u));
@@ -12185,7 +12201,7 @@ static int gte_20f34_site(uint32_t pc, uint32_t word, unsigned *slot) {
 }
 
 static int gte_20f34_caller(uint32_t ra) {
-    if (jal_caller_of(ra, 0x80020f34u)) return 1;
+    if (jal_caller_of(ra, kGteEntry80020F34)) return 1;
     return ra == 0x8001f9bcu || ra == 0x8001fd80u || ra == 0x800207b0u ||
            (OVERLAY_SC_ACTIVE &&
             (ra == 0x80132928u || ra == 0x80165fdcu || ra == 0x8016c0b0u));
@@ -12197,7 +12213,7 @@ static int gte_20f34_caller(uint32_t ra) {
 static int gte_491_pair_caller(uint32_t ra) {
     /* Member 77's func_8017FD14 calls the same rotation/translation pair
      * at 8017FD44/8017FD4C; require that resident member for its aliases. */
-    if (jal_caller_of(ra, 0x8004914cu) || jal_caller_of(ra, 0x800491acu)) return 1;
+    if (jal_caller_of(ra, kGteEntry8004914C) || jal_caller_of(ra, kGteEntry800491AC)) return 1;
     return (g_overlay_sc01_0000_words && g_sc01_code == kOverlaySc01Member77CodeWords &&
             (ra == 0x8017fd4cu || ra == 0x8017fd54u)) ||
            ra == 0x80052e4cu || ra == 0x80052e54u || ra == 0x8012cfecu || ra == 0x8012d400u || ra == 0x8012d520u ||
@@ -12236,7 +12252,7 @@ static int gte_48d9c_site(uint32_t pc, uint32_t word, unsigned *slot) {
  * translation (cv=3). Callers are the ten EXE JAL sites plus the ten
  * SC02 member31 JAL return aliases when that overlay is selected. */
 static int gte_484ec_caller(uint32_t ra) {
-    if (jal_caller_of(ra, 0x800484ecu)) return 1;
+    if (jal_caller_of(ra, kGteEntry800484EC)) return 1;
     return ra == 0x80013678u || ra == 0x800139acu || ra == 0x80013ce0u ||
            ra == 0x80014158u || ra == 0x800141e0u || ra == 0x8002c58cu ||
            ra == 0x80052f64u || ra == 0x80052ff0u || ra == 0x80053074u ||
