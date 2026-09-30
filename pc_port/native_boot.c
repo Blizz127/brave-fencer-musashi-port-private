@@ -2099,9 +2099,38 @@ static uint32_t route_digest(NativeBoot *boot, uint32_t address, size_t n) {
     return h;
 }
 
+/* Route journal (read-only): with BFM_ROUTE_JOURNAL naming a file, one JSON
+ * line per room entry and per change of the scenario counter, holding the
+ * game's whole progression state as hex (512 story flags at 800AE648, 256
+ * script vars at 800BA1B8), so a real playthrough records the per-step deltas
+ * Finish Current Step needs (docs/FINISH-CURRENT-STEP.md). Local only. */
+static void route_journal(NativeBoot *boot, const char *event, unsigned vblank,
+                          unsigned location, unsigned entrance, uint32_t progress) {
+    static FILE *journal;
+    static int opened;
+    const uint8_t *flags = musashi_boot_ram_span(&boot->memory, 0x800AE648u, 64);
+    const uint8_t *vars = musashi_boot_ram_span(&boot->memory, 0x800BA1B8u, 256);
+    unsigned i;
+    if (!opened) {
+        const char *path = getenv("BFM_ROUTE_JOURNAL");
+        opened = 1;
+        if (path && path[0]) journal = fopen(path, "a");
+        if (journal) fprintf(journal, "{\"event\":\"session\"}\n");
+    }
+    if (!journal || !flags || !vars) return;
+    fprintf(journal, "{\"event\":\"%s\",\"vblank\":%u,\"location\":\"%04x\",\"entrance\":%u,"
+            "\"progress\":%u,\"flags\":\"", event, vblank, location, entrance, (unsigned)progress);
+    for (i = 0; i < 64u; ++i) fprintf(journal, "%02x", flags[i]);
+    fputs("\",\"vars\":\"", journal);
+    for (i = 0; i < 256u; ++i) fprintf(journal, "%02x", vars[i]);
+    fputs("\"}\n", journal);
+    fflush(journal);
+}
+
 static void route_log(NativeBoot *boot) {
     static int last_live = -1;
     static unsigned vblanks;
+    static uint32_t last_progress = UINT32_MAX;
     uint16_t mode = 0, location = 0;
     const uint8_t *live_p, *entrance_p;
     uint8_t live, entrance = 0;
@@ -2120,6 +2149,17 @@ static void route_log(NativeBoot *boot) {
                 "flags=%08x vars=%08x vblank=%u\n", (unsigned)location, (unsigned)entrance,
                 (unsigned)progress, (unsigned)route_digest(boot, 0x800AE648u, 64),
                 (unsigned)route_digest(boot, 0x800BA1B8u, 256), vblanks);
+        route_journal(boot, "enter", vblanks, location, entrance, progress);
+        last_progress = progress;
+    } else if (mode == 9u && live == 1u &&
+               musashi_boot_read32(&boot->memory, 0x80078E80u, &progress) &&
+               progress != last_progress) {
+        (void)musashi_boot_read16(&boot->memory, 0x800B9A08u, &location);
+        fprintf(stderr, "native_boot: ROUTE progress location=%04x progress=%u flags=%08x vblank=%u\n",
+                (unsigned)location, (unsigned)progress,
+                (unsigned)route_digest(boot, 0x800AE648u, 64), vblanks);
+        route_journal(boot, "progress", vblanks, location, 0, progress);
+        last_progress = progress;
     }
     last_live = mode == 9u ? live : 0;
 }

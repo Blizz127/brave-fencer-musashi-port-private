@@ -151,6 +151,9 @@ export MUSASHI_HOLD_WINDOW_MS=${MUSASHI_HOLD_WINDOW_MS:-3000}
 # Port Dev Menu opt-in without editing launch options: an empty file
 # ~/.config/bfm-port/dev-menu turns it on (Select+Start or F8 opens it).
 [ -f "$CONF/dev-menu" ] && export BFM_DEV_MENU=${BFM_DEV_MENU:-1}
+# Local route journal of your own play (room entries and story progress),
+# used to build Finish Current Step; stays on this machine.
+export BFM_ROUTE_JOURNAL=${BFM_ROUTE_JOURNAL:-$STATE/route.jsonl}
 # The faster x86-64-v3 build when this CPU has every feature it uses
 # (BFM_BASELINE=1 forces the portable one).
 BIN="$HERE/musashi_native_boot"
