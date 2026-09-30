@@ -87,6 +87,7 @@ int musashi_bios_memcard_nextfile(MusashiBiosMemcard *mc, MusashiBootMemory *mem
 int musashi_bios_memcard_erase(MusashiBiosMemcard *mc, MusashiBootMemory *memory,
                                uint32_t name_ptr, int32_t *result);
 int musashi_bios_memcard_card_info(MusashiBiosMemcard *mc, int32_t chan, int32_t *result);
+int musashi_bios_memcard_card_load(MusashiBiosMemcard *mc, int32_t chan, int32_t *result);
 int musashi_bios_memcard_card_write(MusashiBiosMemcard *mc, MusashiBootMemory *memory,
                                     int32_t chan, int32_t sector, uint32_t buf_ptr, int32_t *result);
 int musashi_bios_memcard_new_card(MusashiBiosMemcard *mc, int32_t *result);

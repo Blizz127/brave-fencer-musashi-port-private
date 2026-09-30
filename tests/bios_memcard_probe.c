@@ -105,6 +105,18 @@ int main(int argc, char **argv) {
     CHECK(musashi_bios_memcard_card_info(&mc, 0x10, &r) && mc.pending_spec == 0x0100u);
     mc.pending_spec = 0;
 
+    /* Directory preload completes asynchronously without writing the image. */
+    CHECK(musashi_bios_memcard_card_load(&mc, 0, &r) && r == 1 && mc.pending_spec == 0x0004u);
+    CHECK(musashi_bios_memcard_vblank(&mc, &events, execute_cb, NULL));
+    CHECK(g_nexec == 4 && mc.pending_spec == 0);
+    CHECK(musashi_bios_memcard_card_load(&mc, 0x10, &r) && r == 1 && mc.pending_spec == 0x0100u);
+    mc.pending_spec = 0;
+    mc.image[0] = 0;
+    CHECK(musashi_bios_memcard_card_load(&mc, 0, &r) && mc.pending_spec == 0x8000u);
+    CHECK(mc.image[0] == 0); /* no automatic format */
+    mc.image[0] = 'M';
+    mc.pending_spec = 0;
+
     /* Empty card: no files, open fails. */
     guest_string(NAME, "bu00:*");
     CHECK(musashi_bios_memcard_firstfile(&mc, g_memory, NAME, DIRENT, &r) && r == 0);
@@ -123,7 +135,7 @@ int main(int argc, char **argv) {
     CHECK(musashi_bios_memcard_lseek(&mc, fd, 0x480, 0, &r) && r == 0x480);
     CHECK(musashi_bios_memcard_write(&mc, g_memory, fd, BUF, 0x300, &r) && r == 0);
     CHECK(mc.pending_spec == 0x0004u && g_persists == 2);
-    CHECK(musashi_bios_memcard_vblank(&mc, &events, execute_cb, NULL) && g_nexec == 4);
+    CHECK(musashi_bios_memcard_vblank(&mc, &events, execute_cb, NULL) && g_nexec == 6);
     CHECK(musashi_bios_memcard_close(&mc, fd, &r));
 
     /* Two-block on-disk links are block number minus one, independently
@@ -192,6 +204,13 @@ int main(int argc, char **argv) {
     CHECK(musashi_bios_memcard_nextfile(&mc, g_memory, DIRENT, &r) && r == 0);
     guest_string(NAME, "bu00:*");
     CHECK(musashi_bios_memcard_firstfile(&mc, g_memory, NAME, DIRENT, &r) && r == (int32_t)DIRENT);
+    /* The game's directory scan uses scratchpad path and output buffers. */
+    memcpy(g_memory->scratchpad + 0x2d8, "bu00:*", 7);
+    CHECK(musashi_bios_memcard_firstfile(&mc, g_memory, 0x1f8002d8u, 0x1f8002f8u, &r) && r == (int32_t)0x1f8002f8u);
+    CHECK(memcmp(g_memory->scratchpad + 0x2f8, "BASLUS-00726MUSASHI", 18) == 0);
+    CHECK(!musashi_bios_memcard_firstfile(&mc, g_memory, 0x1f8002d8u, 0x1f8003f0u, &r));
+    CHECK(!musashi_bios_memcard_open(&mc, g_memory, 0x1f8003feu, 1, &r));
+    CHECK(!musashi_bios_memcard_open(&mc, g_memory, 0x1f801000u, 1, &r));
     guest_string(NAME, "bu10:*");
     CHECK(musashi_bios_memcard_firstfile(&mc, g_memory, NAME, DIRENT, &r) && r == 0);
 

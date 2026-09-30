@@ -140,3 +140,47 @@ Actual disk save and cold title Continue remain unverified until its results
 are inspected and a separate cold-load comparison succeeds. No tag,
 publication, one-hit/assist/movement completion, or Chapter 1 acceptance is
 claimed by this checkpoint.
+
+### Directory preload and filename-copy boundaries
+
+Request executor checkpoint: `8112e48db2`. Runner
+`20260930-162925-bfm-r31-card-request-seam-2205757` completed with a refusal
+in request `80060030`, at BIOS A0:AC (`_card_load`, guest stub `80062268`).
+The candidate implements asynchronous directory availability over the
+already-loaded card image, following the
+[PSX-SPX BIOS memory-card reference](https://psx-spx.consoledev.net/ps1/kernelbios/memory-card-functions/).
+It queues IoEnd, absent-card timeout, or an unformatted-card error; it never
+automatically formats an existing image. Unit checks cover all three outcomes.
+
+Runner `20260930-163227-bfm-r31-directory-preload-2268165` completed:
+`_card_info` new-card/IoEnd and `_card_load` IoEnd now occur, followed by a
+refusal at `80061780`. This is the LWL/LWR copy in the guest function that
+constructs `bu00:`. Four merge sites and their load-delay successor are now
+admitted using a 23-word FNV digest of the owner's executable, without
+embedding those retail words. The dedicated source-call test executes the
+whole name builder at all four destination alignments and checks `bu10:`.
+The 29 card/event/VBlank/IRQ pytest tests and dedicated CTest pass.
+
+Runner `20260930-163658-bfm-r31-card-name-copy-2372055` is the next native
+probe; inspect its result rather than repeating it. The save/title-load
+acceptance boundary above remains in force.
+
+### Scratchpad directory buffers
+
+Runner `20260930-163658-bfm-r31-card-name-copy-2372055` completed and reached
+`firstfile(1F8002D8,1F8002F8)`, exposing that the file backend accepted only
+main RAM. Its span helper now also accepts bounded scratchpad spans using
+the interpreter's existing backing bytes. Checks cover a real directory
+result in scratchpad and reject end-overflow and MMIO buffers. This leaves
+`musashi_boot_ram_span`'s main-RAM-only contract unchanged. The 29 card/event/
+VBlank/IRQ tests pass after this correction.
+
+Native probe `20260930-163935-bfm-r31-card-scratchpad-2428154` is running;
+no duplicate dispatch. Full disk save/cold load acceptance is still pending.
+The broader PVD merge suite currently fails its palette mutation refusal
+fixture and its mutant compilation (missing `location_images.h` in that
+isolated tree). These failures must not be reported as passing checks.
+
+An isolated rerun using formatter checkpoint `8112e48db2` reproduces the
+same palette-refusal assertion (exit -6), before the new merge admissions.
+That failure therefore predates this merge change.

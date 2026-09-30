@@ -605,6 +605,8 @@ static int memcard_call(void *userdata, uint32_t pc, const uint32_t *r, int32_t 
     case 0x80062258u: name = "_card_info";
         if (mc->present && !musashi_bios_memcard_install_device_table(m)) return 0;
         accepted = musashi_bios_memcard_card_info(mc, (int32_t)r[4], result); break;
+    case 0x80062268u: name = "_card_load";
+        accepted = musashi_bios_memcard_card_load(mc, (int32_t)r[4], result); break;
     case 0x80062278u: name = "_card_write"; accepted = musashi_bios_memcard_card_write(mc, m, (int32_t)r[4], (int32_t)r[5], r[6], result); break;
     case 0x80062288u: name = "_new_card"; accepted = musashi_bios_memcard_new_card(mc, result); break;
     default: return 0;

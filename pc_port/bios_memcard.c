@@ -82,10 +82,16 @@ int musashi_bios_memcard_load_image(MusashiBiosMemcard *mc, const uint8_t *image
     return 1;
 }
 
-/* Guest RAM span for KUSEG/KSEG0/KSEG1 aliases of main RAM. */
+/* Guest RAM/scratchpad spans for KUSEG/KSEG0/KSEG1 aliases. */
 static uint8_t *span(MusashiBootMemory *memory, uint32_t address, size_t size) {
     uint32_t segment = address & 0xe0000000u, physical = address & 0x1fffffffu;
     if (segment != 0u && segment != 0x80000000u && segment != 0xa0000000u) return NULL;
+    if (!memory || !size) return NULL;
+    if (physical >= 0x1f800000u && physical < 0x1f800400u) {
+        size_t offset = physical - 0x1f800000u;
+        if (size > MUSASHI_SCRATCHPAD_SIZE - offset) return NULL;
+        return memory->scratchpad + offset;
+    }
     if (physical >= MUSASHI_RAM_SIZE) return NULL;
     return musashi_boot_ram_span(memory, 0x80000000u + physical, size);
 }
@@ -405,6 +411,20 @@ int musashi_bios_memcard_card_info(MusashiBiosMemcard *mc, int32_t chan, int32_t
     } else {
         queue(mc, MUSASHI_MEMCARD_EV_IOEND);
     }
+    *result = 1;
+    return 1;
+}
+
+/* A0:AC preloads the directory asynchronously. The file backend already
+ * owns the directory in image; report its availability at the next VBlank. */
+int musashi_bios_memcard_card_load(MusashiBiosMemcard *mc, int32_t chan, int32_t *result) {
+    if (!mc || !result) return 0;
+    if ((chan >> 4) != 0 || !mc->present)
+        queue(mc, MUSASHI_MEMCARD_EV_TIMEOUT);
+    else if (!musashi_bios_memcard_is_formatted(mc->image))
+        queue(mc, MUSASHI_MEMCARD_EV_ERROR);
+    else
+        queue(mc, MUSASHI_MEMCARD_EV_IOEND);
     *result = 1;
     return 1;
 }

@@ -8041,6 +8041,7 @@ enum {
     MEMCARD_B0_43_NEXTFILE = 0x80061f88u,
     MEMCARD_B0_45_ERASE = 0x80061f98u,
     MEMCARD_A0_AB_CARD_INFO = 0x80062258u,
+    MEMCARD_A0_AC_CARD_LOAD = 0x80062268u,
     MEMCARD_B0_4E_CARD_WRITE = 0x80062278u,
     MEMCARD_B0_50_NEW_CARD = 0x80062288u,
     EVENT_START = 0x8005fcb8u,
@@ -8787,6 +8788,7 @@ typedef struct {
 } MergeRetireSite;
 
 static const MergeRetireSite kMergeRetireSites[] = {
+    {0x80061788u, 209u, 2u},
     { 0x800d251cu, 84u /* site group */, 2u },
     { 0x800d2524u, 84u /* site group */, 3u },
     { 0x8012a0acu, 96u /* site group */, 2u },
@@ -8938,6 +8940,10 @@ static int merge_kind_for(uint32_t pc, uint32_t instruction) {
         if (op == 46u) return MERGE_SWR;
     }
     static const struct { uint32_t pc, grp; uint8_t kind; } sites[] = {
+        {0x80061780u,209u,MERGE_LWL},
+        {0x80061784u,209u,MERGE_LWR},
+        {0x80061790u,209u,MERGE_SWL},
+        {0x80061794u,209u,MERGE_SWR},
         {0x80045720u,17u /* site group */,MERGE_LWL},
         {0x80045724u,17u /* site group */,MERGE_LWR},
         {0x8004572cu,17u /* site group */,MERGE_SWL},
@@ -10018,6 +10024,7 @@ static const uint32_t kCodeSitePcs[] = {
     0x8004c7c0u, 0x8004c7c4u, 0x8004c7c8u, 0x8004c7ccu, 0x8004c7d0u, 0x8004c7d4u,
     0x8004c7d8u, 0x8004c7dcu, 0x8004c7e0u, 0x8004c7e4u, 0x8004c7e8u,
 
+    0x80061770u, 0x80061774u, 0x80061778u, 0x8006177cu, 0x80061780u, 0x80061784u, 0x80061788u, 0x8006178cu, 0x80061790u, 0x80061794u, 0x80061798u, 0x8006179cu, 0x800617a0u, 0x800617a4u, 0x800617a8u, 0x800617acu, 0x800617b0u, 0x800617b4u, 0x800617b8u, 0x800617bcu, 0x800617c0u, 0x800617c4u, 0x800617c8u,
 };
 static const CodeSiteGroup kCodeSiteGroups[] = {
     {0xdb56c555aeccf5f9ull, 0u, 21u}, /* MAIN */
@@ -10229,8 +10236,9 @@ static const CodeSiteGroup kCodeSiteGroups[] = {
     {0xa302aa8ac0c3f8f8ull, 1611u, 32u}, /* D_8004B078 */
     {0x25b941314b54ffc6ull, 1643u, 64u}, /* D_8004C658 */
     {0x8c7d9126d717fb20ull, 1707u, 37u}, /* D_8004C658 */
+    {0xd755b982182d4572ull, 1744u, 23u}, /* card device name builder */
 };
-enum { CODE_SITE_GROUPS = 209 };
+enum { CODE_SITE_GROUPS = 210 };
 
 /* A group is verified on every lookup (at most 64 words: one 256-byte
  * window), so any change to a site's word in guest RAM, by an overlay load
@@ -10937,7 +10945,7 @@ int musashi_boot_continuation_host_context(const void *continuation,
     case CD_B0_4A: accepted = cd && cd->b0_4a; break;
     case CD_B0_4B: accepted = cd && cd->b0_4b; break;
     case CD_A0_70: accepted = cd && cd->a0_70; break;
-    case MEMCARD_B0_32_OPEN: case MEMCARD_B0_33_LSEEK: case MEMCARD_B0_34_READ: case MEMCARD_B0_35_WRITE: case MEMCARD_B0_36_CLOSE: case MEMCARD_B0_41_FORMAT: case MEMCARD_B0_42_FIRSTFILE: case MEMCARD_B0_43_NEXTFILE: case MEMCARD_B0_45_ERASE: case MEMCARD_A0_AB_CARD_INFO: case MEMCARD_B0_4E_CARD_WRITE: case MEMCARD_B0_50_NEW_CARD:
+    case MEMCARD_B0_32_OPEN: case MEMCARD_B0_33_LSEEK: case MEMCARD_B0_34_READ: case MEMCARD_B0_35_WRITE: case MEMCARD_B0_36_CLOSE: case MEMCARD_B0_41_FORMAT: case MEMCARD_B0_42_FIRSTFILE: case MEMCARD_B0_43_NEXTFILE: case MEMCARD_B0_45_ERASE: case MEMCARD_A0_AB_CARD_INFO: case MEMCARD_A0_AC_CARD_LOAD: case MEMCARD_B0_4E_CARD_WRITE: case MEMCARD_B0_50_NEW_CARD:
         accepted = cd && cd->memcard_call; break;
     case 0x8005ce88u: accepted = event && event->close_event; break;
     case 0x8005cec8u: accepted = event && event->disable_event; break;
@@ -13242,7 +13250,7 @@ uint32_t musashi_native_guest_call(uint32_t target, unsigned argc,
 /* The libapi stubs the BIOS memory-card file device answers. */
 static int memcard_pc(uint32_t pc) {
     switch (pc) {
-    case MEMCARD_B0_32_OPEN: case MEMCARD_B0_33_LSEEK: case MEMCARD_B0_34_READ: case MEMCARD_B0_35_WRITE: case MEMCARD_B0_36_CLOSE: case MEMCARD_B0_41_FORMAT: case MEMCARD_B0_42_FIRSTFILE: case MEMCARD_B0_43_NEXTFILE: case MEMCARD_B0_45_ERASE: case MEMCARD_A0_AB_CARD_INFO: case MEMCARD_B0_4E_CARD_WRITE: case MEMCARD_B0_50_NEW_CARD:
+    case MEMCARD_B0_32_OPEN: case MEMCARD_B0_33_LSEEK: case MEMCARD_B0_34_READ: case MEMCARD_B0_35_WRITE: case MEMCARD_B0_36_CLOSE: case MEMCARD_B0_41_FORMAT: case MEMCARD_B0_42_FIRSTFILE: case MEMCARD_B0_43_NEXTFILE: case MEMCARD_B0_45_ERASE: case MEMCARD_A0_AB_CARD_INFO: case MEMCARD_A0_AC_CARD_LOAD: case MEMCARD_B0_4E_CARD_WRITE: case MEMCARD_B0_50_NEW_CARD:
         return 1;
     default:
         return 0;
@@ -14505,7 +14513,7 @@ int musashi_formatter_pc_host_handled(uint32_t pc) {
     case CALLBACK_CLEAR: case CALLBACK_EXIT_CRITICAL: case CALLBACK_EXIT_CRITICAL + 4u:
     case CALLBACK_INSTALLER: case CALLBACK_INSTALLER_CLEAR: case CALLBACK_REGISTER_WRAPPER:
     case CD_A0_70: case CD_B0_4A: case CD_B0_4B: case CD_B0_5B:
-    case MEMCARD_B0_32_OPEN: case MEMCARD_B0_33_LSEEK: case MEMCARD_B0_34_READ: case MEMCARD_B0_35_WRITE: case MEMCARD_B0_36_CLOSE: case MEMCARD_B0_41_FORMAT: case MEMCARD_B0_42_FIRSTFILE: case MEMCARD_B0_43_NEXTFILE: case MEMCARD_B0_45_ERASE: case MEMCARD_A0_AB_CARD_INFO: case MEMCARD_B0_4E_CARD_WRITE: case MEMCARD_B0_50_NEW_CARD:
+    case MEMCARD_B0_32_OPEN: case MEMCARD_B0_33_LSEEK: case MEMCARD_B0_34_READ: case MEMCARD_B0_35_WRITE: case MEMCARD_B0_36_CLOSE: case MEMCARD_B0_41_FORMAT: case MEMCARD_B0_42_FIRSTFILE: case MEMCARD_B0_43_NEXTFILE: case MEMCARD_B0_45_ERASE: case MEMCARD_A0_AB_CARD_INFO: case MEMCARD_A0_AC_CARD_LOAD: case MEMCARD_B0_4E_CARD_WRITE: case MEMCARD_B0_50_NEW_CARD:
     case 0x8005ce88u: case 0x8005cec8u:
     case CD_ENTER_CRITICAL + 4u: case CD_INITIALIZER_STRING_EMIT:
     case EVENT_REGISTER:
