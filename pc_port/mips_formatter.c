@@ -2873,6 +2873,11 @@ static const uint32_t kOverlaySc01Member77CodeWords[182901]; /* shape only: 1829
 /* The SC01 lane (g_overlay_sc01_0000_words) executes whichever member image
  * sc01_entry_matches found resident; every fetched word is still compared
  * with guest RAM before it runs. */
+/* Any other SC location member (pc_port/location_images.h: entry digest and
+ * code size from the developer's own disc) is admitted the same way: its
+ * whole image at 0x80128158, fetched from guest RAM; this is its shape. */
+#include "location_images.h"
+static const uint32_t kOverlayScLocationCodeWords[LOCATION_IMAGE_MAX_BYTES / 4]; /* shape only */
 static const uint32_t *g_sc01_code = kOverlaySc01_CodeWords;
 static uint32_t g_sc01_code_bytes = sizeof(kOverlaySc01_CodeWords);
 static const uint32_t kOverlay0004_800CEEC8Words[143]; /* shape only: 143 words, fetched from guest RAM */
@@ -12415,6 +12420,14 @@ static int sc01_entry_matches(MusashiBootMemory *memory) {
     } else if (member77) {
         g_sc01_code = kOverlaySc01Member77CodeWords;
         g_sc01_code_bytes = sizeof(kOverlaySc01Member77CodeWords);
+    } else {
+        size_t i;
+        for (i = 0; i < sizeof kLocationImages / sizeof kLocationImages[0]; ++i)
+            if (kLocationImages[i].entry_digest == digest) {
+                g_sc01_code = kOverlayScLocationCodeWords;
+                g_sc01_code_bytes = kLocationImages[i].code_bytes;
+                return 1;
+            }
     }
     return member0 || member1 || member77;
 }
@@ -12617,7 +12630,8 @@ static void overlay_changed(void) {
     if (!g_overlay_hook) return;
     if (g_overlay_sc02_0031_words) name = "SC02_031";
     else if (g_overlay_sc01_0000_words)
-        name = g_sc01_code == kOverlaySc01_CodeWords ? "SC01_000" : "SC01_001";
+        name = g_sc01_code == kOverlaySc01_CodeWords ? "SC01_000" :
+               g_sc01_code == kOverlayScLocationCodeWords ? "SC_LOCATION" : "SC01_001";
     else if (g_overlay_0004_words) name = "MAIN_0004";
     else if (g_overlay_0007_words) name = "MAIN_0007";
     else if (g_overlay_0010_words) name = "MAIN_0010";
@@ -13102,6 +13116,7 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
                     "sc01=%s sc02_0031=%d\n", (unsigned)location, (unsigned long long)digest,
                     !g_overlay_sc01_0000_words ? "none" :
                     g_sc01_code == kOverlaySc01Member77CodeWords ? "member77" :
+                    g_sc01_code == kOverlayScLocationCodeWords ? "location-table" :
                     g_sc01_code == kOverlaySc01Member1CodeWords ? "member1" : "member0",
                     g_overlay_sc02_0031_words);
             last_digest = digest;
