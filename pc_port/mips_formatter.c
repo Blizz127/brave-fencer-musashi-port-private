@@ -15642,15 +15642,18 @@ static int cd_irq_execute(MusashiBootMemory *memory,
                      * ReadN (6) publishes INT1; Setmode (0x0e) issued while
                      * ReadN is still running leaves 8006cca5 as 0x0e.
                      * Source44828 also records Pause (9) before4482C writes
-                     * the command; a trailing ReadN INT1 can interrupt there. */
+                     * the command; a trailing ReadN INT1 can interrupt there.
+                     * Setfilter (0x0d) during a read leaves it the same way, and
+                     * so does Getstat (1), which the XA stream loop polls. */
                     expected = 0x80043f54u;
-                    accepted = (command == 6 || command == 0x1b || command == 9 || command == 0x0e) &&
+                    accepted = (command == 6 || command == 0x1b || command == 9 || command == 0x0e ||
+                                command == 0x0d || command == 1) &&
                         selected.deliver_event && selected.callback_device;
                 } else if (accepted) {
                     accepted = (interrupt == 2 || interrupt == 3) &&
                         (command == 1 || command == 0x0a || command == 0x0c || command == 9 || command == 0x15 ||
                          ((command == 2 || command == 6 || command == 0x1b || command == 0x0e ||
-                           command == 0x13 || command == 0x14) && interrupt == 3));
+                           command == 0x0d || command == 0x13 || command == 0x14) && interrupt == 3));
                     expected = interrupt == 2 ? 0x80043f08u : 0x80043e08u;
                     if (accepted) accepted =
                         musashi_boot_read32(memory,0x8006ce4cu+4u*command,&policy) && policy == 1 &&
