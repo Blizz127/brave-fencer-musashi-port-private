@@ -13221,11 +13221,12 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
             uint32_t table, caller, rectangle, red_green, blue;
             if (!musashi_boot_read32(memory,0x80072780u,&table) || table != 0x80072740u ||
                 !musashi_boot_read32(memory,table+0xcu,&callback) || callback != cpu->r[19] ||
-                cpu->r[17] != 8u || !musashi_boot_ram_span(memory,cpu->r[4],8u) ||
-                !musashi_boot_read32(memory,cpu->r[29]+0x20u,&caller) || caller != 0x800598fcu ||
-                !musashi_boot_read32(memory,cpu->r[29]+0x1cu,&rectangle) || rectangle != cpu->r[16] ||
-                !musashi_boot_read32(memory,cpu->r[29]+0x10u,&red_green) ||
-                !musashi_boot_read32(memory,cpu->r[29]+0x18u,&blue) ||
+                cpu->r[17] != 8u || !cpu_ram_span(memory,cpu,cpu->r[4],4u) ||
+                !cpu_ram_span(memory,cpu,cpu->r[4]+4u,4u) ||
+                !cpu_read32(memory,cpu,cpu->r[29]+0x20u,&caller) || caller != 0x800598fcu ||
+                !cpu_read32(memory,cpu,cpu->r[29]+0x1cu,&rectangle) || rectangle != cpu->r[16] ||
+                !cpu_read32(memory,cpu,cpu->r[29]+0x10u,&red_green) ||
+                !cpu_read32(memory,cpu,cpu->r[29]+0x18u,&blue) ||
                 ((red_green|blue)&0xff000000u) || cpu->r[18] != (red_green|blue)) return formatter_refuse0(__LINE__, cpu->pc);
         } else return formatter_refuse0(__LINE__, cpu->pc);
     }
@@ -13237,7 +13238,10 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
             !musashi_boot_read32(memory,table+0xcu,&callback) || callback != 0x8005af68u ||
             cpu->r[2] != dispatch || cpu->r[4] != callback || cpu->r[5] != cpu->r[19] ||
             cpu->r[6] != 8u || (cpu->r[5]&3u) ||
-            !musashi_boot_ram_span(memory,cpu->r[5],8u)) return formatter_refuse0(__LINE__, cpu->pc);
+            /* The RECT may sit on a scratchpad stack (sp 1F8002E8 in
+             * the opening scene): cpu_ram_span maps both, as the CPU does. */
+            !cpu_ram_span(memory,cpu,cpu->r[5],4u) ||
+            !cpu_ram_span(memory,cpu,cpu->r[5]+4u,4u)) return formatter_refuse0(__LINE__, cpu->pc);
     }
     if (cpu->pc == 0x8005b154u || cpu->pc == 0x8005b090u) {
         uint32_t address;

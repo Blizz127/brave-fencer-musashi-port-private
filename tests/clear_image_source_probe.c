@@ -78,6 +78,28 @@ static void success(const uint8_t *exe,size_t size){
         assert(!gpu.faulted); /* DMA capability absent; GP1 alone really accepted. */
     }
 }
+static uint32_t sp_word(uint32_t a){uint32_t v;memcpy(&v,memory.scratchpad+(a-0x1f800000u),4);return v;}
+/* The opening scene calls ClearImage with its stack and RECT in the 1KB
+ * scratchpad (sp 1F8002E8, RECT 1F800320). Same source path, same packet. */
+static void scratchpad_stack(const uint8_t *exe,size_t size){
+    const uint32_t rect=0x1f800320u,top=0x1f800310u,dims=0x01e00280u,color=0x563412;
+    uint32_t status;
+    setup(exe,size,0x631,color);assert(musashi_gpu_controller_read32(&gpu,0x1f801814,&status));
+    memset(memory.scratchpad+(rect-0x1f800000u),0,4);memcpy(memory.scratchpad+(rect+4u-0x1f800000u),&dims,4);
+    cpu.r[29]=top;cpu.r[4]=rect;
+    assert(until(0x800598f4));assert(cpu.r[5]==rect&&cpu.r[29]==top-0x28u&&sp_word(top-0x8u)==0x800147a8);
+    assert(until(0x8005b8bc));assert(cpu.r[19]==0x8005af68&&cpu.r[18]==color&&sp_word(cpu.r[29]+0x20u)==0x800598fc);
+    assert(until(0x8005af68));assert(cpu.r[4]==rect&&cpu.r[5]==color);
+    assert(until(0x8005b710));
+    const uint32_t packet[]={0x05ffffff,0xe6000000,0xe1000000|(status&0x7ff),0x02000000|color,0,dims};
+    for(unsigned i=0;i<6;i++)assert(word(0x80078830+4*i)==packet[i]);
+    /* At the dispatch gate a RECT straddling the scratchpad's end is
+     * refused with the CPU unchanged (the validator's own load already
+     * faults on such a RECT before it gets here). */
+    setup(exe,size,0,0);memcpy(memory.scratchpad+(rect+4u-0x1f800000u),&dims,4);
+    cpu.r[29]=top;cpu.r[4]=rect;
+    assert(until(0x800598f4));cpu.r[5]=cpu.r[19]=0x1f8003fcu;unchanged_refusal(0);
+}
 static void negatives(const uint8_t *exe,size_t size){
     for(unsigned n=0;n<7;n++){
         setup(exe,size,0,0);
@@ -102,4 +124,4 @@ static void negatives(const uint8_t *exe,size_t size){
     cpu.r[3]=0x8005b710;cpu.r[2]=0xdeadbeef;put(0x80072784,cpu.r[3]);
     unchanged_refusal(0);assert(!gpu_reads&&!gpu_writes);
 }
-int main(int argc,char **argv){assert(argc==2);FILE*file=fopen(argv[1],"rb");assert(file);assert(!fseek(file,0,SEEK_END));long size=ftell(file);rewind(file);assert(size>0);uint8_t*exe=malloc((size_t)size);assert(exe&&fread(exe,1,(size_t)size,file)==(size_t)size);assert(!fclose(file));success(exe,(size_t)size);negatives(exe,(size_t)size);free(exe);puts("CLEAR_IMAGE_SOURCE_PASS fixture_only=1 fill_and_dma=NOT_RUN");return 0;}
+int main(int argc,char **argv){assert(argc==2);FILE*file=fopen(argv[1],"rb");assert(file);assert(!fseek(file,0,SEEK_END));long size=ftell(file);rewind(file);assert(size>0);uint8_t*exe=malloc((size_t)size);assert(exe&&fread(exe,1,(size_t)size,file)==(size_t)size);assert(!fclose(file));success(exe,(size_t)size);scratchpad_stack(exe,(size_t)size);negatives(exe,(size_t)size);free(exe);puts("CLEAR_IMAGE_SOURCE_PASS fixture_only=1 fill_and_dma=NOT_RUN");return 0;}
