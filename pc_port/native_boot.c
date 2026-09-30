@@ -228,7 +228,17 @@ typedef struct NativeBoot {
     int guest_clock, guest_unthrottled;
     uint64_t guest_tick, guest_next_vblank, guest_sequence, guest_host_origin;
     uint32_t guest_pending_cycles;
+    /* Lazy device epoch (MUSASHI_EPOCH_LAZY, see lazy_skip). */
+    int lazy, lazy_check;
+    uint64_t lazy_fast, lazy_slow, lazy_syncs, lazy_checked;
+    /* Device-observation trace (MUSASHI_TRACE_DEVICE_OBS, see devobs_*). */
+    int devobs;
+    FILE *devobs_file;
+    uint64_t devobs_events, devobs_hash;
+    uint16_t devobs_istat;
 } NativeBoot;
+
+static int lazy_sync(void *userdata);
 
 /* One presented frame: the bfm_plat renderer (via the GPU bridge) or the
  * PsyCross scanout of the controller's VRAM. */
@@ -246,6 +256,41 @@ static int present_frame(NativeBoot *boot) {
     if (g_gpu_bridge_on) return bfm_gpu_bridge_vblank(&g_gpu_bridge) == 0;
 #endif
     return musashi_gpu_psycross_present(&boot->gpu_renderer);
+}
+
+/* Device-observation trace (MUSASHI_TRACE_DEVICE_OBS=1), for comparing
+ * epoch policies: every CPU device access, every I_STAT change seen outside
+ * one and every IRQ delivery, each with the device cycle it happened at,
+ * folded into a running FNV-1a hash that every VBlank prints (DEVOBS).
+ * MUSASHI_TRACE_DEVICE_OBS_FILE=path also writes each record. The eager
+ * and lazy epochs (MUSASHI_EPOCH_LAZY=0/1) must produce identical traces. */
+static void devobs_record(NativeBoot *boot, char kind, uint64_t cycle, uint32_t pc,
+                          uint32_t a, uint32_t b, uint32_t c) {
+    const uint64_t words[6] = {(uint64_t)(unsigned char)kind, cycle, pc, a, b, c};
+    uint64_t h = boot->devobs_hash ? boot->devobs_hash : 0xcbf29ce484222325ull;
+    unsigned i, j;
+    for (i = 0; i < 6u; ++i)
+        for (j = 0; j < 8u; ++j) {
+            h ^= (words[i] >> (8u * j)) & 0xffu;
+            h *= 0x100000001b3ull;
+        }
+    boot->devobs_hash = h;
+    ++boot->devobs_events;
+    if (boot->devobs_file)
+        fprintf(boot->devobs_file, "%c %llu %08x %08x %08x %08x\n", kind,
+                (unsigned long long)cycle, pc, a, b, c);
+}
+
+static FILE *g_devobs_file;
+static void devobs_close(void) {
+    if (g_devobs_file) fflush(g_devobs_file);
+}
+
+static void devobs_istat(NativeBoot *boot, uint64_t cycle, uint32_t pc) {
+    uint16_t now = boot->irq.controller.status;
+    if (!boot->devobs || now == boot->devobs_istat) return;
+    devobs_record(boot, 'I', cycle, pc, boot->devobs_istat, now, boot->irq.controller.mask);
+    boot->devobs_istat = now;
 }
 
 /* Overlay member signatures without retail words: FNV-1a 64 over two
@@ -330,11 +375,13 @@ static int native_devices_shutdown(NativeBoot *boot) {
 
 static int registration_read16(void *userdata, uint32_t address, uint16_t *value) {
     NativeBoot *boot = userdata;
+    if (!lazy_sync(boot)) return 0; /* host device access: eager time */
     return musashi_irq_controller_read16(&boot->irq.controller, address, value);
 }
 
 static int registration_write16(void *userdata, uint32_t address, uint16_t value) {
     NativeBoot *boot = userdata;
+    if (!lazy_sync(boot)) return 0; /* host device access: eager time */
     return musashi_irq_controller_write16(&boot->irq.controller, address, value);
 }
 
@@ -350,11 +397,13 @@ static int exchange_clear_pad(void *userdata, int32_t value, int32_t *previous) 
 
 static int init_card(void *userdata, int32_t pad_started, int32_t *previous) {
     NativeBoot *boot = userdata;
+    if (!lazy_sync(boot)) return 0; /* host device access: eager time */
     return musashi_bios_card_init_service(&boot->card, pad_started, previous);
 }
 
 static int execute_event(void *userdata, uint32_t callback) {
     NativeBoot *boot = userdata;
+    if (!lazy_sync(boot)) return 0; /* host device access: eager time */
     return musashi_boot_execute_bios_event(&boot->memory, callback);
 }
 
@@ -379,6 +428,7 @@ static int enable_event(void *userdata, int32_t handle, int32_t *result) {
 
 static int test_event(void *userdata, int32_t handle, int32_t *result) {
     NativeBoot *boot = userdata;
+    if (!lazy_sync(boot)) return 0; /* host device access: eager time */
     int accepted = musashi_bios_events_test_sync_spu(&boot->bios.events, handle,
                                                      result);
     if (accepted)
@@ -388,6 +438,7 @@ static int test_event(void *userdata, int32_t handle, int32_t *result) {
 
 static int start_card(void *userdata, int32_t *result) {
     NativeBoot *boot = userdata;
+    if (!lazy_sync(boot)) return 0; /* host device access: eager time */
     int accepted;
     if (boot->host_service_depth) return 0;
     boot->host_service_depth++;
@@ -490,6 +541,7 @@ static int guest_irq_enabled(NativeBoot *boot) {
 
 static int card_write_sio16(void *userdata, uint32_t address, uint16_t value) {
     NativeBoot *boot = userdata;
+    if (!lazy_sync(boot)) return 0; /* host device access: eager time */
     if (!musashi_sio_controller_write16(&boot->sio, address, value)) return 0;
     if (boot->gpu_trace)
         fprintf(stderr, "native_boot: CARD_TRACE address=%08x width=2 value=%08x\n",
@@ -499,16 +551,19 @@ static int card_write_sio16(void *userdata, uint32_t address, uint16_t value) {
 
 static int card_read_sio16(void *userdata, uint32_t address, uint16_t *value) {
     NativeBoot *boot = userdata;
+    if (!lazy_sync(boot)) return 0; /* host device access: eager time */
     return musashi_sio_controller_read16(&boot->sio, address, value);
 }
 
 static int card_read_sio8(void *userdata, uint32_t address, uint8_t *value) {
     NativeBoot *boot = userdata;
+    if (!lazy_sync(boot)) return 0; /* host device access: eager time */
     return musashi_sio_controller_read8(&boot->sio, address, value);
 }
 
 static int card_write_sio8(void *userdata, uint32_t address, uint8_t value) {
     NativeBoot *boot = userdata;
+    if (!lazy_sync(boot)) return 0; /* host device access: eager time */
     if (!musashi_sio_controller_write8(&boot->sio, address, value)) return 0;
     if (boot->gpu_trace)
         fprintf(stderr, "native_boot: CARD_TRACE address=%08x width=1 value=%08x\n",
@@ -535,6 +590,7 @@ static int card_read_pad(void *userdata, int32_t *value) {
 
 static int card_read_irq32(void *userdata, uint32_t address, uint32_t *value) {
     NativeBoot *boot = userdata;
+    if (!lazy_sync(boot)) return 0; /* host device access: eager time */
     uint16_t low;
     if (!value || !musashi_irq_controller_read16(&boot->irq.controller, address, &low))
         return 0;
@@ -544,6 +600,7 @@ static int card_read_irq32(void *userdata, uint32_t address, uint32_t *value) {
 
 static int card_write_irq32(void *userdata, uint32_t address, uint32_t value) {
     NativeBoot *boot = userdata;
+    if (!lazy_sync(boot)) return 0; /* host device access: eager time */
     if (!musashi_irq_controller_write16(&boot->irq.controller, address, (uint16_t)value))
         return 0;
     if (boot->gpu_trace)
@@ -736,6 +793,7 @@ static int cd_data_transfer_idle(void *userdata, int *idle) {
 
 static int deliver_cd_event(void *userdata, uint32_t class_word, uint32_t spec) {
     NativeBoot *boot = userdata;
+    if (!lazy_sync(boot)) return 0; /* host device access: eager time */
     MusashiPsyCrossIrqScheduler *scheduler = &boot->irq.scheduler;
     int accepted;
     if (scheduler->owner_thread != (uint64_t)SDL_ThreadID() ||
@@ -1693,12 +1751,88 @@ static int epoch_advance_devices(void *userdata, uint64_t cycle) {
             fprintf(stderr, "native_boot: DEVICE_ADVANCE_REFUSED device=%s cycle=%llu\n",
                     refused, (unsigned long long)cycle);
     }
+    devobs_istat(boot, cycle, 0);
     if (boot->gpu_dma && musashi_gpu_dma2_get_state(boot->gpu_dma,&gpu) &&
         gpu.transfers != boot->gpu_dma_transfers_logged) {
         observe_gpu_dma(boot,"COMPLETE");
         boot->gpu_dma_transfers_logged=gpu.transfers;
     }
     return accepted;
+}
+
+/* Lazy epoch deadline (MusashiDeviceEpochAdapter.next_deadline). Quiescent
+ * means a commit to any cycle below the returned deadline would only move
+ * device clocks: each device's clock is at the committed cycle (none is
+ * held back), and every branch of epoch_advance_devices and
+ * advance_cd_devices that depends on the target cycle compares it with one
+ * of the deadlines below:
+ *   source   the next guest-clock VBlank edge;
+ *   SIO      ack_due while an ACK is pending;
+ *   CD       the command phase due, sector_due (reading, or ReadS streaming
+ *            clamp), sector_publish_due (incoming sector); refused while
+ *            PCM backpressure holds the drive, inside the CD IRQ frame
+ *            (per-charge production limit) or the BIOS callback frame;
+ *   DMA3     due while busy (a DREQ wait is due at cycle+1);
+ *   MDEC     input due and output_due while each channel is busy (an
+ *            output blocked on input is due in the past);
+ *   GPU DMA2 due while busy;
+ *   SPU      the next sample boundary.
+ * Timer1/Timer2 have no deadline: their counters and wrap flags are
+ * additive over any split of an interval and raise no IRQ. */
+static int epoch_next_deadline(void *userdata, uint64_t cycle, uint64_t *due_out) {
+    NativeBoot *boot = userdata;
+    uint64_t due;
+#define LAZY_DUE(x) do { if ((uint64_t)(x) < due) due = (uint64_t)(x); } while (0)
+    if (!boot->lazy || !boot->guest_clock || boot->irq.cd_frame.busy ||
+        boot->bios_callback_frame.busy || boot->guest_next_vblank < boot->epoch.origin_tick)
+        return 0;
+    due = boot->guest_next_vblank - boot->epoch.origin_tick;
+    if (boot->timer2.last_cycles != cycle || boot->timer1.last_cycles != cycle ||
+        boot->timer1.faulted || boot->sio.cycle != cycle || boot->sio.faulted ||
+        boot->mdec.cycle != cycle)
+        return 0;
+    if (boot->sio.ack_pending) LAZY_DUE(boot->sio.ack_due);
+    if (boot->cd_drive) {
+        MusashiCdOwnedState cd;
+        MusashiCdDma3State dma;
+        if (!boot->cd_dma || !musashi_cd_owned_get_state(boot->cd_drive, &cd) ||
+            !musashi_cd_dma3_get_state(boot->cd_dma, &dma) ||
+            cd.fault != MUSASHI_CD_OWNED_OK || dma.fault != MUSASHI_CD_DMA3_OK ||
+            cd.cycle != cycle || dma.cycle != cycle || dma.waiting_for_request)
+            return 0;
+        if (cd.phase) LAZY_DUE(cd.due);
+        if (cd.sector_due && (cd.reading || (cd.command == 0x1bu && cd.sector_due >= cd.cycle)))
+            LAZY_DUE(cd.sector_due);
+        if (cd.incoming_valid) LAZY_DUE(cd.sector_publish_due);
+        if (dma.chcr & 0x01000000u) LAZY_DUE(dma.due);
+        if (cd.command == 0x1bu && !cd.phase && !cd.incoming_valid && boot->spu) {
+            uint64_t spu_cycle, next;
+            size_t pending;
+            if (!musashi_spu_cd_audio_timing(boot->spu, &spu_cycle, &next, &pending) ||
+                pending > MUSASHI_SPU_CD_AUDIO_QUEUE_LIMIT - 2352u)
+                return 0;
+        }
+    }
+    if (boot->mdec.chcr[0] & 0x01000000u) LAZY_DUE(boot->mdec.due);
+    if (boot->mdec.chcr[1] & 0x01000000u) LAZY_DUE(boot->mdec.output_due);
+    if (boot->gpu_dma) {
+        MusashiGpuDma2State gpu;
+        if (!musashi_gpu_dma2_get_state(boot->gpu_dma, &gpu) ||
+            gpu.fault != MUSASHI_GPU_DMA2_OK || gpu.cycle != cycle)
+            return 0;
+        if (gpu.chcr & 0x01000000u) LAZY_DUE(gpu.due);
+    }
+    if (boot->spu) {
+        uint64_t spu_cycle, next;
+        size_t pending;
+        if (!musashi_spu_cd_audio_timing(boot->spu, &spu_cycle, &next, &pending) ||
+            spu_cycle != cycle)
+            return 0;
+        LAZY_DUE(next);
+    }
+#undef LAZY_DUE
+    *due_out = due;
+    return 1;
 }
 
 static void host_window_inspect(SDL_Window *window);
@@ -2122,11 +2256,22 @@ static void perf_log(NativeBoot *boot) {
     {
         double wall = (double)(now - window_start) / (double)freq;
         double guest = (double)(boot->guest_tick - window_cycle) / (double)MUSASHI_DEVICE_CLOCK_HZ;
+        static uint64_t last_fast, last_slow, last_syncs;
         fprintf(stderr, "native_boot: PERF vblanks=%u wall_s=%.2f guest_s=%.2f speed=%.0f%% "
                 "fps=%.1f idle=%.0f%% present_ms=%.2f\n", vblanks, wall, guest,
                 wall > 0 ? 100.0 * guest / wall : 0.0, wall > 0 ? vblanks / wall : 0.0,
                 wall > 0 ? 100.0 * (double)g_perf_slept / (double)freq / wall : 0.0,
                 1000.0 * (double)g_perf_present / (double)freq / vblanks);
+        if (boot->lazy)
+            fprintf(stderr, "native_boot: PERF_EPOCH lazy skipped=%llu committed=%llu syncs=%llu "
+                    "checked=%llu\n",
+                    (unsigned long long)(boot->lazy_fast - last_fast),
+                    (unsigned long long)(boot->lazy_slow - last_slow),
+                    (unsigned long long)(boot->lazy_syncs - last_syncs),
+                    (unsigned long long)boot->lazy_checked);
+        last_fast = boot->lazy_fast;
+        last_slow = boot->lazy_slow;
+        last_syncs = boot->lazy_syncs;
     }
     vblanks = 0;
     window_start = now;
@@ -2136,10 +2281,16 @@ static void perf_log(NativeBoot *boot) {
 
 static int epoch_video_edge(void *userdata, uint64_t sequence, uint64_t cycle) {
     NativeBoot *boot = userdata;
-    (void)sequence;
     if (!musashi_scanline_timer_vblank_at(&boot->timer1, cycle) ||
         !musashi_gpu_controller_vblank(&boot->gpu) || !raise_vblank(boot))
         return 0;
+    if (boot->devobs) {
+        devobs_istat(boot, cycle, 0);
+        devobs_record(boot, 'V', cycle, 0, (uint32_t)sequence, 0, 0);
+        fprintf(stderr, "native_boot: DEVOBS vblank=%llu cycle=%llu events=%llu hash=%016llx\n",
+                (unsigned long long)sequence, (unsigned long long)cycle,
+                (unsigned long long)boot->devobs_events, (unsigned long long)boot->devobs_hash);
+    }
 #ifdef MUSASHI_WITH_BFM_PLAT
     if (g_plat_timing_on) (void)bfm_plat_timing_vsync(1);
 #endif
@@ -2349,6 +2500,8 @@ static int epoch_video_edge(void *userdata, uint64_t sequence, uint64_t cycle) {
  * against a 1088-cycle SIO ACK and ~225k-cycle CD sectors) and stays
  * deterministic. Any remainder is flushed before every epoch sync. */
 #define MUSASHI_GUEST_CLOCK_QUANTUM 16u
+/* MUSASHI_EPOCH_LAZY unset: the lazy device epoch below is off. */
+#define MUSASHI_EPOCH_LAZY_DEFAULT 0
 
 static int guest_clock_flush(NativeBoot *boot) {
     uint32_t pending = boot->guest_pending_cycles;
@@ -2363,6 +2516,185 @@ static int guest_clock_flush(NativeBoot *boot) {
 
 static int epoch_sync_flushed(NativeBoot *boot) {
     return guest_clock_flush(boot) && musashi_device_epoch_sync(&boot->epoch);
+}
+
+/* Lazy device epoch (MUSASHI_EPOCH_LAZY=1, guest clock only).
+ *
+ * Eagerly, every checkpoint (one per guest instruction) commits the charged
+ * cycles and syncs: three full device passes per instruction. Lazily, the
+ * checkpoint defers the charge while the devices are quiescent and the
+ * deferred time stays below the next deadline (epoch_next_deadline), and
+ * then skips the commit and the IRQ dispatch, which would find nothing:
+ * no device event can fall inside a deferred interval, and I_STAT&I_MASK is
+ * required clear. When a checkpoint cannot defer, it runs the unchanged
+ * eager sequence with the accumulated cycles, so every commit that changes
+ * more than clocks happens at the same cycle, with the same passes, as
+ * eagerly.
+ *
+ * Nothing may observe or change a device while time is deferred: every CPU
+ * device access (musashi_formatter_set_device_hooks), every host-handled PC
+ * (musashi_formatter_pc_host_handled), the device-level PsyQ lane wrappers,
+ * the BIOS callback and CD IRQ frames, and the host services below first
+ * call lazy_sync, which commits the deferred time (the device sees eager
+ * time) and invalidates the deadline so the next checkpoint commits too and
+ * re-reads whatever the access changed.
+ *
+ * MUSASHI_EPOCH_LAZY_CHECK=1 also re-derives the deadline at every skipped
+ * checkpoint (a change made without lazy_sync shows as a mismatch), and
+ * before each commit that follows skips, first commits to the last skipped
+ * checkpoint and requires every device's non-clock state, I_STAT and the
+ * VBlank sequence unchanged (an event at or below a skipped checkpoint).
+ * Either failure aborts with LAZY_CHECK_FAILED. */
+static uint64_t lazy_digest_bytes(uint64_t h, const void *data, size_t size) {
+    const unsigned char *p = data;
+    size_t i;
+    for (i = 0; i < size; ++i) {
+        h ^= p[i];
+        h *= 0x100000001b3ull;
+    }
+    return h;
+}
+
+/* Every non-clock device state an event could change (check mode only). */
+static uint64_t lazy_device_digest(NativeBoot *boot) {
+    uint64_t h = 0xcbf29ce484222325ull;
+    h = lazy_digest_bytes(h, &boot->irq.controller, sizeof boot->irq.controller);
+    h = lazy_digest_bytes(h, &boot->epoch.last_sequence, sizeof boot->epoch.last_sequence);
+    {
+        MusashiSioController sio = boot->sio;
+        sio.cycle = 0;
+        h = lazy_digest_bytes(h, &sio, sizeof sio);
+    }
+    if (boot->cd_drive && boot->cd_dma) {
+        MusashiCdOwnedState cd;
+        MusashiCdDma3State dma;
+        memset(&cd, 0, sizeof cd);
+        memset(&dma, 0, sizeof dma);
+        (void)musashi_cd_owned_get_state(boot->cd_drive, &cd);
+        (void)musashi_cd_dma3_get_state(boot->cd_dma, &dma);
+        cd.cycle = 0;
+        dma.cycle = 0;
+        h = lazy_digest_bytes(h, &cd, sizeof cd);
+        h = lazy_digest_bytes(h, &dma, sizeof dma);
+    }
+    {
+        const MusashiMdecController *m = &boot->mdec;
+        uint32_t words[14] = {m->control, m->command, m->remaining, m->received, m->count,
+                              m->madr[0], m->madr[1], m->bcr[0], m->bcr[1], m->chcr[0],
+                              m->chcr[1], m->output_size, m->output_cursor, 0};
+        uint64_t times[3] = {m->due, m->transfers, m->output_due};
+        h = lazy_digest_bytes(h, words, sizeof words);
+        h = lazy_digest_bytes(h, times, sizeof times);
+    }
+    if (boot->gpu_dma) {
+        MusashiGpuDma2State gpu;
+        memset(&gpu, 0, sizeof gpu);
+        (void)musashi_gpu_dma2_get_state(boot->gpu_dma, &gpu);
+        gpu.cycle = 0;
+        h = lazy_digest_bytes(h, &gpu, sizeof gpu);
+    }
+    if (boot->spu) {
+        MusashiSpuCdAudioSnapshot audio;
+        memset(&audio, 0, sizeof audio);
+        (void)musashi_spu_cd_audio_snapshot(boot->spu, &audio);
+        audio.cycle = 0;
+        h = lazy_digest_bytes(h, &audio, sizeof audio);
+    }
+    return h;
+}
+
+static void lazy_check_failed(NativeBoot *boot, const char *why, uint64_t a, uint64_t b) {
+    fprintf(stderr, "native_boot: LAZY_CHECK_FAILED why=%s cycle=%llu deferred=%llu "
+            "last_target=%llu due=%llu a=%016llx b=%016llx\n", why,
+            (unsigned long long)boot->epoch.cycle, (unsigned long long)boot->epoch.lazy_deferred,
+            (unsigned long long)boot->epoch.lazy_last_target,
+            (unsigned long long)boot->epoch.lazy_due,
+            (unsigned long long)a, (unsigned long long)b);
+    fflush(stderr);
+    abort();
+}
+
+/* Commit every deferred cycle with the eager sequence. The instruction
+ * charge in guest_pending_cycles is not deferred time and stays. */
+static int lazy_commit_deferred(NativeBoot *boot) {
+    MusashiDeviceEpoch *epoch = &boot->epoch;
+    if (boot->lazy_check && epoch->lazy_deferred && epoch->lazy_last_target > epoch->cycle &&
+        epoch->lazy_last_target - epoch->cycle <= epoch->lazy_deferred) {
+        uint64_t before = lazy_device_digest(boot), after;
+        if (!musashi_device_epoch_lazy_commit_part(epoch, epoch->lazy_last_target - epoch->cycle)) {
+            boot->source_clock.faulted = 1;
+            return 0;
+        }
+        after = lazy_device_digest(boot);
+        ++boot->lazy_checked;
+        if (after != before) lazy_check_failed(boot, "event-before-skipped-checkpoint", before, after);
+    }
+    if (!musashi_device_epoch_lazy_commit(epoch)) {
+        boot->source_clock.faulted = 1;
+        return 0;
+    }
+    return 1;
+}
+
+/* Formatter device hook: one record per CPU device access. */
+static void devobs_access(void *userdata, uint32_t pc, uint32_t address, uint32_t value,
+                          unsigned width, int write, int accepted) {
+    NativeBoot *boot = userdata;
+    if (!boot->devobs) return;
+    devobs_record(boot, write ? 'W' : 'R', boot->epoch.cycle, pc, address, value,
+                  width | (accepted ? 0u : 0x100u));
+    devobs_istat(boot, boot->epoch.cycle, pc);
+}
+
+/* Before anything outside a commit observes or changes a device. */
+static int lazy_sync(void *userdata) {
+    NativeBoot *boot = userdata;
+    if (!boot->lazy || boot->epoch.busy) return 1;
+    if (boot->epoch.lazy_deferred) {
+        ++boot->lazy_syncs;
+        if (!lazy_commit_deferred(boot)) return 0;
+    }
+    musashi_device_epoch_lazy_invalidate(&boot->epoch);
+    return 1;
+}
+
+/* Checkpoint fast path: 1 when this checkpoint's commit (and, with
+ * dispatch, its IRQ dispatch) can be skipped exactly. On 0 the instruction
+ * charge is deferred and epoch_sync_checkpoint commits it. */
+static int lazy_skip(NativeBoot *boot, const void *continuation, int dispatch) {
+    uint32_t pending;
+    const uint32_t *raw_cpu = continuation;
+    if (!boot->lazy) return 0;
+    pending = boot->guest_pending_cycles;
+    boot->guest_pending_cycles = 0;
+    /* A host service or frame observes devices; a pending IRQ must be
+     * dispatched. Either way commit now (the commit refreshes the cache). */
+    if (musashi_formatter_pc_host_handled(raw_cpu[34]) || boot->irq.cd_frame.busy ||
+        boot->bios_callback_frame.busy ||
+        (dispatch && (boot->irq.controller.status & boot->irq.controller.mask)))
+        musashi_device_epoch_lazy_invalidate(&boot->epoch);
+    if (!musashi_device_epoch_lazy_defer(&boot->epoch, pending)) {
+        ++boot->lazy_slow;
+        return 0;
+    }
+    if (boot->lazy_check) {
+        uint64_t fresh = 0;
+        if (!musashi_device_epoch_lazy_verify(&boot->epoch, &fresh))
+            lazy_check_failed(boot, "deadline-changed", boot->epoch.lazy_due, fresh);
+    }
+    ++boot->lazy_fast;
+    return 1;
+}
+
+/* The checkpoint commit: eager, or the lazy commit of the deferred cycles.
+ * A host-handled PC commits here and again at the next checkpoint. */
+static int epoch_sync_checkpoint(NativeBoot *boot, const void *continuation) {
+    const uint32_t *raw_cpu = continuation;
+    if (!boot->lazy) return epoch_sync_flushed(boot);
+    if (!lazy_commit_deferred(boot)) return 0;
+    if (musashi_formatter_pc_host_handled(raw_cpu[34]))
+        musashi_device_epoch_lazy_invalidate(&boot->epoch);
+    return 1;
 }
 
 static int advance_source_clock(void *userdata, uint32_t cycles) {
@@ -2383,6 +2715,11 @@ static int advance_source_clock(void *userdata, uint32_t cycles) {
                     (unsigned long long)(boot->epoch.cycle-boot->cd_epoch_start));
         }
     }
+    /* The frames below advance devices per charge (or Timer2/SIO alone):
+     * they start from eager time. */
+    if (boot->epoch.lazy_deferred &&
+        (boot->bios_callback_frame.busy || boot->irq.cd_frame.busy) && !lazy_sync(boot))
+        return 0;
     if (boot->bios_callback_frame.busy) {
         /* TAP busy-waits RC2 for 400 ticks (~3200 CPU cycles). Syncing that
          * wait to wall time expires the window during host fprintf. Tick
@@ -2409,8 +2746,12 @@ static int advance_source_clock(void *userdata, uint32_t cycles) {
         if (boot->guest_pending_cycles > UINT32_MAX - cycles) return 0;
         boot->guest_pending_cycles += cycles;
         if (boot->guest_pending_cycles < MUSASHI_GUEST_CLOCK_QUANTUM) return 1;
+        /* Eagerly the last checkpoint committed everything before this
+         * charge: commit the deferred time first, then the charge. */
+        if (boot->epoch.lazy_deferred && !lazy_commit_deferred(boot)) return 0;
         return guest_clock_flush(boot);
     }
+    if (boot->epoch.lazy_deferred && !lazy_commit_deferred(boot)) return 0;
     if (!guest_clock_flush(boot)) return 0;
     if (!musashi_device_epoch_advance_cost(&boot->epoch, cycles)) {
         boot->source_clock.faulted = 1;
@@ -2469,12 +2810,16 @@ static int input_execute(void *userdata, uint32_t target, int32_t argument, int3
     NativeBoot *boot = userdata;
     MusashiResetGraphPrefixStop stop = {0};
     const void *continuation = boot->continuation;
-    int accepted = musashi_boot_execute_input_bios_callback(&boot->memory, &boot->input,
+    int accepted;
+    /* The frame ticks Timer2/SIO from their own clocks, outside the epoch. */
+    if (!lazy_sync(boot)) return 0;
+    accepted = musashi_boot_execute_input_bios_callback(&boot->memory, &boot->input,
         &boot->bios_callback_frame, target, argument, result, &stop);
     if (boot->timer2.last_cycles > boot->epoch.cycle) {
         boot->timer2.last_cycles = boot->epoch.cycle;
         boot->sio.cycle = boot->epoch.cycle;
     }
+    musashi_device_epoch_lazy_invalidate(&boot->epoch);
     if (boot->continuation != continuation) return 0;
     if (accepted) {
         static uint64_t n;
@@ -2722,7 +3067,7 @@ static int checkpoint(void *userdata, const void *continuation) {
          * do not dispatch while the owner pump is already delivering. */
         if (!(boot->irq.scheduler.pumping || boot->irq.scheduler.delivering))
             return checkpoint_refuse(continuation, "nested-identity");
-        return epoch_sync_flushed(boot);
+        return lazy_skip(boot, continuation, 0) || epoch_sync_checkpoint(boot, continuation);
     }
     boot->continuation = continuation;
     if (!boot->gte.initialized) {
@@ -2730,7 +3075,10 @@ static int checkpoint(void *userdata, const void *continuation) {
             !musashi_gte_owner_init(&boot->gte,boot->irq.cpu_status,epoch_owner,boot,context.identity))
             return checkpoint_refuse(continuation, "gte-init");
     }
-    if (!epoch_sync_flushed(boot)) {
+    if (lazy_skip(boot, continuation, boot->irq.scheduler.installed &&
+                  !(boot->irq.scheduler.pumping || boot->irq.scheduler.delivering)))
+        return 1;
+    if (!epoch_sync_checkpoint(boot, continuation)) {
         static int reported;
         if (!reported++)
             fprintf(stderr, "native_boot: EPOCH_SYNC_REFUSED reason=%s clock=%s%s\n",
@@ -2742,7 +3090,23 @@ static int checkpoint(void *userdata, const void *continuation) {
     if (!boot->irq.scheduler.installed) return 1;
     if (boot->irq.scheduler.pumping || boot->irq.scheduler.delivering) return 1;
     if (!vsync_wait_raise_tick(boot, continuation)) return checkpoint_refuse(continuation, "vsync-wait");
-    if (!musashi_psycross_irq_scheduler_dispatch_pending(&boot->irq.scheduler, continuation)) {
+    {
+        uint32_t deliveries = boot->irq.scheduler.deliveries;
+        int irq_pending = (boot->irq.controller.status & boot->irq.controller.mask) != 0;
+        int dispatched = musashi_psycross_irq_scheduler_dispatch_pending(&boot->irq.scheduler, continuation);
+        /* A dispatch may run BIOS, host and guest IRQ code (and its
+         * frames) against the devices: re-read the deadlines next time. */
+        if (irq_pending || boot->irq.scheduler.deliveries != deliveries)
+            musashi_device_epoch_lazy_invalidate(&boot->epoch);
+        if (boot->irq.scheduler.deliveries != deliveries) {
+            if (boot->devobs)
+                devobs_record(boot, 'D', boot->epoch.cycle, ((const uint32_t *)continuation)[34],
+                              boot->irq.scheduler.deliveries, boot->irq.controller.status,
+                              boot->irq.controller.mask);
+        }
+        if (dispatched) return 1;
+    }
+    {
         /* Always name the reason: this refusal ends the run. */
         static int reported;
         if (!reported++)
@@ -2752,7 +3116,6 @@ static int checkpoint(void *userdata, const void *continuation) {
                     boot->guest_clock ? "" : " hint=MUSASHI_GUEST_CLOCK=1 for loaded or headless hosts");
         return checkpoint_refuse(continuation, "irq-dispatch");
     }
-    return 1;
 }
 
 static int run_backup_unit(void *userdata, int32_t *guest_result) {
@@ -2803,9 +3166,12 @@ static int run_backup_unit(void *userdata, int32_t *guest_result) {
 static int init_backup_unit(void *userdata,int32_t *guest_result) {
     NativeBoot *boot=userdata;int accepted;
     if (boot->host_service_depth) return 0;
+    /* The wait advances the epoch and dispatches directly. */
+    if (!lazy_sync(boot)) return 0;
     boot->host_service_depth++;
     accepted=run_backup_unit(userdata,guest_result);
     boot->host_service_depth--;
+    musashi_device_epoch_lazy_invalidate(&boot->epoch);
     return accepted;
 }
 
@@ -2837,6 +3203,7 @@ static int source_irq_execute(void *userdata, MusashiBootMemory *memory, uint32_
  * access is fatal, never a synthesized register value or ignored write. */
 static uint16_t irq_read16(void *userdata, uint32_t address) {
     NativeBoot *boot = userdata;
+    (void)lazy_sync(boot); /* host device access: eager time */
     uint16_t value;
     if (!(address == 0x1f801110u ?
           musashi_scanline_timer_read16(&boot->timer1, address, &value) :
@@ -2849,6 +3216,7 @@ static uint16_t irq_read16(void *userdata, uint32_t address) {
 
 static void irq_write16(void *userdata, uint32_t address, uint16_t value) {
     NativeBoot *boot = userdata;
+    (void)lazy_sync(boot); /* host device access: eager time */
     if (!musashi_irq_controller_write16(&boot->irq.controller, address, value)) {
         fprintf(stderr, "native_boot: unsupported IRQ write %08x\n", (unsigned)address);
         exit(2);
@@ -2860,11 +3228,13 @@ static void irq_write16(void *userdata, uint32_t address, uint16_t value) {
 
 static int dma_irq_read32(void *userdata, uint32_t address, uint32_t *value) {
     NativeBoot *boot = userdata;
+    if (!lazy_sync(boot)) return 0; /* host device access: eager time */
     return musashi_dma_controller_read32(&boot->dma, address, value);
 }
 
 static int dma_irq_write32(void *userdata, uint32_t address, uint32_t value) {
     NativeBoot *boot = userdata;
+    if (!lazy_sync(boot)) return 0; /* host device access: eager time */
     int accepted = musashi_dma_controller_write32(&boot->dma, address, value);
     if (accepted)
         fprintf(stderr, "native_boot: DMA_IRQ_DICR address=%08x value=%08x dicr=%08x\n",
@@ -2874,6 +3244,7 @@ static int dma_irq_write32(void *userdata, uint32_t address, uint32_t value) {
 
 static void control_write32(void *userdata, uint32_t address, uint32_t value) {
     NativeBoot *boot = userdata;
+    (void)lazy_sync(boot); /* host device access: eager time */
     if (address == 0x1f801020u) {
         /* MEMCTRL COMMON_DELAY is retained as a complete word, matching
          * psxhw.cc's default register write/read. The inspected reference
@@ -2923,6 +3294,7 @@ static void gpu_write32(void *userdata, uint32_t address, uint32_t value) {
 
 static int gpu_cw(void *userdata, uint32_t command, int32_t *result) {
     NativeBoot *boot = userdata;
+    if (!lazy_sync(boot)) return 0; /* host device access: eager time */
     uint32_t status;
     /* SCPH BIOS A0:49 calls BFC04138 before submitting one GP0 word.
      * The observed boot takes its DMA-off, immediately-ready branch. Other
@@ -4735,8 +5107,36 @@ int main(int argc, char **argv) {
 #ifdef MUSASHI_WITH_BFM_PLAT
         plat_timing_attach(boot.guest_clock, boot.guest_unthrottled);
 #endif
+        {
+            const char *lazy = getenv("MUSASHI_EPOCH_LAZY");
+            const char *check = getenv("MUSASHI_EPOCH_LAZY_CHECK");
+            const char *devobs = getenv("MUSASHI_TRACE_DEVICE_OBS");
+            const char *devobs_path = getenv("MUSASHI_TRACE_DEVICE_OBS_FILE");
+            boot.lazy = boot.guest_clock &&
+                (lazy && lazy[0] ? lazy[0] != '0' : MUSASHI_EPOCH_LAZY_DEFAULT);
+            boot.lazy_check = boot.lazy && check && check[0] == '1';
+            boot.devobs = devobs && devobs[0] == '1';
+            if (boot.devobs && devobs_path && devobs_path[0]) {
+                boot.devobs_file = fopen(devobs_path, "w");
+                if (!boot.devobs_file)
+                    fprintf(stderr, "native_boot: DEVOBS cannot write %s\n", devobs_path);
+                else {
+                    setvbuf(boot.devobs_file, NULL, _IOFBF, 1u << 20);
+                    g_devobs_file = boot.devobs_file;
+                    atexit(devobs_close);
+                }
+            }
+            boot.devobs_istat = boot.irq.controller.status;
+            fprintf(stderr, "native_boot: EPOCH_LAZY %s check=%d devobs=%d\n",
+                    boot.lazy ? "on" : "off", boot.lazy_check, boot.devobs);
+            musashi_formatter_set_device_hooks(boot.lazy ? lazy_sync : NULL,
+                                               boot.devobs ? devobs_access : NULL, &boot);
+#ifdef MUSASHI_NATIVE_LANE_TABLE
+            musashi_native_lane_psyq_set_device_sync(boot.lazy ? lazy_sync : NULL, &boot);
+#endif
+        }
         const MusashiDeviceEpochAdapter adapter = {&boot, epoch_owner, epoch_collect,
-            epoch_wait, epoch_advance_devices, epoch_video_edge};
+            epoch_wait, epoch_advance_devices, epoch_video_edge, epoch_next_deadline};
         if (!musashi_device_epoch_init(&boot.epoch, &adapter)) {
             fputs("native_boot: fresh device epoch refused before CRT\n", stderr);
             native_devices_shutdown(&boot);
