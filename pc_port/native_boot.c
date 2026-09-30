@@ -3062,6 +3062,12 @@ static int checkpoint(void *userdata, const void *continuation) {
             render_calls++;
         }
     }
+    /* I_STAT changed by host code since the last observation: attribute it
+     * to this checkpoint's eager time (the pass that would otherwise notice
+     * it runs at an older cycle when the epoch is lazy). */
+    if (boot->devobs)
+        devobs_istat(boot, boot->epoch.cycle + boot->epoch.lazy_deferred +
+                     boot->guest_pending_cycles, ((const uint32_t *)continuation)[34]);
     if (boot->continuation && boot->continuation != continuation) {
         /* Nested IRQ source function: keep the interrupted CPU identity and
          * do not dispatch while the owner pump is already delivering. */
@@ -3092,6 +3098,8 @@ static int checkpoint(void *userdata, const void *continuation) {
     if (!vsync_wait_raise_tick(boot, continuation)) return checkpoint_refuse(continuation, "vsync-wait");
     {
         uint32_t deliveries = boot->irq.scheduler.deliveries;
+        uint16_t irq_status = boot->irq.controller.status, irq_mask = boot->irq.controller.mask;
+        uint64_t irq_cycle = boot->epoch.cycle;
         int irq_pending = (boot->irq.controller.status & boot->irq.controller.mask) != 0;
         int dispatched = musashi_psycross_irq_scheduler_dispatch_pending(&boot->irq.scheduler, continuation);
         /* A dispatch may run BIOS, host and guest IRQ code (and its
@@ -3099,10 +3107,11 @@ static int checkpoint(void *userdata, const void *continuation) {
         if (irq_pending || boot->irq.scheduler.deliveries != deliveries)
             musashi_device_epoch_lazy_invalidate(&boot->epoch);
         if (boot->irq.scheduler.deliveries != deliveries) {
+            /* The cycle and I_STAT it was delivered at: nested IRQ-code
+             * checkpoints may still hold deferred time when it returns. */
             if (boot->devobs)
-                devobs_record(boot, 'D', boot->epoch.cycle, ((const uint32_t *)continuation)[34],
-                              boot->irq.scheduler.deliveries, boot->irq.controller.status,
-                              boot->irq.controller.mask);
+                devobs_record(boot, 'D', irq_cycle, ((const uint32_t *)continuation)[34],
+                              boot->irq.scheduler.deliveries, irq_status, irq_mask);
         }
         if (dispatched) return 1;
     }
