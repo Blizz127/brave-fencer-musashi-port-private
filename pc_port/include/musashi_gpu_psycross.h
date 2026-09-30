@@ -42,6 +42,7 @@ int musashi_gpu_psycross_init(MusashiGpuPsyCross *, MusashiGpuBackend *);
  * NULL removes it. overlay_rect fills a solid rectangle from inside it. */
 typedef void (*MusashiGpuPsyCrossOverlay)(void *user, int width, int height);
 void musashi_gpu_psycross_set_overlay(MusashiGpuPsyCrossOverlay fn, void *user);
+int musashi_gpu_psycross_overlay_read_rgb(int x, int y, int w, int h, uint8_t *rgb);
 void musashi_gpu_psycross_overlay_rect(int x, int y, int w, int h,
                                        uint8_t r, uint8_t g, uint8_t b);
 int musashi_gpu_psycross_shutdown(MusashiGpuPsyCross *);

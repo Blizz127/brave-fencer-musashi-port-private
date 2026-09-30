@@ -43,6 +43,7 @@ void musashi_psyx_shutdown(void);
 #include <unistd.h>
 #include <sys/stat.h>
 #include <math.h>
+#include <time.h>
 
 #include "musashi_x11_nograb.h"
 #include "PsyX/PsyX_public.h"
@@ -52,8 +53,22 @@ void musashi_psyx_shutdown(void);
 extern SDL_mutex *g_intrMutex;
 
 static volatile sig_atomic_t host_stop_signal;
+/* Who asked the host to stop, for EXECUTION_BOUNDARY: a signal (Steam's
+ * "Exit Game", timeout, Ctrl+C), SDL's quit event, or a test stop. */
+enum { HOST_STOP_SIGNAL = 1, HOST_STOP_SDL_QUIT, HOST_STOP_IN_GAME_TARGET, HOST_STOP_MENU_PREVIEW };
+static volatile sig_atomic_t host_stop_source;
 static void request_host_stop(int signal_number) {
     host_stop_signal = signal_number;
+    host_stop_source = HOST_STOP_SIGNAL;
+}
+static const char *host_stop_source_name(void) {
+    switch (host_stop_source) {
+    case HOST_STOP_SIGNAL: return host_stop_signal == SIGINT ? "SIGINT" : "SIGTERM";
+    case HOST_STOP_SDL_QUIT: return "SDL_QUIT";
+    case HOST_STOP_IN_GAME_TARGET: return "IN_GAME_TARGET";
+    case HOST_STOP_MENU_PREVIEW: return "MENU_PREVIEW";
+    default: return "UNKNOWN";
+    }
 }
 
 static int log_sample(uint64_t *counter, uint64_t first, uint64_t stride) {
@@ -69,6 +84,7 @@ static int log_sample(uint64_t *counter, uint64_t first, uint64_t stride) {
 #include "bfm_plat_audio.h"
 #include "musashi_plat_audio_sink.h"
 #include "bfm_plat_font.h"
+#include "bfm_plat_image.h"
 #include "musashi_dev_menu.h"
 /* MUSASHI_GPU=bfm_plat: GP0/GP1 are teed into the bfm_plat GPU bridge and
  * drawn by the bfm_plat renderer (MUSASHI_RENDERER, default psycross); the
@@ -998,6 +1014,130 @@ static void spiral_climb_input(NativeBoot *boot, uint16_t *sio_clear, uint16_t *
     if (stick_ly) *stick_ly = stick_y[heading];
 }
 
+/* Game controllers for the pad sampler: every attached SDL GameController,
+ * reconciled by instance id about once a second (hotplug). The game reads
+ * the pad that is actually sending input, preferring a physical or
+ * InputPlumber pad; Steam's virtual gamepad (28de:11ff) is used only when it
+ * is the only one active, so the same pad never counts twice. */
+#define GAME_PADS 8
+static struct {
+    SDL_GameController *pad[GAME_PADS];
+    SDL_JoystickID id[GAME_PADS];
+    int is_virtual[GAME_PADS];
+    int chosen;
+    unsigned retry;
+} g_gamepads = { .chosen = -1 };
+
+static int game_pad_active(SDL_GameController *pad) {
+    SDL_GameControllerButton b;
+    SDL_GameControllerAxis a;
+    for (b = 0; b < SDL_CONTROLLER_BUTTON_MAX; ++b)
+        if (SDL_GameControllerGetButton(pad, b)) return 1;
+    for (a = 0; a < SDL_CONTROLLER_AXIS_MAX; ++a) {
+        int v = SDL_GameControllerGetAxis(pad, a);
+        if (v < -12000 || v > 12000) return 1;
+    }
+    return 0;
+}
+
+static SDL_GameController *game_pad_select(void) {
+    int k, j, pick = -1;
+    for (k = 0; k < GAME_PADS; ++k)
+        if (g_gamepads.pad[k] && !SDL_GameControllerGetAttached(g_gamepads.pad[k])) {
+            fprintf(stderr, "native_boot: GameController removed: slot %d\n", k);
+            SDL_GameControllerClose(g_gamepads.pad[k]);
+            g_gamepads.pad[k] = NULL;
+            if (g_gamepads.chosen == k) g_gamepads.chosen = -1;
+        }
+    if (g_gamepads.retry++ % 60u == 0u) {
+        if (!SDL_WasInit(SDL_INIT_GAMECONTROLLER))
+            SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER);
+        for (j = 0; j < SDL_NumJoysticks(); ++j) {
+            SDL_JoystickID id;
+            int known = 0, slot = -1;
+            if (!SDL_IsGameController(j)) continue;
+            id = SDL_JoystickGetDeviceInstanceID(j);
+            for (k = 0; k < GAME_PADS; ++k) {
+                if (g_gamepads.pad[k] && g_gamepads.id[k] == id) known = 1;
+                if (!g_gamepads.pad[k] && slot < 0) slot = k;
+            }
+            if (known || slot < 0) continue;
+            if (!(g_gamepads.pad[slot] = SDL_GameControllerOpen(j))) continue;
+            g_gamepads.id[slot] = id;
+            {
+                unsigned vid = SDL_GameControllerGetVendor(g_gamepads.pad[slot]);
+                unsigned pid = SDL_GameControllerGetProduct(g_gamepads.pad[slot]);
+                const char *name = SDL_GameControllerName(g_gamepads.pad[slot]);
+                /* SDL 2.30+ reports a Steam virtual pad under the real
+                 * controller's name and ids (SteamOS Handheld Controller,
+                 * 28de:12fb on the Legion); its Steam handle gives it away. */
+                g_gamepads.is_virtual[slot] = SDL_GameControllerGetSteamHandle(g_gamepads.pad[slot]) != 0 ||
+                    (vid == 0x28deu && pid == 0x11ffu) || (name && strstr(name, "Steam Virtual"));
+                fprintf(stderr, "native_boot: GameController attached: slot %d %04x:%04x %s%s\n",
+                        slot, vid, pid, name ? name : "?",
+                        g_gamepads.is_virtual[slot] ? " (Steam virtual)" : "");
+            }
+        }
+    }
+    /* Keep the current pad while it is active; otherwise the first active
+     * Steam virtual pad (Steam Input's mapping, silenced while Steam's own
+     * menu is open), then any active pad, which covers a silent virtual pad
+     * next to a raw one; idle: keep the last pick, else the first pad. */
+    if (g_gamepads.chosen >= 0 && game_pad_active(g_gamepads.pad[g_gamepads.chosen]))
+        return g_gamepads.pad[g_gamepads.chosen];
+    for (k = 0; k < GAME_PADS && pick < 0; ++k)
+        if (g_gamepads.pad[k] && g_gamepads.is_virtual[k] && game_pad_active(g_gamepads.pad[k])) pick = k;
+    for (k = 0; k < GAME_PADS && pick < 0; ++k)
+        if (g_gamepads.pad[k] && game_pad_active(g_gamepads.pad[k])) pick = k;
+    if (pick < 0 && g_gamepads.chosen < 0)
+        for (k = 0; k < GAME_PADS && pick < 0; ++k)
+            if (g_gamepads.pad[k]) pick = k;
+    if (pick >= 0 && pick != g_gamepads.chosen) {
+        g_gamepads.chosen = pick;
+        fprintf(stderr, "native_boot: GameController chosen: slot %d %s\n", pick,
+                SDL_GameControllerName(g_gamepads.pad[pick]) ? SDL_GameControllerName(g_gamepads.pad[pick]) : "?");
+    }
+    return g_gamepads.chosen >= 0 ? g_gamepads.pad[g_gamepads.chosen] : NULL;
+}
+
+/* In Steam Game Mode, InputPlumber turns the Legion Go pad into a virtual
+ * Deck controller (28de:1205) and Steam passes its ignore list to children,
+ * so SDL would see only Steam's virtual gamepad, which stays silent unless
+ * Steam Input is on for the shortcut. Before SDL starts, drop 28de:1205,
+ * 28de:1206 and every 17ef (Lenovo) entry from
+ * SDL_GAMECONTROLLER_IGNORE_DEVICES; game_pad_select still prefers the
+ * virtual pad whenever it is the one sending input. */
+static void sanitize_controller_ignore_list(void) {
+    const char *in = getenv("SDL_GAMECONTROLLER_IGNORE_DEVICES");
+    char out[4096] = "", item[64];
+    const char *p = in;
+    size_t dropped = 0;
+    if (!in || !in[0]) return;
+    while (*p) {
+        size_t n = strcspn(p, ",");
+        unsigned vid = 0, pid = 0;
+        snprintf(item, sizeof item, "%.*s", (int)(n < sizeof item ? n : sizeof item - 1), p);
+        if (sscanf(item, " 0x%x/0x%x", &vid, &pid) == 2 &&
+            ((vid == 0x28deu && (pid == 0x1205u || pid == 0x1206u)) || vid == 0x17efu)) {
+            ++dropped;
+        } else if (item[0]) {
+            if (out[0]) strncat(out, ",", sizeof out - strlen(out) - 1);
+            strncat(out, item, sizeof out - strlen(out) - 1);
+        }
+        p += n;
+        if (*p == ',') ++p;
+    }
+    if (!dropped) return;
+    setenv("SDL_GAMECONTROLLER_IGNORE_DEVICES", out, 1);
+    fprintf(stderr, "native_boot: controller ignore list: %zu Legion/InputPlumber entries removed\n", dropped);
+}
+
+#ifdef MUSASHI_WITH_BFM_PLAT
+static int dev_menu_blocks_game(void);
+static int dev_menu_reserves_back_start(void);
+static void dev_menu_apply_taps(uint16_t *sampled);
+#endif
+
 static int sample_keyboard_pad(void *userdata, uint16_t *buttons) {
     NativeBoot *boot = userdata;
     const Uint8 *keys;
@@ -1034,8 +1174,9 @@ static int sample_keyboard_pad(void *userdata, uint16_t *buttons) {
     if (!SDL_WasInit(SDL_INIT_VIDEO) || boot->keyboard_polls == UINT64_MAX)
         return 1;
 #ifdef MUSASHI_WITH_BFM_PLAT
-    /* The opt-in dev menu owns the pad while it is on screen. */
-    if (musashi_dev_menu_is_open())
+    /* The opt-in dev menu owns the pad while it is on screen and until
+     * every button is released after it closes. */
+    if (dev_menu_blocks_game())
         return 1;
 #endif
     /* Do not PumpEvents here: on Xwayland that re-asserts XSetInputFocus
@@ -1064,28 +1205,7 @@ static int sample_keyboard_pad(void *userdata, uint16_t *buttons) {
 
         /* Gamepad / GameController support */
         {
-            static SDL_GameController *s_gamepad = NULL;
-            static unsigned s_gamepad_retry = 0;
-            /* Look again about once a second until a controller is attached,
-             * so one connected after start (or reconnected) is picked up. */
-            if (s_gamepad && !SDL_GameControllerGetAttached(s_gamepad)) {
-                SDL_GameControllerClose(s_gamepad);
-                s_gamepad = NULL;
-            }
-            if (!s_gamepad && s_gamepad_retry++ % 60u == 0u) {
-                if (!SDL_WasInit(SDL_INIT_GAMECONTROLLER))
-                    SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER);
-                for (int c = 0; c < SDL_NumJoysticks(); ++c) {
-                    if (SDL_IsGameController(c)) {
-                        s_gamepad = SDL_GameControllerOpen(c);
-                        if (s_gamepad) {
-                            fprintf(stderr, "native_boot: GameController attached: %s\n",
-                                    SDL_GameControllerName(s_gamepad));
-                            break;
-                        }
-                    }
-                }
-            }
+            SDL_GameController *s_gamepad = game_pad_select();
             if (s_gamepad && SDL_GameControllerGetAttached(s_gamepad)) {
                 if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_DPAD_UP))
                     sampled &= (uint16_t)~(1u << 4);
@@ -1103,10 +1223,17 @@ static int sample_keyboard_pad(void *userdata, uint16_t *buttons) {
                     sampled &= (uint16_t)~(1u << 13); /* Circle / Secondary */
                 if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_Y))
                     sampled &= (uint16_t)~(1u << 12); /* Triangle */
-                if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_START))
-                    sampled &= (uint16_t)~(1u << 3);
-                if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_BACK))
-                    sampled &= (uint16_t)~(1u << 0);
+#ifdef MUSASHI_WITH_BFM_PLAT
+                /* With the dev menu on, the pad's Back/Start are reserved for
+                 * its combo; a lone press reaches the game on release. */
+                if (!dev_menu_reserves_back_start())
+#endif
+                {
+                    if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_START))
+                        sampled &= (uint16_t)~(1u << 3);
+                    if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_BACK))
+                        sampled &= (uint16_t)~(1u << 0);
+                }
                 if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_LEFTSHOULDER))
                     sampled &= (uint16_t)~(1u << 10); /* L1 */
                 if (SDL_GameControllerGetButton(s_gamepad, SDL_CONTROLLER_BUTTON_RIGHTSHOULDER))
@@ -1138,6 +1265,9 @@ static int sample_keyboard_pad(void *userdata, uint16_t *buttons) {
 
     }
 
+#ifdef MUSASHI_WITH_BFM_PLAT
+    dev_menu_apply_taps(&sampled);
+#endif
     /* Host hold: xdotool/Xwayland often never reaches SDL_GetKeyboardState.
      * 80018C64 stores inverted buttons byte-swapped, so Start (bit 3) lands
      * as 0x0800 at +0x2A; analog 80018CE8 writes the EDGE into +0x3A (78DD2).
@@ -1373,8 +1503,29 @@ static int guest_clock_wait(NativeBoot *boot, uint64_t target_cycle) {
 #endif
     if (!boot->guest_unthrottled) {
         uint64_t freq = SDL_GetPerformanceFrequency();
-        uint64_t due = boot->guest_host_origin +
+        uint64_t due;
+#ifdef MUSASHI_WITH_BFM_PLAT
+        /* Dev-menu fast-forward (F6 / L3, Backspace / R3 held): the guest
+         * runs `speed` times real time, or uncapped. The host origin is
+         * re-anchored on every change so time never jumps. */
+        {
+            static unsigned last_rate = 1u;
+            unsigned rate = musashi_dev_menu_fast_forward() ? musashi_dev_menu_ff_speed() : 1u;
+            if (rate != last_rate) {
+                uint64_t now0 = SDL_GetPerformanceCounter();
+                double scale = rate ? (double)rate : 1.0;
+                boot->guest_host_origin = now0 -
+                    (uint64_t)((double)target_cycle * (double)freq / ((double)MUSASHI_DEVICE_CLOCK_HZ * scale));
+                last_rate = rate;
+            }
+            if (!rate) return 1;   /* uncapped */
+            due = boot->guest_host_origin +
+                (uint64_t)((double)target_cycle * (double)freq / ((double)MUSASHI_DEVICE_CLOCK_HZ * (double)rate));
+        }
+#else
+        due = boot->guest_host_origin +
             (uint64_t)((double)target_cycle * (double)freq / (double)MUSASHI_DEVICE_CLOCK_HZ);
+#endif
         uint64_t now = SDL_GetPerformanceCounter();
         /* Sleep only when the guest is a whole millisecond ahead. */
         while (now + freq / 1000u < due) {
@@ -1526,8 +1677,21 @@ static int epoch_advance_devices(void *userdata, uint64_t cycle) {
 static void host_window_inspect(SDL_Window *window);
 
 #ifdef MUSASHI_WITH_BFM_PLAT
-/* Opt-in Port Dev Menu (musashi_dev_menu.h): guest access, host keys and
- * the overlay. Inert unless BFM_DEV_MENU=1 or --dev-menu. */
+/* Port Dev Menu (musashi_dev_menu.h, shared port spec v1): guest access,
+ * host keys and controllers, the overlay and screenshots. Inert unless
+ * BFM_DEV_MENU=1 / --dev-menu; BFM_CHEATS=0 turns off even fast-forward. */
+static int dev_menu_read8(void *u, uint32_t a, uint8_t *v) {
+    uint8_t *p = musashi_boot_ram_span(&((NativeBoot *)u)->memory, a, 1);
+    if (!p) return 0;
+    *v = *p;
+    return 1;
+}
+static int dev_menu_write8(void *u, uint32_t a, uint8_t v) {
+    uint8_t *p = musashi_boot_ram_span(&((NativeBoot *)u)->memory, a, 1);
+    if (!p) return 0;
+    *p = v;
+    return 1;
+}
 static int dev_menu_read16(void *u, uint32_t a, uint16_t *v) {
     return musashi_boot_read16(&((NativeBoot *)u)->memory, a, v);
 }
@@ -1541,49 +1705,132 @@ static int dev_menu_write32(void *u, uint32_t a, uint32_t v) {
     return musashi_boot_write32(&((NativeBoot *)u)->memory, a, v);
 }
 
-/* Edges of F1/arrows/Enter/Esc and of the first controller's L3+R3 (or
- * Guide), d-pad, left stick, A and B. Reads state only; native_boot's own
- * VBlank SDL_PollEvent keeps it current. */
-static unsigned dev_menu_poll_keys(void) {
-    static SDL_GameController *pad;
-    static unsigned prev, retry;
-    unsigned held = 0, pressed;
-    int n = 0;
-    const Uint8 *k = SDL_GetKeyboardState(&n);
-    if (k && n > SDL_SCANCODE_F1) {
-        if (k[SDL_SCANCODE_F1]) held |= MUSASHI_DEV_KEY_TOGGLE;
-        if (k[SDL_SCANCODE_UP]) held |= MUSASHI_DEV_KEY_UP;
-        if (k[SDL_SCANCODE_DOWN]) held |= MUSASHI_DEV_KEY_DOWN;
-        if (k[SDL_SCANCODE_RETURN] || k[SDL_SCANCODE_KP_ENTER] || k[SDL_SCANCODE_C])
-            held |= MUSASHI_DEV_KEY_OK;
-        if (k[SDL_SCANCODE_ESCAPE] || k[SDL_SCANCODE_BACKSPACE] || k[SDL_SCANCODE_V])
-            held |= MUSASHI_DEV_KEY_BACK;
+/* Up to eight SDL GameControllers, reconciled by instance id each poll. */
+#define DEV_MENU_PADS 8
+static struct {
+    SDL_GameController *pad[DEV_MENU_PADS];
+    SDL_JoystickID id[DEV_MENU_PADS];
+    unsigned prev[DEV_MENU_PADS];       /* last held menu keys per pad */
+    int combo[DEV_MENU_PADS];           /* Back/Start held for the combo */
+    int neutral_wait[DEV_MENU_PADS];    /* connected with buttons held */
+    unsigned retry;
+    unsigned kb_prev;
+    int drain;                          /* after closing: wait for release */
+    unsigned tap_select, tap_start;     /* frames of a released lone Back/Start */
+} g_devpad;
+
+static void dev_menu_pads_reconcile(void) {
+    int j, k;
+    for (k = 0; k < DEV_MENU_PADS; ++k)
+        if (g_devpad.pad[k] && !SDL_GameControllerGetAttached(g_devpad.pad[k])) {
+            SDL_GameControllerClose(g_devpad.pad[k]);
+            g_devpad.pad[k] = NULL;
+            g_devpad.combo[k] = 0;
+            g_devpad.prev[k] = 0;
+        }
+    if (!SDL_WasInit(SDL_INIT_GAMECONTROLLER) || g_devpad.retry++ % 30u) return;
+    for (j = 0; j < SDL_NumJoysticks(); ++j) {
+        SDL_JoystickID id;
+        int known = 0, free_slot = -1;
+        if (!SDL_IsGameController(j)) continue;
+        id = SDL_JoystickGetDeviceInstanceID(j);
+        for (k = 0; k < DEV_MENU_PADS; ++k) {
+            if (g_devpad.pad[k] && g_devpad.id[k] == id) known = 1;
+            if (!g_devpad.pad[k] && free_slot < 0) free_slot = k;
+        }
+        if (known || free_slot < 0) continue;
+        g_devpad.pad[free_slot] = SDL_GameControllerOpen(j);
+        g_devpad.id[free_slot] = id;
+        g_devpad.neutral_wait[free_slot] = 1;
+        g_devpad.prev[free_slot] = 0;
     }
-    if (pad && !SDL_GameControllerGetAttached(pad)) {
-        SDL_GameControllerClose(pad);
-        pad = NULL;
+}
+
+static int dev_pad_button(int k, SDL_GameControllerButton b) {
+    return SDL_GameControllerGetButton(g_devpad.pad[k], b) != 0;
+}
+
+/* One poll per guest VBlank (state only; native_boot's SDL_PollEvent keeps
+ * it current). Returns key edges; *ff_hold is Backspace / R3 held. */
+static unsigned dev_menu_poll_keys(int *ff_hold, int *any_held) {
+    unsigned pressed = 0, kb = 0;
+    int n = 0, k;
+    const Uint8 *key = SDL_GetKeyboardState(&n);
+    *ff_hold = 0;
+    *any_held = 0;
+    if (key && n > SDL_SCANCODE_F12) {
+        if (key[SDL_SCANCODE_F8]) kb |= MUSASHI_DEV_KEY_TOGGLE;
+        if (key[SDL_SCANCODE_F1]) kb |= MUSASHI_DEV_KEY_HELP;
+        if (key[SDL_SCANCODE_F2]) kb |= MUSASHI_DEV_KEY_GOD;
+        if (key[SDL_SCANCODE_F3]) kb |= MUSASHI_DEV_KEY_RESOURCE;
+        if (key[SDL_SCANCODE_F6]) kb |= MUSASHI_DEV_KEY_FF;
+        if (key[SDL_SCANCODE_F7]) kb |= MUSASHI_DEV_KEY_FF_SPEED;
+        if (key[SDL_SCANCODE_F10]) kb |= MUSASHI_DEV_KEY_SHOT;
+        if (musashi_dev_menu_is_open()) {
+            if (key[SDL_SCANCODE_UP]) kb |= MUSASHI_DEV_KEY_UP;
+            if (key[SDL_SCANCODE_DOWN]) kb |= MUSASHI_DEV_KEY_DOWN;
+            if (key[SDL_SCANCODE_RETURN] || key[SDL_SCANCODE_KP_ENTER]) kb |= MUSASHI_DEV_KEY_OK;
+            if (key[SDL_SCANCODE_ESCAPE]) kb |= MUSASHI_DEV_KEY_BACK;
+        }
+        if (key[SDL_SCANCODE_BACKSPACE]) *ff_hold = 1;
+        for (k = 0; k < n; ++k) if (key[k]) { *any_held = 1; break; }
     }
-    if (!pad && SDL_WasInit(SDL_INIT_GAMECONTROLLER) && retry++ % 60u == 0u) {
-        int j;
-        for (j = 0; j < SDL_NumJoysticks() && !pad; ++j)
-            if (SDL_IsGameController(j)) pad = SDL_GameControllerOpen(j);
+    pressed |= kb & ~g_devpad.kb_prev;
+    g_devpad.kb_prev = kb;
+    dev_menu_pads_reconcile();
+    for (k = 0; k < DEV_MENU_PADS; ++k) {
+        unsigned held = 0;
+        int back, start, ly, any = 0;
+        SDL_GameControllerButton b;
+        if (!g_devpad.pad[k]) continue;
+        for (b = 0; b < SDL_CONTROLLER_BUTTON_MAX; ++b) any |= dev_pad_button(k, b);
+        ly = SDL_GameControllerGetAxis(g_devpad.pad[k], SDL_CONTROLLER_AXIS_LEFTY);
+        if (ly < -12000 || ly > 12000) any = 1;
+        if (any) *any_held = 1;
+        if (g_devpad.neutral_wait[k]) {          /* connected with buttons held */
+            if (!any) g_devpad.neutral_wait[k] = 0;
+            continue;
+        }
+        back = dev_pad_button(k, SDL_CONTROLLER_BUTTON_BACK);
+        start = dev_pad_button(k, SDL_CONTROLLER_BUTTON_START);
+        if (musashi_dev_menu_enabled()) {
+            if (back && start && !g_devpad.combo[k]) { held |= MUSASHI_DEV_KEY_TOGGLE; g_devpad.combo[k] = 1; }
+            else if (g_devpad.combo[k]) {
+                held |= MUSASHI_DEV_KEY_TOGGLE;  /* still held: no new edge */
+                if (!back && !start) g_devpad.combo[k] = 0;
+            } else {
+                /* A lone Back/Start released without the other: give the
+                 * game a short press (they are reserved while held). */
+                if ((g_devpad.prev[k] & 0x10000u) && !back) g_devpad.tap_select = 4;
+                if ((g_devpad.prev[k] & 0x20000u) && !start) g_devpad.tap_start = 4;
+            }
+            if (back) held |= 0x10000u;
+            if (start) held |= 0x20000u;
+        }
+        if (dev_pad_button(k, SDL_CONTROLLER_BUTTON_LEFTSTICK)) held |= MUSASHI_DEV_KEY_FF;
+        if (dev_pad_button(k, SDL_CONTROLLER_BUTTON_RIGHTSTICK)) *ff_hold = 1;
+        if (musashi_dev_menu_is_open()) {
+            if (dev_pad_button(k, SDL_CONTROLLER_BUTTON_DPAD_UP) || ly < -12000) held |= MUSASHI_DEV_KEY_UP;
+            if (dev_pad_button(k, SDL_CONTROLLER_BUTTON_DPAD_DOWN) || ly > 12000) held |= MUSASHI_DEV_KEY_DOWN;
+            if (dev_pad_button(k, SDL_CONTROLLER_BUTTON_A)) held |= MUSASHI_DEV_KEY_OK;
+            if (dev_pad_button(k, SDL_CONTROLLER_BUTTON_B)) held |= MUSASHI_DEV_KEY_BACK;
+        }
+        pressed |= held & ~g_devpad.prev[k] & 0xffffu;
+        g_devpad.prev[k] = held;
     }
-    if (pad) {
-        int ly = SDL_GameControllerGetAxis(pad, SDL_CONTROLLER_AXIS_LEFTY);
-        if ((SDL_GameControllerGetButton(pad, SDL_CONTROLLER_BUTTON_LEFTSTICK) &&
-             SDL_GameControllerGetButton(pad, SDL_CONTROLLER_BUTTON_RIGHTSTICK)) ||
-            SDL_GameControllerGetButton(pad, SDL_CONTROLLER_BUTTON_GUIDE))
-            held |= MUSASHI_DEV_KEY_TOGGLE;
-        if (SDL_GameControllerGetButton(pad, SDL_CONTROLLER_BUTTON_DPAD_UP) || ly < -16000)
-            held |= MUSASHI_DEV_KEY_UP;
-        if (SDL_GameControllerGetButton(pad, SDL_CONTROLLER_BUTTON_DPAD_DOWN) || ly > 16000)
-            held |= MUSASHI_DEV_KEY_DOWN;
-        if (SDL_GameControllerGetButton(pad, SDL_CONTROLLER_BUTTON_A)) held |= MUSASHI_DEV_KEY_OK;
-        if (SDL_GameControllerGetButton(pad, SDL_CONTROLLER_BUTTON_B)) held |= MUSASHI_DEV_KEY_BACK;
-    }
-    pressed = held & ~prev;
-    prev = held;
     return pressed;
+}
+
+/* The game's pad sampler asks these (sample_keyboard_pad). */
+static int dev_menu_blocks_game(void) {
+    return musashi_dev_menu_is_open() || g_devpad.drain;
+}
+static int dev_menu_reserves_back_start(void) {
+    return musashi_dev_menu_enabled();
+}
+static void dev_menu_apply_taps(uint16_t *sampled) {
+    if (g_devpad.tap_select) { *sampled &= (uint16_t)~(1u << 0); --g_devpad.tap_select; }
+    if (g_devpad.tap_start) { *sampled &= (uint16_t)~(1u << 3); --g_devpad.tap_start; }
 }
 
 static void dev_menu_text_at(int x, int y, int scale, const char *text,
@@ -1607,20 +1854,55 @@ static void dev_menu_text_at(int x, int y, int scale, const char *text,
     }
 }
 
+/* F10: the presented frame (before the menu is drawn) to
+ * $XDG_PICTURES_DIR/bfm-port or ~/Pictures/bfm-port. */
+static void dev_menu_screenshot(int width, int height) {
+    char dir[4096], path[4200], msg[64];
+    const char *pics = getenv("XDG_PICTURES_DIR"), *home = getenv("HOME");
+    uint8_t *rgb = malloc((size_t)width * (size_t)height * 3u), *flip;
+    time_t now = time(NULL);
+    struct tm tmv;
+    int ok = 0, y;
+    if (!rgb) return;
+    flip = malloc((size_t)width * (size_t)height * 3u);
+    if (flip && musashi_gpu_psycross_overlay_read_rgb(0, 0, width, height, rgb)) {
+        for (y = 0; y < height; ++y)
+            memcpy(flip + (size_t)y * width * 3u, rgb + (size_t)(height - 1 - y) * width * 3u, (size_t)width * 3u);
+        if (pics && pics[0]) snprintf(dir, sizeof dir, "%s/bfm-port", pics);
+        else snprintf(dir, sizeof dir, "%s/Pictures/bfm-port", home ? home : ".");
+        {
+            char parent[4096];
+            snprintf(parent, sizeof parent, "%.*s", (int)(strrchr(dir, '/') - dir), dir);
+            (void)mkdir(parent, 0755);
+            (void)mkdir(dir, 0755);
+        }
+        localtime_r(&now, &tmv);
+        snprintf(path, sizeof path, "%s/bfm-%04d%02d%02d-%02d%02d%02d.png", dir, tmv.tm_year + 1900,
+                 tmv.tm_mon + 1, tmv.tm_mday, tmv.tm_hour, tmv.tm_min, tmv.tm_sec);
+        ok = bfm_plat_png_write(path, (uint32_t)width, (uint32_t)height, 3, flip) == 0;
+    }
+    fprintf(stderr, "[DEV_MENU] screenshot %s%s\n", ok ? path : "failed", "");
+    snprintf(msg, sizeof msg, ok ? "SCREENSHOT SAVED" : "SCREENSHOT FAILED");
+    musashi_dev_menu_toast(msg);
+    free(flip);
+    free(rgb);
+}
+
 static void dev_menu_overlay(void *user, int width, int height) {
-    const char *lines[16];
-    int highlight, scale = height / 320, cell_h, i, cols = 0;
-    size_t n = musashi_dev_menu_text(lines, 16, &highlight);
+    const char *lines[24];
+    int highlight, badge_only, scale = height / 320, cell_h, i, cols = 0;
+    size_t n;
     (void)user;
+    if (musashi_dev_menu_take_screenshot()) dev_menu_screenshot(width, height);
+    n = musashi_dev_menu_text(lines, 24, &highlight, &badge_only);
     if (!n) return;
     if (scale < 2) scale = 2;
     cell_h = (BFM_FONT_CELL_H + 2) * scale;
     for (i = 0; i < (int)n; ++i)
         if ((int)strlen(lines[i]) > cols) cols = (int)strlen(lines[i]);
-    if (!musashi_dev_menu_is_open()) {
-        /* Badge while any cheat is on and the menu is closed. */
+    if (badge_only) {
         int w = (cols * BFM_FONT_CELL_W + 4) * scale;
-        musashi_gpu_psycross_overlay_rect(width - w - 8 * scale, 4 * scale, w, cell_h, 96, 0, 0);
+        musashi_gpu_psycross_overlay_rect(width - w - 8 * scale, 4 * scale, w, cell_h, 110, 0, 0);
         dev_menu_text_at(width - w - 6 * scale, 5 * scale, scale, lines[0], 255, 255, 255);
         return;
     }
@@ -1638,13 +1920,75 @@ static void dev_menu_overlay(void *user, int width, int height) {
 
 static void dev_menu_vblank(NativeBoot *boot, int display) {
     uint16_t scene = 0, mode = 0;
+    uint8_t *p4d;
+    int in_field, was_open = musashi_dev_menu_is_open();
+    if (musashi_dev_menu_hard_disabled()) return;
+    if (display) {
+        int ff_hold = 0, any_held = 0;
+        unsigned pressed = dev_menu_poll_keys(&ff_hold, &any_held);
+        musashi_dev_menu_keys(pressed, ff_hold);
+        if (was_open && !musashi_dev_menu_is_open()) g_devpad.drain = 1;
+        if (g_devpad.drain && !any_held) g_devpad.drain = 0;
+    }
     if (!musashi_dev_menu_enabled()) return;
-    if (display) musashi_dev_menu_keys(dev_menu_poll_keys());
     (void)musashi_boot_read16(&boot->memory, 0x800B99DEu, &scene);
     (void)musashi_boot_read16(&boot->memory, 0x800B99F0u, &mode);
-    musashi_dev_menu_vblank(boot->scene1_reached, scene, mode);
+    p4d = musashi_boot_ram_span(&boot->memory, 0x80126B58u + 0x4Du, 1);
+    /* The field: a scene is up, gameplay mode, player control unlocked. */
+    in_field = boot->scene1_reached && mode == 9u && p4d && *p4d == 1u;
+    musashi_dev_menu_vblank(boot->scene1_reached, scene, mode, in_field);
+    if (musashi_dev_menu_used())
+        fprintf(stderr, "[DEV_MENU] dev menu used: a save made from now on may not match a "
+                        "normal playthrough (memory cards are not connected in this build)\n");
 }
 #endif
+
+/* Field diagnostics for "the pad does nothing": window focus changes, pad
+ * hot-plug and the first presses, from the events the VBlank poll already
+ * drains. SDL drops joystick presses while it thinks no window has focus
+ * unless background events are allowed (set in main). */
+static void host_event_log(const SDL_Event *ev) {
+    static unsigned presses;
+    switch (ev->type) {
+    case SDL_WINDOWEVENT:
+        if (ev->window.event == SDL_WINDOWEVENT_FOCUS_GAINED ||
+            ev->window.event == SDL_WINDOWEVENT_FOCUS_LOST ||
+            ev->window.event == SDL_WINDOWEVENT_CLOSE)
+            fprintf(stderr, "native_boot: HOST_WINDOW_EVENT %s\n",
+                    ev->window.event == SDL_WINDOWEVENT_FOCUS_GAINED ? "focus_gained" :
+                    ev->window.event == SDL_WINDOWEVENT_FOCUS_LOST ? "focus_lost" : "close");
+        break;
+    case SDL_CONTROLLERDEVICEADDED:
+    case SDL_CONTROLLERDEVICEREMOVED:
+        fprintf(stderr, "native_boot: HOST_PAD_EVENT %s which=%d\n",
+                ev->type == SDL_CONTROLLERDEVICEADDED ? "added" : "removed", (int)ev->cdevice.which);
+        break;
+    case SDL_CONTROLLERBUTTONDOWN:
+        if (presses < 16u) {
+            ++presses;
+            fprintf(stderr, "native_boot: HOST_PAD_PRESS id=%d button=%s\n", (int)ev->cbutton.which,
+                    SDL_GameControllerGetStringForButton((SDL_GameControllerButton)ev->cbutton.button));
+        }
+        break;
+    case SDL_KEYDOWN:
+        if (presses < 16u && !ev->key.repeat) {
+            ++presses;
+            fprintf(stderr, "native_boot: HOST_KEY_PRESS key=%s\n", SDL_GetScancodeName(ev->key.keysym.scancode));
+        }
+        break;
+    default:
+        break;
+    }
+}
+
+static void host_focus_log(void) {
+    static int last = -1;
+    int now = SDL_GetKeyboardFocus() != NULL;
+    if (now != last) {
+        fprintf(stderr, "native_boot: HOST_FOCUS keyboard_focus=%d\n", now);
+        last = now;
+    }
+}
 
 static int epoch_video_edge(void *userdata, uint64_t sequence, uint64_t cycle) {
     NativeBoot *boot = userdata;
@@ -1660,9 +2004,13 @@ static int epoch_video_edge(void *userdata, uint64_t sequence, uint64_t cycle) {
     if (display_on(boot)) {
         SDL_Event ev;
         while (SDL_PollEvent(&ev)) {
-            if (ev.type == SDL_QUIT)
+            host_event_log(&ev);
+            if (ev.type == SDL_QUIT && !host_stop_signal) {
+                host_stop_source = HOST_STOP_SDL_QUIT;
                 host_stop_signal = SIGTERM;
+            }
         }
+        host_focus_log();
 #ifdef MUSASHI_WITH_BFM_PLAT
         if (g_plat_input_on) (void)bfm_plat_input_poll();
         dev_menu_vblank(boot, 1);
@@ -1837,6 +2185,7 @@ static int epoch_video_edge(void *userdata, uint64_t sequence, uint64_t cycle) {
                 boot->in_game_paused = 1;
                 fprintf(stderr, "native_boot: IN_GAME_PAUSE paused=1 frames=%u target=%u gte_writes=%llu\n",
                         boot->in_game_frames, target, (unsigned long long)boot->gte.write_count);
+                host_stop_source = HOST_STOP_IN_GAME_TARGET;
                 host_stop_signal = SIGTERM;
             }
         }
@@ -2551,6 +2900,7 @@ static void observe_entry(void *userdata, const MusashiEntryCpuSnapshot *cpu) {
             boot->start_preview_paused=1;
             fprintf(stderr,"native_boot: MENU_PREVIEW paused=1 source_pc=800cf104 frames=%u\n",
                     boot->start_preview_frames);
+            host_stop_source=HOST_STOP_MENU_PREVIEW;
             host_stop_signal=SIGTERM;
         }
         {
@@ -3799,6 +4149,7 @@ static void plat_timing_attach(int guest_clock, int unthrottled) {
 #endif
 
 int main(int argc, char **argv) {
+    sanitize_controller_ignore_list();
     static NativeBoot boot_storage; /* One stable, zero-initialized owner. */
     NativeBoot *const boot_owner = native_boot_owner(&boot_storage);
 #define boot (*boot_owner)
@@ -3940,6 +4291,10 @@ int main(int argc, char **argv) {
     SDL_SetHint(SDL_HINT_ALLOW_ALT_TAB_WHILE_GRABBED, "1");
     SDL_SetHint("SDL_WINDOW_ACTIVATE_WHEN_RAISED", "0");
     SDL_SetHint("SDL_WINDOW_ACTIVATE_WHEN_SHOWN", "0");
+    /* The pad must work whatever SDL believes about keyboard focus: under
+     * gamescope (Steam Game Mode) the window can be shown and focused by the
+     * compositor while SDL still drops every joystick press as background. */
+    SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
     PsyX_Initialise("Brave Fencer Musashi - native VRAM", 1280, 960, 0);
     fprintf(stderr, "native_boot: VIDEO_SOURCE mode=%d policy=NTSC selected_before_worker=1\n",
             GetVideoMode());
@@ -3996,7 +4351,8 @@ int main(int argc, char **argv) {
     plat_input_attach();
     {
         const MusashiDevMenuGuest guest = {
-            &boot, dev_menu_read16, dev_menu_write16, dev_menu_read32, dev_menu_write32
+            &boot, dev_menu_read8, dev_menu_write8, dev_menu_read16, dev_menu_write16,
+            dev_menu_read32, dev_menu_write32
         };
         if (musashi_dev_menu_init(&guest, 0))
             musashi_gpu_psycross_set_overlay(dev_menu_overlay, NULL);
@@ -4286,6 +4642,8 @@ int main(int argc, char **argv) {
 #ifdef MUSASHI_NATIVE_LANE_TABLE
     lane_overlay_report();
 #endif
+    if (host_stop_signal)
+        fprintf(stderr,"native_boot: HOST_STOP source=%s\n", host_stop_source_name());
     fprintf(stderr,"native_boot: EXECUTION_BOUNDARY reason=%s\n",
             host_stop_signal ? "HOST_STOP" :
             status==MUSASHI_RESETGRAPH_PREFIX_STEP_LIMIT ? "STEP_LIMIT" :

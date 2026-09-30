@@ -463,6 +463,19 @@ void musashi_gpu_psycross_set_overlay(MusashiGpuPsyCrossOverlay fn, void *user) 
     g_overlay_user = user;
 }
 
+/* Valid inside the overlay callback only: RGB8 rows of the drawable,
+ * bottom row first (GL order). */
+int musashi_gpu_psycross_overlay_read_rgb(int x, int y, int w, int h, uint8_t *rgb) {
+    GLint pack;
+    if (w <= 0 || h <= 0 || !rgb) return 0;
+    glGetIntegerv(GL_PACK_ALIGNMENT, &pack);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glReadBuffer(GL_BACK);
+    glReadPixels(x, y, w, h, GL_RGB, GL_UNSIGNED_BYTE, rgb);
+    glPixelStorei(GL_PACK_ALIGNMENT, pack);
+    return glGetError() == GL_NO_ERROR;
+}
+
 /* Valid inside the overlay callback only; (x, y) from the top-left. */
 void musashi_gpu_psycross_overlay_rect(int x, int y, int w, int h,
                                        uint8_t r, uint8_t g, uint8_t b) {
