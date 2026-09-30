@@ -212,6 +212,16 @@ static int scheduler_dispatch(MusashiPsyCrossIrqScheduler *scheduler,
         scheduler->pumping = 0;
         return 1;
     }
+    /* The delay slot of the `jr $ra` that returns from a guest call made by
+     * native-lane code: npc is the lane's return sentinel (0xFFFFFFFF), not
+     * a guest address, so no exception can resume there. Hold the IRQ; it is
+     * still pending at the next checkpoint, once the call has returned (the
+     * owner's r27 stop at 80018E74 in func_800189A8's call, reproduced at
+     * 80018C60 with npc=ffffffff delay_slot=1). */
+    if (context.provenance == MUSASHI_CPU_CONTEXT_SOURCE && context.npc == 0xffffffffu) {
+        scheduler->pumping = 0;
+        return 1;
+    }
     if (!musashi_cpu_status_begin(scheduler->cpu_status, MUSASHI_CPU_EXCEPTION_IRQ,
             &context, 0x400u, &scheduler->active_exception)) {
         MusashiCpuStatusSnapshot now;

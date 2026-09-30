@@ -389,6 +389,12 @@ static int boundary_context(void *userdata, const void *identity, MusashiCpuCont
     assert(fixture_irq_context(NULL, identity, out));
     if (cpu_case == 1) return 0;
     if (cpu_case == 2) out->identity = NULL;
+    if (cpu_case == 9) {   /* delay slot of a jr to the native-lane sentinel */
+        out->provenance = MUSASHI_CPU_CONTEXT_SOURCE;
+        out->pc = 0x80018c60; out->npc = 0xffffffffu;
+        out->instruction_valid = 1;
+        out->delay_slot = 1; out->branch_pc = out->pc - 4;
+    }
     if (cpu_case == 3 || cpu_case == 8) {
         out->provenance = MUSASHI_CPU_CONTEXT_SOURCE;
         out->pc = 0x80012344; out->npc = out->pc + 4;
@@ -415,7 +421,7 @@ static int boundary_kernel(void *userdata, uint16_t pending) {
     return 1;
 }
 static void cpu_boundary_test(MusashiBootMemory *memory) {
-    for (cpu_case = 0; cpu_case < 9; ++cpu_case) {
+    for (cpu_case = 0; cpu_case < 10; ++cpu_case) {
         Hardware hardware = {1, 1, 0, 0};
         MusashiIrqDispatchDevice device = {&hardware, read16, write16, execute, NULL, NULL};
         MusashiPsyCrossIrqScheduler scheduler = {0};
@@ -435,7 +441,14 @@ static void cpu_boundary_test(MusashiBootMemory *memory) {
         assert(musashi_psycross_irq_scheduler_hook_entry_int(&scheduler, 0x8006bb34));
         assert(musashi_psycross_irq_scheduler_get_enabled(&scheduler, &enabled) && enabled);
         cpu_hardware = &hardware;
-        if (cpu_case >= 7) {
+        if (cpu_case == 9) {
+            /* Held, not faulted: still pending, nothing delivered, CPU untouched. */
+            assert(musashi_psycross_irq_scheduler_dispatch_pending(&scheduler, &continuation));
+            assert(!scheduler.faulted && !scheduler.deliveries && !scheduler.delivering);
+            assert(hardware.status == 1 && !hardware.calls);
+            assert(musashi_cpu_status_snapshot(scheduler.cpu_status, &state));
+            assert(state.sr == 0x40000401 && !state.active && state.sequence == 0);
+        } else if (cpu_case >= 7) {
             assert(musashi_psycross_irq_scheduler_dispatch_pending(&scheduler, &continuation));
             assert(!scheduler.active_continuation && !scheduler.active_exception.owner);
             assert(!scheduler.deliveries && !scheduler.faulted && !hardware.status);
