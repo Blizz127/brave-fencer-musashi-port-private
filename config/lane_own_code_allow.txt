@@ -40,7 +40,8 @@
 80013450
 80013e94
 80013ed0
-80013f3c
+# 80013f3c stays interpreted: room 3063 (attract demo) calls it with a0=00000024, a
+# KUSEG address the interpreter maps to RAM but native code faults on (HOST_FAULT addr=34).
 80013f68
 80013f98
 80013fbc
