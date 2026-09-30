@@ -10160,9 +10160,23 @@ static int code_site(uint32_t pc, unsigned group, uint32_t instruction) {
 
 static int formatter_admitted(const FormatterCpu *cpu, uint32_t *out);
 
+/* Admission cache: formatter_admitted depends only on the PC, the overlay
+ * identity flags (every change goes through overlay_changed, which starts a
+ * new generation) and whether a CD IRQ frame is active, so a positive answer
+ * is remembered per (PC, frame) until the next generation. The chain of
+ * range checks it replaces was a leading per-instruction host cost. */
+enum { ADMIT_CACHE_SIZE = 1u << 15 };
+static uint32_t g_admit_generation = 1;
+static struct { uint32_t tag, generation; } g_admit_cache[ADMIT_CACHE_SIZE];
+
 static int formatter_fetch(MusashiBootMemory *memory, const FormatterCpu *cpu, uint32_t *out) {
-    uint32_t shape;
-    if (!formatter_admitted(cpu, &shape)) return 0;
+    uint32_t shape, tag = cpu->pc | (cpu->cd_irq_frame ? 1u : 0u);
+    unsigned slot = ((cpu->pc >> 2) ^ (cpu->pc >> 17)) & (ADMIT_CACHE_SIZE - 1u);
+    if (!(g_admit_cache[slot].generation == g_admit_generation && g_admit_cache[slot].tag == tag)) {
+        if (!formatter_admitted(cpu, &shape)) return 0;
+        g_admit_cache[slot].tag = tag;
+        g_admit_cache[slot].generation = g_admit_generation;
+    }
     return code_word(memory, cpu, cpu->pc, out);
 }
 
@@ -12685,6 +12699,10 @@ void musashi_formatter_set_overlay_hook(MusashiOverlayHook hook, void *userdata)
 }
 
 static void overlay_changed(void) {
+    if (++g_admit_generation == 0) {   /* wrapped: forget everything */
+        memset(g_admit_cache, 0, sizeof g_admit_cache);
+        g_admit_generation = 1;
+    }
     const char *name = NULL;
     code_sites_invalidate();
     if (!g_overlay_hook) return;
