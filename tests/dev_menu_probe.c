@@ -39,6 +39,7 @@ static void start(const char *menu, const char *cheats, const char *keys) {
     if (menu) setenv("BFM_DEV_MENU", menu, 1); else unsetenv("BFM_DEV_MENU");
     if (cheats) setenv("BFM_CHEATS", cheats, 1); else unsetenv("BFM_CHEATS");
     if (keys) setenv("BFM_DEV_MENU_KEYS", keys, 1); else unsetenv("BFM_DEV_MENU_KEYS");
+    unsetenv("BFM_DEV_MENU_WARP_TEST");
     game_state();
     (void)musashi_dev_menu_init(&guest, 0);
 }
@@ -161,6 +162,55 @@ int main(void) {
     musashi_dev_menu_keys(MUSASHI_DEV_KEY_HELP, 0);
     assert(musashi_dev_menu_text(lines, 24, &hl, &badge) > 8 && strstr(lines[0], "KEYS"));
     assert(writes == 0);
+
+    /* Warp (harness request): waits outside gameplay, then hands the game
+     * its own exit record and follows the room change to arrival. */
+    musashi_dev_menu_reset();
+    setenv("BFM_DEV_MENU", "1", 1);
+    unsetenv("BFM_CHEATS");
+    unsetenv("BFM_DEV_MENU_KEYS");
+    setenv("BFM_DEV_MENU_WARP_TEST", "3006:1", 1);
+    game_state();
+    put16(0x800b99deu, 0x000b);                              /* in game */
+    put16(0x800b99f0u, 7);                                   /* loading */
+    put16(0x800b9a08u, 0x3005);
+    (void)musashi_dev_menu_init(&guest, 0);
+    for (i = 0; i < 700; ++i) musashi_dev_menu_vblank(1, 0x000b, 7, 0);
+    musashi_dev_menu_state(&st);
+    assert(st.warp_state == 1 && writes == 0);               /* harness waits */
+    put16(0x800b99f0u, 9); *at(0x800b9a10u) = 1;
+    musashi_dev_menu_vblank(1, 0x000b, 9, 1);
+    musashi_dev_menu_state(&st);
+    assert(st.warp_state == 2);
+    assert(get16(0x80078e50u) == 0x3006 && *at(0x80078e52u) == 1);
+    assert(get32(0x80078e54u) == 0x800d30c8u && get32(0x80078e6cu) == 0x800d1e20u);
+    assert(get32(0x800ae6b0u) == 0x80078e50u);
+    musashi_dev_menu_vblank(1, 0x000b, 9, 1);                /* not taken yet */
+    put16(0x800b99f0u, 10); *at(0x800b9a10u) = 0;            /* the game takes the exit */
+    musashi_dev_menu_vblank(1, 0x000b, 10, 0);
+    put16(0x800b99f0u, 9); put16(0x800b9a08u, 0x3006); *at(0x800b9a10u) = 1;
+    musashi_dev_menu_vblank(1, 0x000b, 9, 1);
+    musashi_dev_menu_state(&st);
+    assert(st.warp_state == 0 && st.warps_done == 1 && st.warps_failed == 0);
+    assert(musashi_dev_menu_used());
+
+    /* No such entrance, or a pending exit: refused / kept waiting. */
+    musashi_dev_menu_reset();
+    setenv("BFM_DEV_MENU_WARP_TEST", "3006:9", 1);
+    game_state();
+    (void)musashi_dev_menu_init(&guest, 0);
+    musashi_dev_menu_state(&st);
+    assert(st.warp_state == 0 && st.refusals == 1);
+    musashi_dev_menu_reset();
+    setenv("BFM_DEV_MENU_WARP_TEST", "3006:0", 1);
+    game_state();
+    put16(0x800b99deu, 0x000b); put16(0x800b99f0u, 9); *at(0x800b9a10u) = 1;
+    put32(0x800ae6a8u, 0x80123456u);                         /* a door is already queued */
+    (void)musashi_dev_menu_init(&guest, 0);
+    for (i = 0; i < 10; ++i) musashi_dev_menu_vblank(1, 0x000b, 9, 1);
+    musashi_dev_menu_state(&st);
+    assert(st.warp_state == 1 && writes == 0);
+    unsetenv("BFM_DEV_MENU_WARP_TEST");
 
     puts("DEV_MENU_PASS off_inert=1 hard_disable=1 parity=1 cheats=game_state warps=0 finish=0");
     return 0;

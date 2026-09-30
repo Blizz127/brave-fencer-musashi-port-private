@@ -1948,7 +1948,7 @@ static void dev_menu_vblank(NativeBoot *boot, int display) {
 #endif
 
 /* Field diagnostics for "the pad does nothing": window focus, every input
- * device SDL can see (name, GUID, ids, path, Steam handle) and a capped
+ * device SDL can see (name, GUID, ids, mapping, path) and a capped
  * trace of key, mouse, pad and joystick events, from the events the VBlank
  * poll already drains. The first 64 input events are logged one per line,
  * then a count line at most every 600 polls. SDL drops joystick presses
@@ -2042,6 +2042,45 @@ static void host_focus_log(void) {
     }
 }
 
+/* Route record, read-only, one line per room entry: when a room goes live
+ * in gameplay (mode 9, 800B9A10 rising to 1), the location, the entrance
+ * the game spawned at, the scenario counter and FNV-1a digests of the 512
+ * story flags (800AE648) and 256 script vars (800BA1B8). Warp entries take
+ * their location, entrance and progression values from these lines. */
+static uint32_t route_digest(NativeBoot *boot, uint32_t address, size_t n) {
+    const uint8_t *p = musashi_boot_ram_span(&boot->memory, address, n);
+    uint32_t h = 2166136261u;
+    size_t i;
+    if (!p) return 0;
+    for (i = 0; i < n; ++i) h = (h ^ p[i]) * 16777619u;
+    return h;
+}
+
+static void route_log(NativeBoot *boot) {
+    static int last_live = -1;
+    static unsigned vblanks;
+    uint16_t mode = 0, location = 0;
+    const uint8_t *live_p, *entrance_p;
+    uint8_t live, entrance = 0;
+    uint32_t progress = 0;
+    ++vblanks;
+    live_p = musashi_boot_ram_span(&boot->memory, 0x800B9A10u, 1);
+    if (!boot->scene1_reached || !live_p ||
+        !musashi_boot_read16(&boot->memory, 0x800B99F0u, &mode)) return;
+    live = *live_p;
+    if (mode == 9u && live == 1u && last_live != 1) {
+        (void)musashi_boot_read16(&boot->memory, 0x800B9A08u, &location);
+        entrance_p = musashi_boot_ram_span(&boot->memory, 0x800AE6BEu, 1);
+        if (entrance_p) entrance = *entrance_p;
+        (void)musashi_boot_read32(&boot->memory, 0x80078E80u, &progress);
+        fprintf(stderr, "native_boot: ROUTE enter location=%04x entrance=%u progress=%u "
+                "flags=%08x vars=%08x vblank=%u\n", (unsigned)location, (unsigned)entrance,
+                (unsigned)progress, (unsigned)route_digest(boot, 0x800AE648u, 64),
+                (unsigned)route_digest(boot, 0x800BA1B8u, 256), vblanks);
+    }
+    last_live = mode == 9u ? live : 0;
+}
+
 static int epoch_video_edge(void *userdata, uint64_t sequence, uint64_t cycle) {
     NativeBoot *boot = userdata;
     (void)sequence;
@@ -2077,6 +2116,7 @@ static int epoch_video_edge(void *userdata, uint64_t sequence, uint64_t cycle) {
     else
         dev_menu_vblank(boot, 0);
 #endif
+    route_log(boot);
     if (boot->scene1_reached && boot->gpu.display.width == 320u && boot->gpu.display.height == 240u) {
         if (boot->gte.write_count > 800u) {
             const char *pause_in_game = getenv("MUSASHI_PAUSE_IN_GAME");

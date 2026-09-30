@@ -22,7 +22,15 @@
  *
  * Scripted keys for headless tests: BFM_DEV_MENU_KEYS="frame:KEY,..." with
  * KEY one of TOGGLE UP DOWN OK BACK HELP GOD RESOURCE FF FFSPEED SHOT, at
- * guest VBlank `frame`. */
+ * guest VBlank `frame`. Harness only: BFM_DEV_MENU_WARP_TEST=LLLL:E warps
+ * to location LLLL (hex), entrance E, at the first safe point.
+ *
+ * A warp is the game's own exit request: the 0x24-byte exit record the
+ * attract demo uses (resident fade-out, no-op callbacks), aimed at L/E and
+ * written to 80078E50, then the active exit pointer 800AE6B0. It is sent
+ * only in gameplay (program state 0xB, mode 9, room live, player in
+ * control and idle, no exit pending, no mode-diverting flag) and is
+ * reported arrived once mode 9 resumes in L with the room live. */
 
 #include <stddef.h>
 #include <stdint.h>
@@ -80,6 +88,8 @@ typedef struct MusashiDevMenuState {
     int enabled, hard_disabled, open, page, selection, help;
     int god, resource, ff, ff_speed;
     unsigned vblanks, cheat_writes, one_shots, refusals;
+    int warp_state;   /* 0 idle, 1 waiting for a safe point, 2 sent, 3 room changing */
+    unsigned warps_done, warps_failed;
 } MusashiDevMenuState;
 void musashi_dev_menu_state(MusashiDevMenuState *out);
 unsigned musashi_dev_menu_warp_count(void);
