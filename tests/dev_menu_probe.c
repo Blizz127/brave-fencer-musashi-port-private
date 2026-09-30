@@ -212,6 +212,39 @@ int main(void) {
     assert(st.warp_state == 1 && writes == 0);
     unsetenv("BFM_DEV_MENU_WARP_TEST");
 
+#ifdef MUSASHI_DEV_MENU_PRESET_TABLE
+    /* Finish Area candidate 2: the developers' AREA 1..3 presets, then the
+     * exit request to the area-transition demo 0x304A. */
+    musashi_dev_menu_reset();
+    setenv("BFM_DEV_MENU_FINISH_TEST", "2", 1);
+    game_state();
+    put16(0x800b99deu, 0x000b); put16(0x800b99f0u, 9); *at(0x800b9a10u) = 1;
+    put16(0x8010f474u, 0x1234);                              /* a value the presets copy */
+    (void)musashi_dev_menu_init(&guest, 0);
+    musashi_dev_menu_vblank(1, 0x000b, 9, 1);
+    musashi_dev_menu_state(&st);
+    assert(st.warp_state == 2);
+    assert(get32(0x80078e80u) == 200u);                      /* progress: Area 3 start */
+    assert(get16(0x80078eb2u) == 250u && get16(0x80078eb6u) == 375u);
+    assert(*at(0x800ae648u + (0x8a >> 3)) & (1u << (0x8a & 7)));  /* Area 2 core flag */
+    assert(*at(0x800ae648u + (0x16 >> 3)) & (1u << (0x16 & 7)));  /* Earth Scroll flag */
+    assert(get16(0x800a6588u) == 0x1234);
+    assert(get16(0x80078e50u) == 0x304a && get32(0x800ae6b0u) == 0x80078e50u);
+    unsetenv("BFM_DEV_MENU_FINISH_TEST");
+#else
+    /* A build without the preset table refuses Finish Area and writes
+     * nothing. */
+    musashi_dev_menu_reset();
+    setenv("BFM_DEV_MENU_FINISH_TEST", "2", 1);
+    game_state();
+    put16(0x800b99deu, 0x000b); put16(0x800b99f0u, 9); *at(0x800b9a10u) = 1;
+    (void)musashi_dev_menu_init(&guest, 0);
+    musashi_dev_menu_vblank(1, 0x000b, 9, 1);
+    musashi_dev_menu_state(&st);
+    assert(st.warp_state == 0 && st.warps_failed == 1 && writes == 0);
+    unsetenv("BFM_DEV_MENU_FINISH_TEST");
+#endif
+
     puts("DEV_MENU_PASS off_inert=1 hard_disable=1 parity=1 cheats=game_state warps=0 finish=0");
     return 0;
 }

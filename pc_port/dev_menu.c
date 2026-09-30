@@ -1,6 +1,14 @@
 /* Port Dev Menu model (musashi_dev_menu.h; shared port spec v1). */
 #include "musashi_dev_menu.h"
 #include "dev_menu_locations.h"
+/* The AREA preset table is data read from the retail debug overlay, so it
+ * is never committed or released: tools/gen_dev_menu_presets.py writes it
+ * for local builds with MUSASHI_DEV_MENU_PRESET_TABLE. Released builds
+ * have no presets and refuse Finish Area (until it is read from the
+ * player's own disc at run time). */
+#ifdef MUSASHI_DEV_MENU_PRESET_TABLE
+#include "dev_menu_presets.h"
+#endif
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -48,9 +56,26 @@ enum { ACT_NONE, ACT_DRANS, ACT_HOUR };
 
 /* Verified entries only (spec §6/§7): each row is added after the warp or
  * area-finish sweep passes for it. Grouped by chapter. */
-typedef struct DevJump { const char *chapter, *label; uint16_t location; uint8_t entrance; } DevJump;
-static const DevJump kWarps[] = { { NULL, NULL, 0, 0 } };
-static const DevJump kFinish[] = { { NULL, NULL, 0, 0 } };
+typedef struct DevJump {
+    const char *chapter, *label;
+    uint16_t location;
+    uint8_t entrance;
+    uint8_t preset;   /* Finish Area: the retail debug menu's AREA preset applied first */
+} DevJump;
+static const DevJump kWarps[] = { { NULL, NULL, 0, 0, 0 } };
+static const DevJump kFinish[] = { { NULL, NULL, 0, 0, 0 } };
+/* Finish Area candidates (the sweep's targets): the state the developers'
+ * own debug menu writes for "AREA N+1" (func_800CFCBC, cumulative), then
+ * the game's exit request to where that area begins: the area-transition
+ * demos 0x304A / 0x306A / 0x3076, which lead into the next village version,
+ * the village for area 2 and the Place of Sky for area 6. */
+static const DevJump kFinishCandidates[] = {
+    { "AREA 1", "FINISH AREA 1 (DEVELOPER PRESET)", 0x1011, 0, 2 },
+    { "AREA 2", "FINISH AREA 2 (DEVELOPER PRESET)", 0x304A, 0, 3 },
+    { "AREA 3", "FINISH AREA 3 (DEVELOPER PRESET)", 0x306A, 0, 4 },
+    { "AREA 4", "FINISH AREA 4 (DEVELOPER PRESET)", 0x3076, 0, 5 },
+    { "AREA 5", "FINISH AREA 5 (DEVELOPER PRESET)", 0x3081, 0, 6 },
+};
 enum { WARP_COUNT = 0, FINISH_COUNT = 0 };
 
 static const char *const kRoot[] = { "WARP >", "FINISH AREA >", "CHEATS >", "OPTIONS >" };
@@ -67,6 +92,7 @@ static struct {
         uint8_t entrance;
         unsigned since, waits;
         int patient;   /* the harness waits for the field indefinitely */
+        uint8_t preset;   /* nonzero: apply AREA presets 1..preset first */
         char why[40];
     } warp;
     unsigned warps_done, warps_failed;
@@ -82,6 +108,7 @@ static struct {
 static const unsigned kFfSpeeds[] = { 2u, 4u, 8u, 0u };
 enum { WARP_IDLE, WARP_WAITING, WARP_SENT, WARP_LEFT };
 static void warp_request(uint16_t location, uint8_t entrance, const char *source, int patient);
+static void finish_request(const DevJump *entry, int patient);
 
 static unsigned parse_key(const char *s, size_t n) {
     static const struct { const char *name; unsigned key; } names[] = {
@@ -134,6 +161,11 @@ int musashi_dev_menu_init(const MusashiDevMenuGuest *guest, int force_on) {
         unsigned loc, ent = 0;
         if (t && sscanf(t, "%x:%u", &loc, &ent) >= 1 && loc <= 0xffffu && ent <= 0xffu)
             warp_request((uint16_t)loc, (uint8_t)ent, "BFM_DEV_MENU_WARP_TEST", 1);
+        /* BFM_DEV_MENU_FINISH_TEST=N runs Finish Area candidate N (1..5). */
+        t = getenv("BFM_DEV_MENU_FINISH_TEST");
+        if (t && sscanf(t, "%u", &ent) == 1 && ent >= 1u &&
+            ent <= sizeof kFinishCandidates / sizeof kFinishCandidates[0])
+            finish_request(&kFinishCandidates[ent - 1u], 1);
     }
     fprintf(stderr, "[DEV_MENU] enabled scripted_keys=%u (F8 or Back+Start opens, F1 help)\n",
             M.nscript);
@@ -207,7 +239,10 @@ static void select_row(void) {
         if (WARP_COUNT)
             warp_request(kWarps[M.selection].location, kWarps[M.selection].entrance, kWarps[M.selection].label, 0);
         break;
-    default: break;   /* Finish Area: no verified entries yet */
+    case PAGE_FINISH:
+        if (FINISH_COUNT) finish_request(&kFinish[M.selection], 0);
+        break;
+    default: break;
     }
 }
 
@@ -344,6 +379,7 @@ static void warp_request(uint16_t location, uint8_t entrance, const char *source
     M.warp.since = M.vblanks;
     M.warp.waits = 0;
     M.warp.patient = patient;
+    M.warp.preset = 0;
     M.warp.why[0] = 0;
     fprintf(stderr, "[WARP] requested %04x.%u (%s) vblank=%u\n", location, entrance, source, M.vblanks);
 }
@@ -363,6 +399,56 @@ static int warp_send(void) {
     return ok;
 }
 
+/* The writes func_800D0964..func_800D2BC4 make, areas 1..last, in order;
+ * 0 when this build has no preset table. */
+#ifndef MUSASHI_DEV_MENU_PRESET_TABLE
+static unsigned apply_preset(unsigned last) { (void)last; return 0; }
+#else
+static unsigned apply_preset(unsigned last) {
+    unsigned i, writes = 0;
+    for (i = 0; i < sizeof kPresetOps / sizeof kPresetOps[0]; ++i) {
+        const DevPresetOp *o = &kPresetOps[i];
+        uint8_t b = 0;
+        uint16_t h = 0;
+        int ok = 1;
+        if (o->area > last) continue;
+        switch (o->op) {
+        case PRESET_W8: ok = M.guest.write8(M.guest.user, o->a, (uint8_t)o->b); break;
+        case PRESET_W16: ok = M.guest.write16(M.guest.user, o->a, (uint16_t)o->b); break;
+        case PRESET_W32: ok = M.guest.write32(M.guest.user, o->a, o->b); break;
+        case PRESET_FLAG: {
+            uint32_t address = 0x800ae648u + (o->a >> 3);
+            ok = M.guest.read8(M.guest.user, address, &b) &&
+                 M.guest.write8(M.guest.user, address, o->b ? (uint8_t)(b | (1u << (o->a & 7u)))
+                                                            : (uint8_t)(b & ~(1u << (o->a & 7u))));
+            break;
+        }
+        case PRESET_VAR: ok = M.guest.write8(M.guest.user, 0x800ba1b8u + o->a, (uint8_t)o->b); break;
+        case PRESET_VAR_OR80:
+            ok = M.guest.read8(M.guest.user, o->b, &b) &&
+                 M.guest.write8(M.guest.user, 0x800ba1b8u + o->a, (uint8_t)(b | 0x80u));
+            break;
+        case PRESET_COPY16:
+            ok = M.guest.read16(M.guest.user, o->b, &h) && M.guest.write16(M.guest.user, o->a, h);
+            break;
+        default: ok = 0; break;
+        }
+        if (!ok) return 0;
+        ++writes;
+    }
+    return writes;
+}
+#endif
+
+static void finish_request(const DevJump *entry, int patient) {
+    warp_request(entry->location, entry->entrance, entry->label, patient);
+    if (M.warp.state == WARP_WAITING) {
+        M.warp.preset = entry->preset;
+        fprintf(stderr, "[FINISH] requested %s: developer AREA presets 1..%u, then %04x.%u\n",
+                entry->chapter, (unsigned)entry->preset, entry->location, entry->entrance);
+    }
+}
+
 static void warp_step(void) {
     const char *blocker;
     uint32_t mode = 0, location = 0, live = 0, entrance = 0, progress = 0;
@@ -377,6 +463,13 @@ static void warp_step(void) {
             }
             if (++M.warp.waits >= WARP_WAIT_LIMIT && !M.warp.patient) warp_fail(blocker);
             return;
+        }
+        if (M.warp.preset) {
+            unsigned writes = apply_preset(M.warp.preset);
+            if (!writes) { warp_fail("NO AREA PRESETS IN THIS BUILD"); return; }
+            M.cheat_writes += writes;
+            fprintf(stderr, "[FINISH] applied developer AREA presets 1..%u: %u writes\n",
+                    (unsigned)M.warp.preset, writes);
         }
         if (!warp_send()) { warp_fail("GUEST NOT WRITABLE"); return; }
         mark_used();
@@ -542,5 +635,6 @@ unsigned musashi_dev_menu_finish_count(void) { return FINISH_COUNT; }
 void musashi_dev_menu_reset(void) {
     (void)kWarps;
     (void)kFinish;
+    (void)kFinishCandidates;
     memset(&M, 0, sizeof M);
 }

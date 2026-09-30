@@ -9,6 +9,13 @@ option(MUSASHI_WITH_PSYCROSS "Link the PC port against the PsyCross Psy-Q reimpl
 # decomp C for the host and run it in place of the interpreted words. Needs
 # clang; off until the live native boot has been checked with it on.
 option(MUSASHI_NATIVE_LANE "Run checker-admitted decomp C natively in the PC port" OFF)
+# Local playtests only: pc_port/dev_menu_presets.h is read from the retail
+# debug overlay (tools/gen_dev_menu_presets.py) and is never committed or
+# released. Off, Finish Area is refused.
+option(MUSASHI_DEV_MENU_PRESET_TABLE "Build the dev menu's Finish Area with a locally generated preset table" OFF)
+if(MUSASHI_DEV_MENU_PRESET_TABLE)
+    add_compile_definitions(MUSASHI_DEV_MENU_PRESET_TABLE)
+endif()
 option(MUSASHI_USE_VENDOR_BFM
     "Prefer cleaned house-style matched leaves reconciled with vendor/bfm-decomp (Druthulu)"
     OFF)

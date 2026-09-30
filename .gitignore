@@ -109,3 +109,6 @@ vendor/
 
 # tools/run_headless_boot.sh default output (logs, traces, captures)
 /headless-out/
+
+# Generated from the retail debug overlay (tools/gen_dev_menu_presets.py): never commit
+pc_port/dev_menu_presets.h
