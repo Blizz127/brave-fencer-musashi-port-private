@@ -1100,10 +1100,13 @@ static void spiral_climb_input(NativeBoot *boot, uint16_t *sio_clear, uint16_t *
  *   goto X Z N [KEYS]      walk toward world (X, Z) for at most N frames,
  *                          optionally pulsing KEYS; ends within 48 units
  *   mash N                 tap Cross 4 of every 30 frames for N frames
+ *   climb N [KEYS]         the spiral-stair walk (spiral_climb_input) for N
+ *                          frames, optionally pulsing KEYS
  * Frames are in-game frames. The pad-to-world rotation of goto is learned
- * from the player's own motion, starting from the opening stair's (Up is
- * -X, Right is +Z), so a room's camera does not need to be known. */
-enum { SCRIPT_ROOM, SCRIPT_HOLD, SCRIPT_TAP, SCRIPT_GOTO, SCRIPT_MASH };
+ * from the player's own motion, starting from the forest's (Right is +X,
+ * Up is +Z), so a room's camera does not need to be known. A goto ends
+ * early when the player leaves the room. */
+enum { SCRIPT_ROOM, SCRIPT_HOLD, SCRIPT_TAP, SCRIPT_GOTO, SCRIPT_MASH, SCRIPT_CLIMB };
 typedef struct {
     int kind;
     uint16_t keys;
@@ -1157,6 +1160,9 @@ static int script_load(ScriptStep *steps, int max) {
             s->keys = b[0] ? script_keys(b) : 0;
         } else if (sscanf(line, " mash %u", &s->n) == 1) {
             s->kind = SCRIPT_MASH;
+        } else if (sscanf(line, " climb %u %63s", &s->n, b) >= 1) {
+            s->kind = SCRIPT_CLIMB;
+            s->keys = b[0] ? script_keys(b) : 0;
         } else {
             continue;
         }
@@ -1175,9 +1181,10 @@ static uint16_t script_input(NativeBoot *boot) {
     static ScriptStep steps[256];
     static int nsteps = -1, cur, dir = 2;
     static unsigned step_frame, last_frame, trace_frame, stuck_frame, escape;
-    static double phi = M_PI / 2.0;    /* world angle = pad angle + phi (atan2(z, x)) */
+    static double phi = 0.0;    /* world angle = pad angle + phi (atan2(z, x)); forest 3008: Right +X, Up +Z */
     static int16_t prev_x, prev_z;
     static unsigned prev_frame;
+    static uint16_t goto_room;
     static double best;
     unsigned frame = boot->in_game_frames, t;
     uint16_t location = 0, mode = 0, keys = 0;
@@ -1228,9 +1235,23 @@ static uint16_t script_input(NativeBoot *boot) {
     case SCRIPT_MASH:
         keys = (frame % 30u) < 4u ? (uint16_t)(1u << 14) : 0;
         break;
+    case SCRIPT_CLIMB:
+        if (!in_field) break;
+        spiral_climb_input(boot, &keys, NULL, NULL, NULL);
+        if (s->keys && (t % 45u) < 6u) keys |= s->keys;
+        break;
     case SCRIPT_GOTO: {
         double dx = (double)s->x - x, dz = (double)s->z - z, dist = sqrt(dx * dx + dz * dz);
-        if (t == 0u) { prev_x = x; prev_z = z; prev_frame = frame; best = dist; stuck_frame = frame; escape = 0; }
+        if (t == 0u) {
+            prev_x = x; prev_z = z; prev_frame = frame; best = dist; stuck_frame = frame; escape = 0;
+            goto_room = location;
+        }
+        if (location != goto_room) {   /* went through a door: the target was in the old room */
+            fprintf(stderr, "native_boot: SCRIPT step=%d goto left room %04x frame=%u\n", cur, goto_room, frame);
+            t = s->n;
+            break;
+        }
+        if (!in_field) { keys = 0; break; }   /* text or a scene: hold still */
         if (dist < 48.0) {
             fprintf(stderr, "native_boot: SCRIPT step=%d goto (%d,%d) arrived frame=%u pos=(%d,%d)\n",
                     cur, s->x, s->z, frame, x, z);
@@ -1240,7 +1261,9 @@ static uint16_t script_input(NativeBoot *boot) {
         /* Learn the camera: the motion of the last 8 frames under one heading. */
         if (frame >= prev_frame + 8u) {
             double mx = (double)x - prev_x, mz = (double)z - prev_z;
-            if (!escape && mx * mx + mz * mz > 64.0) {
+            uint16_t act = 0;
+            (void)musashi_boot_read16(&boot->memory, 0x80126B58u, &act);
+            if (!escape && (act == 1u || act == 2u) && mx * mx + mz * mz > 64.0) {
                 double err = atan2(mz, mx) - (dir * M_PI / 4.0) - phi;
                 while (err > M_PI) err -= 2.0 * M_PI;
                 while (err < -M_PI) err += 2.0 * M_PI;
