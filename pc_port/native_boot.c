@@ -223,6 +223,7 @@ typedef struct NativeBoot {
     int in_game_paused;
     unsigned auto_start_phase1_ticks;
     unsigned auto_start_phase2_ticks;
+    unsigned auto_continue_card_ticks;
     unsigned auto_dismiss_ticks;
     int dialogue_active;
     int dialogue_dismissed;
@@ -1728,6 +1729,8 @@ static int sample_keyboard_pad(void *userdata, uint16_t *buttons) {
          * for the whole 0007 path lets 800CF3B0 set A3B6. Do not fprintf
          * here: TAP during that log clears 78DD2. */
         const char *auto_start = getenv("MUSASHI_BOOT_AUTO_START");
+        const char *auto_continue = getenv("MUSASHI_BOOT_AUTO_CONTINUE");
+        int continue_test = auto_continue && auto_continue[0] == '1';
         if (auto_start && auto_start[0] == '1') {
             if (!boot->opening_overlay_ready) {
                 /* Pulse Start during FMV to create authentic edge transitions
@@ -1746,12 +1749,32 @@ static int sample_keyboard_pad(void *userdata, uint16_t *buttons) {
                             sampled &= (uint16_t)~(1u << 3);
                     } else if (phase == 2u) {
                         ++boot->auto_start_phase2_ticks;
+                        if (continue_test && boot->auto_start_phase2_ticks >= 8u &&
+                            boot->auto_start_phase2_ticks <= 11u)
+                            sampled &= (uint16_t)~(1u << 6); /* Down: Continue */
                         if (boot->auto_start_phase2_ticks == 20u)
-                            fprintf(stderr, "native_boot: AUTO_START pressing Start at phase 2 (New Game) (frame %u)\n", boot->auto_start_phase2_ticks);
+                            fprintf(stderr, "native_boot: AUTO_START pressing Start at phase 2 (%s) (frame %u)\n",
+                                    continue_test ? "Continue" : "New Game", boot->auto_start_phase2_ticks);
                         if (boot->auto_start_phase2_ticks >= 20u && boot->auto_start_phase2_ticks <= 30u)
                             sampled &= (uint16_t)~(1u << 3);
                     }
                 }
+            }
+        }
+        /* Explicit test input only: the live retail card-menu callback and
+         * mode must identify a Load menu before any Cross pulses are sent. */
+        if (continue_test) {
+            uint32_t callback = 0;
+            uint16_t active = 0, menu = 0, mode = 0xffffu;
+            if (musashi_boot_read32(&boot->memory, 0x8011db24u, &callback) &&
+                musashi_boot_read16(&boot->memory, 0x800b9a14u, &active) &&
+                musashi_boot_read16(&boot->memory, 0x800b9a12u, &menu) &&
+                musashi_boot_read16(&boot->memory, 0x80115126u, &mode) &&
+                callback == 0x8017c080u && (active >> 8) == 1u &&
+                ((menu >> 8) == 5u || (menu >> 8) == 6u) && mode == 0u) {
+                ++boot->auto_continue_card_ticks;
+                if ((boot->auto_continue_card_ticks % 120u) < 4u)
+                    sampled &= (uint16_t)~(1u << 14); /* Cross */
             }
         }
         if (boot->scene1_reached) {

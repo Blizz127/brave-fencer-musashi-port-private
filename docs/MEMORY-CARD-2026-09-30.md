@@ -199,3 +199,96 @@ maps GP0 04..1E to one-word NOP. The candidate adds only the observed GP0 09
 case. Its test checks that GPU state is unchanged except the accepted-word
 counter. Unsupported command handling elsewhere stays checked. Next native
 probe is `20260930-164413-bfm-r31-save-menu-gp009-2561088`; do not duplicate.
+
+### Save file creation and header copy
+
+Runner `20260930-164413-bfm-r31-save-menu-gp009-2561088` passed the menu's
+GPU 09 word and issued the game's create/close calls for a one-block file.
+It then refused the guest header copy at `8002B50C` before any save payload
+write. A created directory entry alone is not a valid save.
+
+The candidate admits the save machine's unaligned copies only through four
+256-byte windows checked against owner-executable FNV digests. Every LWR
+successor in those windows was inspected for use of the pending register;
+none consumes it. The dedicated `card_save_merge_cpu` CTest executes the
+observed nine-byte copy for all sixteen source/destination alignments and
+passes. Runner `20260930-164754-bfm-r31-save-header-copy-2663995` is testing
+the resulting actual save path; do not duplicate.
+
+### Persistent retail slot write
+
+The header-copy probe reached the state packing loop at `80029878` and
+refused its unaligned copy. Two additional owner-executable digest windows
+cover pack/restore. `card_save_merge_cpu` now checks the 96-byte pack loop at
+all sixteen source/destination alignments, alongside the nine-byte header
+copy; `nested_source_call_cpu` also passes.
+
+Runner `20260930-165126-bfm-r31-save-state-copy-2740279` completed its
+200-second observation without a refusal. It created `BASLUS-00726MUSASHI`,
+wrote the 768-byte slot at file offset `0x480`, read it back, and updated
+and verified the slot directory. The isolated 128-KiB card's slot bytes
+at `0x2480..0x277F` match the captured guest buffer `80075CC0` exactly.
+Evidence is owner-local under
+`/home/blizz/release-staging/bfm-r31-memcard/save-state-evidence`.
+
+Cold title Continue runner `20260930-165622-bfm-r31-cold-title-continue-2876218`
+uses a copied card and a fresh process. An explicit test-only
+`MUSASHI_BOOT_AUTO_CONTINUE=1` selects the title Continue row via Down and
+confirms only the identified live retail Load-menu callback/mode with Cross.
+The full location/items/time restore acceptance remains pending.
+
+### Cold title overlay admission
+
+The first cold probes stopped at `8017C080` because MAIN12 was admitted
+only in carved ranges. Its code tail is 385024 bytes at file offset
+`0x28000`, loaded at `80128158`; the 178-word entry digest is
+`315723D9D3DF3616`. The interpreter now uses its existing identified-image
+rules for that code tail. Title Continue enters via `80128228`, so identity
+is checked lazily as well as at the usual overlay entry. The fixture checks
+admission of the observed callback and rejection after entry mutation and
+overlay-generation invalidation. Pack and restore 96-byte copy loops both
+pass at all sixteen alignments.
+
+Probe `20260930-170044-bfm-r31-cold-load-identity-2988960` is the current
+single dispatched run: it identifies MAIN12, enumerates the persistent file,
+and reads the retail slot-directory header. It has not yet issued the slot
+payload read; restore acceptance is still pending.
+
+The lazy-identity probe completed with no refusal, but did not confirm a
+slot: capture showed `D_800B9A13` changes from 5 to 6 during load-menu
+initialization. The explicit test input gate now recognizes both stages of
+the identified Load callback. Probe
+`20260930-170552-bfm-r31-cold-slot-confirm-3129812` read the 768-byte slot
+and resumed gameplay at `3001`, with no refusal observed so far.
+
+This does **not** meet the same-location acceptance test. The save fixture
+warped an initial story state to inn `2017`; it did not update story progress.
+Retail `func_80145934` chooses the Continue exit record from saved progress
+(`func_80029504`), then `func_800D1D24` loads that location. The observed
+opening-room return is consistent with this fixture's initial progress.
+A legitimate progressed save-point fixture and same location/items/time
+comparison remain required. One-hit kills and release/package gates remain
+pending; no release tag has been created by this work.
+
+### Completed cold-load evidence (limited acceptance)
+
+Cold runner `20260930-170552-bfm-r31-cold-slot-confirm-3129812` completed
+its 240-second observation with **zero execution refusals**. Captured RAM
+matches all 768 loaded slot bytes exactly, and the restored 732-byte slot
+cache is identical to the saved payload. The live item array (128 bytes),
+256-byte variable array, and 96-byte auxiliary array match the saved state.
+Wallet is 100 before and after. Saved day/time bytes `010001011E08` match
+the live bytes exactly at capture. One event flag changed after the room
+entry (flag byte 37: 0 -> 128), so the complete live state is not identical.
+The copied card hash stayed unchanged across loading:
+`bc137407785cc466a29950ce6dca2636113eb70a954b1c62946b3526b8c09506`.
+All evidence is owner-local under
+`/home/blizz/release-staging/bfm-r31-memcard/cold-slot-evidence`.
+
+Verification: 96 focused pytest checks passed (card BIOS, BIOS events,
+native VBlank, native IRQ dispatch, GPU controller); both dedicated
+`card_save_merge_cpu` and `nested_source_call_cpu` CTests passed. The staging
+retail-data guard checked 12 files with zero problems. The broader PVD
+fixture failures described above remain unresolved and are not counted as
+passing. This is evidence of real persistent slot saving and cold title
+loading, not final r31 acceptance or a published release.

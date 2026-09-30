@@ -38,6 +38,7 @@ static int refusal_trace(void);
 static int code_site_group_ok(unsigned group);
 static int in_identified_image(uint32_t pc);
 static int identified_module(uint32_t pc);
+static int identified_main12(uint32_t pc);
 
 /* MIPS I field encoders for generic checks (a call to a named target, a
  * register jump, a syscall): they state the operation, not stored words. */
@@ -2881,6 +2882,7 @@ static const uint32_t kOverlaySc01Member77CodeWords[182901]; /* shape only: 1829
  * code size from the developer's own disc) is admitted the same way: its
  * whole image at 0x80128158, fetched from guest RAM; this is its shape. */
 #include "location_images.h"
+static const uint32_t kOverlayMain12CodeWords[385024u / 4u]; /* shape only: MAIN.CD 0012 code */
 static const uint32_t kOverlayScLocationCodeWords[LOCATION_IMAGE_MAX_BYTES / 4]; /* shape only */
 static const uint32_t *g_sc01_code = kOverlaySc01_CodeWords;
 static uint32_t g_sc01_code_bytes = sizeof(kOverlaySc01_CodeWords);
@@ -8788,6 +8790,34 @@ typedef struct {
 } MergeRetireSite;
 
 static const MergeRetireSite kMergeRetireSites[] = {
+    {0x80029880u, 214u, 2u},
+    {0x80029a30u, 215u, 2u},
+    {0x8002b494u, 210u, 2u},
+    {0x8002b49cu, 210u, 3u},
+    {0x8002b4a4u, 210u, 4u},
+    {0x8002b4acu, 210u, 5u},
+    {0x8002b514u, 211u, 2u},
+    {0x8002b51cu, 211u, 3u},
+    {0x8002b568u, 211u, 3u},
+    {0x8002b570u, 211u, 4u},
+    {0x8002b578u, 211u, 5u},
+    {0x8002b580u, 211u, 6u},
+    {0x8002b5a8u, 211u, 3u},
+    {0x8002b5b0u, 211u, 4u},
+    {0x8002b5b8u, 211u, 5u},
+    {0x8002b5c0u, 211u, 6u},
+    {0x8002b604u, 212u, 2u},
+    {0x8002b60cu, 212u, 3u},
+    {0x8002b614u, 212u, 4u},
+    {0x8002b61cu, 212u, 5u},
+    {0x8002b6a8u, 212u, 2u},
+    {0x8002b6b0u, 212u, 3u},
+    {0x8002b6b8u, 212u, 4u},
+    {0x8002b6c0u, 212u, 5u},
+    {0x8002b748u, 213u, 2u},
+    {0x8002b750u, 213u, 3u},
+    {0x8002b758u, 213u, 4u},
+    {0x8002b760u, 213u, 5u},
     {0x80061788u, 209u, 2u},
     { 0x800d251cu, 84u /* site group */, 2u },
     { 0x800d2524u, 84u /* site group */, 3u },
@@ -8940,6 +8970,118 @@ static int merge_kind_for(uint32_t pc, uint32_t instruction) {
         if (op == 46u) return MERGE_SWR;
     }
     static const struct { uint32_t pc, grp; uint8_t kind; } sites[] = {
+        {0x80029878u,214u,MERGE_LWL},
+        {0x8002987cu,214u,MERGE_LWR},
+        {0x80029884u,214u,MERGE_SWL},
+        {0x80029888u,214u,MERGE_SWR},
+        {0x80029a28u,215u,MERGE_LWL},
+        {0x80029a2cu,215u,MERGE_LWR},
+        {0x80029a34u,215u,MERGE_SWL},
+        {0x80029a38u,215u,MERGE_SWR},
+        {0x8002b48cu,210u,MERGE_LWL},
+        {0x8002b490u,210u,MERGE_LWR},
+        {0x8002b494u,210u,MERGE_LWL},
+        {0x8002b498u,210u,MERGE_LWR},
+        {0x8002b49cu,210u,MERGE_LWL},
+        {0x8002b4a0u,210u,MERGE_LWR},
+        {0x8002b4a4u,210u,MERGE_LWL},
+        {0x8002b4a8u,210u,MERGE_LWR},
+        {0x8002b4acu,210u,MERGE_SWL},
+        {0x8002b4b0u,210u,MERGE_SWR},
+        {0x8002b4b4u,210u,MERGE_SWL},
+        {0x8002b4b8u,210u,MERGE_SWR},
+        {0x8002b4bcu,210u,MERGE_SWL},
+        {0x8002b4c0u,210u,MERGE_SWR},
+        {0x8002b4c4u,210u,MERGE_SWL},
+        {0x8002b4c8u,210u,MERGE_SWR},
+        {0x8002b50cu,211u,MERGE_LWL},
+        {0x8002b510u,211u,MERGE_LWR},
+        {0x8002b514u,211u,MERGE_LWL},
+        {0x8002b518u,211u,MERGE_LWR},
+        {0x8002b520u,211u,MERGE_SWL},
+        {0x8002b524u,211u,MERGE_SWR},
+        {0x8002b528u,211u,MERGE_SWL},
+        {0x8002b52cu,211u,MERGE_SWR},
+        {0x8002b560u,211u,MERGE_LWL},
+        {0x8002b564u,211u,MERGE_LWR},
+        {0x8002b568u,211u,MERGE_LWL},
+        {0x8002b56cu,211u,MERGE_LWR},
+        {0x8002b570u,211u,MERGE_LWL},
+        {0x8002b574u,211u,MERGE_LWR},
+        {0x8002b578u,211u,MERGE_LWL},
+        {0x8002b57cu,211u,MERGE_LWR},
+        {0x8002b580u,211u,MERGE_SWL},
+        {0x8002b584u,211u,MERGE_SWR},
+        {0x8002b588u,211u,MERGE_SWL},
+        {0x8002b58cu,211u,MERGE_SWR},
+        {0x8002b590u,211u,MERGE_SWL},
+        {0x8002b594u,211u,MERGE_SWR},
+        {0x8002b598u,211u,MERGE_SWL},
+        {0x8002b59cu,211u,MERGE_SWR},
+        {0x8002b5a0u,211u,MERGE_LWL},
+        {0x8002b5a4u,211u,MERGE_LWR},
+        {0x8002b5a8u,211u,MERGE_LWL},
+        {0x8002b5acu,211u,MERGE_LWR},
+        {0x8002b5b0u,211u,MERGE_LWL},
+        {0x8002b5b4u,211u,MERGE_LWR},
+        {0x8002b5b8u,211u,MERGE_LWL},
+        {0x8002b5bcu,211u,MERGE_LWR},
+        {0x8002b5c0u,211u,MERGE_SWL},
+        {0x8002b5c4u,211u,MERGE_SWR},
+        {0x8002b5c8u,211u,MERGE_SWL},
+        {0x8002b5ccu,211u,MERGE_SWR},
+        {0x8002b5d0u,211u,MERGE_SWL},
+        {0x8002b5d4u,211u,MERGE_SWR},
+        {0x8002b5d8u,211u,MERGE_SWL},
+        {0x8002b5dcu,211u,MERGE_SWR},
+        {0x8002b5fcu,211u,MERGE_LWL},
+        {0x8002b600u,212u,MERGE_LWR},
+        {0x8002b604u,212u,MERGE_LWL},
+        {0x8002b608u,212u,MERGE_LWR},
+        {0x8002b60cu,212u,MERGE_LWL},
+        {0x8002b610u,212u,MERGE_LWR},
+        {0x8002b614u,212u,MERGE_LWL},
+        {0x8002b618u,212u,MERGE_LWR},
+        {0x8002b61cu,212u,MERGE_SWL},
+        {0x8002b620u,212u,MERGE_SWR},
+        {0x8002b624u,212u,MERGE_SWL},
+        {0x8002b628u,212u,MERGE_SWR},
+        {0x8002b62cu,212u,MERGE_SWL},
+        {0x8002b630u,212u,MERGE_SWR},
+        {0x8002b634u,212u,MERGE_SWL},
+        {0x8002b638u,212u,MERGE_SWR},
+        {0x8002b6a0u,212u,MERGE_LWL},
+        {0x8002b6a4u,212u,MERGE_LWR},
+        {0x8002b6a8u,212u,MERGE_LWL},
+        {0x8002b6acu,212u,MERGE_LWR},
+        {0x8002b6b0u,212u,MERGE_LWL},
+        {0x8002b6b4u,212u,MERGE_LWR},
+        {0x8002b6b8u,212u,MERGE_LWL},
+        {0x8002b6bcu,212u,MERGE_LWR},
+        {0x8002b6c0u,212u,MERGE_SWL},
+        {0x8002b6c4u,212u,MERGE_SWR},
+        {0x8002b6c8u,212u,MERGE_SWL},
+        {0x8002b6ccu,212u,MERGE_SWR},
+        {0x8002b6d0u,212u,MERGE_SWL},
+        {0x8002b6d4u,212u,MERGE_SWR},
+        {0x8002b6d8u,212u,MERGE_SWL},
+        {0x8002b6dcu,212u,MERGE_SWR},
+        {0x8002b740u,213u,MERGE_LWL},
+        {0x8002b744u,213u,MERGE_LWR},
+        {0x8002b748u,213u,MERGE_LWL},
+        {0x8002b74cu,213u,MERGE_LWR},
+        {0x8002b750u,213u,MERGE_LWL},
+        {0x8002b754u,213u,MERGE_LWR},
+        {0x8002b758u,213u,MERGE_LWL},
+        {0x8002b75cu,213u,MERGE_LWR},
+        {0x8002b760u,213u,MERGE_SWL},
+        {0x8002b764u,213u,MERGE_SWR},
+        {0x8002b768u,213u,MERGE_SWL},
+        {0x8002b76cu,213u,MERGE_SWR},
+        {0x8002b770u,213u,MERGE_SWL},
+        {0x8002b774u,213u,MERGE_SWR},
+        {0x8002b778u,213u,MERGE_SWL},
+        {0x8002b77cu,213u,MERGE_SWR},
         {0x80061780u,209u,MERGE_LWL},
         {0x80061784u,209u,MERGE_LWR},
         {0x80061790u,209u,MERGE_SWL},
@@ -10025,6 +10167,12 @@ static const uint32_t kCodeSitePcs[] = {
     0x8004c7d8u, 0x8004c7dcu, 0x8004c7e0u, 0x8004c7e4u, 0x8004c7e8u,
 
     0x80061770u, 0x80061774u, 0x80061778u, 0x8006177cu, 0x80061780u, 0x80061784u, 0x80061788u, 0x8006178cu, 0x80061790u, 0x80061794u, 0x80061798u, 0x8006179cu, 0x800617a0u, 0x800617a4u, 0x800617a8u, 0x800617acu, 0x800617b0u, 0x800617b4u, 0x800617b8u, 0x800617bcu, 0x800617c0u, 0x800617c4u, 0x800617c8u,
+    0x8002b400u, 0x8002b404u, 0x8002b408u, 0x8002b40cu, 0x8002b410u, 0x8002b414u, 0x8002b418u, 0x8002b41cu, 0x8002b420u, 0x8002b424u, 0x8002b428u, 0x8002b42cu, 0x8002b430u, 0x8002b434u, 0x8002b438u, 0x8002b43cu, 0x8002b440u, 0x8002b444u, 0x8002b448u, 0x8002b44cu, 0x8002b450u, 0x8002b454u, 0x8002b458u, 0x8002b45cu, 0x8002b460u, 0x8002b464u, 0x8002b468u, 0x8002b46cu, 0x8002b470u, 0x8002b474u, 0x8002b478u, 0x8002b47cu, 0x8002b480u, 0x8002b484u, 0x8002b488u, 0x8002b48cu, 0x8002b490u, 0x8002b494u, 0x8002b498u, 0x8002b49cu, 0x8002b4a0u, 0x8002b4a4u, 0x8002b4a8u, 0x8002b4acu, 0x8002b4b0u, 0x8002b4b4u, 0x8002b4b8u, 0x8002b4bcu, 0x8002b4c0u, 0x8002b4c4u, 0x8002b4c8u, 0x8002b4ccu, 0x8002b4d0u, 0x8002b4d4u, 0x8002b4d8u, 0x8002b4dcu, 0x8002b4e0u, 0x8002b4e4u, 0x8002b4e8u, 0x8002b4ecu, 0x8002b4f0u, 0x8002b4f4u, 0x8002b4f8u, 0x8002b4fcu,
+    0x8002b500u, 0x8002b504u, 0x8002b508u, 0x8002b50cu, 0x8002b510u, 0x8002b514u, 0x8002b518u, 0x8002b51cu, 0x8002b520u, 0x8002b524u, 0x8002b528u, 0x8002b52cu, 0x8002b530u, 0x8002b534u, 0x8002b538u, 0x8002b53cu, 0x8002b540u, 0x8002b544u, 0x8002b548u, 0x8002b54cu, 0x8002b550u, 0x8002b554u, 0x8002b558u, 0x8002b55cu, 0x8002b560u, 0x8002b564u, 0x8002b568u, 0x8002b56cu, 0x8002b570u, 0x8002b574u, 0x8002b578u, 0x8002b57cu, 0x8002b580u, 0x8002b584u, 0x8002b588u, 0x8002b58cu, 0x8002b590u, 0x8002b594u, 0x8002b598u, 0x8002b59cu, 0x8002b5a0u, 0x8002b5a4u, 0x8002b5a8u, 0x8002b5acu, 0x8002b5b0u, 0x8002b5b4u, 0x8002b5b8u, 0x8002b5bcu, 0x8002b5c0u, 0x8002b5c4u, 0x8002b5c8u, 0x8002b5ccu, 0x8002b5d0u, 0x8002b5d4u, 0x8002b5d8u, 0x8002b5dcu, 0x8002b5e0u, 0x8002b5e4u, 0x8002b5e8u, 0x8002b5ecu, 0x8002b5f0u, 0x8002b5f4u, 0x8002b5f8u, 0x8002b5fcu,
+    0x8002b600u, 0x8002b604u, 0x8002b608u, 0x8002b60cu, 0x8002b610u, 0x8002b614u, 0x8002b618u, 0x8002b61cu, 0x8002b620u, 0x8002b624u, 0x8002b628u, 0x8002b62cu, 0x8002b630u, 0x8002b634u, 0x8002b638u, 0x8002b63cu, 0x8002b640u, 0x8002b644u, 0x8002b648u, 0x8002b64cu, 0x8002b650u, 0x8002b654u, 0x8002b658u, 0x8002b65cu, 0x8002b660u, 0x8002b664u, 0x8002b668u, 0x8002b66cu, 0x8002b670u, 0x8002b674u, 0x8002b678u, 0x8002b67cu, 0x8002b680u, 0x8002b684u, 0x8002b688u, 0x8002b68cu, 0x8002b690u, 0x8002b694u, 0x8002b698u, 0x8002b69cu, 0x8002b6a0u, 0x8002b6a4u, 0x8002b6a8u, 0x8002b6acu, 0x8002b6b0u, 0x8002b6b4u, 0x8002b6b8u, 0x8002b6bcu, 0x8002b6c0u, 0x8002b6c4u, 0x8002b6c8u, 0x8002b6ccu, 0x8002b6d0u, 0x8002b6d4u, 0x8002b6d8u, 0x8002b6dcu, 0x8002b6e0u, 0x8002b6e4u, 0x8002b6e8u, 0x8002b6ecu, 0x8002b6f0u, 0x8002b6f4u, 0x8002b6f8u, 0x8002b6fcu,
+    0x8002b700u, 0x8002b704u, 0x8002b708u, 0x8002b70cu, 0x8002b710u, 0x8002b714u, 0x8002b718u, 0x8002b71cu, 0x8002b720u, 0x8002b724u, 0x8002b728u, 0x8002b72cu, 0x8002b730u, 0x8002b734u, 0x8002b738u, 0x8002b73cu, 0x8002b740u, 0x8002b744u, 0x8002b748u, 0x8002b74cu, 0x8002b750u, 0x8002b754u, 0x8002b758u, 0x8002b75cu, 0x8002b760u, 0x8002b764u, 0x8002b768u, 0x8002b76cu, 0x8002b770u, 0x8002b774u, 0x8002b778u, 0x8002b77cu, 0x8002b780u, 0x8002b784u, 0x8002b788u, 0x8002b78cu, 0x8002b790u, 0x8002b794u, 0x8002b798u, 0x8002b79cu, 0x8002b7a0u, 0x8002b7a4u, 0x8002b7a8u, 0x8002b7acu, 0x8002b7b0u, 0x8002b7b4u, 0x8002b7b8u, 0x8002b7bcu, 0x8002b7c0u, 0x8002b7c4u, 0x8002b7c8u, 0x8002b7ccu, 0x8002b7d0u, 0x8002b7d4u, 0x8002b7d8u, 0x8002b7dcu, 0x8002b7e0u, 0x8002b7e4u, 0x8002b7e8u, 0x8002b7ecu, 0x8002b7f0u, 0x8002b7f4u, 0x8002b7f8u, 0x8002b7fcu,
+    0x80029800u, 0x80029804u, 0x80029808u, 0x8002980cu, 0x80029810u, 0x80029814u, 0x80029818u, 0x8002981cu, 0x80029820u, 0x80029824u, 0x80029828u, 0x8002982cu, 0x80029830u, 0x80029834u, 0x80029838u, 0x8002983cu, 0x80029840u, 0x80029844u, 0x80029848u, 0x8002984cu, 0x80029850u, 0x80029854u, 0x80029858u, 0x8002985cu, 0x80029860u, 0x80029864u, 0x80029868u, 0x8002986cu, 0x80029870u, 0x80029874u, 0x80029878u, 0x8002987cu, 0x80029880u, 0x80029884u, 0x80029888u, 0x8002988cu, 0x80029890u, 0x80029894u, 0x80029898u, 0x8002989cu, 0x800298a0u, 0x800298a4u, 0x800298a8u, 0x800298acu, 0x800298b0u, 0x800298b4u, 0x800298b8u, 0x800298bcu, 0x800298c0u, 0x800298c4u, 0x800298c8u, 0x800298ccu, 0x800298d0u, 0x800298d4u, 0x800298d8u, 0x800298dcu, 0x800298e0u, 0x800298e4u, 0x800298e8u, 0x800298ecu, 0x800298f0u, 0x800298f4u, 0x800298f8u, 0x800298fcu,
+    0x80029a00u, 0x80029a04u, 0x80029a08u, 0x80029a0cu, 0x80029a10u, 0x80029a14u, 0x80029a18u, 0x80029a1cu, 0x80029a20u, 0x80029a24u, 0x80029a28u, 0x80029a2cu, 0x80029a30u, 0x80029a34u, 0x80029a38u, 0x80029a3cu, 0x80029a40u, 0x80029a44u, 0x80029a48u, 0x80029a4cu, 0x80029a50u, 0x80029a54u, 0x80029a58u, 0x80029a5cu, 0x80029a60u, 0x80029a64u, 0x80029a68u, 0x80029a6cu, 0x80029a70u, 0x80029a74u, 0x80029a78u, 0x80029a7cu, 0x80029a80u, 0x80029a84u, 0x80029a88u, 0x80029a8cu, 0x80029a90u, 0x80029a94u, 0x80029a98u, 0x80029a9cu, 0x80029aa0u, 0x80029aa4u, 0x80029aa8u, 0x80029aacu, 0x80029ab0u, 0x80029ab4u, 0x80029ab8u, 0x80029abcu, 0x80029ac0u, 0x80029ac4u, 0x80029ac8u, 0x80029accu, 0x80029ad0u, 0x80029ad4u, 0x80029ad8u, 0x80029adcu, 0x80029ae0u, 0x80029ae4u, 0x80029ae8u, 0x80029aecu, 0x80029af0u, 0x80029af4u, 0x80029af8u, 0x80029afcu,
 };
 static const CodeSiteGroup kCodeSiteGroups[] = {
     {0xdb56c555aeccf5f9ull, 0u, 21u}, /* MAIN */
@@ -10237,8 +10385,14 @@ static const CodeSiteGroup kCodeSiteGroups[] = {
     {0x25b941314b54ffc6ull, 1643u, 64u}, /* D_8004C658 */
     {0x8c7d9126d717fb20ull, 1707u, 37u}, /* D_8004C658 */
     {0xd755b982182d4572ull, 1744u, 23u}, /* card device name builder */
+    {0x04d594265ff9ee97ull, 1767u, 64u}, /* retail save-header copy */
+    {0xba30c71ea4f51fe7ull, 1831u, 64u}, /* retail save-header copy */
+    {0xa08505f9170e3cceull, 1895u, 64u}, /* retail save-header copy */
+    {0x57c7c9f01ebb248bull, 1959u, 64u}, /* retail save-header copy */
+    {0x3dc5c90bb025802dull, 2023u, 64u}, /* save-state pack/restore */
+    {0x1a65c3a3ce7306c5ull, 2087u, 64u}, /* save-state pack/restore */
 };
-enum { CODE_SITE_GROUPS = 210 };
+enum { CODE_SITE_GROUPS = 216 };
 
 /* A group is verified on every lookup (at most 64 words: one 256-byte
  * window), so any change to a site's word in guest RAM, by an overlay load
@@ -10503,7 +10657,7 @@ static int formatter_admitted(const FormatterCpu *cpu, uint32_t *out) {
              cpu->pc < (0x80128158u + g_sc01_code_bytes)) {
         instruction = g_sc01_code[(cpu->pc - 0x80128158u) / 4u];
     }
-    else if (identified_module(cpu->pc))
+    else if (identified_main12(cpu->pc) || identified_module(cpu->pc))
         instruction = 0u;   /* shape only: verified module, fetched from guest RAM */
     else if (g_overlay_sc02_0031_words &&
              formatter_range_word(kFormatterRanges6,
@@ -12602,11 +12756,26 @@ static int identified_module(uint32_t pc) {
     return 0;
 }
 
+/* Title Continue enters MAIN12 through 80128228, without calling its
+ * 80128158 entry. Identify the same loaded code tail lazily, like modules. */
+static int identified_main12(uint32_t pc) {
+    static uint32_t verified_generation;
+    uint64_t digest;
+    if (pc < 0x80128158u || pc - 0x80128158u >= 385024u) return 0;
+    if (verified_generation == g_admit_generation) return 1;
+    if (!g_fetch_memory || !span_digest(g_fetch_memory, 0x80128158u,
+                                       SC_ENTRY_WORDS, &digest) ||
+        digest != 0x315723d9d3df3616ull) return 0;
+    verified_generation = g_admit_generation;
+    fprintf(stderr, "native_boot: CODE_MODULE identified MAIN12 base=80128158 bytes=385024\n");
+    return 1;
+}
+
 /* Code the formatter identified as a known image: the current SC location
  * member at 0x80128158 or a verified fixed-address module. */
 static int in_identified_image(uint32_t pc) {
     return (g_overlay_sc01_0000_words && pc >= 0x80128158u &&
-            pc < 0x80128158u + g_sc01_code_bytes) || identified_module(pc);
+            pc < 0x80128158u + g_sc01_code_bytes) || identified_main12(pc) || identified_module(pc);
 }
 #define SC02_0031_ENTRY_DIGEST 0x8126b01f303e7772ull
 #define SC01_MEMBER0_ENTRY_DIGEST 0x2e23652929d54c5dull
@@ -12625,13 +12794,16 @@ static int sc02_entry_matches(MusashiBootMemory *memory) {
 
 static int sc01_entry_matches(MusashiBootMemory *memory) {
     uint64_t digest;
-    int member0, member1, member77;
+    int member0, member1, member77, main12;
     /* Both members open with the same prologue and first diverge at word 85
      * (801282AC), so the whole 178-word entry span identifies the image. */
     if (!span_digest(memory, 0x80128158u, SC_ENTRY_WORDS, &digest)) return 0;
     member0 = digest == SC01_MEMBER0_ENTRY_DIGEST;
     member1 = digest == SC01_MEMBER1_ENTRY_DIGEST;
     member77 = digest == SC01_MEMBER77_ENTRY_DIGEST;
+    /* MAIN.CD 0012 loads its code tail (file offset 0x28000) here.
+     * Cold title Continue uses its complete retail card-menu machinery. */
+    main12 = digest == 0x315723d9d3df3616ull;
     if (member0) {
         g_sc01_code = kOverlaySc01_CodeWords;
         g_sc01_code_bytes = sizeof(kOverlaySc01_CodeWords);
@@ -12641,6 +12813,9 @@ static int sc01_entry_matches(MusashiBootMemory *memory) {
     } else if (member77) {
         g_sc01_code = kOverlaySc01Member77CodeWords;
         g_sc01_code_bytes = sizeof(kOverlaySc01Member77CodeWords);
+    } else if (main12) {
+        g_sc01_code = kOverlayMain12CodeWords;
+        g_sc01_code_bytes = sizeof(kOverlayMain12CodeWords);
     } else {
         size_t i;
         for (i = 0; i < sizeof kLocationImages / sizeof kLocationImages[0]; ++i)
@@ -12650,7 +12825,7 @@ static int sc01_entry_matches(MusashiBootMemory *memory) {
                 return 1;
             }
     }
-    return member0 || member1 || member77;
+    return member0 || member1 || member77 || main12;
 }
 
 /* A DIV is only admitted when the retail image carries GCC's canonical
@@ -13350,6 +13525,7 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
             fprintf(stderr, "native_boot: OVERLAY_IDENTITY location=%04x entry_digest=%016llx "
                     "sc01=%s sc02_0031=%d\n", (unsigned)location, (unsigned long long)digest,
                     !g_overlay_sc01_0000_words ? "none" :
+                    g_sc01_code == kOverlayMain12CodeWords ? "main12" :
                     g_sc01_code == kOverlaySc01Member77CodeWords ? "member77" :
                     g_sc01_code == kOverlayScLocationCodeWords ? "location-table" :
                     g_sc01_code == kOverlaySc01Member1CodeWords ? "member1" : "member0",
