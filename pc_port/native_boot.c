@@ -1089,6 +1089,193 @@ static void spiral_climb_input(NativeBoot *boot, uint16_t *sio_clear, uint16_t *
     if (stick_ly) *stick_ly = stick_y[heading];
 }
 
+/* Test-only scripted play (MUSASHI_GAMEPLAY_ACTION=script): the steps in
+ * MUSASHI_INPUT_SCRIPT, one per line, run in order. Input only, like the
+ * other actions; the player's position is read, never written.
+ *   room LLLL [mash|idle]  wait until location LLLL is live with the player
+ *                          in control (mash: tap Cross meanwhile, for text)
+ *   hold KEYS N            hold KEYS (U D L R X S T C st sel l1 r1 l2 r2,
+ *                          joined by +, or -) for N frames
+ *   tap KEYS ON OFF COUNT  press KEYS ON frames, release OFF, COUNT times
+ *   goto X Z N [KEYS]      walk toward world (X, Z) for at most N frames,
+ *                          optionally pulsing KEYS; ends within 48 units
+ *   mash N                 tap Cross 4 of every 30 frames for N frames
+ * Frames are in-game frames. The pad-to-world rotation of goto is learned
+ * from the player's own motion, starting from the opening stair's (Up is
+ * -X, Right is +Z), so a room's camera does not need to be known. */
+enum { SCRIPT_ROOM, SCRIPT_HOLD, SCRIPT_TAP, SCRIPT_GOTO, SCRIPT_MASH };
+typedef struct {
+    int kind;
+    uint16_t keys;
+    unsigned room, n, on, off, count;
+    int mash, x, z;
+} ScriptStep;
+
+static uint16_t script_keys(const char *s) {
+    static const struct { const char *name; unsigned bit; } names[] = {
+        { "sel", 0 }, { "st", 3 }, { "U", 4 }, { "R", 5 }, { "D", 6 }, { "L", 7 },
+        { "l2", 8 }, { "r2", 9 }, { "l1", 10 }, { "r1", 11 },
+        { "T", 12 }, { "C", 13 }, { "X", 14 }, { "S", 15 }
+    };
+    uint16_t keys = 0;
+    char buf[64], *tok, *save = NULL;
+    size_t i;
+    snprintf(buf, sizeof buf, "%s", s);
+    for (tok = strtok_r(buf, "+", &save); tok; tok = strtok_r(NULL, "+", &save))
+        for (i = 0; i < sizeof names / sizeof names[0]; ++i)
+            if (strcmp(tok, names[i].name) == 0) keys |= (uint16_t)(1u << names[i].bit);
+    return keys;
+}
+
+static int script_load(ScriptStep *steps, int max) {
+    const char *path = getenv("MUSASHI_INPUT_SCRIPT");
+    FILE *f = path ? fopen(path, "r") : NULL;
+    char line[256], a[64], b[64];
+    int n = 0;
+    if (!f) {
+        fprintf(stderr, "native_boot: SCRIPT cannot open MUSASHI_INPUT_SCRIPT=%s\n", path ? path : "");
+        return 0;
+    }
+    while (n < max && fgets(line, sizeof line, f)) {
+        ScriptStep *s = &steps[n];
+        char *hash = strchr(line, '#');
+        if (hash) *hash = 0;
+        memset(s, 0, sizeof *s);
+        a[0] = b[0] = 0;
+        if (sscanf(line, " room %x %63s", &s->room, a) >= 1) {
+            s->kind = SCRIPT_ROOM;
+            s->mash = strcmp(a, "mash") == 0;
+        } else if (sscanf(line, " hold %63s %u", a, &s->n) == 2) {
+            s->kind = SCRIPT_HOLD;
+            s->keys = script_keys(a);
+        } else if (sscanf(line, " tap %63s %u %u %u", a, &s->on, &s->off, &s->count) == 4) {
+            s->kind = SCRIPT_TAP;
+            s->keys = script_keys(a);
+            s->n = (s->on + s->off) * s->count;
+        } else if (sscanf(line, " goto %d %d %u %63s", &s->x, &s->z, &s->n, b) >= 3) {
+            s->kind = SCRIPT_GOTO;
+            s->keys = b[0] ? script_keys(b) : 0;
+        } else if (sscanf(line, " mash %u", &s->n) == 1) {
+            s->kind = SCRIPT_MASH;
+        } else {
+            continue;
+        }
+        ++n;
+    }
+    fclose(f);
+    fprintf(stderr, "native_boot: SCRIPT loaded %d steps from %s\n", n, path);
+    return n;
+}
+
+static uint16_t script_input(NativeBoot *boot) {
+    static const uint16_t dir_bits[8] = {   /* pad angle k*45 degrees, Right = 0, Up = 90 */
+        (1u << 5), (1u << 5) | (1u << 4), (1u << 4), (1u << 4) | (1u << 7),
+        (1u << 7), (1u << 7) | (1u << 6), (1u << 6), (1u << 6) | (1u << 5)
+    };
+    static ScriptStep steps[256];
+    static int nsteps = -1, cur, dir = 2;
+    static unsigned step_frame, last_frame, trace_frame, stuck_frame, escape;
+    static double phi = M_PI / 2.0;    /* world angle = pad angle + phi (atan2(z, x)) */
+    static int16_t prev_x, prev_z;
+    static unsigned prev_frame;
+    static double best;
+    unsigned frame = boot->in_game_frames, t;
+    uint16_t location = 0, mode = 0, keys = 0;
+    int16_t x = 0, z = 0;
+    uint8_t *p4d = musashi_boot_ram_span(&boot->memory, 0x80126B58u + 0x4Du, 1);
+    int in_field;
+    ScriptStep *s;
+
+    if (nsteps < 0) nsteps = script_load(steps, (int)(sizeof steps / sizeof steps[0]));
+    (void)musashi_boot_read16(&boot->memory, 0x800B9A08u, &location);
+    (void)musashi_boot_read16(&boot->memory, 0x800B99F0u, &mode);
+    (void)musashi_boot_read16(&boot->memory, 0x80126B58u + 0x06u, (uint16_t *)&x);
+    (void)musashi_boot_read16(&boot->memory, 0x80126B58u + 0x0Eu, (uint16_t *)&z);
+    in_field = boot->scene1_reached && mode == 9u && p4d && *p4d == 1u;
+    if (frame != last_frame && frame >= trace_frame + 30u) {
+        trace_frame = frame;
+        uint16_t act = 0, busy = 0;
+        (void)musashi_boot_read16(&boot->memory, 0x80126B58u, &act);
+        (void)musashi_boot_read16(&boot->memory, 0x80126B58u + 0x4Eu, &busy);
+        fprintf(stderr, "native_boot: SCRIPT_POS frame=%u step=%d loc=%04x mode=%u ctl=%d p4d=%u busy=%u act=%u pos=(%d,%d) phi=%d\n",
+                frame, cur, location, mode, in_field, p4d ? *p4d : 0u, busy & 0xffu, act, x, z,
+                (int)(phi * 180.0 / M_PI));
+    }
+    last_frame = frame;
+    if (cur >= nsteps) return 0;
+    s = &steps[cur];
+    t = frame - step_frame;
+    switch (s->kind) {
+    case SCRIPT_ROOM: {
+        uint8_t live = 0;
+        uint8_t *pl = musashi_boot_ram_span(&boot->memory, 0x800B9A10u, 1);
+        if (pl) live = *pl;
+        if (location == s->room && live == 1u && in_field) {
+            fprintf(stderr, "native_boot: SCRIPT step=%d room %04x reached frame=%u pos=(%d,%d)\n",
+                    cur, s->room, frame, x, z);
+            ++cur;
+            step_frame = frame;
+            return 0;
+        }
+        return s->mash && (frame % 30u) < 4u ? (uint16_t)(1u << 14) : 0;
+    }
+    case SCRIPT_HOLD:
+        keys = s->keys;
+        break;
+    case SCRIPT_TAP:
+        keys = (t % (s->on + s->off)) < s->on ? s->keys : 0;
+        break;
+    case SCRIPT_MASH:
+        keys = (frame % 30u) < 4u ? (uint16_t)(1u << 14) : 0;
+        break;
+    case SCRIPT_GOTO: {
+        double dx = (double)s->x - x, dz = (double)s->z - z, dist = sqrt(dx * dx + dz * dz);
+        if (t == 0u) { prev_x = x; prev_z = z; prev_frame = frame; best = dist; stuck_frame = frame; escape = 0; }
+        if (dist < 48.0) {
+            fprintf(stderr, "native_boot: SCRIPT step=%d goto (%d,%d) arrived frame=%u pos=(%d,%d)\n",
+                    cur, s->x, s->z, frame, x, z);
+            t = s->n;
+            break;
+        }
+        /* Learn the camera: the motion of the last 8 frames under one heading. */
+        if (frame >= prev_frame + 8u) {
+            double mx = (double)x - prev_x, mz = (double)z - prev_z;
+            if (!escape && mx * mx + mz * mz > 64.0) {
+                double err = atan2(mz, mx) - (dir * M_PI / 4.0) - phi;
+                while (err > M_PI) err -= 2.0 * M_PI;
+                while (err < -M_PI) err += 2.0 * M_PI;
+                phi += 0.35 * err;
+            }
+            prev_x = x; prev_z = z; prev_frame = frame;
+        }
+        if (dist < best - 16.0) { best = dist; stuck_frame = frame; }
+        if (!escape && frame > stuck_frame + 90u) {
+            escape = frame;   /* blocked: sidestep with a jump, then retry */
+            fprintf(stderr, "native_boot: SCRIPT step=%d goto blocked frame=%u pos=(%d,%d)\n", cur, frame, x, z);
+        }
+        if (escape && frame > escape + 40u) { escape = 0; stuck_frame = frame; best = dist; }
+        {
+            double a = atan2(dz, dx) - phi;
+            int k = (int)lround(a / (M_PI / 4.0));
+            if (escape) k += ((escape / 40u) & 1u) ? 2 : -2;
+            dir = ((k % 8) + 8) % 8;
+        }
+        keys = dir_bits[dir];
+        if (escape && frame < escape + 12u) keys |= (uint16_t)(1u << 14);
+        if (s->keys && (t % 45u) < 6u) keys |= s->keys;
+        break;
+    }
+    }
+    if (t + 1u >= s->n) {
+        if (s->kind != SCRIPT_GOTO || t >= s->n)
+            fprintf(stderr, "native_boot: SCRIPT step=%d done frame=%u loc=%04x pos=(%d,%d)\n",
+                    cur, frame, location, x, z);
+        ++cur;
+        step_frame = frame + 1u;
+    }
+    return keys;
+}
+
 /* Game controllers for the pad sampler: every attached SDL GameController,
  * reconciled by instance id about once a second (hotplug). The game reads
  * the pad that is actually sending input, preferring a physical or
@@ -1486,6 +1673,8 @@ static int sample_keyboard_pad(void *userdata, uint16_t *buttons) {
                         spiral_climb_input(boot, &clear, NULL, &stick_lx, &stick_ly);
                         sampled = (uint16_t)(sampled & (uint16_t)~clear);
                     }
+                } else if (strcmp(gameplay_action, "script") == 0) {
+                    sampled &= (uint16_t)~script_input(boot);
                 } else if (strcmp(gameplay_action, "patrol") == 0) {
                     uint32_t cycle = boot->in_game_frames % 60u;
                     if (cycle < 25u)
