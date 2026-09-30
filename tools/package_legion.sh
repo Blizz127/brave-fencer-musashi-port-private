@@ -58,16 +58,24 @@ done
 for pkg in libsdl2-2.0-0 libopenal1 libssl3t64 zlib1g; do
     [ -f "/usr/share/doc/$pkg/copyright" ] && cp "/usr/share/doc/$pkg/copyright" "$stage/licenses/$pkg-copyright"
 done
+# The Debian copyright files point at common-licenses; ship the texts.
+for text in LGPL-2.1 GPL-2; do
+    [ -f "/usr/share/common-licenses/$text" ] && cp "/usr/share/common-licenses/$text" "$stage/licenses/$text.txt"
+done
+openal_version=$(dpkg-query -W -f='${Version}' libopenal1 2>/dev/null || echo unknown)
 cp "$root/LICENSE-NOTES.md" "$stage/licenses/"
 [ -f "$root/tools/third_party/psycross/LICENSE" ] && cp "$root/tools/third_party/psycross/LICENSE" "$stage/licenses/PsyCross-LICENSE"
 cat > "$stage/licenses/THIRD-PARTY.txt" <<'TXT'
 PsyCross (MIT)            Psy-Q library reimplementation; see PsyCross-LICENSE
 SDL2 (zlib)               window, input, audio; lib/libSDL2-2.0.so.0
-OpenAL Soft (LGPL-2.1)    audio; lib/libopenal.so.1, dynamically linked
+OpenAL Soft (LGPL-2.1)    audio; lib/libopenal.so.1, dynamically linked (replaceable);
+                          full text in LGPL-2.1.txt; source: https://openal-soft.org/
+                          (Debian/Ubuntu package libopenal1 OPENAL_VERSION)
 OpenSSL libcrypto (Apache-2.0)   SHA-256 of the disc; lib/libcrypto.so.3
 zlib (zlib)               PNG encoder; lib/libz.so.1
 The game is copyrighted by its rights holders and is not included.
 TXT
+sed -i "s/OPENAL_VERSION/$openal_version/" "$stage/licenses/THIRD-PARTY.txt"
 
 cat > "$stage/launch.sh" <<'SH'
 #!/bin/sh
