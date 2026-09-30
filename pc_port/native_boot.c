@@ -1667,13 +1667,21 @@ static int epoch_advance_devices(void *userdata, uint64_t cycle) {
     MusashiGpuDma2State gpu;
     /* Deterministic native CD-before-GPU order; physical bus priority is not
      * modeled. Device reads never supply time or dispatch guest callbacks. */
-    int accepted=musashi_timer2_advance(&boot->timer2, cycle) &&
-           musashi_sio_controller_advance(&boot->sio, cycle) &&
-           musashi_scanline_timer_advance(&boot->timer1, cycle) &&
-           advance_cd_devices(boot, cycle) &&
-           musashi_mdec_advance(&boot->mdec, cycle) &&
-           (!boot->gpu_dma || musashi_gpu_dma2_advance(boot->gpu_dma,cycle)) &&
-           (!boot->spu || musashi_spu_cd_audio_advance(boot->spu, cycle));
+    const char *refused =
+        !musashi_timer2_advance(&boot->timer2, cycle) ? "timer2" :
+        !musashi_sio_controller_advance(&boot->sio, cycle) ? "sio" :
+        !musashi_scanline_timer_advance(&boot->timer1, cycle) ? "timer1" :
+        !advance_cd_devices(boot, cycle) ? "cd" :
+        !musashi_mdec_advance(&boot->mdec, cycle) ? "mdec" :
+        (boot->gpu_dma && !musashi_gpu_dma2_advance(boot->gpu_dma,cycle)) ? "gpu_dma2" :
+        (boot->spu && !musashi_spu_cd_audio_advance(boot->spu, cycle)) ? "spu_cd_audio" : NULL;
+    int accepted = refused == NULL;
+    if (refused) {
+        static int reported;
+        if (!reported++)
+            fprintf(stderr, "native_boot: DEVICE_ADVANCE_REFUSED device=%s cycle=%llu\n",
+                    refused, (unsigned long long)cycle);
+    }
     if (boot->gpu_dma && musashi_gpu_dma2_get_state(boot->gpu_dma,&gpu) &&
         gpu.transfers != boot->gpu_dma_transfers_logged) {
         observe_gpu_dma(boot,"COMPLETE");
