@@ -55,6 +55,38 @@ the third passed the corrected cleanup check. The last binary's SHA-256 is
 That binary predates the final overlong-filename rejection added to the probe;
 it is boot evidence for the earlier snapshot, not a final package gate.
 
+## In-game probe boundary
+
+The initial 25-second village-interior probes ended before their warps arrived
+and provide no menu acceptance evidence. Longer isolated runs reached the
+target interiors. Screenshots identify the bakery in 2015, a grocery-style
+shop in 2017, the pawnshop in 2018, church in 2019, and tavern in 201A.
+Room 2016 remains the inn candidate. Several shop menu labels render as
+colored bars while dialogue and HUD text can be readable; this is a separate
+visible rendering issue, not evidence of a card error.
+
+Runner `20260930-153221-bfm-r31-inn-save-859999` rebuilt the source of
+commit `35e894d409`, reached 2016, and executed all nine input-script steps
+(Cross taps with successive Down selections). It stopped cleanly after
+240 seconds. The interface remained in a dialogue state; **no BIOS card
+operation was called**. Captured RAM has game card state `800760AC = 0`,
+request-stack index `80072A34 = FFFFFFFF` (idle), and no published result.
+The card still has fifteen free directory entries and zero file-data bytes.
+Thus the probe did not create a game save and did not test title Continue.
+The cause of the dialogue/menu boundary is not yet established. In particular,
+this fresh-New-Game warp does not establish the story prerequisites of a
+normal Chapter 1 visit. It is not appropriate to infer a BIOS failure from it.
+
+The final candidate binary is SHA-256
+`cdf6e0f9d37d66fdab84a44e5d71caf6ddb9b3b92f2fafd09e37477a92011162`;
+the fetched binary matches the runner hash. Evidence is in the private
+`release-staging/bfm-r31-memcard/inn-evidence/` directory, including the input
+script, log, screenshots, card image, and 2 MiB guest RAM. Earlier menu jobs
+are `20260930-151612-bfm-r31-save-menu-557740`,
+`20260930-151905-bfm-r31-save-menu-long-607227`, and
+`20260930-152210-bfm-r31-find-save-menu-673970`. They have finished; do not
+redispatch them as if they were interrupted.
+
 ## Remaining acceptance
 
 Saving through an actual save-point menu, quitting, cold title Continue, and
@@ -64,3 +96,9 @@ existing quicksave path, the complete r31 gate, and packaging/publication are
 also pending. One-hit kills, progression assists, movement speed, and the
 graphics follow-up retain their existing separate scope. Nothing in these
 results establishes Chapter 1 milestone completion.
+
+Next: establish a valid inn/Record interaction and inspect its guest state
+before extending BIOS bindings. No reliable save/title-load completion ETA
+can be given from the present probe. A search of `pc_port/`, tests, the launch
+wrapper, and `PC-PORT.md` found no existing quicksave/savestate implementation
+to regress; that is a search result, not a compatibility claim for other tools.
