@@ -203,7 +203,9 @@ int main(void) {
         }
         for (unsigned k = 0; k < 32u; ++k) data_before[k] = gteRegs.CP2D.p[k].d;
         assert_banks(data_before, control_before);
-        assert(!musashi_gte_owner_write_data(&owner, &context, 12u, 7));
+        /* SXYP (15) pushes the screen FIFO and stays refused; SXY0..2 are
+         * plain stores (NormalClip). */
+        assert(!musashi_gte_owner_write_data(&owner, &context, 15u, 7));
         assert(!musashi_gte_owner_read_data(&owner, &context, 2u, &value));
         assert(!musashi_gte_owner_read_data(&owner, &context, 23u, &value));
         assert(musashi_gte_owner_read_data(&owner, &context, 24u, &value));

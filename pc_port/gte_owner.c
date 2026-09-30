@@ -206,6 +206,7 @@ int musashi_gte_owner_write_data(MusashiGteOwner *owner,
         (selector != 0u && selector != 1u && selector != 2u && selector != 3u &&
          selector != 4u && selector != 5u && selector != 6u && selector != 8u &&
          selector != 9u && selector != 10u && selector != 11u &&
+         selector != 12u && selector != 13u && selector != 14u &&
          selector != 19u && selector != 20u && selector != 21u &&
          selector != 22u && selector != 28u && selector != 30u &&
          selector != 31u) ||
@@ -221,10 +222,13 @@ int musashi_gte_owner_write_data(MusashiGteOwner *owner,
      * too: the libgs TMD families load and move lit colours there (MTC2
      * 22 at 8004EE94, LWC2 21/22 at 8004E210/4, MTC2 20 at 8004E20C) and
      * the depth-cue ops read them back; hardware and PsyCross's MTC2 store
-     * the word as is. */
+     * the word as is. SXY0..SXY2 (12..14) are plain stores as well (only
+     * SXYP, 15, pushes the screen FIFO): libgte NormalClip (800495EC) loads
+     * its three screen points there before NCLIP. */
     if (selector == 0u || selector == 1u || selector == 2u || selector == 3u ||
         selector == 4u || selector == 5u || selector == 6u || selector == 8u ||
-        selector == 9u || selector == 10u || selector == 11u || selector == 19u ||
+        selector == 9u || selector == 10u || selector == 11u || selector == 12u ||
+        selector == 13u || selector == 14u || selector == 19u ||
         selector == 20u || selector == 21u || selector == 22u) {
         gteRegs.CP2D.p[selector].d = value;
         owner->data_write_count++;
