@@ -24,8 +24,26 @@
 
 #include "psyq/bfm_psyq_compat.h"
 
+/* The device-level wrappers act on devices outside the device epoch's own
+ * commits; the lazy epoch commits deferred time first (native_boot). */
+static int (*g_device_sync)(void *);
+static void *g_device_sync_user;
+
+void musashi_native_lane_psyq_set_device_sync(int (*sync)(void *), void *userdata) {
+    g_device_sync = sync;
+    g_device_sync_user = userdata;
+}
+
+static int device_sync(const char *name, int *is_device) {
+    if (*is_device < 0) *is_device = musashi_native_lane_psyq_is_device(name);
+    return !*is_device || !g_device_sync || g_device_sync(g_device_sync_user);
+}
+
 #define BFM_PSYQ(pc, n, st, ac, ret, w) \
-    static int lane_psyq_##n(MusashiNativeLaneCall *c) { return w(c->r); }
+    static int lane_psyq_##n(MusashiNativeLaneCall *c) { \
+        static int is_device = -1; \
+        return device_sync(#n, &is_device) && w(c->r); \
+    }
 #include "psyq/bfm_psyq_compat.def"
 #undef BFM_PSYQ
 

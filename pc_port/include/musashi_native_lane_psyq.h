@@ -28,6 +28,9 @@ size_t musashi_native_lane_psyq_entries(MusashiNativeLaneEntry *out, size_t cap,
 MusashiNativeLaneEntry *musashi_native_lane_psyq_merge(const MusashiNativeLaneEntry *base,
                                                        size_t base_count, unsigned classes,
                                                        size_t *count);
+/* Called (when set) before every device-level wrapper; a zero return
+ * refuses the wrapper, leaving the retail code to the interpreter. */
+void musashi_native_lane_psyq_set_device_sync(int (*sync)(void *), void *userdata);
 /* Guest RAM/scratchpad for the wrappers and the GTE bridge over gte (NULL:
  * GTE-state wrappers refuse). memory NULL removes the bridge. */
 void musashi_native_lane_psyq_bind(MusashiBootMemory *memory, MusashiGteOwner *gte);

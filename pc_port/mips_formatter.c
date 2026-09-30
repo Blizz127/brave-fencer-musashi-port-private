@@ -8252,12 +8252,10 @@ static uint8_t *cpu_ram_span(MusashiBootMemory *memory, const FormatterCpu *cpu,
     return musashi_boot_ram_span(memory, address, width);
 }
 
-static int cpu_read8(MusashiBootMemory *memory, const FormatterCpu *cpu,
+static int mmio_read8(MusashiBootMemory *memory, const FormatterCpu *cpu,
                       uint32_t address, uint8_t *value) {
-    const uint8_t *p = cpu_ram_span(memory, cpu, address, 1);
     uint8_t accepted;
-    if (!value) return 0;
-    if (p) { *value = *p; return 1; }
+    (void)memory;
     if (address>=0x1f8010f0u && address<=0x1f8010f7u) {
         uint32_t word;
         const MusashiGpuDevice *bus=cpu->callback_device ? cpu->callback_device->reset_device : NULL;
@@ -8275,10 +8273,9 @@ static int cpu_read8(MusashiBootMemory *memory, const FormatterCpu *cpu,
     return 1;
 }
 
-static int cpu_write8(MusashiBootMemory *memory, const FormatterCpu *cpu,
+static int mmio_write8(MusashiBootMemory *memory, const FormatterCpu *cpu,
                        uint32_t address, uint32_t value) {
-    uint8_t *p = cpu_ram_span(memory, cpu, address, 1);
-    if (p) { *p = value; return 1; }
+    (void)memory;
     /* On-die DMA registers ignore byte enables: SB drives the full source
      * word shifted by the byte offset. Preserve source high bits here.
      * https://psx-spx.consoledev.net/partialwordwrites/ */
@@ -8291,41 +8288,25 @@ static int cpu_write8(MusashiBootMemory *memory, const FormatterCpu *cpu,
         cpu->cd_register_device->write8(cpu->cd_register_device->userdata, address, value);
 }
 
-static int cpu_read16(MusashiBootMemory *memory, const FormatterCpu *cpu,
+static int mmio_read16(MusashiBootMemory *memory, const FormatterCpu *cpu,
                        uint32_t address, uint16_t *value) {
-    const uint8_t *p = cpu_ram_span(memory, cpu, address, 2);
     uint16_t accepted;
-    if (!value || (address & 1u)) return 0;
-    if (p) { *value = (uint16_t)(p[0] | (uint16_t)p[1] << 8); return 1; }
+    (void)memory;
     if (!callback_read16(cpu, address, &accepted)) return 0;
     *value = accepted;
     return 1;
 }
 
-static int cpu_write16(MusashiBootMemory *memory, const FormatterCpu *cpu,
+static int mmio_write16(MusashiBootMemory *memory, const FormatterCpu *cpu,
                         uint32_t address, uint16_t value) {
-    uint8_t *p = cpu_ram_span(memory, cpu, address, 2);
-    if (address & 1u) return 0;
-    if (p) { p[0] = (uint8_t)value; p[1] = (uint8_t)(value >> 8); return 1; }
+    (void)memory;
     return callback_write16(cpu, address, value);
 }
 
-static int cpu_read32(MusashiBootMemory *memory, const FormatterCpu *cpu,
+static int mmio_read32(MusashiBootMemory *memory, const FormatterCpu *cpu,
                        uint32_t address, uint32_t *value) {
-    const uint8_t *p = cpu_ram_span(memory, cpu, address, 4);
     uint32_t accepted;
-    if (!value || (address & 3u)) return 0;
-    if (cpu->bios_image && cpu->bios_image->intersects &&
-        cpu->bios_image->intersects(address, 4)) {
-        if (!cpu->bios_image->read32 || !cpu->bios_image->read32(
-            cpu->bios_image->userdata, address, &accepted)) return 0;
-        *value = accepted;
-        return 1;
-    }
-    if (p) {
-        *value = p[0] | (uint32_t)p[1] << 8 | (uint32_t)p[2] << 16 | (uint32_t)p[3] << 24;
-        return 1;
-    }
+    (void)memory;
     if ((address == 0x1f801820u || address == 0x1f801824u ||
          (address >= 0x1f801080u && address <= 0x1f801098u) ||
          address == 0x1f801810u || address == 0x1f801814u ||
@@ -8372,19 +8353,9 @@ static int cpu_read32(MusashiBootMemory *memory, const FormatterCpu *cpu,
     return 1;
 }
 
-static int cpu_write32(MusashiBootMemory *memory, const FormatterCpu *cpu,
+static int mmio_write32(MusashiBootMemory *memory, const FormatterCpu *cpu,
                         uint32_t address, uint32_t value) {
-    uint8_t *p = cpu_ram_span(memory, cpu, address, 4);
-    if (address & 3u) return 0;
-    if (cpu->bios_image && cpu->bios_image->intersects &&
-        cpu->bios_image->intersects(address, 4))
-        return cpu->bios_image->write32 && cpu->bios_image->write32(
-            cpu->bios_image->userdata, address, value);
-    if (p) {
-        p[0] = (uint8_t)value; p[1] = (uint8_t)(value >> 8);
-        p[2] = (uint8_t)(value >> 16); p[3] = (uint8_t)(value >> 24);
-        return 1;
-    }
+    (void)memory;
     if (address == 0x1f801820u || address == 0x1f801824u ||
         (address >= 0x1f801080u && address <= 0x1f801098u) ||
         address == 0x1f801810u || address == 0x1f801814u ||
@@ -8405,6 +8376,122 @@ static int cpu_write32(MusashiBootMemory *memory, const FormatterCpu *cpu,
         (address == 0x1f801070u || address == 0x1f801074u))
         return cpu->input_device->write32(cpu->input_device->userdata, address, value);
     return callback_write32(cpu, address, value);
+}
+
+/* Every CPU data access that leaves RAM, the scratchpad and the BIOS image
+ * reaches a device. g_device_sync runs first (the lazy device epoch commits
+ * its deferred time there, so the device observes eager time) and
+ * g_device_observe after (the opt-in device-observation trace). */
+static int (*g_device_sync)(void *);
+static void (*g_device_observe)(void *, uint32_t pc, uint32_t address, uint32_t value,
+                                unsigned width, int write, int accepted);
+static void *g_device_hook_user;
+
+void musashi_formatter_set_device_hooks(int (*sync)(void *),
+    void (*observe)(void *, uint32_t, uint32_t, uint32_t, unsigned, int, int), void *userdata) {
+    g_device_sync = sync;
+    g_device_observe = observe;
+    g_device_hook_user = userdata;
+}
+
+static int device_enter(void) {
+    return !g_device_sync || g_device_sync(g_device_hook_user);
+}
+
+static void device_leave(const FormatterCpu *cpu, uint32_t address, uint32_t value,
+                         unsigned width, int write, int accepted) {
+    if (g_device_observe)
+        g_device_observe(g_device_hook_user, cpu->pc, address, value, width, write, accepted);
+}
+
+static int cpu_read8(MusashiBootMemory *memory, const FormatterCpu *cpu,
+                      uint32_t address, uint8_t *value) {
+    const uint8_t *p = cpu_ram_span(memory, cpu, address, 1);
+    int accepted;
+    if (!value) return 0;
+    if (p) { *value = *p; return 1; }
+    if (!device_enter()) return 0;
+    accepted = mmio_read8(memory, cpu, address, value);
+    device_leave(cpu, address, accepted ? *value : 0u, 1u, 0, accepted);
+    return accepted;
+}
+
+static int cpu_write8(MusashiBootMemory *memory, const FormatterCpu *cpu,
+                       uint32_t address, uint32_t value) {
+    uint8_t *p = cpu_ram_span(memory, cpu, address, 1);
+    int accepted;
+    if (p) { *p = value; return 1; }
+    if (!device_enter()) return 0;
+    accepted = mmio_write8(memory, cpu, address, value);
+    device_leave(cpu, address, value, 1u, 1, accepted);
+    return accepted;
+}
+
+static int cpu_read16(MusashiBootMemory *memory, const FormatterCpu *cpu,
+                       uint32_t address, uint16_t *value) {
+    const uint8_t *p = cpu_ram_span(memory, cpu, address, 2);
+    int accepted;
+    if (!value || (address & 1u)) return 0;
+    if (p) { *value = (uint16_t)(p[0] | (uint16_t)p[1] << 8); return 1; }
+    if (!device_enter()) return 0;
+    accepted = mmio_read16(memory, cpu, address, value);
+    device_leave(cpu, address, accepted ? *value : 0u, 2u, 0, accepted);
+    return accepted;
+}
+
+static int cpu_write16(MusashiBootMemory *memory, const FormatterCpu *cpu,
+                        uint32_t address, uint16_t value) {
+    uint8_t *p = cpu_ram_span(memory, cpu, address, 2);
+    int accepted;
+    if (address & 1u) return 0;
+    if (p) { p[0] = (uint8_t)value; p[1] = (uint8_t)(value >> 8); return 1; }
+    if (!device_enter()) return 0;
+    accepted = mmio_write16(memory, cpu, address, value);
+    device_leave(cpu, address, value, 2u, 1, accepted);
+    return accepted;
+}
+
+static int cpu_read32(MusashiBootMemory *memory, const FormatterCpu *cpu,
+                       uint32_t address, uint32_t *value) {
+    const uint8_t *p = cpu_ram_span(memory, cpu, address, 4);
+    uint32_t image_word;
+    int accepted;
+    if (!value || (address & 3u)) return 0;
+    if (cpu->bios_image && cpu->bios_image->intersects &&
+        cpu->bios_image->intersects(address, 4)) {
+        if (!cpu->bios_image->read32 || !cpu->bios_image->read32(
+            cpu->bios_image->userdata, address, &image_word)) return 0;
+        *value = image_word;
+        return 1;
+    }
+    if (p) {
+        *value = p[0] | (uint32_t)p[1] << 8 | (uint32_t)p[2] << 16 | (uint32_t)p[3] << 24;
+        return 1;
+    }
+    if (!device_enter()) return 0;
+    accepted = mmio_read32(memory, cpu, address, value);
+    device_leave(cpu, address, accepted ? *value : 0u, 4u, 0, accepted);
+    return accepted;
+}
+
+static int cpu_write32(MusashiBootMemory *memory, const FormatterCpu *cpu,
+                        uint32_t address, uint32_t value) {
+    uint8_t *p = cpu_ram_span(memory, cpu, address, 4);
+    int accepted;
+    if (address & 3u) return 0;
+    if (cpu->bios_image && cpu->bios_image->intersects &&
+        cpu->bios_image->intersects(address, 4))
+        return cpu->bios_image->write32 && cpu->bios_image->write32(
+            cpu->bios_image->userdata, address, value);
+    if (p) {
+        p[0] = (uint8_t)value; p[1] = (uint8_t)(value >> 8);
+        p[2] = (uint8_t)(value >> 16); p[3] = (uint8_t)(value >> 24);
+        return 1;
+    }
+    if (!device_enter()) return 0;
+    accepted = mmio_write32(memory, cpu, address, value);
+    device_leave(cpu, address, value, 4u, 1, accepted);
+    return accepted;
 }
 
 static int formatter_return(FormatterCpu *cpu) {
@@ -14339,6 +14426,38 @@ static MusashiResetGraphPrefixStatus run_startup_cpu_loop(
     MusashiResetGraphPrefixStop *stop, MusashiEntryRunStop *entry_stop,
     MusashiEntryObserver observer, void *observer_userdata);
 
+/* PCs that run_startup_cpu_loop answers on the host (BIOS services, device
+ * resets, event/input/CD services, intrinsics) instead of stepping. Any of
+ * them may read or change device state, so the lazy device epoch commits
+ * before them. This is a superset: each case below is one `cpu->pc == X`
+ * test in the loop, whatever its extra conditions. KEEP IN SYNC with the
+ * loop: a host service added there without a case here would observe
+ * devices at a stale time under MUSASHI_EPOCH_LAZY. */
+int musashi_formatter_pc_host_handled(uint32_t pc) {
+    if (pc < 0x80000000u || pc == UINT_MAX) return 1; /* BIOS vectors A0/B0/C0, sentinel */
+    switch (pc) {
+    case 0x80043060u:
+    case 0x8005ce78u: case 0x8005cea8u: case 0x8005ceb8u:
+    case CALLBACK_BIOS_A0_72: case CALLBACK_BIOS_B0_19:
+    case CALLBACK_CHANNEL_CLEAR: case CALLBACK_CHANNEL_INSTALLER:
+    case CALLBACK_CLEAR: case CALLBACK_EXIT_CRITICAL: case CALLBACK_EXIT_CRITICAL + 4u:
+    case CALLBACK_INSTALLER: case CALLBACK_INSTALLER_CLEAR: case CALLBACK_REGISTER_WRAPPER:
+    case CD_A0_70: case CD_B0_4A: case CD_B0_4B: case CD_B0_5B:
+    case CD_ENTER_CRITICAL + 4u: case CD_INITIALIZER_STRING_EMIT:
+    case EVENT_REGISTER:
+    case FORMATTER_CONSOLE_CHAR: case FORMATTER_SEARCH: case FORMATTER_STRING_LENGTH:
+    case INPUT_C0_0A: case INPUT_C0_2: case INPUT_C0_3:
+    case RESETGRAPH_DEVICE_RESET: case RESETGRAPH_FILL: case RESETGRAPH_GPU_CW:
+    case STARTUP_AFTER_RESETGRAPH:
+    case STARTUP_CLEAR_29044: case STARTUP_CLEAR_2906C: case STARTUP_CLEAR_29094:
+    case STARTUP_CLEAR_29218: case STARTUP_ENVIRONMENT_CLEAR: case STARTUP_GRAPHICS_RESET:
+    case STARTUP_RECORD_CLEAR:
+        return 1;
+    default:
+        return 0;
+    }
+}
+
 /* Publishes this loop so a native-lane guest call made on the same CPU
  * re-enters it (host-handled PCs, checkpoints) rather than a bare stepper. */
 static MusashiResetGraphPrefixStatus run_startup_cpu(
@@ -14452,6 +14571,8 @@ static MusashiResetGraphPrefixStatus run_startup_cpu_loop(
                 cpu->pc == 0x80046480u || cpu->pc == 0x80045698u))
                 observer(observer_userdata, &entry_stop->cpu);
         }
+        /* Host services below must stay listed in
+         * musashi_formatter_pc_host_handled (lazy device epoch). */
         if (device->checkpoint && !device->checkpoint(device->userdata, cpu)) {
             if (refusal_trace())
                 fprintf(stderr, "native_boot: RUN_REFUSED pc=%08x why=checkpoint\n", cpu->pc);

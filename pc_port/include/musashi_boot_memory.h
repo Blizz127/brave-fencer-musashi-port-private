@@ -290,6 +290,18 @@ typedef struct MusashiExecutionClock {
     int (*advance)(void *, uint32_t cycles);
 } MusashiExecutionClock;
 
+/* Device hooks around every CPU data access that is not RAM, scratchpad or
+ * the BIOS image (any CPU, any run loop). sync runs before the access; a
+ * zero return refuses it. observe runs after it with the value read or
+ * written. Either may be NULL. */
+void musashi_formatter_set_device_hooks(int (*sync)(void *),
+    void (*observe)(void *, uint32_t pc, uint32_t address, uint32_t value,
+                    unsigned width, int write, int accepted),
+    void *userdata);
+/* 1 when the startup/game run loop answers pc on the host instead of
+ * stepping the instruction there (a superset; see mips_formatter.c). */
+int musashi_formatter_pc_host_handled(uint32_t pc);
+
 typedef struct MusashiInputDevice {
     void *userdata;
     int (*enter_critical_section)(void *userdata);
