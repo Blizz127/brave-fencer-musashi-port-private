@@ -2936,6 +2936,8 @@ static const uint32_t kOverlaySc02_8017C180Words[76]; /* shape only: 76 words, f
 _Static_assert(sizeof(kOverlay0012_8017C008Words) / sizeof(uint32_t) == 30,
                "overlay 0012 8017C008 source span changed");
 
+int musashi_boot_overlay_0004_selected(void) { return g_overlay_0004_words; }
+
 void musashi_boot_select_overlay_0004_words(int enable) {
     g_overlay_0004_words = enable ? 1 : 0;
     if (enable) g_overlay_0007_words = g_overlay_0010_words = 0;

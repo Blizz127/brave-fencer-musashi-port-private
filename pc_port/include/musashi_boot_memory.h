@@ -251,6 +251,8 @@ MusashiResetGraphPrefixStatus musashi_boot_run_entry(
 /* After MAIN.CD member0007 is resident, 800CEEC8 is that overlay's dispatcher
  * rather than member0000's 800CEE40 delay-slot nop. */
 void musashi_boot_select_overlay_0004_words(int enable);
+/* 1 while MAIN member 4 (opening/movie overlay) is the selected image. */
+int musashi_boot_overlay_0004_selected(void);
 void musashi_boot_select_overlay_0007_words(int enable);
 /* After MAIN.CD member0010 replaces 0007 at 800CEDF8, 800CEFDC is the
  * title overlay function 8001125C jals, not member0007 table[2]. */

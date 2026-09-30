@@ -3358,6 +3358,16 @@ static void observe_entry(void *userdata, const MusashiEntryCpuSnapshot *cpu) {
     }
     if (cpu->pc == 0x800ceec8u) {
         static uint64_t n;
+        /* Entering the MAIN overlay slot: when MAIN member 4 (the opening /
+         * movie player) is the image loaded there again, select it again,
+         * as the opening does once. The attract demo reloads it for its
+         * movie after the title selected member 10, and its MDEC callback
+         * and code were refused while member 4 stayed deselected. */
+        if (boot->opening_overlay_ready && !musashi_boot_overlay_0004_selected() &&
+            loaded_pair_digest(&boot->memory, 0x800ceec8u) == OPENING_MEMBER0004_SIGNATURE) {
+            musashi_boot_select_overlay_0004_words(1);
+            fputs("native_boot: OVERLAY_SELECT member=4 source=GUEST_RAM reason=reentry\n", stderr);
+        }
         if (log_sample(&n, 8u, 4096u))
             fprintf(stderr, "native_boot: OVERLAY_JALR pc=800ceec8 v0=%08x v1=%08x "
                     "a0=%08x sp=%08x ra=%08x\n",
