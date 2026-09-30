@@ -42,8 +42,10 @@ done
 [ -f "$binary" ] && [ -n "$run" ] && [ -n "$out" ] && [ -n "$status" ] || {
     echo "usage: $0 --binary FILE --run N --out DIR --status TEXT [--known-issue TEXT ...]" >&2; exit 2; }
 
-commit=$(git -C "$root" rev-parse --short=9 HEAD)
-branch=$(git -C "$root" rev-parse --abbrev-ref HEAD)
+# BFM_PKG_COMMIT/BFM_PKG_BRANCH name a package built from an exported tree
+# (a container build on a runner), which has no git history of its own.
+commit=${BFM_PKG_COMMIT:-$(git -C "$root" rev-parse --short=9 HEAD)}
+branch=${BFM_PKG_BRANCH:-$(git -C "$root" rev-parse --abbrev-ref HEAD)}
 name="bfm-r$run-$commit"
 bindir=$(cd "$(dirname "$binary")" && pwd)
 stage="$out/$name"
