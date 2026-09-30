@@ -138,6 +138,9 @@ export LD_LIBRARY_PATH="$HERE/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 export MUSASHI_INTERACTIVE=${MUSASHI_INTERACTIVE:-1}
 export MUSASHI_GUEST_CLOCK=${MUSASHI_GUEST_CLOCK:-1}
 export MUSASHI_HOLD_WINDOW_MS=${MUSASHI_HOLD_WINDOW_MS:-3000}
+# Port Dev Menu opt-in without editing launch options: an empty file
+# ~/.config/bfm-port/dev-menu turns it on (Select+Start or F8 opens it).
+[ -f "$CONF/dev-menu" ] && export BFM_DEV_MENU=${BFM_DEV_MENU:-1}
 "$HERE/musashi_native_boot" --disc "$DISC" "$@" > "$LOG" 2>&1
 status=$?
 # A refused image is not worth remembering.
@@ -171,8 +174,11 @@ Controls: a game controller (the one you press buttons on; in Steam Game Mode,
 Requires glibc 2.38+ and the system's OpenGL, X11 or Wayland, and ALSA or
 PulseAudio/PipeWire libraries. Run ./launch.sh; extra arguments go to the port.
 Log of the last run: ~/.local/state/bfm-port/last-run.log.
-Dev menu (off by default): BFM_DEV_MENU=1 ./launch.sh, then F8 or Back+Start
-(F1 lists the keys). BFM_CHEATS=0 turns it off completely.
+Dev menu (off by default). Turn it on with an empty file
+~/.config/bfm-port/dev-menu (or BFM_DEV_MENU=1 ./launch.sh). Open it with
+Select+Start on the controller (Back+Start) or F8; d-pad or left stick
+moves, A selects, B goes back; F1 lists the keys. BFM_CHEATS=0 turns it
+off completely.
 TXT
 } > "$stage/README.txt"
 
