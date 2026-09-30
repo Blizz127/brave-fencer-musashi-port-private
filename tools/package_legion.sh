@@ -3,6 +3,7 @@
 #
 #   tools/package_legion.sh --binary BUILD/musashi_native_boot --run N \
 #       --out DIR --status TEXT [--known-issue TEXT ...] \
+#       [--binary-v3 BUILD-V3/musashi_native_boot] \
 #       [--exe YOUR/SLUS_007.26 --extracted YOUR/extracted/disc]
 #
 # Stages bfm-r<N>-<commit>/ (binary, runtime libraries, launch.sh, README,
@@ -16,6 +17,7 @@ set -eu
 
 root=$(cd "$(dirname "$0")/.." && pwd)
 binary=""
+binary_v3=""
 run=""
 out=""
 status=""
@@ -27,6 +29,7 @@ nl='
 while [ $# -gt 0 ]; do
     case "$1" in
         --binary) binary=$2; shift 2 ;;
+        --binary-v3) binary_v3=$2; shift 2 ;;
         --run) run=$2; shift 2 ;;
         --out) out=$2; shift 2 ;;
         --status) status=$2; shift 2 ;;
@@ -49,6 +52,13 @@ mkdir -p "$stage/lib" "$stage/licenses"
 
 cp "$binary" "$stage/musashi_native_boot"
 chmod 755 "$stage/musashi_native_boot"
+# Optional x86-64-v3 build (AVX2/BMI2/FMA; Legion Go, recent desktops):
+# launch.sh runs it only when the CPU has those features.
+if [ -n "$binary_v3" ]; then
+    [ -f "$binary_v3" ] || { echo "package_legion: $binary_v3 missing" >&2; exit 2; }
+    cp "$binary_v3" "$stage/musashi_native_boot.x86-64-v3"
+    chmod 755 "$stage/musashi_native_boot.x86-64-v3"
+fi
 cp "$bindir/libmusashi_x11_nograb.so" "$stage/lib/"
 for soname in libSDL2-2.0.so.0 libopenal.so.1 libcrypto.so.3 libz.so.1; do
     path=$(ldd "$binary" | awk -v s="$soname" '$1 == s {print $3}')
@@ -141,7 +151,19 @@ export MUSASHI_HOLD_WINDOW_MS=${MUSASHI_HOLD_WINDOW_MS:-3000}
 # Port Dev Menu opt-in without editing launch options: an empty file
 # ~/.config/bfm-port/dev-menu turns it on (Select+Start or F8 opens it).
 [ -f "$CONF/dev-menu" ] && export BFM_DEV_MENU=${BFM_DEV_MENU:-1}
-"$HERE/musashi_native_boot" --disc "$DISC" "$@" > "$LOG" 2>&1
+# The faster x86-64-v3 build when this CPU has every feature it uses
+# (BFM_BASELINE=1 forces the portable one).
+BIN="$HERE/musashi_native_boot"
+if [ -x "$HERE/musashi_native_boot.x86-64-v3" ] && [ "${BFM_BASELINE:-0}" != 1 ]; then
+    flags=$(grep -m1 '^flags' /proc/cpuinfo 2>/dev/null)
+    v3=1
+    for f in avx avx2 bmi1 bmi2 f16c fma abm movbe xsave; do
+        case " $flags " in *" $f "*) ;; *) v3=0 ;; esac
+    done
+    [ "$v3" = 1 ] && BIN="$HERE/musashi_native_boot.x86-64-v3"
+fi
+echo "bfm: running $(basename "$BIN")" > "$LOG"
+"$BIN" --disc "$DISC" "$@" >> "$LOG" 2>&1
 status=$?
 # A refused image is not worth remembering.
 [ "$status" = 2 ] && grep -q "could not start from your disc image" "$LOG" && rm -f "$CONF/disc"
@@ -173,7 +195,10 @@ Controls: a game controller (the one you press buttons on; in Steam Game Mode,
 
 Requires glibc 2.38+ and the system's OpenGL, X11 or Wayland, and ALSA or
 PulseAudio/PipeWire libraries. Run ./launch.sh; extra arguments go to the port.
-Log of the last run: ~/.local/state/bfm-port/last-run.log.
+Log of the last run: ~/.local/state/bfm-port/last-run.log (its first line
+says which build ran: the faster musashi_native_boot.x86-64-v3 on CPUs with
+AVX2/BMI2/FMA, else the portable one; BFM_BASELINE=1 forces the portable
+one). Every 10 s of play it logs a PERF line (game speed, fps).
 Dev menu (off by default). Turn it on with an empty file
 ~/.config/bfm-port/dev-menu (or BFM_DEV_MENU=1 ./launch.sh). Open it with
 Select+Start on the controller (Back+Start) or F8; d-pad or left stick
