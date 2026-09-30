@@ -71,25 +71,70 @@ TXT
 
 cat > "$stage/launch.sh" <<'SH'
 #!/bin/sh
-# Brave Fencer Musashi native port. Reads your own disc files from
-# BFM_DISC_DIR (default below); nothing from the game is in this package.
-set -eu
-DISC=${BFM_DISC_DIR:-"$HOME/Games/banshee-library/games/brave-fencer-musashi/disc"}
+# Brave Fencer Musashi native port. Plays from your own disc image (.cue/.bin
+# of the USA disc, SLUS-00726); nothing from the game is in this package.
+# The disc is found in this order: $BFM_DISC (a .cue or .bin), the one you
+# picked last time, then ./disc next to this script,
+# ~/Games/brave-fencer-musashi/disc and
+# ~/Games/banshee-library/games/brave-fencer-musashi/disc ($BFM_DISC_DIR too);
+# otherwise a file picker asks once and the choice is remembered.
+set -u
 HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-for f in files/SLUS_007.26 disc.cue disc.bin; do
-    [ -f "$DISC/$f" ] || { echo "bfm: missing $DISC/$f (set BFM_DISC_DIR)" >&2; exit 66; }
-done
+CONF=${XDG_CONFIG_HOME:-$HOME/.config}/bfm-port
+STATE=${XDG_STATE_HOME:-$HOME/.local/state}/bfm-port
+mkdir -p "$CONF" "$STATE"
+LOG="$STATE/last-run.log"
+
+say() {  # message box when a desktop tool exists, always stderr
+    echo "bfm: $1" >&2
+    if command -v zenity >/dev/null 2>&1; then zenity --error --title="Brave Fencer Musashi" --text="$1" 2>/dev/null
+    elif command -v kdialog >/dev/null 2>&1; then kdialog --title "Brave Fencer Musashi" --error "$1" 2>/dev/null
+    fi
+}
+
+find_in() {  # first .cue, else first .bin, in a folder
+    [ -d "$1" ] || return 1
+    for f in "$1"/*.cue "$1"/*.CUE "$1"/*.bin "$1"/*.BIN; do
+        [ -f "$f" ] && { echo "$f"; return 0; }
+    done
+    return 1
+}
+
+DISC=${BFM_DISC:-}
+[ -z "$DISC" ] && [ -f "$CONF/disc" ] && DISC=$(cat "$CONF/disc")
+[ -n "$DISC" ] && [ ! -f "$DISC" ] && DISC=
+if [ -z "$DISC" ]; then
+    for d in ${BFM_DISC_DIR:+"$BFM_DISC_DIR"} "$HERE/disc" "$HOME/Games/brave-fencer-musashi/disc" \
+             "$HOME/Games/banshee-library/games/brave-fencer-musashi/disc"; do
+        DISC=$(find_in "$d") && break
+        DISC=
+    done
+fi
+if [ -z "$DISC" ]; then
+    if command -v zenity >/dev/null 2>&1; then
+        DISC=$(zenity --file-selection --title="Choose your Brave Fencer Musashi (USA) .cue or .bin" \
+               --file-filter="Disc image | *.cue *.CUE *.bin *.BIN" 2>/dev/null) || DISC=
+    elif command -v kdialog >/dev/null 2>&1; then
+        DISC=$(kdialog --title "Choose your Brave Fencer Musashi (USA) .cue or .bin" \
+               --getopenfilename "$HOME" "*.cue *.CUE *.bin *.BIN" 2>/dev/null) || DISC=
+    fi
+fi
+if [ -z "$DISC" ]; then
+    say "No disc image found. Put your Brave Fencer Musashi (USA) .cue and .bin in ~/Games/brave-fencer-musashi/disc/ and start again."
+    exit 66
+fi
+printf '%s\n' "$DISC" > "$CONF/disc"
+
 export LD_LIBRARY_PATH="$HERE/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-# Playable window, real-time guest clock, the EXE as the code image.
+# Playable window, real-time guest clock, errors shown on screen.
 export MUSASHI_INTERACTIVE=${MUSASHI_INTERACTIVE:-1}
 export MUSASHI_GUEST_CLOCK=${MUSASHI_GUEST_CLOCK:-1}
-export MUSASHI_CODE_IMAGE=${MUSASHI_CODE_IMAGE:-"$DISC/files/SLUS_007.26"}
-export MUSASHI_HOLD_WINDOW_MS=${MUSASHI_HOLD_WINDOW_MS:-10000}
-exec "$HERE/musashi_native_boot" \
-  "$DISC/files/SLUS_007.26" \
-  "$DISC/disc.cue" \
-  "$DISC/disc.bin" \
-  "$@"
+export MUSASHI_HOLD_WINDOW_MS=${MUSASHI_HOLD_WINDOW_MS:-3000}
+"$HERE/musashi_native_boot" --disc "$DISC" "$@" > "$LOG" 2>&1
+status=$?
+# A refused image is not worth remembering.
+[ "$status" = 2 ] && grep -q "could not start from your disc image" "$LOG" && rm -f "$CONF/disc"
+exit "$status"
 SH
 chmod 755 "$stage/launch.sh"
 
@@ -100,11 +145,11 @@ chmod 755 "$stage/launch.sh"
     [ -n "$issues" ] && { echo; echo "Known issues:"; printf '%s' "$issues" | sed 's/^/  - /'; }
     cat <<'TXT'
 
-Game files (your own disc; none are included). launch.sh reads exactly:
-  $BFM_DISC_DIR/files/SLUS_007.26   the boot executable, extracted from the disc
-  $BFM_DISC_DIR/disc.cue            cue sheet; its FILE line must name disc.bin
-  $BFM_DISC_DIR/disc.bin            the raw MODE2/2352 image (data + 3 audio tracks)
-BFM_DISC_DIR defaults to ~/Games/banshee-library/games/brave-fencer-musashi/disc.
+Your disc (none of the game is included). Put the .cue and .bin dump of your
+Brave Fencer Musashi (USA, SLUS-00726) disc in ~/Games/brave-fencer-musashi/disc/
+(or next to launch.sh in disc/), or pick it when asked on first start; the
+choice is remembered in ~/.config/bfm-port/disc. One-bin and per-track dumps
+both work. A 2048-byte .iso does not (it lacks the CD-XA data).
 No BIOS is needed: the port provides its own kernel services.
 
 Controls: a game controller (first connected SDL GameController) or keyboard.
@@ -116,6 +161,8 @@ Controls: a game controller (first connected SDL GameController) or keyboard.
 
 Requires glibc 2.38+ and the system's OpenGL, X11 or Wayland, and ALSA or
 PulseAudio/PipeWire libraries. Run ./launch.sh; extra arguments go to the port.
+Log of the last run: ~/.local/state/bfm-port/last-run.log.
+Dev menu (off by default): BFM_DEV_MENU=1 ./launch.sh, then F1 or L3+R3.
 TXT
 } > "$stage/README.txt"
 
@@ -140,7 +187,9 @@ manifest = {
     "playback": status,
     "known_issues": [i for i in issues.splitlines() if i],
     "disc_dir_default": disc, "disc_dir_env": "BFM_DISC_DIR",
-    "disc_inputs": [disc + "/files/SLUS_007.26", disc + "/disc.cue", disc + "/disc.bin"],
+    "disc_inputs": ["your own .cue/.bin of Brave Fencer Musashi (USA, SLUS-00726); "
+                    "searched in ~/Games/brave-fencer-musashi/disc, ./disc, " + disc +
+                    ", or picked on first run"],
     "excluded": ["disc image and all other game data", "BIOS"],
     "launch": "./launch.sh [native port options]",
     "files": files,
