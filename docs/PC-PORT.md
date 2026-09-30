@@ -717,6 +717,51 @@ RESOURCE FF FFSPEED SHOT) drives it headless. The model test is
 disable, zero guest writes over 1000 VBlanks with every cheat off, field
 gating, refusals, the warp's record and arrival.
 
+## Lazy device epoch (2026-09-30)
+
+Under the guest clock every guest instruction's checkpoint used to commit
+its charge and sync the devices: three full device passes (Timer2, SIO,
+Timer1, CD+DMA3, MDEC, GPU DMA2, SPU) per instruction, about half of the
+CPU thread, for a game running at 23-27% of real speed headless. The lazy
+epoch (`MUSASHI_EPOCH_LAZY`, on by default with `MUSASHI_GUEST_CLOCK=1`;
+`MUSASHI_EPOCH_LAZY=0` restores the eager commit) defers the charge while
+the devices are quiescent and the deferred time stays below the next
+deadline, and skips the commit and the (empty) IRQ dispatch.
+
+- **Deadline** (`epoch_next_deadline`, refreshed after every commit): the
+  next guest VBlank edge; SIO `ack_due`; CD phase `due`, `sector_due`,
+  `sector_publish_due`; DMA3 `due`; MDEC input/output due; GPU DMA2 `due`;
+  the SPU's next 768-cycle sample boundary. Quiescent also requires every
+  device clock at the committed cycle (none held back), no CD PCM
+  backpressure, no DMA3 DREQ wait, and neither the CD IRQ nor the BIOS
+  callback frame active. Timers have no deadline: their counters and wrap
+  flags are additive and raise no IRQ.
+- **When it commits**: at a deadline, with I_STAT&I_MASK set, at a
+  host-handled PC (`musashi_formatter_pc_host_handled`, which must list
+  every host service in `run_startup_cpu_loop`), and before anything else
+  touches a device: every CPU device access (formatter device hooks), the
+  host device callbacks, the frames, the backup-unit wait and the
+  device-level PsyQ lane wrappers (`lazy_sync`). Such an access also forces
+  the next checkpoint to commit and re-read the deadlines. A commit runs
+  the eager sequence with the accumulated cycles, so every commit that
+  changes more than clocks happens at the eager cycle.
+- **Checks**: `MUSASHI_EPOCH_LAZY_CHECK=1` re-derives the deadline at every
+  skipped checkpoint and, before each commit that follows skips, first
+  commits to the last skipped checkpoint and requires all non-clock device
+  state, I_STAT and the VBlank sequence unchanged (`LAZY_CHECK_FAILED`
+  aborts). `PERF_EPOCH` lines give skipped/committed checkpoints and why.
+- **Differential trace**: `MUSASHI_TRACE_DEVICE_OBS=1` hashes every CPU
+  device access, I_STAT change and IRQ delivery with its device cycle
+  (`DEVOBS` per VBlank; `MUSASHI_TRACE_DEVICE_OBS_FILE` writes the records).
+  Use it with `MUSASHI_AUDIO=null_instant`: the plain null sink drains at
+  wall-clock rate, so a run faster than real time drops SPU samples and
+  the game reads different voice envelopes.
+
+Measured on the Alienware runner (x86-64-v3, headless, `mash` input):
+eager 23-27% vs lazy 102-136% unthrottled; throttled, lazy holds 100%
+with about 15% idle. About 99.6% of checkpoints are skipped in gameplay;
+the SPU sample boundary is most of the rest.
+
 ## Test-only drivers
 
 native_boot writes no guest RAM behind the game's back. The former
@@ -725,6 +770,9 @@ native_boot writes no guest RAM behind the game's back. The former
 test-only scripted pad for headless verification runs: it presses buttons
 through the SIO pad sampler, writes no guest RAM, prints a `DIVERGENCE`
 line when set, and is never set by `launch.sh`.
+`MUSASHI_AUDIO=null_instant` is a null audio sink that consumes every frame
+at once (host-speed independent, for determinism runs); `MUSASHI_AUDIO=null`
+drains at 44.1 kHz of wall time.
 
 ## Native lane: running matched decomp C on the host (2026-09-28)
 

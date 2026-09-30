@@ -2523,8 +2523,9 @@ static int epoch_video_edge(void *userdata, uint64_t sequence, uint64_t cycle) {
  * against a 1088-cycle SIO ACK and ~225k-cycle CD sectors) and stays
  * deterministic. Any remainder is flushed before every epoch sync. */
 #define MUSASHI_GUEST_CLOCK_QUANTUM 16u
-/* MUSASHI_EPOCH_LAZY unset: the lazy device epoch below is off. */
-#define MUSASHI_EPOCH_LAZY_DEFAULT 0
+/* MUSASHI_EPOCH_LAZY unset: the lazy device epoch below is on (guest clock
+ * only); MUSASHI_EPOCH_LAZY=0 commits every checkpoint eagerly. */
+#define MUSASHI_EPOCH_LAZY_DEFAULT 1
 
 static int guest_clock_flush(NativeBoot *boot) {
     uint32_t pending = boot->guest_pending_cycles;
