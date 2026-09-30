@@ -107,6 +107,29 @@ static void xa_audio_delivery(const MusashiDiscMedia *m) {
     assert(state(c).next_lba==4665 && state(c).sectors_fetched==1 && !state(c).sectors_published);
     assert(musashi_cd_owned_close(c));
 }
+/* Setfilter + mode C8: the opening's XA sector 4664 plays under its own
+ * file/channel and is skipped (no PCM, no data) under any other channel. */
+static void xa_filter(const MusashiDiscMedia *m) {
+    MusashiDiscMediaInfo info;uint8_t raw[2352];unsigned pass;
+    assert(musashi_disc_media_get_info(m,&info));
+    assert(musashi_disc_media_read_sector(m,4664+info.tracks[0].index01_frame,raw,sizeof raw));
+    assert((raw[18]&0x44)==0x44);
+    for(pass=0;pass<2;++pass){
+        Hardware h={1,1,0,NULL};MusashiCdOwned *c=create(m,&h,0);
+        unsigned before=xa_calls;
+        assert(musashi_cd_owned_set_xa_sink(c,capture_xa,NULL));
+        w(c,2,raw[16]);w(c,2,pass?(raw[17]+1u)&0x1f:raw[17]);command(c,0x0d);packet(c,3,2);
+        assert(state(c).filter_file==raw[16]);
+        w(c,2,1);w(c,2,4);w(c,2,0x14);command(c,2);packet(c,3,2);
+        w(c,2,0xc8);command(c,0x0e);packet(c,3,2);assert(state(c).mode==0xc8);
+        command(c,0x1b);packet(c,3,0x22);
+        assert(musashi_cd_owned_advance(c,state(c).sector_due));
+        assert(xa_calls==before+(pass?0u:1u));
+        assert(state(c).xa_sectors==(pass?0u:1u) && state(c).xa_filtered==(pass?1u:0u));
+        assert(!state(c).interrupt && !state(c).incoming_valid && state(c).next_lba==4665);
+        assert(musashi_cd_owned_close(c));
+    }
+}
 static void pvd(const MusashiDiscMedia *m) {
     Hardware h={1,1,0,NULL}; MusashiCdOwned *c=create(m,&h,97);
     uint64_t due=start(c); uint8_t raw[2352],out[2068],trailer[280];
@@ -183,8 +206,8 @@ static void refusals(const MusashiDiscMedia *m) {
             case 11:h.reenter=c;assert(!musashi_cd_owned_read_data(c,out,4));h.reenter=NULL;break;
             case 12:assert(!musashi_cd_owned_advance(c,due-1));break;
             /* Setmode during reads is already supported by the LIST owner.
-             * Filtered XA remains unsupported and must still refuse. */
-            case 13:w(c,2,0xc8);assert(!musashi_cd_owned_write8(c,0x1f801801,0x0e));break;
+             * Other mode bits (here 04, CD-DA report) still refuse. */
+            case 13:w(c,2,0xc4);assert(!musashi_cd_owned_write8(c,0x1f801801,0x0e));break;
             }
             assert(state(c).fifo_cursor==0);
         }
@@ -253,6 +276,6 @@ static void stream_unrequested_publication(const MusashiDiscMedia *m) {
 
 int main(int argc,char **argv) {
     MusashiDiscMedia *m; assert(argc==3);m=musashi_disc_media_open_pinned(argv[1],argv[2]);assert(m);
-    stream_unrequested_publication(m);xa_audio_delivery(m);restart_after_pause(m);data_only(m,6);data_only(m,0x1b);pvd(m);requests(m);refusals(m);holds(m);protected_unrequested(m);pause_first_and_overflow(m);musashi_disc_media_close(m);
+    stream_unrequested_publication(m);xa_audio_delivery(m);xa_filter(m);restart_after_pause(m);data_only(m,6);data_only(m,0x1b);pvd(m);requests(m);refusals(m);holds(m);protected_unrequested(m);pause_first_and_overflow(m);musashi_disc_media_close(m);
     puts("CD_SECTOR_PASS");return 0;
 }

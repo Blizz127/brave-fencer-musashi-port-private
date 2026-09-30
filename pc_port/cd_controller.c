@@ -300,6 +300,12 @@ static int owned_retry(MusashiCdOwned *c, uint64_t event, uint64_t target,
     *due = target + wait;
     return 1;
 }
+/* Setmode values: speed plus 2340-byte data (A0) or XA-ADPCM (C0), either
+ * with the XA filter bit 3 (A8/C8). */
+static int owned_mode_ok(uint8_t mode) {
+    mode &= (uint8_t)~0x08u;
+    return mode == 0xa0 || mode == 0xc0;
+}
 static int owned_sector(MusashiCdOwned *c, uint64_t event) {
     MusashiCdOwnedState *s = &c->state;
     MusashiDiscMediaInfo info;
@@ -319,6 +325,17 @@ static int owned_sector(MusashiCdOwned *c, uint64_t event) {
     /* Only actual data-track Mode2 sectors are currently produced. */
     if (raw[15] != 2) return owned_fault(c, MUSASHI_CD_OWNED_BAD_ACCESS);
     /* XA audio goes through the decoder/matrix/SPU sink, never INT1 data. */
+    if ((s->mode&0x48u)==0x48u && (raw[18]&0x44u)==0x44u &&
+        (raw[16]!=s->filter_file || raw[17]!=s->filter_channel)) {
+        /* Another file/channel's XA-ADPCM while filtering: the drive
+         * neither plays nor delivers it. */
+        if (s->xa_filtered==UINT64_MAX) return owned_fault(c,MUSASHI_CD_OWNED_OVERFLOW);
+        ++s->xa_filtered;
+        s->position_lba=s->next_lba++;s->position_valid=1;
+        ++s->sectors_fetched;c->first_sector_pending=0;
+        s->sector_due=event+225792u;
+        return s->fault==MUSASHI_CD_OWNED_OK;
+    }
     if ((s->mode&0x40u) && (raw[18]&0x44u)==0x44u) {
         int16_t pcm[4704];unsigned i;
         if (!c->xa_sink || s->xa_sectors==UINT64_MAX ||
@@ -525,8 +542,10 @@ int musashi_cd_owned_write8(void *userdata, uint32_t address, uint8_t value) {
         if (s->index == 3) { s->volume_pending[3] = value; break; }
         if (s->index || s->phase || s->interrupt || s->response_count ||
             (value != 1 && value != 2 && value != 6 && value != 0x1b && value != 9 && value != 0x0e &&
-             value != 0x0a && value != 0x0c && value != 0x13 && value != 0x14 && value != 0x15) ||
-            s->parameter_count != (value == 2 ? 3 : (value == 0x14 || value == 0x0e) ? 1 : 0)) {
+             value != 0x0a && value != 0x0c && value != 0x0d && value != 0x13 && value != 0x14 &&
+             value != 0x15) ||
+            s->parameter_count != (value == 2 ? 3 : value == 0x0d ? 2 :
+                                   (value == 0x14 || value == 0x0e) ? 1 : 0)) {
             if (getenv("MUSASHI_TRACE_REFUSAL"))
                 fprintf(stderr, "native_boot: CD_CMD_REFUSED value=%02x index=%u phase=%u interrupt=%u response_count=%u params=%u cycle=%llu\n",
                         value, s->index, s->phase, s->interrupt, s->response_count, s->parameter_count,
@@ -567,20 +586,24 @@ int musashi_cd_owned_write8(void *userdata, uint32_t address, uint8_t value) {
             s->pending_lba = lba; s->location_valid = 1;
         }
         if (value == 0x0e) {
-            if (c->parameter_fifo[0] != 0xa0 && c->parameter_fifo[0] != 0xc0) {
+            if (!owned_mode_ok(c->parameter_fifo[0])) {
                 owned_fault(c,MUSASHI_CD_OWNED_BAD_ACCESS); break;
             }
             s->mode = c->parameter_fifo[0];
         }
+        if (value == 0x0d) {
+            s->filter_file = c->parameter_fifo[0];
+            s->filter_channel = c->parameter_fifo[1];
+        }
         if (value == 6 || value == 0x1b) {
-            if (!s->location_valid || (s->mode != 0xa0 && s->mode != 0xc0)) {
+            if (!s->location_valid || !owned_mode_ok(s->mode)) {
                 owned_fault(c,MUSASHI_CD_OWNED_BAD_ACCESS); break;
             }
             if (!owned_read_retire(c,0)) break;
         }
         if (value == 0x15) {
             uint32_t frame;
-            if (!s->location_valid || (s->mode != 0xa0 && s->mode != 0xc0)) {
+            if (!s->location_valid || !owned_mode_ok(s->mode)) {
                 owned_fault(c,MUSASHI_CD_OWNED_BAD_ACCESS); break;
             }
             if (!owned_seek_range(c,s->pending_lba,&frame) || !owned_transfer_idle(c)) break;

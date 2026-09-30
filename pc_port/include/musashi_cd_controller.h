@@ -69,6 +69,9 @@ typedef struct MusashiCdOwnedState {
     uint32_t announced_lba, seek_target_lba, position_lba;
     uint8_t announced_valid, announced_claimed, seeking, position_valid;
     uint64_t xa_sectors, xa_frames;
+    /* Setfilter (0D) file/channel; applied while mode bit 3 is set. */
+    uint8_t filter_file, filter_channel;
+    uint64_t xa_filtered;
 } MusashiCdOwnedState;
 
 MusashiCdOwned *musashi_cd_owned_open_bios_idle(
@@ -88,13 +91,16 @@ int musashi_cd_owned_set_xa_sink(MusashiCdOwned *, MusashiXaPcmSink, void *);
  * and lead-out metadata. Invalid parameters refuse before command acceptance;
  * hardware error packets, media-changing and audio-producing commands remain
  * unsupported. Command latency remains the declared 0x800-cycle source model.
- * Data subset: Setloc02 and Setmode0e(A0/C0) including during reads, ReadN06/ReadS1B,
+ * Data subset: Setloc02, Setfilter0D and Setmode0e(A0/C0, each optionally with the
+ * XA filter bit 08) including during reads, ReadN06/ReadS1B,
  * Pause09 and SeekL15 (SeekL retires the ReadN buffers). Setloc/Setmode do
  * not cancel an active ReadN. A new read retires idle prior buffers at ACK;
  * an active DMA view refuses retirement. Unread bytes are not consumption.
  * A0 exposes2340 bytes; C0 data sectors expose2048 payload bytes.
  * C0 XA audio/realtime sectors use the bound PCM sink for4-bit stereo37800Hz;
  * missing sinks and other XA coding formats refuse.
+ * With the filter bit, XA audio sectors of another file/channel are skipped at
+ * sector timing: neither played nor delivered (xa_filtered counts them).
  * Seek requires Setloc/A0-or-C0 and actual data_transfer_idle capability. At ACK it
  * retires all old data views without consumption; completion validates the
  * actual mounted target header at ACK+1806336, then commits position/INT2.
