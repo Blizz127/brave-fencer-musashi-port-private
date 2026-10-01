@@ -12,7 +12,8 @@
  * whatever reproduces the bytes; they are not evidence of the
  * original declaration. */
 
+/* Guest pointers held as u32 for the 64-bit native lane. */
 #include "psx_types.h"
 typedef struct { u8 pad[0x2E]; s16 v; } Inner;
-typedef struct { u8 pad[0x78]; Inner *p; } T;
-s16 func_80029EC0(T *t) { return t->p->v; }
+typedef struct { u8 pad[0x78]; u32 p; /* guest Inner * */ } T;
+s16 func_80029EC0(T *t) { return ((Inner *)t->p)->v; }

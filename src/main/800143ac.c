@@ -1,9 +1,10 @@
 /* Exact retail word export for [800143AC,80014444); EXE and assembly verified. */
+/* Guest pointers held as u32 for the 64-bit native lane. */
 #include "psx_types.h"
 
 typedef struct {
     s32 unk0;
-    u8 *buf;
+    u32 buf; /* guest u8 * */
     s32 unk8;
     s32 unkc;
     s32 unk10;
@@ -34,7 +35,7 @@ void func_800143AC(void) {
     D_800AF7C2 = 0;
 
     for (i = 0; i < 2; i++) {
-        D_800A6518[i].buf = buf;
+        D_800A6518[i].buf = (u32)buf;
         buf += 0x4000;
         D_800A6518[i].unk0 = val;
         D_800A6518[i].unk8 = 0;

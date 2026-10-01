@@ -12,6 +12,7 @@
  * whatever reproduces the bytes; they are not evidence of the
  * original declaration. */
 
+/* Guest pointers held as u32 for the 64-bit native lane. */
 #include "psx_types.h"
-extern void *D_800A5E58[];
-void *func_80029A94(s32 i) { return D_800A5E58[i]; }
+extern u32 D_800A5E58[]; /* guest void * table */
+void *func_80029A94(s32 i) { return (void *)D_800A5E58[i]; }

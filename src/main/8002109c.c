@@ -7,16 +7,17 @@
  * whatever reproduces the bytes; they are not evidence of the
  * original declaration. */
 
+/* Guest pointers held as u32 for the 64-bit native lane. */
 #include "psx_types.h"
 void func_800491FC();
 typedef struct { s16 a, b, c, d; } V;
-typedef struct { V *p; } T;
+typedef struct { u32 p; /* guest V * */ } T;
 void func_8002109C(void *unused, T *t) {
-    V *v = t->p;
+    V *v = (V *)t->p;
     if (v->d == -2) {
         func_800491FC(v->a, v->b, v->c);
     } else if (unused == (void *)(s32)v->d) {
         func_800491FC(v->a, v->b, v->c);
-        t->p = (V *)((u8 *)t->p + 8);
+        t->p = (u32)((u8 *)(V *)t->p + 8);
     }
 }
