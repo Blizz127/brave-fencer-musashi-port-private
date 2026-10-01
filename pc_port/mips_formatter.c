@@ -16429,12 +16429,24 @@ int musashi_native_lane_reference_call(MusashiBootMemory *memory, uint32_t targe
                                        const uint32_t *args, unsigned argc,
                                        uint32_t sp, int use_lane,
                                        uint32_t *v0, uint32_t *v1) {
+    uint32_t regs[32];
+    int ok = musashi_native_lane_reference_call_regs(memory, target, args, argc, sp,
+                                                     use_lane, regs);
+    if (v0) *v0 = regs[2];
+    if (v1) *v1 = regs[3];
+    return ok;
+}
+
+int musashi_native_lane_reference_call_regs(MusashiBootMemory *memory, uint32_t target,
+                                            const uint32_t *args, unsigned argc,
+                                            uint32_t sp, int use_lane, uint32_t regs[32]) {
     static const MusashiCallbackDevice no_devices;
     FormatterCpu cpu = {0};
     MusashiResetGraphPrefixStop stop = {0};
     MusashiResetGraphPrefixStatus status;
     int32_t result = 0;
     unsigned i;
+    memset(regs, 0, 32u * sizeof regs[0]);
     if (!memory || (target & 3u) || (sp & 7u) || argc > 16u || (argc && !args)) return 0;
     for (i = 4; i < argc; ++i)
         if (!musashi_boot_write32(memory, sp + 0x10u + (i - 4u) * 4u, args[i])) return 0;
@@ -16449,8 +16461,7 @@ int musashi_native_lane_reference_call(MusashiBootMemory *memory, uint32_t targe
     status = run_startup_cpu(memory, &cpu, lane_reference_sink, NULL, &result, &stop,
                              NULL, NULL, NULL);
     g_lane_suspended -= !use_lane;
-    if (v0) *v0 = cpu.r[2];
-    if (v1) *v1 = cpu.r[3];
+    memcpy(regs, cpu.r, 32u * sizeof regs[0]);
     return status == MUSASHI_RESETGRAPH_PREFIX_COMPLETE && cpu.npc != UINT_MAX;
 }
 

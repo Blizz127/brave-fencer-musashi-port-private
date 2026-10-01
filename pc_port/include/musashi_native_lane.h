@@ -125,6 +125,11 @@ int musashi_native_lane_reference_call(MusashiBootMemory *memory, uint32_t targe
                                        const uint32_t *args, unsigned argc,
                                        uint32_t sp, int use_lane,
                                        uint32_t *v0, uint32_t *v1);
+/* The same, returning the whole general register file at the return
+ * (regs[0..31]; zeroed when the call is rejected up front). */
+int musashi_native_lane_reference_call_regs(MusashiBootMemory *memory, uint32_t target,
+                                            const uint32_t *args, unsigned argc,
+                                            uint32_t sp, int use_lane, uint32_t regs[32]);
 
 /* Executed-path tracer (MUSASHI_TRACE_FUNCS=path). Called by the formatter
  * for jal/jalr targets and CPU dispatch entries; exposed for host routers
