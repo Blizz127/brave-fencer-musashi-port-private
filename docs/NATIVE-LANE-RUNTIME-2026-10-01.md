@@ -521,3 +521,20 @@ plumbing, not speed. All regions: 5,072,190 native and 618,360 interpreted calls
 Not done here: the runner gates on the x86-64-v3 binary (village plain/traced/
 DENY-all, attract, DEVOBS parity), which the integrator submits. The attract route
 was not run locally.
+
+### O1 on the release binary (port `a361ecccd0`)
+
+Job `20261001-230856-bfm-owncode-a361ecccd0` (evidence SHA256 `39120b51...05ee`,
+matched by readback; executable `a2d453f5...8a41`, x86-64-v3; retail guard 7/0).
+Generator: 480/524 admitted = the same 458 main + 22/24 `main_0003` overlay
+entries (`800d1d14` layout, `800d2a24` deny).
+
+| Leg | Result |
+|---|---|
+| village, plain and traced | warp vblanks 416, `HOST_STOP source=IN_GAME_TARGET`, display 70196/76800, intro FMV `MDEC transfers=1852`; `NATIVE_LANE overlay verified=216 refused=584 entry_verified=215 guard_verified=1 recheck_ok=348 recheck_failed=0` |
+| village, all 24 overlay PCs denied | the same outcome, with all overlay counters 0 (DENY applies to the overlay table) |
+| attract | same terminal refusal (`STEP_REFUSED pc=800495ec`); overlay `entry_verified=2436 guard_verified=4 recheck_ok=4536 recheck_failed=0`; MDEC transfers 7408 |
+
+This is the first release build that executes native overlay code. O1 is the
+plumbing slice, so the village gain is small (main_0003 is barely resident there);
+O2 targets the hot scene code.
