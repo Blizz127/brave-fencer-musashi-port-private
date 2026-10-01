@@ -4,7 +4,6 @@
  * reproduces the bytes; they are not evidence of the original
  * declaration. */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
 extern u8 D_80078F28[];
 
@@ -12,5 +11,5 @@ void func_80029A58(s32 arg0) {
     void *temp_v0;
 
     temp_v0 = &D_80078F28[arg0 * 0x2DC];
-    M2C_FIELD(temp_v0, u32 *, 0x38) = (u32) ((u32) M2C_FIELD(temp_v0, u32 *, 0x38) >> 1);
+    (*(u32 *) ((s8 *) (temp_v0) + (0x38))) = (u32) ((u32) (*(u32 *) ((s8 *) (temp_v0) + (0x38))) >> 1);
 }

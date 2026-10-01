@@ -732,6 +732,10 @@ if(MUSASHI_BUILD_PC_PORT)
                 ${CMAKE_CURRENT_BINARY_DIR})
     set_tests_properties(retail_content_guard PROPERTIES SKIP_RETURN_CODE 77)
 
+    # Release-compiled C must carry no m2c macro text (GPL-derived header).
+    add_test(NAME no_m2c_text
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/check_no_m2c_text.py)
+
     # Every CTest probe states its expectations as assert(). CMake puts -DNDEBUG
     # in the Release/RelWithDebInfo/MinSizeRel flags, which compiles all of them
     # out: the probe then runs to completion and exits 0 having checked nothing,

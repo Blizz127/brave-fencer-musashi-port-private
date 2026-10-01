@@ -3,7 +3,6 @@
  * Word export for the native seam; the body below is an
  * UNVERIFIED draft, not an oracle match claim. */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
 /* m2c draft from main.s: NOT verified against retail. C89-gated only;
  * promotion requires an oracle MATCH (tools/match_function.py). Types
@@ -22,8 +21,8 @@ void func_80036130(s32 arg0, void *arg1) {
             D_8007610C += 1;
             return;
         }
-        if (!(M2C_FIELD(arg1, u8 *, 4) & 0x80)) {
-            temp_a0 = M2C_FIELD(arg1, u8 *, 1);
+        if (!((*(u8 *) ((s8 *) (arg1) + (4))) & 0x80)) {
+            temp_a0 = (*(u8 *) ((s8 *) (arg1) + (1)));
             if ((((temp_a0 >> 4) * 0xA) + (temp_a0 & 0xF)) != D_800A63E8) {
                 D_800A63E4 = 0xD;
             }

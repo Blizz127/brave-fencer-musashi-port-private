@@ -4,7 +4,6 @@
  * reproduces the bytes; they are not evidence of the original
  * declaration. */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
 void func_80018F88(s32 arg0) {
     s32 var_v1;
@@ -14,13 +13,13 @@ void func_80018F88(s32 arg0) {
     var_v1 = 1;
     var_v0 = arg0 + 1;
     do {
-        M2C_FIELD(var_v0, u8 *, 0x2A) = 0;
+        (*(u8 *) ((s8 *) (var_v0) + (0x2A))) = 0;
         var_v1 -= 1;
         var_v0 -= 1;
     } while (var_v1 >= 0);
     var_v1_2 = 2;
     do {
-        M2C_FIELD((arg0 + var_v1_2), u8 *, 0x2A) = 0x80;
+        (*(u8 *) ((s8 *) ((arg0 + var_v1_2)) + (0x2A))) = 0x80;
         var_v1_2 += 1;
     } while (var_v1_2 < 6);
 }

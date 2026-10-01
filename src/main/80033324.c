@@ -4,7 +4,6 @@
  * reproduces the bytes; they are not evidence of the original
  * declaration. */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
 extern u8 D_800A46E8[];
 
@@ -13,13 +12,13 @@ void func_80033324(s32 arg0, s32 arg1) {
     void *temp_a1;
 
     temp_a1 = &D_800A46E8[arg1 * 0x54];
-    if ((M2C_FIELD(temp_a1, u16 *, 0) & 0x3F) == 1) {
-        M2C_FIELD((temp_a1 + arg0), s8 *, 0xE) = 0;
-        temp_v0 = M2C_FIELD(temp_a1, u16 *, 0xC) - 1;
-        M2C_FIELD(temp_a1, u16 *, 0xC) = temp_v0;
-        if (!(temp_v0 & 0xFFFF) && (M2C_FIELD(temp_a1, u8 *, 0xA) != 5)) {
-            M2C_FIELD(temp_a1, u8 *, 0xA) = 0U;
-            M2C_FIELD(temp_a1, u16 *, 0) = 0U;
+    if (((*(u16 *) ((s8 *) (temp_a1) + (0))) & 0x3F) == 1) {
+        (*(s8 *) ((s8 *) ((temp_a1 + arg0)) + (0xE))) = 0;
+        temp_v0 = (*(u16 *) ((s8 *) (temp_a1) + (0xC))) - 1;
+        (*(u16 *) ((s8 *) (temp_a1) + (0xC))) = temp_v0;
+        if (!(temp_v0 & 0xFFFF) && ((*(u8 *) ((s8 *) (temp_a1) + (0xA))) != 5)) {
+            (*(u8 *) ((s8 *) (temp_a1) + (0xA))) = 0U;
+            (*(u16 *) ((s8 *) (temp_a1) + (0))) = 0U;
         }
     }
 }
