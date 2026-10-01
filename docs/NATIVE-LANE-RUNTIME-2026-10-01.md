@@ -396,3 +396,10 @@ The 2 MiB guest RAM dumps are byte-identical, and the card is unchanged.
 
 Following this gate the release default became `pure+vsync+pad`;
 `MUSASHI_PSYQ_LANE=pure+vsync` or `pure` opts out.
+
+S3a default flip verified: job `20261001-212109-bfm-owncode-a86577db04`
+(evidence `5ad0758d...caf2ca1`, matched by readback; executable
+`b28b3c05...4019e`). Unset `MUSASHI_PSYQ_LANE` logs
+`classes=pure+vsync+pad`, and `pure+vsync` logs `classes=pure+vsync`. Both
+reach the village with warp vblanks 416, stop tick `00000ae0` and display
+70196/76800. `musashi_psyq_vsync_probe` on the runner: 236 cases, 0 different.
