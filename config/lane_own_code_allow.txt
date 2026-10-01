@@ -498,3 +498,13 @@
 8002eed8
 8003775c
 80038a00
+# Clean-room pilot-retry B08 merged back 2026-10-01 (bfm-rederive 801d1f1), main region.
+80012abc
+80012dbc
+8001a9f8
+8002d59c
+8002fd14
+800342e8
+80034b98
+80038210
+800384a8
