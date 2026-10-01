@@ -1,56 +1,44 @@
-/* Exact retail word export for [80029344,8002941C); EXE and assembly verified. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_80029344 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Derives the day-phase index, the daytime flag and the hour/minute display bytes from the in-game clock. */
 #include "psx_types.h"
 
-/* Vendor typedefs this body depends on (copied from vendor/bfm-decomp). */
 typedef struct {
-    u16 unk00;
-    u8  pad[14];
-} T16;  /* 0x10 */
-typedef struct {
-    s32 words[38];
-} Blk98_80029274;
+    u8 pad0[0x37];
+    u8 phase;
+    u8 minutes;
+    u8 hours;
+} AreaClock;
 
+extern AreaClock D_80078E78;
 extern u16 D_80078E92;
-extern u8 D_80078EAE;
-extern Blk98_80029274 D_80078E78;
+extern s8 D_80078EAE;
 
 void func_80029344(void) {
-    s32 val;
-    u8* blk;
+    AreaClock *clock;
+    s16 time;
 
-    val = D_80078E92;
-    blk = (u8*)&D_80078E78;
-
-    if ((u32)(val - 0x1A4) >= 0x2D0) {
+    time = D_80078E92;
+    clock = &D_80078E78;
+    if ((u32)((u16)time - 420) >= 720) {
         D_80078EAE = 0;
     } else {
         D_80078EAE = 1;
     }
-
-    if ((s16)val < 0x528) {
-        if ((s16)val >= 0x474) {
-            blk[0x37] = 3;
+    if (time < 1320) {
+        if (time >= 1140) {
+            clock->phase = 3;
+        } else if (time >= 960) {
+            clock->phase = 2;
+        } else if (time >= 420) {
+            clock->phase = 1;
+        } else if (time >= 300) {
+            clock->phase = 0;
         } else {
-            if ((s16)val >= 0x3C0) {
-                blk[0x37] = 2;
-            } else {
-                if ((s16)val >= 0x1A4) {
-                    blk[0x37] = 1;
-                } else {
-                    if ((s16)val < 0x12C) {
-                        blk[0x37] = 4;
-                    } else {
-                        blk[0x37] = 0;
-                    }
-                }
-            }
+            clock->phase = 4;
         }
     } else {
-        blk[0x37] = 4;
+        clock->phase = 4;
     }
-
-    blk[0x39] = (s16)val / 60;
-    blk[0x38] = (s16)val % 60;
+    clock->hours = time / 60;
+    clock->minutes = time % 60;
 }
