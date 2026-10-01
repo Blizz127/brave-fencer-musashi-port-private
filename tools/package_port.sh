@@ -9,7 +9,7 @@
 #   tools/package_port.sh --binary build/linux/bfm-port \
 #       --exe /path/to/your/SLUS_007.26 --extracted /path/to/extracted/disc \
 #       [--lib /usr/lib/.../libSDL2-2.0.so.0 ...] [--extra FILE ...] \
-#       [--out dist] [--version 0.1.0] [--allow-no-reference]
+#       [--out dist] [--version 0.1.0] [--allow-no-reference REASON]
 #
 # --exe / --extracted point at YOUR files (for the retail-content guard
 # only); nothing from them is copied.
@@ -21,6 +21,7 @@ binary=""
 out="dist"
 version="dev"
 guard_args=""
+no_ref_reason=""
 libs=""
 extras=""
 
@@ -32,7 +33,7 @@ while [ $# -gt 0 ]; do
         --exe) guard_args="$guard_args --exe $2"; shift 2 ;;
         --extracted) guard_args="$guard_args --extracted $2"; shift 2 ;;
         --run-source) guard_args="$guard_args --run-source $2"; shift 2 ;;
-        --allow-no-reference) guard_args="$guard_args --allow-no-reference"; shift ;;
+        --allow-no-reference) no_ref_reason=$2; shift 2 ;;
         --lib) libs="$libs $2"; shift 2 ;;
         --extra) extras="$extras $2"; shift 2 ;;
         *) echo "package_port: unknown option $1" >&2; exit 2 ;;
@@ -106,7 +107,11 @@ printf 'Put your own disc image (.cue + .bin, or .iso) here.\n' > "$stage/disc/P
 
 rc=0
 # shellcheck disable=SC2086
-python3 "$root/tools/retail_guard.py" --stage "$stage" $guard_args || rc=$?
+if [ -n "$no_ref_reason" ]; then
+    python3 "$root/tools/retail_guard.py" --stage "$stage" $guard_args --allow-no-reference "$no_ref_reason" || rc=$?
+else
+    python3 "$root/tools/retail_guard.py" --stage "$stage" $guard_args || rc=$?
+fi
 if [ "$rc" -ne 0 ]; then
     if [ "$rc" -eq 1 ]; then
         echo "package_port: retail content found; no package written" >&2

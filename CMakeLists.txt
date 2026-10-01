@@ -732,6 +732,14 @@ if(MUSASHI_BUILD_PC_PORT)
                 ${CMAKE_CURRENT_BINARY_DIR})
     set_tests_properties(retail_content_guard PROPERTIES SKIP_RETURN_CODE 77)
 
+    # An empty stage must fail the guard (exit 2), never pass as "0 files checked".
+    file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/retail-guard-empty-stage)
+    add_test(NAME retail_guard_empty_stage
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/retail_guard.py
+                --stage ${CMAKE_CURRENT_BINARY_DIR}/retail-guard-empty-stage
+                --allow-no-reference "ctest: empty-stage check")
+    set_tests_properties(retail_guard_empty_stage PROPERTIES WILL_FAIL TRUE)
+
     # Release-compiled C must carry no m2c macro text (GPL-derived header).
     add_test(NAME no_m2c_text
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/check_no_m2c_text.py)

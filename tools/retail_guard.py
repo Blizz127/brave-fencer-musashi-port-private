@@ -93,17 +93,23 @@ def main(argv=None) -> int:
     ap.add_argument("--run-source", type=Path, action="append", default=[],
                     help="extra files to run-check against (besides --exe)")
     ap.add_argument("--run-bytes", type=int, default=64)
-    ap.add_argument("--allow-no-reference", action="store_true",
-                    help="only run the name check when no retail reference is given")
+    ap.add_argument("--allow-no-reference", metavar="REASON", default=None,
+                    help="only run the name check when no retail reference is given; "
+                         "the reason is required and printed in the log")
     args = ap.parse_args(argv)
 
     if not args.stage.is_dir():
         print(f"retail_guard: {args.stage} is not a directory", file=sys.stderr)
         return 2
+    if args.allow_no_reference is not None and not args.allow_no_reference.strip():
+        print("retail_guard: --allow-no-reference needs a non-empty reason", file=sys.stderr)
+        return 2
     if not (args.exe or args.extracted) and not args.allow_no_reference:
         print("retail_guard: give --exe and/or --extracted (the user's own disc files), "
-              "or --allow-no-reference for a name-only check", file=sys.stderr)
+              "or --allow-no-reference REASON for a name-only check", file=sys.stderr)
         return 2
+    if not (args.exe or args.extracted):
+        print(f"retail_guard: NAME CHECK ONLY (no retail reference): {args.allow_no_reference}")
 
     ref_hashes: dict[str, str] = {}
     for exe in args.exe:
@@ -118,6 +124,10 @@ def main(argv=None) -> int:
 
     problems = []
     staged = sorted(p for p in args.stage.rglob("*") if p.is_file())
+    if not staged:
+        # An empty stage proves nothing; never let it read as a pass.
+        print(f"retail_guard: 0 files checked: {args.stage} is empty", file=sys.stderr)
+        return 2
     for p in staged:
         rel = p.relative_to(args.stage)
         if p.suffix.lower() in BAD_EXT or BAD_NAME.match(p.name) or p.name.upper() == "SYSTEM.CNF":

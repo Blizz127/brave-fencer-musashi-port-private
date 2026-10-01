@@ -100,9 +100,25 @@ class PackageTests(unittest.TestCase):
         proc, _ = self.package(self.build_binary("clean3"), "--extra", str(cue), refs=False)
         self.assertEqual(proc.returncode, 2)               # needs a reference or the flag
         proc, _ = self.package(self.build_binary("clean4"), "--extra", str(cue),
-                               "--allow-no-reference", refs=False)
+                               "--allow-no-reference", "test: no disc", refs=False)
         self.assertEqual(proc.returncode, 1)
         self.assertIn("game.cue: disc image / retail file name", proc.stdout)
+
+    def test_guard_refuses_empty_stage_and_blank_reason(self):
+        stage = self.tmp / "stage-empty"
+        stage.mkdir()
+        run = lambda *a: subprocess.run(["python3", str(GUARD), "--stage", str(stage), *a],
+                                        capture_output=True, text=True, timeout=60)
+        proc = run("--exe", str(self.exe))
+        self.assertEqual(proc.returncode, 2, proc.stdout + proc.stderr)
+        self.assertIn("0 files checked", proc.stderr)
+        self.assertEqual(run("--allow-no-reference", "test").returncode, 2)
+        (stage / "f").write_text("x")
+        self.assertEqual(run("--allow-no-reference", " ").returncode, 2)
+        proc = run("--allow-no-reference", "test: no disc")
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertIn("NAME CHECK ONLY (no retail reference): test: no disc", proc.stdout)
+        self.assertIn("1 files checked", proc.stdout)
 
     def test_guard_run_threshold_exact(self):
         stage = self.tmp / "stage-threshold"
