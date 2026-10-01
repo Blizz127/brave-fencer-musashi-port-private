@@ -36,6 +36,7 @@
 typedef struct GlRenderer {
     SDL_Window *win;
     SDL_GLContext ctx;
+    int owns_window, video_inited;
     BfmGlExec *x;
     BfmGlVram vram;
     BfmGlBatch batch, overlay;
@@ -98,6 +99,15 @@ static int make_window(GlRenderer *s, const BfmPlatOutput *o) {
     BfmPlatWidescreen ws;
     int w = o->window_width > 0 ? o->window_width : 960;
     int h = o->window_height > 0 ? o->window_height : 720;
+    /* native_boot already owns a PsyCross context. Creating a second
+     * current context invalidates its GPU/DMA ownership checks. Borrow
+     * that context; standalone renderer clients still get their own. */
+    s->win = SDL_GL_GetCurrentWindow();
+    s->ctx = SDL_GL_GetCurrentContext();
+    if (s->win && s->ctx) return BFM_PLAT_OK;
+    s->win = NULL;
+    s->ctx = NULL;
+    s->owns_window = 1;
     if (bfm_plat_widescreen_compute(o->aspect_num, o->aspect_den,
                                     BFM_WIDESCREEN_HOR_PLUS, 320, 240, &ws) == BFM_PLAT_OK)
         bfm_plat_widescreen_window(&ws, h, &w);
@@ -127,6 +137,7 @@ static int gl_init(void *self, const BfmPlatOutput *o) {
         fprintf(stderr, "[gl] SDL video init failed: %s\n", SDL_GetError());
         return BFM_PLAT_UNSUPPORTED;
     }
+    s->video_inited = 1;
     if (make_window(s, o) != BFM_PLAT_OK) {
         fprintf(stderr, "[gl] no GL 3.3 core context: %s\n", SDL_GetError());
         gl_shutdown(s);
@@ -161,9 +172,11 @@ static void gl_shutdown(void *self) {
     bfm_gl_batch_free(&s->batch);
     bfm_gl_batch_free(&s->overlay);
     free(s->rgb24_buf);
-    if (s->ctx) SDL_GL_DeleteContext(s->ctx);
-    if (s->win) SDL_DestroyWindow(s->win);
-    if (s->win || s->ctx || s->x) SDL_QuitSubSystem(SDL_INIT_VIDEO);
+    if (s->owns_window) {
+        if (s->ctx) SDL_GL_DeleteContext(s->ctx);
+        if (s->win) SDL_DestroyWindow(s->win);
+    }
+    if (s->video_inited) SDL_QuitSubSystem(SDL_INIT_VIDEO);
     memset(s, 0, sizeof *s);
 }
 

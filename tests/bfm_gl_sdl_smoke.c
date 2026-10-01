@@ -6,6 +6,7 @@
 
 #include "bfm_plat.h"
 #include "bfm_plat_renderer.h"
+#include <SDL.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -27,7 +28,9 @@ static BfmPlatRect R(int x, int y, int w, int h) {
     return r;
 }
 
-int main(void) {
+int main(int argc, char **argv) {
+    SDL_Window *host_window = NULL;
+    SDL_GLContext host_context = NULL;
     static uint16_t tex[16 * 16], out[320 * 4];
     static uint8_t hd[32 * 32 * 4];
     BfmPlatOutput o;
@@ -39,6 +42,19 @@ int main(void) {
     const BfmPlatRendererBackend *gl;
     const char *sel = NULL;
     int i, frame;
+
+    if (argc > 1 && strcmp(argv[1], "borrow") == 0) {
+        CHECK(SDL_InitSubSystem(SDL_INIT_VIDEO) == 0);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+        host_window = SDL_CreateWindow("host", 0, 0, 640, 480, SDL_WINDOW_OPENGL);
+        CHECK(host_window != NULL);
+        if (!host_window) return 1;
+        host_context = SDL_GL_CreateContext(host_window);
+        CHECK(host_context != NULL);
+        if (!host_context) return 1;
+    }
 
     memset(&o, 0, sizeof o);
     o.window_width = 640; o.window_height = 480; o.internal_scale = 2;
@@ -123,6 +139,17 @@ int main(void) {
     CHECK(bfm_plat_renderer_set_output(&o) == BFM_PLAT_OK);
     CHECK(bfm_plat_renderer_present() == BFM_PLAT_OK);
     bfm_plat_renderer_close();
+    if (host_window) {
+        /* The host's ownership identity must survive init, draws, scale
+         * changes and backend shutdown, as required by native DMA2. */
+        CHECK(SDL_GL_GetCurrentWindow() == host_window);
+        CHECK(SDL_GL_GetCurrentContext() == host_context);
+        CHECK((SDL_WasInit(SDL_INIT_VIDEO) & SDL_INIT_VIDEO) != 0);
+        SDL_GL_SwapWindow(host_window);
+        SDL_GL_DeleteContext(host_context);
+        SDL_DestroyWindow(host_window);
+        SDL_QuitSubSystem(SDL_INIT_VIDEO);
+    }
     if (fails) {
         printf("%d failure(s)\n", fails);
         return 1;

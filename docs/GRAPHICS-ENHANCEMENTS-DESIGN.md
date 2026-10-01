@@ -105,10 +105,10 @@ What the numbers say:
    although its present is 4x longer: the cpu rasteriser's per-pixel
    `store_vram` runs on the emulation thread and is invisible in
    `present_ms`. Moving drawing to the GPU is itself a speed-up.
-3. **Rendering headroom is large.** At 1 ms per field for a window-sized
-   PsyCross frame, 4x internal scale and a post-process pass will fit in a
-   16.7 ms field on either host. The gl bench (ARCHITECTURE-PORT.md) agrees:
-   a desktop GPU draws these frames in well under a millisecond.
+3. **Rendering headroom is large.** The low mean present cost of the window-sized
+   PsyCross frame suggests headroom, but does not measure 4x scale or a
+   post-process pass. Those need their own timings; isolated GL bench
+   results cannot establish real-game performance.
 4. **Capture overhead for before/after videos is 4 ms per field**
    (`present_ms` 4.1 to 4.5 in the showcase takes with `bfmcap.so`
    readback + x264), so before/after captures must be compared by picture,
@@ -422,3 +422,30 @@ a graphics option, and it gates stage 7.
    the Chapter 1 milestone route only?
 3. Is "60 fps (interpolated camera)" acceptable wording, given logic stays
    30 Hz by design?
+
+## 7. Resumed implementation evidence (2026-10-01)
+
+The GL startup refusal was traced to context identity, rather than GPU
+capability: `gpu_dma_healthy` delegates to the original PsyCross backend,
+whose `valid` requires its window and GL context to remain current. The
+GL renderer now borrows an already-current SDL window/context and owns
+a new pair only for standalone clients. Shutdown preserves borrowed
+resources and balances its own SDL video reference.
+
+Verification: `python3 -m pytest -q tests/test_bfm_gl.py`: **5 passed**,
+including standalone and borrowed-context SDL rendering/VRAM/scale tests,
+OSMesa executor comparisons, and core tests. Native boot built successfully.
+A private headless, lane-OFF, 45-second run selected `renderer=gl`, passed
+DMA2 initialization, loaded title assets and reached scene initialization
+without a refusal. It ended by the planned SIGTERM timeout (rc=124),
+reported `EXECUTION_BOUNDARY reason=HOST_STOP`, and completed GPU teardown
+(`graphics_init=RETURNED blank_presented=1 gpu_removed=1`). Evidence:
+`~/release-staging/bfm-gfx-2175/context-boot/run.log` and
+`build-gl-context.log`. This proves the startup fix; it does **not** prove
+playable rendering, picture fidelity, or all-off frame-hash parity.
+
+The existing capture shim reads PsyCross's `vram[]`. That array is not the
+GL backend's VRAM mirror, so comparing its hashes between CPU and GL would
+be invalid. A GL parity fixture must read the active renderer's VRAM through
+`bfm_plat_renderer_download_vram`, or compare presented pixels. The stage-0
+fixture proposal above needs this correction before it is implemented.

@@ -189,6 +189,8 @@ class GlRendererTests(unittest.TestCase):
         if out.startswith("skip"):
             self.skipTest(out.strip())
         self.assertIn("ok gl_sdl", out)
+        borrowed = self.run_bin([str(smoke), "borrow"], env=env)
+        self.assertIn("ok gl_sdl", borrowed)
 
 
 if __name__ == "__main__":
