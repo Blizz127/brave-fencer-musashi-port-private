@@ -849,8 +849,8 @@ for the call). `MUSASHI_PSYQ_LANE` selects the classes:
 
 | value | installed |
 |---|---|
-| unset, `pure` | libc, packet helpers, OT clear, CD position maths, GTE-state libgte |
-| `pure+vsync` | pure + `VSync(mode < 0)` only (returns the guest tick `8006CBB8` after `device_sync`; modes 0, 1 and n > 1 refuse and the interpreter runs the retail wait). Needs no GPU backend. Not the release default yet |
+| `pure` | libc, packet helpers, OT clear, CD position maths, GTE-state libgte (opt-out from the default below) |
+| unset, `pure+vsync` | pure + `VSync(mode < 0)` only (returns the guest tick `8006CBB8` after `device_sync`; modes 0, 1 and n > 1 refuse and the interpreter runs the retail wait). Needs no GPU backend. The release default since 2026-10-01 (runner gate `20261001-191919-bfm-owncode-fdd04fc114`, docs/NATIVE-LANE-RUNTIME-2026-10-01.md) |
 | `all` | pure + vsync + DrawSync, DrawOTag, Load/Store/MoveImage, Put{Draw,Disp}Env, SetDispMask, CdSearchFile, putchar; the device wrappers only with `MUSASHI_GPU=bfm_plat` (otherwise pure+vsync) |
 | `0` | none |
 

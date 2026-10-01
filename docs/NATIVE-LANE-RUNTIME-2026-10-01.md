@@ -249,3 +249,25 @@ Tests (lane build): CTest 34/34 (was 33; the new test is
 `tests/test_native_lane*.py` + `test_psyq_exclusion.py` 15 passed / 1 skipped,
 `tests/test_bfm_plat.py` 37 passed / 1 skipped. The `-k gte` pytest group
 fails the same 27 tests with and without this change.
+
+### S2 runner gate on the release binary (port `fdd04fc114`)
+
+Job `20261001-191919-bfm-owncode-fdd04fc114` (evidence SHA256
+`ade91c6e...1172`, matched by readback; executable `1bba469d...f2fe8`,
+x86-64-v3; retail guard 7/0).
+
+| Leg | Result |
+|---|---|
+| village, `MUSASHI_PSYQ_LANE` unset (pure at the time) | `[WARP] arrived 1010.0 ... vblanks=416`, `HOST_STOP source=IN_GAME_TARGET`, display 70196/76800 |
+| village, `pure+vsync` | identical: warp vblanks 416, stop tick `00000ae0` (2784), IRQ deliveries 11234, vblank slots, card call counts and display all equal to the pure leg |
+| village, `pure+vsync`, traced | PASS; `8004239c` 89,779 entries classed native, `800424e4` (wait loop) 3,120 interpreted, `800426d4`/`800426fc` interpreted as expected |
+| attract, `pure+vsync` | same end state as shipped r30 |
+
+The tracer classes an entry by lane-table membership, so the refused VSync
+calls (modes 0, 1 and n > 1, about 6% of entries by the worker's measured mode
+mix) count as "native" there even though the interpreter runs them; about
+80,600 calls actually run natively. Village interpreted calls by the tracer's
+count: 1,124,936 -> 1,035,157 (the true reduction is about 80,600).
+
+Following this gate the release default became `pure+vsync`
+(`musashi_native_lane_psyq_classes`), and `MUSASHI_PSYQ_LANE=pure` opts out.

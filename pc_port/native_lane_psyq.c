@@ -114,8 +114,11 @@ int musashi_native_lane_psyq_is_device(const char *name) {
 
 unsigned musashi_native_lane_psyq_classes(void) {
     const char *v = getenv("MUSASHI_PSYQ_LANE");
-    if (!v || !v[0] || strcmp(v, "pure") == 0) return MUSASHI_PSYQ_LANE_PURE;
-    if (strcmp(v, "pure+vsync") == 0) return MUSASHI_PSYQ_LANE_PURE | MUSASHI_PSYQ_LANE_VSYNC;
+    /* Default (unset): pure + VSync(mode < 0), gated on the release runner
+     * job 20261001-191919-bfm-owncode-fdd04fc114. "pure" opts back out. */
+    if (!v || !v[0] || strcmp(v, "pure+vsync") == 0)
+        return MUSASHI_PSYQ_LANE_PURE | MUSASHI_PSYQ_LANE_VSYNC;
+    if (strcmp(v, "pure") == 0) return MUSASHI_PSYQ_LANE_PURE;
     if (strcmp(v, "all") == 0)
         return MUSASHI_PSYQ_LANE_PURE | MUSASHI_PSYQ_LANE_VSYNC | MUSASHI_PSYQ_LANE_DEVICE;
     return 0u;
