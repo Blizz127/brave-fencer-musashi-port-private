@@ -117,7 +117,7 @@ TABLE: dict[str, Status] = {
     "GsInitGraph2": Status(S, 0, 0, None, "display/draw init over libgs globals and libgpu: low call count"),
     "GsSetFogParam": Status(S, 0, 0, None, "fog: 1 call site"),
     # --- libetc
-    "VSync": Status(H, 1, 1, "bfm_psyq_VSync", "n>1 waits n fields via bfm_plat_timing_vsync; n=0 one field; n=1 returns 0 (no hcount); n<0 returns the field counter"),
+    "VSync": Status(H, 1, 1, "bfm_psyq_VSync", "native only for mode < 0: returns the guest tick 8006CBB8 (v1 = the 8006BA9C latch, retail's dead stack slots filled), after device_sync; no GPUSTAT/Timer1 read; every other mode (0, 1, n > 1) refuses and the interpreter runs the retail wait; class pure+vsync (MUSASHI_PSYQ_LANE); same-input differential vs retail func_8004239C in tests/psyq_vsync_probe.c"),
     "ResetCallback": Status(S, 0, 0, None, "interrupt callbacks belong to the IRQ HLE"),
     "DMACallback": Status(S, 0, 0, None, "interrupt callbacks belong to the IRQ HLE"),
     "StopCallback": Status(S, 0, 0, None, "interrupt callbacks belong to the IRQ HLE"),

@@ -62,7 +62,7 @@ iteration count.
 | Stage | PCs (calls) | What | Reached from | Route |
 |---|---|---|---|---|
 | S1 | `80046c38` StGetNext (2,297,066; 66.3%) | libcd2 stream ring: next sector or not-ready | game, `800d27c4` (main_0003 poll loop) | SDK HLE over the stream ring in guest RAM: `bfm_psyq_StGetNext`, class pure (no device access; the ring is filled by the interpreted stream interrupt), differential `psyq_stgetnext_differential`; done on `claude/s1-stgetnext` (see below) |
-| S2 | `8004239c` VSync (89,573), internals `800426d4` (56,946), `800426fc` (34,234): 5.2% | libetc frame wait and callback dispatch | SDK-internal (`80044150`, `80044258`, `8005b81c`) | VSync HLE exists (`BFM_PSYQ_HLE`) but installs only with `MUSASHI_PSYQ_LANE=all`; promote the class behind its own gate |
+| S2 | `8004239c` VSync (89,573), internals `800426d4` (56,946), `800426fc` (34,234): 5.2% | libetc frame wait and callback dispatch | SDK-internal (`80044150`, `80044258`, `8005b81c`) | Revised after the S2 audit: `800426d4` (a libcd flag read) and `800426fc` (an I_MASK swap) are NOT VSync internals and stay interpreted. VSync itself: native for `mode < 0` only, behind `MUSASHI_PSYQ_LANE=pure+vsync` (see "S2" below) |
 | S3 | libpad `8005fbc8` (200,361), `8005fba8` (45,336), `8005e0ac` (26,666), `8005dbd8` (18,670), `8005dca0` (18,666), `8005f394` (15,998), `8005de78` (10,668): 9.7% | pad SIO exchange and handshake waits | SDK-internal only (pad interrupt/VSync callback chain) | HLE the pad driver's interrupt handler and the pad entry points on `bfm_plat_input` and the existing SIO wire shim; device/IRQ seam, highest timing risk |
 | S4 | libgte24 `80049440` (22,346; 0.6%) | GTE helper | game, `80012928` | HLE through the GTE bridge (`bfm_psyq_LZC`, `musashi_gte_owner_native_lzc`), done on `claude/s4-libgte24` (see below) |
 | S5 | libgpu2 `8005ba90` (13,207), `8005c020` (11,145): 0.7% | packet/OT internals | SDK-internal | HLE at the libgpu entry points; partly bypassed already on `MUSASHI_GPU=bfm_plat` |
@@ -190,3 +190,62 @@ matched by readback; executable `bbf37566...4461`, x86-64-v3; retail guard
 416, `HOST_STOP source=IN_GAME_TARGET`); attract ends as shipped r30.
 `80049440`: 22,346 native calls, 0 interpreted. Village interpreted calls
 1,147,282 (after S1) -> 1,124,936. Main executable 24.1%, overlays 0%.
+
+## S2 VSync(-1) native path (branch `claude/s2-vsync`)
+
+Opt-in class `MUSASHI_PSYQ_LANE=pure+vsync` (also part of `all`); the release
+default is unchanged (`pure`). Only `VSync(mode < 0)` is native: it returns the
+guest tick `8006CBB8` after `device_sync`, sets v1 to the `8006BA9C` latch and
+fills the three dead stack slots the retail prologue writes, and is charged the
+interpreter's cost for that path (64 cycles). Modes 0, 1 and n > 1 refuse before
+any write; the interpreter runs the retail words, including the `800424E4` wait.
+`800426D4` and `800426FC` are libcd/libgpu routines, not VSync internals, and
+are unchanged. Retail words skipped natively and the effects of skipping are
+listed in KNOWN-DIVERGENCES D-024.
+
+Generator: `0x8004239C` and `0x800424CC` (VSync's own shared epilogue, inside
+its body because it has no registry size) are exempted like the LZC gates.
+Every action keyed to those PCs is an admission or whitelist for interpreted
+execution (the CD IRQ frame word table and call edges, which run with the lane
+suspended; `formatter_admitted`'s range table; prefix runners nothing in the
+production boot calls). Nothing there advances guest time, delivers an IRQ or
+counts. `800424E4`, `800426D4` and `800426FC` stay hooked.
+
+### Local evidence (no-march lane build, `NATIVE_LANE entries=491 psyq=64`, was 490/63)
+
+Same-input differential `tests/psyq_vsync_probe.c` (CTest
+`psyq_vsync_differential`): 236 cases, 216 native completions, 19 clean
+refusals, 0 different (retail oracle vs lane vs direct; return registers, whole
+register file, all RAM and scratchpad). Deliberate breaks, each failing then
+restored to 0 different: stale tick (216 different), `device_sync` skipped (218),
+dead stack slots not filled (216).
+
+Village 1010 warp (`MUSASHI_GUEST_CLOCK=1`, unthrottled, `MUSASHI_TRACE_DEVICE_OBS=1`):
+
+| Config | Warp vblanks | Final vblank / cycle | `8006CBB8` / `8006BA9C` / `8006BAA0` at stop | Stop | DEVOBS events / hash |
+|---|---|---|---|---|---|
+| pure, `EPOCH_LAZY=1` | 416 | 2784 / 1571848430 | 2784 / `00002918` / 2782 | `IN_GAME_TARGET` | 2,566,399 / `11f6b07a2e147a36` |
+| pure, `EPOCH_LAZY=0` | 416 | 2784 / 1571848430 | 2784 / `00002918` / 2782 | `IN_GAME_TARGET` | 2,566,399 / `11f6b07a2e147a36` |
+| pure+vsync, `EPOCH_LAZY=1` | 416 | 2784 / 1571848430 | 2784 / `00002918` / 2782 | `IN_GAME_TARGET` | 2,412,193 / `8dcbfa55a61f3ddc` |
+| pure+vsync, `EPOCH_LAZY=0` | 416 | 2784 / 1571848430 | 2784 / `00002918` / 2782 | `IN_GAME_TARGET` | 2,412,193 / `8dcbfa55a61f3ddc` |
+
+Every per-vblank DEVOBS line is identical between lazy 0 and 1 within each
+configuration. The hash differs between configurations by construction: the
+native path performs no GPUSTAT/Timer1 reads (154,206 fewer device events, two
+per native call, about 77,100 calls) while the guest cycle count, tick, latch,
+GTE write count (168,789) and stop are identical. `trace.counts`: `8004239c`
+89,779 entries in both; `800424e4` 3,120 interpreted entries in both (two per
+waiting VSync, so 1,560 waiting calls stay interpreted).
+
+Mode mix (`MUSASHI_TRACE_PCS=8004239c`, 86,085 entries seen at interpreter
+stepping; 3,694 of the 89,779 counted entries reach the PC without passing that
+hook, split not measured): `a0 = -1` 80,624 (93.7%), `1` 3,901 (4.5%), `2` 935
+(1.1%), `0` 625 (0.7%). Interpreted by design: 1,560 waiting calls + 3,901
+mode-1 calls. Calls inside the CD IRQ frame and IRQ callbacks also stay
+interpreted (the lane is suspended there).
+
+Tests (lane build): CTest 34/34 (was 33; the new test is
+`psyq_vsync_differential`), retail guard 7 files, 0 problems,
+`tests/test_native_lane*.py` + `test_psyq_exclusion.py` 15 passed / 1 skipped,
+`tests/test_bfm_plat.py` 37 passed / 1 skipped. The `-k gte` pytest group
+fails the same 27 tests with and without this change.

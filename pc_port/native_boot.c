@@ -5059,7 +5059,8 @@ static NativeBoot *native_boot_owner(NativeBoot *fallback) {
         musashi_native_lane_psyq_bind(&((NativeBoot *)window)->memory, &((NativeBoot *)window)->gte);
         fprintf(stderr, "native_boot: NATIVE_LANE entries=%u psyq=%u classes=%s\n",
                 (unsigned)count, (unsigned)(count - musashi_native_lane_generated_count),
-                classes == 0u ? "none" : (classes & MUSASHI_PSYQ_LANE_DEVICE) ? "all" : "pure");
+                classes == 0u ? "none" : (classes & MUSASHI_PSYQ_LANE_DEVICE) ? "all"
+                : (classes & MUSASHI_PSYQ_LANE_VSYNC) ? "pure+vsync" : "pure");
     }
     return window;
 }

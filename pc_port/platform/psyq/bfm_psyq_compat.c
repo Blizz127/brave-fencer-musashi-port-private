@@ -515,17 +515,51 @@ int bfm_psyq_DrawOTag(uint32_t *r) {
 
 /* ---- libetc --------------------------------------------------------- */
 
-static uint32_t vsync_count;
+#define VSYNC_TICK 0x8006CBB8u
+#define VSYNC_HCOUNT_LATCH 0x8006BA9Cu
 
-/* VSync(mode): 0 = wait one field; 1 = no wait, returns 0 (no hsync counter
- * on the host); n > 1 = wait n fields; n < 0 = return the field counter. */
+/* VSync(mode) for mode < 0 only (retail func_8004239C): returns the guest
+ * vblank tick at 8006CBB8, which the 80042CE8 handler increments. Nothing
+ * else of the retail routine is observable on this path except what is
+ * reproduced here:
+ *   v0 = *(u32 *)8006CBB8        v1 = *(u32 *)8006BA9C (the hcount latch the
+ *   routine loaded last; callers treat v1 as dead, kept for exact parity)
+ *   the three dead stack slots the retail prologue fills below the caller's
+ *   sp: [sp-0x10] = s0, [sp-0x0C] = s1, [sp-0x08] = ra.
+ * The retail routine also reads GPUSTAT (*8006BA94) and Timer1 (*8006BA98)
+ * and discards both values; this path does not (docs/KNOWN-DIVERGENCES.md).
+ * Every other mode refuses before any write: modes 0 and n > 1 wait on the
+ * vblank IRQ through the guest clock and mode 1 returns a live hcount delta,
+ * so the interpreter runs the retail words for them. The wrapper runs
+ * device_sync first (native_lane_psyq.c), so the tick read sees the device
+ * epoch committed. No private counter, no host pacing. */
 int bfm_psyq_VSync(uint32_t *r) {
-    int32_t mode = (int32_t)A(0);
-    if (mode < 0) { RET(vsync_count); return 1; }
-    if (mode == 1) { RET(0); return 1; }
-    bfm_plat_timing_vsync(mode == 0 ? 1u : (unsigned)mode);
-    vsync_count += mode == 0 ? 1u : (uint32_t)mode;
-    RET(0);
+    uint32_t tick, latch, sp = r[29];
+    uint8_t *frame;
+    if ((int32_t)A(0) >= 0) return 0;
+    /* Validate every address before the first write, so a refusal is clean. */
+    if ((sp & 3u) || !bfm_psyq_ptr(VSYNC_TICK, 4) || !bfm_psyq_ptr(VSYNC_HCOUNT_LATCH, 4)) return 0;
+    /* bfm_psyq_ptr mirrors RAM over the whole 512 MiB window; the retail
+     * stores fault outside the 2 MiB (or the scratchpad), so refuse there. */
+    {
+        const uint32_t phys = (sp - 0x10u) & 0x1FFFFFFFu;
+        if (phys >= 0x200000u && !(phys >= 0x1F800000u && phys < 0x1F800400u)) return 0;
+    }
+    frame = (uint8_t *)bfm_psyq_ptr(sp - 0x10u, 12);
+    if (!frame) return 0;
+    {   /* retail stores the frame first, then loads latch and tick */
+        const uint32_t saved[3] = {r[16], r[17], r[31]};
+        unsigned i;
+        for (i = 0; i < 3; ++i) {
+            frame[4 * i] = (uint8_t)saved[i];
+            frame[4 * i + 1] = (uint8_t)(saved[i] >> 8);
+            frame[4 * i + 2] = (uint8_t)(saved[i] >> 16);
+            frame[4 * i + 3] = (uint8_t)(saved[i] >> 24);
+        }
+    }
+    if (!rd32(VSYNC_HCOUNT_LATCH, &latch) || !rd32(VSYNC_TICK, &tick)) return 0;
+    RET(tick);
+    r[3] = latch;
     return 1;
 }
 

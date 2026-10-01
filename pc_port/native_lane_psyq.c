@@ -8,7 +8,11 @@
  *   pure   (default) register-file and guest-RAM work only: libc, packet
  *          helpers, OT clears, CD position maths, stateless matrix maths,
  *          and the GTE-state libgte wrappers behind the gte_owner bridge.
- *   all    pure + the device-level wrappers (VSync, DrawSync, DrawOTag,
+ *   pure+vsync  pure + the VSync wrapper (its own class, behind device_sync).
+ *          The wrapper completes only VSync(mode < 0), returning the guest
+ *          tick 8006CBB8; every other mode refuses and the interpreter runs
+ *          the retail wait. It needs no GPU backend.
+ *   all    pure + vsync + the device-level wrappers (DrawSync, DrawOTag,
  *          LoadImage/StoreImage/MoveImage, PutDrawEnv/PutDispEnv,
  *          SetDispMask, CdSearchFile, putchar). These bypass the emulated
  *          GPU, CD and IRQ timing, so they are accepted only with
@@ -58,6 +62,8 @@ static const PsyqRow kPsyqRows[] = {
 };
 #undef BFM_PSYQ
 
+/* VSync is device-synced (it reads the guest tick the device epoch advances)
+ * but is its own class: see MUSASHI_PSYQ_LANE=pure+vsync. */
 static const char *const kDeviceNames[] = {
     "VSync", "DrawSync", "DrawOTag", "LoadImage", "StoreImage", "MoveImage",
     "PutDrawEnv", "PutDispEnv", "SetDispMask", "CdSearchFile", "putchar",
@@ -88,6 +94,17 @@ const char *musashi_native_lane_psyq_held_back(uint32_t pc) {
     return NULL;
 }
 
+/* Charged per native VSync(-1), as the interpreter charges the retail path
+ * (mips_formatter.c: 2 cycles per instruction, +1 per data load/store):
+ * func_8004239C executes 26 instructions here (8004239C..800423E8, then the
+ * shared epilogue 800424CC..800424E0, delay slots included), 12 of them
+ * memory accesses (3 stores, 9 loads), so 26 * 2 + 12 = 64. Any extra
+ * latency the device layer might add for the two discarded GPUSTAT/Timer1
+ * loads is not charged. */
+enum { VSYNC_NATIVE_CYCLES = 64u };
+
+static int is_vsync(const char *name) { return strcmp(name, "VSync") == 0; }
+
 int musashi_native_lane_psyq_is_device(const char *name) {
     size_t i;
     for (i = 0; i < sizeof kDeviceNames / sizeof kDeviceNames[0]; ++i)
@@ -98,7 +115,9 @@ int musashi_native_lane_psyq_is_device(const char *name) {
 unsigned musashi_native_lane_psyq_classes(void) {
     const char *v = getenv("MUSASHI_PSYQ_LANE");
     if (!v || !v[0] || strcmp(v, "pure") == 0) return MUSASHI_PSYQ_LANE_PURE;
-    if (strcmp(v, "all") == 0) return MUSASHI_PSYQ_LANE_PURE | MUSASHI_PSYQ_LANE_DEVICE;
+    if (strcmp(v, "pure+vsync") == 0) return MUSASHI_PSYQ_LANE_PURE | MUSASHI_PSYQ_LANE_VSYNC;
+    if (strcmp(v, "all") == 0)
+        return MUSASHI_PSYQ_LANE_PURE | MUSASHI_PSYQ_LANE_VSYNC | MUSASHI_PSYQ_LANE_DEVICE;
     return 0u;
 }
 
@@ -110,10 +129,14 @@ size_t musashi_native_lane_psyq_entries(MusashiNativeLaneEntry *out, size_t cap,
         unsigned cls;
         if (row->status == BFM_PSYQ_STUB) continue;
         if (musashi_native_lane_psyq_held_back(row->entry.guest_pc)) continue;
-        cls = musashi_native_lane_psyq_is_device(row->entry.name) ? MUSASHI_PSYQ_LANE_DEVICE
-                                                                  : MUSASHI_PSYQ_LANE_PURE;
+        cls = is_vsync(row->entry.name) ? MUSASHI_PSYQ_LANE_VSYNC
+              : musashi_native_lane_psyq_is_device(row->entry.name) ? MUSASHI_PSYQ_LANE_DEVICE
+                                                                    : MUSASHI_PSYQ_LANE_PURE;
         if (!(classes & cls)) continue;
-        if (out && n < cap) out[n] = row->entry;
+        if (out && n < cap) {
+            out[n] = row->entry;
+            if (cls == MUSASHI_PSYQ_LANE_VSYNC) out[n].cost_cycles = VSYNC_NATIVE_CYCLES;
+        }
         ++n;
     }
     return n;

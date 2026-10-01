@@ -291,7 +291,29 @@ ALWAYS_HOOKED = {0x80010178, 0x800141F0}
 # MTC2 LZCS / MFC2 LZCR pair of func_80049440 (bfm_psyq_LZC). They sequence
 # nothing, so a native entry that skips them is exact; interpreted retail code
 # still goes through the same admission. Not hooks.
-HLE_REPLACED_GATES = {0x80049440, 0x8004944C}
+#
+# 0x8004239C and 0x800424CC (VSync, bfm_psyq_VSync; 800424CC is VSync's own
+# shared epilogue, inside its body because VSync has no registry size and
+# psyq_hooked() ends it at the next function start, 800424E4): the formatter
+# compares them (TICK_QUERY_ENTRY / TICK_QUERY_RETURN and the
+# source-validated call edges that target the entry with a0 == -1 or 1) only
+# to accept those interpreted calls. The lane completes
+# VSync(mode < 0) natively and REFUSES every other mode before any write, so
+# the retail words still run for the waiting modes and mode 1: every
+# interpreted path those whitelists guard is unchanged, and they stay valid.
+# Why skipping the PC checks is exact (audited, see docs/NATIVE-LANE-RUNTIME):
+# every action keyed to these two PCs is an admission or a whitelist for
+# INTERPRETED execution: the CD IRQ frame's word table and call edges
+# (cd_irq_admitted / cd_irq_call; the lane is suspended in that frame and in
+# every IRQ callback, so a VSync called there still runs the retail words and
+# reaches both PCs), formatter_admitted's range table, and the
+# musashi_boot_run_8004239c_minus_one / 80044124 prefix runners, which
+# nothing in the production boot calls. Nothing at either PC advances guest
+# time, delivers an IRQ, counts or fast-forwards: the lane charges the
+# interpreter's own cost for the path (64 cycles).
+# 800424E4 (the wait loop), 800426D4 and 800426FC remain hooked: they are not
+# part of the native path.
+HLE_REPLACED_GATES = {0x80049440, 0x8004944C, 0x8004239C, 0x800424CC}
 
 
 def hooked_pcs():

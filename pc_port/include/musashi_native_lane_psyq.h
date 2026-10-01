@@ -14,9 +14,9 @@
 extern "C" {
 #endif
 
-enum { MUSASHI_PSYQ_LANE_PURE = 1u, MUSASHI_PSYQ_LANE_DEVICE = 2u };
+enum { MUSASHI_PSYQ_LANE_PURE = 1u, MUSASHI_PSYQ_LANE_DEVICE = 2u, MUSASHI_PSYQ_LANE_VSYNC = 4u };
 
-/* Classes selected by MUSASHI_PSYQ_LANE (unset/pure, all, 0). */
+/* Classes selected by MUSASHI_PSYQ_LANE (unset/pure, pure+vsync, all, 0). */
 unsigned musashi_native_lane_psyq_classes(void);
 int musashi_native_lane_psyq_is_device(const char *name);
 /* Reason a table entry is not installed (retail mismatch), or NULL. */

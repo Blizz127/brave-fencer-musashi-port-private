@@ -720,6 +720,24 @@ if(MUSASHI_BUILD_PC_PORT)
                 ${CMAKE_CURRENT_SOURCE_DIR}/extracted/disc/files/SLUS_007.26)
     set_tests_properties(psyq_lzc_differential PROPERTIES SKIP_RETURN_CODE 77)
 
+    # VSync(mode < 0) native path (bfm_psyq_VSync behind device_sync) vs the
+    # interpreted retail func_8004239C: returns, the whole register file, all
+    # RAM, lazy-epoch commit ordering, clean refusals of every other mode.
+    add_executable(musashi_psyq_vsync_probe tests/psyq_vsync_probe.c)
+    target_compile_features(musashi_psyq_vsync_probe PRIVATE c_std_99)
+    target_include_directories(musashi_psyq_vsync_probe PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/pc_port/include ${CMAKE_CURRENT_SOURCE_DIR}/pc_port/platform)
+    if(TARGET musashi_native_lane)
+        target_compile_definitions(musashi_psyq_vsync_probe PRIVATE PSYQ_PROBE_WITH_LANE=1)
+        target_link_libraries(musashi_psyq_vsync_probe PRIVATE musashi_native_lane)
+    else()
+        target_link_libraries(musashi_psyq_vsync_probe PRIVATE bfm_plat musashi_pc_port)
+    endif()
+    add_test(NAME psyq_vsync_differential
+        COMMAND musashi_psyq_vsync_probe
+                ${CMAKE_CURRENT_SOURCE_DIR}/extracted/disc/files/SLUS_007.26)
+    set_tests_properties(psyq_vsync_differential PROPERTIES SKIP_RETURN_CODE 77)
+
     # Probes seed synthetic guest RAM; they run the retail words from the
     # developer's own extracted EXE (never from src/ or the build tree).
     set(MUSASHI_CODE_IMAGE ${CMAKE_CURRENT_SOURCE_DIR}/extracted/disc/files/SLUS_007.26)

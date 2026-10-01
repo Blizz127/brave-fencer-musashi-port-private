@@ -1670,10 +1670,17 @@ static int group_psyq(int argc, char **argv) {
     CHECK(call("putchar", 'h', 0, 0, 0) && call("putchar", 'i', 0, 0, 0) && call("putchar", '\n', 0, 0, 0));
 
     /* VSync */
-    CHECK(call("VSync", 0xFFFFFFFF, 0, 0, 0) && R[2] == 0);
-    CHECK(call("VSync", 2, 0, 0, 0) && call("VSync", 0, 0, 0, 0));
-    CHECK(call("VSync", 0xFFFFFFFF, 0, 0, 0) && R[2] == 3);
-    CHECK(call("VSync", 1, 0, 0, 0) && R[2] == 0);
+    /* only VSync(mode < 0) is native: the guest tick 8006CBB8 (the
+     * differential vs retail is tests/psyq_vsync_probe.c); the waiting modes
+     * and mode 1 refuse without touching registers or RAM. */
+    g32(0x8006CBB8, 7); g32(0x8006BA9C, 0x1234);
+    R[29] = 0x801FFF00u;
+    CHECK(call("VSync", 0xFFFFFFFF, 0, 0, 0) && R[2] == 7 && R[3] == 0x1234);
+    g32(0x8006CBB8, 8);
+    CHECK(call("VSync", 0x80000000u, 0, 0, 0) && R[2] == 8);
+    R[2] = 0xAAAA5555u; R[3] = 0x5555AAAAu;
+    CHECK(!call("VSync", 2, 0, 0, 0) && !call("VSync", 0, 0, 0, 0) && !call("VSync", 1, 0, 0, 0));
+    CHECK(R[2] == 0xAAAA5555u && R[3] == 0x5555AAAAu && r32(0x8006CBB8) == 8);
 
     /* no RAM bound: HLE refuses without touching anything */
     bfm_psyq_set_ram(NULL, 0);

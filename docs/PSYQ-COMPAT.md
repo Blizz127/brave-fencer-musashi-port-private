@@ -51,7 +51,7 @@ by address and Psy-Q object for later naming.
 | `0x80041A80` | *unnamed* | snd9 | VS_VH.o | 2 | 1 | stub-TBD | sound driver: runs as guest code over the SPU HLE |
 | `0x80042154` | *unnamed* | snd9 | VS_VTBP.o | 2 | 1 | stub-TBD | sound driver: runs as guest code over the SPU HLE |
 | `0x80042374` | *unnamed* | snd9 |  | 3 | 1 | stub-TBD | sound driver: runs as guest code over the SPU HLE |
-| `0x8004239C` | VSync | libetc |  | 20 | 4 | hle | n>1 waits n fields via bfm_plat_timing_vsync; n=0 one field; n=1 returns 0 (no hcount); n<0 returns the field counter |
+| `0x8004239C` | VSync | libetc |  | 20 | 4 | hle | native only for mode < 0: returns the guest tick 8006CBB8 (v1 = the 8006BA9C latch, retail's dead stack slots filled), after device_sync; no GPUSTAT/Timer1 read; every other mode (0, 1, n > 1) refuses and the interpreter runs the retail wait; class pure+vsync (MUSASHI_PSYQ_LANE); same-input differential vs retail func_8004239C in tests/psyq_vsync_probe.c |
 | `0x80042580` | ResetCallback | libetc |  | 3 | 2 | stub-TBD | interrupt callbacks belong to the IRQ HLE |
 | `0x800425E0` | DMACallback | libetc |  | 2 | 1 | stub-TBD | interrupt callbacks belong to the IRQ HLE |
 | `0x80042610` | *unnamed* | libetc |  | 3 | 1 | stub-TBD | libetc |
