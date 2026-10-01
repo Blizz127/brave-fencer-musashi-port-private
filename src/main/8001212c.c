@@ -1,186 +1,67 @@
-/* Main-exec range [8001212C,800123F0) from the SLUS executable.
- * SHA256(span)=b3b625587df6529b69d0a5c1aa21e8811ea6549af8158d6385360bcf9c97d4ae.
- * Word export for the native seam; the C body below is kept
- * byte-identical (wrap only, no rewrite): the cleaned Druthulu/BFM-decomp
- * form (vendor/bfm-decomp, same SLUS-00726 build), re-verified against
- * retail at the recorded optimization by tools/match_function.py. */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Adds two textured sprite packets (the two halves of a menu caption) to this frame's primitive buffer and ordering table. */
 #include "psx_types.h"
 
-/* func_8001212C - 177 words. Promoted from vendor/bfm-decomp
- * (Druthulu, same SLUS-00726 build), split to an address-named file.
- * Values and locals are the loosest that reproduce the bytes; they
- * are not evidence of the original declaration. */
-extern u8  D_800BA118;
-extern u8  D_800AF630[];
-extern s32 D_80074778;
-extern s32 D_800A2B7C;
-extern s32 D_800C7C70;
-extern s16 D_800C7C74;
-extern s32 D_800A5E60;
-extern u8  D_8007BA70[];
-extern u8  D_800A4F48[];
-extern s32 D_800A651C;
-extern u8  D_800A6528[];
-extern u8  D_800A6610[];
-extern u8  D_800AA60C[];
-extern s32 D_800AE7BC;
-extern s32 D_800AE7C8;
-extern u8  D_800BA0D8[];
-extern u8  D_800BA0E4[];
-extern void func_80043060(s32);
-extern void func_800141F0(void);
-extern void func_8005FC68(s32);
-extern void func_8005FCB8(void);
-extern void func_80018918(void);
-extern s32  func_80043300(void);
-extern void func_8002C8F4(void);
-extern void LoaderInitFileTable(void);
-extern void func_80014238(void);
-extern void func_80014390(void);
-extern void func_800191A8(void);
-extern void func_80010A98(void);
-extern void func_800189A8(void);
-extern void func_80015208(void);
-extern void func_80059BFC(s32, s32);
-extern void GameModeDispatch(void);
-extern void func_80015498(void);
-extern void func_8001C00C(void);
-extern void func_800D25FC(void);
-extern void func_800184F0(void);
-extern void func_800596F4(s32);
-extern s32  VSync(s32);
-extern void func_80059FC0(u8 *);
-extern void func_80059D68(u8 *);
-extern void CatPrim(s32, s32);
-extern s32  func_80059CF4(s32);
-extern void func_8003500C(void);
-extern void func_8002D034(void);
-extern void func_8001AF34(void);
-extern void func_8001513C(void);
-extern void func_80042610(void (*)(void));
-extern s32 VSync(s32);
+typedef struct {
+    unsigned addr : 24;
+    unsigned len : 8;
+} PrimTag;
+
+typedef struct {
+    PrimTag tag;
+    u32 mode;
+    u8 r, g, b, code;
+    s16 x, y;
+    u8 u, v;
+    u16 clut;
+    s16 w, h;
+} ModeSprite;
+
+extern ModeSprite *D_800A5E60;
+extern PrimTag D_800A6610[][4096];
 extern u8 D_800AF630[];
-extern s32 D_800AE810[];
-extern void DrawSyncCallback(void (*func)(void));
-extern void func_80042610(void (*func)(void));
-extern void func_8001099C(void);
-extern void func_8001096C(void);
-extern void (*gameModeHandlerTable[])(void);
-extern void func_8001C044(void);
-extern void func_80015310(void);
-extern void func_80029690(void);
-extern void func_80018FC8(void);
-extern void func_8001903C(void);
-extern void func_80029274(void);
-extern void func_8002941C(void);
-extern void func_80010AE0(s32);
-extern void func_80011B7C(s32);
-extern void func_80011778(void);
-extern s16 D_801150D4;
-extern s32 D_80074784;
-extern int CdReadRequest(void *dst, void *src, int arg2, int arg3);
-extern u8 D_800AE838;
-extern void *loadDestPtrTable;
-extern void func_800CEDFC(void);
-extern void func_80011818(s32);
-extern void func_8002D4C8(s32, s32);
-extern s32 D_800C7C60;
-extern void *D_800C7C64;
-extern u8 D_800A2E20[];
-extern u8 D_800AE848[];
-extern void func_80010AE0(int);
-extern void func_80014338(void);
-extern void func_800116E0(void);
-extern s16 D_800B99DA;
-extern void func_800CEEC8(void);
-extern void func_80029514(s32);
-extern u8 D_80078E78[];
-extern s32 D_800629C8;
-extern void func_8001A9F8(int);
-extern u8 D_800AE880;
-extern u8 D_800AE888;
-extern void func_800CEE74(void);
-extern u8 D_800AE870;
-extern s32 D_8007478C;
-extern u16 D_800B99E8;
-extern s32 D_800629D4[];
-extern u8 D_800629D6[];
-extern u16 D_800629E8[];
-extern u8 D_800D3A68[];
-extern s32 D_800AE6A8;
-extern void func_800295D4(void);
-extern void func_80029664(void);
-extern void func_80011DCC(void);
-extern void func_80011E24(void);
-extern void func_8005C4CC(s32);
-extern void func_800118AC(void);
-extern void func_80011EB4(void);
-extern s32 func_80014CAC(s32, s32);
-extern void func_80011DA0(void);
-extern void func_800D1724(s32);
-extern s32 func_80028FBC(void);
-extern s32 func_80029000(void);
-extern s32 func_80028D9C(void);
-extern s32 D_80074780;
-extern u16 D_80074794;
-extern u16 D_80074798;
-extern u8 D_800A6610[];
 
 void func_8001212C(void) {
-    typedef struct {
-        unsigned int addr : 24;
-        unsigned int len : 8;
-    } PrimTag;
-    typedef struct {
-        u8 pad0, pad1, pad2, len;
-        u32 tpage;
-        u8 r0, g0, b0, code;
-        s16 x0, y0;
-        u8 u0, v0;
-        u16 clut;
-        s16 w, h;
-    } Sprt24;
+    ModeSprite *p;
+    PrimTag *ot;
+    register u8 *state = D_800AF630;
 
-    register u8 *base = D_800AF630;
-    Sprt24 *p;
-    u32 *ot;
+    p = D_800A5E60;
+    ot = D_800A6610[*(u16 *)(state + 0xA3D2)];
 
-    p = (Sprt24 *)D_800A5E60;
-    ot = (u32 *)(D_800A6610 + *(u16 *)(base + 0xA3D2) * 0x4000);
-
-    p->len = 5;
+    p->tag.len = 5;
     ((u32 *)p)[1] = 0xE1000018;
     p->code = 0x66;
     p->clut = 0x77D6;
-    p->r0 = 0x80;
-    p->g0 = 0x80;
-    p->b0 = 0x80;
-    p->x0 = 0x30;
-    p->y0 = 0x2E;
-    p->u0 = 0x40;
-    p->v0 = 0xE0;
-    p->w = 0x60;
-    p->h = 0x18;
-    ((PrimTag *)p)->addr = ((PrimTag *)(ot + 1))->addr;
-    ((PrimTag *)(ot + 1))->addr = (u32)p;
+    p->r = 0x80;
+    p->g = 0x80;
+    p->b = 0x80;
+    p->x = 48;
+    p->y = 46;
+    p->u = 64;
+    p->v = 224;
+    p->w = 96;
+    p->h = 24;
+    p->tag.addr = ot[1].addr;
+    ot[1].addr = (u32)p;
     p++;
 
-    p->len = 5;
+    p->tag.len = 5;
     ((u32 *)p)[1] = 0xE1000018;
     p->code = 0x66;
     p->clut = 0x77D6;
-    p->r0 = 0x80;
-    p->g0 = 0x80;
-    p->b0 = 0x80;
-    p->x0 = 0x30;
-    p->y0 = 0x46;
-    p->u0 = 0xA0;
-    p->v0 = 0xE0;
-    p->w = 0x60;
-    p->h = 0x18;
-    ((PrimTag *)p)->addr = ((PrimTag *)(ot + 1))->addr;
-    ((PrimTag *)(ot + 1))->addr = (u32)p;
+    p->r = 0x80;
+    p->g = 0x80;
+    p->b = 0x80;
+    p->x = 48;
+    p->y = 70;
+    p->u = 160;
+    p->v = 224;
+    p->w = 96;
+    p->h = 24;
+    p->tag.addr = ot[1].addr;
+    ot[1].addr = (u32)p;
     p++;
 
-    D_800A5E60 = (s32)p;
+    D_800A5E60 = p;
 }
