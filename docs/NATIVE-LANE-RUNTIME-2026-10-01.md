@@ -181,3 +181,12 @@ are pre-existing. Release-flag build: 427/497 admitted, retail guard 7/0.
 Local no-march lane binary: `NATIVE_LANE entries=490 psyq=63`, village warp
 `[WARP] arrived 1010.0` and `HOST_STOP source=IN_GAME_TARGET`, with no
 `NATIVE_LANE_ABORT`.
+
+### S4 on the release binary (port `fbeab8c4e8`)
+
+Job `20261001-175927-bfm-owncode-fbeab8c4e8` (evidence SHA256 `41024ca1...b915`,
+matched by readback; executable `bbf37566...4461`, x86-64-v3; retail guard
+7/0; `entries=490 psyq=63`). Village plain and traced PASS (warp vblanks
+416, `HOST_STOP source=IN_GAME_TARGET`); attract ends as shipped r30.
+`80049440`: 22,346 native calls, 0 interpreted. Village interpreted calls
+1,147,282 (after S1) -> 1,124,936. Main executable 24.1%, overlays 0%.
