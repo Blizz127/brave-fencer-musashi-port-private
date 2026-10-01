@@ -125,6 +125,7 @@ TABLE: dict[str, Status] = {
     "CdIntToPos": Status(H, 2, 1, "bfm_psyq_CdIntToPos", "pure: LBA -> BCD CdlLOC in guest RAM"),
     "CdPosToInt": Status(H, 1, 1, "bfm_psyq_CdPosToInt", "pure: BCD CdlLOC -> LBA"),
     "CdSearchFile": Status(H, 2, 1, "bfm_psyq_CdSearchFile", "bfm_plat_disc_find_file -> guest CdlFILE {pos, size, name}; returns the pointer or 0"),
+    "StGetNext": Status(H, 2, 1, "bfm_psyq_StGetNext", "pure: libcd2 stream ring in guest RAM (status 1 wrap / 2 ready -> 4 taken; addr = ring + size*32 + i*2016); same-input differential vs retail func_80046C38 in tests/psyq_stgetnext_probe.c (v0, outputs, registers, all RAM)"),
     # --- libgte: only stateless math (PsyCross's GTE has its own register file)
     "ratan2": Status(H, 2, 1, "bfm_psyq_ratan2", "exact port of func_8004CFEC over the guest atan table D_80071F1C"),
     "csqrt": Status(S, 0, 0, None, "stateless but not in PsyCross; fixed-point semantics to pin before an HLE"),

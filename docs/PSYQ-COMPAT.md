@@ -10,9 +10,9 @@ and every `asm/overlays/*/*.s`); 63200 `jal`/`j` call sites into the Psy-Q range
 | Status | Entry points | Call sites |
 |---|---|---|
 | psycross | 33 (15.6%) | 19691 (31.2%) |
-| hle | 50 (23.6%) | 29891 (47.3%) |
-| stub-TBD | 129 (60.8%) | 13618 (21.5%) |
-| **covered (psycross + hle)** | **83 / 212 (39.2%)** | **49582 / 63200 (78.5%)** |
+| hle | 51 (24.1%) | 29892 (47.3%) |
+| stub-TBD | 128 (60.4%) | 13617 (21.5%) |
+| **covered (psycross + hle)** | **84 / 212 (39.6%)** | **49583 / 63200 (78.5%)** |
 
 Named: 135 / 212 entry points (vendor symbols, libgte instruction shape, or 28 inferred
 from call context: see `INFERRED` in tools/psyq_compat_status.py). The rest are listed
@@ -79,7 +79,7 @@ by address and Psy-Q object for later naming.
 | `0x800468FC` | *unnamed* | libcd1 |  | 4 | 1 | stub-TBD | CD: guest code over the CD controller HLE |
 | `0x80046ABC` | StSetStream | libcd2 |  | 1 | 1 | stub-TBD | CD: guest code over the CD controller HLE |
 | `0x80046B44` | StFreeRing | libcd2 |  | 1 | 1 | stub-TBD | CD: guest code over the CD controller HLE |
-| `0x80046C38` | StGetNext | libcd2 |  | 1 | 1 | stub-TBD | CD: guest code over the CD controller HLE |
+| `0x80046C38` | StGetNext | libcd2 |  | 1 | 1 | hle | pure: libcd2 stream ring in guest RAM (status 1 wrap / 2 ready -> 4 taken; addr = ring + size*32 + i*2016); same-input differential vs retail func_80046C38 in tests/psyq_stgetnext_probe.c (v0, outputs, registers, all RAM) |
 | `0x80046D1C` | StCdInterrupt | libcd2 |  | 1 | 1 | stub-TBD | CD: guest code over the CD controller HLE |
 | `0x8004787C` | *unnamed* | libgte1 | GEO_00.o | 2507 | 146 | stub-TBD | not in PsyCross; an HLE on the gteRegs bank via the bridge is possible |
 | `0x80047948` | *unnamed* | libgte1 | GEO_01.o | 1747 | 146 | stub-TBD | not in PsyCross; an HLE on the gteRegs bank via the bridge is possible |

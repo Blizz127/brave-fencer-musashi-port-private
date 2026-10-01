@@ -583,6 +583,120 @@ int bfm_psyq_CdSearchFile(uint32_t *r) {
     return 1;
 }
 
+/* StGetNext(u_long **addr, u_long **header): the next complete frame of the
+ * libcd2 sector stream, from the ring StSetRing(ring, size) set up.
+ *
+ * Ring layout (retail StSetRing func_80043088, StFreeRing func_80046B44, the
+ * stream interrupt func_80046D1C): `size` 32-byte sector headers at `ring`,
+ * then `size` 2016-byte (0x7E0) sector bodies. Header +0 is a u16 slot
+ * status: 0 free or still filling, 1 a wrap marker the interrupt leaves when
+ * the next frame does not fit before the ring's end, 2 the first sector of a
+ * complete frame, 4 handed to the game until StFreeRing releases it (header
+ * +6 is the frame's sector count). Library globals in guest RAM: */
+#define ST_READ_INDEX 0x800C6D40u   /* slot the reader looks at next */
+#define ST_RING_BASE  0x800C7C94u   /* ring (StSetRing a0) */
+#define ST_RING_SIZE  0x800C7F00u   /* slots (StSetRing a1) */
+#define ST_END_FRAME  0x800C7C84u   /* StSetMask's end argument (func_80046CFC a2) */
+
+/* Behaviour of retail func_80046C38: if the reader's slot is a wrap marker,
+ * the read index goes back to 0 and, only when an end frame is set, the
+ * marker is cleared to 0; then the (new) slot is examined. Status 2: mark it
+ * 4, *addr = ring + size*32 + index*2016, *header = the slot's header, return
+ * 0. Anything else: return 1 and write nothing more (the not-ready path the
+ * game's polling loop spins on). Addresses wrap at 32 bits like the guest's.
+ *
+ * Refuses, with nothing written, whenever the retail code would fault (a
+ * header or output outside guest RAM/scratchpad, a misaligned halfword or
+ * word) or a header slot overlaps the library globals; the interpreter then
+ * runs the retail code. The caller-saved registers are left as the retail
+ * code leaves them (at, v1, a0-a3, t0), so the whole register file matches;
+ * the game's only caller (0x800D27C4) uses v0 and the two outputs.
+ *
+ * The call runs as one step: the stream interrupt that fills the ring
+ * (interpreted retail StCdInterrupt) lands before or after it, never inside,
+ * which is one of the orders the retail code allows. */
+
+/* Guest RAM (first 2 MB, through KUSEG/KSEG0/KSEG1) or the scratchpad
+ * (KUSEG/KSEG0); anything else (RAM mirrors, I/O, KSEG2) is refused rather
+ * than folded into RAM the way bfm_psyq_ptr's physical mask would. */
+static uint8_t *st_ptr(uint32_t addr, uint32_t len) {
+    const uint32_t phys = addr & 0x1FFFFFFFu;
+    const uint32_t seg = addr >> 29;                     /* 0-3 KUSEG, 4 KSEG0, 5 KSEG1 */
+    if (seg > 5u || (seg < 4u && addr >= 0x20000000u)) return NULL;
+    if (phys >= 0x1F800000u && phys < 0x1F800400u) {
+        if (seg == 5u) return NULL;
+        return (uint8_t *)bfm_psyq_ptr(addr, len);
+    }
+    if (phys >= 0x00200000u || phys + len > 0x00200000u) return NULL;
+    return (uint8_t *)bfm_psyq_ptr(addr, len);
+}
+
+static int st_overlaps(const uint8_t *a, uint32_t alen, const uint8_t *b, uint32_t blen) {
+    return a < b + blen && b < a + alen;
+}
+
+int bfm_psyq_StGetNext(uint32_t *r) {
+    const uint32_t addr_out = A(0), head_out = A(1);
+    const uint32_t globals[4] = {ST_READ_INDEX, ST_RING_BASE, ST_RING_SIZE, ST_END_FRAME};
+    uint32_t index, base, size, end, head, wrapped = 0, k;
+    uint8_t *slot, *slot0 = NULL, *pa = NULL, *ph = NULL;
+    uint16_t status;
+    if (!rd32(ST_READ_INDEX, &index) || !rd32(ST_RING_BASE, &base) ||
+        !rd32(ST_RING_SIZE, &size) || !rd32(ST_END_FRAME, &end))
+        return 0;
+    head = base + (index << 5);
+    if ((head & 1u) || !(slot = st_ptr(head, 2))) return 0;
+    status = (uint16_t)(slot[0] | (slot[1] << 8));
+    if (status == 1u) {
+        if ((base & 1u) || !(slot0 = st_ptr(base, 2))) return 0;
+        wrapped = 1;
+        /* Marker at slot 0 and cleared: the re-read sees the 0 written. */
+        status = (end != 0u && slot0 == slot) ? 0u : (uint16_t)(slot0[0] | (slot0[1] << 8));
+    }
+    if (status == 2u) {
+        if ((addr_out & 3u) || (head_out & 3u) ||
+            !(pa = st_ptr(addr_out, 4)) || !(ph = st_ptr(head_out, 4)))
+            return 0;
+    }
+    /* The retail code reads the globals again after its header stores; a
+     * header aliasing them would change what it reads. Leave that to it. */
+    for (k = 0; k < 4u; k++) {
+        const uint8_t *g = (const uint8_t *)bfm_psyq_ptr(globals[k], 4);
+        if (st_overlaps(slot, 2, g, 4) || (slot0 && st_overlaps(slot0, 2, g, 4))) return 0;
+    }
+
+    r[7] = addr_out;                                    /* a3, t0: the arguments */
+    r[8] = head_out;
+    if (wrapped) {
+        wr32(ST_READ_INDEX, 0);
+        if (end != 0u) wr16(slot, 0);
+        index = 0;
+        head = base;
+        slot = slot0;
+        r[1] = 0x800C0000u;                             /* at: %hi of the globals */
+    }
+    r[6] = head;                                        /* a2 */
+    if (status != 2u) {
+        r[2] = 1;
+        r[3] = 2;
+        return 1;
+    }
+    wr16(slot, 4);
+    {
+        const uint32_t body = (index << 6) - index;     /* index * 63 */
+        const uint32_t data = base + (size << 5) + (body << 5);
+        pa[0] = (uint8_t)data; pa[1] = (uint8_t)(data >> 8);
+        pa[2] = (uint8_t)(data >> 16); pa[3] = (uint8_t)(data >> 24);
+        ph[0] = (uint8_t)head; ph[1] = (uint8_t)(head >> 8);
+        ph[2] = (uint8_t)(head >> 16); ph[3] = (uint8_t)(head >> 24);
+        r[4] = data;
+        r[5] = index;
+        r[3] = body << 5;
+    }
+    r[2] = 0;
+    return 1;
+}
+
 /* ---- libc2 ---------------------------------------------------------- */
 
 /* The seed is the guest's own word (D_80078980 in src/main/8005c49c.c), so

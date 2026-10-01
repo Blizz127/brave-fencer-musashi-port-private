@@ -684,6 +684,24 @@ if(MUSASHI_BUILD_PC_PORT)
         endif()
     endif()
 
+    # StGetNext HLE vs the interpreted retail libcd2 code (same synthetic
+    # ring states; v0, registers, all RAM). With the lane it also enters the
+    # HLE through lane_try.
+    add_executable(musashi_psyq_stgetnext_probe tests/psyq_stgetnext_probe.c)
+    target_compile_features(musashi_psyq_stgetnext_probe PRIVATE c_std_99)
+    target_include_directories(musashi_psyq_stgetnext_probe PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/pc_port/include ${CMAKE_CURRENT_SOURCE_DIR}/pc_port/platform)
+    if(TARGET musashi_native_lane)
+        target_compile_definitions(musashi_psyq_stgetnext_probe PRIVATE PSYQ_PROBE_WITH_LANE=1)
+        target_link_libraries(musashi_psyq_stgetnext_probe PRIVATE musashi_native_lane)
+    else()
+        target_link_libraries(musashi_psyq_stgetnext_probe PRIVATE bfm_plat musashi_pc_port)
+    endif()
+    add_test(NAME psyq_stgetnext_differential
+        COMMAND musashi_psyq_stgetnext_probe
+                ${CMAKE_CURRENT_SOURCE_DIR}/extracted/disc/files/SLUS_007.26)
+    set_tests_properties(psyq_stgetnext_differential PROPERTIES SKIP_RETURN_CODE 77)
+
     # Probes seed synthetic guest RAM; they run the retail words from the
     # developer's own extracted EXE (never from src/ or the build tree).
     set(MUSASHI_CODE_IMAGE ${CMAKE_CURRENT_SOURCE_DIR}/extracted/disc/files/SLUS_007.26)
