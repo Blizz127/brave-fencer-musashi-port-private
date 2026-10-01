@@ -3,7 +3,8 @@
 Design for task b3417aa6a518, part 2. It comes from a read-only analysis at port
 `201548c6b4` (no builds, no vendor C bodies read). Its evidence is the release
 village trace `~/release-staging/bfm-owncode-258e0dcb2b/ev/village_trace/trace.counts`
-and the generator reports. Status: design only; nothing below is implemented yet.
+and the generator reports. Status: section 3 A-F and slice O1 are implemented on branch
+`claude/ovl-o1` (evidence: NATIVE-LANE-RUNTIME-2026-10-01.md, "O1"); O2 is not started.
 
 Overlay game code is 0% native in release builds: on the village route 150,805
 interpreted calls across 793 distinct overlay functions (out of 712,841 interpreted

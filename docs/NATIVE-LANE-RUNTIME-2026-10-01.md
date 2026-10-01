@@ -426,3 +426,98 @@ Village trace on the 455/497 lane: main executable 25.5% of calls native
 rewrite); overlays 0%; interpreted calls 712,841. The rewritten functions are
 mostly cold on this route (sequencer/channel code), so the gain shows in
 distinct-function coverage more than in calls.
+
+## O1: overlay own-code lane plumbing (branch `claude/ovl-o1`)
+
+Implements docs/OVERLAY-LANE-DESIGN.md section 3 A-F with slice O1, main_0003's
+24 clean-room functions (`config/lane_own_code_allow_overlay.txt`). Devbox only,
+not a runner job: this Xeon has no AVX2, so the release-flag tree
+(`-O2 -march=x86-64-v3`, `build/o1-release`) is built for the generator report
+and the retail guard, and the routes ran on an otherwise identical build
+without `-march` (`build/o1-local`). Still hybrid; not a native-completion claim.
+
+**Generator (release flags).** 480/524 admitted: 458 main (the same set as the
+base `1f68a9cc18`, 458/500) and 22/24 overlay. `800D1D14` is refused by
+`layout` (array of pointers) and `800D2A24` by `deny` (below). Each overlay row
+in `report.json` carries its digest, covers (`main_0003`) and rule. Retail guard:
+7 files, 0 problems. Executable SHA256 `7626a2d3...0763` (x86-64-v3, not run here).
+Reading `bfm_plat_hook_sites.c` (B6) rejects no main function. It moves one
+direct native call to the thunk: `80011B7C` (ROOM_EXIT hook site), which the
+native `80011380`, `80010BB4` and `80011220` had called directly, so that event
+never fired from native callers. The thunk did not arm entry hooks at all before;
+it now does, as a jal does.
+
+**Two defects found by the local route and fixed on the branch.**
+1. B6 at first also blocked the PsyQ HLE entries SetGeomScreen/SetGeomOffset
+   (`8004923C`/`8004921C`, whose own entry PCs are PROJECTION hook sites). Their
+   retail words then ran under a native caller (thunk, `ra=ffffffff`) and failed the
+   COP2 caller whitelist (`STEP_REFUSED pc=80049224`): the village route stopped
+   after the warp request with `NATIVE_LANE_ABORT 8001125C/80010B40 code=4`, with
+   and without overlay entries. An entry-kind site at the entry PC itself no longer
+   blocks (`psyq_hooked` is the base list again, 52 entries).
+2. With the overlay entries on, the intro FMV stopped after 4 MDEC transfers
+   instead of 1852, and the warp request came at vblank 1845 instead of 2207 (the
+   deny-all-overlay leg and the runner baseline). DENY bisection (exact once the
+   overlay guard also honours DENY): `800D2454`, `800D2394`, `800D2AA0` and
+   `800D2A24` each native alone match the baseline, and `800D2454` native calling
+   `800D2A24` natively reproduces the cut. All four match their retail instructions
+   (objdump of the user's member file). `800D2A24` retries CdControl(Setloc) and
+   then the streaming read start (`8004657C`: CdControl `0x0E`, then `0x1B`), so its
+   result depends on the guest time between its guest calls, and natively none
+   passes. It is held out (`OVERLAY_DENY`); KNOWN-DIVERGENCES D-013 (6).
+
+**Unit and probe tests.** `tests/test_native_lane_overlay_gen.py` 13/13: allow-file
+parsing (malformed, duplicate, unaligned), the tracked list equals the registry's 24
+clean-room rows, SHA-1 mismatch, missing sha1/config/file, untagged and
+third-party origins, missing registry row, size and overlap, dedup with covers
+(clean-room preferred), the jump-table rule, the hook sites and PsyQ list, and an
+end-to-end release run (`800D2A24` deny; the `80011B7C` call is a thunk).
+CTest `native_lane_overlay_runtime` (`tests/native_lane_overlay_runtime_probe.c`,
+PASS): DENY keeps 1 of 2 overlay entries and the denied body does not run; RANGE
+keeps 1 and the guard refuses the filtered function from a native caller although
+its bytes match; entry verified/refused, guard verified/refused and recheck counters
+move separately; a caller whose own bytes change under its guest call aborts
+(`NATIVE_LANE_OVERLAY_RECHECK_FAILED`, code 7), and so does a directly called
+overlay frame. With the bytes restored, both run again. The thunk fires the entry
+hook. The trace counts the entry 5 native and 1 interp, as the counters do.
+
+**Differential (`musashi_native_lane_overlay_probe`, main_0003 payload).** 22
+entries: 10 cases same, 0 different, 0 not native, 56 not comparable, 22/22
+negative cases (one flipped byte) refused, 0 bad. Only four functions have a
+comparable positive case (`800CF078`, `800CF104`, `800D2394`, `800D2AA0`): the
+interpreter oracle admits main_0003 words only inside `kFormatterRanges4`, which
+covers 9 of the 22 entries, and the synthetic arguments miss the others' paths.
+The other 13 cannot run interpreted at all (a call to them would refuse the step),
+so the differential cannot reach them. That is a coverage limit, not a pass.
+Foreign payloads (`OVERLAY_PROBE_FOREIGN=1`, main_0001/0008/0010 loaded in
+main_0003's window): 88/88 cases each refused, 0 ran native.
+
+**CTest and pytest.** Lane build 35/35 (34 at base, plus the new runtime probe),
+default build 34/34 (same); `tests/test_bfm_plat.py`, `test_native_lane*.py`,
+`test_port_matched_ratio.py` and `test_psyq_exclusion.py`: 71 passed, 1 skipped (Lua
+not fetched).
+
+**Local village 1010 warp** (no-march lane build, guest clock, unthrottled, the
+runner job's environment and input script; three legs in parallel):
+
+| Leg | Overlay | Warp request / arrival | Stop | Display | IRQ deliveries | MDEC transfers |
+|---|---|---|---|---|---|---|
+| plain | `entries=22 of 22`; `entry_verified=215 entry_refused=584 guard_verified=1 guard_refused=0 recheck_ok=348 recheck_failed=0` | vblank 2207 / 416 | `IN_GAME_TARGET`, tick `0ae0` | 70196/76800 | 11,235 | 1852 |
+| traced (`MUSASHI_TRACE_FUNCS`, `MUSASHI_TRACE_RESIDENT`) | identical counters | same | same | same | 11,235 | 1852 |
+| DENY all 24 | `entries=0 of 22`, all counters 0 | vblank 2207 / 416 | same | same | 11,238 | 1852 |
+
+`NATIVE_LANE entries=522 psyq=64`; no `NATIVE_LANE_ABORT`, `HOST_FAULT` or recheck
+failure. Lane-on vs deny-all differ in IRQ deliveries (3) and the final guest cycle
+count (1), which is the cycle charge (D-011). DEVOBS streams were not compared
+locally.
+
+Trace: 215 overlay calls native, exactly `entry_verified`. The allow-listed functions
+ran 215 native and 4 interp calls (`800D2A24` 2, held out; `800CF104` and
+`800CF370` 1 each, refused at the boundary). Overlay space overall: 150,867
+interpreted calls, so overlays are still 0.1% native on this route. O1 proves the
+plumbing, not speed. All regions: 5,072,190 native and 618,360 interpreted calls.
+`trace.resident` has 851 (target, digest) rows, 0 dropped.
+
+Not done here: the runner gates on the x86-64-v3 binary (village plain/traced/
+DENY-all, attract, DEVOBS parity), which the integrator submits. The attract route
+was not run locally.

@@ -862,8 +862,73 @@ the game's own tables in guest RAM, not PsyCross's copies: those equal the
 game's data and would put retail bytes in the binary (retail_content_guard).
 
 Bisecting: `MUSASHI_NATIVE_LANE_RANGE=lo-hi` (hex, hi exclusive) keeps only
-those guest PCs, and `MUSASHI_NATIVE_LANE_DENY=pc,pc,...` drops PCs. The
-tracer (`MUSASHI_TRACE_FUNCS`) marks each entry `native` or `interp`.
+those guest PCs, and `MUSASHI_NATIVE_LANE_DENY=pc,pc,...` drops PCs, in the
+main and the overlay table alike (an overlay PC drops every member's entry
+there). `NATIVE_LANE overlay entries=N of M` prints the count kept after the
+filter; a filtered main table also prints `DENY/RANGE kept N of M`. The
+tracer (`MUSASHI_TRACE_FUNCS`) marks each entry `native` or `interp`; with
+`MUSASHI_TRACE_RESIDENT=path` it also writes, per entry outside the main
+EXE text, the FNV-1a 64 of the 32 resident bytes at the target and a count
+(exact resident member per call, for `tools/port_matched_ratio.py
+--trace-resident`).
+
+The interpreter thunk arms the platform entry hook for its target as a jal
+does, and a native caller reaches a `bfm_plat_hook_sites.c` site only
+through the thunk (the generator never links it directly), so a hook site
+called from native code still fires its event.
+
+#### Overlay entries (docs/OVERLAY-LANE-DESIGN.md)
+
+Overlay functions (MAIN.CD and scene members) share load addresses, so each
+overlay entry carries the FNV-1a 64 of its member's bytes over the
+function's registry extent, computed at build time from the user's own
+extracted member file, and runs only while guest RAM there hashes to it:
+
+- Entry (`lane_try` at an overlay PC, `lane_find_overlay`): the digest is
+  computed over the extent on every call; a match runs the native body, no
+  match leaves the interpreter to run the resident words.
+- Guard (generated direct calls between overlay functions):
+  `musashi_native_lane_overlay_resident` checks the callee's digest; no
+  match goes through the interpreter thunk.
+- Post-call re-check: while a native overlay body runs, it (and every
+  overlay callee it called directly) is on an overlay frame stack. After every
+  guest call from native code the frames of the current lane entry are
+  re-hashed; a member reloaded or patched underneath a running native body
+  aborts the lane call and refuses the step (fail closed:
+  `NATIVE_LANE_OVERLAY_RECHECK_FAILED`, abort code 7), since neither the host
+  copy nor an interpreter restart can be right then.
+- Counters, printed at exit as `NATIVE_LANE overlay verified= refused=
+  entry_verified= entry_refused= guard_verified= guard_refused= recheck_ok=
+  recheck_failed=` (the first two are the sums). The tracer counts an overlay
+  entry `native` only when its digest verified; refusals are `interp`.
+
+Release builds (`MUSASHI_LANE_OWN_CODE_ONLY=ON`) take overlay functions only
+from `config/lane_own_code_allow_overlay.txt` (`<member> <vram>` lines;
+`--overlay-allow`), and the members from that file. Each pair needs a
+registry row of matched C whose origin is clean-room or owner (untagged
+fails) and whose extent fits the member's code; the member file's SHA-1 must
+equal the yaml's `sha1`. Any of these failing is a build error, so a release
+never silently ships 0 overlay entries. Overlay candidates also refuse a
+guest jump table (`jumptable`: `jr` not to ra), since the digest does not
+cover `.rodata`, and `OVERLAY_DENY` holds out admissible functions by (member, vram)
+(`800D2A24`: a guest-time sensitive CD command loop, D-013). Slice O1:
+22 of main_0003's 24 clean-room functions (`800D1D14` `layout`,
+`800D2A24` `deny`). Identical `(vram, digest)` rows from several members are
+compiled once and record the members they `covers` (`report.json`
+`overlay.functions`). Dev builds keep `MUSASHI_LANE_OVERLAY_MEMBERS`
+(default `main_0003`): every matched function of those members is a
+candidate, and a member without config, extract or a matching SHA-1 stays
+interpreted with a message.
+
+Verification: `tests/native_lane_overlay_probe.c` (pytest
+`tests/test_native_lane_overlay.py`; `OVERLAY_PROBE_FOREIGN=1` loads another
+member's payload in the same window and requires every entry to refuse) and
+the CTest `native_lane_overlay_runtime` (`tests/native_lane_overlay_runtime_probe.c`:
+DENY/RANGE on the overlay table, the split counters, the fail-closed re-check
+on a corrupted caller and on a corrupted direct callee, then the restored
+bytes running again, the thunk arming entry hooks, the tracer split).
+Generator rules: `tests/test_native_lane_overlay_gen.py`. Disclosure:
+KNOWN-DIVERGENCES D-013.
 
 ### Memory model: guest RAM at host 0x80000000 (design (a))
 
