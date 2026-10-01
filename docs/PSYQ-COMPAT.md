@@ -10,9 +10,9 @@ and every `asm/overlays/*/*.s`); 63200 `jal`/`j` call sites into the Psy-Q range
 | Status | Entry points | Call sites |
 |---|---|---|
 | psycross | 33 (15.6%) | 19691 (31.2%) |
-| hle | 51 (24.1%) | 29892 (47.3%) |
-| stub-TBD | 128 (60.4%) | 13617 (21.5%) |
-| **covered (psycross + hle)** | **84 / 212 (39.6%)** | **49583 / 63200 (78.5%)** |
+| hle | 52 (24.5%) | 29895 (47.3%) |
+| stub-TBD | 127 (59.9%) | 13614 (21.5%) |
+| **covered (psycross + hle)** | **85 / 212 (40.1%)** | **49586 / 63200 (78.5%)** |
 
 Named: 135 / 212 entry points (vendor symbols, libgte instruction shape, or 28 inferred
 from call context: see `INFERRED` in tools/psyq_compat_status.py). The rest are listed
@@ -118,7 +118,7 @@ by address and Psy-Q object for later naming.
 | `0x8004923C` | SetGeomScreen | libgte7 |  | 1 | 1 | psycross | GTE bridge (gte_owner lease); the hook site also records the projection |
 | `0x800492FC` | Square12 | libgte24 |  | 137 | 137 | stub-TBD | not in PsyCross; an HLE on the gteRegs bank via the bridge is possible |
 | `0x80049324` | Square0 | libgte24 |  | 330 | 137 | stub-TBD | not in PsyCross; an HLE on the gteRegs bank via the bridge is possible |
-| `0x80049440` | *unnamed* | libgte24 |  | 3 | 1 | stub-TBD | not in PsyCross; an HLE on the gteRegs bank via the bridge is possible |
+| `0x80049440` | *unnamed* | libgte24 |  | 3 | 1 | hle | GTE-bank access under the gte_owner lease; no device I/O, no guest RAM: MTC2 LZCS=a0, v0 = MFC2 LZCR (leading sign bits, 1..32); leaves LZCS/LZCR and the owner's data read/write counters as retail does; same-input differential vs retail func_80049440 in tests/psyq_lzc_probe.c |
 | `0x8004945C` | RotTransSV | libgte8 |  | 1803 | 140 | psycross | GTE bridge (gte_owner lease); long *flag via a host temporary |
 | `0x8004955C` | RotTransPers | libgte8 |  | 2051 | 138 | psycross | GTE bridge (gte_owner lease); long *p/*flag via host temporaries |
 | `0x8004958C` | RotTransPers3 | libgte8 |  | 6 | 2 | psycross | GTE bridge (gte_owner lease); args 5-8 from the guest stack; long * via temporaries |

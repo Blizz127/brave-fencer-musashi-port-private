@@ -64,7 +64,7 @@ iteration count.
 | S1 | `80046c38` StGetNext (2,297,066; 66.3%) | libcd2 stream ring: next sector or not-ready | game, `800d27c4` (main_0003 poll loop) | SDK HLE over the stream ring in guest RAM: `bfm_psyq_StGetNext`, class pure (no device access; the ring is filled by the interpreted stream interrupt), differential `psyq_stgetnext_differential`; done on `claude/s1-stgetnext` (see below) |
 | S2 | `8004239c` VSync (89,573), internals `800426d4` (56,946), `800426fc` (34,234): 5.2% | libetc frame wait and callback dispatch | SDK-internal (`80044150`, `80044258`, `8005b81c`) | VSync HLE exists (`BFM_PSYQ_HLE`) but installs only with `MUSASHI_PSYQ_LANE=all`; promote the class behind its own gate |
 | S3 | libpad `8005fbc8` (200,361), `8005fba8` (45,336), `8005e0ac` (26,666), `8005dbd8` (18,670), `8005dca0` (18,666), `8005f394` (15,998), `8005de78` (10,668): 9.7% | pad SIO exchange and handshake waits | SDK-internal only (pad interrupt/VSync callback chain) | HLE the pad driver's interrupt handler and the pad entry points on `bfm_plat_input` and the existing SIO wire shim; device/IRQ seam, highest timing risk |
-| S4 | libgte24 `80049440` (22,346; 0.6%) | GTE helper | game, `80012928` | HLE through the existing GTE bridge; compat row is a stub |
+| S4 | libgte24 `80049440` (22,346; 0.6%) | GTE helper | game, `80012928` | HLE through the GTE bridge (`bfm_psyq_LZC`, `musashi_gte_owner_native_lzc`), done on `claude/s4-libgte24` (see below) |
 | S5 | libgpu2 `8005ba90` (13,207), `8005c020` (11,145): 0.7% | packet/OT internals | SDK-internal | HLE at the libgpu entry points; partly bypassed already on `MUSASHI_GPU=bfm_plat` |
 | game | main `8001d388` (50,944), `8001fb8c` (38,208), `80020da4` (12,653): 2.9% | game code | game | clean-room re-derivation, then allow list |
 | game | overlay `8012a988` (19,104), `80134a28` (11,364), `8017869c` (8,652): 1.1% | overlay game code | game | clean-room re-derivation plus the digest-checked overlay own-code lane (0 overlay entries today) |
@@ -145,3 +145,20 @@ inflates the "share of calls" figure, so the interpreted-call count is the
 better progress measure. Next by interpreted calls: pad polling (S3), VSync
 and its internals (S2), main `8001d388`/`8001fb8c`, libgte24 `80049440` (S4),
 overlay `8012a988`.
+
+
+## S4 LZC HLE (`80049440`, branch `claude/s4-libgte24`)
+
+`func_80049440` is `mtc2 a0,$30; mfc2 v0,$31`: it moves a0 into GTE LZCS and
+returns LZCR (the number of leading bits equal to the sign bit, 1..32),
+leaving LZCS/LZCR in the shared cop2 data bank. No RAM, no other register.
+Class: GTE-bank access under the `gte_owner` lease (installed with the
+release default, like the PsyCross GTE wrappers); no device I/O, no guest RAM.
+
+New code, all native C: `bfm_psyq_LZC` (`bfm_psyq_libgte.c`), an optional
+`lzc` hook on `BfmPsyqGteBridge` with `bfm_psyq_gte_lzc`, and
+`musashi_gte_owner_native_lzc`, which reuses the owner's one LZCS commit
+(`gte_commit_lzcs`, factored out of the interpreter's MTC2 path unchanged) and
+credits one data write and one data read as the interpreter's MTC2 + MFC2 do.
+Differential: `tests/psyq_lzc_probe.c` (CTest `psyq_lzc_differential`), see
+KNOWN-DIVERGENCES.md.
