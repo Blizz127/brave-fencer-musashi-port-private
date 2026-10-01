@@ -1,13 +1,20 @@
-/* Exact retail word export for [8001D388,8001D3FC); EXE and assembly verified. */
-/* Source: written against Druthulu/BFM-decomp (vendor/bfm-decomp) as reference. */
-/* func_8001D388 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Dispatches an active type-2 object through the handler table indexed by its subtype. */
 #include "psx_types.h"
 
-extern void (*D_8006351C[])(void *);
+typedef struct {
+    u16 type;
+    u16 subtype;
+    s32 state;
+    u8 pad[0x18];
+    s32 enabled;
+} Obj8001D388;
 
-void func_8001D388(u8 *obj) {
-    if (*(s32 *)(obj + 4) >= 0 && *(s32 *)(obj + 0x20) != 0 &&
-        *(u16 *)obj == 2 && *(u16 *)(obj + 2) < 11) {
-        D_8006351C[*(u16 *)(obj + 2)](obj);
+extern u32 D_8006351C[];
+
+void func_8001D388(Obj8001D388 *obj)
+{
+    if (obj->state >= 0 && obj->enabled != 0 && obj->type == 2 && obj->subtype < 11) {
+        ((void (*)(Obj8001D388 *))D_8006351C[obj->subtype])(obj);
     }
 }
