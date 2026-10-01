@@ -52,8 +52,17 @@ static unsigned g_hook_hits;
 
 static uint8_t *ram(uint32_t a) { return g_mem->bytes + (a & 0x1fffffu); }
 
+/* -1: no check; else the guard result B must see for A (A resident) */
+static int g_b_expect_a = -1;
+static unsigned g_b_checked;
+
 static int body_b(MusashiNativeLaneCall *call) {
     ++g_ran_b;
+    if (g_b_expect_a >= 0) {
+        ++g_b_checked;
+        CHECK(musashi_native_lane_overlay_resident(OVL_A, SIZE_A, g_digest_a) == g_b_expect_a,
+              "guard for A from B: want %d", g_b_expect_a);
+    }
     call->r[2] = 0xb0b0u;
     return 1;
 }
@@ -141,8 +150,21 @@ int main(int argc, char **argv) {
     }
     setenv("MUSASHI_NATIVE_LANE_RANGE", "80180080-80180200", 1);
     CHECK(install(NULL) == 1, "RANGE keeps 1 overlay entry");
+    /* A filtered out: a direct native call from B to A is refused by the
+     * guard (A's bytes are resident and match), so A stays interpreted */
+    {
+        MusashiNativeLaneOverlayStats a, b;
+        musashi_native_lane_overlay_stats_get(&a);
+        g_b_expect_a = 0;
+        CHECK(call(OVL_B, &v0) == 1 && v0 == 0xb0b0u && g_b_checked == 1, "B runs (RANGE)");
+        musashi_native_lane_overlay_stats_get(&b);
+        CHECK(b.guard_refused == a.guard_refused + 1, "guard_refused +1 (filtered callee)");
+    }
     unsetenv("MUSASHI_NATIVE_LANE_RANGE");
     CHECK(install(NULL) == 2, "no filter keeps 2 overlay entries");
+    g_b_expect_a = 1;
+    CHECK(call(OVL_B, &v0) == 1 && g_b_checked == 2, "B runs (unfiltered)");
+    g_b_expect_a = -1;
     if (!musashi_native_lane_usable(g_mem)) { fprintf(stderr, "overlay_runtime: lane not usable\n"); return 1; }
 
     /* counters + clean recheck */

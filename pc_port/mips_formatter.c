@@ -13395,10 +13395,21 @@ static const MusashiNativeLaneOverlayEntry *lane_find_overlay(MusashiBootMemory 
     return NULL;
 }
 
+/* 1 when (pc, digest) is in the installed overlay table, i.e. not removed
+ * by MUSASHI_NATIVE_LANE_DENY / _RANGE. */
+static int lane_ovl_installed(uint32_t pc, uint64_t digest) {
+    size_t i = lane_ovl_first(pc);
+    for (; i < g_lane_ovl_count && g_lane_ovl[i].entry.guest_pc == pc; ++i)
+        if (g_lane_ovl[i].digest == digest) return 1;
+    return 0;
+}
+
 int musashi_native_lane_overlay_resident(uint32_t pc, uint32_t size, uint64_t digest) {
     uint64_t h;
     MusashiBootMemory *memory = g_lane_active ? g_lane_active->memory : NULL;
-    if (!lane_ram_digest(memory, pc, size, &h) || h != digest) {
+    /* A denied overlay function never runs natively, not even when a native
+     * caller reaches it directly: the guard sends it to the interpreter. */
+    if (!lane_ovl_installed(pc, digest) || !lane_ram_digest(memory, pc, size, &h) || h != digest) {
         ++g_lane_ovl_stats.guard_refused;
         return 0;
     }
