@@ -271,3 +271,11 @@ count: 1,124,936 -> 1,035,157 (the true reduction is about 80,600).
 
 Following this gate the release default became `pure+vsync`
 (`musashi_native_lane_psyq_classes`), and `MUSASHI_PSYQ_LANE=pure` opts out.
+
+Default flip verified: job `20261001-192821-bfm-owncode-b41faa01d5` (evidence
+`93c37bbf...0c4150`, matched by readback; executable `decf51c2...64b0`). Unset
+`MUSASHI_PSYQ_LANE` logs `entries=491 psyq=64 classes=pure+vsync`, and
+`MUSASHI_PSYQ_LANE=pure` logs `entries=490 psyq=63 classes=pure`. Both reach
+the village with warp vblanks 416, stop tick `00000ae0` and display
+70196/76800. `musashi_psyq_vsync_probe` on the runner against the user's
+SLUS_007.26: 236 cases, 216 native completions, 19 refusals, 0 different.
