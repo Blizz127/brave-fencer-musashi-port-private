@@ -1178,7 +1178,11 @@ def psyq_hooked(hooks):
     """PsyQ compat-table entry points (pc_port/platform/psyq/bfm_psyq_compat.def)
     whose body contains a PC the port sequences or observes: the lane must
     not run those natively either. A body without a registry size ends at
-    the next known function start."""
+    the next known function start. A platform entry-hook site at the entry
+    PC itself (SetGeomScreen/SetGeomOffset) does not block it: the hook fires
+    in formatter_step before the lane, and native callers reach the entry
+    through the thunk, which arms the hook."""
+    plat = plat_hook_sites()
     defs = ROOT / "pc_port/platform/psyq/bfm_psyq_compat.def"
     if not defs.exists():
         return []
@@ -1195,7 +1199,7 @@ def psyq_hooked(hooks):
         else:
             later = [s for s in starts if s > pc]
             end = later[0] if later else pc + 4
-        if any(pc <= h < end for h in hooks):
+        if any(pc <= h < end and not (h == pc and h in plat and hooks[h] == "entry") for h in hooks):
             blocked.append(pc)
     return blocked
 

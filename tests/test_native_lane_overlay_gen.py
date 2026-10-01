@@ -175,6 +175,13 @@ class HookSites(unittest.TestCase):
         kinds = g.hooked_pcs()
         self.assertEqual(kinds.get(0x8014BC80), "entry")
         self.assertEqual(kinds.get(0x800D0F0C), "entry")
+        # A site at a PsyQ entry's own PC (SetGeomScreen/SetGeomOffset) leaves
+        # the HLE entry installed: the hook fires before the lane runs.
+        blocked = set(g.psyq_hooked(kinds))
+        self.assertNotIn(0x8004921C, blocked)
+        self.assertNotIn(0x8004923C, blocked)
+        without = {pc: k for pc, k in kinds.items() if pc not in sites or k == "hard"}
+        self.assertEqual(blocked, set(g.psyq_hooked(without)))
 
 
 class EndToEnd(unittest.TestCase):
