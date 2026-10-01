@@ -688,6 +688,31 @@ with no BFM job running. Do not resubmit it. Expected output is
 on blizzpc. Retrieve and hash-verify that archive, then compare both active
 VRAM regions and matched-stop logs before claiming a village improvement.
 
+Job `20260930-221700-bfm-2175-coh-vram` later ran (runner start 22:38 CDT;
+both legs reached `[WARP] arrived 1010.0 ... vblanks=416` and
+`HOST_STOP source=IN_GAME_TARGET`; both exited 143 from the post-stop timeout,
+as in the earlier jobs). The runner extracted candidate SHA256 `629dd3af...`,
+the optimized build above. Evidence archive SHA256
+`8ae762e38626c26d93d1b9ca912edee6490c8143dbc148d63e961f8a53a1b5e0`
+matches on runner and owner box; it is unpacked in
+`~/release-staging/bfm-gfx-2175/coh-vram-remote/` with
+`exact-vram-comparison.json`. CPU vs gl active VRAM at the matched stop:
+
+| region | before (`38ebac7941`) | after (`060cc912c8` production change) |
+|---|---|---|
+| whole VRAM 1024x512 | 5043 px (0.962%, MAE8 1.6205) | **1843 px (0.352%, MAE8 0.0641)** |
+| page 0 (0,0) 320x240 | 4127 px (5.374%, MAE8 10.84) | **927 px (1.207%, MAE8 0.2184)** |
+| page 1 (0,240) 320x240 | 916 px (1.193%) | 916 px (1.193%) |
+| drawing y=10 320x220 | 927 px (1.317%) | 927 px (1.317%) |
+| drawing y=250 320x220 | 916 px (1.301%) | 916 px (1.301%) |
+
+The fix removed the 3200 page-0 border pixels (the up-to-31-step stale-scene
+loss). Every remaining difference (927 + 916 = 1843) lies inside the two
+drawing regions and is unchanged by this fix; 1192 of them are one 5-bit
+step. This is the open rasterisation residual, not parity. Frame capture
+indices differ by two between the legs after the warp (e.g. 691 vs 693);
+the comparison is of the final active VRAM only, not per-frame parity.
+
 Logs are owner-local in `~/release-staging/bfm-gfx-2175/coh-*-tests.log` and
 `coh-build-default.log`. Real-game coherency validation, scanout compatibility,
 per-frame parity, performance acceptance and the Enhancements menu remain
