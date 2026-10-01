@@ -1099,3 +1099,20 @@ python3 tools/recarve_drafts.py               # rewrite the failures only
 
 A compilable draft is not a match. It is a draft the oracle is finally
 allowed to judge.
+
+## Method references
+
+Function-level matching method (reference, adopted 2026-10-01 on the owner's recommendation):
+[Decomp Academy](https://decomp-academy.dev/), e.g.
+[what matching is](https://decomp-academy.dev/courses/n64-c/lesson/foundations-what-is-matching).
+It has no PS1 course and its N64 material targets IDO 5.3, so its compiler tricks don't carry over to
+gcc-2.7.2-psx without evidence from this binary. [objdiff](https://github.com/encounter/objdiff) supports
+PS1 MIPS. It's listed as a method reference only and isn't installed or used here; `tools/register_match.py`
+and `tools/verify_registry.py` are the gate.
+
+What we take from it, per function: bound it exactly (range, delay slots, jump tables via `--rodata-base`, splat
+pieces via `--size`); recover ABI, types, signedness and layout before instruction tuning; make one attributable
+hypothesis per compile and record the winning change in the ledger. Keep the matching gate (registry MATCH plus
+`check_no_retail_data`), the native-lane differential and the gameplay runner gate separate. Report matched
+coverage, native-executed share and playable routes separately. A byte-identical build can still contain retail
+objects, so a checksum alone is never full source recovery or native completion.
