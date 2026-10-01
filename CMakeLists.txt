@@ -619,37 +619,75 @@ if(MUSASHI_BUILD_PC_PORT)
         find_package(Python3 COMPONENTS Interpreter REQUIRED)
         set(MUSASHI_LANE_DIR ${MUSASHI_GENERATED_DIR}/native_lane)
         # Overlay members compiled into the lane (digest-verified per call).
+        # Release (own-code) builds take overlay functions from
+        # config/lane_own_code_allow_overlay.txt ("<member> <vram>") instead;
+        # their members come from that file.
         set(MUSASHI_LANE_OVERLAY_MEMBERS "main_0003" CACHE STRING
-            "comma-separated overlay members for the native lane")
-        string(REPLACE "," ";" MUSASHI_LANE_OVERLAY_LIST "${MUSASHI_LANE_OVERLAY_MEMBERS}")
+            "comma-separated overlay members for the native lane (dev builds)")
+        option(MUSASHI_LANE_OWN_CODE_ONLY "Native lane compiles only owner-authored C" OFF)
+        set(MUSASHI_LANE_OVERLAY_ALLOW
+            ${CMAKE_CURRENT_SOURCE_DIR}/config/lane_own_code_allow_overlay.txt)
+        if(MUSASHI_LANE_OWN_CODE_ONLY)
+            file(STRINGS ${MUSASHI_LANE_OVERLAY_ALLOW} MUSASHI_LANE_OVERLAY_ALLOW_LINES
+                REGEX "^[a-z]+[0-9]*_[0-9][0-9][0-9][0-9][ \t]")
+            set(MUSASHI_LANE_OVERLAY_LIST)
+            foreach(line IN LISTS MUSASHI_LANE_OVERLAY_ALLOW_LINES)
+                string(REGEX MATCH "^[a-z]+[0-9]*_[0-9][0-9][0-9][0-9]" member "${line}")
+                list(APPEND MUSASHI_LANE_OVERLAY_LIST ${member})
+            endforeach()
+            list(REMOVE_DUPLICATES MUSASHI_LANE_OVERLAY_LIST)
+            set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+                ${MUSASHI_LANE_OVERLAY_ALLOW})
+        else()
+            string(REPLACE "," ";" MUSASHI_LANE_OVERLAY_LIST "${MUSASHI_LANE_OVERLAY_MEMBERS}")
+        endif()
         set(MUSASHI_LANE_OVERLAY_GLOBS)
+        set(MUSASHI_LANE_OVERLAY_CONFIGS)
         foreach(member IN LISTS MUSASHI_LANE_OVERLAY_LIST)
             list(APPEND MUSASHI_LANE_OVERLAY_GLOBS
                 ${CMAKE_CURRENT_SOURCE_DIR}/src/overlays/${member}/*.c)
+            if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/config/overlay_${member}.yaml)
+                list(APPEND MUSASHI_LANE_OVERLAY_CONFIGS
+                    ${CMAKE_CURRENT_SOURCE_DIR}/config/overlay_${member}.yaml)
+            endif()
         endforeach()
         file(GLOB MUSASHI_LANE_SOURCES CONFIGURE_DEPENDS
             ${CMAKE_CURRENT_SOURCE_DIR}/src/main/*.c ${MUSASHI_LANE_OVERLAY_GLOBS})
-        # hooked_pcs() reads the port's sources; psyq_hooked() the compat table.
+        # hooked_pcs() reads the port's sources and the platform hook sites;
+        # psyq_hooked() the compat table.
         file(GLOB MUSASHI_LANE_HOOK_SOURCES CONFIGURE_DEPENDS
             ${CMAKE_CURRENT_SOURCE_DIR}/pc_port/*.c)
-        # Release builds: native code only from owner-authored matched C.
-        option(MUSASHI_LANE_OWN_CODE_ONLY "Native lane compiles only owner-authored C" OFF)
+        list(APPEND MUSASHI_LANE_HOOK_SOURCES
+            ${CMAKE_CURRENT_SOURCE_DIR}/pc_port/platform/bfm_plat_hook_sites.c)
+        # Release builds: native code only from owner-authored matched C. The
+        # main --only list holds main PCs; overlay functions come from the
+        # overlay allow list alone (a missing member file, a SHA-1 mismatch or
+        # a missing registry row fails the build).
         set(MUSASHI_LANE_OWN_CODE_FLAG)
+        set(MUSASHI_LANE_MEMBERS_FLAG --overlay-members "${MUSASHI_LANE_OVERLAY_MEMBERS}")
+        set(MUSASHI_LANE_OWN_CODE_DEPENDS)
         if(MUSASHI_LANE_OWN_CODE_ONLY)
             set(MUSASHI_LANE_OWN_CODE_FLAG --own-code-only
-                --only ${CMAKE_CURRENT_SOURCE_DIR}/config/lane_own_code_allow.txt)
+                --only ${CMAKE_CURRENT_SOURCE_DIR}/config/lane_own_code_allow.txt
+                --overlay-allow ${MUSASHI_LANE_OVERLAY_ALLOW})
+            set(MUSASHI_LANE_MEMBERS_FLAG)
+            set(MUSASHI_LANE_OWN_CODE_DEPENDS
+                ${CMAKE_CURRENT_SOURCE_DIR}/config/lane_own_code_allow.txt
+                ${MUSASHI_LANE_OVERLAY_ALLOW})
         endif()
         add_custom_command(
             OUTPUT ${MUSASHI_LANE_DIR}/native_lane_table.c
                    ${MUSASHI_LANE_DIR}/libmusashi_native_lane.a
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/native_lane_gen.py
                     --out ${MUSASHI_LANE_DIR} --clang ${MUSASHI_CLANG} --ar ${CMAKE_AR} --jobs 4
-                    --overlay-members "${MUSASHI_LANE_OVERLAY_MEMBERS}"
+                    ${MUSASHI_LANE_MEMBERS_FLAG}
                     ${MUSASHI_LANE_OWN_CODE_FLAG}
             DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/tools/native_lane_gen.py
                     ${CMAKE_CURRENT_SOURCE_DIR}/provenance/matches.json
                     ${MUSASHI_LANE_SOURCES}
                     ${MUSASHI_LANE_HOOK_SOURCES}
+                    ${MUSASHI_LANE_OVERLAY_CONFIGS}
+                    ${MUSASHI_LANE_OWN_CODE_DEPENDS}
                     ${CMAKE_CURRENT_SOURCE_DIR}/pc_port/platform/psyq/bfm_psyq_compat.def
             COMMENT "Checking and compiling native-lane decomp C"
             VERBATIM)

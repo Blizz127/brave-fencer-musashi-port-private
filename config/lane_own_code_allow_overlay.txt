@@ -1,0 +1,33 @@
+# Native-lane OVERLAY functions a release build may compile (MUSASHI_LANE_OWN_CODE_ONLY):
+# owner-authored matched C only, one '<member> <vram>' pair per line. The generator
+# (tools/native_lane_gen.py --overlay-allow) requires a clean-room or owner registry
+# origin for each pair, checks the member file's SHA-1 against config/overlay_<member>.yaml,
+# and computes each entry's digest from that file; a missing member, registry row or
+# SHA-1/size mismatch fails the build. See docs/OVERLAY-LANE-DESIGN.md.
+#
+# Slice O1: main_0003's 24 clean-room functions (registry origin
+# "owner re-derivation, clean room ...").
+main_0003 800cf078
+main_0003 800cf104
+main_0003 800cf370
+main_0003 800d0174
+main_0003 800d0204
+main_0003 800d0268
+main_0003 800d0664
+main_0003 800d06bc
+main_0003 800d0740
+main_0003 800d09a0
+main_0003 800d1d14
+main_0003 800d1e18
+main_0003 800d1e58
+main_0003 800d2394
+main_0003 800d2454
+main_0003 800d2a24
+main_0003 800d2aa0
+main_0003 800d2ad8
+main_0003 800d2b64
+main_0003 800d2c00
+main_0003 800d2c0c
+main_0003 800d2ca8
+main_0003 800d2ce4
+main_0003 800d2d20
