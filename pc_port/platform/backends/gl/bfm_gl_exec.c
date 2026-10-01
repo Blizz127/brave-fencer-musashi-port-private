@@ -309,8 +309,11 @@ static int target_alloc(BfmGlExec *x, Target *t, int w, int h) {
     x->BindTexture(GL_TEXTURE_2D, t->tex);
     x->TexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w * x->scale, h * x->scale, 0,
                   GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-    x->TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    x->TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    /* Native scanout must preserve texels and must not sample neighboring
+     * VRAM pages when the display rectangle is enlarged. HD replacement
+     * textures have their own filtering policy. */
+    x->TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    x->TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     x->TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     x->TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     x->GenFramebuffers(1, &t->fbo);
@@ -908,8 +911,8 @@ int bfm_gl_exec_present_image(BfmGlExec *x, int w, int h, const uint8_t *rgba,
     if (!x->image_tex) {
         x->GenTextures(1, &x->image_tex);
         x->BindTexture(GL_TEXTURE_2D, x->image_tex);
-        x->TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        x->TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        x->TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        x->TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         x->TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         x->TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     }

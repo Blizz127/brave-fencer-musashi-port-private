@@ -913,9 +913,14 @@ static void exec_scene_present(void) {
         const uint8_t *top = &winbuf[((size_t)(WIN_H - 10) * WIN_W + 320) * 4];
         const uint8_t *mid = &winbuf[((size_t)(WIN_H / 2) * WIN_W + 320) * 4];
         const uint8_t *left = &winbuf[((size_t)(WIN_H / 2) * WIN_W + 45) * 4];
+        const uint8_t *edge_red = &winbuf[((size_t)(WIN_H / 2) * WIN_W + 49) * 4];
+        const uint8_t *edge_blue = &winbuf[((size_t)(WIN_H / 2) * WIN_W + 50) * 4];
         CHECK(top[0] == 0 && top[1] == 0 && top[2] == 0);
         CHECK(mid[2] == 255 && mid[0] == 0);                 /* blue backdrop */
         CHECK(left[0] > 200 && left[2] < 60);                /* the red strip */
+        /* Enlarging native pixels cannot blend the red/blue boundary. */
+        CHECK(edge_red[0] == 255 && edge_red[2] == 0);
+        CHECK(edge_blue[0] == 0 && edge_blue[2] == 255);
     }
     /* the '#' glyph: the 4:3 area starts at x = 640 * 53 / 426 = 80 */
     for (x = 70; x < 110; x++) {
@@ -934,6 +939,21 @@ static void exec_scene_present(void) {
               BFM_PLAT_OK);
         finish();
         CHECK(mid[0] == 0x40 && mid[1] == 0x80 && mid[2] == 0xC0);
+        /* Packed movie images obey the same nearest scanout policy. */
+        for (x = 0; x < 32 * 24; x++) {
+            img[x * 4] = (x % 32 < 16) ? 255 : 0;
+            img[x * 4 + 1] = 0;
+            img[x * 4 + 2] = (x % 32 < 16) ? 0 : 255;
+        }
+        CHECK(bfm_gl_exec_present_image(X, 32, 24, img, NULL, WIN_W, WIN_H, 4.0 / 3.0) ==
+              BFM_PLAT_OK);
+        finish();
+        {
+            const uint8_t *l = &winbuf[((size_t)(WIN_H / 2) * WIN_W + 319) * 4];
+            const uint8_t *r = &winbuf[((size_t)(WIN_H / 2) * WIN_W + 320) * 4];
+            CHECK(l[0] == 255 && l[2] == 0);
+            CHECK(r[0] == 0 && r[2] == 255);
+        }
     }
     bfm_gl_batch_free(&ov);
     printf("gl hor+ scene + present + overlay ok (%d overlay pixels on a row)\n", lit);
