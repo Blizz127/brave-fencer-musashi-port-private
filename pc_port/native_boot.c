@@ -4768,6 +4768,23 @@ static int write_png_rgb555(const char *filename, unsigned width, unsigned heigh
     return ok;
 }
 
+/* Diagnostic reads must use the renderer that received GP0 commands. In
+ * bridge mode PsyCross remains alive for context ownership, but its VRAM
+ * is not the game's framebuffer. Never substitute it on readback failure. */
+static int dump_read_vram(NativeBoot *boot, unsigned x, unsigned y,
+                          unsigned width, unsigned height, uint16_t *pixels) {
+#ifdef MUSASHI_WITH_BFM_PLAT
+    if (g_gpu_bridge_on) {
+        BfmPlatRect rect = {(int16_t)x, (int16_t)y,
+                            (int16_t)width, (int16_t)height};
+        if (bfm_gpu_bridge_flush(&g_gpu_bridge) != BFM_PLAT_OK) return 0;
+        return bfm_plat_renderer_download_vram(&rect, pixels) == BFM_PLAT_OK;
+    }
+#endif
+    return musashi_gpu_psycross_read_vram(&boot->gpu_renderer, x, y,
+                                         width, height, pixels, width * height);
+}
+
 static void dump_display_vram(NativeBoot *boot) {
     unsigned x = boot->gpu.display.x, y = boot->gpu.display.y;
     unsigned width = boot->gpu.display.width ? boot->gpu.display.width : 320u;
@@ -4781,8 +4798,15 @@ static void dump_display_vram(NativeBoot *boot) {
         return;
     pixels = malloc((size_t)count * sizeof(*pixels));
     if (!pixels) return;
-    if (!musashi_gpu_psycross_read_vram(&boot->gpu_renderer, x, y, width, height,
-                                        pixels, count)) {
+#ifdef MUSASHI_WITH_BFM_PLAT
+    fprintf(stderr, "native_boot: VRAM_SOURCE renderer=%s display=%u,%u,%u,%u "
+            "clip=%d,%d,%d,%d\n", g_gpu_bridge_on ? "bfm_plat" : "psycross",
+            x, y, width, height, (int)(boot->gpu.drawing_area_start & 1023u),
+            (int)((boot->gpu.drawing_area_start >> 10) & 511u),
+            (int)(boot->gpu.drawing_area_end & 1023u),
+            (int)((boot->gpu.drawing_area_end >> 10) & 511u));
+#endif
+    if (!dump_read_vram(boot, x, y, width, height, pixels)) {
         fprintf(stderr, "native_boot: VRAM_DUMP readable=0 x=%u y=%u %ux%u\n",
                 x, y, width, height);
         free(pixels);
@@ -4794,8 +4818,7 @@ static void dump_display_vram(NativeBoot *boot) {
         unsigned alt_y = (y == 0u) ? 240u : 0u;
         uint16_t *alt_pixels = malloc((size_t)count * sizeof(*alt_pixels));
         if (alt_pixels) {
-            if (musashi_gpu_psycross_read_vram(&boot->gpu_renderer, x, alt_y, width, height,
-                                                alt_pixels, count)) {
+            if (dump_read_vram(boot, x, alt_y, width, height, alt_pixels)) {
                 uint64_t alt_nonblack = 0;
                 for (i = 0; i < count; ++i)
                     if (alt_pixels[i]) ++alt_nonblack;
@@ -4840,8 +4863,7 @@ static void dump_display_vram(NativeBoot *boot) {
         int ok = 1;
         unsigned yy, xx;
         for (yy = 0; yy < 512u && ok; ++yy) {
-            ok = musashi_gpu_psycross_read_vram(&boot->gpu_renderer, 0, yy, 1024, 1,
-                                                row, 1024);
+            ok = dump_read_vram(boot, 0, yy, 1024, 1, row);
             if (!ok) break;
             if (full) memcpy(full + yy * 1024u, row, sizeof(row));
             for (xx = 0; xx < 1024u; ++xx) {
