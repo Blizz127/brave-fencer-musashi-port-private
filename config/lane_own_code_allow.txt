@@ -459,3 +459,11 @@
 80034650
 80037d98
 8003916c
+# Clean-room pilot-retry B04 merged back 2026-10-01 (bfm-rederive 99780d7), main region.
+800119f0
+80011cfc
+80017f14
+800190ac
+8002eff8
+8003310c
+80037cd8
