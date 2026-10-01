@@ -1,4 +1,5 @@
 /* Owner re-derivation from retail assembly (clean input set). */
+/* Guest pointers held as u32 for the 64-bit native lane. */
 /* Stops sequence player `index`: releases every keyed voice of all 16 channels and rewinds the player to its start. */
 #include "psx_types.h"
 
@@ -16,8 +17,8 @@ typedef struct {
 } SeqChannel;
 
 typedef struct {
-    u8 *cursor;
-    u8 *start;
+    u32 cursor; /* guest u8 * */
+    u32 start; /* guest u8 * */
     u8 pad8[0x1A - 8];
     SeqChannel channels[16];
     u8 pad1BA[0x1FA - 0x1BA];

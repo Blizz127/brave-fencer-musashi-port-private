@@ -1,4 +1,5 @@
 /* Owner re-derivation from retail assembly (clean input set). */
+/* Guest pointers held as u32 for the 64-bit native lane. */
 /* Starts a pitch slide toward the target/speed pair chosen by the channel's envelope stage type (absolute or relative to its base pitch). */
 #include "psx_types.h"
 
@@ -10,7 +11,7 @@ typedef struct {
 
 typedef struct {
     u8 pad0[0x14];
-    PitchStage *stage;
+    u32 stage; /* guest PitchStage * */
     u8 pad18[0x20 - 0x18];
     s32 base;
     s32 current;
@@ -26,7 +27,7 @@ void func_80031988(PitchSlide *slide) {
     u16 target;
     u16 speed;
 
-    stage = slide->stage;
+    stage = (PitchStage *)slide->stage;
     if (stage == 0) {
         return;
     }

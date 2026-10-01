@@ -1,4 +1,5 @@
 /* Owner re-derivation from retail assembly (clean input set). */
+/* Guest pointers held as u32 for the 64-bit native lane. */
 /* Executes a sequencer meta event on a channel (music change, sound request, loop start, fade sync), then clears the channel's pending-event bits. */
 #include "psx_types.h"
 
@@ -11,9 +12,9 @@ typedef struct {
 } SeqChannel;
 
 typedef struct {
-    u8 *cursor;
+    u32 cursor; /* guest u8 * */
     u8 pad4[0xC - 4];
-    u8 *loop_start;
+    u32 loop_start; /* guest u8 * */
     u8 pad10[0x1A - 0x10];
     SeqChannel channels[16];
     u8 pad1BA[0x1F5 - 0x1BA];

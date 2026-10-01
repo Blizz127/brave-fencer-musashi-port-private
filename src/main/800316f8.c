@@ -1,4 +1,5 @@
 /* Owner re-derivation from retail assembly (clean input set). */
+/* Guest pointers held as u32 for the 64-bit native lane. */
 /* Decodes an object's current motion command (11 opcodes) into state fields and sets up a ramp toward its target. */
 #include "psx_types.h"
 
@@ -9,7 +10,7 @@ typedef struct {
 typedef struct {
     u8 pad0[0x12];
     u16 f12;
-    Cmd *cmd;
+    u32 cmd; /* guest Cmd * */
     s32 f18;
     s32 f1C;
     s32 f20;
@@ -32,7 +33,7 @@ void func_800316F8(Obj *obj)
     u16 tgt = 0;
     u16 amt = 0;
 
-    c = obj->cmd;
+    c = (Cmd *)obj->cmd;
     obj->f37 = 0;
     obj->f18 = 0;
     obj->f20 = obj->f24;

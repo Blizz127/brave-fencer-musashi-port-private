@@ -1,4 +1,5 @@
 /* Owner re-derivation from retail assembly (clean input set). */
+/* Guest pointers held as u32 for the 64-bit native lane. */
 /* Stops sequence player `player`: frees every channel it owns and clears its playing/paused flags. */
 #include "psx_types.h"
 
@@ -9,7 +10,7 @@ typedef struct {
 
 typedef struct {
     u8 pad0[0x50];
-    SeqOwner *owner;
+    u32 owner; /* guest SeqOwner * */
     u8 pad54[0x5A - 0x54];
     u8 keyed;
     u8 busy;
@@ -34,7 +35,7 @@ void func_800385C0(s32 player) {
 
     ch = D_800C6DD0;
     for (i = 0; i < 16; i++, ch++) {
-        if (ch->active != 0 && ch->owner->player == player) {
+        if (ch->active != 0 && ((SeqOwner *)ch->owner)->player == player) {
             ch->active = 0;
             ch->keyed = 0;
         }

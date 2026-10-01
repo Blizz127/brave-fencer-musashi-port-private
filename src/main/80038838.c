@@ -1,4 +1,5 @@
 /* Owner re-derivation from retail assembly (clean input set). */
+/* Guest pointers held as u32 for the 64-bit native lane. */
 /* Resets a sequence's 16 channel states and track state and restores its default tempo and flags. */
 #include "psx_types.h"
 
@@ -22,7 +23,7 @@ typedef struct {
 } SeqTrack;
 
 typedef struct {
-    u8 *cursor;
+    u32 cursor; /* guest u8 * */
     u8 pad4[4];
     s32 running;
     u8 padC[0x12 - 0xC];

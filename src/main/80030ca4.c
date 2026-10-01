@@ -1,4 +1,5 @@
 /* Owner re-derivation from retail assembly (clean input set). */
+/* Guest pointers held as u32 for the 64-bit native lane. */
 /* Finds a free sound channel (returns channel+1); otherwise releases the lowest-priority one if its priority does not exceed `priority`, or returns 0. */
 #include "psx_types.h"
 
@@ -12,7 +13,7 @@ typedef struct {
 
 typedef struct {
     s32 index;
-    SoundChannel *channel;
+    u32 channel; /* guest SoundChannel * */
     u16 priority;
     u8 found;
 } ChannelChoice;
@@ -34,17 +35,17 @@ s32 func_80030CA4(s32 priority) {
             best.priority = ch->priority;
             best.found = 1;
             best.index = i;
-            best.channel = ch;
+            best.channel = (u32)ch;
         } else if (ch->priority < best.priority) {
             best.priority = ch->priority;
             best.index = i;
-            best.channel = ch;
+            best.channel = (u32)ch;
         }
     }
     if ((u16)priority < best.priority) {
         return 0;
     }
-    func_80030D80(best.channel, 1);
+    func_80030D80((SoundChannel *)best.channel, 1);
     ch->active = 0;
     return ++best.index;
 }

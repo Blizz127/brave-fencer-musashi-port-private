@@ -1,9 +1,10 @@
 /* Owner re-derivation from retail assembly (clean input set). */
+/* Guest pointers held as u32 for the 64-bit native lane. */
 /* Inserts a primitive into the current ordering table at a clamped depth, bracketed by two newly allocated draw-mode packets (optionally marking it semi-transparent). */
 #include "psx_types.h"
 
 typedef struct {
-    s32 *ot;
+    u32 ot; /* guest s32 * */
     u8 pad[0x14 - 4];
 } OtBuffer;
 
@@ -27,9 +28,9 @@ void func_8001820C(u32 *prim, u32 depth, u32 flags) {
     mode = func_80010A08(0xC);
     blend = (flags >> 28) & 3;
     func_8005A600(mode, 0, 0, func_80058B40(2, blend, 0x280, 0) & 0xFFFF, 0);
-    func_80058C6C(D_800A651C[D_800B9A02].ot + depth, mode);
-    func_80058C6C(D_800A651C[D_800B9A02].ot + depth, prim);
+    func_80058C6C((s32 *)D_800A651C[D_800B9A02].ot + depth, mode);
+    func_80058C6C((s32 *)D_800A651C[D_800B9A02].ot + depth, prim);
     mode = func_80010A08(0xC);
     func_8005A600(mode, 0, 1, func_80058B40(2, blend, 0x280, 0) & 0xFFFF, 0);
-    func_80058C6C(D_800A651C[D_800B9A02].ot + depth, mode);
+    func_80058C6C((s32 *)D_800A651C[D_800B9A02].ot + depth, mode);
 }

@@ -1,16 +1,17 @@
 /* Owner re-derivation from retail assembly (clean input set). */
+/* Guest pointers held as u32 for the 64-bit native lane. */
 /* Starts a MIDI sequence on the first free of the two sequence players: parses the header and track, resets the player and returns its index (or -1). */
 #include "psx_types.h"
 
 typedef struct {
-    u8 *cursor;
-    u8 *start;
+    u32 cursor; /* guest u8 * */
+    u32 start; /* guest u8 * */
     u8 pad8[0x1BA - 8];
     u8 mute[16];
     u8 pad1CA[0x1D8 - 0x1CA];
-    u8 *buffer;
-    u8 *programs;
-    u8 *tones;
+    u32 buffer; /* guest u8 * */
+    u32 programs; /* guest u8 * */
+    u32 tones; /* guest u8 * */
     u8 pad1E4[4];
     s32 param;
     s16 id;
@@ -36,12 +37,12 @@ s32 func_80038210(u8 *data, s16 id, s32 param) {
     for (i = 0; i < 2; i++, seq++) {
         if (seq->used == 0) {
             D_800A6428 = seq->mute;
-            seq->cursor = data;
+            seq->cursor = (u32)data;
             seq->id = id;
             seq->param = param;
-            seq->buffer = D_800C1320;
-            seq->programs = D_800C1320 + 0x20;
-            seq->tones = D_800C1320 + 0x820;
+            seq->buffer = (u32)D_800C1320;
+            seq->programs = (u32)(D_800C1320 + 0x20);
+            seq->tones = (u32)(D_800C1320 + 0x820);
             if (func_80038698(seq) != 0) {
                 return -1;
             }

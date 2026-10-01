@@ -1,4 +1,5 @@
 /* Owner re-derivation from retail assembly (clean input set). */
+/* Guest pointers held as u32 for the 64-bit native lane. */
 /* Walks a model's linked primitive-group list and emits each flat (0x30) or textured (0x38) triangle group into the output primitive buffer. */
 #include "psx_types.h"
 
@@ -12,8 +13,8 @@ typedef struct {
 
 typedef struct {
     u8 pad0[8];
-    MeshData *mesh;
-    u32 *groups;
+    u32 mesh; /* guest MeshData * */
+    u32 groups; /* guest u32 * */
 } Model;
 
 typedef struct {
@@ -34,8 +35,8 @@ void func_80027C10(Model *model, DrawContext *ctx, s32 depth) {
     u32 count;
     u32 next;
 
-    mesh = model->mesh;
-    group = model->groups;
+    mesh = (MeshData *)model->mesh;
+    group = (u32 *)model->groups;
     vertices = mesh->vertices;
     normals = mesh->normals;
     output = mesh->output;

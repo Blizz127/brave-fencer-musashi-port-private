@@ -1,4 +1,5 @@
 /* Owner re-derivation from retail assembly (clean input set). */
+/* Guest pointers held as u32 for the 64-bit native lane. */
 /* Sequencer pitch-bend event: stores the channel's bend value and recomputes the SPU pitch of every voice the channel is playing. */
 #include "psx_types.h"
 
@@ -33,7 +34,7 @@ typedef struct {
 } SeqChannel;
 
 typedef struct {
-    u8 *cursor;
+    u32 cursor; /* guest u8 * */
     u8 pad4[0x1A - 4];
     SeqChannel channels[16];
 } Sequence;
@@ -55,7 +56,7 @@ void func_8003A0E4(Sequence *seq, s16 channel) {
 
     chan = &seq->channels[channel];
     key = chan->key_on;
-    chan->bend = *seq->cursor++ & 0x7F;
+    chan->bend = *(u8 *)seq->cursor++ & 0x7F;
     for (v = 0; v < 16; v++) {
         if (*key++ != 0) {
             ch = &D_800C6DD0[v];

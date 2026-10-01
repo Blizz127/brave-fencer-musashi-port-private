@@ -1,4 +1,5 @@
 /* Owner re-derivation from retail assembly (clean input set). */
+/* Guest pointers held as u32 for the 64-bit native lane. */
 /* Sequencer control-change: reads controller and value from the stream and applies volume, pan, meta-event or loop/marker controllers to the channel. */
 #include "psx_types.h"
 
@@ -16,7 +17,7 @@ typedef struct {
 } SeqChannel;
 
 typedef struct {
-    u8 *cursor;
+    u32 cursor; /* guest u8 * */
     u8 pad4[0x1A - 4];
     SeqChannel channels[16];
 } Sequence;
@@ -28,8 +29,8 @@ void func_80039F50(Sequence *seq, s16 channel) {
     s16 controller;
     u8 value;
 
-    controller = *seq->cursor++;
-    value = *seq->cursor++;
+    controller = *(u8 *)seq->cursor++;
+    value = *(u8 *)seq->cursor++;
     switch (controller) {
     case 6:
         func_80039C70(seq, channel, value);
