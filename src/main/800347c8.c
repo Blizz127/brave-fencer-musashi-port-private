@@ -1,34 +1,18 @@
-/* Main-exec range [800347C8,80034844) from the SLUS executable.
- * SHA256(span)=5cfd35207a748f71ba6935eac5aae5f7ccae6c9eb41edd1ec29bd3906e8bb007.
- * Word export for the native seam. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Marks matching active entries in an eight-slot table (stride 0x54) by id and optional second id. */
 #include "psx_types.h"
 
-/* func_800347C8 - byte-exact against retail at -O2 (tools/register_match.py). */
+extern u8 D_800A46E8[];
 
-typedef struct {
-    u16 state;      
-    u16 unk02;
-    u16 id;         
-    u16 group;      
-    u16 unk08;
-    s8  unk0A;
-    u8  unk0B;
-    u8  pad0C[0xA];
-    u8  active;     
-    u8  pad17[0x3D];
-} Sl;
-extern u16 D_800A46E8[];
-
-void func_800347C8(s32 arg0) {
-    Sl *e;
+void func_800347C8(s32 arg) {
     s32 i;
+    u8 *e;
 
-    e = (Sl *)D_800A46E8;
-    for (i = 0; i < 8; i++, e++) {
-        if (e->state == 5 && e->id == (s16)arg0 &&
-            ((arg0 >> 16) == 0 || (arg0 >> 16) == e->group)) {
-            e->active = 1;
+    for (e = D_800A46E8, i = 0; i < 8; i++, e += 0x54) {
+        if (*(u16 *)(e + 0) == 5 && *(u16 *)(e + 4) == (s16)arg) {
+            if ((arg >> 16) == 0 || (arg >> 16) == *(u16 *)(e + 6)) {
+                e[0x16] = 1;
+            }
         }
     }
 }

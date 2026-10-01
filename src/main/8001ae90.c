@@ -1,17 +1,23 @@
-/* Exact retail word export for [8001AE90,8001AF04); EXE and assembly verified. */
-/* Source: written against Druthulu/BFM-decomp (vendor/bfm-decomp) as reference. */
-/* func_8001AE90 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Compares a value against a global word depending on a mode selector. */
 #include "psx_types.h"
 
 extern s32 D_800747F4;
 
-s32 func_8001AE90(s32 kind, s32 value, s32 *ptr) {
-    switch (kind) {
+s32 func_8001AE90(s32 arg0, s32 arg1, s32 *arg2) {
+    s32 ret;
+
+    switch (arg0) {
     case 0:
     case 2:
-        return *ptr == D_800747F4;
+        ret = *arg2 == D_800747F4;
+        break;
     case 1:
-        return value == D_800747F4;
+        ret = arg1 == D_800747F4;
+        break;
+    default:
+        ret = 0;
+        break;
     }
-    return 0;
+    return ret;
 }

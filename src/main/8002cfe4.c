@@ -1,22 +1,20 @@
-/* Exact retail word export for [8002CFE4,8002D034); EXE and assembly verified. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Decrements a global counter if nonzero, then runs three update helpers. */
 #include "psx_types.h"
 
-/* func_8002CFE4 - byte-exact against retail at -O2 (tools/register_match.py). */
-
-extern void func_80030F80(void);
+extern s16 D_800A4EFC;
+extern void func_80030F80(s16 *p);
 extern void func_8002D320(void);
 extern void func_80031BE0(void);
 
-extern s16 D_800A4EFC;
-
 void func_8002CFE4(void) {
-    s16 *ptr = &D_800A4EFC;
+    s16 *p;
 
-    if (*ptr != 0) {
-        *ptr = *ptr - 1;
+    p = &D_800A4EFC;
+    if (*p != 0) {
+        *p -= 1;
     }
-    func_80030F80();
+    func_80030F80(p);
     func_8002D320();
     func_80031BE0();
 }

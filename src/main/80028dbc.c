@@ -1,13 +1,9 @@
-/* Decompiled by m2c from main.s, then verified byte-exact
- * against retail by tools/match_function.py. Types and signatures are
- * whatever reproduces the bytes; they are not evidence of the
- * original declaration. */
-
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Forwards the low byte of its argument to a helper with constant 0xC. */
 #include "psx_types.h"
 
+extern void func_80029124(s32 arg0, s32 arg1);
 
-void func_80029124(s32, s32);                            /* static */
-
-void func_80028DBC(s32 arg0) {
-    func_80029124(0xC, arg0 & 0xFF);
+void func_80028DBC(u8 arg0) {
+    func_80029124(0xC, arg0);
 }

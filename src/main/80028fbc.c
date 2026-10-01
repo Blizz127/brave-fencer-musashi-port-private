@@ -1,13 +1,9 @@
-/* Exact retail word export for [80028FBC,80028FDC); EXE and assembly verified. */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Calls a helper with constant 0x2C and returns its low byte. */
 #include "psx_types.h"
 
-/* Decompiled by m2c from main.s, then verified byte-exact
- * against retail by tools/match_function.py. Types and signatures are
- * whatever reproduces the bytes; they are not evidence of the
- * original declaration. */
+extern s32 func_800291B4(s32 arg0);
 
-s32 func_800291B4();                               /* static */
-
-s32 func_80028FBC(void) {
-    return func_800291B4(0x2C) & 0xFF;
+u8 func_80028FBC(void) {
+    return func_800291B4(0x2C);
 }

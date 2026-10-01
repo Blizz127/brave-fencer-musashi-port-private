@@ -1,20 +1,8 @@
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_800D2394 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Initialises an entry: optionally resets it from four globals, then fills in its position, size and mode fields. */
 #include "psx_types.h"
-typedef float f32;
-typedef unsigned long long u64;
-typedef long long s64;
-typedef double f64;
-#ifndef NULL
-#define NULL ((void *)0)
-#endif
 
-extern s32 D_800D9470;
-extern s32 D_800D9474;
-extern s32 D_800D9478;
-extern s32 D_800D947C;
-extern s32 D_800D9480;
-typedef struct S_D2394 {
+typedef struct Entry {
     s32 f0;
     s32 f4;
     s32 f8;
@@ -27,8 +15,7 @@ typedef struct S_D2394 {
     s16 f1E;
     s16 f20;
     s16 f22;
-    s16 f24;
-    s16 f26;
+    s32 f24;
     s32 f28;
     s16 f2C;
     s16 f2E;
@@ -36,35 +23,48 @@ typedef struct S_D2394 {
     s16 f32;
     s32 f34;
     s32 f38;
-} S_D2394;
-typedef struct S_D2394B {
+} Entry;
+
+typedef struct Src {
     s32 f0;
     s32 f4;
-} S_D2394B;
+} Src;
 
-void func_800D2394(S_D2394 *t, s16 a1, s16 a2, s16 a3, s32 a4, S_D2394B *a5) {
+extern s32 D_800D9470;
+extern s32 D_800D9474;
+extern s32 D_800D9478;
+extern s32 D_800D947C;
+extern s32 D_800D9480;
+
+void func_800D2394(Entry *arg0, s16 arg1, s16 arg2, s16 arg3, s32 arg4, Src *arg5) {
+    s16 mode;
+
     if (D_800D9480 == 1) {
-        t->f8 = 0;
-        t->f14 = 0;
-        t->f28 = 0;
-        t->f34 = 0;
+        arg0->f8 = 0;
+        arg0->f14 = 0;
+        arg0->f28 = 0;
+        arg0->f34 = 0;
         D_800D9480 = 0;
-        t->f0 = D_800D9470;
-        t->f4 = D_800D9474;
-        t->fC = D_800D9478;
-        t->f10 = D_800D947C;
+        arg0->f0 = D_800D9470;
+        arg0->f4 = D_800D9474;
+        arg0->fC = D_800D9478;
+        arg0->f10 = D_800D947C;
     }
-    t->f18 = a1;
-    t->f1A = a2;
-    t->f20 = a3;
-    t->f22 = a4;
-    t->f30 = (a5->f4 != 0) ? 0x18 : 0x10;
-    t->f38 = a5->f4;
-    if (t->f28 == 0) {
-        t->f2C = a1;
-        t->f2E = a2;
-    } else {
-        t->f2C = a3;
-        t->f2E = a4;
+    arg0->f18 = arg1;
+    arg0->f1A = arg2;
+    arg0->f20 = arg3;
+    arg0->f22 = arg4;
+    mode = 0x10;
+    if (arg5->f4 != 0) {
+        mode = 0x18;
     }
+    arg0->f30 = mode;
+    arg0->f38 = arg5->f4;
+    if (arg0->f28 == 0) {
+        arg0->f2C = arg1;
+        arg0->f2E = arg2;
+        return;
+    }
+    arg0->f2C = arg3;
+    arg0->f2E = arg4;
 }

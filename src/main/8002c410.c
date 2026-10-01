@@ -1,81 +1,74 @@
-/* Main-exec range [8002C410,8002C8BC) from the SLUS executable.
- * SHA256(span)=62e14bc23bf307b3d0721f5fc5e2918b52b1300542659592b6211ca2fe9b9fbf.
- * Word export for the native seam; the body below is kept
- * byte-identical (wrap only, no rewrite). */
-/* Decompiled by m2c from main.s, then verified byte-exact
- * against retail by tools/match_function.py. Types and signatures are
- * whatever reproduces the bytes; they are not evidence of the
- * original declaration. */
-
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Calls a long fixed list of library initialisation/reset routines, each with all-zero arguments. */
 #include "psx_types.h"
 
-void func_8003F104(s32, s32);                              /* static */
-void func_8003F434(s32, s32, s32, s32, s32, s32, s32, s32);    /* static */
-void func_8003F7C8();                                 /* static */
-void func_8004787C();                                 /* static */
-void func_80047948();                                 /* static */
-void func_80047B3C();                                 /* static */
-void func_80047D3C();                                 /* static */
-void func_80047E98(s32, s32);                              /* static */
-void func_8004806C(s32, s32, s32, s32);                        /* static */
-void func_800480EC();                                 /* static */
-void func_8004818C(s32, s32, s32);                           /* static */
-void func_8004829C();                                 /* static */
-void func_8004838C(s32, s32, s32);                           /* static */
-void func_800484EC(s32, s32, s32);                           /* static */
-void func_8004864C(s32, s32);                              /* static */
-void func_8004867C();                                 /* static */
-void func_8004871C();                                 /* static */
-void func_800487BC();                                 /* static */
-void func_8004880C(s32, s32);                              /* static */
-void func_8004891C(s32, s32, s32);                           /* static */
-void func_80048B6C(s32, s32);                              /* static */
-void func_80048CAC();                                 /* static */
-void func_80048D9C(s32, s32);                              /* static */
-void func_80048EAC(s32, s32);                              /* static */
-void func_80048FBC(s32, s32, s32);                           /* static */
-void func_8004901C(s32, s32);                              /* static */
-void func_8004914C();                                 /* static */
-void func_800491AC();                                 /* static */
-void func_800491CC(s32, s32);                              /* static */
-void func_800491EC();                                 /* static */
-void func_8004921C(s32, s32);                              /* static */
-void func_800492FC(s32, s32);                              /* static */
-void func_80049324(s32, s32);                              /* static */
-void func_8004945C(s32, s32, s32);                           /* static */
-void func_8004955C(s32, s32, s32, s32);                        /* static */
-void func_800495EC(s32, s32, s32);                           /* static */
-void func_8004961C(s32, s32, s32, s32, s32, s32, s32, s32, s32, s32); /* static */
-void func_8004969C(s32, s32, s32, s32, s32, s32, s32, s32, s32, s32, s32); /* static */
-void func_8004974C(s32, s32);                              /* static */
-void func_8004978C(s32, s32);                              /* static */
-void func_80049A1C(s32, s32);                              /* static */
-void func_80049CAC(s32, s32);                              /* static */
-void func_80049F3C(s32, s32);                              /* static */
-void func_8004A0DC(s32, s32);                              /* static */
-void func_8004A27C(s32, s32);                              /* static */
-void func_8004CFEC(s32, s32);                              /* static */
-void func_8004D504(s32, s32, s32);                           /* static */
-void func_80058B40(s32, s32, s32, s32);                        /* static */
-void func_80058B7C(s32, s32);                              /* static */
-void func_80058C6C(s32, s32);                              /* static */
-void func_80058D20(s32, s32);                              /* static */
-void func_80058D70();                                 /* static */
-void func_80058DD4();                                 /* static */
-void func_80058E9C();                                 /* static */
-void func_80058EB0();                                 /* static */
-void func_800596F4();                                 /* static */
-void func_80059888(s32, s32, s32, s32);                        /* static */
-void func_800599B8(s32, s32);                              /* static */
-void func_80059A80(s32, s32, s32);                           /* static */
-void func_8005A600(s32, s32, s32, s32, s32);                   /* static */
-void func_8005C2C8(s32, s32);                              /* static */
-void func_8005C2F8();                                 /* static */
-void func_8005C324(s32, s32, s32);                           /* static */
-void func_8005C388();                                 /* static */
-void func_8005C49C();                                 /* static */
-void func_8005C4CC();                                 /* static */
-void func_8005C540(s32, s32);                              /* static */
+extern void func_80059888(s32, s32, s32, s32);
+extern void func_800596F4(s32);
+extern void func_800599B8(s32, s32);
+extern void func_80059A80(s32, s32, s32);
+extern void func_80058B7C(s32, s32);
+extern void func_80058B40(s32, s32, s32, s32);
+extern void func_80058C6C(s32, s32);
+extern void func_8005A600(s32, s32, s32, s32, s32);
+extern void func_80058E9C(s32);
+extern void func_80058EB0(s32);
+extern void func_80058D70(s32);
+extern void func_80058DD4(s32);
+extern void func_80058D20(s32, s32);
+extern void func_8004818C(s32, s32, s32);
+extern void func_80048D9C(s32, s32);
+extern void func_80048EAC(s32, s32);
+extern void func_8004829C(s32);
+extern void func_8004880C(s32, s32);
+extern void func_80048CAC(s32);
+extern void func_8004864C(s32, s32);
+extern void func_80048B6C(s32, s32);
+extern void func_800484EC(s32, s32, s32);
+extern void func_80048FBC(s32, s32, s32);
+extern void func_8004D504(s32, s32, s32);
+extern void func_8004978C(s32, s32);
+extern void func_80049A1C(s32, s32);
+extern void func_80049CAC(s32, s32);
+extern void func_80049F3C(s32, s32);
+extern void func_8004A0DC(s32, s32);
+extern void func_8004A27C(s32, s32);
+extern void func_8004901C(s32, s32);
+extern void func_8004974C(s32, s32);
+extern void func_8004838C(s32, s32, s32);
+extern void func_8004891C(s32, s32, s32);
+extern void func_8004914C(s32);
+extern void func_800491AC(s32);
+extern void func_8004867C(s32);
+extern void func_8004871C(s32);
+extern void func_800487BC(s32);
+extern void func_8004921C(s32, s32);
+extern void func_800491CC(s32, s32);
+extern void func_800491EC(s32);
+extern void func_8004955C(s32, s32, s32, s32);
+extern void func_8004945C(s32, s32, s32);
+extern void func_800492FC(s32, s32);
+extern void func_80049324(s32, s32);
+extern void func_800495EC(s32, s32, s32);
+extern void func_8004961C(s32, s32, s32, s32, s32, s32, s32, s32, s32, s32);
+extern void func_8004969C(s32, s32, s32, s32, s32, s32, s32, s32, s32, s32, s32);
+extern void func_80047E98(s32, s32);
+extern void func_80047D3C(s32);
+extern void func_800480EC(s32);
+extern void func_8004806C(s32, s32, s32, s32);
+extern void func_80047948(s32);
+extern void func_8004787C(s32);
+extern void func_80047B3C(s32);
+extern void func_8004CFEC(s32, s32);
+extern void func_8003F434(s32, s32, s32, s32, s32, s32, s32, s32);
+extern void func_8003F7C8(s32);
+extern void func_8003F104(s32, s32);
+extern void func_8005C324(s32, s32, s32);
+extern void func_8005C2C8(s32, s32);
+extern void func_8005C49C(s32);
+extern void func_8005C4CC(s32);
+extern void func_8005C2F8(s32);
+extern void func_8005C388(s32);
+extern void func_8005C540(s32, s32);
 
 void func_8002C410(void) {
     func_80059888(0, 0, 0, 0);

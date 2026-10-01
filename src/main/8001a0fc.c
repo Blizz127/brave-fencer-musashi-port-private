@@ -1,10 +1,6 @@
-/* Exact retail word export for [8001A0FC,8001A114); EXE and assembly verified. */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Clears two global words. */
 #include "psx_types.h"
-
-/* Decompiled by m2c from main.s, then verified byte-exact
- * against retail by tools/match_function.py. Types and signatures are
- * whatever reproduces the bytes; they are not evidence of the
- * original declaration. */
 
 extern s32 D_800AE6F4;
 extern s32 D_800AE70C;
