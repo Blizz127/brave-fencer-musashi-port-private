@@ -202,6 +202,9 @@ class EndToEnd(unittest.TestCase):
             rep = json.loads((Path(d) / "report.json").read_text())
             ovl = rep["overlay"]
             self.assertEqual((ovl["members"], ovl["candidates"]), (["main_0003"], 24))
+            rules = {f["vram"]: f["rule"] for f in ovl["functions"]}
+            # held out: CD poll loop that is guest-time sensitive (OVERLAY_DENY)
+            self.assertEqual(rules["800d2a24"], "deny")
             for f in ovl["functions"]:
                 self.assertEqual(f["covers"], ["main_0003"])
                 self.assertRegex(f["digest"], "^[0-9a-f]{16}$")

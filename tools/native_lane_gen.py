@@ -1078,6 +1078,18 @@ DENY = {
 }
 
 
+# Overlay functions admissible by every rule but held out, keyed (member, vram).
+OVERLAY_DENY = {
+    # A CD command retry loop (Setloc via 800435CC until accepted, then the
+    # streaming read start 8004657C, retried on failure) whose outcome depends
+    # on the guest time between its guest calls. Natively its own instructions
+    # charge no cycles, so the commands reach the CD model at other moments:
+    # nested under a native 800D2454 the intro FMV stopped after 4 MDEC
+    # transfers instead of 1852 (warp request at vblank 1845, not 2207). D-013.
+    ("main_0003", 0x800D2A24): "CD command poll loop is guest-time sensitive (FMV cut short natively)",
+}
+
+
 def build_one(entry, out, symbols, hooks, clang, info=None):
     vram, size, src = entry["vram"], entry["size"], ROOT / entry["source"]
     name = entry["name"]
@@ -1085,8 +1097,10 @@ def build_one(entry, out, symbols, hooks, clang, info=None):
     tag = f"{member}_{vram:08x}" if member else f"{vram:08x}"
     work = out / "ir"
     try:
-        if vram in DENY:
+        if vram in DENY and not info:
             raise Reject("deny", DENY[vram])
+        if info and (info["member"], vram) in OVERLAY_DENY:
+            raise Reject("deny", OVERLAY_DENY[(info["member"], vram)])
         for pc, kind in hooks.items():
             if not vram <= pc < vram + size:
                 continue
