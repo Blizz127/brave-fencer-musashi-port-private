@@ -1,43 +1,29 @@
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_800D2B64 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Copies two 16-word palettes from `colors` into the two CLUT upload packets and submits both; returns `colors`. */
 #include "psx_types.h"
-typedef float f32;
-typedef unsigned long long u64;
-typedef long long s64;
-typedef double f64;
-#ifndef NULL
-#define NULL ((void *)0)
-#endif
 
-extern s32 D_800DB530[];
-extern s32 D_800DB570[];
-extern s32 D_800DB52C;
-extern s32 D_800DB5B0;
-extern void func_800D2E64();
+extern void func_800D2E64(u32 *, s32);
+extern u32 D_800DB52C[];
+extern u32 D_800DB530[];
+extern u32 D_800DB570[];
+extern u32 D_800DB5B0[];
 
-void *func_800D2B64(void *arg0) {
-    register void *base asm("$16");
-    s32 *dst;
-    s32 i;
+u32 *func_800D2B64(u32 *colors) {
+    u32 *src;
+    u32 *dst;
+    s32 n;
 
-    base = arg0;
-
+    src = colors;
     dst = D_800DB530;
-    i = 15;
-    do {
-        *dst++ = *(s32 *) arg0;
-        arg0 = (char *) arg0 + 4;
-    } while (--i != -1);
-
+    for (n = 15; n != -1; n--) {
+        *dst++ = *src++;
+    }
     dst = D_800DB570;
-    arg0 = (char *) base + 0x40;
-    i = 15;
-    do {
-        *dst++ = *(s32 *) arg0;
-        arg0 = (char *) arg0 + 4;
-    } while (--i != -1);
-
-    func_800D2E64((s32) &D_800DB52C, 0x20);
-    func_800D2E64((s32) &D_800DB5B0, 0x20);
-    return base;
+    src = colors + 16;
+    for (n = 15; n != -1; n--) {
+        *dst++ = *src++;
+    }
+    func_800D2E64(D_800DB52C, 32);
+    func_800D2E64(D_800DB5B0, 32);
+    return colors;
 }

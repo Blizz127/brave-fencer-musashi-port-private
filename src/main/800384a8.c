@@ -1,51 +1,61 @@
-/* Exact retail word export for [800384A8,800385C0); EXE and assembly verified. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_800384A8 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Stops sequence player `index`: releases every keyed voice of all 16 channels and rewinds the player to its start. */
 #include "psx_types.h"
 
-extern u8 D_800A4F1D;
-extern s32 D_80073140[][1];  
-extern u8 D_800B9CD8[];
-extern u8 D_800C6E2D[];
-extern void func_8002EFF8(s32 a0, s32 a1);
-extern void func_8003916C(s16 arg);
+typedef struct {
+    u8 pad0[0x5D];
+    u8 started;
+    u8 pending;
+    u8 pad5F;
+} Channel;
 
-void func_800384A8(s16 arg0) {
-    register s32 raw __asm__("$4");
-    u8 *entry;
-    u8 *p;
-    u8 *q;
-    s32 j;
-    u8 *b;
-    s32 *m;
-    s32 *mb;
-    s32 i;
-    s32 one;
+typedef struct {
+    u8 pad0[9];
+    u8 key_on[16];
+    u8 pad19;
+} SeqChannel;
 
-    entry = &D_800B9CD8[raw * 0x1FC];
-    p = entry + 0x1A;
-    i = 0;
-    one = 1;
-    mb = (s32 *)D_80073140;
-    D_800A4F1D = 1;
-    entry[0x1FA] = 0;
-    for (; i < 0x10; i++) {
-        q = p + 9;
-        j = 0;
-        b = D_800C6E2D;
-        m = mb;
-        for (; j < 0x10; j++) {
-            if (*q++ != 0) {
-                b[1] = one;
-                b[0] = 0;
-                func_8003916C(j);
-                func_8002EFF8(0, *m);
+typedef struct {
+    u8 *cursor;
+    u8 *start;
+    u8 pad8[0x1A - 8];
+    SeqChannel channels[16];
+    u8 pad1BA[0x1FA - 0x1BA];
+    u8 state;
+    u8 used;
+} SeqPlayer;
+
+extern void func_8002EFF8(s32, s32);
+extern void func_8003916C(s16);
+extern s32 D_80073140[];
+extern s8 D_800A4F1D[];
+extern SeqPlayer D_800B9CD8[];
+extern Channel D_800C6DD0[16];
+
+void func_800384A8(s32 index) {
+    SeqPlayer *seq;
+    SeqChannel *chan;
+    Channel *ch;
+    u8 *key;
+    s32 c;
+    s32 v;
+
+    seq = &D_800B9CD8[index];
+    chan = seq->channels;
+    D_800A4F1D[0] = 1;
+    seq->state = 0;
+    for (c = 0; c < 16; c++, chan++) {
+        key = chan->key_on;
+        ch = D_800C6DD0;
+        for (v = 0; v < 16; v++, ch++) {
+            if (*key++ != 0) {
+                ch->pending = 1;
+                ch->started = 0;
+                func_8003916C(v);
+                func_8002EFF8(0, D_80073140[v]);
             }
-            m++;
-            b += 0x60;
         }
-        p += 0x1A;
     }
-    D_800A4F1D = 0;
-    *(s32 *)entry = *(s32 *)(entry + 4);
+    D_800A4F1D[0] = 0;
+    seq->cursor = seq->start;
 }

@@ -1,26 +1,19 @@
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_800D2C0C - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Sets a primitive's texture-disable (flag bit 0 clear) and semi-transparency (flag bit 1) code bits, then hands it to func_800D2E64. */
 #include "psx_types.h"
-typedef float f32;
-typedef unsigned long long u64;
-typedef long long s64;
-typedef double f64;
-#ifndef NULL
-#define NULL ((void *)0)
-#endif
 
-extern void func_800D2E64();
+extern void func_800D2E64(u32 *, u16);
 
-void func_800D2C0C(s32 *a0, s32 a1) {
-    if (a1 & 1) {
-        *a0 &= 0xF7FFFFFF;
+void func_800D2C0C(u32 *prim, s32 flags) {
+    if (flags & 1) {
+        *prim &= ~0x08000000;
     } else {
-        *a0 |= 0x8000000;
+        *prim |= 0x08000000;
     }
-    if (a1 & 2) {
-        *a0 |= 0x2000000;
+    if (flags & 2) {
+        *prim |= 0x02000000;
     } else {
-        *a0 &= 0xFDFFFFFF;
+        *prim &= ~0x02000000;
     }
-    func_800D2E64(a0, *(u16 *)a0);
+    func_800D2E64(prim, *(u16 *)prim);
 }

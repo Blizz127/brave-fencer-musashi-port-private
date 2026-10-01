@@ -1,47 +1,60 @@
-/* Exact retail word export for [80038210,80038308); EXE and assembly verified. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_80038210 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Starts a MIDI sequence on the first free of the two sequence players: parses the header and track, resets the player and returns its index (or -1). */
 #include "psx_types.h"
 
-extern u8 D_800B9CD8[];
-extern u8 D_800C1320[];
+typedef struct {
+    u8 *cursor;
+    u8 *start;
+    u8 pad8[0x1BA - 8];
+    u8 mute[16];
+    u8 pad1CA[0x1D8 - 0x1CA];
+    u8 *buffer;
+    u8 *programs;
+    u8 *tones;
+    u8 pad1E4[4];
+    s32 param;
+    s16 id;
+    u8 pad1EE[0x1FA - 0x1EE];
+    u8 state;
+    u8 used;
+} SeqPlayer;
+
+extern s32 func_80038698(SeqPlayer *);
+extern s32 func_800387C0(SeqPlayer *);
+extern void func_80038838(SeqPlayer *);
 extern u8 *D_800A6428;
+extern SeqPlayer D_800B9CD8[2];
+extern u8 D_800C1320[];
 
-extern s32 func_80038698(void *arg0);
-extern s32 func_800387C0(void *arg0);
-extern void func_80038838(void *arg0);
-
-s32 func_80038210(s32 a0, s16 a1, s32 a2)
-{
-    u8 *entry;
+s32 func_80038210(u8 *data, s16 id, s32 param) {
+    SeqPlayer *seq;
     s32 i;
     s32 k;
-    u8 *q;
-    s32 v1;
+    u8 *p;
 
-    entry = D_800B9CD8;
-    for (i = 0; i < 2; i++, entry += 0x1FC) {
-        if (entry[0x1FB] == 0) {
-            D_800A6428 = entry + 0x1BA;
-            *(s32 *)entry = a0;
-            *(s16 *)(entry + 0x1EC) = a1;
-            *(s32 *)(entry + 0x1E8) = a2;
-            *(u8 **)(entry + 0x1D8) = D_800C1320;
-            *(u8 **)(entry + 0x1DC) = D_800C1320 + 0x20;
-            *(u8 **)(entry + 0x1E0) = D_800C1320 + 0x820;
-            if (func_80038698(entry) != 0) {
+    seq = D_800B9CD8;
+    for (i = 0; i < 2; i++, seq++) {
+        if (seq->used == 0) {
+            D_800A6428 = seq->mute;
+            seq->cursor = data;
+            seq->id = id;
+            seq->param = param;
+            seq->buffer = D_800C1320;
+            seq->programs = D_800C1320 + 0x20;
+            seq->tones = D_800C1320 + 0x820;
+            if (func_80038698(seq) != 0) {
                 return -1;
             }
-            if (func_800387C0(entry) != 0) {
+            if (func_800387C0(seq) != 0) {
                 return -1;
             }
-            func_80038838(entry);
-            v1 = *(s32 *)entry;
-            entry[0x1FB] = 1;
-            *(s32 *)(entry + 4) = v1;
-            entry[0x1FA] = 0;
-            for (k = 0xF, q = entry + 0xF; k >= 0; k--, q--) {
-                q[0x1BA] = 0;
+            func_80038838(seq);
+            seq->start = seq->cursor;
+            seq->used = 1;
+            seq->state = 0;
+            /* clear mute[15..0]; mute[] lives at offset 0x1BA */
+            for (k = 15, p = (u8 *)seq + 15; k >= 0; k--, p--) {
+                p[0x1BA] = 0;
             }
             return i;
         }

@@ -1,45 +1,40 @@
-/* Main-exec range [8002D59C,8002D678) from the SLUS executable.
- * SHA256(span)=14fa1d0b4f66cd9217c308975c794ba2459e336e078081a78791b47451181aba.
- * Word export for the native seam; the body below is an
- * UNVERIFIED draft, not an oracle match claim. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Dispatches a sound command by id range (system sound, music, or sound effect with argument) with slot updates paused, then runs the deferred slot update if one was requested. */
 #include "psx_types.h"
 
-/* func_8002D59C - byte-exact against retail at -O2 (tools/register_match.py). */
-
-extern s8 D_800A4F17;
-extern u8 D_800A4F18;
+extern void func_8002D320(void);
+extern void func_8002D904(u16);
+extern void func_8002DC68(s32, u16);
+extern void func_8002E138(u16, u16, u16);
+extern void func_80030F80(void);
+extern void func_80031BE0(void);
 extern s16 D_800A4EFC;
+extern u8 D_800A4F17;
+extern u8 D_800A4F18;
 
-void func_8002D59C(s32 arg0, s32 arg1, s32 arg2) {
-    u16 id;
-    u8 v0;
-    s8 *p;
+void func_8002D59C(u16 id, u16 arg, u16 extra) {
+    u8 *paused;
 
-    *(u8 *)&D_800A4F17 = 1;
-    id = arg0 & 0xFFFF;
+    D_800A4F17 = 1;
     if (id < 0x80) {
-        func_8002E138(id, arg1 & 0xFFFF, arg2 & 0xFFFF);
+        func_8002E138(id, arg, extra);
     } else if (id >= 0x100) {
         if (id < 0x400) {
             func_8002D904(id);
         } else {
-            func_8002DC68(id | (arg2 << 16), arg1 & 0xFFFF);
+            func_8002DC68(id | (extra << 16), arg);
         }
     }
-
-    p = &D_800A4F17;
-    v0 = D_800A4F18;
-    *p = v0;
-    if (v0 != 0) {
-        s16 cnt = D_800A4EFC;
-        if (cnt != 0) {
-            D_800A4EFC = cnt - 1;
+    paused = &D_800A4F17;
+    *paused = D_800A4F18;
+    if (D_800A4F18 != 0) {
+        if (D_800A4EFC != 0) {
+            D_800A4EFC--;
         }
         func_80030F80();
         func_8002D320();
         func_80031BE0();
         D_800A4F18 = 0;
-        *p = 0;
+        *paused = 0;
     }
 }
