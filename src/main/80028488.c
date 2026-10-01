@@ -1,31 +1,26 @@
-/* Main-exec range [80028488,8002850C) from the SLUS executable.
- * SHA256(span)=8751db49e198c44176eabc2fc6f331475d627fdbc86e66e6e86f500ddaf09f37.
- * Word export for the native seam. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_80028488 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Resets entry idx (0..2) of a 16-byte-per-entry state table to its initial values (0x64 in one word, zeros elsewhere) and calls func_80028620 on it. */
 #include "psx_types.h"
 
-extern u8 D_800A5E88;
-extern s32 D_800A5E8C;
-extern s32 D_800A5E90;
-extern u8 D_800A5E94;
-extern u8 D_800A5E95;
-extern u8 D_800A5E96;
-extern void func_80028620(s32 a0, void *a1);
+typedef struct { s32 w[4]; } WordRow;
+typedef struct { u8 b[16]; } ByteRow;
 
-void func_80028488(s32 slot) {
-    s32 offset;
+extern WordRow D_800A5E88[];
+extern WordRow D_800A5E8C[];
+extern WordRow D_800A5E90[];
+extern ByteRow D_800A5E94[];
+extern ByteRow D_800A5E95[];
+extern ByteRow D_800A5E96[];
+extern void func_80028620(u32 idx, WordRow *row);
 
-    slot &= 0xFFFF;
-    if ((u16)slot >= 3) {
-        return;
+void func_80028488(u16 idx) {
+    if (idx < 3) {
+        D_800A5E90[idx].w[0] = 0x64;
+        D_800A5E88[idx].w[0] = 0;
+        D_800A5E8C[idx].w[0] = 0;
+        D_800A5E94[idx].b[0] = 0;
+        D_800A5E95[idx].b[0] = 0;
+        D_800A5E96[idx].b[0] = 0;
+        func_80028620(idx, &D_800A5E88[idx]);
     }
-    offset = slot << 4;
-    *(s32 *)((s32)&D_800A5E90 + offset) = 100;
-    *(s32 *)((s32)&D_800A5E88 + offset) = 0;
-    *(s32 *)((s32)&D_800A5E8C + offset) = 0;
-    *(u8 *)((s32)&D_800A5E94 + offset) = 0;
-    *(u8 *)((s32)&D_800A5E95 + offset) = 0;
-    *(u8 *)((s32)&D_800A5E96 + offset) = 0;
-    func_80028620(slot, (void *)((s32)&D_800A5E88 + offset));
 }

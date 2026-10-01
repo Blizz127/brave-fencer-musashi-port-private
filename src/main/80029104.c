@@ -1,12 +1,9 @@
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Calls func_80029178(0x7F) and returns its result truncated to a byte. */
 #include "psx_types.h"
 
-/* Decompiled by m2c from main.s, then verified byte-exact
- * against retail by tools/match_function.py. Types and signatures are
- * whatever reproduces the bytes; they are not evidence of the
- * original declaration. */
+extern s32 func_80029178(s32 a);
 
-s32 func_80029178();                               /* static */
-
-s32 func_80029104(void) {
-    return func_80029178(0x7F) & 0xFF;
+u8 func_80029104(void) {
+    return func_80029178(0x7F);
 }

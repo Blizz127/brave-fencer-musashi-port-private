@@ -1,29 +1,19 @@
-/* Main-exec range [80028394,80028428) from the SLUS executable.
- * SHA256(span)=15947463237df0902dbd6339b48bcd788ef9f39291f4c49a457946d900b550d4.
- * Word export for the native seam; the body below is an
- * UNVERIFIED draft, not an oracle match claim. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_80028394 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Adds three deltas into entry idx (0..2) of the 16-byte-per-entry state table, then calls func_80028620 on it. */
 #include "psx_types.h"
 
-extern u8 D_800A5E88;
-extern s32 D_800A5E8C;
-extern s32 D_800A5E90;
-extern void func_80028620(s32, void *);
+typedef struct { s32 w[4]; } WordRow;
 
-void func_80028394(s32 a0, s32 a1, s32 a2, s32 a3) {
-    s32 offset;
+extern WordRow D_800A5E88[];
+extern WordRow D_800A5E8C[];
+extern WordRow D_800A5E90[];
+extern void func_80028620(u32 idx, WordRow *row);
 
-    a0 &= 0xFFFF;
-    if ((u16)a0 >= 3) {
-        return;
+void func_80028394(u16 idx, s32 a, s32 b, s32 c) {
+    if (idx < 3) {
+        D_800A5E88[idx].w[0] += a;
+        D_800A5E8C[idx].w[0] += b;
+        D_800A5E90[idx].w[0] += c;
+        func_80028620(idx, &D_800A5E88[idx]);
     }
-
-    offset = a0 << 4;
-
-    *(s32 *)((s32)&D_800A5E88 + offset) += a1;
-    *(s32 *)((s32)&D_800A5E8C + offset) += a2;
-    *(s32 *)((s32)&D_800A5E90 + offset) += a3;
-
-    func_80028620(a0, (void *)((s32)&D_800A5E88 + offset));
 }

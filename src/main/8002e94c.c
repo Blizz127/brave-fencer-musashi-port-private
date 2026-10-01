@@ -1,40 +1,39 @@
-/* Exact retail word export for [8002E94C,8002EA10); EXE and assembly verified. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Services two pending-request flag bytes: fires func_8002EAB0 on a matching state, then consumes a queued request and loads the table values for its index. */
 #include "psx_types.h"
 
-/* func_8002E94C - byte-exact against retail at -O2 (tools/register_match.py). */
+extern u16 D_800A4E8E;
+extern u16 D_800A4E8C;
+extern u8 D_800A4EE6;
+extern u16 D_800A4EE4;
+extern u16 D_800A4EE2;
+extern u16 D_8006A9EC[];
+extern void func_8002EAB0(void);
 
-void func_8002E94C(s32 a0)
-{
-    extern u16 D_800A4E8E;
-    extern u16 D_800A4E8C;
-    extern u8  D_800A4EE6;
-    extern u16 D_800A4EE4;
-    extern u16 D_800A4EE2;
-    extern u16 D_8006A9EC[];
-    extern void func_8002EAB0(void);
-    register u8 *a1 __asm__("$5");
-    u8 fl;
-    u8 clr;
-    u16 v;
+void func_8002E94C(u16 idx) {
+    u32 flags = D_800A4E8E;
+    u8 *state;
+    u32 cur;
+    u32 rest;
+    u16 val;
 
-    if ((D_800A4E8E & 0x4) != 0 && D_800A4E8C == 0x3E && (D_800A4E8E & 0x10) != 0) {
+    if ((flags & 4) && D_800A4E8C == 0x3E && (flags & 0x10)) {
         func_8002EAB0();
     }
 
-    a1 = &D_800A4EE6;
-    fl = *a1;
-    if (fl & 0x4) {
-        clr = fl & 0xFB;
-        *a1 = clr;
-        if (!(fl & 0x2)) {
-            if ((u16)a0 >= 5) {
-                a0 = 4;
+    state = &D_800A4EE6;
+    cur = *state;
+    if (cur & 4) {
+        rest = cur & 0xFB;
+        *state = rest;
+        if (!(cur & 2)) {
+            if (idx >= 5) {
+                idx = 4;
             }
             D_800A4EE4 = 0x4000;
-            v = D_8006A9EC[(u16)a0];
-            *a1 = clr | 0x1;
-            D_800A4EE2 = v;
+            val = D_8006A9EC[idx];
+            *state = rest | 1;
+            D_800A4EE2 = val;
         }
     }
 }
