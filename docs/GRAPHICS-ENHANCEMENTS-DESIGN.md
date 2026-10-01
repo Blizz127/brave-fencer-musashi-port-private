@@ -98,10 +98,8 @@ What the numbers say:
    the game runs at 100 % in its heaviest rooms. Caveat: the runner nices
    its jobs and other work was on the box; a foreground measurement on the
    owner's machines is needed before treating these as absolute. The
-   Alienware (Core Ultra 9 290HX, RTX 5070 Ti) run is queued as job
-   `20260930-184759-bfm-2175-gfx-baseline2-715342`; the runner held its
-   slots on the memory cap (MemAvailable 12 GB < 14 GB) and the machine was
-   on battery, so there are no Alienware numbers yet.
+   Alienware results are below. These measurements do not establish
+   per-frame GPU headroom or guarantee real-time performance at 4x.
 2. **Software rasterising costs guest-thread time.** The psycross bridge
    is 9 points faster unthrottled than the cpu path (median 87 % vs 78 %)
    although its present is 4x longer: the cpu rasteriser's per-pixel
@@ -115,6 +113,26 @@ What the numbers say:
    (`present_ms` 4.1 to 4.5 in the showcase takes with `bfmcap.so`
    readback + x264), so before/after captures must be compared by picture,
    not by speed.
+
+### Alienware baseline (completed 2026-10-01)
+
+The previously dispatched job `20260930-184759-bfm-2175-gfx-baseline2-715342`
+finished (wrapper rc=0). The same script ran on the Core Ultra 9 290HX with
+RTX 5070 Ti Laptop GPU, NVIDIA 615.71.09, OpenGL 3.3. Raw log:
+`~/release-staging/bfm-gfx-2175/baseline-alienware-20260930-184759-bfm-2175-gfx-baseline2-715342.log`.
+
+| Run | PERF windows | Speed min / median / max | present_ms median (max) | median idle |
+|---|---|---|---|---|
+| cpu_unthrottled | 17 | 85 / 100 / 130 % | 0.11 (0.36) | 0 % |
+| cpu_throttled | 16 | 82 / 96 / 109 % | 0.12 (0.40) | 0 % |
+| psycross_unthr | 18 | 91 / 115 / 136 % | 0.48 (4.87) | 0 % |
+| psycross_thr | 16 | 89 / 100 / 114 % | 0.51 (5.09) | 5 % |
+| gl_unthr | 0 | refused before CRT, rc=2 | n/a | n/a |
+
+Playable-path runs ended at the planned 170 s timeout (rc=124); this is a
+bounded performance sample, not a clean-exit or regression acceptance test.
+`PERF` reports means over 600 fields, not individual frame times or GPU
+query timings. Both hosts still refuse the GL path before gameplay.
 
 ## 3. Feature by feature
 
