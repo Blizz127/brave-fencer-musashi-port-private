@@ -106,6 +106,34 @@ class GlRendererTests(unittest.TestCase):
                      "gl whole VRAM 3x: 524288 px bit-exact"):
             self.assertIn(line, out)
 
+    def test_exec_vs_controller(self):
+        # tests/bfm_gl_ctl_probe.c: one GP0 stream through native_boot's cpu
+        # rasteriser (gpu_controller.c) and through bridge -> batch -> the GL
+        # executor; at 1x every opaque pixel off a polygon edge must match
+        # bit for bit, semi-transparent ones within the 8-bit blend step
+        inc, lib = gl_include(), osmesa_lib()
+        if not inc or not lib:
+            self.skipTest("GL headers or libOSMesa not available")
+        ctl = None
+        for d in ([Path(os.environ["BFM_GPU_CONTROLLER_DIR"])]
+                  if os.environ.get("BFM_GPU_CONTROLLER_DIR") else []) + [ROOT / "pc_port"]:
+            if (d / "gpu_controller.c").is_file() and (d / "include/musashi_gpu_controller.h").is_file():
+                ctl = d
+                break
+        if not ctl:
+            self.skipTest("gpu_controller.c not available (BFM_GPU_CONTROLLER_DIR)")
+        probe = self.build("gl_ctl", ["-I", inc, "-I", str(ctl / "include")],
+                           CORE + EXEC + [str(ctl / "gpu_controller.c"),
+                                          str(ROOT / "tests/bfm_gl_ctl_probe.c")])
+        env = dict(os.environ, LD_LIBRARY_PATH=str(DEPS_LIB), LIBGL_ALWAYS_SOFTWARE="1")
+        out = self.run_bin([str(probe), lib, "1", "6"], env=env)
+        if "skip exec" in out:
+            self.skipTest(out.strip())
+        self.assertIn("ok ctl", out)
+        self.assertIn("opaque non-edge differences: 0; semi coverage/mask/>1-step: 0", out)
+        for kind in ("TILE", "SPRT"):   # rects: no edge rule, so the whole row is equal
+            self.assertRegex(out, r"%s +no +(\d+) +\1 " % kind)
+
     def test_bench_runs(self):
         # tools/gl_bench: builds at -O2 -Werror and runs a tiny frame set
         if not gl_include() or not (DEPS_LIB / "libOSMesa.so.8").exists():
