@@ -7,6 +7,7 @@
 #include "musashi_callback_registration.h"
 #include "musashi_mips_div.h"
 #include "musashi_native_lane.h"
+#include "platform/psyq/bfm_psyq_libpad.h"
 
 #include <limits.h>
 #include <setjmp.h>
@@ -12887,12 +12888,14 @@ static char *g_trace_counts_path;
 static uint32_t *g_trace_counts;
 static uint32_t *g_trace_caller;
 static char *g_trace_kind;
+/* Entries that ran as native S3a pad leaves (a subset of g_trace_counts). */
+static uint32_t *g_trace_native;
 static unsigned long g_trace_seq;
 static TraceOther g_trace_other[TRACE_OTHER_MAX];
 static unsigned g_trace_other_n;
 static const MusashiNativeLaneEntry *lane_find(uint32_t pc);
 
-typedef struct TraceRow { uint32_t target, caller, count; char kind; } TraceRow;
+typedef struct TraceRow { uint32_t target, caller, count, native; char kind; } TraceRow;
 static int trace_row_cmp(const void *a, const void *b) {
     const TraceRow *x = a, *y = b;
     if (x->count != y->count) return x->count < y->count ? 1 : -1;
@@ -12912,6 +12915,7 @@ static void trace_dump(void) {
             rows[n].caller = g_trace_caller[i];
             rows[n].count = g_trace_counts[i];
             rows[n].kind = g_trace_kind[i];
+            rows[n].native = g_trace_native ? g_trace_native[i] : 0;
             ++n;
         }
     for (i = 0; i < g_trace_other_n; ++i) {
@@ -12919,16 +12923,28 @@ static void trace_dump(void) {
         rows[n].caller = g_trace_other[i].caller;
         rows[n].count = g_trace_other[i].count;
         rows[n].kind = g_trace_other[i].kind;
+        rows[n].native = 0;
         ++n;
     }
     qsort(rows, n, sizeof(*rows), trace_row_cmp);
     out = fopen(g_trace_counts_path, "w");
     if (out) {
         fprintf(out, "# target count first_kind first_caller lane\n");
-        for (i = 0; i < n; ++i)
+        for (i = 0; i < n; ++i) {
+            /* S3a pad leaves: one row per lane, counting only the entries
+             * that actually ran natively as native. */
+            if (rows[i].native) {
+                fprintf(out, "%08x %u %c %08x native\n", rows[i].target, rows[i].native,
+                        rows[i].kind, rows[i].caller);
+                if (rows[i].count > rows[i].native)
+                    fprintf(out, "%08x %u %c %08x interp\n", rows[i].target,
+                            rows[i].count - rows[i].native, rows[i].kind, rows[i].caller);
+                continue;
+            }
             fprintf(out, "%08x %u %c %08x %s\n", rows[i].target, rows[i].count,
                     rows[i].kind, rows[i].caller,
                     lane_find(rows[i].target) ? "native" : "interp");
+        }
         fclose(out);
     }
     free(rows);
@@ -12949,9 +12965,10 @@ static int trace_enabled(void) {
             g_trace_counts = calloc(TRACE_RAM_WORDS, sizeof(*g_trace_counts));
             g_trace_caller = calloc(TRACE_RAM_WORDS, sizeof(*g_trace_caller));
             g_trace_kind = calloc(TRACE_RAM_WORDS, 1);
+            g_trace_native = calloc(TRACE_RAM_WORDS, sizeof(*g_trace_native));
             g_trace_counts_path = malloc(length + sizeof(".counts"));
             if (g_trace_file && g_trace_counts && g_trace_caller && g_trace_kind &&
-                g_trace_counts_path) {
+                g_trace_native && g_trace_counts_path) {
                 memcpy(g_trace_counts_path, path, length);
                 memcpy(g_trace_counts_path + length, ".counts", sizeof(".counts"));
                 fprintf(g_trace_file, "# seq target kind caller (j=jal r=jalr d=entry)\n");
@@ -12963,6 +12980,15 @@ static int trace_enabled(void) {
         }
     }
     return g_trace_state > 0;
+}
+
+/* One entry of `target` (already counted) ran as a native S3a pad leaf. */
+static void trace_native_mark(uint32_t target) {
+    uint32_t segment = target >> 29;
+    if (g_trace_state <= 0 || !g_trace_native) return;
+    if ((segment == 0u || segment == 4u || segment == 5u) &&
+        (target & 0x1fffffffu) < MUSASHI_RAM_SIZE && !(target & 3u))
+        ++g_trace_native[(target & 0x1fffffffu) / 4u];
 }
 
 void musashi_trace_function_entry(uint32_t target, uint32_t caller, char kind) {
@@ -15296,13 +15322,178 @@ static int input_callback_step(MusashiBootMemory *memory, FormatterCpu *cpu,
     return 0;
 }
 
+/* ---- S3a: native libpad leaves in the input callback frame -------------
+ * pc_port/platform/psyq/bfm_psyq_libpad.c holds the seven leaves
+ * (8005FBA8, 8005FBC8, 8005E0AC, 8005DCA0, 8005DE78, 8005E13C, 8005F394).
+ * The frame calls one only after input_callback_call accepted the exact
+ * jal/jalr edge (and its live slot) and the delay slot ran. The adapter below
+ * gives the leaf this frame's own accounting: per retail instruction one
+ * budget unit, then the interpreter's clock charge (2 cycles, +1 for a
+ * load/store) before the access, with cpu->pc set to the retail PC (device
+ * observation), so exhaustion, clock refusals and device time land exactly
+ * where the interpreted words put them. Off (NULL) unless native_boot
+ * installs the table for MUSASHI_PSYQ_LANE class "pad". */
+static const BfmPadLeafApi *g_pad_leaves;
+static unsigned g_input_callback_budget = 16384;
+
+void musashi_input_pad_leaves_set(const struct BfmPadLeafApi *api) { g_pad_leaves = api; }
+
+/* Opt-in (MUSASHI_TRACE_PAD) poll-site counters, kept the same way for the
+ * interpreted words and the native leaves. */
+static const uint32_t kPadSites[MUSASHI_INPUT_PAD_SITES] = {
+    0x8005dd08u, 0x8005dd1cu, 0x8005ddb0u, 0x8005ddf0u, 0x8005ded8u,
+    0x8005df84u, 0x8005e030u, 0x8005e0e0u, 0x8005e148u
+};
+static uint64_t g_pad_site_counts[MUSASHI_INPUT_PAD_SITES];
+static int g_pad_sites_on = -1;
+static int pad_sites_on(void) {
+    if (g_pad_sites_on < 0) {
+        const char *v = getenv("MUSASHI_TRACE_PAD");
+        g_pad_sites_on = v && v[0] && v[0] != '0';
+    }
+    return g_pad_sites_on;
+}
+static void pad_site_count(uint32_t pc) {
+    unsigned i;
+    for (i = 0; i < MUSASHI_INPUT_PAD_SITES; ++i)
+        if (kPadSites[i] == pc) { ++g_pad_site_counts[i]; return; }
+}
+void musashi_input_pad_sites(uint32_t pcs[MUSASHI_INPUT_PAD_SITES],
+                             uint64_t counts[MUSASHI_INPUT_PAD_SITES]) {
+    memcpy(pcs, kPadSites, sizeof kPadSites);
+    memcpy(counts, g_pad_site_counts, sizeof g_pad_site_counts);
+}
+
+typedef struct PadLeafFrame {
+    MusashiBootMemory *memory;
+    FormatterCpu *cpu;
+    unsigned *remaining;
+    MusashiResetGraphPrefixStop *stop;
+} PadLeafFrame;
+
+/* One retail instruction at `pc` retires: budget first, then the clock. */
+static int pad_leaf_charge(PadLeafFrame *f, uint32_t pc, uint32_t cost) {
+    FormatterCpu *cpu = f->cpu;
+    f->stop->call_address = f->stop->target_address = pc;
+    if (!*f->remaining) return 0;
+    --*f->remaining;
+    cpu->pc = pc;
+    cpu->npc = pc + 4u;
+    if (cpu->clock && (!cpu->clock->advance || !cpu->clock->advance(cpu->clock->userdata, cost)))
+        return formatter_refuse0(__LINE__, pc);
+    return 1;
+}
+static int pad_leaf_run(void *user, uint32_t pc, unsigned count) {
+    unsigned i;
+    for (i = 0; i < count; ++i)
+        if (!pad_leaf_charge(user, pc + 4u * i, 2u)) return 0;
+    return 1;
+}
+static int pad_leaf_load(void *user, uint32_t pc, uint32_t address, unsigned width,
+                         uint32_t *value) {
+    PadLeafFrame *f = user;
+    uint8_t byte;
+    uint16_t half;
+    int ok;
+    if (!pad_leaf_charge(f, pc, 3u)) return 0;
+    if (width == 1u) { ok = cpu_read8(f->memory, f->cpu, address, &byte); *value = byte; }
+    else if (width == 2u) { ok = cpu_read16(f->memory, f->cpu, address, &half); *value = half; }
+    else ok = cpu_read32(f->memory, f->cpu, address, value);
+    return ok || access_refuse0(pc, address, width, 0);
+}
+static int pad_leaf_store(void *user, uint32_t pc, uint32_t address, unsigned width,
+                          uint32_t value) {
+    PadLeafFrame *f = user;
+    int ok;
+    if (!pad_leaf_charge(f, pc, 3u)) return 0;
+    if (width == 1u) ok = cpu_write8(f->memory, f->cpu, address, value);
+    else if (width == 2u) ok = cpu_write16(f->memory, f->cpu, address, (uint16_t)value);
+    else ok = cpu_write32(f->memory, f->cpu, address, value);
+    return ok || access_refuse0(pc, address, width, 1);
+}
+/* A nested retail jal inside a leaf: what formatter_step records for one
+ * (function trace, and the entry hook that fires when the target executes). */
+static void pad_leaf_entered(void *user, uint32_t target, uint32_t call) {
+    PadLeafFrame *f = user;
+    if (g_trace_state >= 0) {
+        musashi_trace_function_entry(target, call, 'j');
+        trace_native_mark(target);
+    }
+    if (g_entry_hook) {
+        g_entry_pending = 1u;
+        f->cpu->pc = target;
+        g_entry_hook(g_entry_hook_user, target, f->cpu->r);
+    }
+}
+static void pad_leaf_site(void *user, uint32_t pc) { (void)user; pad_site_count(pc); }
+static int pad_leaf_peek32(void *user, uint32_t address, uint32_t *value) {
+    return musashi_boot_read32(((PadLeafFrame *)user)->memory, address, value);
+}
+static int pad_leaf_code_matches(MusashiBootMemory *memory, const FormatterCpu *cpu,
+                                 const BfmPadLeafCode *code) {
+    uint64_t h = 0xcbf29ce484222325ull;
+    uint32_t pc, word;
+    unsigned b;
+    for (pc = code->start; pc < code->end; pc += 4u) {
+        if (!code_word(memory, cpu, pc, &word)) return 0;
+        for (b = 0; b < 4u; ++b) { h ^= (word >> (8u * b)) & 0xffu; h *= 0x100000001b3ull; }
+    }
+    return h == code->digest;
+}
+
+/* 1: the leaf ran and returned to call + 8 (cpu.pc there); 0: refused with no
+ * side effect (no budget, clock, device or RAM touched), so the frame steps
+ * the retail words; -1: it faulted mid-leaf exactly where the interpreter
+ * would (stop set), or returned somewhere the frame's return check rejects. */
+static int input_pad_leaf(MusashiBootMemory *memory, FormatterCpu *cpu, uint32_t target,
+                          uint32_t call, uint32_t call_sp, unsigned depth,
+                          unsigned *remaining, MusashiResetGraphPrefixStop *stop) {
+    const BfmPadLeafCode *code, *nested[2];
+    unsigned nested_count = 0, i;
+    PadLeafFrame frame = {memory, cpu, remaining, stop};
+    BfmPadLeafIo io;
+    uint32_t exit_pc = 0;
+    int result;
+    if (!g_pad_leaves || !(code = g_pad_leaves->code(target, nested, &nested_count)) ||
+        cpu->pc != target || cpu->npc != target + 4u || cpu->merge_pending ||
+        cpu->gte_load_pending || depth + g_pad_leaves->depth(target) >= 8u ||
+        !pad_leaf_code_matches(memory, cpu, code))
+        return 0;
+    for (i = 0; i < nested_count; ++i)
+        if (!pad_leaf_code_matches(memory, cpu, nested[i])) return 0;
+    io.user = &frame;
+    io.r = cpu->r;
+    io.run = pad_leaf_run;
+    io.load = pad_leaf_load;
+    io.store = pad_leaf_store;
+    io.entered = pad_leaf_entered;
+    io.site = pad_sites_on() ? pad_leaf_site : NULL;
+    result = g_pad_leaves->leaf(target, &io, pad_leaf_peek32, &exit_pc);
+    if (result == BFM_PAD_LEAF_REFUSED) return 0;
+    trace_native_mark(target);
+    cpu->r[0] = 0;
+    if (result != BFM_PAD_LEAF_DONE) return -1;
+    /* The leaf's own `jr ra` and delay slot retired; check them as the
+     * frame checks an interpreted return. */
+    cpu->delay_slot = 0;
+    cpu->branch_pc = 0;
+    cpu->pc = cpu->r[31];
+    cpu->npc = cpu->pc + 4u;
+    if (cpu->pc != call + 8u || cpu->r[29] != call_sp) {
+        stop->call_address = exit_pc;
+        stop->target_address = cpu->pc;
+        return -1;
+    }
+    return 1;
+}
+
 int musashi_boot_execute_input_bios_callback(MusashiBootMemory *memory,
     const MusashiInputDevice *device, MusashiBiosCallbackFrame *frame,
     uint32_t target, int32_t argument, int32_t *result,
     MusashiResetGraphPrefixStop *stop) {
     FormatterCpu cpu = {0};
     struct { uint32_t pc, sp; } returns[8];
-    unsigned remaining = 16384, depth = 0;
+    unsigned remaining = g_input_callback_budget, depth = 0;
     if (!memory || !device || !frame || !result || !stop || frame->busy || frame->faulted ||
         (target != 0x8005d6ccu && target != 0x8005d734u)) return 0;
     frame->busy = 1;
@@ -15337,6 +15528,7 @@ int musashi_boot_execute_input_bios_callback(MusashiBootMemory *memory,
                     cpu.pc, cpu.r[2], cpu.r[4], slot, stage, remaining);
             if (tap_cb_logs != UINT_MAX) ++tap_cb_logs;
         }
+        if (pad_sites_on()) pad_site_count(cpu.pc);
         if (!input_callback_word(memory, &cpu, cpu.pc, &instruction)) break;
         if ((instruction >> 26) == 3 ||
             ((instruction >> 26) == 0 && (instruction & 63u) == 9)) {
@@ -15350,6 +15542,11 @@ int musashi_boot_execute_input_bios_callback(MusashiBootMemory *memory,
              * retain the exact link/delay effects, even for a mapped alias. */
             if (!input_callback_step(memory, &cpu, &remaining, stop) || !input_callback_step(memory, &cpu, &remaining, stop)) break;
             if (supported && cpu.pc == resolved && depth < 8) {
+                /* S3a: an accepted edge into a native pad leaf runs it here. */
+                int leaf = input_pad_leaf(memory, &cpu, resolved, call, call_sp, depth,
+                                          &remaining, stop);
+                if (leaf < 0) break;
+                if (leaf > 0) continue;
                 returns[depth].pc = call + 8u;
                 returns[depth++].sp = call_sp;
                 continue;

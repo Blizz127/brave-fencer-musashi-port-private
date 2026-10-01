@@ -14,9 +14,12 @@
 extern "C" {
 #endif
 
-enum { MUSASHI_PSYQ_LANE_PURE = 1u, MUSASHI_PSYQ_LANE_DEVICE = 2u, MUSASHI_PSYQ_LANE_VSYNC = 4u };
+enum { MUSASHI_PSYQ_LANE_PURE = 1u, MUSASHI_PSYQ_LANE_DEVICE = 2u, MUSASHI_PSYQ_LANE_VSYNC = 4u,
+       /* not lane entries: the S3a libpad leaves in the input callback frame */
+       MUSASHI_PSYQ_LANE_PAD = 8u };
 
-/* Classes selected by MUSASHI_PSYQ_LANE (unset/pure, pure+vsync, all, 0). */
+/* Classes selected by MUSASHI_PSYQ_LANE (unset = pure+vsync, pure, pure+vsync,
+ * pure+vsync+pad, all, 0). */
 unsigned musashi_native_lane_psyq_classes(void);
 int musashi_native_lane_psyq_is_device(const char *name);
 /* Reason a table entry is not installed (retail mismatch), or NULL. */

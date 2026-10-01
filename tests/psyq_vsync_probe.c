@@ -298,7 +298,9 @@ static int check_classes(void) {
         {NULL, MUSASHI_PSYQ_LANE_PURE | MUSASHI_PSYQ_LANE_VSYNC, 1},
         {"pure", MUSASHI_PSYQ_LANE_PURE, 0},
         {"pure+vsync", MUSASHI_PSYQ_LANE_PURE | MUSASHI_PSYQ_LANE_VSYNC, 1},
-        {"all", MUSASHI_PSYQ_LANE_PURE | MUSASHI_PSYQ_LANE_VSYNC | MUSASHI_PSYQ_LANE_DEVICE, 1},
+        {"pure+vsync+pad", MUSASHI_PSYQ_LANE_PURE | MUSASHI_PSYQ_LANE_VSYNC | MUSASHI_PSYQ_LANE_PAD, 1},
+        {"all", MUSASHI_PSYQ_LANE_PURE | MUSASHI_PSYQ_LANE_VSYNC | MUSASHI_PSYQ_LANE_PAD |
+                MUSASHI_PSYQ_LANE_DEVICE, 1},
         {"0", 0u, 0},
     };
     unsigned i;

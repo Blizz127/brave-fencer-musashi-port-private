@@ -3294,6 +3294,75 @@ static int input_change_timer(void *userdata, int32_t channel, int32_t value, in
     return accepted;
 }
 
+/* MUSASHI_TRACE_PAD=1 (harness only): after every pad handler call, one
+ * FNV-1a 64 line over the pad driver's guest state (its globals, records,
+ * receive and game buffers, the RC2 latches and the callback stack) and the
+ * SIO/Timer2/I_STAT model state, so pad leaves off and on can be compared per
+ * VBlank; plus the poll-site counters at exit. Reads only. */
+static uint64_t pad_hash_bytes(uint64_t h, const void *data, size_t size) {
+    const uint8_t *p = data;
+    size_t i;
+    for (i = 0; i < size; ++i) { h ^= p[i]; h *= 0x100000001b3ull; }
+    return h;
+}
+static uint64_t pad_hash_u64(uint64_t h, uint64_t v) {
+    uint8_t b[8];
+    unsigned i;
+    for (i = 0; i < 8; ++i) b[i] = (uint8_t)(v >> (8u * i));
+    return pad_hash_bytes(h, b, 8);
+}
+static void pad_sites_report(void) {
+    uint32_t pcs[MUSASHI_INPUT_PAD_SITES];
+    uint64_t counts[MUSASHI_INPUT_PAD_SITES];
+    unsigned i;
+    musashi_input_pad_sites(pcs, counts);
+    fprintf(stderr, "native_boot: PAD_SITES");
+    for (i = 0; i < MUSASHI_INPUT_PAD_SITES; ++i)
+        fprintf(stderr, " %08x=%llu", pcs[i], (unsigned long long)counts[i]);
+    fprintf(stderr, "\n");
+}
+static void pad_trace(NativeBoot *boot, uint32_t target, int accepted) {
+    static int on = -1;
+    static uint64_t calls;
+    static const uint32_t ranges[][2] = {
+        {0x8007295cu, 0x800729f8u}, {0x80078988u, 0x80078c28u},
+        {0x80078da0u, 0x80078e38u}, {0x80078f24u, 0x80078f28u}, {0x800c5320u, 0x800c5324u},
+    };
+    const MusashiSioController *sio = &boot->sio;
+    uint64_t h = 0xcbf29ce484222325ull;
+    unsigned i;
+    if (on < 0) {
+        const char *v = getenv("MUSASHI_TRACE_PAD");
+        on = v && v[0] && v[0] != '0';
+        if (on) atexit(pad_sites_report);
+    }
+    if (!on || target != 0x8005d734u) return;
+    for (i = 0; i < sizeof ranges / sizeof ranges[0]; ++i) {
+        const uint8_t *span = musashi_boot_ram_span(&boot->memory, ranges[i][0],
+                                                    ranges[i][1] - ranges[i][0]);
+        if (span) h = pad_hash_bytes(h, span, ranges[i][1] - ranges[i][0]);
+    }
+    h = pad_hash_bytes(h, boot->bios_callback_frame.scratch, sizeof boot->bios_callback_frame.scratch);
+    h = pad_hash_u64(h, sio->mode); h = pad_hash_u64(h, sio->control);
+    h = pad_hash_u64(h, sio->baud); h = pad_hash_u64(h, (uint64_t)(int64_t)sio->selected_port);
+    h = pad_hash_u64(h, sio->status); h = pad_hash_u64(h, sio->rx_data);
+    h = pad_hash_u64(h, sio->rx_count); h = pad_hash_u64(h, sio->rx_head);
+    h = pad_hash_bytes(h, sio->rx_fifo, sizeof sio->rx_fifo);
+    h = pad_hash_u64(h, (uint64_t)sio->protocol_ignore); h = pad_hash_u64(h, sio->transmitted_bytes);
+    h = pad_hash_u64(h, sio->cycle); h = pad_hash_u64(h, (uint64_t)sio->ack_pending);
+    h = pad_hash_u64(h, sio->ack_due); h = pad_hash_u64(h, sio->sampled_buttons);
+    h = pad_hash_u64(h, sio->pad_state); h = pad_hash_u64(h, sio->pad_cursor);
+    h = pad_hash_u64(h, (uint64_t)sio->faulted); h = pad_hash_u64(h, sio->selected_device);
+    h = pad_hash_u64(h, (uint64_t)sio->analog_mode);
+    h = pad_hash_u64(h, boot->timer2.count); h = pad_hash_u64(h, boot->timer2.mode);
+    h = pad_hash_u64(h, boot->timer2.target); h = pad_hash_u64(h, boot->timer2.last_cycles);
+    h = pad_hash_u64(h, boot->irq.controller.status); h = pad_hash_u64(h, boot->irq.controller.mask);
+    fprintf(stderr, "native_boot: PAD_TRACE call=%llu accepted=%d epoch=%llu t2=%u sio_tx=%llu "
+            "hash=%016llx\n", (unsigned long long)++calls, accepted,
+            (unsigned long long)boot->epoch.cycle, (unsigned)boot->timer2.count,
+            (unsigned long long)sio->transmitted_bytes, (unsigned long long)h);
+}
+
 static int input_execute(void *userdata, uint32_t target, int32_t argument, int32_t *result) {
     NativeBoot *boot = userdata;
     MusashiResetGraphPrefixStop stop = {0};
@@ -3308,6 +3377,7 @@ static int input_execute(void *userdata, uint32_t target, int32_t argument, int3
         boot->sio.cycle = boot->epoch.cycle;
     }
     musashi_device_epoch_lazy_invalidate(&boot->epoch);
+    pad_trace(boot, target, accepted);
     if (boot->continuation != continuation) return 0;
     if (accepted) {
         static uint64_t n;
@@ -4956,6 +5026,7 @@ static void hold_window(NativeBoot *boot) {
 #include <sys/mman.h>
 #include "musashi_native_lane.h"
 #include "musashi_native_lane_psyq.h"
+#include "psyq/bfm_psyq_libpad.h"
 #ifndef MAP_FIXED_NOREPLACE
 #define MAP_FIXED_NOREPLACE 0x100000
 #endif
@@ -5057,9 +5128,13 @@ static NativeBoot *native_boot_owner(NativeBoot *fallback) {
             if (ovl > 0) atexit(lane_overlay_report);
         }
         musashi_native_lane_psyq_bind(&((NativeBoot *)window)->memory, &((NativeBoot *)window)->gte);
+        /* S3a: the libpad leaves run natively inside the input callback frame
+         * (not lane entries); class "pad" only. */
+        musashi_input_pad_leaves_set((classes & MUSASHI_PSYQ_LANE_PAD) ? &bfm_psyq_pad_leaf_api : NULL);
         fprintf(stderr, "native_boot: NATIVE_LANE entries=%u psyq=%u classes=%s\n",
                 (unsigned)count, (unsigned)(count - musashi_native_lane_generated_count),
                 classes == 0u ? "none" : (classes & MUSASHI_PSYQ_LANE_DEVICE) ? "all"
+                : (classes & MUSASHI_PSYQ_LANE_PAD) ? "pure+vsync+pad"
                 : (classes & MUSASHI_PSYQ_LANE_VSYNC) ? "pure+vsync" : "pure");
     }
     return window;

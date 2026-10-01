@@ -351,6 +351,14 @@ void musashi_boot_bios_callback_frame_init(MusashiBiosCallbackFrame *);
 int musashi_boot_execute_input_bios_callback(MusashiBootMemory *,
     const MusashiInputDevice *, MusashiBiosCallbackFrame *, uint32_t target,
     int32_t argument, int32_t *result, MusashiResetGraphPrefixStop *stop);
+/* S3a: native libpad leaves in that frame (pc_port/platform/psyq/
+ * bfm_psyq_libpad.h). NULL (the default) keeps every leaf on its retail words. */
+struct BfmPadLeafApi;
+void musashi_input_pad_leaves_set(const struct BfmPadLeafApi *);
+/* MUSASHI_TRACE_PAD poll-site counters (interpreted and native alike). */
+enum { MUSASHI_INPUT_PAD_SITES = 9 };
+void musashi_input_pad_sites(uint32_t pcs[MUSASHI_INPUT_PAD_SITES],
+                             uint64_t counts[MUSASHI_INPUT_PAD_SITES]);
 
 
 /* The independent platform adapters required by the post-entry startup calls.

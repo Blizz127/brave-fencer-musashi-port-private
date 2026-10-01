@@ -12,7 +12,12 @@
  *          The wrapper completes only VSync(mode < 0), returning the guest
  *          tick 8006CBB8; every other mode refuses and the interpreter runs
  *          the retail wait. It needs no GPU backend.
- *   all    pure + vsync + the device-level wrappers (DrawSync, DrawOTag,
+ *   pure+vsync+pad  pure+vsync + the S3a libpad leaves (8005FBA8, 8005FBC8,
+ *          8005E0AC, 8005DCA0, 8005DE78, 8005E13C, 8005F394). These are not
+ *          lane entries: the input BIOS callback frame runs them natively
+ *          (mips_formatter.c, platform/psyq/bfm_psyq_libpad.c); native_boot
+ *          installs them when this bit is set.
+ *   all    pure + vsync + pad + the device-level wrappers (DrawSync, DrawOTag,
  *          LoadImage/StoreImage/MoveImage, PutDrawEnv/PutDispEnv,
  *          SetDispMask, CdSearchFile, putchar). These bypass the emulated
  *          GPU, CD and IRQ timing, so they are accepted only with
@@ -119,8 +124,11 @@ unsigned musashi_native_lane_psyq_classes(void) {
     if (!v || !v[0] || strcmp(v, "pure+vsync") == 0)
         return MUSASHI_PSYQ_LANE_PURE | MUSASHI_PSYQ_LANE_VSYNC;
     if (strcmp(v, "pure") == 0) return MUSASHI_PSYQ_LANE_PURE;
+    if (strcmp(v, "pure+vsync+pad") == 0)
+        return MUSASHI_PSYQ_LANE_PURE | MUSASHI_PSYQ_LANE_VSYNC | MUSASHI_PSYQ_LANE_PAD;
     if (strcmp(v, "all") == 0)
-        return MUSASHI_PSYQ_LANE_PURE | MUSASHI_PSYQ_LANE_VSYNC | MUSASHI_PSYQ_LANE_DEVICE;
+        return MUSASHI_PSYQ_LANE_PURE | MUSASHI_PSYQ_LANE_VSYNC | MUSASHI_PSYQ_LANE_PAD |
+               MUSASHI_PSYQ_LANE_DEVICE;
     return 0u;
 }
 

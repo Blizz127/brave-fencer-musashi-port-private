@@ -279,3 +279,98 @@ Default flip verified: job `20261001-192821-bfm-owncode-b41faa01d5` (evidence
 the village with warp vblanks 416, stop tick `00000ae0` and display
 70196/76800. `musashi_psyq_vsync_probe` on the runner against the user's
 SLUS_007.26: 236 cases, 216 native completions, 19 refusals, 0 different.
+
+## S3a libpad leaves (branch `claude/s3-pad`)
+
+Opt-in class `MUSASHI_PSYQ_LANE=pure+vsync+pad` (also part of `all`); the
+release default is unchanged (`pure+vsync`), and `pure` or `0` keeps every
+leaf retail. Not lane entries: the pad driver's VBlank handler `8005D734`
+runs in the input BIOS callback frame (`musashi_boot_execute_input_bios_callback`),
+an admitted-word interpreter that never consults the lane, so the frame
+itself dispatches the leaves, at the point where `input_callback_call` has
+accepted the exact `jal`/`jalr` edge (and the live slot, for `8005F394`
+through `80072964`) and the delay slot has run; the leaf returns to
+`call + 8` and passes the frame's return check.
+
+| PC | What it does (from the disassembly) |
+|---|---|
+| `8005FBA8` | RC2 wait start: latch Timer2 count to `80078F24`, wait length a0 to `800C5320` |
+| `8005FBC8` | RC2 wait check: elapsed Timer2 ticks (wrap by target or 0x10000, `>> 3` unless mode bit 0x200) >= wait |
+| `8005E0AC` | I_STAT = ~0x80, wait for /ACK release (STAT bit 7) under the RC2 wait, CTRL \|= 0x10 |
+| `8005DCA0` | one pipelined SIO byte: select byte (a1 < 0) after the select delay, else RX, baud, ACK latch or RC2 timeout (-0x14), send, store the reply |
+| `8005DE78` | the same with the inline Timer2 timeout (-2) and the step-2 0x3C delay |
+| `8005E13C` | wait for RX ready |
+| `8005F394` | next transmit byte from the record's actuator/config buffers |
+
+New code, all native C, owner-written from the asm:
+`pc_port/platform/psyq/bfm_psyq_libpad.c` (the leaves, which walk the retail
+control flow and report every retail instruction they stand for) and the
+adapter `input_pad_leaf` in `pc_port/mips_formatter.c`, which charges each
+one as the frame's interpreter does (one budget unit, then 2 cycles, +1 for a
+load/store, before the access, with the device-observation PC set to the
+retail PC) and performs the access through the same memory/device path. The
+handler, `8005DBD8`, the five step bodies, the TAP/config code and
+`8005F830`/`8005FA94` stay interpreted. Divergences: KNOWN-DIVERGENCES D-042.
+
+### G1 differential (`tests/input_pad_leaf_probe.c`, pytest `tests/test_input_pad_leaf.py`)
+
+53,743 cases, 0 different (devbox, 1 m 57 s). Retail words vs native leaves
+on two identical universes; compared after every step: all guest RAM and
+scratchpad, the callback frame, every SIO field, Timer2, I_STAT/ACK state,
+the per-byte tx/rx log with tx cycle and ACK due, button samples, clock
+charges and cycles, results and stop PCs; per leaf also the register file and
+budget. Frame-level scenarios: cold TAP (96 VBlanks), 1000 VBlanks of random
+buttons and sticks, motor/config buffers, lost/late ACK past every timeout,
+/ACK held low, Timer2 mode 0x200 and a nonzero target, mutated reply bytes,
+all at once, SIO pointer corruption, frozen clock; every budget and every
+clock-refusal point of whole handler calls (5,498 and 7,515 instructions).
+Leaf level: 4,200 random states with budget/clock sweeps. Refusals leave CPU,
+budget, clock, devices and RAM untouched. Deliberate breaks, each failing,
+restored by the default build: RC2 shift (26,806 different), dropped I_STAT
+ack (26,718), baud 0x89 (20,615), dropped CTRL bit 4 (9,445), one extra cycle
+charge (20,237), select byte not sent (26,485).
+
+### G2 local village 1010 warp (no-march lane build, `MUSASHI_GUEST_CLOCK=1`, unthrottled, `MUSASHI_TRACE_DEVICE_OBS=1`, `MUSASHI_TRACE_PAD=1`)
+
+`MUSASHI_TRACE_PAD=1` prints, after every handler call, an FNV-1a 64 hash of
+the driver's guest state (globals, records, receive and game buffers, RC2
+latches, callback stack) and the SIO/Timer2/I_STAT model state, and the
+poll-site counters at exit.
+
+| Leg (~345 s each, 2 in parallel) | Warp vblanks | Final DEVOBS vblank / cycle / events / hash | Stop tick | PAD_TRACE lines |
+|---|---|---|---|---|
+| `pure+vsync`, `EPOCH_LAZY=1` | 416 | 2784 / 1571848430 / 2,412,193 / `8dcbfa55a61f3ddc` | `0ae0` | 2,668 |
+| `pure+vsync+pad`, `EPOCH_LAZY=1` | 416 | identical (all 2,784 DEVOBS lines) | `0ae0` | 2,668, identical |
+
+The DEVOBS stream matches S2's `pure+vsync` figures exactly: the leaves make
+the same device accesses at the same PCs and cycles. `EPOCH_LAZY=0` legs did
+not finish within the local 900 s cap (the eager epoch is slower under load);
+over their common prefix they are identical, pad off vs on (1,777 DEVOBS and
+1,748 PAD_TRACE lines) and lazy 0 vs 1. Completion of the lazy=0 legs is part
+of the integrator's runner gate.
+
+Poll sites per route (identical pad off and on; 2,667 completed handler
+calls): `8005FBC8` call sites `8005DD1C` 56,481 (select delay, 21.2 per
+VBlank), `8005DDF0` 119,890 (ACK wait, 45.0), `8005E030` 23,992 (step-2
+delay, 9.0), `8005E0E0` 0 (the SIO model never holds /ACK low); their sum
+200,363 is the whole `8005FBC8` count. Inline DE78 ACK loop `8005DF84`
+305,653 (114.6 per VBlank, mostly port 2's 3,200-cycle timeout); RX waits
+`8005DED8` 10,668 and `8005E148` 2,667 (one pass each: the model's RX is
+ready at once); TX `8005DD08` and RX `8005DDB0` 0.
+
+Traced pad-on leg (`MUSASHI_TRACE_FUNCS`, local): same warp, stop tick
+`0ae0`; `8005FBC8` 200,363, `8005FBA8` 45,336, `8005E0AC` 26,666,
+`8005DCA0` 18,666, `8005F394` 15,998, `8005DE78` 10,668, `8005E13C` 2,667,
+all native and 0 interpreted (the tracer now counts an S3a leaf entry as
+native only when the leaf ran). Interpreted calls, all regions: 1,035,157
+(S2 runner trace `fdd04fc114`) -> 714,793; the difference, 320,364, is
+exactly the seven leaves. `8005DBD8` (18,670) and the handler `8005D734`
+(2,668) stay interpreted.
+
+Tests (lane build, no-march): CTest 34/34; retail guard 7 files, 0 problems;
+`tests/test_native_lane*.py`, `test_psyq_exclusion.py`, `test_input_*.py`:
+all pass except `test_input_digital_irq.py`, which fails identically on the
+base `c593163a01` (its round-1 expectation predates the DualShock SIO model:
+see the commit message); `test_host_chord.py`, `test_bios_memcard.py`,
+`test_input_controller_words.py`, `test_bios_input.py`,
+`test_sio_controller.py` 5/5; `musashi_dev_menu_probe` DEV_MENU_PASS.

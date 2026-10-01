@@ -538,7 +538,8 @@ if(MUSASHI_BUILD_PC_PORT)
     add_library(bfm_plat STATIC ${BFM_PLAT_CORE_SOURCES}
         pc_port/platform/psyq/bfm_psyq_compat.c
         pc_port/platform/psyq/bfm_psyq_libgs.c
-        pc_port/platform/psyq/bfm_psyq_libgte.c)        # + psyq/psyq_psycross.c with PsyCross
+        pc_port/platform/psyq/bfm_psyq_libgte.c         # + psyq/psyq_psycross.c with PsyCross
+        pc_port/platform/psyq/bfm_psyq_libpad.c)        # S3a libpad leaves (input frame)
     target_include_directories(bfm_plat PUBLIC pc_port/platform)
     target_link_libraries(bfm_plat PUBLIC ${CMAKE_DL_LIBS} m)
 
