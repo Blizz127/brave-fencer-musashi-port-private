@@ -1,37 +1,56 @@
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_800D2AD8 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly and m2c-assisted drafting. */
 #include "psx_types.h"
-typedef float f32;
-typedef unsigned long long u64;
-typedef long long s64;
-typedef double f64;
 #ifndef NULL
 #define NULL ((void *)0)
 #endif
 
-extern s32 D_800DB530[];
-extern s32 D_800DB570[];
-extern s32 D_800DB5B4[];
+extern s32 D_800DB530;
+extern s32 D_800DB570;
+extern s32 D_800DB5B4;
 
-void *func_800D2AD8(void *a0) {
-    s32 i;
-    s32 *d;
-    s32 *s;
+s32 *func_800D2AD8(s32 *arg0) {
+    s32 *var_a1;
+    s32 *var_a1_2;
+    s32 *var_a1_3;
+    s32 *var_a2;
+    s32 *var_a2_2;
+    s32 *var_a2_3;
+    s32 temp_v0;
+    s32 temp_v0_2;
+    s32 temp_v0_3;
+    s32 var_v1;
+    s32 var_v1_2;
+    s32 var_v1_3;
 
-    d = (s32 *) a0;
-    s = D_800DB530;
-    for (i = 15; i != -1; i--) {
-        *d++ = *s++;
-    }
-    d = (s32 *) ((s32) a0 + 0x40);
-    s = D_800DB570;
-    for (i = 15; i != -1; i--) {
-        *d++ = *s++;
-    }
-    d = (s32 *) ((s32) a0 + 0x80);
-    s = D_800DB5B4;
-    for (i = 31; i != -1; i--) {
-        *d++ = *s++;
-    }
-    return a0;
+    var_a2 = arg0;
+    var_a1 = &D_800DB530;
+    var_v1 = 0xF;
+    do {
+        temp_v0 = *var_a1;
+        var_a1 += 1;
+        var_v1 -= 1;
+        *var_a2 = temp_v0;
+        var_a2 += 1;
+    } while (var_v1 != -1);
+    var_a2_2 = arg0 + 0x10;
+    var_a1_2 = &D_800DB570;
+    var_v1_2 = 0xF;
+    do {
+        temp_v0_2 = *var_a1_2;
+        var_a1_2 += 1;
+        var_v1_2 -= 1;
+        *var_a2_2 = temp_v0_2;
+        var_a2_2 += 1;
+    } while (var_v1_2 != -1);
+    var_a2_3 = arg0 + 0x20;
+    var_a1_3 = &D_800DB5B4;
+    var_v1_3 = 0x1F;
+    do {
+        temp_v0_3 = *var_a1_3;
+        var_a1_3 += 1;
+        var_v1_3 -= 1;
+        *var_a2_3 = temp_v0_3;
+        var_a2_3 += 1;
+    } while (var_v1_3 != -1);
+    return arg0;
 }

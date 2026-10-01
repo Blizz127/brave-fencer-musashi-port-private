@@ -1,27 +1,27 @@
-/* Exact retail word export for [80037368,800373D0); EXE and assembly verified. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_80037368 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Independently re-derived from retail assembly; clean input set. */
 #include "psx_types.h"
 
-extern u8 D_80076251;   
-extern u8 D_80076220[];
+extern u8 D_80076220;
 extern u8 D_80076250[];
+extern u8 D_80076251[];
 
-void *func_80037368(int *out) {
-    int count = 0;
-    u8 *ptr = D_80076220;
-    int i;
+u8 *func_80037368(s32 *arg0) {
+    s32 var_a1;
+    s32 var_v1;
+    u8 *var_a2;
 
-    for (i = 0; i < 0x50; i += 0x10) {
-        *ptr = 0;
-        ptr++;
-
-        if ((&D_80076251)[i] != 0) {
-            D_80076220[count] = D_80076250[i];
-            count++;
+    var_a1 = 0;
+    var_a2 = &D_80076220;
+    var_v1 = 0;
+    do {
+        *var_a2 = 0;
+        var_a2 += 1;
+        if (D_80076251[var_v1] != 0) {
+            (&D_80076220)[var_a1] = D_80076250[var_v1];
+            var_a1 += 1;
         }
-    }
-
-    *out = count;
-    return D_80076220;
+        var_v1 += 0x10;
+    } while (var_v1 < 0x50);
+    *arg0 = var_a1;
+    return &D_80076220;
 }

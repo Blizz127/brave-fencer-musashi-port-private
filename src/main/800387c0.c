@@ -1,24 +1,15 @@
-/* Exact retail word export for [800387C0,80038838); EXE and assembly verified. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_800387C0 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Independently re-derived from retail assembly; clean input set. */
 #include "psx_types.h"
-
-s32 func_800387C0(void *arg0) {
-    u8 *p;
-    s32 v;
-
-    p = *(u8 **)arg0;
-    (*(s32 *)arg0)++;
-    v = p[0];
-    (*(s32 *)arg0) = p + 2;
-    v |= p[1] << 8;
-    (*(s32 *)arg0) = p + 3;
-    v |= p[2] << 16;
-    (*(s32 *)arg0) = p + 4;
-    v |= p[3] << 24;
-    if (v != 0x6B72544D) {
-        return -1;
-    }
-    (*(s32 *)arg0) = p + 8;
-    return 0;
+s32 func_800387C0(u8 **arg0) {
+ u8 *base = *arg0;
+ u32 a,b,c,d;
+ s32 result;
+ *arg0=base+1; a=base[0];
+ *arg0=base+2; b=base[1];
+ *arg0=base+3; c=base[2];
+ *arg0=base+4; d=base[3];
+ if ((a|(b<<8)|(c<<16)|(d<<24)) == 0x6B72544D) {
+  *arg0=base+8;result=0;
+ } else result=-1;
+ return result;
 }

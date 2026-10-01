@@ -1,24 +1,12 @@
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_800D1D14 - byte-exact against retail at -O0 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly and m2c-assisted drafting. */
 #include "psx_types.h"
-typedef float f32;
-typedef unsigned long long u64;
-typedef long long s64;
-typedef double f64;
-#ifndef NULL
-#define NULL ((void *)0)
-#endif
 
-extern s32 D_800D3630[];
-extern u8  D_800D3618[];
-extern u8  D_800D3620[];
-extern s32 D_800D3624[];
-extern void func_8001534C(s32 idx, s32 a1, s16 x, s16 y, u8 arg4, u8 arg5);
-
-void func_800D1D14(s32 arg0, s32 arg1) {
-    if (arg1 == 0) {
-        func_8001534C(*(s16 *) &D_800D3630[arg0], (s32) D_800D3618, 0, 0, 0, 0);
-    } else {
-        func_8001534C(*(s16 *) &D_800D3630[arg0], D_800D3624[arg0], 0x50, D_800D3620[arg0], 0, 0);
-    }
+typedef struct { s16 value; s16 padding; } Entry;
+extern Entry D_800D3630[];
+extern u8 D_800D3618[], D_800D3620[];
+extern void *D_800D3624[];
+extern void func_8001534C(s16, void *, int, s16, int, int);
+void func_800D1D14(s32 index, s32 mode) {
+ if (mode == 0) func_8001534C(*(s16 *)(index * 4 + (u32)D_800D3630), D_800D3618, 0, 0, 0, 0);
+ else func_8001534C(*(s16 *)(index * 4 + (u32)D_800D3630), D_800D3624[index], 0x50, (s16)D_800D3620[index], 0, 0);
 }

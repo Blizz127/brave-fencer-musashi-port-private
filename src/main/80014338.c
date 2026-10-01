@@ -1,19 +1,14 @@
-/* Exact retail word export for [80014338,80014390); EXE and assembly verified. */
+/* Independently re-derived from retail assembly; clean input set. */
 #include "psx_types.h"
 
-/* Decompiled by m2c from main.s, then verified byte-exact
- * against retail by tools/match_function.py. Types and signatures are
- * whatever reproduces the bytes; they are not evidence of the
- * original declaration. */
-
-void func_80028DBC();                                 /* static */
-void func_80028E00();                                 /* static */
-void func_80028FDC();                                 /* static */
-void func_80029020();                                 /* static */
-void func_80029044();                                  /* static */
-void func_8002906C();                                  /* static */
-void func_80029094();                                  /* static */
-void func_80029274();                                  /* static */
+void func_80028DBC(s32);                     /* extern */
+void func_80028E00(s32);                     /* extern */
+void func_80028FDC(s32);                     /* extern */
+void func_80029020(s32);                     /* extern */
+void func_80029044();                            /* extern */
+void func_8002906C();                            /* extern */
+void func_80029094();                            /* extern */
+void func_80029274();                            /* extern */
 
 void func_80014338(void) {
     func_80029044();

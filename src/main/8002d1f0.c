@@ -1,22 +1,20 @@
-/* Native retail instruction export [8002D1F0,8002D240).
- * Verified against asm/main.s and the extracted EXE. No C match claim. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* Owner re-derivation from retail assembly and locally generated m2c. */
 #include "psx_types.h"
 
-/* func_8002D1F0 - byte-exact against retail at -O2 (tools/register_match.py). */
+typedef struct {
+    s32 field0;
+    s32 field4;
+    s16 field8;
+    s16 fieldA;
+} BfmWork;
 
-extern void func_8003B45C(s32 *);
+extern BfmWork D_800A4ECC;
+extern void func_8003B45C(BfmWork *);
 
-extern s32 D_800A4ECC;
-extern s32 D_800A4ED0;
-extern u16 D_800A4ED4;
-extern u16 D_800A4ED6;
-
-void func_8002D1F0(s32 arg0) {
-    s32 *v1 = &D_800A4ECC;
-    *v1 = 1;
-    D_800A4ED0 = (s16)arg0;
-    D_800A4ED4 = 0;
-    D_800A4ED6 = 0;
-    func_8003B45C(v1);
+void func_8002D1F0(s16 arg0) {
+    D_800A4ECC.field0 = 1;
+    D_800A4ECC.field4 = arg0;
+    D_800A4ECC.field8 = 0;
+    D_800A4ECC.fieldA = 0;
+    func_8003B45C(&D_800A4ECC);
 }

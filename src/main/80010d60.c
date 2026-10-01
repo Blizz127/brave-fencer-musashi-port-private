@@ -1,13 +1,11 @@
-/* Exact retail word export for [80010D60,80010DA0); EXE and assembly verified. */
+/* Owner re-derivation from retail assembly and m2c-assisted drafting. */
 #include "psx_types.h"
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* Decompiled by m2c from main.s, then verified byte-exact
- * against retail by tools/match_function.py. Types and signatures are
- * whatever reproduces the bytes; they are not evidence of the
- * original declaration. */
-
-void func_80010AE0();                                 /* static */
-void func_80011818();                                 /* static */
+s32 func_80010AE0(s32);                     /* extern */
+s32 func_80011818(s32);                     /* extern */
 
 void func_80010D60(void) {
     func_80010AE0(0x3E0);

@@ -1,23 +1,18 @@
-/* Exact retail word export for [80010ED4,80010F80); EXE and assembly verified. */
+/* Independently re-derived from retail assembly; clean input set. */
 #include "psx_types.h"
 
-/* Decompiled by m2c from main.s, then verified byte-exact
- * against retail by tools/match_function.py. Types and signatures are
- * whatever reproduces the bytes; they are not evidence of the
- * original declaration. */
-
+void func_80010AE0(s32);                     /* extern */
+void func_800116E0();                            /* extern */
+void func_80011778();                            /* extern */
+void func_80014338();                            /* extern */
+s32 func_80019A24(s32 *, s32, s32, s32 *);  /* extern */
+void func_8002D4C8(s32, s32);            /* extern */
 extern s32 D_80072C70;
-void func_80010AE0();                                 /* static */
-void func_800116E0();                                  /* static */
-void func_80011778();                                  /* static */
-void func_80014338();                                  /* static */
-s32 func_80019A24(void *, s32, s32, s32 *);              /* static */
-void func_8002D4C8(s32, s32);                              /* static */
-extern s32 *D_800A2E20;
-extern s32 *D_800AE848;
+extern s32 D_800A2E20;
+extern s32 D_800AE848;
 extern s16 D_800B99DA;
 extern s32 D_800C7C60;
-extern void *D_800C7C64;
+extern s32 *D_800C7C64;
 
 void func_80010ED4(void) {
     D_800C7C60 = 0x57;

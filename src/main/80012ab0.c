@@ -1,27 +1,6 @@
-/* Main-exec range [80012AB0,80012ABC) from the SLUS executable.
- * SHA256(span)=5593c64c653c74ac86a845518bc03c4a704d295f02b317907fc04bc7faac4ed8.
- * Word export for the native seam; the body below is kept
- * byte-identical (wrap only, no rewrite). */
-/* Matched leaf functions from the main executable's first region.
- *
- * The filename is provisional. splat's trailing-nop analysis suggests original
- * translation-unit seams at file offsets 0x42C60 and 0x5E4F0, which is not
- * enough to recover real source filenames, so files are named for the address
- * they start at and renamed once a boundary is actually identified.
- *
- * Every function here is byte-verified against retail.
- * Cross-checked against vendor/bfm-decomp/src/800.c (Druthulu); this
- * house-style body is preferred over the vendor TU dump form. Do not add a function
- * to this file until tools/match_function.py reports a match for it.
- */
+/* Independently re-derived from retail assembly; clean input set. */
+#include "psx_types.h"
 
-/* Verified: 3/3 words at vram 0x80012AB0.
- *
- * The parameter and return types are the loosest that reproduce the bytes and
- * are not evidence of the original signature: subu and andi are width-agnostic
- * here, so a narrower type would emit the same code. Refine if a caller ever
- * pins the width.
- */
-int func_80012AB0(int a, int b) {
-    return (a - b) & 0xFFF;
+s32 func_80012AB0(s32 arg0, s32 arg1) {
+    return (arg0 - arg1) & 0xFFF;
 }

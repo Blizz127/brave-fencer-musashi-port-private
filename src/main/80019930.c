@@ -1,13 +1,8 @@
-/* Main-exec range [80019930,80019990) from the SLUS executable.
- * SHA256(span)=64ef6dacc9c2c13f2042985e433dc3a0e202144c180299f8e7f878ca0565e31b.
- * Word export for the native seam; the body below is kept
- * byte-identical (wrap only, no rewrite). */
+/* Owner re-derivation from retail assembly and m2c-assisted drafting. */
 #include "psx_types.h"
-
-/* Decompiled by m2c from main.s, then verified byte-exact
- * against retail by tools/match_function.py. Types and signatures are
- * whatever reproduces the bytes; they are not evidence of the
- * original declaration. */
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
 extern s32 D_800AE6F0;
 extern s32 D_800AE6F8;

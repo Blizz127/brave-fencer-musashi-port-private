@@ -1,12 +1,10 @@
-/* Exact retail word export for [80028D9C,80028DBC); EXE and assembly verified. */
+/* Owner re-derivation from retail assembly and m2c-assisted drafting. */
 #include "psx_types.h"
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
-/* Decompiled by m2c from main.s, then verified byte-exact
- * against retail by tools/match_function.py. Types and signatures are
- * whatever reproduces the bytes; they are not evidence of the
- * original declaration. */
-
-s32 func_80029178();                               /* static */
+s32 func_80029178(s32);                         /* extern */
 
 s32 func_80028D9C(void) {
     return func_80029178(0xC) & 0xFF;
