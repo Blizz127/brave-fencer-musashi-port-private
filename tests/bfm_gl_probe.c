@@ -339,7 +339,8 @@ static void test_scenes(void) {
     bfm_gl_batch_set_env(&b, &env);
     p.v[0].x = -40; p.v[0].y = 10; p.w = 20; p.h = 5;   /* left of the 4:3 edge */
     bfm_gl_batch_add(&b, &p, 1);
-    CHECK(b.v[0].x == 13 && b.v[0].y == 10);
+    /* the tile's quad follows the slots' VRAM-copy quads */
+    CHECK(b.nv >= 6 && b.v[b.nv - 6].x == 13 && b.v[b.nv - 6].y == 10);
 
     env.clip = R(10, 250, 100, 50);     /* a viewport inside the buffer */
     bfm_gl_batch_set_env(&b, &env);
@@ -1230,6 +1231,39 @@ static void exec_feedback(int scale) {
     compare_ref(scale == 1 ? "whole VRAM 1x" : "whole VRAM 3x", 0, 0, 1024, 512);
 }
 
+/* Scene slots are caches: partial redraw, eviction and resize must retain
+ * pixels outside the newly drawn region, including mask bits. */
+static void exec_scene_coherency(int scale) {
+    BfmPlatDrawEnv env;
+    BfmPlatRect disp = R(0, 0, 320, 240);
+    BfmPlatPrim p;
+    int page;
+    reset_both(scale);
+    p = fillp(0, 0, 1024, 512, 3, 7, 11); both(&p);
+    flush_all();
+    for (page = 0; page < 4; page++) {
+        int x = (page % 3) * 320;
+        disp.x = (int16_t)x;
+        bfm_gl_batch_set_display(&B, &disp, 0);
+        memset(&env, 0, sizeof env);
+        env.clip = R(x, 10, 320, 220);
+        both_env(&env);
+        p = tile(x + 3, 10, 37, 27, 20 + page, 2, 5,
+                 BFM_PRIM_FLAG_MASK_SET, 0); both(&p);
+        flush_all();
+    }
+    compare_ref("scene eviction and partial redraw", 0, 0, 960, 240);
+    p = tile(50, 30, 27, 31, 8, 16, 24, 0, 0); both(&p);
+    bfm_gl_batch_resolve_scenes(&B);
+    flush_all();
+    disp = R(0, 0, 256, 240);
+    bfm_gl_batch_set_display(&B, &disp, 0);
+    env.clip = disp;
+    both_env(&env);
+    p = tile(5, 5, 9, 9, 31, 0, 0, 0, 0); both(&p);
+    compare_ref("scene resize", 0, 0, 960, 240);
+}
+
 static int run_exec(const char *lib) {
     static const int attribs[] = {0x22, 0x1908 /* FORMAT RGBA */, 0x30, 0, 0x31, 0,
                                   0x33, 0x34 /* core */, 0x36, 3, 0x37, 3, 0};
@@ -1285,6 +1319,8 @@ static int run_exec(const char *lib) {
     bfm_gl_batch_init(&B);
     B.vram = &vram;
     exec_scene_present();
+    exec_scene_coherency(1);
+    exec_scene_coherency(3);
     CHECK(bfm_gl_exec_error(X) == 0);
     bfm_gl_batch_free(&B);
     bfm_gl_exec_destroy(X);

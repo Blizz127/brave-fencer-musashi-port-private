@@ -60,6 +60,8 @@ static int dither_on(const GlRenderer *s) {
     return mode == BFM_DITHER_ON;
 }
 
+static int flush(GlRenderer *s);
+
 /* hor+ margin and displayed image aspect for the current display. */
 static void layout(GlRenderer *s) {
     const BfmPlatConfig *c = bfm_plat_config();
@@ -78,6 +80,13 @@ static void layout(GlRenderer *s) {
         }
     }
     s->image_aspect = a;
+    if (s->disp.w != s->batch.disp.w || s->disp.h != s->batch.disp.h ||
+        margin != s->batch.margin) {
+        /* the scene targets are reallocated for the new size: their pixels
+         * go to the mirror first, drawn with the size still in effect */
+        bfm_gl_batch_resolve_scenes(&s->batch);
+        flush(s);
+    }
     bfm_gl_batch_set_display(&s->batch, &s->disp, margin);
     {
         BfmPlatRect o = s->disp;

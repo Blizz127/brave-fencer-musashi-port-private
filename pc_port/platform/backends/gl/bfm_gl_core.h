@@ -258,6 +258,10 @@ void bfm_gl_batch_add_copy(BfmGlBatch *b, const BfmPlatRect *rect);
 /* StoreImage support: RESOLVE commands for every rendered tile in rect,
  * so the mirror holds what was drawn once the list has run. */
 void bfm_gl_batch_add_resolve(BfmGlBatch *b, const BfmPlatRect *rect);
+/* Every rendered tile of the used scene slots into the mirror. Run the
+ * batch before changing the display size (bfm_gl_batch_set_display with
+ * another size reallocates the slot targets). */
+void bfm_gl_batch_resolve_scenes(BfmGlBatch *b);
 /* Target + 1 holding tile (x, y) of VRAM pixel coordinates, 0 = mirror. */
 int bfm_gl_batch_owner(const BfmGlBatch *b, int x, int y);
 /* The scene slot showing VRAM origin (x, y), or -1. */
