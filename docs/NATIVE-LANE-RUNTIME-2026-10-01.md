@@ -374,3 +374,25 @@ base `c593163a01` (its round-1 expectation predates the DualShock SIO model:
 see the commit message); `test_host_chord.py`, `test_bios_memcard.py`,
 `test_input_controller_words.py`, `test_bios_input.py`,
 `test_sio_controller.py` 5/5; `musashi_dev_menu_probe` DEV_MENU_PASS.
+
+### S3a runner gate on the release binary (port `a4a988643c`)
+
+Job `20261001-210505-bfm-owncode-a4a988643c` (evidence SHA256
+`54d93009...c746`, matched by readback; executable `e046522c...cc82`, x86-64-v3;
+retail guard 7/0; `entries=491 psyq=64`).
+
+| Leg | Result |
+|---|---|
+| village `pure+vsync` vs `pure+vsync+pad`, `MUSASHI_EPOCH_LAZY=1` | identical: route enters at vblanks 1545/2207/2623, warp vblanks 416, stop tick `00000ae0`, 11,234 IRQ deliveries, display 70196/76800; `MUSASHI_TRACE_DEVICE_OBS_FILE` streams byte-identical (2,413,274 records); `PAD_TRACE` streams byte-identical (2,668 handler hashes) |
+| the same with `MUSASHI_EPOCH_LAZY=0` | identical as above; also byte-identical to the lazy=1 streams within each configuration |
+| village `pure+vsync+pad`, traced | the seven leaves all native, 0 interpreted (`8005fbc8` 200,363, `8005fba8` 45,336, `8005e0ac` 26,666, `8005dca0` 18,666, `8005f394` 15,998, `8005de78` 10,668, `8005e13c` 2,667); `8005dbd8` 18,670 interpreted as designed; village interpreted calls 714,793 (1,035,157 before S3a) |
+| attract `pure+vsync+pad` | same end state as shipped r30 (`STEP_REFUSED pc=800495ec`, `NATIVE_LANE_ABORT pc=80011380 code=4`, same registers) |
+| cold Continue from the r31 saved card, both configs | both enter `3001` at progress 10, vblank 2028, same flags; card SHA256 `bc137407...9506` unchanged. These legs stopped on a 240 s wall-clock timeout at different guest times, so their RAM was not comparable |
+
+Matched-stop cold Continue, job `20261001-211756-bfm-owncode-a4a988643c-cold`
+(evidence `97ef53e8...6477`): `MUSASHI_IN_GAME_FRAMES=600`, both configurations
+stop at tick `00000a42` with 10,436 IRQ deliveries and display 58903/76800.
+The 2 MiB guest RAM dumps are byte-identical, and the card is unchanged.
+
+Following this gate the release default became `pure+vsync+pad`;
+`MUSASHI_PSYQ_LANE=pure+vsync` or `pure` opts out.

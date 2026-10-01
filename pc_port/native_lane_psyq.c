@@ -119,13 +119,14 @@ int musashi_native_lane_psyq_is_device(const char *name) {
 
 unsigned musashi_native_lane_psyq_classes(void) {
     const char *v = getenv("MUSASHI_PSYQ_LANE");
-    /* Default (unset): pure + VSync(mode < 0), gated on the release runner
-     * job 20261001-191919-bfm-owncode-fdd04fc114. "pure" opts back out. */
-    if (!v || !v[0] || strcmp(v, "pure+vsync") == 0)
-        return MUSASHI_PSYQ_LANE_PURE | MUSASHI_PSYQ_LANE_VSYNC;
-    if (strcmp(v, "pure") == 0) return MUSASHI_PSYQ_LANE_PURE;
-    if (strcmp(v, "pure+vsync+pad") == 0)
+    /* Default (unset): pure + VSync(mode < 0) + the S3a libpad leaves, gated on
+     * the release runner jobs 20261001-191919-bfm-owncode-fdd04fc114 (VSync)
+     * and 20261001-210505/-211756-bfm-owncode-a4a988643c (pad). "pure+vsync"
+     * and "pure" opt back out. */
+    if (!v || !v[0] || strcmp(v, "pure+vsync+pad") == 0)
         return MUSASHI_PSYQ_LANE_PURE | MUSASHI_PSYQ_LANE_VSYNC | MUSASHI_PSYQ_LANE_PAD;
+    if (strcmp(v, "pure+vsync") == 0) return MUSASHI_PSYQ_LANE_PURE | MUSASHI_PSYQ_LANE_VSYNC;
+    if (strcmp(v, "pure") == 0) return MUSASHI_PSYQ_LANE_PURE;
     if (strcmp(v, "all") == 0)
         return MUSASHI_PSYQ_LANE_PURE | MUSASHI_PSYQ_LANE_VSYNC | MUSASHI_PSYQ_LANE_PAD |
                MUSASHI_PSYQ_LANE_DEVICE;

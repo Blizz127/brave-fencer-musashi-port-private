@@ -295,7 +295,7 @@ static Case mk(const char *name, uint32_t mode, uint32_t sp, uint32_t tick) {
 /* class selector and table membership */
 static int check_classes(void) {
     static const struct { const char *env; unsigned classes; int in_table; } k[] = {
-        {NULL, MUSASHI_PSYQ_LANE_PURE | MUSASHI_PSYQ_LANE_VSYNC, 1},
+        {NULL, MUSASHI_PSYQ_LANE_PURE | MUSASHI_PSYQ_LANE_VSYNC | MUSASHI_PSYQ_LANE_PAD, 1},
         {"pure", MUSASHI_PSYQ_LANE_PURE, 0},
         {"pure+vsync", MUSASHI_PSYQ_LANE_PURE | MUSASHI_PSYQ_LANE_VSYNC, 1},
         {"pure+vsync+pad", MUSASHI_PSYQ_LANE_PURE | MUSASHI_PSYQ_LANE_VSYNC | MUSASHI_PSYQ_LANE_PAD, 1},
