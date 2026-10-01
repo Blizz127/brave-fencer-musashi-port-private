@@ -12888,8 +12888,41 @@ static char *g_trace_counts_path;
 static uint32_t *g_trace_counts;
 static uint32_t *g_trace_caller;
 static char *g_trace_kind;
-/* Entries that ran as native S3a pad leaves (a subset of g_trace_counts). */
+/* Entries that ran natively although the formatter counted them as calls:
+ * S3a pad leaves, and overlay lane entries whose residency digest verified
+ * (lane_try). A subset of g_trace_counts. */
 static uint32_t *g_trace_native;
+/* MUSASHI_TRACE_RESIDENT=<path> (with MUSASHI_TRACE_FUNCS): for every
+ * function entry outside the main EXE text, the FNV-1a 64 digest of the 32
+ * bytes at the target, counted per (target, digest). Offline, the digest is
+ * matched against each overlay member's bytes at that address, which names
+ * the resident member exactly. Observe-only. */
+enum { RESIDENT_CAP = 1u << 15, RESIDENT_BYTES = 32u };
+typedef struct ResidentRow { uint32_t target, count; uint64_t digest; } ResidentRow;
+static ResidentRow *g_trace_resident;
+static unsigned g_trace_resident_n, g_trace_resident_dropped;
+static void resident_note(uint32_t target) {
+    const uint8_t *bytes;
+    uint64_t h = 0xcbf29ce484222325ull;
+    uint32_t off = target & 0x1fffffffu, slot, i;
+    if (!g_trace_resident || !g_fetch_memory || off + RESIDENT_BYTES > MUSASHI_RAM_SIZE) return;
+    bytes = g_fetch_memory->bytes + off;
+    for (i = 0; i < RESIDENT_BYTES; ++i) { h ^= bytes[i]; h *= 0x100000001b3ull; }
+    slot = (uint32_t)((target >> 2) ^ (uint32_t)h ^ (uint32_t)(h >> 32)) & (RESIDENT_CAP - 1u);
+    for (i = 0; i < RESIDENT_CAP; ++i, slot = (slot + 1u) & (RESIDENT_CAP - 1u)) {
+        ResidentRow *row = &g_trace_resident[slot];
+        if (row->count && row->target == target && row->digest == h) {
+            if (row->count != UINT32_MAX) ++row->count;
+            return;
+        }
+        if (!row->count) {
+            if (g_trace_resident_n >= RESIDENT_CAP / 2u) { ++g_trace_resident_dropped; return; }
+            row->target = target; row->digest = h; row->count = 1u;
+            ++g_trace_resident_n;
+            return;
+        }
+    }
+}
 static unsigned long g_trace_seq;
 static TraceOther g_trace_other[TRACE_OTHER_MAX];
 static unsigned g_trace_other_n;
@@ -12931,8 +12964,10 @@ static void trace_dump(void) {
     if (out) {
         fprintf(out, "# target count first_kind first_caller lane\n");
         for (i = 0; i < n; ++i) {
-            /* S3a pad leaves: one row per lane, counting only the entries
-             * that actually ran natively as native. */
+            /* S3a pad leaves and overlay entries: one row per lane,
+             * counting only the entries that actually ran natively (an
+             * overlay entry: lane_find_overlay verified the digest) as
+             * native; refusals are interpreted calls. */
             if (rows[i].native) {
                 fprintf(out, "%08x %u %c %08x native\n", rows[i].target, rows[i].native,
                         rows[i].kind, rows[i].caller);
@@ -12948,6 +12983,18 @@ static void trace_dump(void) {
         fclose(out);
     }
     free(rows);
+    if (g_trace_resident) {
+        const char *rpath = getenv("MUSASHI_TRACE_RESIDENT");
+        out = rpath && rpath[0] ? fopen(rpath, "w") : NULL;
+        if (out) {
+            fprintf(out, "# target fnv1a64_of_32_bytes count (dropped=%u)\n", g_trace_resident_dropped);
+            for (i = 0; i < RESIDENT_CAP; ++i)
+                if (g_trace_resident[i].count)
+                    fprintf(out, "%08x %016llx %u\n", g_trace_resident[i].target,
+                            (unsigned long long)g_trace_resident[i].digest, g_trace_resident[i].count);
+            fclose(out);
+        }
+    }
     if (g_trace_file) fflush(g_trace_file);
 }
 
@@ -12974,6 +13021,8 @@ static int trace_enabled(void) {
                 fprintf(g_trace_file, "# seq target kind caller (j=jal r=jalr d=entry)\n");
                 atexit(trace_dump);
                 g_trace_state = 1;
+                if (getenv("MUSASHI_TRACE_RESIDENT") && getenv("MUSASHI_TRACE_RESIDENT")[0])
+                    g_trace_resident = calloc(RESIDENT_CAP, sizeof(*g_trace_resident));
             } else {
                 fprintf(stderr, "native_boot: MUSASHI_TRACE_FUNCS unavailable (%s)\n", path);
             }
@@ -13004,6 +13053,8 @@ void musashi_trace_function_entry(uint32_t target, uint32_t caller, char kind) {
             fflush(g_trace_file);
         }
         if (g_trace_counts[index] != UINT32_MAX) ++g_trace_counts[index];
+        /* overlay space: anything outside the main EXE's text */
+        if (g_trace_resident && (target & 0x1fffffffu) >= 0x63000u) resident_note(target);
         return;
     }
     {
@@ -13096,6 +13147,7 @@ typedef struct LaneActive {
     FormatterCpu *cpu;
     jmp_buf abort;
     uint32_t guest_pc;   /* the lane entry running */
+    unsigned ovl_base;   /* g_lane_ovl_frames depth when this entry started */
 } LaneActive;
 
 /* The owner thread runs one CPU loop at a time; frames nest by recursion. */
@@ -13179,6 +13231,32 @@ static int lane_entry_cmp(const void *a, const void *b) {
     return x->guest_pc < y->guest_pc ? -1 : x->guest_pc > y->guest_pc;
 }
 
+/* Diagnostics for bisecting live-boot behaviour, for the main and the
+ * overlay table alike: keep only guest PCs in MUSASHI_NATIVE_LANE_RANGE=lo-hi
+ * (hex, hi exclusive) and drop those listed in MUSASHI_NATIVE_LANE_DENY=
+ * pc,pc,... (an overlay PC drops every member's entry at that PC). */
+static int lane_env_keeps(uint32_t guest_pc) {
+    const char *range = getenv("MUSASHI_NATIVE_LANE_RANGE");
+    const char *deny = getenv("MUSASHI_NATIVE_LANE_DENY");
+    if (range && range[0]) {
+        char *end = NULL;
+        uint32_t lo = (uint32_t)strtoul(range, &end, 16), hi = UINT32_MAX;
+        if (end && *end == '-') hi = (uint32_t)strtoul(end + 1, NULL, 16);
+        if (guest_pc < lo || guest_pc >= hi) return 0;
+    }
+    if (deny && deny[0]) {
+        const char *p = deny;
+        while (*p) {
+            char *end = NULL;
+            uint32_t pc = (uint32_t)strtoul(p, &end, 16);
+            if (end == p) break;
+            if (pc == guest_pc) return 0;
+            p = *end == ',' ? end + 1 : end;
+        }
+    }
+    return 1;
+}
+
 int musashi_native_lane_install(const MusashiNativeLaneEntry *entries, size_t count) {
     MusashiNativeLaneEntry *copy = NULL;
     size_t i;
@@ -13196,32 +13274,9 @@ int musashi_native_lane_install(const MusashiNativeLaneEntry *entries, size_t co
             }
     }
     {
-        /* Diagnostics for bisecting live-boot behaviour: keep only guest PCs
-         * in MUSASHI_NATIVE_LANE_RANGE=lo-hi (hex, hi exclusive) and drop
-         * those listed in MUSASHI_NATIVE_LANE_DENY=pc,pc,... */
-        const char *range = getenv("MUSASHI_NATIVE_LANE_RANGE");
-        const char *deny = getenv("MUSASHI_NATIVE_LANE_DENY");
-        uint32_t lo = 0, hi = UINT32_MAX;
         size_t kept = 0;
-        if (range && range[0]) {
-            char *end = NULL;
-            lo = (uint32_t)strtoul(range, &end, 16);
-            if (end && *end == '-') hi = (uint32_t)strtoul(end + 1, NULL, 16);
-        }
-        for (i = 0; i < count; ++i) {
-            int drop = copy[i].guest_pc < lo || copy[i].guest_pc >= hi;
-            if (!drop && deny && deny[0]) {
-                const char *p = deny;
-                while (*p && !drop) {
-                    char *end = NULL;
-                    uint32_t pc = (uint32_t)strtoul(p, &end, 16);
-                    if (end == p) break;
-                    drop = pc == copy[i].guest_pc;
-                    p = *end == ',' ? end + 1 : end;
-                }
-            }
-            if (!drop) copy[kept++] = copy[i];
-        }
+        for (i = 0; i < count; ++i)
+            if (lane_env_keeps(copy[i].guest_pc)) copy[kept++] = copy[i];
         count = kept;
     }
     free(g_lane);
@@ -13249,7 +13304,15 @@ static const MusashiNativeLaneEntry *lane_find(uint32_t pc) {
 static MusashiNativeLaneOverlayEntry *g_lane_ovl;
 static size_t g_lane_ovl_count;
 static uint32_t g_lane_ovl_min = UINT32_MAX, g_lane_ovl_max;
-static uint64_t g_lane_ovl_verified, g_lane_ovl_refused;
+static MusashiNativeLaneOverlayStats g_lane_ovl_stats;
+/* Native overlay functions running now (lane entries and direct native
+ * calls between overlay functions), innermost last. After every guest call
+ * from native code the frames of the current lane entry are re-hashed: a
+ * reload of the member under a running native body fails closed. */
+enum { LANE_OVL_FRAMES_MAX = 64 };
+typedef struct LaneOvlFrame { uint32_t pc, size; uint64_t digest; } LaneOvlFrame;
+static LaneOvlFrame g_lane_ovl_frames[LANE_OVL_FRAMES_MAX];
+static unsigned g_lane_ovl_depth;
 
 static int lane_ovl_cmp(const void *a, const void *b) {
     const MusashiNativeLaneOverlayEntry *x = a, *y = b;
@@ -13273,6 +13336,12 @@ int musashi_native_lane_install_overlay(const MusashiNativeLaneOverlayEntry *ent
                 free(copy);
                 return -1;
             }
+    }
+    {
+        size_t kept = 0;
+        for (i = 0; i < count; ++i)
+            if (lane_env_keeps(copy[i].entry.guest_pc)) copy[kept++] = copy[i];
+        count = kept;
     }
     free(g_lane_ovl);
     g_lane_ovl = copy;
@@ -13306,7 +13375,7 @@ static size_t lane_ovl_first(uint32_t pc) {
 }
 
 /* The candidate whose member's bytes are resident right now, or NULL. */
-static const MusashiNativeLaneEntry *lane_find_overlay(MusashiBootMemory *memory, uint32_t pc) {
+static const MusashiNativeLaneOverlayEntry *lane_find_overlay(MusashiBootMemory *memory, uint32_t pc) {
     size_t i = lane_ovl_first(pc);
     uint32_t hashed_size = 0;
     uint64_t digest = 0;
@@ -13318,26 +13387,76 @@ static const MusashiNativeLaneEntry *lane_find_overlay(MusashiBootMemory *memory
             hashed_size = e->size;
         }
         if (digest == e->digest) {
-            ++g_lane_ovl_verified;
-            return &e->entry;
+            ++g_lane_ovl_stats.entry_verified;
+            return e;
         }
     }
-    ++g_lane_ovl_refused;
+    ++g_lane_ovl_stats.entry_refused;
     return NULL;
 }
 
 int musashi_native_lane_overlay_resident(uint32_t pc, uint32_t size, uint64_t digest) {
     uint64_t h;
     MusashiBootMemory *memory = g_lane_active ? g_lane_active->memory : NULL;
-    if (!lane_ram_digest(memory, pc, size, &h)) return 0;
-    if (h == digest) { ++g_lane_ovl_verified; return 1; }
-    ++g_lane_ovl_refused;
-    return 0;
+    if (!lane_ram_digest(memory, pc, size, &h) || h != digest) {
+        ++g_lane_ovl_stats.guard_refused;
+        return 0;
+    }
+    ++g_lane_ovl_stats.guard_verified;
+    return 1;
+}
+
+static void lane_ovl_push(uint32_t pc, uint32_t size, uint64_t digest) {
+    if (g_lane_ovl_depth >= LANE_OVL_FRAMES_MAX) {
+        fprintf(stderr, "native_boot: NATIVE_LANE overlay frame stack full at %08x\n", pc);
+        musashi_native_lane_abort();
+    }
+    g_lane_ovl_frames[g_lane_ovl_depth].pc = pc;
+    g_lane_ovl_frames[g_lane_ovl_depth].size = size;
+    g_lane_ovl_frames[g_lane_ovl_depth].digest = digest;
+    ++g_lane_ovl_depth;
+}
+
+void musashi_native_lane_overlay_enter(uint32_t pc, uint32_t size, uint64_t digest) {
+    if (!g_lane_active) {
+        fprintf(stderr, "native_boot: NATIVE_LANE overlay enter outside a lane call pc=%08x\n", pc);
+        abort();
+    }
+    lane_ovl_push(pc, size, digest);
+}
+
+void musashi_native_lane_overlay_leave(void) {
+    if (g_lane_active && g_lane_ovl_depth > g_lane_active->ovl_base) --g_lane_ovl_depth;
+}
+
+/* After a guest call returns into native code: every native overlay frame
+ * of the current lane entry must still hash to its digest. The native body
+ * keeps running on its host copy of the code, so on a mismatch (the member
+ * was reloaded or patched underneath it) nothing is safe to continue or to
+ * fall back to: the lane call aborts and the step is refused. */
+static void lane_ovl_recheck(LaneActive *active) {
+    unsigned i;
+    for (i = active->ovl_base; i < g_lane_ovl_depth; ++i) {
+        const LaneOvlFrame *f = &g_lane_ovl_frames[i];
+        uint64_t h = 0;
+        if (!lane_ram_digest(active->memory, f->pc, f->size, &h) || h != f->digest) {
+            ++g_lane_ovl_stats.recheck_failed;
+            fprintf(stderr, "native_boot: NATIVE_LANE_OVERLAY_RECHECK_FAILED pc=%08x size=%u "
+                    "want=%016llx have=%016llx lane_pc=%08x\n", f->pc, f->size,
+                    (unsigned long long)f->digest, (unsigned long long)h, active->guest_pc);
+            longjmp(active->abort, 7);
+        }
+        ++g_lane_ovl_stats.recheck_ok;
+    }
+}
+
+void musashi_native_lane_overlay_stats_get(MusashiNativeLaneOverlayStats *out) {
+    if (out) *out = g_lane_ovl_stats;
 }
 
 void musashi_native_lane_overlay_stats(uint64_t *verified, uint64_t *refused) {
-    if (verified) *verified = g_lane_ovl_verified;
-    if (refused) *refused = g_lane_ovl_refused;
+    if (verified) *verified = g_lane_ovl_stats.entry_verified + g_lane_ovl_stats.guard_verified;
+    if (refused) *refused = g_lane_ovl_stats.entry_refused + g_lane_ovl_stats.guard_refused;
 }
 
 static int g_lane_suspended;
@@ -13421,6 +13540,9 @@ uint32_t musashi_native_guest_call(uint32_t target, unsigned argc,
     cpu->delay_slot = 0;
     cpu->branch_pc = 0;
     musashi_trace_function_entry(target, saved_pc, 'j');
+    /* A jal arms the platform entry hook for its target; so does the thunk,
+     * or a hook site called from native code would never fire. */
+    if (g_entry_hook) g_entry_pending = target;
     for (frame = g_lane_run_frames; frame && frame->cpu != cpu; frame = frame->prev) {}
     if (frame) {
         int32_t result = 0;
@@ -13437,6 +13559,7 @@ uint32_t musashi_native_guest_call(uint32_t target, unsigned argc,
     /* A host stop request parks both pc and npc at UINT_MAX; a real return
      * leaves npc just past the sentinel. Do not swallow the stop. */
     if (cpu->npc == UINT_MAX) longjmp(active->abort, 5);
+    if (g_lane_ovl_depth > active->ovl_base) lane_ovl_recheck(active);
     v0 = cpu->r[2];
     if (v1) *v1 = cpu->r[3];
     cpu->r[29] = saved_sp;
@@ -13460,6 +13583,7 @@ static int memcard_pc(uint32_t pc) {
 
 static int lane_try(MusashiBootMemory *memory, FormatterCpu *cpu) {
     const MusashiNativeLaneEntry *entry;
+    const MusashiNativeLaneOverlayEntry *ovl = NULL;
     LaneActive active;
     LaneRunFrame *saved_frames = g_lane_run_frames;
     MusashiNativeLaneCall call;
@@ -13470,25 +13594,33 @@ static int lane_try(MusashiBootMemory *memory, FormatterCpu *cpu) {
     if (cpu->merge_pending || cpu->gte_load_pending || cpu->delay_slot ||
         cpu->npc != cpu->pc + 4u || !musashi_native_lane_usable(memory))
         return 0;
-    /* Overlay PCs: only the member whose bytes are resident, checked now. */
-    if (!entry && !(entry = lane_find_overlay(memory, cpu->pc))) return 0;
+    /* Overlay PCs: only the member whose bytes are resident, checked now.
+     * The tracer counts the entry native only once the digest verified. */
+    if (!entry) {
+        if (!(ovl = lane_find_overlay(memory, cpu->pc))) return 0;
+        entry = &ovl->entry;
+        trace_native_mark(cpu->pc);
+    }
     ra = cpu->r[31];
     sp = cpu->r[29];
     active.guest_pc = entry->guest_pc;
     active.prev = g_lane_active;
     active.memory = memory;
     active.cpu = cpu;
+    active.ovl_base = g_lane_ovl_depth;
     call.memory = memory;
     call.r = cpu->r;
     g_lane_active = &active;
     {
         int code = setjmp(active.abort);
         if (code == 0) {
+            if (ovl) lane_ovl_push(ovl->entry.guest_pc, ovl->size, ovl->digest);
             outcome = entry->fn(&call) ? 1 : 0;
         } else {
             outcome = -1;
             /* 3/4/5: a guest call from native code refused or stopped;
-             * 6: musashi_native_lane_abort (e.g. a trapping divisor). */
+             * 6: musashi_native_lane_abort (e.g. a trapping divisor);
+             * 7: an overlay frame's bytes changed under a guest call. */
             fprintf(stderr, "native_boot: NATIVE_LANE_ABORT_DETAIL pc=%08x code=%d a0=%08x a1=%08x "
                     "a2=%08x a3=%08x ra=%08x sp=%08x\n", entry->guest_pc, code,
                     cpu->r[4], cpu->r[5], cpu->r[6], cpu->r[7], ra, sp);
@@ -13496,6 +13628,7 @@ static int lane_try(MusashiBootMemory *memory, FormatterCpu *cpu) {
     }
     g_lane_active = active.prev;
     g_lane_run_frames = saved_frames;
+    g_lane_ovl_depth = active.ovl_base;
     if (outcome < 0) {
         fprintf(stderr, "native_boot: NATIVE_LANE_ABORT pc=%08x fn=%s\n",
                 entry->guest_pc, entry->name ? entry->name : "?");

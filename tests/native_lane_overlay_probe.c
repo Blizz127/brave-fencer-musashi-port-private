@@ -18,6 +18,11 @@
  *     interpreter-only run of the same modified bytes when that is
  *     comparable.
  *
+ * OVERLAY_PROBE_FOREIGN=1: MEMBER_FILE and its mapping belong to a different
+ * member loaded at the same address (e.g. main_0001 in main_0003's window).
+ * Every case is then negative: the native body must never run, because the
+ * resident bytes are not the member's own.
+ *
  * A case whose interpreter run refuses (device, BIOS, wild pointer) proves
  * nothing and is counted not_comparable. Exit 0 when nothing differs, no
  * positive case failed to run natively where comparable, and every negative
@@ -51,6 +56,7 @@ enum Outcome { SAME, DIFFERENT, NOT_NATIVE, NOT_COMPARABLE, NEG_OK, NEG_RAN_NATI
 
 /* ---- trampolines: which overlay entries' native bodies ran ------------- */
 static MusashiNativeLaneFn g_orig[MAX_ENTRIES];
+static int g_foreign;
 static volatile unsigned g_ran[MAX_ENTRIES];
 /* One trampoline per installed entry (generated list). */
 static int tramp_0(MusashiNativeLaneCall *c) { g_ran[0]++; return g_orig[0](c); }
@@ -427,11 +433,11 @@ static int run_case(MusashiBootMemory *memory, const uint8_t *image, size_t idx,
                     uint8_t *start) {
     uint32_t args[8], ref_v0 = 0, lane_v0 = 0;
     unsigned argc = e->entry.argc > 8u ? 8u : e->entry.argc;
-    int ok, negative = pattern == PATTERNS;
+    int ok, negative = pattern == PATTERNS || g_foreign;
     memcpy(memory->bytes, image, MUSASHI_RAM_SIZE);
     seed_arena(memory, e->entry.guest_pc ^ (pattern * 0x9e3779b9u));
     make_args(negative ? 0u : pattern, args);
-    if (negative) {
+    if (pattern == PATTERNS) {
         /* flip one byte in the middle of the extent (not the first word, so
          * the entry PC still decodes the same prologue) */
         uint32_t at = e->entry.guest_pc + (e->size > 8u ? e->size / 2u : e->size - 1u);
@@ -520,6 +526,7 @@ int main(int argc, char **argv) {
      * selected as resident (native_boot does this when the member loads).
      * Port numbering is the vendor's 0-based FILE_NNN: registry main_0003 is
      * the port's MAIN_0004 word set. */
+    g_foreign = getenv("OVERLAY_PROBE_FOREIGN") && getenv("OVERLAY_PROBE_FOREIGN")[0] == '1';
     if (strcmp(member, "main_0003") == 0) musashi_boot_select_overlay_0004_words(1);
     for (i = 0; i < musashi_native_lane_overlay_count && n < MAX_ENTRIES; ++i) {
         if (!musashi_native_lane_overlay[i].member || strcmp(musashi_native_lane_overlay[i].member, member))
@@ -566,14 +573,14 @@ int main(int argc, char **argv) {
             }
             if (child < 0 || waitpid(child, &status, 0) != child) return 1;
             outcome = WIFEXITED(status) && WEXITSTATUS(status) <= FAULT ? WEXITSTATUS(status) : FAULT;
-            if (outcome == FAULT) outcome = pattern == PATTERNS ? NEG_RAN_NATIVE : NOT_COMPARABLE;
+            if (outcome == FAULT) outcome = pattern == PATTERNS || g_foreign ? NEG_RAN_NATIVE : NOT_COMPARABLE;
             counts[outcome]++;
             if (outcome == SAME) same++;
             if (outcome == DIFFERENT || outcome == NEG_RAN_NATIVE ||
                 (outcome == NOT_NATIVE)) {
                 fails++;
                 fprintf(stderr, "overlay_lane: %s %s: %s\n", mine[i].entry.name,
-                        pattern == PATTERNS ? "negative" : "positive",
+                        pattern == PATTERNS || g_foreign ? "negative" : "positive",
                         outcome == DIFFERENT ? "DIFFERENT" : outcome == NEG_RAN_NATIVE
                             ? "native body ran on modified bytes" : "digest did not match the loaded member");
             }
@@ -582,8 +589,9 @@ int main(int argc, char **argv) {
                mine[i].size, fails ? "BAD" : same ? "verified" : "negative-only (no comparable positive case)");
         bad += fails != 0;
     }
-    printf("overlay_lane: member=%s entries=%zu same=%u different=%u not_native=%u not_comparable=%u "
-           "negative_ok=%u negative_ran_native=%u functions_bad=%u\n", member, n, counts[SAME],
+    printf("overlay_lane: member=%s%s entries=%zu same=%u different=%u not_native=%u not_comparable=%u "
+           "negative_ok=%u negative_ran_native=%u functions_bad=%u\n", member,
+           g_foreign ? " foreign_payload" : "", n, counts[SAME],
            counts[DIFFERENT], counts[NOT_NATIVE], counts[NOT_COMPARABLE], counts[NEG_OK],
            counts[NEG_RAN_NATIVE], bad);
     return bad ? 1 : 0;

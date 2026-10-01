@@ -293,7 +293,7 @@ def main(argv=None):
                     help="splat overlay configs + symbol_addrs (.auto) files for member code maps "
                          "(the .auto files are local, ignored analysis inputs)")
     ap.add_argument("--trace-resident", help="<run>/trace.resident (MUSASHI_TRACE_RESIDENT, "
-                    "tools/patches/trace-resident.patch): exact resident member per overlay entry")
+                    "landed in pc_port/mips_formatter.c): exact resident member per overlay entry")
     ap.add_argument("--extracted-root", default=str(ROOT),
                     help="checkout holding extracted/overlays (the members' own bytes, local)")
     ap.add_argument("--idle", default="800424e4",

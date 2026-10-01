@@ -59,7 +59,8 @@ typedef struct MusashiNativeLaneOverlayEntry {
 } MusashiNativeLaneOverlayEntry;
 
 /* Install the overlay table (copied and sorted; replaces any previous one).
- * Returns the number of entries, or -1 on an unaligned PC or a
+ * MUSASHI_NATIVE_LANE_DENY / _RANGE filter it as they filter the main table.
+ * Returns the number of entries kept, or -1 on an unaligned PC or a
  * (guest_pc, digest) duplicate. */
 int musashi_native_lane_install_overlay(const MusashiNativeLaneOverlayEntry *entries,
                                         size_t count);
@@ -68,8 +69,27 @@ int musashi_native_lane_install_overlay(const MusashiNativeLaneOverlayEntry *ent
  * stubs before a direct native call to another overlay function). */
 int musashi_native_lane_overlay_resident(uint32_t pc, uint32_t size, uint64_t digest);
 
-/* Overlay entries run natively (digest matched) and refused (a candidate PC
- * whose resident bytes matched no member), since process start. */
+/* Generated direct calls between native overlay functions bracket the call
+ * with enter/leave, so the callee is on the overlay frame stack. After every
+ * guest call (interpreter thunk) from native code, each overlay frame of the
+ * running lane entry is re-hashed; a mismatch aborts the lane call (the step
+ * is refused: fail closed). Only valid while a lane function runs. */
+void musashi_native_lane_overlay_enter(uint32_t pc, uint32_t size, uint64_t digest);
+void musashi_native_lane_overlay_leave(void);
+
+/* Since process start: lane entries at an overlay PC that ran natively
+ * (entry_verified) or fell back to the interpreter because no member's digest
+ * matched the resident bytes (entry_refused); direct native-to-native overlay
+ * calls taken (guard_verified) or sent to the interpreter thunk
+ * (guard_refused); post-guest-call frame re-checks passed and failed. */
+typedef struct MusashiNativeLaneOverlayStats {
+    uint64_t entry_verified, entry_refused;
+    uint64_t guard_verified, guard_refused;
+    uint64_t recheck_ok, recheck_failed;
+} MusashiNativeLaneOverlayStats;
+void musashi_native_lane_overlay_stats_get(MusashiNativeLaneOverlayStats *out);
+
+/* Entry plus guard counters, summed (verified, refused). */
 void musashi_native_lane_overlay_stats(uint64_t *verified, uint64_t *refused);
 
 /* Argument n (0-based) under the o32 register ABI. */

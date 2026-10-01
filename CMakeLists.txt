@@ -685,6 +685,21 @@ if(MUSASHI_BUILD_PC_PORT)
         endif()
     endif()
 
+    # Overlay lane runtime plumbing (no generated code): DENY/RANGE on the
+    # overlay table, split counters, the fail-closed post-call re-check, the
+    # thunk arming entry hooks and the tracer's native/interp split.
+    add_executable(musashi_native_lane_overlay_runtime_probe
+        tests/native_lane_overlay_runtime_probe.c)
+    target_compile_features(musashi_native_lane_overlay_runtime_probe PRIVATE c_std_99)
+    target_include_directories(musashi_native_lane_overlay_runtime_probe PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/pc_port/include)
+    target_link_libraries(musashi_native_lane_overlay_runtime_probe PRIVATE bfm_plat musashi_pc_port)
+    add_test(NAME native_lane_overlay_runtime
+        COMMAND musashi_native_lane_overlay_runtime_probe
+                ${CMAKE_CURRENT_SOURCE_DIR}/extracted/disc/files/SLUS_007.26
+                ${CMAKE_CURRENT_BINARY_DIR}/native_lane_overlay_runtime.trace)
+    set_tests_properties(native_lane_overlay_runtime PROPERTIES SKIP_RETURN_CODE 77)
+
     # StGetNext HLE vs the interpreted retail libcd2 code (same synthetic
     # ring states; v0, registers, all RAM). With the lane it also enters the
     # HLE through lane_try.

@@ -5036,10 +5036,16 @@ extern const MusashiNativeLaneOverlayEntry musashi_native_lane_overlay[];
 extern const size_t musashi_native_lane_overlay_count;
 
 static void lane_overlay_report(void) {
-    uint64_t verified = 0, refused = 0;
-    musashi_native_lane_overlay_stats(&verified, &refused);
-    fprintf(stderr, "native_boot: NATIVE_LANE overlay verified=%llu refused=%llu\n",
-            (unsigned long long)verified, (unsigned long long)refused);
+    MusashiNativeLaneOverlayStats st;
+    musashi_native_lane_overlay_stats_get(&st);
+    fprintf(stderr, "native_boot: NATIVE_LANE overlay verified=%llu refused=%llu "
+            "entry_verified=%llu entry_refused=%llu guard_verified=%llu guard_refused=%llu "
+            "recheck_ok=%llu recheck_failed=%llu\n",
+            (unsigned long long)(st.entry_verified + st.guard_verified),
+            (unsigned long long)(st.entry_refused + st.guard_refused),
+            (unsigned long long)st.entry_verified, (unsigned long long)st.entry_refused,
+            (unsigned long long)st.guard_verified, (unsigned long long)st.guard_refused,
+            (unsigned long long)st.recheck_ok, (unsigned long long)st.recheck_failed);
 }
 _Static_assert(offsetof(NativeBoot, memory) == 0, "guest RAM leads the boot owner");
 _Static_assert(offsetof(NativeBoot, ram_mirror_guard) == 0x201000u,
@@ -5104,6 +5110,7 @@ static NativeBoot *native_boot_owner(NativeBoot *fallback) {
         const char *gpu = getenv("MUSASHI_GPU");
         unsigned classes = musashi_native_lane_psyq_classes();
         size_t count = 0;
+        int installed;
         const MusashiNativeLaneEntry *table;
         MusashiNativeLaneEntry *merged;
         if ((classes & MUSASHI_PSYQ_LANE_DEVICE) && !(gpu && strcmp(gpu, "bfm_plat") == 0)) {
@@ -5116,15 +5123,20 @@ static NativeBoot *native_boot_owner(NativeBoot *fallback) {
                                                 classes, &count);
         table = merged ? merged : musashi_native_lane_generated;
         if (!merged) count = musashi_native_lane_generated_count;
-        if (musashi_native_lane_install(table, count) < 0) {
+        installed = musashi_native_lane_install(table, count);
+        if (installed < 0) {
             fprintf(stderr, "native_boot: NATIVE_LANE table rejected; interpreter only\n");
             return window;
         }
+        if ((size_t)installed != count)
+            fprintf(stderr, "native_boot: NATIVE_LANE DENY/RANGE kept %d of %u main entries\n",
+                    installed, (unsigned)count);
         {
+            /* entries= counts the overlay entries kept after DENY/RANGE. */
             int ovl = musashi_native_lane_install_overlay(musashi_native_lane_overlay,
                                                           musashi_native_lane_overlay_count);
-            fprintf(stderr, "native_boot: NATIVE_LANE overlay entries=%d (resident bytes digest-checked per call)\n",
-                    ovl);
+            fprintf(stderr, "native_boot: NATIVE_LANE overlay entries=%d of %u (resident bytes "
+                    "digest-checked per call)\n", ovl, (unsigned)musashi_native_lane_overlay_count);
             if (ovl > 0) atexit(lane_overlay_report);
         }
         musashi_native_lane_psyq_bind(&((NativeBoot *)window)->memory, &((NativeBoot *)window)->gte);
