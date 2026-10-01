@@ -134,7 +134,7 @@ Village trace:
 |---|---|---|
 | interpreted calls, all regions | 3,444,404 | 1,147,282 (-67%) |
 | StGetNext `80046c38` | 2,297,212 interpreted | 4,430,154 native, 0 interpreted |
-| libcd2 interpreted | 2,299,7xx | 2,521 |
+| libcd2 interpreted | 2,299,733 | 2,521 |
 | native share of calls, all regions | 2.8% | 79.8% |
 | main executable / overlays | 24.1% / 0% | 24.1% / 0% |
 
