@@ -1,69 +1,67 @@
-/* Exact retail word export for [800335B8,800336A8); EXE and assembly verified. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Applies a volume (0x1000) or pan (0x2000) change to the channels used by a playing kind-1 sound slot. */
 #include "psx_types.h"
 
-/* func_800335B8 - byte-exact against retail at -O2 (tools/register_match.py). */
+typedef struct {
+    u16 kind;
+    u8 pad2[0xC - 2];
+    u16 voice_count;
+    u8 voice_used[8];
+    u8 pad16[0x54 - 0x16];
+} SoundSlot;
 
-s32 aF800301A4(void) __asm__("func_800301A4");
-extern void func_800301A4(void);
-extern void func_800335B8(s32, s32);
-extern u16 D_800A46E8[];
+typedef struct {
+    u8 pad0[0x35];
+    u8 stereo;
+    u8 pad36[0x48 - 0x36];
+    s16 volume;
+    u8 pad4A[0x4F - 0x4A];
+    u8 volume_dirty;
+    u8 pad50[0x53 - 0x50];
+    u8 pan;
+} SoundChannel;
 
-void func_800335B8(s32 a0, s32 a1) {
-    u8 *e = (u8 *)D_800A46E8 + a0 * 0x54;
-    u8 *p;
-    s32 a2;
-    s32 v1;
-    s32 t0;
+typedef struct {
+    SoundSlot slots[8];
+    SoundChannel channels[8];
+} SoundTables;
 
-    if ((*(u16 *)e & 0x3F) != 1) {
-        return;
-    }
+extern SoundTables D_800A46E8;
 
-    
+void func_800335B8(s32 index, u16 command) {
+    SoundSlot *slot;
+    SoundChannel *ch;
+    s32 i;
+    s32 left;
 
-    t0 = a1;
-    __asm__ ("" : "=r"(t0) : "0"(t0));
-
-    if (a1 & 0x1000) {
-        v1 = 0;
-        a2 = *(u16 *)(e + 0xC);
-        a1 = a1 & 0x7F;
-        t0 = 1;
-        p = (u8 *)D_800A46E8 + 0x2A0;
-        for (; v1 < 8; v1++, p += 0x54) {
-            u8 *rec;
-            if (a2 == 0) {
-                return;
-            }
-            if (*(u8 *)(e + v1 + 0xE) != 0) {
-                
-
-
-
-                rec = p;
-                __asm__ ("" : "=r"(rec) : "0"(rec));
-                a2--;
-                *(u16 *)(rec + 0x48) = a1;
-                *(u8 *)(rec + 0x4F) = t0;
-            }
-        }
-    } else if (a1 & 0x2000) {
-        a2 = *(u16 *)(e + 0xC);
-        v1 = 0;
-        a1 = t0 & 0x7F;
-        p = (u8 *)D_800A46E8 + 0x2A0;
-        for (; v1 < 8; v1++) {
-            u8 *rec;
-            if (a2 == 0) {
-                return;
-            }
-            if (*(u8 *)(e + v1 + 0xE) != 0) {
-                rec = p + v1 * 0x54;
-                if (*(u8 *)(rec + 0x35) != 0) {
-                    *(u8 *)(rec + 0x53) = a1;
+    slot = &D_800A46E8.slots[index];
+    if ((slot->kind & 0x3F) == 1) {
+        if (command & 0x1000) {
+            left = slot->voice_count;
+            for (i = 0; i < 8; i++) {
+                if (left == 0) {
+                    break;
                 }
-                a2--;
+                if (slot->voice_used[i] != 0) {
+                    ch = &D_800A46E8.channels[i];
+                    left--;
+                    ch->volume = command & 0x7F;
+                    ch->volume_dirty = 1;
+                }
+            }
+        } else if (command & 0x2000) {
+            left = slot->voice_count;
+            for (i = 0; i < 8; i++) {
+                if (left == 0) {
+                    break;
+                }
+                if (slot->voice_used[i] != 0) {
+                    ch = &D_800A46E8.channels[i];
+                    if (ch->stereo != 0) {
+                        ch->pan = command & 0x7F;
+                    }
+                    left--;
+                }
             }
         }
     }

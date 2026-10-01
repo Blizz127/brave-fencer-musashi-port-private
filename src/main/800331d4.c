@@ -1,28 +1,31 @@
-/* Exact retail word export for [800331D4,8003324C); EXE and assembly verified. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Searches the 8 sound slots for a kind-1 slot whose id (low 16 bits) and optional sub-id (high 16 bits) match; returns slot+1 or 0. */
 #include "psx_types.h"
 
-/* func_800331D4 - byte-exact against retail at -O2 (tools/register_match.py). */
+typedef struct {
+    u16 kind;
+    u16 pad2;
+    u16 id;
+    u16 sub_id;
+    u8 rest[0x54 - 8];
+} SoundSlot;
 
-s32 aF800301A4(void) __asm__("func_800301A4");
-extern void func_800301A4(void);
-extern s32 func_800331D4(s32);
-extern u16 D_800A46E8[];
+extern SoundSlot D_800A46E8[8];
 
-s32 func_800331D4(s32 arg0) {
-    u16 *p;
-    register s32 i __asm__("$3");
+s32 func_800331D4(u32 value) {
+    SoundSlot *slot;
+    s32 i;
+    u16 id = value;
+    u16 sub_id = value >> 16;
 
-    p = D_800A46E8;
+    slot = D_800A46E8;
     i = 0;
     do {
-        if ((*p & 0x3F) == 1 && p[2] == (arg0 & 0xFFFF)) {
-            if (((u32)arg0 >> 16) == 0 || ((u32)arg0 >> 16) == p[3]) {
-                return i + 1;
-            }
+        if ((slot->kind & 0x3F) == 1 && slot->id == id && (sub_id == 0 || sub_id == slot->sub_id)) {
+            return ++i;
         }
-        i += 1;
-        p += 42;
+        i++;
+        slot++;
     } while (i < 8);
     return 0;
 }

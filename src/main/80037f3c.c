@@ -1,33 +1,34 @@
-/* Main-exec range [80037F3C,80037FC4) from the SLUS executable.
- * SHA256(span)=8004fc1584076b89c9b36eb3de45f567c758290743fbe4dcb337104988552922.
- * Word export for the native seam; the body below is an
- * UNVERIFIED draft, not an oracle match claim. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_80037F3C - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Releases every keyed channel that has started playing: hands its voice block to func_8003B250 and clears its attributes and start/pending flags. */
 #include "psx_types.h"
 
-void func_80037F3C(void)
-{
+typedef struct {
+    u8 pad0[0x10];
+    s32 voice_bit;
+    s32 attr;
+    u8 pad18[0x5A - 0x18];
+    u8 keyed;
+    u8 busy;
+    u8 active;
+    u8 started;
+    u8 pending;
+    u8 pad5F;
+} Channel;
 
-    extern u8 D_800C6DD0[];
-    extern void func_8003B250(s32, void *);
+extern void func_8003B250(s32, s32 *);
+extern Channel D_800C6DD0[16];
 
-    register u8 *p __asm__("$16");
-    register s32 i __asm__("$17");
-    u8 *base;
+void func_80037F3C(void) {
+    Channel *ch;
+    s32 i;
 
-    base = D_800C6DD0;
-    i = 0;
-    p = base + 0x5E;
-    do {
-        if (p[-4] != 0 && p[-1] != 0) {
-            func_8003B250(i, base + 0x10);
-            *(u32 *)(p - 0x4A) = 0;
-            p[-1] = 0;
-            p[0] = 0;
+    ch = D_800C6DD0;
+    for (i = 0; i < 16; i++, ch++) {
+        if (ch->keyed != 0 && ch->started != 0) {
+            func_8003B250(i, &ch->voice_bit);
+            ch->attr = 0;
+            ch->started = 0;
+            ch->pending = 0;
         }
-        i++;
-        p += 0x60;
-        base += 0x60;
-    } while (i < 0x10);
+    }
 }

@@ -1,38 +1,28 @@
-/* Exact retail word export for [800348A8,8003491C); EXE and assembly verified. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Searches the 8 slots of D_800A46E8 for an active type-5 slot whose id (low 16 bits) and optional sub-id (high 16 bits) match; returns slot+1 or 0. */
 #include "psx_types.h"
 
-/* func_800348A8 - byte-exact against retail at -O2 (tools/register_match.py). */
+typedef struct {
+    u16 kind;
+    u16 pad2;
+    u16 id;
+    u16 sub_id;
+    u8 rest[0x54 - 8];
+} Slot800A46E8;
 
-s32 aF800301A4(void) __asm__("func_800301A4");
-extern void func_800301A4(void);
-extern s32 func_800348A8(u32);
-extern u16 D_800A46E8[];
+extern Slot800A46E8 D_800A46E8[8];
 
-s32 func_800348A8(u32 arg0) {
-    u16 *p;
-    u16 *q;
+s32 func_800348A8(u32 value) {
+    Slot800A46E8 *slot;
     s32 i;
-    u32 lo;
-    u32 hi;
-    s32 five;
+    u16 id = value;
+    u16 sub_id = value >> 16;
 
-    p = D_800A46E8;
-    i = 0;
-    five = 5;
-    lo = arg0 & 0xFFFF;
-    hi = arg0 >> 16;
-    q = p + 3;
-    do {
-        __asm__ ("" :: "r"(i), "r"(i));
-        if (p[0] == five && q[-1] == lo) {
-            if (hi == 0 || q[0] == hi) {
-                return i + 1;
-            }
+    slot = D_800A46E8;
+    for (i = 0; i < 8; i++, slot++) {
+        if (slot->kind == 5 && slot->id == id && (sub_id == 0 || slot->sub_id == sub_id)) {
+            return ++i;
         }
-        i++;
-        q += 0x2A;
-        p += 0x2A;
-    } while (i < 8);
+    }
     return 0;
 }

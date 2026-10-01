@@ -1,69 +1,79 @@
-/* Exact retail word export for [80031988,80031A98); EXE and assembly verified. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_80031988 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Starts a pitch slide toward the target/speed pair chosen by the channel's envelope stage type (absolute or relative to its base pitch). */
 #include "psx_types.h"
 
-#ifndef NULL
-#define NULL ((void *)0)
-#endif
-typedef struct Ent30D80 Ent30D80;
-void func_80031988(Ent30D80 *arg0) {
-    u16 *rec;
-    s32 n;
-    s32 base;
+typedef struct {
+    u16 type;
+    u16 pad2[2];
+    u16 value[5];
+} PitchStage;
 
-    rec = *(u16 **)((u8 *)arg0 + 0x14);
-    if (rec != NULL) {
-        n = *rec;
-        switch (n) {
-        case 0:
-            n = rec[3];
-            rec = (u16 *)rec[4];
-            break;
-        case 7:
-            base = *(s32 *)((u8 *)arg0 + 0x20);
-            n = rec[3] + base;
-            rec = (u16 *)rec[4];
-            break;
-        case 5:
-            n = rec[4];
-            rec = (u16 *)rec[5];
-            break;
-        case 8:
-            base = *(s32 *)((u8 *)arg0 + 0x20);
-            n = rec[4] + base;
-            rec = (u16 *)rec[5];
-            break;
-        case 1:
-            n = rec[5];
-            rec = (u16 *)rec[6];
-            break;
-        case 9:
-            base = *(s32 *)((u8 *)arg0 + 0x20);
-            n = rec[5] + base;
-            rec = (u16 *)rec[6];
-            break;
-        case 6:
-            n = rec[6];
-            rec = (u16 *)rec[7];
-            break;
-        case 10:
-            base = *(s32 *)((u8 *)arg0 + 0x20);
-            n = rec[6] + base;
-            rec = (u16 *)rec[7];
-            break;
-        default:
-            return;
-        }
-        if (*(s32 *)((u8 *)arg0 + 0x24) != (n & 0xFFFF)) {
-            *(u8 *)((u8 *)arg0 + 0x38) = 0;
-            *(s32 *)((u8 *)arg0 + 0x28) = n & 0xFFFF;
-            *(u8 *)((u8 *)arg0 + 0x37) |= 1;
-            if (*(s32 *)((u8 *)arg0 + 0x24) > (n & 0xFFFF)) {
-                *(s32 *)((u8 *)arg0 + 0x2C) = -(s32)rec;
-            } else {
-                *(s32 *)((u8 *)arg0 + 0x2C) = (s32)rec;
-            }
+typedef struct {
+    u8 pad0[0x14];
+    PitchStage *stage;
+    u8 pad18[0x20 - 0x18];
+    s32 base;
+    s32 current;
+    s32 target;
+    s32 step;
+    u8 pad30[0x37 - 0x30];
+    u8 flags;
+    u8 done;
+} PitchSlide;
+
+void func_80031988(PitchSlide *slide) {
+    PitchStage *stage;
+    u16 target;
+    u16 speed;
+
+    stage = slide->stage;
+    if (stage == 0) {
+        return;
+    }
+    switch (stage->type) {
+    case 0:
+        target = stage->value[0];
+        speed = stage->value[1];
+        break;
+    case 7:
+        target = stage->value[0] + slide->base;
+        speed = stage->value[1];
+        break;
+    case 5:
+        target = stage->value[1];
+        speed = stage->value[2];
+        break;
+    case 8:
+        target = stage->value[1] + slide->base;
+        speed = stage->value[2];
+        break;
+    case 1:
+        target = stage->value[2];
+        speed = stage->value[3];
+        break;
+    case 9:
+        target = stage->value[2] + slide->base;
+        speed = stage->value[3];
+        break;
+    case 6:
+        target = stage->value[3];
+        speed = stage->value[4];
+        break;
+    case 10:
+        target = stage->value[3] + slide->base;
+        speed = stage->value[4];
+        break;
+    default:
+        return;
+    }
+    if (slide->current != target) {
+        slide->done = 0;
+        slide->target = target;
+        slide->flags |= 1;
+        if (target < slide->current) {
+            slide->step = -speed;
+        } else {
+            slide->step = speed;
         }
     }
 }
