@@ -73,3 +73,26 @@ If S1-S3 were native on this route, about 81% of today's interpreted calls
 would stop interpreting. Entry counts aren't cycles, and the overall share
 would still be bounded by boot and overlays running in the interpreter.
 Suggested order: S1, then S4 (small, game-called), S2, then S3.
+
+## Re-run on the 427/496 lane (port `89bd42dc10`)
+
+Job `20261001-160659-bfm-owncode-89bd42dc10` (evidence SHA256 `3a6bcc64...3618`,
+matched by readback). Executable SHA256 `c6aa807c...23d9`; retail guard 7
+files, 0 problems; lane `entries=488 psyq=61`.
+
+| Route | Result |
+|---|---|
+| Village 1010, plain and traced | PASS: `[WARP] arrived 1010.0`, `HOST_STOP source=IN_GAME_TARGET`, display 70196/76800 non-black (same as the 348/395 run) |
+| Idle attract, untraced | Same end state as shipped r30: `STEP_REFUSED pc=800495ec`, then `NATIVE_LANE_ABORT pc=80011380 code=4` with identical registers |
+
+Village call share, before and after the later merge-backs:
+
+| Region | 348/395 lane | 427/496 lane |
+|---|---|---|
+| main executable, calls | 19.9% native | 24.1% native (59,838 of 248,070) |
+| main executable, distinct functions | 133 native / 208 interpreted | 148 native / 167 interpreted |
+| overlays | 0% | 0% (793 interpreted) |
+| all regions incl. PsyQ | 2.6% | 2.8% (100,562 of 3,544,966) |
+
+The overall share barely moves because `StGetNext` (`80046c38`, 2,297,212
+calls) dominates; that's stage S1 above.
