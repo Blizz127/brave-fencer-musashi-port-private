@@ -508,12 +508,33 @@ How it works:
   The draw-env offset, clip rect (as scissor) and texture window apply.
   Batches split only on target, blend mode, STP split, scissor, texture
   window or replacement texture.
+- **Sample points.** The PS1 and the cpu rasteriser draw pixel (x, y) when
+  the integer point (x, y) is inside the polygon and evaluate texture
+  coordinates and colours there; GL rasterises fragment centres
+  (x + 0.5, y + 0.5). The vertex shader moves target geometry by half a
+  target pixel (`u_half = 0.5 / S`), so the first sub-pixel's centre of
+  every native pixel is the integer sample point: coverage follows the
+  PS1 top-left rule (a polygon's right and bottom edge pixels are not
+  drawn), and readback takes that first sub-pixel. The window overlay
+  keeps `u_half = 0`.
 - **Shader.** One shader decodes 4-, 8- and 15-bit pages through the CLUT
   exactly as `bfm_gl_sample` does, and texel 0x0000 is transparent.
-  - Modulation is `(t * c) >> 7`, done in float; `RAW` skips it.
-  - Interpolation is affine (`noperspective`), like the PS1.
+  - On a 1x target, texture coordinates and colours are the integer
+    barycentric formula of `gpu_controller.c` (weights of the integer
+    pixel, vertex values, truncating division), from flat per-triangle
+    vertex data, so they do not depend on the GPU's interpolation
+    precision. Scales above 1 and the overlay interpolate affinely
+    (`noperspective`), like the PS1, with a 1/512 epsilon before floor.
+  - Colour is the PS1's integer path: truncated 8-bit vertex colour,
+    modulation `((t5 << 3) * c8) >> 7` (`RAW` skips it), dither added to
+    that 8-bit value, channel = top five bits, written as `c5 / 31` so an
+    RGBA8 target reads back as `c5`. HD replacement and snapshot texels
+    keep 8-bit precision.
   - Texels are sampled nearest at native texel size, so higher internal
     scales sharpen the geometry, not the art.
+  - `tests/bfm_gl_ctl_probe.c` checks all of this against
+    `gpu_controller.c` on one GP0 stream: at 1x every opaque pixel off a
+    polygon edge is bit-exact (D-030 covers the edge rule).
 - **Semi-transparency.** The formulas are `bfm_gl_blend_state`'s:
   | Mode | Formula | Factors (src / dst) |
   |---|---|---|
@@ -533,7 +554,11 @@ How it works:
   - Accuracy: modes 1 and 2 are bit-exact against the PS1 formula. Modes 0
     and 3 keep the fraction the PS1 truncates, so a channel can come out
     one 5-bit step higher. The target holds 8 bits per channel; this is
-    intended on the HD path.
+    intended on the HD path (D-033).
+  - The textured mode-2 split orders fragments by STP within a draw, not
+    by primitive: where prims of one draw overlap and a later prim's
+    non-STP texel covers an earlier prim's STP texel, the PS1 shows the
+    opaque texel and the gl path subtracts the STP texel over it (D-036).
 - **Dither.** The PS1 4x4 matrix is applied at native pixel granularity
   (`gl_FragCoord / S`), and only to primitives the PS1 dithers: gouraud or
   modulated-texture polys and lines, never rects. `video.dither = auto |

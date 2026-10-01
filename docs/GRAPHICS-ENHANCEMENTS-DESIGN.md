@@ -578,3 +578,119 @@ Stage 0 remains open on scanout compatibility, integer/raster/color agreement,
 and a deterministic per-frame active-renderer fixture. The Enhancements menu
 and later feature stages remain unimplemented. No release or publication is
 appropriate while this renderer gate fails; native conversion stays deferred.
+
+### Integer sample points and controller parity (handoff 9139aade)
+
+The two active-VRAM dumps above explained the colour mismatch once compared
+pixel by pixel (320x220 drawing region at y=250): 47.8% of the GL pixels
+equal the CPU pixel at the same position, 18.7% equal the CPU pixel one to
+the right, 13.4% the one below, 6.5% the one diagonally below-right, and
+under 1% any neighbour in the other directions. GL evaluates coverage,
+texture coordinates and colours at fragment centres (x+0.5, y+0.5); the PS1
+and `gpu_controller.c` sample the integer position (x, y). With textures
+near one texel per pixel the half-pixel offset selects the next texel about
+half the time. The 4x4 dither position showed no correlation (the game does
+not enable dithering; neither renderer dithered). Two smaller terms were the
+float modulation `t/31 * c/255 * 255/128` (rounded; the controller computes
+`(texel5 * colour8) >> 7`) and Gouraud colours rounded rather than truncated.
+
+Commit `4156941003` changes the gl renderer only:
+
+- geometry on render targets moves by half a target pixel
+  (`u_half = 0.5 / scale`), so the first sub-pixel's centre of every native
+  pixel is the integer sample point; coverage follows the PS1 top-left rule,
+  readback takes that sub-pixel, the window overlay is unchanged;
+- on a 1x target the fragment shader computes texture coordinates and
+  colours with the controller's integer barycentric formula from flat
+  per-triangle vertex data (vertex 32 -> 68 bytes), independent of GPU
+  interpolation precision; scales above 1 interpolate with a 1/512 epsilon
+  before floor;
+- VRAM texels and vertex colours take the PS1 integer route (truncated 8-bit
+  colour, `((t5 << 3) * c8) >> 7`, dither on that value, top five bits
+  written as `c5/31`); HD replacement/snapshot texels keep 8 bits and sample
+  where the unshifted geometry did.
+
+`tests/bfm_gl_ctl_probe.c` (commit `38ebac7941`) is the fixture the stage-0
+plan asked for, at primitive level: one synthetic GP0 stream (4/8/15-bit
+pages, CLUTs, per scene 48 random prims of every kind over flat backdrops,
+opaque and semi-transparent) through the real `gpu_controller.c` and through
+bridge -> batch -> gl executor on OSMesa, read back through the renderer's
+resolve path, every differing pixel classified. Twelve scenes, 2304 prims,
+1,843,200 pixels, at 1x:
+
+| | before `4156941003` (6 scenes) | after (12 scenes) |
+|---|---|---|
+| opaque pixels differing off polygon edges | 37,187 / 460,800 | **0 / 921,600** |
+| semi-transparent: coverage, mask or >1 step | 39,420 | **0** |
+| semi-transparent: one 5-bit step (8-bit blend, D-033) | 4,359 | 16,226 |
+| edge-rule pixels (controller inclusive vs top-left, D-030) | 4,456 | 5,754 |
+
+TILE and SPRT rows are bit-exact including the mask bit. At internal scale
+3 the float path leaves 6 of 153,600 opaque pixels one texel off (D-033).
+`tests/test_bfm_gl.py`: 8 passed (new `test_exec_vs_controller`);
+`tests/test_bfm_gpu_bridge.py`: 2 passed; native and optimized native-lane
+builds, retail guard (7 files, 0 problems) and the focused CTests pass.
+
+Found on the way and recorded, not changed (they are Original-path
+behaviour or need their own gate): the controller keeps the E1 texpage when
+a textured polygon carries its own, while the hardware and the bridge make
+the polygon's texpage current for later rects and untextured blends; the
+controller ignores the texture window (E2); its inclusive edge rule draws a
+quad from x0 to x1 one pixel wider than the PS1 (D-030). In the gl renderer,
+the textured mode-2 two-pass split orders fragments by STP within a draw,
+which differs from primitive order where mixed-STP prims of one draw overlap
+(D-036; not seen in the game). The CPU rasteriser is unchanged; the all-off
+picture is unchanged.
+
+Fixing D-030 in `gpu_controller.c` (top-left rule, polygon texpage state,
+E2) would make the two paths agree exactly and is a small change, but it
+alters the shipped Original picture by those edge pixels, so it is proposed
+for the owner as a separate fidelity fix with its own before/after gate
+rather than done inside this enhancements task.
+
+
+### Scene coherency checkpoint (handoff 85e92dce)
+
+The integer-sampling candidate `38ebac7941` completed the village comparison
+in job `20260930-214900-bfm-2175-exact-vram`. The existing evidence in
+`~/release-staging/bfm-gfx-2175/exact-vram-remote/` measures 916 / 70400
+RGB pixels different in the y=250 drawing region (1.301%, MAE8 0.2394),
+down from 36718 / 70400 before integer sampling. Of those 916, 591 differ
+by at most one 5-bit step. The remaining differences have not all been
+attributed; this is not pixel parity. Page 0 additionally has 3200 pixels
+with a maximum 31-step difference in its top border.
+
+The pending scene-cache fix was recovered and completed as `060cc912c8`:
+resolve dirty pixels before evicting a scene slot, seed newly claimed slots
+from VRAM before partial drawing, and flush scene resolves before display
+size/margin changes reallocate targets. This protects untouched border pixels
+and preserves the mask bit. It does not change the CPU renderer or select a
+new scanout policy.
+
+New executor regressions exercise partial drawing, three-page slot eviction,
+reclaim and display resize at 1x and 3x, comparing all 16 bits across a
+960x240 VRAM region. They pass with the fix and fail four pixel-equality
+assertions against the preceding core (with the new resize-resolve entry
+point replaced by a no-op for the baseline build). Six GL tests, two GPU
+bridge tests, two focused CTests and the default native build pass. The
+optimized candidate had already built before handoff; its executable SHA256
+remains `629dd3af031c4ae5811285247e0249da976ff5d7e91cd5f1dd7aeb3755eaea60`.
+The optimized retail guard checked seven files with zero problems.
+
+The pre-handoff archive `coh-38ebac7941-wip-candidate.tar.gz` contains that
+production change (later edits add tests/docs only). Its SHA256
+`e34e0744a34e3a06453568f7d546852a51e89fe6bd69a01db23f03fa8146e768`
+was verified again by runner readback. Only one comparison job was submitted:
+`20260930-221700-bfm-2175-coh-vram.sh`. At this checkpoint it is still queued
+behind the runner memory floor (about 4.7 GB available versus a 5 GB gate),
+with no BFM job running. Do not resubmit it. Expected output is
+`~/devbox-runner/work/20260930-221700-bfm-2175-coh-vram/coh-vram-evidence.tar.gz`
+on blizzpc. Retrieve and hash-verify that archive, then compare both active
+VRAM regions and matched-stop logs before claiming a village improvement.
+
+Logs are owner-local in `~/release-staging/bfm-gfx-2175/coh-*-tests.log` and
+`coh-build-default.log`. Real-game coherency validation, scanout compatibility,
+per-frame parity, performance acceptance and the Enhancements menu remain
+open. No private build was published at this checkpoint. Production execution
+remains hybrid with original CPU interpretation; native conversion remains
+tracked separately and deferred.
