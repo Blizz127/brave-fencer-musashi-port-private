@@ -1,80 +1,70 @@
-/* Exact retail word export for [80037FC4,8003819C); EXE and assembly verified. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_80037FC4 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Sweeps two 16-entry tables (stride 0x60) and four pending words, releasing finished entries. */
 #include "psx_types.h"
-
-extern s32 D_800A2B98;
-extern s32 D_800A2BA0;
-extern s32 D_800C7D20;
-extern s32 D_800C7D2C;
-extern u8  D_800A4F1D;
-extern u8 D_800C6E2E[];
+typedef struct {
+    u8 pad0[0x10];
+    u8 f10[4];
+    u32 f14;
+    u8 pad18[0x5A - 0x18];
+    u8 f5A;
+    u8 pad5B[2];
+    u8 f5D;
+    u8 f5E;
+    u8 pad5F;
+} Ent;
+extern u8 D_800A4F1D;
+extern Ent D_800C6DD0[16];
+extern u32 D_800A2B98;
+extern u32 D_800A2BA0;
+extern u32 D_800C7D20;
+extern u32 D_800C7D2C;
+extern void func_80038A58(void);
+extern void func_8003D3B4(s32, s32);
+extern void func_8003B250(s32, u8 *);
+extern void func_8003C23C(s32, s32);
 extern void func_8003BE74(s32, s32);
-extern void func_80037FC4(void);
 
 void func_80037FC4(void)
 {
-
-    extern u8 D_800C6DD0[];
-    extern void func_80038A58(void);
-    extern void func_8003D3B4(s32, s32);
-    extern void func_8003C23C(s32, s32);
-    extern void func_8003B250(s32, void *);
-
-    register u8 *p __asm__("$16");
-    register s32 i __asm__("$17");
-    register u32 mask __asm__("$18");
-    u8 *base;
+    s32 i;
+    Ent *e;
+    u8 *p;
 
     if (D_800A4F1D == 0) {
         func_80038A58();
     }
-
-    i = 0;
-    mask = 0xFFF9FFFF;
-    p = D_800C6E2E;
-    do {
+    for (i = 0; i < 16; i++) {
+        p = &D_800C6DD0[i].f5E;
         if (p[-4] != 0 && p[-1] == 0 && p[0] != 0) {
             func_8003D3B4(i, 8);
-            *(u32 *)(p - 0x4A) &= mask;
             p[0] = 0;
+            *(u32 *)(p - 0x4A) &= 0xFFF9FFFF;
         }
-        i++;
-        p += 0x60;
-    } while (i < 0x10);
-
-    if ((D_800A2B98 & 0xFFFF) != 0) {
-        func_8003C23C(0, D_800A2B98 & 0xFFFF);
+    }
+    if (*(u16 *)&D_800A2B98 != 0) {
+        func_8003C23C(0, *(u16 *)&D_800A2B98);
         D_800A2B98 &= 0xFF0000;
     }
-
-    if ((D_800A2BA0 & 0xFFFF) != 0) {
-        func_8003BE74(0, D_800A2BA0 & 0xFFFF);
+    if (*(u16 *)&D_800A2BA0 != 0) {
+        func_8003BE74(0, *(u16 *)&D_800A2BA0);
         D_800A2BA0 &= 0xFF0000;
     }
-
-    base = D_800C6DD0;
-    i = 0;
-    p = base + 0x5E;
-    do {
+    e = D_800C6DD0;
+    for (i = 0; i < 16; i++, e++) {
+        p = &e->f5E;
         if (p[-4] != 0 && p[-1] != 0) {
-            func_8003B250(i, base + 0x10);
+            func_8003B250(i, e->f10);
             *(u32 *)(p - 0x4A) = 0;
             p[-1] = 0;
             p[0] = 0;
         }
-        i++;
-        p += 0x60;
-        base += 0x60;
-    } while (i < 0x10);
-
-    if ((D_800C7D20 & 0xFFFF) != 0) {
-        func_8003C23C(1, D_800C7D20 & 0xFFFF);
+    }
+    if (*(u16 *)&D_800C7D20 != 0) {
+        func_8003C23C(1, *(u16 *)&D_800C7D20);
         D_800C7D20 &= 0xFF0000;
     }
-
-    if ((D_800C7D2C & 0xFFFF) != 0) {
-        func_8003BE74(1, D_800C7D2C & 0xFFFF);
+    if (*(u16 *)&D_800C7D2C != 0) {
+        func_8003BE74(1, *(u16 *)&D_800C7D2C);
         D_800C7D2C &= 0xFF0000;
     }
 }

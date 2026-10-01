@@ -1,27 +1,17 @@
-/* Exact retail word export for [80015A74,80015AD0); EXE and assembly verified. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_80015A74 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Converts a binary value to packed BCD, ten decimal digits, most significant first. */
 #include "psx_types.h"
-typedef float f32;
-typedef unsigned long long u64;
-typedef long long s64;
-typedef double f64;
-#ifndef NULL
-#define NULL ((void *)0)
-#endif
 
+u32 func_80015A74(u32 n)
+{
+    u32 div = 1000000000;
+    u32 r = 0;
+    s32 i;
 
-unsigned int func_80015A74(unsigned int param_1) {
-    unsigned int result;
-    unsigned int divisor;
-    int i;
-
-    divisor = 1000000000;
-    result = 0;
     for (i = 0; i < 10; i++) {
-        result = (result << 4) | (param_1 / divisor);
-        param_1 = param_1 % divisor;
-        divisor = divisor / 10;
+        r = (r << 4) | (n / div);
+        n %= div;
+        div /= 10;
     }
-    return result;
+    return r;
 }
