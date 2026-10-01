@@ -1289,7 +1289,7 @@
       "optimization": "-O0",
       "recovery": "c",
       "extent": "function",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": "owner re-derivation, clean room (bfm-rederive 99780d7), clean input set (asm+m2c+owner headers)"
     },
     {
       "name": "func_80011A3C",
@@ -1353,7 +1353,7 @@
       "optimization": "-O0",
       "recovery": "c",
       "extent": "function",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": "owner re-derivation, clean room (bfm-rederive 99780d7), clean input set (asm+m2c+owner headers)"
     },
     {
       "name": "func_80011D54",
@@ -3097,7 +3097,7 @@
       "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": "owner re-derivation, clean room (bfm-rederive 99780d7), clean input set (asm+m2c+owner headers)"
     },
     {
       "name": "func_80018094",
@@ -3339,7 +3339,7 @@
       "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": "owner re-derivation, clean room (bfm-rederive 99780d7), clean input set (asm+m2c+owner headers)"
     },
     {
       "name": "func_80019198",
@@ -31297,7 +31297,7 @@
       "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": "owner re-derivation, clean room (bfm-rederive 99780d7), clean input set (asm+m2c+owner headers)"
     },
     {
       "name": "func_80037EA0",
@@ -31627,7 +31627,7 @@
       "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": "owner re-derivation, clean room (bfm-rederive 99780d7), clean input set (asm+m2c+owner headers)"
     },
     {
       "name": "func_8001D074",
@@ -31737,7 +31737,7 @@
       "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": "owner re-derivation, clean room (bfm-rederive 99780d7), clean input set (asm+m2c+owner headers)"
     },
     {
       "name": "func_80031A98",
@@ -36742,7 +36742,7 @@
       "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": "owner re-derivation, clean room (bfm-rederive 99780d7), clean input set (asm+m2c+owner headers)"
     },
     {
       "name": "func_800CF300",
