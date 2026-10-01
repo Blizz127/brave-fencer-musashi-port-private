@@ -1,25 +1,33 @@
-/* Exact retail word export for [80038908,80038958); EXE and assembly verified. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_80038908 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Recomputes a sequence's output volume from the master volume, the music fade level and its track scale. */
 #include "psx_types.h"
 
-void func_80038908(unsigned char *arg0) {
-    extern short D_800A4EF8;
-    extern unsigned short D_800A4EE0;
-    int counter;
-    int acc;
-    unsigned short *ptr;
+typedef struct {
+    u16 scale;
+    u8 pad2[6];
+} SeqTrack;
 
-    acc = D_800A4EF8 << 7;
-    acc *= D_800A4EE0;
-    ptr = (unsigned short *)(arg0 + 0x12);
-    counter = 0;
-    acc >>= 14;
-    do {
-        acc *= *ptr;
-        acc >>= 14;
-        counter--;
-        ptr += 4;
-    } while (counter >= 0);
-    *(unsigned short *)(arg0 + 0x10) = (unsigned short)acc;
+typedef struct {
+    u8 pad0[0x10];
+    s16 volume;
+    SeqTrack tracks[1];
+} Sequence;
+
+extern u16 D_800A4EE0;
+extern s16 D_800A4EF8;
+
+void func_80038908(Sequence *seq) {
+    s32 volume;
+    s32 i;
+    SeqTrack *track;
+
+    volume = D_800A4EF8 << 7;
+    volume *= D_800A4EE0;
+    volume >>= 14;
+    track = seq->tracks;
+    for (i = 0; i >= 0; i--, track++) {
+        volume *= track->scale;
+        volume >>= 14;
+    }
+    seq->volume = volume;
 }

@@ -1,33 +1,25 @@
-/* Exact retail word export for [8002E8DC,8002E94C); EXE and assembly verified. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Ends a master fade-out: clears the fading-out flag and, unless locked, starts a fade back up at the speed for the given type. */
 #include "psx_types.h"
 
-/* func_8002E8DC - byte-exact against retail at -O2 (tools/register_match.py). */
+extern u16 D_8006A9E0[];
+extern u16 D_800A4EE2;
+extern s16 D_800A4EE4;
+extern u8 D_800A4EE6[];
 
-void func_8002E8DC(s32 a0)
-{
-    extern u8  D_800A4EE6;
-    extern u16 D_800A4EE2;
-    extern u16 D_800A4EE4;
-    extern u16 D_8006A9E0[];
-    register u8 *p __asm__("$6");
-    u8 fl;
-    u8 nw;
-    u16 v;
+void func_8002E8DC(u16 type) {
+    u8 flags;
 
-    p = &D_800A4EE6;
-    fl = *p;
-    if (fl & 2) {
-        nw = fl & 0xFD;
-        *p = nw;
-        if (!(fl & 4)) {
-            if ((u16)a0 >= 5) {
-                a0 = 4;
+    flags = D_800A4EE6[0];
+    if (flags & 2) {
+        D_800A4EE6[0] = flags & 0xFD;
+        if (!(flags & 4)) {
+            if (type >= 5) {
+                type = 4;
             }
             D_800A4EE4 = 0x4000;
-            v = D_8006A9E0[(u16)a0];
-            *p = nw | 1;
-            D_800A4EE2 = v;
+            D_800A4EE2 = D_8006A9E0[type];
+            D_800A4EE6[0] = (flags & 0xFD) | 1;
         }
     }
 }

@@ -1,72 +1,50 @@
-/* Exact retail word export for [80030CA4,80030D80); EXE and assembly verified. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Finds a free sound channel (returns channel+1); otherwise releases the lowest-priority one if its priority does not exceed `priority`, or returns 0. */
 #include "psx_types.h"
 
-/* func_80030CA4 - byte-exact against retail at -O2 (tools/register_match.py). */
+typedef struct {
+    u8 pad0[8];
+    u16 priority;
+    u8 padA[0x4E - 0xA];
+    u8 active;
+    u8 pad4F[0x54 - 0x4F];
+} SoundChannel;
 
-typedef struct Ent30D80 {
-     s32 unk00;
-     u8 pad04[6];
-     u16 unk0A;
-     u8 pad0C[0x34];
-     void (*unk40)(s32, s32);
-     s32 unk44;
-     u8 pad48[6];
-     u8 unk4E;
-     u8 pad4F;
-     u8 unk50;
-     u8 unk51;
-} Ent30D80;
-s32 aF800301A4(void) __asm__("func_800301A4");
-extern void func_800301A4(void);
-extern u8 D_800A4988[];
-extern void func_80030D80(Ent30D80 *arg0, s16 arg1);
-extern s32 func_80030CA4(u16);
+typedef struct {
+    s32 index;
+    SoundChannel *channel;
+    u16 priority;
+    u8 found;
+} ChannelChoice;
 
-s32 func_80030CA4(u16 arg0)
-{
-    u8 *base;
-    u8 *p;
-    register s32 i __asm__("$6");
-    register s32 one __asm__("$7");
-    s32 besti;
-    u8 *bestp;
-    u16 best;
-    u8 first;
+extern void func_80030D80(SoundChannel *, s32);
+extern SoundChannel D_800A4988[8];
 
-    (void)&besti;
-    (void)&bestp;
-    (void)&best;
-    (void)&first;
+s32 func_80030CA4(s32 priority) {
+    ChannelChoice best;
+    SoundChannel *ch;
+    s32 i;
 
-    base = D_800A4988;
-    i = 0;
-    one = 1;
-    p = base + 8;
-    first = 0;
-
-    for (; i < 8; i++, p += 0x54, base += 0x54) {
-        if (p[0x46] == 0) {
+    best.found = 0;
+    for (ch = D_800A4988, i = 0; i < 8; i++, ch++) {
+        if (ch->active == 0) {
             return i + 1;
         }
-        if (first == 0) {
-            best = *(u16 *)p;
-            first = (u8)one;
-            besti = i;
-            bestp = base;
-        } else if (*(u16 *)p < best) {
-            best = *(u16 *)p;
-            besti = i;
-            bestp = base;
+        if (best.found == 0) {
+            best.priority = ch->priority;
+            best.found = 1;
+            best.index = i;
+            best.channel = ch;
+        } else if (ch->priority < best.priority) {
+            best.priority = ch->priority;
+            best.index = i;
+            best.channel = ch;
         }
     }
-
-    if ((u16)arg0 < best) {
+    if ((u16)priority < best.priority) {
         return 0;
     }
-
-    func_80030D80((Ent30D80 *)bestp, 1);
-    *(u8 *)(base + 0x4E) = 0;
-    besti = besti + 1;
-    return besti;
+    func_80030D80(best.channel, 1);
+    ch->active = 0;
+    return ++best.index;
 }
