@@ -403,3 +403,26 @@ S3a default flip verified: job `20261001-212109-bfm-owncode-a86577db04`
 `classes=pure+vsync+pad`, and `pure+vsync` logs `classes=pure+vsync`. Both
 reach the village with warp vblanks 416, stop tick `00000ae0` and display
 70196/76800. `musashi_psyq_vsync_probe` on the runner: 236 cases, 0 different.
+
+## Layout rewrite on the release binary
+
+Pointer-typed struct members and array elements in 29 matched functions became
+u32 guest addresses cast at each use (22 clean-room: bfm-rederive `cb44d24`,
+port `c32016645c`; 7 owner-authored: port `258e0dcb2b`). All still
+verify_registry MATCH with 0 retail data. 28 are now admitted. `8001C1E4` is
+still rejected, now for `escape` (it passes a host stack array to
+`func_80054514`). Own-code lane 427/497 -> 455/497.
+
+| Job | Lane | Village plain/traced | Attract |
+|---|---|---|---|
+| `20261001-212907-bfm-owncode-c32016645c` (evidence `a4a902d2...4490`) | 449/497, `entries=513` | PASS (warp vblanks 416, `HOST_STOP source=IN_GAME_TARGET`, display 70196/76800) | as r30 |
+| `20261001-213327-bfm-owncode-258e0dcb2b` (evidence `703c163f...a8fa`, exe `d8b4509b...1c53`) | 455/497, `entries=519` | PASS, same | same terminal refusal (`STEP_REFUSED pc=800495ec`, `EXECUTION_BOUNDARY reason=REFUSED`, tick `00003aca`, the same a0-a3). The `func_80011380` abort now unwinds through `func_80010B40` (its caller, return address `80010b94`), which is native since this change, so the log shows a second `NATIVE_LANE_ABORT pc=80010b40` |
+
+The attract IRQ delivery count varies between runs of the same configuration
+(49,609 / 49,614 / 49,621 across today's jobs), so it isn't a regression signal.
+
+Village trace on the 455/497 lane: main executable 25.5% of calls native
+(163 native vs 150 interpreted distinct functions; 24.1% and 148/167 before the
+rewrite); overlays 0%; interpreted calls 712,841. The rewritten functions are
+mostly cold on this route (sequencer/channel code), so the gain shows in
+distinct-function coverage more than in calls.
