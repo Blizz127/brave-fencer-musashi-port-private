@@ -440,3 +440,9 @@
 8002fa3c
 80031a98
 8003500c
+# Clean-room pilot-retry B02 merged back 2026-10-01 (bfm-rederive ac49732), main region.
+8002f248
+80031be0
+80038958
+80039c70
+80039dec
