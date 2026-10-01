@@ -1,22 +1,18 @@
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Runs a fixed sequence of subsystem init calls. */
 #include "psx_types.h"
 
-
-/* Decompiled by m2c from main.s, then verified byte-exact
- * against retail by tools/match_function.py. Types and signatures are
- * whatever reproduces the bytes; they are not evidence of the
- * original declaration. */
-
-void func_80018FC8();                                  /* static */
-void func_8001903C();                                  /* static */
-void func_8001B324();                                  /* static */
-void func_80028DBC();                                 /* static */
-void func_80028E00();                                 /* static */
-void func_80028FDC();                                 /* static */
-void func_80029020();                                 /* static */
-void func_80029044();                                  /* static */
-void func_8002906C();                                  /* static */
-void func_80029094();                                  /* static */
-void func_80029218();                                  /* static */
+extern void func_80029044(void);
+extern void func_8002906C(void);
+extern void func_80029094(void);
+extern void func_80029218(void);
+extern void func_8001903C(void);
+extern void func_80018FC8(void);
+extern void func_8001B324(void);
+extern void func_80028FDC(s32);
+extern void func_80029020(s32);
+extern void func_80028DBC(s32);
+extern void func_80028E00(s32);
 
 void func_800142C8(void) {
     func_80029044();

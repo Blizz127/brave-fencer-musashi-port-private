@@ -1,35 +1,28 @@
-/* Main-exec range [80028304,80028394) from the SLUS executable.
- * SHA256(span)=6aa6f70ca2445b436504c133f471a504492b7a2e46a68227ce05d4ccd514f424.
- * Word export for the native seam; the body below is an
- * UNVERIFIED draft, not an oracle match claim. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_80028304 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Fills in one of three 16-byte table slots from the arguments, then notifies the slot handler. */
 #include "psx_types.h"
 
-extern u8 D_800A5E88;
-extern s32 D_800A5E8C;
-extern s32 D_800A5E90;
-extern u8 D_800A5E94;
-extern u8 D_800A5E95;
-extern u8 D_800A5E96;
-extern void func_80028620(s32 a0, void *a1);
+typedef struct {
+    s32 f0;
+    s32 f4;
+    s32 f8;
+    u8 fC;
+    u8 fD;
+    u8 fE;
+    u8 padF;
+} Slot;
 
-void func_80028304(s32 a0, s32 a1, s32 a2, s32 a3, u8 a4, u8 a5, u8 a6) {
-    s32 offset;
+extern Slot D_800A5E88[];
+extern void func_80028620(s32, Slot *);
 
-    a0 &= 0xFFFF;
-    if ((u16)a0 >= 3) {
-        return;
+void func_80028304(u16 idx, s32 a1, s32 a2, s32 a3, u8 b0, u8 b1, u8 b2) {
+    if (idx < 3) {
+        D_800A5E88[idx].f0 = a1;
+        D_800A5E88[idx].f4 = a2;
+        D_800A5E88[idx].f8 = a3;
+        D_800A5E88[idx].fC = b0;
+        D_800A5E88[idx].fD = b1;
+        D_800A5E88[idx].fE = b2;
+        func_80028620(idx, &D_800A5E88[idx]);
     }
-
-    offset = a0 << 4;
-
-    *(s32 *)((s32)&D_800A5E88 + offset) = a1;
-    *(s32 *)((s32)&D_800A5E8C + offset) = a2;
-    *(s32 *)((s32)&D_800A5E90 + offset) = a3;
-    *(u8 *)((s32)&D_800A5E94 + offset) = a4;
-    *(u8 *)((s32)&D_800A5E95 + offset) = a5;
-    *(u8 *)((s32)&D_800A5E96 + offset) = a6;
-
-    func_80028620(a0, (void *)((s32)&D_800A5E88 + offset));
 }
