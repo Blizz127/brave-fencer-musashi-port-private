@@ -31410,7 +31410,7 @@
       "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": "owner re-derivation, clean room (bfm-rederive cb5f851), clean input set (asm+m2c+owner headers)"
     },
     {
       "name": "func_8003A234",

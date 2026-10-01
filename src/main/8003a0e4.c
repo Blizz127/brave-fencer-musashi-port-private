@@ -1,54 +1,84 @@
-/* Main-exec range [8003A0E4,8003A234) from the SLUS executable.
- * SHA256(span)=bc583279b050683e7d37424fa3cf1cee40ae15539e133d41bda01d2c1bdde595.
- * Word export for the native seam; the body below is an
- * UNVERIFIED draft, not an oracle match claim. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_8003A0E4 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Sequencer pitch-bend event: stores the channel's bend value and recomputes the SPU pitch of every voice the channel is playing. */
 #include "psx_types.h"
+
+typedef struct {
+    s32 bit;
+    s32 attr;
+} VoiceBlock;
+
+typedef struct {
+    u8 pad0[4];
+    s16 note;
+    u8 pad6[0x10 - 6];
+    VoiceBlock voice;
+    u8 pad18[0x24 - 0x18];
+    s16 pitch;
+    u8 pad26[0x54 - 0x26];
+    s32 tune;
+    u8 bend_down;
+    u8 bend_up;
+    u8 pad5A[0x5D - 0x5A];
+    u8 started;
+    u8 pad5E[0x60 - 0x5E];
+} Channel;
+
+typedef struct {
+    u8 index;
+    u8 volume;
+    s16 bend;
+    u8 pad4[5];
+    u8 key_on[16];
+    u8 pad19;
+} SeqChannel;
+
+typedef struct {
+    u8 *cursor;
+    u8 pad4[0x1A - 4];
+    SeqChannel channels[16];
+} Sequence;
 
 extern u16 D_8006AB30[];
 extern u16 D_8006ABD8[];
-extern u8 D_800C6DD0[];
+extern Channel D_800C6DD0[16];
 
-void func_8003A0E4(void *arg0, s16 arg1) {
-    u8 *src;
-    u8 *t2;
-    u8 *t1;
-    u8 *a2;
-    u8 *a1;
-    s32 i;
-    s32 pan;
-    u32 vol;
-    u32 tmp;
-    u32 prod;
+void func_8003A0E4(Sequence *seq, s16 channel) {
+    SeqChannel *chan;
+    Channel *ch;
+    u8 *key;
+    s32 v;
+    u32 pitch;
+    s16 bend;
+    s32 tune;
+    u32 level;
+    VoiceBlock *voice;
 
-    t2 = (u8 *)arg0 + (arg1 * 26 + 26);
-    t1 = t2 + 9;
-    src = *(u8 **)arg0;
-    *(u32 *)arg0 = (u32)src + 1;
-    *(s16 *)(t2 + 2) = src[0] & 0x7F;
-    for (i = 0; i < 16; i++) {
-        if (*t1++ != 0) {
-            a2 = D_800C6DD0 + i * 0x60;
-            vol = *(s16 *)(a2 + 4) << 8;
-            pan = *(s16 *)(t2 + 2);
-            if (pan >= 65) {
-                vol += (u32)((pan - 64) * a2[0x59] * 4);
-            } else if (pan < 64) {
-                vol -= (u32)((64 - pan) * a2[0x58] * 4);
+    chan = &seq->channels[channel];
+    key = chan->key_on;
+    chan->bend = *seq->cursor++ & 0x7F;
+    for (v = 0; v < 16; v++) {
+        if (*key++ != 0) {
+            ch = &D_800C6DD0[v];
+            bend = chan->bend;
+            pitch = ch->note << 8;
+            if (bend > 64) {
+                pitch += (bend - 64) * ch->bend_up * 4;
+            } else if (bend < 64) {
+                pitch -= (64 - bend) * ch->bend_down * 4;
             }
-            tmp = *(s32 *)(a2 + 0x54) - 0x3C00;
-            vol -= tmp;
-            a1 = a2 + 0x10;
-            if (vol >= 0x5301) {
-                *(s16 *)(a2 + 0x24) = 0x3FFF;
+            tune = ch->tune - 0x3C00;
+            pitch -= tune;
+            voice = &ch->voice;
+            if (pitch > 0x5300) {
+                ch->pitch = 0x3FFF;
             } else {
-                prod = D_8006AB30[vol >> 8];
-                prod *= D_8006ABD8[(vol & 0xFE) / 2];
-                *(s16 *)(a2 + 0x24) = prod >> 15;
+                level = D_8006AB30[pitch >> 8];
+                level *= D_8006ABD8[(pitch & 0xFF) >> 1];
+                level >>= 15;
+                ch->pitch = level;
             }
-            *(u32 *)(a1 + 4) |= 0x10;
-            a2[0x5D] = 1;
+            voice->attr |= 0x10;
+            ch->started = 1;
         }
     }
 }
