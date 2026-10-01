@@ -46,3 +46,30 @@ trace exists, so this is a single measurement, not a before/after.
 The runtime is hybrid: boot enters through the interpreter
 (`boot_entry`), overlays are interpreted, and 205 lane call stubs are thunks
 back into the interpreter. Nothing here is a native-completion claim.
+
+## Staged proposal: top 20 interpreted entries (village route)
+
+Shares are of the 3,463,403 interpreted calls. "Reached from" is the first
+traced caller: game code means a game (non-PsyQ) PC calls it directly, and
+SDK-internal means only library code calls it. PsyQ code never enters the
+port (`config/psyq_ranges.txt` policy), so the SDK route is owner-written
+host HLE at the entry point the game calls. With that in place the library
+internals stop executing. Each HLE needs a differential check against the
+interpreted original on the same input (returned values plus the guest state
+it touches), not call counts: polling loops legitimately change their
+iteration count.
+
+| Stage | PCs (calls) | What | Reached from | Route |
+|---|---|---|---|---|
+| S1 | `80046c38` StGetNext (2,297,066; 66.3%) | libcd2 stream ring: next sector or not-ready | game, `800d27c4` (main_0003 poll loop) | SDK HLE over the CD streaming device; compat row is `BFM_PSYQ_STUB` today |
+| S2 | `8004239c` VSync (89,573), internals `800426d4` (56,946), `800426fc` (34,234): 5.2% | libetc frame wait and callback dispatch | SDK-internal (`80044150`, `80044258`, `8005b81c`) | VSync HLE exists (`BFM_PSYQ_HLE`) but installs only with `MUSASHI_PSYQ_LANE=all`; promote the class behind its own gate |
+| S3 | libpad `8005fbc8` (200,361), `8005fba8` (45,336), `8005e0ac` (26,666), `8005dbd8` (18,670), `8005dca0` (18,666), `8005f394` (15,998), `8005de78` (10,668): 9.7% | pad SIO exchange and handshake waits | SDK-internal only (pad interrupt/VSync callback chain) | HLE the pad driver's interrupt handler and the pad entry points on `bfm_plat_input` and the existing SIO wire shim; device/IRQ seam, highest timing risk |
+| S4 | libgte24 `80049440` (22,346; 0.6%) | GTE helper | game, `80012928` | HLE through the existing GTE bridge; compat row is a stub |
+| S5 | libgpu2 `8005ba90` (13,207), `8005c020` (11,145): 0.7% | packet/OT internals | SDK-internal | HLE at the libgpu entry points; partly bypassed already on `MUSASHI_GPU=bfm_plat` |
+| game | main `8001d388` (50,944), `8001fb8c` (38,208), `80020da4` (12,653): 2.9% | game code | game | clean-room re-derivation, then allow list |
+| game | overlay `8012a988` (19,104), `80134a28` (11,364), `8017869c` (8,652): 1.1% | overlay game code | game | clean-room re-derivation plus the digest-checked overlay own-code lane (0 overlay entries today) |
+
+If S1-S3 were native on this route, about 81% of today's interpreted calls
+would stop interpreting. Entry counts aren't cycles, and the overall share
+would still be bounded by boot and overlays running in the interpreter.
+Suggested order: S1, then S4 (small, game-called), S2, then S3.
