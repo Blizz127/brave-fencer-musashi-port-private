@@ -1,54 +1,45 @@
-/* Main-exec range [80038958,80038A00) from the SLUS executable.
- * SHA256(span)=9e6c3e4acab007ee005c23f68820d682fee0bb2e6a2236bc95d2ce6fa5a9050f.
- * Word export for the native seam; the body below is an
- * UNVERIFIED draft, not an oracle match claim. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_80038958 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* For each of the 16 channels that is idle (state 0 or 3) and not held, clears its busy flag and, if it was keyed, clears its key byte in the owning record and the keyed flag. */
 #include "psx_types.h"
+
+typedef struct {
+    u8 pad0[6];
+    s16 record;
+    u8 pad8[0x50 - 8];
+    u8 *records;
+    u8 pad54[0x5A - 0x54];
+    u8 keyed;
+    u8 busy;
+    u8 pad5C[0x60 - 0x5C];
+} Channel;
 
 extern u8 *D_800762B0;
 extern u8 D_800762B4[];
-extern u8 D_800C6E2A[];
+extern Channel D_800C6DD0[];
 
 void func_80038958(void) {
-    register u8 *a3 __asm__("$7");
-    register u8 *a2 __asm__("$6");
-    register s32 a1 __asm__("$5");
-    register u8 *a0 __asm__("$4");
-    register s32 t0 __asm__("$8");
-    register s32 v0 __asm__("$2");
-    register s32 v1 __asm__("$3");
+    u8 *state;
+    u8 *hold;
+    Channel *ch;
+    s32 i;
+    u8 *rec;
 
-    a3 = D_800762B0;
-    a2 = D_800762B4;
-    a1 = 0;
-    t0 = 3;
-    a0 = D_800C6E2A;
-
-    while (a1 < 0x10) {
-        v0 = *a3;
-        if (v0 == 0 || v0 == t0) {
-            if (*a2 == 0) {
-                v0 = *a0;
-                a0[1] = 0;
-                if (v0 != 0) {
-                    v0 = *(s16 *)(a0 - 0x54);
-                    v1 = v0 << 1;
-                    v1 = v1 + v0;
-                    v1 = v1 << 2;
-                    v1 = v1 + v0;
-                    v0 = *(s32 *)(a0 - 0xA);
-                    v1 = v1 << 1;
-                    v0 = v0 + v1;
-                    v0 = v0 + a1;
-                    *(u8 *)(v0 + 0x23) = 0;
-                    a0[0] = 0;
-                }
+    state = D_800762B0;
+    hold = D_800762B4;
+    i = 0;
+    ch = D_800C6DD0;
+    do {
+        if ((*state == 0 || *state == 3) && *hold == 0) {
+            ch->busy = 0;
+            if (ch->keyed != 0) {
+                rec = ch->records + ch->record * 0x1A + i;
+                rec[0x23] = 0;
+                ch->keyed = 0;
             }
         }
-        a1++;
-        a0 += 0x60;
-        a3++;
-        a2++;
-    }
+        i++;
+        ch++;
+        state++;
+        hold++;
+    } while (i < 16);
 }

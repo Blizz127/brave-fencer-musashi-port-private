@@ -31319,7 +31319,7 @@
       "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": "owner re-derivation, clean room (bfm-rederive ac49732), clean input set (asm+m2c+owner headers)"
     },
     {
       "name": "func_80038838",
@@ -31781,7 +31781,7 @@
       "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": "owner re-derivation, clean room (bfm-rederive ac49732), clean input set (asm+m2c+owner headers)"
     },
     {
       "name": "func_8002E8DC",
@@ -32497,7 +32497,7 @@
       "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": "owner re-derivation, clean room (bfm-rederive ac49732), clean input set (asm+m2c+owner headers)"
     },
     {
       "name": "func_80030F80",
@@ -32773,7 +32773,7 @@
       "extent": "function",
       "optimization": "-O2",
       "rodata_base": 2147954804,
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": "owner re-derivation, clean room (bfm-rederive ac49732), clean input set (asm+m2c+owner headers)"
     },
     {
       "name": "func_8002EED8",
@@ -32915,7 +32915,7 @@
       "extent": "function",
       "optimization": "-O2",
       "rodata_base": 2147955744,
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": "owner re-derivation, clean room (bfm-rederive ac49732), clean input set (asm+m2c+owner headers)"
     },
     {
       "name": "func_800359B0",

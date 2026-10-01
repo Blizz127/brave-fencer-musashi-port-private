@@ -1,55 +1,58 @@
-/* Main-exec range [80039DEC,80039F14) from the SLUS executable.
- * SHA256(span)=114e0708397033c9819f6a2f54d4cfacd2026efe57f5dfc917b50f1c3e5fdf7d.
- * Word export for the native seam. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Applies a sequencer controller event to a channel: loop markers (30) rewind the stream with a repeat count, other controllers record the value and flag the channel. */
 #include "psx_types.h"
-/* func_80039DEC - byte-exact against retail at -O2 (tools/register_match.py). */
 
+typedef struct {
+    u8 pad0[5];
+    u8 controller;
+    u8 pad6;
+    u8 flags;
+    u8 param;
+    u8 pad9[0x1A - 9];
+} SeqChannel;
 
-void func_80039DEC(a0, a1, a2)
-    void *a0;
-    s16 a1;
-    s16 a2;
-{
-    u8 cnt;
-    s32 tmp;
+typedef struct {
+    u8 *cursor;
+    u8 pad4[0xC - 4];
+    u8 *loop_start;
+    u8 pad10[0x1A - 0x10];
+    SeqChannel channels[16];
+    u8 pad1BA[0x1F5 - 0x1BA];
+    u8 loop_count;
+    u8 looping;
+    u8 status;
+    u8 pad1F8;
+    u8 loop_end;
+} Sequence;
 
-    switch (a2) {
-    case 0x14: {
-        u8 *p = (u8 *)a0 + a1 * 26;
-        p[0x1F] = a2;
-        p[0x22] = 0x18;
-        p[0x21] |= 3;
+void func_80039DEC(Sequence *seq, s16 channel, s16 controller) {
+    switch (controller) {
+    case 20:
+        seq->channels[channel].controller = controller;
+        seq->channels[channel].param = 24;
+        seq->channels[channel].flags |= 3;
         break;
-    }
-    case 0x1E:
-        if (*(u8 *)((u8 *)a0 + 0x1F6) == 0) {
-            *(u8 *)((u8 *)a0 + 0x1F9) = 1;
-            return;
+    case 30:
+        if (seq->looping == 0) {
+            seq->loop_end = 1;
+            break;
         }
-        cnt = *(u8 *)((u8 *)a0 + 0x1F5);
-        if ((u8)cnt != 0x7F) {
-            *(u8 *)((u8 *)a0 + 0x1F5) = cnt + 0xFF;
-            if ((u8)cnt == 0) {
-                return;
+        if (seq->loop_count != 0x7F) {
+            if (seq->loop_count-- == 0) {
+                break;
             }
         }
-        tmp = *(s32 *)((u8 *)a0 + 0xC);
-        *(u8 *)((u8 *)a0 + 0x1F7) = a1 | 0xB0;
-        *(s32 *)a0 = tmp;
+        seq->status = channel | 0xB0;
+        seq->cursor = seq->loop_start;
         break;
-    case 0x28: {
-        u8 *p = (u8 *)a0 + a1 * 26;
-        p[0x1F] = a2;
-        p[0x22] = 0x1A;
-        p[0x21] |= 3;
+    case 40:
+        seq->channels[channel].controller = controller;
+        seq->channels[channel].param = 26;
+        seq->channels[channel].flags |= 3;
         break;
-    }
-    default: {
-        u8 *p = (u8 *)a0 + a1 * 26;
-        p[0x1F] = a2;
-        p[0x21] |= 1;
+    default:
+        seq->channels[channel].controller = controller;
+        seq->channels[channel].flags |= 1;
         break;
-    }
     }
 }
