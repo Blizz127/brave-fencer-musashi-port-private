@@ -430,3 +430,13 @@
 8002a544
 8002e138
 8002f150
+# Clean-room pilot-retry B01 merged back 2026-10-01 (bfm-rederive b3dc595), main region.
+8001820c
+80018c64
+80023138
+80029cd4
+8002a1b4
+8002d240
+8002fa3c
+80031a98
+8003500c
