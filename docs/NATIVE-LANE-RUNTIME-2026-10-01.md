@@ -162,3 +162,22 @@ New code, all native C: `bfm_psyq_LZC` (`bfm_psyq_libgte.c`), an optional
 credits one data write and one data read as the interpreter's MTC2 + MFC2 do.
 Differential: `tests/psyq_lzc_probe.c` (CTest `psyq_lzc_differential`), see
 KNOWN-DIVERGENCES.md.
+
+Generator exemption: `tools/native_lane_gen.py` treats every PC that
+`mips_formatter.c` compares against as port-hooked and keeps it out of the
+lane. The only references to `0x80049440` and `0x8004944C` there are
+`formatter_step`'s COP2 leaf admission for the two transfer instructions,
+which only matters when the retail routine runs interpreted, and sequences
+nothing. `HLE_REPLACED_GATES` removes exactly those two PCs from the hooked
+set so the HLE entry is admitted. Interpreted retail code still goes through
+the same admission. Any future entry added there needs the same argument.
+
+Evidence (worker, devbox): 741 cases, 0 different in the default and lane
+builds; deliberate breaks: count+1 for every input 741/741, off-by-one at one
+value 1, read credit skipped 738, LZCS written without LZCR 678. CTest 32/32
+(default) and 33/33 (lane). The `gte_*` pytest suite fails the same 10 tests
+on the base `8d7a3923dd` (cc -Werror mutants and one export test), so they
+are pre-existing. Release-flag build: 427/497 admitted, retail guard 7/0.
+Local no-march lane binary: `NATIVE_LANE entries=490 psyq=63`, village warp
+`[WARP] arrived 1010.0` and `HOST_STOP source=IN_GAME_TARGET`, with no
+`NATIVE_LANE_ABORT`.
