@@ -115,3 +115,33 @@ The poll loop at `800d27c4` now iterates more often per CD sector (it spins
 faster), so its call count rose; call counts are not cycles. The rest of the
 interpreted work is S2/S3 (VSync, libpad), overlays and boot.
 
+
+## S1 landed: StGetNext HLE on the release binary (port `65ed2743d0`)
+
+Job `20261001-170055-bfm-owncode-65ed2743d0` (evidence SHA256
+`237e2e76...81ac5`, matched by readback). Executable SHA256 `bd95bfb0...403c`
+(release `-march=x86-64-v3` build); retail guard 7 files, 0 problems; lane
+`entries=489 psyq=62` (was 488/61).
+
+| Route | Result |
+|---|---|
+| Village 1010, plain and traced | PASS: `[WARP] arrived 1010.0 ... vblanks=416`, `HOST_STOP source=IN_GAME_TARGET`, display 70196/76800 non-black, the same as before S1 |
+| Idle attract, untraced | Same end state as shipped r30 (`STEP_REFUSED pc=800495ec`, then `NATIVE_LANE_ABORT pc=80011380 code=4` with identical registers) |
+
+Village trace:
+
+| Measure | Before S1 (`89bd42dc10`) | After S1 |
+|---|---|---|
+| interpreted calls, all regions | 3,444,404 | 1,147,282 (-67%) |
+| StGetNext `80046c38` | 2,297,212 interpreted | 4,430,154 native, 0 interpreted |
+| libcd2 interpreted | 2,299,7xx | 2,521 |
+| native share of calls, all regions | 2.8% | 79.8% |
+| main executable / overlays | 24.1% / 0% | 24.1% / 0% |
+
+The polling loop at `0x800D27C4` calls StGetNext about twice as often once
+each poll is native (4.43M native calls against 2.30M interpreted before) on
+the same route, with the same warp vblank count and the same picture. That
+inflates the "share of calls" figure, so the interpreted-call count is the
+better progress measure. Next by interpreted calls: pad polling (S3), VSync
+and its internals (S2), main `8001d388`/`8001fb8c`, libgte24 `80049440` (S4),
+overlay `8012a988`.
