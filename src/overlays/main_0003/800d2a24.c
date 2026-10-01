@@ -1,43 +1,23 @@
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_800D2A24 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Polls a status query until its status byte reports bit 0x10 (returns 1), or until the timeout check func_8004657C(0x1C0) fires (returns 0). */
 #include "psx_types.h"
-typedef float f32;
-typedef unsigned long long u64;
-typedef long long s64;
-typedef double f64;
-#ifndef NULL
-#define NULL ((void *)0)
-#endif
 
-extern u8 D_800EC9E8[4];
-extern s32 func_800435CC(s32 mode, void *buf, void *param);
-extern s32 func_8004657C(s32 count);
+extern s32 func_800435CC(s32, s32, u8 *);
+extern s32 func_8004657C(s32);
+extern u8 D_800EC9E8[];
 
-void func_800D2A24(s32 a0) {
-    u8 *p;
-    s32 r;
-    register s32 v0 __asm__("$2");
+s32 func_800D2A24(s32 arg0) {
+    s32 result;
 
 retry:
-    p = D_800EC9E8;
-    for (;;) {
-        r = func_800435CC(2, (void *)a0, p);
-        if (*p & 0x10) {
-            goto ret1;
+    do {
+        result = func_800435CC(2, arg0, D_800EC9E8);
+        if (D_800EC9E8[0] & 0x10) {
+            return 1;
         }
-        if (r != 0) {
-            break;
-        }
-    }
+    } while (result == 0);
     if (func_8004657C(0x1C0) == 0) {
         goto retry;
     }
-    v0 = 0;
-    __asm__ __volatile__("" : : "r"(v0));
-    return;
-
-ret1:
-    v0 = 1;
-    __asm__ __volatile__("" : : "r"(v0));
-    return;
+    return 0;
 }
