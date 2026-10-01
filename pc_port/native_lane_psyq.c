@@ -132,6 +132,9 @@ MusashiNativeLaneEntry *musashi_native_lane_psyq_merge(const MusashiNativeLaneEn
 
 /* BfmPsyqGteBridge over the single cop2 owner (gte_owner.c). */
 static int bridge_begin(void *user) { return musashi_gte_owner_native_begin(user); }
+static int bridge_lzc(void *user, uint32_t value, uint32_t *lzcr) {
+    return musashi_gte_owner_native_lzc(user, value, lzcr);
+}
 static void bridge_end(void *user, uint32_t commands) {
     musashi_gte_owner_native_end(user, commands);
 }
@@ -145,7 +148,7 @@ void musashi_native_lane_psyq_bind(MusashiBootMemory *memory, MusashiGteOwner *g
     bfm_psyq_set_ram(memory->bytes, MUSASHI_RAM_SIZE);
     bfm_psyq_set_scratchpad(memory->scratchpad);
     if (gte) {
-        const BfmPsyqGteBridge bridge = {bridge_begin, bridge_end, gte};
+        const BfmPsyqGteBridge bridge = {bridge_begin, bridge_end, gte, bridge_lzc};
         bfm_psyq_set_gte_bridge(&bridge);
     } else {
         bfm_psyq_set_gte_bridge(NULL);

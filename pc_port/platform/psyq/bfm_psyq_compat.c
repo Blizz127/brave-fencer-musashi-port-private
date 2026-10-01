@@ -87,6 +87,11 @@ void bfm_psyq_gte_end(uint32_t commands) {
     gte_bridge.end(gte_bridge.user, commands);
 }
 
+int bfm_psyq_gte_lzc(uint32_t value, uint32_t *lzcr) {
+    if (!gte_in_call || !gte_bridge.lzc || !lzcr) return 0;
+    return gte_bridge.lzc(gte_bridge.user, value, lzcr);
+}
+
 /* ---- guest memory --------------------------------------------------- */
 
 static uint8_t *ram;

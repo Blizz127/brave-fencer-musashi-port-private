@@ -104,7 +104,7 @@ BFM_PSYQ(0x8004921C, SetGeomOffset, BFM_PSYQ_PSYCROSS, 2, 0, bfm_psyq_SetGeomOff
 BFM_PSYQ(0x8004923C, SetGeomScreen, BFM_PSYQ_PSYCROSS, 1, 0, bfm_psyq_SetGeomScreen)
 BFM_PSYQ(0x800492FC, Square12, BFM_PSYQ_STUB, 0, 0, bfm_psyq_stub)
 BFM_PSYQ(0x80049324, Square0, BFM_PSYQ_STUB, 0, 0, bfm_psyq_stub)
-BFM_PSYQ(0x80049440, func_80049440, BFM_PSYQ_STUB, 0, 0, bfm_psyq_stub)
+BFM_PSYQ(0x80049440, func_80049440, BFM_PSYQ_HLE, 1, 1, bfm_psyq_LZC)
 BFM_PSYQ(0x8004945C, RotTransSV, BFM_PSYQ_PSYCROSS, 3, 0, bfm_psyq_RotTransSV)
 BFM_PSYQ(0x8004955C, RotTransPers, BFM_PSYQ_PSYCROSS, 4, 1, bfm_psyq_RotTransPers)
 BFM_PSYQ(0x8004958C, RotTransPers3, BFM_PSYQ_PSYCROSS, 8, 1, bfm_psyq_RotTransPers3)

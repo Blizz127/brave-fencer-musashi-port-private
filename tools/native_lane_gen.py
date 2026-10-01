@@ -286,6 +286,12 @@ ENTRY_OK_HOOK_FUNCS = {"run_startup_cpu_loop", "observe_entry", "spu_source_guar
 # Host-sequenced whatever the context: main never returns (the game loop),
 # and STARTUP_ENTRY is driven step by step by native_boot's startup.
 ALWAYS_HOOKED = {0x80010178, 0x800141F0}
+# PCs the interpreter (formatter_step) compares only to admit a COP2 transfer
+# site inside a function whose whole body the lane replaces with an HLE: the
+# MTC2 LZCS / MFC2 LZCR pair of func_80049440 (bfm_psyq_LZC). They sequence
+# nothing, so a native entry that skips them is exact; interpreted retail code
+# still goes through the same admission. Not hooks.
+HLE_REPLACED_GATES = {0x80049440, 0x8004944C}
 
 
 def hooked_pcs():
@@ -323,6 +329,8 @@ def hooked_pcs():
                 pcs += [enums[i] for i in re.findall(r"\b[A-Z][A-Z0-9_]*\b", line) if i in enums]
             for pc in pcs:
                 add(pc, kind)
+    for pc in HLE_REPLACED_GATES:
+        kinds.pop(pc, None)
     for pc in ALWAYS_HOOKED:
         kinds[pc] = "hard"
     return kinds

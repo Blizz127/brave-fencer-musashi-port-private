@@ -110,6 +110,9 @@ int musashi_gte_owner_command(MusashiGteOwner *owner,
 /* Native-lane GTE lease for host libgte wrappers (see gte_owner.c). */
 int musashi_gte_owner_native_begin(MusashiGteOwner *owner);
 void musashi_gte_owner_native_end(MusashiGteOwner *owner, uint32_t commands);
+/* Inside a native lease: MTC2 LZCS=value then MFC2 LZCR, with the counter
+ * credits of those two interpreter transfers. 0 = refused, nothing changed. */
+int musashi_gte_owner_native_lzc(MusashiGteOwner *owner, uint32_t value, uint32_t *lzcr);
 
 int musashi_gte_owner_snapshot(MusashiGteOwner *owner,
                                MusashiGteSnapshot *snapshot);

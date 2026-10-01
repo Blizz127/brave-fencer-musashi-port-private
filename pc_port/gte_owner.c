@@ -196,11 +196,27 @@ static int owner_begin_data(MusashiGteOwner *owner,
     return 1;
 }
 
+/* MTC2 to LZCS: store the word and derive LZCR (the count of leading sign
+ * bits, including the sign itself). The pristine PsyCross MTC2 helper only
+ * counts zero bits on its active fast path, so negative LZCS inputs are not
+ * delegated to it. Unsigned shifts make all-zero/all-one and bit31 edges
+ * defined without builtin clz(0). These are the renderer's actual CP2D
+ * registers, never a shadow bank. Shared by the interpreter's MTC2 and the
+ * native lane's LZC wrapper. */
+static void gte_commit_lzcs(uint32_t value) {
+    uint32_t normalized = (value & 0x80000000u) != 0 ? ~value : value;
+    uint32_t count = 0;
+    while (count < 32u && (normalized & 0x80000000u) == 0) {
+        normalized <<= 1;
+        ++count;
+    }
+    gteRegs.CP2D.p[30].d = value;
+    gteRegs.CP2D.p[31].d = count;
+}
+
 int musashi_gte_owner_write_data(MusashiGteOwner *owner,
                                 const MusashiCpuContext *context,
                                 uint32_t selector, uint32_t value) {
-    uint32_t normalized;
-    uint32_t count = 0;
     if (owner_reentry(owner)) return 0;
     if (owner == NULL ||
         (selector != 0u && selector != 1u && selector != 2u && selector != 3u &&
@@ -249,19 +265,8 @@ int musashi_gte_owner_write_data(MusashiGteOwner *owner,
         return 1;
     }
 
-    /* Count leading sign bits, including the sign itself. The pristine
-     * PsyCross MTC2 helper only counts zero bits on its active fast path, so
-     * do not delegate negative LZCS inputs to that helper. Unsigned shifts
-     * make all-zero/all-one and bit31 edges defined without builtin clz(0). */
-    normalized = (value & 0x80000000u) != 0 ? ~value : value;
-    while (count < 32u && (normalized & 0x80000000u) == 0) {
-        normalized <<= 1;
-        ++count;
-    }
-    /* All fallible callbacks precede this indivisible owner-thread commit.
-     * These are the renderer's actual CP2D registers, never a shadow bank. */
-    gteRegs.CP2D.p[30].d = value;
-    gteRegs.CP2D.p[31].d = count;
+    /* All fallible callbacks precede this indivisible owner-thread commit. */
+    gte_commit_lzcs(value);
     owner->data_write_count++;
     owner->executing = 0;
     return 1;
@@ -335,6 +340,21 @@ int musashi_gte_owner_native_begin(MusashiGteOwner *owner) {
         owner->executing = 0;
         return 0;
     }
+    return 1;
+}
+
+/* MTC2 $30 then MFC2 $31 under the native lease (begin succeeded, owner
+ * executing): the same LZCS commit as the interpreter's MTC2 and the same
+ * counter credits (one data write, one data read). Refuses, changing
+ * nothing, without the lease or when a counter would overflow. */
+int musashi_gte_owner_native_lzc(MusashiGteOwner *owner, uint32_t value, uint32_t *lzcr) {
+    if (owner == NULL || lzcr == NULL || !owner->executing || owner->faulted ||
+        owner->data_write_count == UINT64_MAX || owner->data_read_count == UINT64_MAX)
+        return 0;
+    gte_commit_lzcs(value);
+    owner->data_write_count++;
+    *lzcr = gteRegs.CP2D.p[31].d;
+    owner->data_read_count++;
     return 1;
 }
 

@@ -132,6 +132,7 @@ TABLE: dict[str, Status] = {
     "catan": Status(S, 0, 0, None, "stateless but not in PsyCross"),
     "SquareRoot12": Status(S, 0, 0, None, "stateless but not in PsyCross"),
     # GTE state through the bridge: PsyCross works on the gteRegs bank gte_owner leases
+    "func_80049440": Status(H, 1, 1, "bfm_psyq_LZC", "GTE-bank access under the gte_owner lease; no device I/O, no guest RAM: MTC2 LZCS=a0, v0 = MFC2 LZCR (leading sign bits, 1..32); leaves LZCS/LZCR and the owner's data read/write counters as retail does; same-input differential vs retail func_80049440 in tests/psyq_lzc_probe.c"),
     "InitGeom": Status(P, 0, 0, "bfm_psyq_InitGeom", "GTE bridge (gte_owner lease)"),
     "SetGeomOffset": Status(P, 2, 0, "bfm_psyq_SetGeomOffset", "GTE bridge (gte_owner lease); the hook site also records the projection"),
     "SetGeomScreen": Status(P, 1, 0, "bfm_psyq_SetGeomScreen", "GTE bridge (gte_owner lease); the hook site also records the projection"),

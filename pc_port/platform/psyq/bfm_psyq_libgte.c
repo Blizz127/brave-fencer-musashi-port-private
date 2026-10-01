@@ -180,3 +180,22 @@ int bfm_psyq_ScaleMatrix(uint32_t *r) {
     return 1;
 }
 
+
+/* LZC / the Psy-Q leading-sign-bit counter at 0x80049440: a0 is moved to the
+ * GTE's LZCS register and v0 is the resulting LZCR, the number of leading
+ * bits equal to the sign bit (1..32). The call leaves LZCS = a0 and
+ * LZCR = v0 in the shared cop2 data bank and nothing else changes: no guest
+ * RAM, no other register. The bank belongs to the gte_owner, so this runs under
+ * its lease (bfm_psyq_gte_begin/end) and refuses without it, in which case the
+ * retail code runs on the interpreter. */
+int bfm_psyq_LZC(uint32_t *r) {
+    uint32_t lzcr;
+    if (!bfm_psyq_gte_begin()) return 0;
+    if (!bfm_psyq_gte_lzc(A(0), &lzcr)) {
+        bfm_psyq_gte_end(0);
+        return 0;
+    }
+    bfm_psyq_gte_end(0);
+    r[2] = lzcr;
+    return 1;
+}

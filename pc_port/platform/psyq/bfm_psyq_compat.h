@@ -85,12 +85,17 @@ typedef struct BfmPsyqGteBridge {
     int (*begin)(void *user);                     /* 1 = may use gteRegs now */
     void (*end)(void *user, uint32_t commands);   /* commands = GTE ops issued */
     void *user;
+    /* Optional: MTC2 LZCS=value then MFC2 LZCR inside the lease (the owner's
+     * own LZCR derivation and counter credits). 0 = refused. */
+    int (*lzc)(void *user, uint32_t value, uint32_t *lzcr);
 } BfmPsyqGteBridge;
 
 /* NULL removes the bridge. */
 void bfm_psyq_set_gte_bridge(const BfmPsyqGteBridge *bridge);
 int bfm_psyq_gte_begin(void);
 void bfm_psyq_gte_end(uint32_t commands);
+/* Inside begin()/end(): LZCS=value, returns LZCR in *lzcr; 0 without the lease or hook. */
+int bfm_psyq_gte_lzc(uint32_t value, uint32_t *lzcr);
 
 /* Stateless libgte helpers exact to the retail code (bfm_psyq_libgte.c),
  * on guest-layout MATRIX bytes. rotmatrix reads the game's own sin/cos table
