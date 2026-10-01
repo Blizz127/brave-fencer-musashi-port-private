@@ -449,3 +449,59 @@ GL backend's VRAM mirror, so comparing its hashes between CPU and GL would
 be invalid. A GL parity fixture must read the active renderer's VRAM through
 `bfm_plat_renderer_download_vram`, or compare presented pixels. The stage-0
 fixture proposal above needs this correction before it is implemented.
+
+### Real GPU comparison: startup passes, picture gate fails
+
+New private blizzpc runner job (not a rerun of either baseline):
+`20260930-192219-bfm-2175-context-compare-1991019`, wrapper rc=0, 151 s.
+Candidate code: `263cead32f`, optimized native lane ON; binary SHA256:
+`16ebc3f4553dee5517687b7f836014b377917b73bab96f7bee21b01b2e9d8618`.
+CPU and GL ran sequentially for 75 s each with isolated XDG directories,
+null audio, cards disabled, offscreen SDL, the same input script and the
+village warp harness. Both native exits were the planned timeout rc=124;
+both logged HOST_STOP and orderly GPU teardown. There were zero
+RUN_REFUSED / CHECKPOINT_REFUSED / IRQ_DISPATCH_REFUSED markers. Native-lane
+`overlay refused` counters are digest/class fallback counts (CPU 873,
+GL 956), not execution acceptance; they are not described as zero.
+
+Both routes entered 3005 at guest VBlank 1183, sent the warp at 1845 and
+entered village 1010 at 2261. Same-swap-index PNGs 1800 and 2400 were
+retrieved and compared; frame 2400 was inspected visually on both paths.
+These are rendered-picture comparisons, not a guest-RAM or active-VRAM
+parity fixture.
+
+| Swap index | Different RGB pixels / 1,228,800 | Mean absolute channel error (0..255) |
+|---|---|---|
+| 1800 | 187,790 | 12.078 |
+| 2400 (village) | 1,218,860 | 37.930 |
+
+The GL village image shows a white strip at the top, different framing and
+texture appearance. It therefore **fails** the proposed CPU/GL 1x picture
+parity gate. The CPU presenter contains a draw-clip-page scanout workaround
+(`gpu_psycross.c:blit_vram`) that can change its display origin and size;
+the bridge derives its display from GP1 mode/origin and ignores range
+commands 06/07. These are concrete paths to investigate, not a proven sole
+cause and not a reason to silently copy a workaround into the GL renderer.
+
+Capture-instrumented PERF window medians: CPU 2.190 ms, GL 4.295 ms
+(maxima 2.26 and 5.21 ms; four 600-field averages each). Readback/PNG work
+is included. These are not per-frame timings, a pure GPU comparison, or
+an enhancement performance claim.
+
+Additional gates: `ctest --test-dir build -R
+'dev_menu_model|gpu_device|gpu_backend' --output-on-failure`: 2/2 passed
+(dev_menu_model and gpu_device_boundary actually matched). Retail guard:
+`python3 tools/check_port_retail.py build/lanes/legion-fast`: 7 files,
+0 problems. Native build and optimized native-lane build succeeded.
+
+Owner-local evidence: `~/release-staging/bfm-gfx-2175/context-compare/`
+(run logs, frame counts, PNGs, pixel-comparison.json), the complete
+`context-compare-evidence.tar.gz`, the job script and build/guard logs.
+No jobs remain running for this comparison. No release, tag or push.
+
+**Task remains unfinished.** Stage 0 now passes startup and a village run,
+but its renderer-picture/parity work, active-renderer VRAM fixture,
+per-frame measurements, config wiring and Enhancements page remain open.
+No new menu options, FSR, 60 fps interpolation, HD packs, AA/AF or
+widescreen-culling acceptance is claimed. The original CPU path is unchanged
+by the context fix; full game/save/replay all-off parity has not been measured.
