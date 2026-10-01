@@ -1,95 +1,59 @@
-/* Main-exec range [80027C10,80027D20) from the SLUS executable.
- * SHA256(span)=bf87c333734cccdeeb1ce752c2a4a0d020246107e59bdc2183ec955620c5ca3e.
- * Word export for the native seam; the body below is an
- * UNVERIFIED draft, not an oracle match claim. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_80027C10 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Walks a model's linked primitive-group list and emits each flat (0x30) or textured (0x38) triangle group into the output primitive buffer. */
 #include "psx_types.h"
 
-/* Vendor typedefs this body depends on (copied from vendor/bfm-decomp). */
-typedef struct { s16 vx, vy, vz, pad; } SVEC2;      /* 0x08 */
-typedef struct {                                     /* 0x14 */
-    u32 w0;      /* 0x00 */
-    u32 rgb;     /* 0x04 */
-    u16 n0;      /* 0x08 */
-    u16 v0;      /* 0x0A */
-    u16 n1;      /* 0x0C */
-    u16 v1;      /* 0x0E */
-    u16 n2;      /* 0x10 */
-    u16 v2;      /* 0x12 */
-} Face2;
-typedef struct {                                     /* 0x1C */
-    u32 tag;
-    u32 rgb0;
-    s16 x0, y0;
-    u32 rgb1;
-    s16 x1, y1;
-    u32 rgb2;
-    s16 x2, y2;
-} G3P;
-typedef struct {                                     /* 0x18 */
-    u32 w0;      /* 0x00 */
-    u32 rgb;     /* 0x04 */
-    u16 n0;      /* 0x08 */
-    u16 v0;      /* 0x0A */
-    u16 n1;      /* 0x0C */
-    u16 v1;      /* 0x0E */
-    u16 n2;      /* 0x10 */
-    u16 v2;      /* 0x12 */
-    u16 n3;      /* 0x14 */
-    u16 v3;      /* 0x16 */
-} Face3;
-typedef struct {                                     /* 0x24 */
-    u32 tag;     /* 0x00 */
-    u32 rgb0;    /* 0x04 */
-    s16 x0, y0;  /* 0x08 */
-    u32 rgb1;    /* 0x0C */
-    s16 x1, y1;  /* 0x10 */
-    u32 rgb2;    /* 0x14 */
-    s16 x2, y2;  /* 0x18 */
-    u32 rgb3;    /* 0x1C */
-    s16 x3, y3;  /* 0x20 */
-} G4P;
+typedef struct {
+    s32 vertices;
+    s32 pad4;
+    s32 normals;
+    s32 padC;
+    s32 output;
+} MeshData;
 
-extern G3P *func_80027D20(Face2 *f, SVEC2 *verts, SVEC2 *norms, G3P *prims,
-                           s32 count, s32 shift, s32 ot);
-extern G4P *func_80027F4C(Face3 *f, SVEC2 *verts, SVEC2 *norms, G4P *prims,
-                           s32 count, s32 shift, s32 ot);
+typedef struct {
+    u8 pad0[8];
+    MeshData *mesh;
+    u32 *groups;
+} Model;
 
-void func_80027C10(void *a0, void *a1, s32 a2)
-{
-    void *geo;
-    SVEC2 *verts;
-    SVEC2 *norms;
-    Face2 *f;
-    G3P *p;
-    u32 w0;
-    s32 cnt;
-    u32 opc;
-    u32 masked;
+typedef struct {
+    s32 pad0;
+    s32 light;
+} DrawContext;
 
-    geo = *(void **)((s32)a0 + 0x8);
-    p = *(G3P **)((s32)a0 + 0xC);
-    verts = *(SVEC2 **)((s32)geo + 0x0);
-    norms = *(SVEC2 **)((s32)geo + 0x8);
-    f = *(Face2 **)((s32)geo + 0x10);
+extern void func_80027D20(s32, s32, s32, u32 *, u32, s32, s32);
+extern void func_80027F4C(s32, s32, s32, u32 *, u32, s32, s32);
 
+void func_80027C10(Model *model, DrawContext *ctx, s32 depth) {
+    MeshData *mesh;
+    u32 *group;
+    s32 vertices;
+    s32 normals;
+    s32 output;
+    u32 header;
+    u32 count;
+    u32 next;
+
+    mesh = model->mesh;
+    group = model->groups;
+    vertices = mesh->vertices;
+    normals = mesh->normals;
+    output = mesh->output;
     do {
-        w0 = p->tag;
-        cnt = p->rgb0;
-        p = (G3P *)((s32)p + 8);
-        opc = (w0 >> 24) & 0xFC;
-        switch (opc) {
+        header = group[0];
+        count = group[1];
+        group += 2;
+        switch ((header >> 24) & 0xFC) {
         case 0x30:
-            func_80027D20(f, verts, norms, p, cnt, a2, *(s32 *)((s32)a1 + 4));
-            f = (Face2 *)((s32)f + cnt * 20);
+            func_80027D20(output, vertices, normals, group, count, depth, ctx->light);
+            output += count * 0x14;
             break;
         case 0x38:
-            func_80027F4C((Face3 *)f, verts, norms, (G4P *)p, cnt, a2, *(s32 *)((s32)a1 + 4));
-            f = (Face2 *)((s32)f + cnt * 24);
+            func_80027F4C(output, vertices, normals, group, count, depth, ctx->light);
+            output += count * 0x18;
             break;
         }
-        masked = w0 & 0xFFFFFF;
-        p = (G3P *)(masked | 0x80000000);
-    } while (masked != 0);
+        next = header & 0xFFFFFF;
+        group = (u32 *)(next | 0x80000000);
+    } while (next != 0);
 }

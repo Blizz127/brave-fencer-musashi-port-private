@@ -1,30 +1,32 @@
-/* Main-exec range [80037EA0,80037F3C) from the SLUS executable.
- * SHA256(span)=50ac7998b3117ad9942bc55d300d1231f38c65ce6084760a7d9bb160a66507a8.
- * Word export for the native seam; the body below is an
- * UNVERIFIED draft, not an oracle match claim. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_80037EA0 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Flushes pending key-offs: for each keyed, not-started channel with a pending event, sends command 8 to its voice and clears the pending state. */
 #include "psx_types.h"
 
-extern u8 D_800C6E2E[];
+typedef struct {
+    u8 pad0[0x14];
+    s32 attr;
+    u8 pad18[0x5A - 0x18];
+    u8 keyed;
+    u8 busy;
+    u8 active;
+    u8 started;
+    u8 pending;
+    u8 pad5F;
+} Channel;
 
-void func_80037EA0(void)
-{
-    extern void func_8003D3B4(s32, s32);
-    register u8 *p __asm__("$16");
-    register s32 i __asm__("$17");
-    register u32 mask __asm__("$18");
+extern void func_8003D3B4(s32, s32);
+extern Channel D_800C6DD0[16];
 
-    i = 0;
-    mask = 0xFFF9FFFF;
-    p = D_800C6E2E;
-    do {
-        if (p[-4] != 0 && p[-1] == 0 && p[0] != 0) {
+void func_80037EA0(void) {
+    Channel *ch;
+    s32 i;
+
+    ch = D_800C6DD0;
+    for (i = 0; i < 16; i++, ch++) {
+        if (ch->keyed != 0 && ch->started == 0 && ch->pending != 0) {
             func_8003D3B4(i, 8);
-            *(u32 *)(p - 0x4A) &= mask;
-            p[0] = 0;
+            ch->attr &= 0xFFF9FFFF;
+            ch->pending = 0;
         }
-        i++;
-        p += 0x60;
-    } while (i < 0x10);
+    }
 }

@@ -1,65 +1,80 @@
-/* Exact retail word export for [80038838,800388E8); EXE and assembly verified. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_80038838 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Resets a sequence's 16 channel states and track state and restores its default tempo and flags. */
 #include "psx_types.h"
 
-void func_80038838(void *arg0)
-{
-    register unsigned char *a3 asm("$7");
-    register unsigned char *a1 asm("$5");
-    register unsigned char *v1;
-    register unsigned char *v0 asm("$2");
-    register int a2 asm("$6");
-    register int v0_c;
-    register int const1 asm("$8");
-    register int const2 asm("$9");
-    register int const3 asm("$3");
+typedef struct {
+    u8 index;
+    u8 volume;
+    s16 expression;
+    u8 pan;
+    u8 pad5[2];
+    u8 flags;
+    u8 pad8;
+    u8 key_on[16];
+    u8 pad19;
+} SeqChannel;
 
-    a3 = (unsigned char *)arg0 + 0x1A;
-    a2 = 0;
-    const1 = 0x40;
-    const2 = 0x7F;
-    a1 = (unsigned char *)arg0 + 0x1B;
+typedef struct {
+    s16 scale;
+    u8 pad2[4];
+    u8 active;
+    u8 pad7;
+} SeqTrack;
 
-    do {
-        v1 = a3 + 0x9;
-        v0_c = 0xF;
-        a3[0x0] = a2;
-        *(unsigned short *)(a1 + 0x1) = const1;
-        a1[0x3] = const1;
-        a1[0x6] = 0;
-        a1[0x0] = const2;
+typedef struct {
+    u8 *cursor;
+    u8 pad4[4];
+    s32 running;
+    u8 padC[0x12 - 0xC];
+    SeqTrack tracks[1];
+    SeqChannel channels[16];
+    u8 pad1BA[0x1CC - 0x1BA];
+    s32 tempo_c;
+    s32 tempo_a;
+    s32 tempo_b;
+    u8 pad1D8[0x1E4 - 0x1D8];
+    s16 bpm;
+    u8 pad1E6[0x1F4 - 0x1E6];
+    u8 flag1F4;
+    u8 loop_count;
+    u8 looping;
+    u8 status;
+    u8 flag1F8;
+    u8 loop_end;
+    u8 flag1FA;
+} Sequence;
 
-        do {
-            v1[0x0] = 0;
-            v0_c--;
-            v1++;
-        } while (v0_c >= 0);
+void func_80038838(Sequence *seq) {
+    SeqChannel *ch;
+    s32 i;
+    s32 j;
+    u8 *p;
 
-        a2++;
-        a1 += 0x1A;
-        a3 += 0x1A;
-    } while (a2 < 0x10);
-
-    a2 = 0;
-    const3 = 0x4000;
-    v0 = (unsigned char *)arg0;
-    do {
-        v0[0x18] = 0;
-        *(unsigned short *)(v0 + 0x12) = const3;
-        v0 += 0x8;
-        a2++;
-    } while (a2 <= 0);
-
-    *(int *)((unsigned long)arg0 + 0x8) = 1;
-    *(int *)((unsigned long)arg0 + 0x1D0) = 0xE10;
-    *(int *)((unsigned long)arg0 + 0x1D4) = 0xE10;
-    *(int *)((unsigned long)arg0 + 0x1CC) = 0xE10;
-    *(unsigned char *)((unsigned long)arg0 + 0x1F4) = 0;
-    *(unsigned short *)((unsigned long)arg0 + 0x1E4) = 0x78;
-    *(unsigned char *)((unsigned long)arg0 + 0x1F7) = 0;
-    *(unsigned char *)((unsigned long)arg0 + 0x1F8) = 0;
-    *(unsigned char *)((unsigned long)arg0 + 0x1F9) = 0;
-    *(unsigned char *)((unsigned long)arg0 + 0x1FA) = 0;
-    *(unsigned char *)((unsigned long)arg0 + 0x1F6) = 0;
+    ch = seq->channels;
+    for (i = 0; i < 16; i++, ch++) {
+        ch->index = i;
+        ch->expression = 0x40;
+        ch->pan = 0x40;
+        ch->flags = 0;
+        ch->volume = 0x7F;
+        p = ch->key_on;
+        for (j = 0; j < 16; j++) {
+            *p++ = 0;
+        }
+    }
+    for (i = 0; i < 1; i++) {
+        seq->tracks[i].active = 0;
+        seq->tracks[i].scale = 0x4000;
+    }
+    seq->running = 1;
+    seq->tempo_a = 3600;
+    seq->tempo_b = 3600;
+    seq->tempo_c = 3600;
+    seq->flag1F4 = 0;
+    seq->bpm = 120;
+    seq->status = 0;
+    seq->flag1F8 = 0;
+    seq->loop_end = 0;
+    seq->flag1FA = 0;
+    seq->looping = 0;
 }

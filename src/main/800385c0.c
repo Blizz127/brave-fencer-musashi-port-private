@@ -1,24 +1,44 @@
-/* Exact retail word export for [800385C0,80038638); EXE and assembly verified. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_800385C0 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Stops sequence player `player`: frees every channel it owns and clears its playing/paused flags. */
 #include "psx_types.h"
 
-void func_800385C0(s16 a0)
-{
-    extern u8 D_800C6E2A[];
-    extern u8 D_800B9ED2[];
-    extern u8 D_800B9ED3[];
-    register s32 a0v __asm__("$4");
-    register u8 *v1 __asm__("$3");
-    s32 a1;
+typedef struct {
+    u8 pad0[0x1F0];
+    s16 player;
+} SeqOwner;
 
-    for (a1 = 0, v1 = D_800C6E2A; a1 < 0x10; a1++, v1 += 0x60) {
-        if (v1[2] != 0 && *(s16 *)(*(s32 *)(v1 - 0xA) + 0x1F0) == a0v) {
-            v1[2] = 0;
-            v1[0] = 0;
+typedef struct {
+    u8 pad0[0x50];
+    SeqOwner *owner;
+    u8 pad54[0x5A - 0x54];
+    u8 keyed;
+    u8 busy;
+    u8 active;
+    u8 pad5D[0x60 - 0x5D];
+} Channel;
+
+typedef struct {
+    s16 id;
+    u8 pad2[0xA - 2];
+    u8 playing;
+    u8 paused;
+    u8 padC[0x1FC - 0xC];
+} SeqPlayer;
+
+extern SeqPlayer D_800B9EC8[2];
+extern Channel D_800C6DD0[16];
+
+void func_800385C0(s32 player) {
+    Channel *ch;
+    s32 i;
+
+    ch = D_800C6DD0;
+    for (i = 0; i < 16; i++, ch++) {
+        if (ch->active != 0 && ch->owner->player == player) {
+            ch->active = 0;
+            ch->keyed = 0;
         }
     }
-
-    D_800B9ED2[((a0v << 7) - a0v) << 2] = 0;
-    D_800B9ED3[((a0v << 7) - a0v) << 2] = 0;
+    D_800B9EC8[player].playing = 0;
+    D_800B9EC8[player].paused = 0;
 }
