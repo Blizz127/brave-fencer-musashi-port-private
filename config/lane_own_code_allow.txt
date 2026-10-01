@@ -517,3 +517,5 @@
 80030ca4
 80031b7c
 80038908
+# Clean-room pilot-retry second pass (B02, B08) merged back 2026-10-01 (bfm-rederive cb5f851), main region.
+8003a0e4
