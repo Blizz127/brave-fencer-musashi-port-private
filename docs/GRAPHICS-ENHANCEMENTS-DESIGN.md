@@ -505,3 +505,76 @@ per-frame measurements, config wiring and Enhancements page remain open.
 No new menu options, FSR, 60 fps interpolation, HD packs, AA/AF or
 widescreen-culling acceptance is claimed. The original CPU path is unchanged
 by the context fix; full game/save/replay all-off parity has not been measured.
+
+
+### Active-renderer diagnostics and native presentation filtering (handoff 51dd2f4e)
+
+The exit display/full-VRAM dump now reads `bfm_plat_renderer_download_vram`
+when the GPU bridge is active, flushing the bridge's pending primitives first.
+The CPU route keeps its existing PsyCross readback. There is no diagnostic
+fallback to PsyCross VRAM when a bridge read fails. `VRAM_SOURCE` records the
+source, controller display rectangle, and inclusive drawing-area coordinates.
+The pre-existing display-dump alternate-page heuristic remains: the display
+PNG is an inspection aid, not a canonical scanout or parity hash. Full-VRAM
+PNGs compare RGB555 color only; they do not retain the mask/STP bit.
+
+A new sequential blizzpc job, `20260930-203335-bfm-2175-active-vram-2826574`,
+used the diagnostic candidate (binary SHA256
+`4c9744185c76144c5bb32f41f043ea40fb79e170ae4728e5a0504dedcf38011e`).
+Both CPU and GL reached village 1010, stopped at `IN_GAME_TARGET` 1250,
+reported 168789 GTE writes and matching logged camera RAM, and captured 2389
+swaps. Both returned 143 for the intentional SIGTERM stop; wrapper rc=0.
+Zero RUN_REFUSED / CHECKPOINT_REFUSED / IRQ_DISPATCH_REFUSED markers.
+Native-lane overlay counters were verified=285, refused=685 on both routes;
+this remains a hybrid runtime, with CPU fallback. Null audio, disconnected
+cards, isolated XDG paths, and headless offscreen SDL were used. No owner
+foreground input, settings, or saves were changed.
+
+At this stop both controller displays were `(0,0,320,240)`, while both drawing
+areas were `(0,250)..(319,469)`. The full-VRAM images show 320x220 game regions
+at y=10 and y=250. For this nonoverlapping state the CPU presenter's existing
+workaround selects `(0,250,320,220)` and stretches it to the window; GL selects
+the GP1 page `(0,0,320,240)`, retaining its 10-line top/bottom border regions
+and showing the other buffer. This establishes a concrete source for border,
+framing and buffer-age differences. It does not establish that the CPU
+workaround is accurate PS1 scanout. Any compatibility implementation needs an
+explicit host scanout contract and tests, rather than altering guest GP1 state
+or discarding GL scene targets by changing their dimensions during present.
+
+Even matching the drawing rectangles does **not** produce color parity:
+
+| RGB555 region | Different RGB pixels | Mean absolute RGB channel error |
+|---|---|---|
+| Full VRAM | 76698 / 524288 | 4.225 |
+| Drawing region y=10 | 36780 / 70400 | 9.887 |
+| Drawing region y=250 | 36718 / 70400 | 9.984 |
+
+These are exit-state RGB comparisons, not per-frame hashes or full guest-RAM
+parity. A further source-level mismatch to investigate is texture modulation:
+`gpu_controller.c` truncates `(channel5 * color8) >> 7`, while the GL shader
+normalizes by 31 and modulates in RGB8 before readback quantization. Existing
+GL executor tests compare against that normalized reference; their success
+does not prove agreement with the actual CPU controller's game rendering.
+
+Separately, GL scene/VRAM presentation and packed movie-image presentation
+now use nearest filtering, matching the reference presenter's texel-preserving
+policy and preventing interpolation across native pixel/page boundaries.
+HD replacement textures retain their existing filtering. Added OSMesa pixel
+edge assertions fail against the previous executor (three failed assertions)
+and pass against the change. `tests/test_bfm_gl.py`: 5 passed; native and
+optimized native-lane builds passed; two focused CTests passed; optimized
+retail guard checked 7 files with 0 problems. The village runner candidate
+above predates this filtering change: no post-change village picture,
+performance, or complete parity acceptance is inferred from these tests.
+
+Evidence stays owner-local under `~/release-staging/bfm-gfx-2175/`:
+`active-vram-local/`, `active-vram-remote/` (logs, PNGs, result, binary hash,
+`active-vram-comparison.json`), `active-vram-job.sh`, build logs, and
+`nearest-baseline-test.log`. Retrieved `active-vram-evidence.tar.gz` SHA256
+`5ac0b9096b9dc9fcb1bf114bc884a953166a0506d488e1ad399d40eda5e2ffd7`
+matched the runner's readback. No runner jobs remain for this diagnostic.
+
+Stage 0 remains open on scanout compatibility, integer/raster/color agreement,
+and a deterministic per-frame active-renderer fixture. The Enhancements menu
+and later feature stages remain unimplemented. No release or publication is
+appropriate while this renderer gate fails; native conversion stays deferred.
