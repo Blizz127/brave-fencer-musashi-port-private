@@ -467,3 +467,15 @@
 8002eff8
 8003310c
 80037cd8
+# Clean-room pilot-retry B05 + B01 follow-up merged back 2026-10-01 (bfm-rederive eff135e), main region.
+8001099c
+80011d54
+80018ce8
+8002c3b0
+80031988
+800331d4
+800335b8
+800348a8
+80037f3c
+8003a3d8
+80041448
