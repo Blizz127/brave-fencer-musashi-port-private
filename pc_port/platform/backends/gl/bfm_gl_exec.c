@@ -61,6 +61,7 @@
     X(PFNGLUSEPROGRAMPROC, UseProgram)                                     \
     X(PFNGLGETUNIFORMLOCATIONPROC, GetUniformLocation)                     \
     X(PFNGLUNIFORM1IPROC, Uniform1i)                                       \
+    X(PFNGLUNIFORM1FPROC, Uniform1f)                                       \
     X(PFNGLUNIFORM2FPROC, Uniform2f)                                       \
     X(PFNGLUNIFORM4FPROC, Uniform4f)                                       \
     X(PFNGLUNIFORM4IPROC, Uniform4i)                                       \
@@ -98,7 +99,7 @@ struct BfmGlExec {
     Snapshot snap[BFM_GL_MAX_SNAPSHOTS];
     GLuint snap_fbo;
     int scale;
-    GLint u_size, u_flip, u_pass, u_pass_bit, u_dither, u_scale, u_win, u_vram, u_repl;
+    GLint u_size, u_flip, u_half, u_pass, u_pass_bit, u_dither, u_scale, u_win, u_vram, u_repl;
     GLint b_src, b_tex, b_alpha;
     /* redundant-state filter for run_cmds (-2 = unknown) */
     int cur_blend, cur_pass, cur_dither;
@@ -113,67 +114,132 @@ static const char *vs_src =
     "layout(location = 2) in vec2 a_uv;\n"
     "layout(location = 3) in uvec4 a_info;\n"
     "layout(location = 4) in vec2 a_st;\n"
+    "layout(location = 5) in ivec4 a_t01;\n"   /* x0 y0 x1 y1 */
+    "layout(location = 6) in ivec2 a_t2;\n"    /* x2 y2 */
+    "layout(location = 7) in uvec3 a_tuv;\n"   /* u | v << 16 per vertex */
+    "layout(location = 8) in uvec3 a_trgb;\n"  /* r | g << 8 | b << 16 per vertex */
     "uniform vec2 u_size;\n"
     "uniform int u_flip;\n"
+    "uniform float u_half;\n"
     "out vec4 v_color;\n"
     "noperspective out vec2 v_uv;\n"
     "flat out uvec4 v_info;\n"
     "noperspective out vec2 v_st;\n"
+    "flat out ivec4 v_t01;\n"
+    "flat out ivec2 v_t2;\n"
+    "flat out uvec3 v_tuv;\n"
+    "flat out uvec3 v_trgb;\n"
     "void main() {\n"
-    "    vec2 n = a_pos / u_size * 2.0 - 1.0;\n"
+    /* The PS1 (and the cpu rasteriser) samples a pixel at its integer
+     * position; GL samples a fragment at its centre. Moving the geometry by
+     * half a target pixel (u_half = 0.5 / scale target-local pixels; 0 for
+     * the window overlay) puts the first sub-pixel's centre on the integer
+     * position, so coverage follows the PS1 top-left rule and texture
+     * coordinates and colours are those of the integer sample point. */
+    "    vec2 n = (a_pos + u_half) / u_size * 2.0 - 1.0;\n"
     "    if (u_flip != 0) n.y = -n.y;\n"
     "    gl_Position = vec4(n, 0.0, 1.0);\n"
     "    v_color = a_color; v_uv = a_uv; v_info = a_info; v_st = a_st;\n"
+    "    v_t01 = a_t01; v_t2 = a_t2; v_tuv = a_tuv; v_trgb = a_trgb;\n"
     "}\n";
 
-/* Mirrors bfm_gl_sample / bfm_gl_modulate / bfm_gl_dither5. */
+/* Mirrors bfm_gl_sample / bfm_gl_modulate / bfm_gl_dither5. VRAM texels and
+ * vertex colours take the PS1's integer route: the interpolated 8-bit colour
+ * is truncated, modulation is ((texel5 << 3) * colour8) >> 7, dithering adds
+ * to that 8-bit value, and the stored channel is its top five bits (written
+ * as c5 / 31 so an RGBA8 target reads back as c5). HD replacement and
+ * snapshot texels keep their 8-bit precision. */
 static const char *fs_src =
     "#version 330 core\n"
     "in vec4 v_color;\n"
     "noperspective in vec2 v_uv;\n"
     "flat in uvec4 v_info;\n"
     "noperspective in vec2 v_st;\n"
+    "flat in ivec4 v_t01;\n"
+    "flat in ivec2 v_t2;\n"
+    "flat in uvec3 v_tuv;\n"
+    "flat in uvec3 v_trgb;\n"
     "uniform usampler2D u_vram;\n"
     "uniform sampler2D u_repl;\n"
     "uniform int u_pass;\n"
     "uniform int u_pass_bit;\n"
     "uniform int u_dither;\n"
     "uniform int u_scale;\n"
+    "uniform float u_half;\n"
     "uniform ivec4 u_win;\n"
     "layout(location = 0, index = 0) out vec4 o_color;\n"
     "layout(location = 0, index = 1) out vec4 o_factor;\n"
     "const int dm[16] = int[16](-4, 0, -3, 1, 2, -2, 3, -1, -3, 1, -4, 0, 3, -1, 2, -2);\n"
+    /* interpolants that are exactly integral at the sample point (texel per
+     * pixel, vertex colours) must not floor to the previous integer because
+     * of interpolation rounding */
+    "const float EPS = 1.0 / 512.0;\n"
     "uint vr(int x, int y) { return texelFetch(u_vram, ivec2(x & 1023, y & 511), 0).r; }\n"
     "int wnd(int u, int off, int size) {\n"
     "    if (size <= 0) return u;\n"
     "    return (u & (size - 1)) | (off & ~(size - 1) & 255);\n"
-    "}\n"
+    "}\n";
+
+/* main(): a second literal keeps each within C99's 4095-character minimum */
+static const char *fs_main =
     "void main() {\n"
     "    uint flags = v_info.z;\n"
     "    vec3 rgb = v_color.rgb;\n"
-    "    bool stp = false;\n"
+    "    ivec3 c8 = ivec3(floor(v_color.rgb * 255.0 + EPS));\n"
+    "    int iu = int(floor(v_uv.x + EPS)), iv = int(floor(v_uv.y + EPS));\n"
+    "    bool stp = false, exact = (flags & 1u) == 0u;\n"
+    /* On a 1x target (a target pixel is a PS1 pixel; not the window
+     * overlay) the texture coordinates and the colour are the PS1
+     * rasteriser's integers: the
+     * barycentric weights of the fragment's integer position, times the
+     * vertex values, divided by the signed area, truncated. Weights are
+     * below 2^20 and values below 2^11, so the sums fit 32 bits. The
+     * interpolated values above remain for the window overlay and for
+     * internal scales > 1, where the sample points are fractional. */
+    "    if (u_scale == 1 && u_half > 0.0) {\n"
+    "        ivec2 q = ivec2(floor(gl_FragCoord.xy));\n"
+    "        int x0 = v_t01.x, y0 = v_t01.y, x1 = v_t01.z, y1 = v_t01.w, x2 = v_t2.x, y2 = v_t2.y;\n"
+    "        int area = (x1 - x0) * (y2 - y0) - (y1 - y0) * (x2 - x0);\n"
+    "        int w0 = (x1 - q.x) * (y2 - q.y) - (y1 - q.y) * (x2 - q.x);\n"
+    "        int w1 = (x2 - q.x) * (y0 - q.y) - (y2 - q.y) * (x0 - q.x);\n"
+    "        int w2 = (x0 - q.x) * (y1 - q.y) - (y0 - q.y) * (x1 - q.x);\n"
+    "        if (area != 0) {\n"
+    "            ivec3 u3 = ivec3(v_tuv & 0xFFFFu), v3 = ivec3(v_tuv >> 16);\n"
+    "            ivec3 r3 = ivec3(v_trgb & 0xFFu), g3 = ivec3((v_trgb >> 8) & 0xFFu);\n"
+    "            ivec3 b3 = ivec3((v_trgb >> 16) & 0xFFu);\n"
+    "            iu = (w0 * u3.x + w1 * u3.y + w2 * u3.z) / area;\n"
+    "            iv = (w0 * v3.x + w1 * v3.y + w2 * v3.z) / area;\n"
+    "            c8 = clamp(ivec3((w0 * r3.x + w1 * r3.y + w2 * r3.z) / area,\n"
+    "                             (w0 * g3.x + w1 * g3.y + w2 * g3.z) / area,\n"
+    "                             (w0 * b3.x + w1 * b3.y + w2 * b3.z) / area), 0, 255);\n"
+    "        }\n"
+    "    }\n";
+
+static const char *fs_tex =
     "    if ((flags & 1u) != 0u) {\n"
-    "        vec3 t;\n"
+    "        vec3 t = vec3(0.0);\n"
+    /* replacement/snapshot texels sample where the unshifted geometry did */
+    "        vec2 st = u_half > 0.0 ? v_st + 0.5 * (dFdx(v_st) + dFdy(v_st)) : v_st;\n"
     "        if ((flags & 16u) != 0u) {\n"
-    "            vec4 r = texture(u_repl, v_st);\n"
+    "            vec4 r = texture(u_repl, st);\n"
     "            stp = r.a > 0.5;\n"
     "            if (!stp && all(lessThan(r.rgb, vec3(0.5 / 255.0)))) discard;\n"
     "            t = r.rgb;\n"
     "        } else if (v_info.w != 0u) {\n"
-    "            vec4 r = texture(u_repl, v_st);\n"
+    "            vec4 r = texture(u_repl, st);\n"
     "            if (r.a < 0.5) discard;\n"
     "            t = r.rgb;\n"
     "        } else {\n"
     "            uint p;\n"
+    "            int u = iu, v = iv;\n"
     "            if ((flags & 8u) != 0u) {\n"
-    "                p = vr(int(floor(v_uv.x)), int(floor(v_uv.y)));\n"
+    "                p = vr(u, v);\n"
     "            } else {\n"
-    "                int u = int(floor(v_uv.x)) & 255, v = int(floor(v_uv.y)) & 255;\n"
     "                uint tp = v_info.y, cl = v_info.x, d = (tp >> 7) & 3u;\n"
     "                int bx = int(tp & 15u) * 64, by = int((tp >> 4) & 1u) * 256;\n"
     "                int cx = int(cl & 63u) * 16, cy = int((cl >> 6) & 511u);\n"
-    "                u = wnd(u, u_win.x, u_win.z);\n"
-    "                v = wnd(v, u_win.y, u_win.w);\n"
+    "                u = wnd(u & 255, u_win.x, u_win.z);\n"
+    "                v = wnd(v & 255, u_win.y, u_win.w);\n"
     "                if (d == 0u) {\n"
     "                    uint w = vr(bx + u / 4, by + v);\n"
     "                    p = vr(cx + int((w >> uint((u & 3) * 4)) & 15u), cy);\n"
@@ -186,16 +252,25 @@ static const char *fs_src =
     "                if (p == 0u) discard;\n"
     "            }\n"
     "            stp = (p & 0x8000u) != 0u;\n"
-    "            t = vec3(float(p & 31u), float((p >> 5) & 31u), float((p >> 10) & 31u)) / 31.0;\n"
+    "            {\n"
+    "                ivec3 t5 = ivec3(int(p & 31u), int((p >> 5) & 31u), int((p >> 10) & 31u));\n"
+    "                c8 = (flags & 2u) != 0u ? t5 << 3 : min((t5 * c8) >> 4, 255);\n"
+    "            }\n"
+    "            exact = true;\n"
     "        }\n"
-
-    "        rgb = (flags & 2u) != 0u ? t : min(t * v_color.rgb * (255.0 / 128.0), vec3(1.0));\n"
+    "        if (!exact) rgb = (flags & 2u) != 0u ? t : min(t * v_color.rgb * (255.0 / 128.0), vec3(1.0));\n"
     "    }\n"
-    "    if (u_dither != 0 && (flags & 4u) != 0u) {\n"
+    "    if (exact) {\n"
+    "        if (u_dither != 0 && (flags & 4u) != 0u) {\n"
+    "            ivec2 q = ivec2(gl_FragCoord.xy) / u_scale;\n"
+    "            c8 = clamp(c8 + dm[(q.y & 3) * 4 + (q.x & 3)], 0, 255);\n"
+    "        }\n"
+    "        rgb = vec3(c8 >> 3) / 31.0;\n"
+    "    } else if (u_dither != 0 && (flags & 4u) != 0u) {\n"
     "        ivec2 q = ivec2(gl_FragCoord.xy) / u_scale;\n"
     "        float d = float(dm[(q.y & 3) * 4 + (q.x & 3)]);\n"
-    "        vec3 c8 = clamp(floor(rgb * 255.0 + 0.5) + d, 0.0, 255.0);\n"
-    "        rgb = floor(c8 / 8.0) / 31.0;\n"
+    "        vec3 d8 = clamp(floor(rgb * 255.0 + 0.5) + d, 0.0, 255.0);\n"
+    "        rgb = floor(d8 / 8.0) / 31.0;\n"
     "    }\n"
     "    /* two-pass draws: pass 1 keeps fragments whose bit is 0, pass 2 those\n"
     "     * whose bit is 1; the bit is STP (mode-2 split) or the written bit 15\n"
@@ -257,11 +332,11 @@ unsigned bfm_gl_exec_error(BfmGlExec *x) {
     return e;
 }
 
-static GLuint compile(BfmGlExec *x, GLenum kind, const char *src, char *err,
-                      size_t n) {
+static GLuint compile(BfmGlExec *x, GLenum kind, const char *const *src, GLsizei parts,
+                      char *err, size_t n) {
     GLuint s = x->CreateShader(kind);
     GLint ok = 0;
-    x->ShaderSource(s, 1, &src, NULL);
+    x->ShaderSource(s, parts, src, NULL);
     x->CompileShader(s);
     x->GetShaderiv(s, GL_COMPILE_STATUS, &ok);
     if (!ok) {
@@ -272,12 +347,14 @@ static GLuint compile(BfmGlExec *x, GLenum kind, const char *src, char *err,
     return s;
 }
 
-static GLuint link(BfmGlExec *x, const char *vs, const char *fs, char *err,
+/* fs: the fragment shader as consecutive literals (each within C99's
+ * 4095-character minimum). */
+static GLuint link(BfmGlExec *x, const char *vs, const char *const *fs, GLsizei nfs, char *err,
                    size_t n) {
-    GLuint v = compile(x, GL_VERTEX_SHADER, vs, err, n), f, p;
+    GLuint v = compile(x, GL_VERTEX_SHADER, &vs, 1, err, n), f, p;
     GLint ok = 0;
     if (!v) return 0;
-    if (!(f = compile(x, GL_FRAGMENT_SHADER, fs, err, n))) {
+    if (!(f = compile(x, GL_FRAGMENT_SHADER, fs, nfs, err, n))) {
         x->DeleteShader(v);
         return 0;
     }
@@ -363,13 +440,18 @@ BfmGlExec *bfm_gl_exec_create(BfmGlGetProc gp, int scale, char *err, size_t n) {
         return NULL;
     }
     x->scale = scale;
-    if (!(x->prog = link(x, vs_src, fs_src, err, n)) ||
-        !(x->blit = link(x, blit_vs, blit_fs, err, n))) {
+    {
+        const char *fs[3];
+        fs[0] = fs_src; fs[1] = fs_main; fs[2] = fs_tex;
+        x->prog = link(x, vs_src, fs, 3, err, n);
+    }
+    if (!x->prog || !(x->blit = link(x, blit_vs, &blit_fs, 1, err, n))) {
         bfm_gl_exec_destroy(x);
         return NULL;
     }
     x->u_size = x->GetUniformLocation(x->prog, "u_size");
     x->u_flip = x->GetUniformLocation(x->prog, "u_flip");
+    x->u_half = x->GetUniformLocation(x->prog, "u_half");
     x->u_pass = x->GetUniformLocation(x->prog, "u_pass");
     x->u_pass_bit = x->GetUniformLocation(x->prog, "u_pass_bit");
     x->u_dither = x->GetUniformLocation(x->prog, "u_dither");
@@ -397,11 +479,23 @@ BfmGlExec *bfm_gl_exec_create(BfmGlGetProc gp, int scale, char *err, size_t n) {
                             (const void *)offsetof(BfmGlVertex, clut));
     x->VertexAttribPointer(4, 2, GL_FLOAT, GL_FALSE, sizeof(BfmGlVertex),
                            (const void *)offsetof(BfmGlVertex, s));
+    x->VertexAttribIPointer(5, 4, GL_SHORT, sizeof(BfmGlVertex),
+                            (const void *)offsetof(BfmGlVertex, txy));
+    x->VertexAttribIPointer(6, 2, GL_SHORT, sizeof(BfmGlVertex),
+                            (const void *)(offsetof(BfmGlVertex, txy) + 4 * sizeof(int16_t)));
+    x->VertexAttribIPointer(7, 3, GL_UNSIGNED_INT, sizeof(BfmGlVertex),
+                            (const void *)offsetof(BfmGlVertex, tuv));
+    x->VertexAttribIPointer(8, 3, GL_UNSIGNED_INT, sizeof(BfmGlVertex),
+                            (const void *)offsetof(BfmGlVertex, trgb));
     x->EnableVertexAttribArray(0);
     x->EnableVertexAttribArray(1);
     x->EnableVertexAttribArray(2);
     x->EnableVertexAttribArray(3);
     x->EnableVertexAttribArray(4);
+    x->EnableVertexAttribArray(5);
+    x->EnableVertexAttribArray(6);
+    x->EnableVertexAttribArray(7);
+    x->EnableVertexAttribArray(8);
     x->BindVertexArray(0);
 
     x->PixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -679,6 +773,7 @@ static void run_cmds(BfmGlExec *x, const BfmGlBatch *b, int dither,
                 bfm_gl_batch_target_size(b, BFM_GL_TARGET_WINDOW, &w, &h);
                 x->Uniform1i(x->u_flip, 1);
                 x->Uniform1i(x->u_scale, 1);
+                x->Uniform1f(x->u_half, 0.0f);   /* overlay: display pixels as given */
                 t = NULL;
                 stencil = 0;
             } else {
@@ -690,6 +785,7 @@ static void run_cmds(BfmGlExec *x, const BfmGlBatch *b, int dither,
                 h = t->h;
                 x->Uniform1i(x->u_flip, 0);
                 x->Uniform1i(x->u_scale, scale);
+                x->Uniform1f(x->u_half, 0.5f / (float)scale);
                 stencil = t->stencil != 0;
                 if (stencil) x->Enable(GL_STENCIL_TEST);
                 else x->Disable(GL_STENCIL_TEST);
@@ -801,10 +897,12 @@ static int readback_target(BfmGlExec *x, Target *t, const BfmPlatRect *r, uint16
     x->BindFramebuffer(GL_FRAMEBUFFER, t->fbo);
     x->ReadPixels(r->x * s, r->y * s, r->w * s, r->h * s, GL_RGBA, GL_UNSIGNED_BYTE, buf);
     x->BindFramebuffer(GL_FRAMEBUFFER, 0);
+    /* the first sub-pixel of each native pixel is the one whose centre sits
+     * on the integer sample point (u_half), so it holds the native result */
     for (j = 0; j < r->h; j++)
         for (i = 0; i < r->w; i++) {
-            const uint8_t *p = buf + (((size_t)(j * s + s / 2) * (size_t)(r->w * s)) +
-                                      (size_t)(i * s + s / 2)) * 4u;
+            const uint8_t *p = buf + (((size_t)(j * s) * (size_t)(r->w * s)) +
+                                      (size_t)(i * s)) * 4u;
             out[(size_t)j * r->w + i] = (uint16_t)((p[0] >> 3) | ((p[1] >> 3) << 5) |
                                                    ((p[2] >> 3) << 10) |
                                                    (p[3] >= 128 ? 0x8000 : 0));

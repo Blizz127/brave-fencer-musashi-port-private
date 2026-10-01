@@ -140,7 +140,14 @@ typedef struct BfmGlVertex {
     uint16_t flags;              /* BFM_GLV_* */
     uint16_t repl;               /* replacement slot + 1, 0 = none */
     float s, t;                  /* replacement coords */
-} BfmGlVertex;                   /* 32 bytes */
+    /* The whole triangle, the same on its three vertices (flat): at 1x the
+     * fragment shader evaluates texture coordinates and colours with the
+     * PS1's integer barycentric formula instead of interpolating. */
+    int16_t txy[6];              /* x0 y0 x1 y1 x2 y2, target-local */
+    uint32_t tuv[3];             /* u | v << 16, unwrapped (rect far corners
+                                    exceed 255; copies hold VRAM coords) */
+    uint32_t trgb[3];            /* r | g << 8 | b << 16 */
+} BfmGlVertex;                   /* 68 bytes */
 
 #define BFM_GLV_TEXTURED 0x01u
 #define BFM_GLV_RAW      0x02u   /* no colour modulation */

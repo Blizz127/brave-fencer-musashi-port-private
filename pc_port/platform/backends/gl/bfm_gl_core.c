@@ -152,15 +152,18 @@ uint16_t bfm_gl_sample(const BfmGlVram *v, uint16_t tpage, uint16_t clut,
 
 static int round_i(double x) { return (int)floor(x + 0.5); }
 
+/* The PS1's integer modulation, (texel5 * colour8) >> 7 clamped to 31, as
+ * the 8-bit value an RGBA8 target holds for that 5-bit channel (the gl
+ * fragment shader writes c5 / 31; reading it back >> 3 gives c5). */
 void bfm_gl_modulate(uint16_t texel, int r, int g, int b, int raw,
                      uint8_t out[3]) {
     int c[3], i;
     c[0] = r; c[1] = g; c[2] = b;
     for (i = 0; i < 3; i++) {
-        double t = (double)((texel >> (5 * i)) & 31) / 31.0;
-        double o = raw ? t : t * (double)c[i] / 128.0;
-        if (o > 1.0) o = 1.0;
-        out[i] = (uint8_t)round_i(o * 255.0);
+        int t = (texel >> (5 * i)) & 31;
+        int o = raw ? t : (t * c[i]) >> 7;
+        if (o > 31) o = 31;
+        out[i] = (uint8_t)round_i(o * 255.0 / 31.0);
     }
 }
 
@@ -840,12 +843,19 @@ static void put_tri(BfmGlBatch *b, BfmGlCmd *c, const Corner *k0, const Corner *
     if (!v) return;
     k[0] = k0; k[1] = k1; k[2] = k2;
     for (i = 0; i < 3; i++) {
+        int j;
         memset(&v[i], 0, sizeof v[i]);
         v[i].x = k[i]->x;
         v[i].y = k[i]->y;
         v[i].r = k[i]->r; v[i].g = k[i]->g; v[i].b = k[i]->bl; v[i].a = 255;
         v[i].u = (uint16_t)k[i]->u;
         v[i].v = (uint16_t)k[i]->v;
+        for (j = 0; j < 3; j++) {
+            v[i].txy[2 * j] = (int16_t)k[j]->x;
+            v[i].txy[2 * j + 1] = (int16_t)k[j]->y;
+            v[i].tuv[j] = (uint32_t)((int)k[j]->u & 0xFFFF) | ((uint32_t)((int)k[j]->v & 0xFFFF) << 16);
+            v[i].trgb[j] = (uint32_t)k[j]->r | ((uint32_t)k[j]->g << 8) | ((uint32_t)k[j]->bl << 16);
+        }
         v[i].clut = p ? p->clut : 0;
         v[i].tpage = p ? p->tpage : 0;
         v[i].flags = flags;
