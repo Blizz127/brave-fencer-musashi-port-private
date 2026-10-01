@@ -508,3 +508,12 @@
 80034b98
 80038210
 800384a8
+# Clean-room pilot-retry B09 merged back 2026-10-01 (bfm-rederive 6cc8fdb), main region.
+80011778
+8002a2d4
+8002e79c
+8002e8dc
+80030634
+80030ca4
+80031b7c
+80038908
