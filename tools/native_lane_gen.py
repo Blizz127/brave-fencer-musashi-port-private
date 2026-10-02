@@ -31,7 +31,9 @@ Rules (each rejection names the first rule that failed, in report.json):
   ub      : no undef/poison operands and no unreachable (UB the host
             optimizer could exploit differently from gcc-2.7.2)
   abi     : parameters/returns limited to 8/16/32-bit integers and pointers;
-            no direct call passing fewer arguments than the callee reads
+            no direct call passing fewer arguments than the callee reads;
+            no void-typed function whose retail caller reads v0/v1 after
+            the jal (the retail words return a value the C does not)
   memory  : (also) no volatile access, which in decomp C means a device
   irq     : no loop that neither stores nor calls (a native call runs
             without IRQ delivery, so a polling loop could spin forever)
@@ -1375,6 +1377,91 @@ def cycle_summary(results):
                 would_refuse=would)
 
 
+def _gpr_reads(w):
+    """GPRs a MIPS I word reads (conservative)."""
+    op, rs, rt = w >> 26, (w >> 21) & 31, (w >> 16) & 31
+    if op == 0:
+        fn = w & 63
+        if fn in (12, 13, 16, 18):          # syscall break mfhi mflo
+            return set()
+        if fn in (0, 2, 3):                 # sll srl sra
+            return {rt}
+        if fn in (8, 9, 17, 19):            # jr jalr mthi mtlo
+            return {rs}
+        return {rs, rt}
+    if op in (2, 3, 15):                    # j jal lui
+        return set()
+    if op == 18:                            # cop2: mtc2/ctc2 read rt
+        return {rt} if rs in (4, 6) else set()
+    if op in (34, 38, 40, 41, 42, 43, 46, 4, 5):   # lwl lwr stores beq bne
+        return {rs, rt}
+    return {rs}
+
+
+def _gpr_writes(w):
+    op = w >> 26
+    if op == 0:
+        fn = w & 63
+        return set() if fn in (8, 12, 13, 17, 19, 24, 25, 26, 27) else {(w >> 11) & 31}
+    if op == 3:
+        return {31}
+    if 8 <= op <= 15 or 32 <= op <= 38:
+        return {(w >> 16) & 31}
+    if op == 18 and (w >> 21) & 31 in (0, 2):   # mfc2 cfc2
+        return {(w >> 16) & 31}
+    return set()
+
+
+def _is_transfer(w):
+    op = w >> 26
+    return op in (1, 2, 3, 4, 5, 6, 7) or (op == 0 and w & 63 in (8, 9))
+
+
+def void_result_readers(target, blobs):
+    """Retail callers that read v0 or v1 after `jal target` (past its delay
+    slot) before writing it: the callee returns a value there although its C
+    is typed void. blobs: [(base vram, bytes)]. Scans straight-line code up to
+    the next control transfer (and that transfer's delay slot); jalr callers
+    (target unknown statically) are not covered."""
+    hits = []
+    want = 0x0C000000 | ((target >> 2) & 0x3FFFFFF)
+    for base, data in blobs:
+        n = len(data) // 4
+        words = [int.from_bytes(data[4 * i:4 * i + 4], "little") for i in range(n)]
+        for i, w in enumerate(words):
+            if w != want or ((base + 4 * i) & 0xF0000000) != (target & 0xF0000000):
+                continue
+            live = {2, 3}
+            j, stop = i + 2, None
+            while j < n and j < i + 64 and live:
+                if stop is not None and j > stop:
+                    break
+                x = words[j]
+                if _gpr_reads(x) & live:
+                    hits.append(base + 4 * j)
+                    break
+                live -= _gpr_writes(x)
+                if x >> 26 == 3 or (x >> 26 == 0 and x & 63 == 9):
+                    break              # another call: it writes v0/v1 itself
+                if _is_transfer(x):
+                    stop = j + 1       # its delay slot still runs
+                j += 1
+    return hits
+
+
+def retail_code_blobs(infos):
+    """The main EXE text and each configured overlay member's code ranges."""
+    blobs = []
+    if MAIN_EXE.exists():
+        blobs.append((0x80010000, MAIN_EXE.read_bytes()[0x800:]))
+    for info in infos.values():
+        for lo, hi in info.get("code") or []:
+            off = lo - info["vram"] + info["start"]
+            if 0 <= off <= len(info["data"]):
+                blobs.append((lo, info["data"][off:off + (hi - lo)]))
+    return blobs
+
+
 def psyq_hooked(hooks):
     """PsyQ compat-table entry points (pc_port/platform/psyq/bfm_psyq_compat.def)
     whose body contains a PC the port sequences or observes: the lane must
@@ -1812,6 +1899,19 @@ def main():
         if not drop:
             break
         admitted = [a for a in admitted if a["qname"] not in drop]
+    # A void-typed body cannot return a value, but the retail words of a
+    # function the C calls void may still leave one in v0/v1 that a retail
+    # caller reads after the jal (800D2454 cut the intro FMV this way). Its
+    # native wrapper would leave the register stale: refuse it (rule abi).
+    blobs = retail_code_blobs(infos)
+    for a in admitted:
+        if a["defs"]["lane_" + a["qname"]][0] != "void":
+            continue
+        readers = void_result_readers(a["vram"], blobs)
+        if readers:
+            a.update(admitted=False, rule="abi",
+                     detail="void callee, caller reads v0/v1 at " + ", ".join(f"{p:08x}" for p in readers[:4]))
+    admitted = [a for a in admitted if a["admitted"]]
     # A native caller of an admitted callee links to it directly; otherwise
     # the thunk runs the guest words. Duplicate definitions cannot occur:
     # each TU defines only its own registry function under lane_func_*.

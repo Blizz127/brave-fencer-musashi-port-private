@@ -248,6 +248,31 @@ class Instrument(unittest.TestCase):
         self.assertIn("division mismatch", out["reason"])
 
 
+class VoidResultRule(unittest.TestCase):
+    """rule abi: a void-typed callee whose retail caller reads v0/v1."""
+
+    def blob(self, words):
+        return [(BASE, b"".join(w.to_bytes(4, "little") for w in words))]
+
+    def test_reader_found(self):
+        callee = 0x80200000
+        beqz_v0 = branch(4, 2, 0, BASE + 8, BASE + 0x14)
+        words = [jal(callee), NOP, beqz_v0, NOP, NOP, JR_RA, NOP]
+        self.assertEqual(g.void_result_readers(callee, self.blob(words)), [BASE + 8])
+
+    def test_not_readers(self):
+        callee = 0x80200000
+        beqz_v0 = branch(4, 2, 0, BASE + 0xC, BASE + 0x18)
+        cases = [
+            [jal(callee), addiu(4, 2, 0), NOP, JR_RA, NOP],          # read in the jal's own delay slot
+            [jal(callee), NOP, addiu(2, 0, 1), beqz_v0, NOP, NOP, JR_RA, NOP],   # v0 written first
+            [jal(callee), NOP, jal(0x80300000), NOP, beqz_v0, NOP, JR_RA, NOP],  # another call clobbers it
+            [jal(callee), NOP, j(BASE + 0x20), NOP, addiu(4, 2, 0), NOP, NOP, NOP, JR_RA, NOP],  # past the transfer
+        ]
+        for words in cases:
+            self.assertEqual(g.void_result_readers(callee, self.blob(words)), [], words)
+
+
 def exe_words(vram, size):
     exe = g.MAIN_EXE
     if not exe.exists():
