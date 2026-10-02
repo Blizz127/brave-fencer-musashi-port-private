@@ -463,6 +463,67 @@ static int has_guest_locals(const MusashiNativeLaneOverlayEntry *e) {
     return 0;
 }
 
+
+/* ---- entry-specific seeded patterns: main_0012 80161A90 ----------------
+ * func_80161A90(obj): obj->timer (s16 @+0x1C8) counts down while the mode
+ * byte (D_80078E78+0x48 == D_80078EC0, low 7 bits) is 6; at mode 6 with the
+ * timer at 0 it calls func_8014AC10(0x3B) (guest call, not a lane entry).
+ * Patterns above PATTERNS: the first 42 are every timer x mode combination
+ * of the brief, the rest are pseudo-random (own LCG, a pure function of the
+ * pattern so the parent can classify without running the case). */
+enum { T80161A90 = 0x80161a90u, MODE_ADDR = 0x80078ec0u, TIMER_OFF = 0x1c8u, REC_BASE = 0x8011d030u,
+       REC_STRIDE = 0x58u, REC_COUNT = 30u, T_EXTRA = 42 + 240 };
+typedef struct { uint16_t timer; uint8_t mode; int plant; unsigned cls; } T161Seed;
+enum { K_T0_M6, K_T0_OTHER, K_TN_M6_TO0, K_TN_M6_STAY, K_TN_OTHER, K_CLASSES };
+static const char *const k_names[K_CLASSES] = {"timer0+mode6(call,no dec)", "timer0+other mode(none)",
+    "timer!=0+mode6->0(dec+call)", "timer!=0+mode6->!0(dec only)", "timer!=0+other mode(none)"};
+static unsigned k_same[K_CLASSES], k_total[K_CLASSES], k_cyc_same[K_CLASSES], k_planted_same;
+static uint32_t lcg_(uint32_t *s) { *s = *s * 1664525u + 1013904223u; return *s >> 8; }
+static T161Seed t161_seed(unsigned pattern) {
+    static const uint16_t timers[6] = {0, 1, 2, 0x7fff, 0xffff, 0};
+    static const uint8_t modes[7] = {6, 0x86, 0, 5, 7, 0x7f, 0};
+    unsigned k = pattern - PATTERNS - 1u;
+    uint32_t s = 0xc0ffee11u ^ (pattern * 0x9e3779b9u);
+    T161Seed r;
+    if (k < 42u) {
+        r.timer = timers[k / 7u];
+        r.mode = modes[k % 7u];
+        if (k / 7u == 5u) r.timer = (uint16_t)lcg_(&s);
+        if (k % 7u == 6u) r.mode = (uint8_t)lcg_(&s);
+    } else {
+        uint32_t a = lcg_(&s);
+        r.timer = (a & 3u) == 0u ? (uint16_t)lcg_(&s) : (uint16_t)(lcg_(&s) % 4u);
+        r.mode = (lcg_(&s) & 1u) ? (uint8_t)(6u | (lcg_(&s) & 0x80u)) : (uint8_t)lcg_(&s);
+    }
+    r.plant = (int)(lcg_(&s) & 1u);
+    if ((r.mode & 0x7fu) == 6u) r.cls = r.timer == 0u ? K_T0_M6 : r.timer == 1u ? K_TN_M6_TO0 : K_TN_M6_STAY;
+    else r.cls = r.timer == 0u ? K_T0_OTHER : K_TN_OTHER;
+    return r;
+}
+static int is_t161(const MusashiNativeLaneOverlayEntry *e) {
+    return e->entry.guest_pc == T80161A90 && e->member && !strcmp(e->member, "main_0012");
+}
+/* After seed_arena + make_args: put obj at args[0], set its timer, the mode
+ * byte, and (half the cases) a matching 0x3B record in the table
+ * func_8014AC10 scans so the callee does real work when it is reached. */
+static void t161_apply(MusashiBootMemory *memory, unsigned pattern, uint32_t *args) {
+    T161Seed r = t161_seed(pattern);
+    uint32_t obj = args[0] & ~3u;
+    args[0] = obj;
+    musashi_boot_write16(memory, obj + TIMER_OFF, r.timer);
+    memory->bytes[MODE_ADDR & 0x1fffffu] = r.mode;
+    if (r.plant) {
+        uint32_t rec = REC_BASE + REC_STRIDE * (uint32_t)(pattern % REC_COUNT);
+        musashi_boot_write16(memory, rec, 0x3bu);
+        musashi_boot_write32(memory, rec + 0x20u, pattern & 2u ? 0u : obj + 0x800u);
+    }
+}
+static unsigned extra_patterns(const MusashiNativeLaneOverlayEntry *e) {
+    if (g_foreign) return 0u;
+    if (is_t161(e)) return T_EXTRA;
+    return has_guest_locals(e) ? GL_EXTRA : 0u;
+}
+
 static int ram_differs(const MusashiBootMemory *memory, const uint8_t *reference,
                        const MusashiNativeLaneOverlayEntry *e, const char *what) {
     const uint32_t lo = STACK_TOP - FRAME_GUARD - 0x80000000u;
@@ -493,6 +554,7 @@ static int run_case(MusashiBootMemory *memory, const uint8_t *image, size_t idx,
     memcpy(memory->bytes, image, MUSASHI_RAM_SIZE);
     seed_arena(memory, e->entry.guest_pc ^ (pattern * 0x9e3779b9u));
     make_args(negative ? 0u : pattern, args);
+    if (!negative && pattern > PATTERNS && is_t161(e)) t161_apply(memory, pattern, args);
     if (pattern == PATTERNS) {
         /* flip one byte in the middle of the extent (not the first word, so
          * the entry PC still decodes the same prologue) */
@@ -572,6 +634,7 @@ static int cycle_case(MusashiBootMemory *memory, const uint8_t *image, size_t id
     memcpy(memory->bytes, image, MUSASHI_RAM_SIZE);
     seed_arena(memory, e->entry.guest_pc ^ (pattern * 0x9e3779b9u));
     make_args(pattern, args);
+    if (pattern > PATTERNS && is_t161(e)) t161_apply(memory, pattern, args);
     memcpy(start, memory->bytes, MUSASHI_RAM_SIZE);
     g_cycles = 0; g_nmarks = 0; g_overflow = 0;
     alarm(5);
@@ -699,7 +762,7 @@ int main(int argc, char **argv) {
         if (only && strtoul(only, NULL, 16) != mine[i].entry.guest_pc) continue;
         /* Entries with guest-frame locals get GL_EXTRA more seeded positive
          * patterns (the generic three rarely complete their callees). */
-        unsigned last = PATTERNS + (has_guest_locals(&mine[i]) && !g_foreign ? GL_EXTRA : 0u);
+        unsigned last = PATTERNS + extra_patterns(&mine[i]);
         for (pattern = 0; pattern <= last; ++pattern) {
             int status, outcome;
             pid_t child;
@@ -721,6 +784,11 @@ int main(int argc, char **argv) {
             if (!WIFEXITED(status)) outcome = pattern == PATTERNS || g_foreign ? NEG_RAN_NATIVE : NOT_COMPARABLE;
             counts[outcome]++;
             if (outcome == SAME) same++;
+            if (is_t161(&mine[i]) && !g_foreign && pattern > PATTERNS) {
+                T161Seed r = t161_seed(pattern);
+                k_total[r.cls]++;
+                if (outcome == SAME) { k_same[r.cls]++; k_planted_same += r.plant && (r.cls == K_T0_M6 || r.cls == K_TN_M6_TO0); }
+            }
             if (pattern != PATTERNS && !g_foreign && mine[i].entry.ledger) {
                 int cstatus, c;
                 fflush(stderr);
@@ -734,6 +802,7 @@ int main(int argc, char **argv) {
                 c = WIFEXITED(cstatus) && WEXITSTATUS(cstatus) <= C_NOT_COMPARABLE ? WEXITSTATUS(cstatus)
                     : (outcome == SAME ? C_DIFFERENT : C_NOT_COMPARABLE);
                 ccounts[c]++;
+                if (c == C_SAME && is_t161(&mine[i]) && pattern > PATTERNS) k_cyc_same[t161_seed(pattern).cls]++;
                 if (c == C_SAME) cs++; else if (c == C_DIFFERENT) cd++; else cn++;
             }
             if (outcome == DIFFERENT || outcome == NEG_RAN_NATIVE || outcome == NOT_NATIVE ||
@@ -746,6 +815,13 @@ int main(int argc, char **argv) {
                             ? "host fault outside the documented mirror gap"
                             : "digest did not match the loaded member");
             }
+        }
+        if (is_t161(&mine[i]) && !g_foreign) {
+            unsigned c;
+            for (c = 0; c < K_CLASSES; ++c)
+                printf("overlay_t161: class %-30s total=%u same=%u cycles_same=%u\n", k_names[c], k_total[c],
+                       k_same[c], k_cyc_same[c]);
+            printf("overlay_t161: call-path same with a planted 0x3B record=%u\n", k_planted_same);
         }
         if (mine[i].entry.ledger) {
             cf[cd ? C_DIFFERENT : cs ? C_SAME : C_NOT_COMPARABLE]++;
