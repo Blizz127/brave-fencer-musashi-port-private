@@ -838,3 +838,109 @@ unchanged. r31 (`bfm-r31-3eddf31ad`, private channel) then measured 82-84%
 steady beside r30's 82-83% in the same job
 (`20261002-075659-bfm-r31-gate-3eddf31ad`), which also passed smoke (v3 and
 baseline), card-off, attract, inn save and cold Continue through `launch.sh`.
+
+## Guest-frame locals: rule `escape` (branch `claude/escape-locals`)
+
+Before this branch, 35 own-code functions (30 main, 5 `main_0012`) were
+refused because they pass the address of a local to a callee. A native local
+is a host stack slot, which an interpreted callee cannot see.
+
+**Design.** Such a local now lives in guest RAM, at the address the retail
+code uses. `place_guest_locals` (`tools/native_lane_gen.py`) runs on the -O0
+IR before `narrow_pointer_cells`:
+
+- An alloca is moved when its address reaches a `lane_call_*` argument
+  through constant GEPs. Other allocas stay on the host.
+- The offset comes from a forward dataflow over the retail words
+  (`retail_call_args`). For each jal it gives the arguments proven to hold
+  retail sp + k: a0-a3, callee-saved copies across calls, and stack argument
+  words at sp+0x10.. stored from such a register.
+- IR calls are paired with retail jals per callee, in order.
+- It refuses (rule `escape`) on:
+  - a different number of calls in the C and in the retail words;
+  - an argument set that differs (a local in the C where retail has no sp
+    address, or the reverse, including a retail jal the C does not make);
+  - two offsets for one local;
+  - a non-constant offset into a local;
+  - a pointer-typed local;
+  - a region that is misaligned, overlaps another local, overlaps a saved
+    register slot (`sw s0-s7/fp/ra, off(sp)`), lies in the outgoing argument
+    area, or extends past the frame;
+  - control flow the dataflow cannot follow (`jr` to a register other than
+    ra, `jalr`, branch-and-link, a transfer in a delay slot).
+- The rewrite turns `%x = alloca T` into `inttoptr(entry_sp - sp_adj + off)`.
+  - `musashi_lane_entry_sp` is new: the guest sp at the lane entry, set,
+    saved and restored by `lane_try`.
+  - `sp_adj` is the D-011 `musashi_lane_sp_adj`, after the body's own
+    adjustment. That gives the same retail sp the guest-call thunk gives a
+    callee. A nested native body gets its own retail sp the same way.
+  - The host's `-ftrivial-auto-var-init=zero` memset of a moved local is
+    dropped: retail leaves the slot as it was.
+  - Pointer stores into a moved local become 32-bit guest stores
+    (`narrow_pointer_cells` sees guest memory).
+- The table gains `musashi_native_lane_guest_locals[]`
+  (pc, frame, off, size, member). The main and overlay probes compare those
+  bytes, even though they sit inside the frame band the probes otherwise skip.
+- IRQ handlers run on their own stacks (BIOS callback stack, the CD ISR
+  context stack), not at the game's sp, so a mid-native checkpoint does not
+  reach a live guest-frame local.
+
+**Found by the new GTE-backed targeted cases: caller-pinned GTE callees.**
+Several GTE sites are admitted only for an audited jal return address
+(`gte_49324_caller`: `ra == 0x80013274u ...`; `jal_caller_of(ra,
+kGteEntry...)`). A native caller reaches the callee through the thunk with
+the sentinel ra (`UINT_MAX`), so the callee refuses at its first COP2 site
+and the lane call aborts. `hooked_pcs` missed `ra == 0x...` lines, so this
+was also a latent bug in already-admitted code:
+- `8002C410` calls Square0 (a STUB in the PsyQ table, so always interpreted).
+- `80014148` calls ApplyMatrixLV and `8001F97C` calls `80020F34`. These are
+  interpreted whenever the PsyQ lane is off or a wrapper refuses.
+
+Two fixes, both in rule `hooks`:
+- `hooked_pcs` now also reads `ra ==`/`ra !=` lines.
+- A new check refuses any body whose stub calls a `jal_caller_of` entry
+  (none today after the first fix).
+
+**Admission (own-code set: `--own-code-only`, the main allow list and the
+92-pair overlay allow list).** Base `682f8ed437`: 540/592. This branch:
+561/592.
+- 24 of the 35 escape functions are admitted:
+  - main: 8001282C, 800128B4, 80012E0C, 80014774, 8001C1E4, 8001C214,
+    8001C2C4, 8001C448, 8001C4A4, 8001C558, 8001C6E4, 8001C744, 8001C7B0,
+    8001C810, 8001C8C4, 8001CA1C, 8001CA88, 80028620, 8002E5BC;
+  - `main_0012`: 80147514, 8014BDE8, 80154418, 80154BE4, 80165E90.
+  - All are ledger-mapped (exact D-011 charge).
+- The other 11 stay refused:
+  - `hooks` (caller pin): 80013228, 800132BC, 80013350, 800133E4 (Square0),
+    800141AC (ApplyMatrixLV), 80017DF8, 80017E30 (80048EAC).
+  - `abi`: 80016B60 (its locals are placed, but it calls func_8004958C,
+    unprototyped, with 8 arguments).
+  - `deny`:
+    - 800128EC: the retail cycle mapping is ambiguous, so it would keep the
+      fixed charge.
+    - 80014168: no oracle; the interpreter refuses its own unaligned copy.
+    - 80016D78: no oracle; its allocator callee returns NULL on probe state.
+- Newly refused by the `hooks` fix: 80014148, 8001F97C, 8002C410
+  (previously admitted).
+- The four 0-argument wrappers 80013200, 80013294, 80013328 and 800133BC
+  stay admitted. They would fail the arity rule only if their callees
+  became native.
+
+**Probes (no-march lane build, own-code).**
+
+| Gate | Result |
+|---|---|
+| lane-wide probe | entries 536, same 1138, different 0, native_failed 0, functions_verified 453, functions_bad 0; cycles 372 functions same, 0 different |
+| targeted, B14 families | 8001D388 2685, 8001FB8C 2626, 80020DA4 4500 same; 0 different; cycles 0 different |
+| targeted, escape family | 400 seeded cases per function, GTE owner behind a CPU transfer device. The interpreter leg runs in a forked grandchild, so both legs start from the same GTE bank. Full comparisons (v0, RAM incl. guest locals, GTE banks, cycles): 400 same for each of 8001282C, 800128B4, 80012E0C, 8001C1E4, 8001C214, 8001C2C4, 8001C448, 8001C4A4, 8001C558, 8001C6E4, 8001C744, 8001C7B0, 8001C810, 8001C8C4, 8001CA1C, 8001CA88, 80028620; cycles 400 same each. 80014774 and 8002E5BC: 0 full cases, because their callee does GPU/CD I/O, which the device-less oracle refuses. Their first callee entry matched in 400 of 400 cases (sp, frame-pointing arguments and stack words, and the local's bytes). |
+| overlay main_0012 | 64 entries, same 387, different 0, negative_ok 64/64, functions_bad 0; cycles 0 different. Guest-local entries run 64 extra seeded patterns: 80147514 66 same, 8014BDE8 34, 80154418 67, 80154BE4 51, 80165E90 67 |
+| overlay main_0003 | 23 entries, same 10, different 0, negative_ok 23/23, functions_bad 0 |
+
+**Limits.**
+- The offset proof is a dataflow over the retail words plus an in-order
+  pairing of calls per callee. It is not translation validation. The probes
+  are the evidence for the cases they reach.
+- 80014774 and 8002E5BC are compared only at their callee's entry.
+- The guest frame's other slots (saved registers, host-only locals) are
+  still not written, as in D-011 (4).
+- No gameplay or runner result is claimed here.

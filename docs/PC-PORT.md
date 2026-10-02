@@ -975,14 +975,19 @@ How (a) works:
   struct GEPs are still typed), `memory` (no pointer load/store left to guest
   memory, no atomics, no volatile: decomp C marks device access volatile),
   `escape` (no host stack/data address stored, converted, returned or passed
-  to guest code), `inttoptr`, `calls` (only direct calls; no inline asm, no
+  to guest code; a local whose address reaches a callee instead moves into
+  guest RAM at its retail sp offset when the retail words prove it,
+  `place_guest_locals`), `inttoptr`, `calls` (only direct calls; no inline asm, no
   indirect calls), `arith` (no variable or trapping divisor, variable shifts
   masked to 5 bits), `ub` (no undef/poison/unreachable), `irq` (no loop that
   neither stores nor calls), `abi` (8/16/32-bit and pointer parameters; a
   direct call may not pass fewer arguments than the callee reads, because a
   MIPS callee then sees whatever the caller left in a1-a3), `hooks` (no PC
-  the port compares against — pc/ra/continuation checks — inside the
-  function, since native execution would bypass the hook).
+  the port compares against — pc/ra/continuation checks, including the
+  `ra == 0x...` caller pins of GTE sites — inside the function, since native
+  execution would bypass the hook; and no call to a GTE entry whose sites
+  admit only a jal caller, `jal_caller_of`: the thunk's sentinel ra would
+  make that callee refuse).
 - Guest calls from native code go through per-signature stubs that convert
   each value to and from the 32-bit register the MIPS ABI carries (so
   mismatched prototypes behave as on the PS1): a direct call when the callee
