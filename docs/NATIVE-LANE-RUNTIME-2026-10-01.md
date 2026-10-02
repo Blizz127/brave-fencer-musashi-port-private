@@ -821,3 +821,5 @@ Evidence `1dd6b7ea...c091` (matched by readback); package `e09e5c7e...5e8e`.
 | village traced | identical to the village leg |
 | village, all 92 overlay PCs denied | identical outcome (MDEC 1852, tick `0ae0`, display) |
 | attract, 480 s | timed out (SIGTERM) at tick `2765`, MDEC 5556, on a runner shared with 3 other jobs (the `b6aac50405` gate reached its terminal refusal at tick `3aca`, MDEC 7408). The `pc=8004255c` refusals are the SIGTERM teardown; re-run with 1500 s pending |
+| attract, 1500 s (job `20261002-063321-bfm-o2attr-ea46c584a2`, evidence `ea63e7f0...bb21`) | terminal `STEP_REFUSED pc=800495ec`, tick `3aca`, MDEC 7408, display 70400/76800, the same as the `b6aac50405` gate; overlay verified 2,194,531, recheck_failed 0, ledger lost 0 |
+| attract, all 92 overlay PCs denied, 1500 s | the same terminal state (tick `3aca`, MDEC 7408, display 70400/76800) |
