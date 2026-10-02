@@ -2201,11 +2201,21 @@ static int epoch_advance_devices(void *userdata, uint64_t cycle) {
  *   SPU      the next sample boundary.
  * Timer1/Timer2 have no deadline: their counters and wrap flags are
  * additive over any split of an interval and raise no IRQ. */
+static int device_next_deadline(NativeBoot *boot, uint64_t cycle, uint64_t *due_out);
+
 static int epoch_next_deadline(void *userdata, uint64_t cycle, uint64_t *due_out) {
     NativeBoot *boot = userdata;
+    if (!boot->lazy) return 0;
+    return device_next_deadline(boot, cycle, due_out);
+}
+
+/* The first cycle at or after which some device event can fall due, for
+ * devices synced at `cycle` (the lazy epoch's deadline; also used, with the
+ * lazy epoch off, by the native lane's deadline guard). 0: unknown. */
+static int device_next_deadline(NativeBoot *boot, uint64_t cycle, uint64_t *due_out) {
     uint64_t due;
 #define LAZY_DUE(x) do { if ((uint64_t)(x) < due) due = (uint64_t)(x); } while (0)
-    if (!boot->lazy || !boot->guest_clock || boot->irq.cd_frame.busy ||
+    if (!boot->guest_clock || boot->irq.cd_frame.busy ||
         boot->bios_callback_frame.busy || boot->guest_next_vblank < boot->epoch.origin_tick)
         return 0;
     due = boot->guest_next_vblank - boot->epoch.origin_tick;
@@ -3181,6 +3191,29 @@ static int epoch_sync_checkpoint(NativeBoot *boot, const void *continuation) {
     if (!lazy_commit_deferred(boot)) return 0;
     if (musashi_formatter_pc_host_handled(raw_cpu[34]))
         musashi_device_epoch_lazy_invalidate(&boot->epoch);
+    return 1;
+}
+
+/* D-011 clock query for the native lane (musashi_execution_clock_set_deadline):
+ * guest cycles from the time charged so far (committed, deferred and the
+ * pending instruction charge) until a device event can fall due, or 0 when
+ * an IRQ is pending and deliverable (the interpreter's next checkpoint would
+ * dispatch it). Unknown on the host clock and inside device frames. */
+static int lane_deadline(void *userdata, uint64_t *cycles_until) {
+    NativeBoot *boot = userdata;
+    uint64_t now, due = 0;
+    int enabled = 0;
+    if (!boot->guest_clock || host_stop_signal) return 0;
+    if (boot->irq.scheduler.installed && !boot->irq.scheduler.pumping &&
+        !boot->irq.scheduler.delivering &&
+        (boot->irq.controller.status & boot->irq.controller.mask) &&
+        musashi_cpu_status_irq_eligible(boot->irq.cpu_status, &enabled) && enabled) {
+        *cycles_until = 0;
+        return 1;
+    }
+    if (!device_next_deadline(boot, boot->epoch.cycle, &due)) return 0;
+    now = boot->epoch.cycle + boot->epoch.lazy_deferred + boot->guest_pending_cycles;
+    *cycles_until = due > now ? due - now : 0;
     return 1;
 }
 
@@ -5046,6 +5079,14 @@ static void lane_overlay_report(void) {
             (unsigned long long)st.entry_verified, (unsigned long long)st.entry_refused,
             (unsigned long long)st.guard_verified, (unsigned long long)st.guard_refused,
             (unsigned long long)st.recheck_ok, (unsigned long long)st.recheck_failed);
+    {
+        MusashiNativeLaneGuardStats g;
+        musashi_native_lane_guard_stats(&g);
+        fprintf(stderr, "native_boot: NATIVE_LANE ledger lost=%u fixed_charges=%u guard ticks=%llu "
+                "checkpoints=%llu refreshes=%llu unknown=%llu\n", musashi_lane_ledger_lost,
+                musashi_lane_fixed, (unsigned long long)g.ticks, (unsigned long long)g.checkpoints,
+                (unsigned long long)g.refreshes, (unsigned long long)g.unknown);
+    }
 }
 _Static_assert(offsetof(NativeBoot, memory) == 0, "guest RAM leads the boot owner");
 _Static_assert(offsetof(NativeBoot, ram_mirror_guard) == 0x201000u,
@@ -5753,6 +5794,7 @@ int main(int argc, char **argv) {
     }
     boot.execution_clock.userdata = &boot;
     boot.execution_clock.advance = advance_source_clock;
+    musashi_execution_clock_set_deadline(&boot.execution_clock, lane_deadline);
     boot.cd_services = (MusashiCdIrqServices){.userdata=&boot,
         .deliver_event=deliver_cd_event,.callback_device=&boot.callback,
         .gpu_io=&boot.gpu_io, .dma=&boot.dma_irq,

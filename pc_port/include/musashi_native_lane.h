@@ -42,7 +42,60 @@ typedef struct MusashiNativeLaneEntry {
     const char *name;
     uint8_t argc;    /* o32 argument words the host function consumes */
     uint8_t returns; /* 1 when it produces v0, 0 for void */
+    /* D-011: 1 when the body charges its mapped retail cost into the ledger
+     * as it runs (cost_cycles is then not charged); 0: fixed cost_cycles. */
+    uint8_t ledger;
 } MusashiNativeLaneEntry;
+
+/* D-011 cycle ledger. A mapped native body adds the interpreter's cost of
+ * the retail instructions it stands for (tools/lane_cycles.py); the runtime
+ * flushes it to the execution clock before each guest call from native code
+ * and when the lane call returns. musashi_lane_ledger_lost is set when a
+ * body left its mapped graph (a mapping error: its charge is then
+ * incomplete); musashi_lane_fixed counts fixed (unmapped) charges. */
+extern uint64_t musashi_lane_ledger;
+extern uint32_t musashi_lane_ledger_lost;
+extern uint32_t musashi_lane_fixed;
+
+/* D-011 deadline guard. musashi_lane_budget is the ledger value at which the
+ * next device deadline falls due (UINT64_MAX: none known). A mapped body
+ * that charges up to it calls musashi_native_lane_tick with its segment
+ * table and product state; the tick charges the clock up to the retail
+ * instruction where the deadline falls and runs the interpreter's
+ * checkpoint there (device commit and IRQ delivery at that retail pc).
+ * MUSASHI_LANE_GUARD_STRICT=1 (tests only) checkpoints before every retail
+ * instruction instead. */
+/* flags: 1 = in a delay slot; 2 = a division idiom's data-dependent
+ * instruction, run only when its extra was charged (musashi_lane_seg_extra) */
+typedef struct MusashiLaneSegInsn { uint32_t pc; uint8_t cost; uint8_t flags; } MusashiLaneSegInsn;
+typedef struct MusashiLaneSegRow { uint32_t first; uint32_t count; } MusashiLaneSegRow;
+typedef struct MusashiLaneSegTable {
+    const MusashiLaneSegRow *rows;
+    uint32_t nrows;
+    const MusashiLaneSegInsn *insns;
+} MusashiLaneSegTable;
+extern uint64_t musashi_lane_budget;
+extern uint64_t musashi_lane_seg_extra;
+/* The retail pc a mapped body's guest call returns to (set before the call,
+ * consumed by musashi_native_guest_call): an IRQ left pending by the callee's
+ * return is delivered at that pc before the native body continues, as the
+ * interpreter's checkpoint at the caller's next instruction would. */
+extern uint32_t musashi_lane_resume_pc;
+/* Sum of the retail stack frames of the native bodies running in the
+ * current lane call (each adds its own at entry, removes it at return): a
+ * guest call from native code runs the callee at the retail stack pointer,
+ * entry sp minus this. */
+extern uint32_t musashi_lane_sp_adj;
+void musashi_native_lane_tick(const void *segment_table, uint32_t state);
+/* The checkpoint at a zero-cost native entry (a host intrinsic's PC). */
+void musashi_native_lane_tick_entry(uint32_t pc);
+typedef struct MusashiNativeLaneGuardStats {
+    uint64_t ticks;        /* tick calls */
+    uint64_t checkpoints;  /* mid-native checkpoints run */
+    uint64_t unknown;      /* budget refreshes with no known deadline */
+    uint64_t refreshes;
+} MusashiNativeLaneGuardStats;
+void musashi_native_lane_guard_stats(MusashiNativeLaneGuardStats *out);
 
 /* Overlay functions (MAIN.CD / scene members) share load addresses, so an
  * overlay entry runs natively only when the bytes resident in guest RAM at
@@ -150,6 +203,20 @@ int musashi_native_lane_reference_call(MusashiBootMemory *memory, uint32_t targe
 int musashi_native_lane_reference_call_regs(MusashiBootMemory *memory, uint32_t target,
                                             const uint32_t *args, unsigned argc,
                                             uint32_t sp, int use_lane, uint32_t regs[32]);
+/* The same with an execution clock on the CPU (NULL: none), so a probe can
+ * compare the guest time the interpreter charges with the native ledger. */
+int musashi_native_lane_reference_call_clocked(MusashiBootMemory *memory, uint32_t target,
+                                               const uint32_t *args, unsigned argc,
+                                               uint32_t sp, int use_lane, uint32_t regs[32],
+                                               const MusashiExecutionClock *clock);
+/* ... and a checkpoint (called before every interpreted instruction and by
+ * the lane's deadline guard), for tests of the D-011 mid-native checkpoint. */
+int musashi_native_lane_reference_call_checkpoint(MusashiBootMemory *memory, uint32_t target,
+                                                  const uint32_t *args, unsigned argc,
+                                                  uint32_t sp, int use_lane, uint32_t regs[32],
+                                                  const MusashiExecutionClock *clock,
+                                                  int (*checkpoint)(void *, const void *),
+                                                  void *userdata);
 
 /* Executed-path tracer (MUSASHI_TRACE_FUNCS=path). Called by the formatter
  * for jal/jalr targets and CPU dispatch entries; exposed for host routers

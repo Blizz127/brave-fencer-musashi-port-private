@@ -299,6 +299,14 @@ typedef struct MusashiExecutionClock {
     int (*advance)(void *, uint32_t cycles);
 } MusashiExecutionClock;
 
+/* D-011 (optional): the deadline query of one execution clock, called with
+ * the clock's userdata: 1 with *cycles_until = guest cycles from the time
+ * charged so far until the next moment a device event falls due or an IRQ
+ * can be delivered (0: now); 0 when that is unknown. The native lane runs a
+ * body that long between checkpoints. NULL clears it. */
+void musashi_execution_clock_set_deadline(const MusashiExecutionClock *clock,
+                                          int (*deadline)(void *, uint64_t *cycles_until));
+
 /* Device hooks around every CPU data access that is not RAM, scratchpad or
  * the BIOS image (any CPU, any run loop). sync runs before the access; a
  * zero return refuses it. observe runs after it with the value read or

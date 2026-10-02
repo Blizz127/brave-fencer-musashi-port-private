@@ -212,6 +212,42 @@ class Mapping(unittest.TestCase):
         self.assertEqual(seg["divs"][0]["extra"], 2)
 
 
+class Instrument(unittest.TestCase):
+    """Phase 2b: the ledger instrumentation of a mapped -O0 module."""
+
+    def test_folded_loop_ledger(self):
+        clang_bin = shutil.which("clang")
+        c, r, m = lc.map_ir(FOLDED_IR, "lane_func_80100000", BASE, folded_words())
+        text, rows = lc.instrument(c, r, m, guard=True, segs_symbol="lane_segs_func_80100000")
+        self.assertIn("@musashi_lane_ledger", text)
+        self.assertIn("call void @musashi_native_lane_tick(ptr @lane_segs_func_80100000", text)
+        # each charged state's row holds exactly the retail instructions it charges
+        for (i, rpc, insns), key in zip(rows, sorted(m["graph"], key=lambda k: (str(k[0]), k[1], k[2]))):
+            edges = m["graph"][key]
+            charged = edges[0][1] if edges[0][0] in ("cond", "call", "ret") else 0
+            self.assertEqual(sum(cst for _, cst, fl in insns if not fl & 2), charged)
+        if not clang_bin:
+            raise unittest.SkipTest("needs clang to check the IR")
+        with tempfile.TemporaryDirectory() as d:
+            src = Path(d) / "x.ll"
+            src.write_text(text)
+            out = subprocess.run([clang_bin, "--target=x86_64-unknown-linux-gnu", "-O2", "-S", "-emit-llvm",
+                                  "-w", str(src), "-o", str(Path(d) / "y.ll")], capture_output=True, text=True)
+            self.assertEqual(out.returncode, 0, out.stderr[-1500:])
+            opt = (Path(d) / "y.ll").read_text()
+            self.assertIn("@musashi_lane_ledger", opt)
+
+    def test_division_mismatch_refused(self):
+        # clang divides by 4 (data-dependent retail bias expected) but the
+        # retail code has no bgez bias branch: the mapping cannot charge it
+        ir = fn("""  %2 = sdiv i32 %0, 4
+  ret void""", params="i32 noundef %0")
+        words = [(4 << 16) | (2 << 11) | (2 << 6) | 3, JR_RA, NOP]   # sra v0,a0,2
+        out = lc.analyse(ir, "lane_func_80100000", BASE, words)
+        self.assertEqual(out["status"], "refused")
+        self.assertIn("division mismatch", out["reason"])
+
+
 def exe_words(vram, size):
     exe = g.MAIN_EXE
     if not exe.exists():
@@ -288,7 +324,7 @@ class Generator(unittest.TestCase):
             self.assertEqual((d2a24["admitted"], d2a24["rule"]), (False, "deny"))
             self.assertEqual(d2a24["cycles"]["status"], "mapped")
             self.assertIn("by_class", rep["cycles"])
-            self.assertIn("native lane cycles (D-011, report only)", r.stdout)
+            self.assertIn("native lane cycles (D-011)", r.stdout)
 
 
 if __name__ == "__main__":

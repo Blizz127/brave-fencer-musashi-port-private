@@ -15,7 +15,10 @@
  * interpreter is thereby compared too, and handlers that refuse the seeded
  * state count as not comparable. Each case runs in a forked child so a native
  * crash cannot kill the
- * probe. Retail bytes are read from the pinned EXE at run time, never
+ * probe. D-011: both runs carry a recording clock; for a ledger-mapped
+ * function the cycles at the handler's entry and at the return must be
+ * equal (a case whose native run reached a fixed, unmapped charge is not
+ * comparable in cycles). Retail bytes are read from the pinned EXE at run time, never
  * committed. Exit 0 = no difference; 1 = difference/native failure/harness
  * self-check failure; 77 = EXE or host window unavailable. */
 #define _GNU_SOURCE
@@ -49,12 +52,17 @@ static uint32_t rng(void) {
 
 /* Entry hook: the first jalr/jal target reached during a run (the dispatcher's
  * handler call). The interpreter run is the oracle for "the callee was reached". */
-static struct { unsigned n; uint32_t pc, a0, a1; } g_hit;
+static uint64_t g_cycles;
+static int cycle_advance(void *u, uint32_t c) { (void)u; g_cycles += c; return 1; }
+static const MusashiExecutionClock g_clock = {NULL, cycle_advance};
+static struct { unsigned n; uint32_t pc, a0, a1; uint64_t cycle; } g_hit;
 static uint32_t g_last_handler;
 static void entry_hook(void *user, uint32_t pc, const uint32_t *regs) {
     (void)user;
-    if (!g_hit.n++) { g_hit.pc = pc; g_hit.a0 = regs[4]; g_hit.a1 = regs[5]; }
+    if (!g_hit.n++) { g_hit.pc = pc; g_hit.a0 = regs[4]; g_hit.a1 = regs[5]; g_hit.cycle = g_cycles; }
 }
+/* cycle outcome, in bits 4-5 of a case's exit status */
+enum { CYC_SAME = 0, CYC_DIFFERENT = 1, CYC_NOT_COMPARABLE = 2 };
 
 typedef struct {
     uint32_t pc, argc, args[3], returns;
@@ -204,7 +212,11 @@ static void setup_rot(MusashiBootMemory *m, unsigned idx, Case *c) {
 
 static int run_case(MusashiBootMemory *m, const uint8_t *image, int which, unsigned idx,
                     uint8_t *reference, int returns) {
-    uint32_t ref_v0 = 0, lane_v0 = 0, ref_v1 = 0, lane_v1 = 0;
+    uint32_t ref_v0 = 0, lane_v0 = 0, regs[32];
+    uint64_t ref_total, ref_hit_cycle;
+    unsigned ref_hits;
+    uint32_t fixed0;
+    int cyc;
     Case c;
     uint8_t *start = malloc(MUSASHI_RAM_SIZE);
     int ok;
@@ -219,9 +231,12 @@ static int run_case(MusashiBootMemory *m, const uint8_t *image, int which, unsig
     g_last_handler = c.expect_call > 0 ? c.handler : 0;
     memcpy(start, m->bytes, MUSASHI_RAM_SIZE);
     memset(&g_hit, 0, sizeof(g_hit));
+    g_cycles = 0;
     alarm(5);
-    ok = musashi_native_lane_reference_call(m, c.pc, c.args, c.argc, STACK_TOP, 0, &ref_v0, &ref_v1);
+    ok = musashi_native_lane_reference_call_clocked(m, c.pc, c.args, c.argc, STACK_TOP, 0, regs, &g_clock);
     alarm(0);
+    ref_v0 = regs[2];
+    ref_total = g_cycles; ref_hit_cycle = g_hit.cycle; ref_hits = g_hit.n;
     /* Harness self-check on the oracle: the dispatcher's handler call must
      * happen exactly when the guard predicts, to the table's own entry for
      * this subtype, with the right arguments (even if the handler later refuses). */
@@ -238,10 +253,27 @@ static int run_case(MusashiBootMemory *m, const uint8_t *image, int which, unsig
     memcpy(reference, m->bytes, MUSASHI_RAM_SIZE);
     memcpy(m->bytes, start, MUSASHI_RAM_SIZE);
     free(start);
+    memset(&g_hit, 0, sizeof(g_hit));
+    g_cycles = 0;
+    fixed0 = musashi_lane_fixed;
     alarm(5);
-    ok = musashi_native_lane_reference_call(m, c.pc, c.args, c.argc, STACK_TOP, 1, &lane_v0, &lane_v1);
+    ok = musashi_native_lane_reference_call_clocked(m, c.pc, c.args, c.argc, STACK_TOP, 1, regs, &g_clock);
     alarm(0);
+    lane_v0 = regs[2];
     if (!ok) return NATIVE_FAILED;
+    {
+        const MusashiNativeLaneEntry *e = NULL;
+        size_t k;
+        for (k = 0; k < musashi_native_lane_generated_count; ++k)
+            if (musashi_native_lane_generated[k].guest_pc == c.pc) e = &musashi_native_lane_generated[k];
+        if (!e || !e->ledger || musashi_lane_fixed != fixed0) cyc = CYC_NOT_COMPARABLE;
+        else if (g_cycles != ref_total || g_hit.n != ref_hits || (ref_hits && g_hit.cycle != ref_hit_cycle)) {
+            fprintf(stderr, "targeted: fn %d case %u cycles interp %llu (handler@%llu) native %llu (handler@%llu)\n",
+                    which, idx, (unsigned long long)ref_total, (unsigned long long)ref_hit_cycle,
+                    (unsigned long long)g_cycles, (unsigned long long)g_hit.cycle);
+            cyc = CYC_DIFFERENT;
+        } else cyc = CYC_SAME;
+    }
     if (returns && ref_v0 != lane_v0) {
         fprintf(stderr, "targeted: fn %d case %u v0 interp=%08x native=%08x\n", which, idx, ref_v0, lane_v0);
         return DIFFERENT;
@@ -263,7 +295,7 @@ static int run_case(MusashiBootMemory *m, const uint8_t *image, int which, unsig
         }
         if (differ) return DIFFERENT;
     }
-    return c.expect_call > 0 ? SAME_CALLED : SAME;
+    return (c.expect_call > 0 ? SAME_CALLED : SAME) | (cyc << 4);
 }
 
 static void on_fault(int sig, siginfo_t *info, void *ctx) {
@@ -300,7 +332,7 @@ int main(int argc, char **argv) {
     if (!image || !reference) return 1;
     memcpy(image, memory->bytes, MUSASHI_RAM_SIZE);
     for (which = 0; which < 3; ++which) {
-        unsigned counts[7] = {0}, idx;
+        unsigned counts[7] = {0}, cyc[3] = {0}, idx;
         int returns = 0, found = 0;
         for (e = 0; e < musashi_native_lane_generated_count; ++e)
             if (musashi_native_lane_generated[e].guest_pc == FN[which].pc) {
@@ -330,6 +362,10 @@ int main(int argc, char **argv) {
             }
             if (child < 0 || waitpid(child, &status, 0) != child) return 1;
             outcome = WIFEXITED(status) ? WEXITSTATUS(status) : NATIVE_FAILED;
+            if ((outcome & 15) == SAME || (outcome & 15) == SAME_CALLED) {
+                if ((outcome >> 4) > CYC_NOT_COMPARABLE) outcome = NATIVE_FAILED;
+                else { cyc[outcome >> 4]++; outcome &= 15; }
+            }
             if (outcome > NOT_COMPARABLE_CALLED) outcome = NATIVE_FAILED;
             counts[outcome]++;
         }
@@ -340,7 +376,9 @@ int main(int argc, char **argv) {
                FN[which].name, FN[which].cases, counts[SAME], counts[SAME_CALLED], counts[DIFFERENT],
                counts[NATIVE_FAILED], counts[NOT_COMPARABLE], counts[NOT_COMPARABLE_CALLED],
                counts[HARNESS_BAD]);
-        total_bad += counts[DIFFERENT] + counts[NATIVE_FAILED] + counts[HARNESS_BAD];
+        printf("targeted_cycles: %s same=%u different=%u not_comparable=%u\n",
+               FN[which].name, cyc[CYC_SAME], cyc[CYC_DIFFERENT], cyc[CYC_NOT_COMPARABLE]);
+        total_bad += counts[DIFFERENT] + counts[NATIVE_FAILED] + counts[HARNESS_BAD] + cyc[CYC_DIFFERENT];
         /* a probe that compares nothing proves nothing */
         if (counts[SAME] < FN[which].cases / 2u) total_bad++;
     }

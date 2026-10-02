@@ -614,6 +614,12 @@ def parse_signature(header_or_decl, name):
 MEMORY_FNS = ("memset", "memcpy", "memmove")
 # Guarded division helpers (mips_formatter.c) that lower_arith() calls.
 LANE_HELPERS = ("lane_sdiv32", "lane_srem32", "lane_udiv32", "lane_urem32")
+# D-011 ledger (pc_port/mips_formatter.c): the cycles a mapped native body
+# has charged, a lost-state flag, the deadline budget and the guard's tick.
+LEDGER_SYMBOLS = ("musashi_lane_ledger", "musashi_lane_ledger_lost", "musashi_lane_budget",
+                  "musashi_lane_seg_extra", "musashi_lane_resume_pc", "musashi_lane_sp_adj",
+                  "musashi_native_lane_tick")
+LEDGER_SEGS = re.compile(r"lane_segs_" + QFUNC)
 
 
 def rewrite_symbols(ir, symbols, member=None, member_code=()):
@@ -863,7 +869,7 @@ def check_optimized(ir, module_internal):
                                     r"sadd|uadd|ssub|usub|vector\.reduce)", name):
                         raise Reject("calls", f"intrinsic {name}")
                     continue
-                if name in ("memset", "memcpy", "memmove") or name in LANE_HELPERS:
+                if name in ("memset", "memcpy", "memmove") or name in LANE_HELPERS or name in LEDGER_SYMBOLS:
                     continue
                 if name in module_internal:
                     continue
@@ -1098,6 +1104,54 @@ def retail_words(vram, size, info=None):
     return None if any(w is None for w in words) else words
 
 
+def retail_frame(words):
+    """The retail stack frame a function that makes calls allocates
+    (`addiu sp,sp,-F` in its first 8 words), else 0 (leaves need none)."""
+    calls = any(w >> 26 == 3 or (w >> 26 == 0 and w & 63 == 9) for w in words)
+    if not calls:
+        return 0
+    for w in words[:8]:
+        if w >> 26 == 9 and (w >> 21) & 31 == 29 and (w >> 16) & 31 == 29 and w & 0x8000:
+            return 0x10000 - (w & 0xFFFF)
+    return 0
+
+
+SP_ADJ = "musashi_lane_sp_adj"
+
+
+def add_frame_adjust(ir, fname, frame):
+    """D-011 guest stack layout: a native body has no guest frame, so a guest
+    call it makes would run the callee higher on the guest stack than retail
+    (and an uninitialised local there reads different leftovers). The body
+    adds its retail frame size to @musashi_lane_sp_adj at entry and removes
+    it before each return; the guest-call thunk puts the callee at the
+    retail stack pointer (entry sp minus the adjustment)."""
+    if not frame:
+        return ir
+    m = re.search(r"^define [^@]*@" + re.escape(fname) + r"\([^)]*\)[^{]*\{\n(.*?)^\}", ir,
+                  flags=re.M | re.S)
+    if not m:
+        return ir
+    body = m.group(1)
+    lines, n = [], 0
+    entry = [f"  %lane.spa.e0 = load i32, ptr @{SP_ADJ}, align 4",
+             f"  %lane.spa.e1 = add i32 %lane.spa.e0, {frame}",
+             f"  store i32 %lane.spa.e1, ptr @{SP_ADJ}, align 4"]
+    first = True
+    for line in body.splitlines():
+        if first and line.strip() and not line.strip().startswith(";"):
+            lines += entry
+            first = False
+        if re.match(r"^\s*ret\b", line):
+            n += 1
+            lines += [f"  %lane.spa.r{n}a = load i32, ptr @{SP_ADJ}, align 4",
+                      f"  %lane.spa.r{n}b = sub i32 %lane.spa.r{n}a, {frame}",
+                      f"  store i32 %lane.spa.r{n}b, ptr @{SP_ADJ}, align 4"]
+        lines.append(line)
+    out = ir[:m.start(1)] + "\n".join(lines) + "\n" + ir[m.end(1):]
+    return out.rstrip("\n") + f"\n\n@{SP_ADJ} = external global i32, align 4\n"
+
+
 def cycle_analysis(ir, entry, vram, size, info):
     """D-011 phase 2a: the retail cycle model and the clang/retail mapping
     for one function. Report only: it changes no admission and no charge."""
@@ -1170,6 +1224,9 @@ def build_one(entry, out, symbols, hooks, clang, info=None):
         check_layout(ir)
         rewritten = lower_arith(narrow_pointer_cells(rewrite_symbols(
             ir, symbols, member, info["code"] if info else ())))
+        words = retail_words(vram, size, info)
+        if words is not None:
+            rewritten = add_frame_adjust(rewritten, "lane_" + qualify(member, name), retail_frame(words))
         sub = work / f"{tag}.sub.ll"
         sub.write_text(rewritten)
         cycles = cycle_analysis(rewritten, entry, vram, size, info)
@@ -1195,6 +1252,42 @@ def build_one(entry, out, symbols, hooks, clang, info=None):
             header = next(h for h, _ in functions(optir) if re.search("@" + d + r"\(", h))
             sigs[d] = parse_signature(header, d)
         optir, stubs = resolve_calls(optir)
+        mapping = cycles.pop("_mapping", None) if cycles else None
+        ledger, ledger_rows = False, None
+        if vram in INTRINSIC_PCS and not info:
+            # The interpreter answers this PC with a host intrinsic that
+            # charges no guest time (mips_formatter.c formatter_call), so the
+            # lane-off run spends 0 cycles here; the native body charges the
+            # same 0 (no ledger code, no fixed cost).
+            ledger, ledger_rows = True, None
+            if cycles is not None:
+                cycles.update(intrinsic=True)
+        elif mapping and cycles["status"] == "mapped":
+            # D-011: the object is built from the instrumented -O0 module.
+            # Every rule above ran on the uninstrumented one (the ledger's
+            # stores must not hide a polling loop from the irq rule); the
+            # instrumented one must keep the same calls and definitions.
+            try:
+                inst, ledger_rows = lane_cycles.instrument(
+                    *mapping, guard=True, segs_symbol=f"lane_segs_{qualify(member, name)}")
+                lsub = work / f"{tag}.ledger.sub.ll"
+                lsub.write_text(inst)
+                lopt = work / f"{tag}.ledger.opt.ll"
+                r = run([clang, f"--target={HOST_TARGET}", "-O2", "-fno-vectorize", "-fno-slp-vectorize",
+                         "-fno-unroll-loops", "-S", "-emit-llvm", "-w", str(lsub), "-o", str(lopt)])
+                if r.returncode:
+                    raise lane_cycles.Refuse("optimize: " + (r.stderr.strip().splitlines() or ["?"])[0][:120])
+                lir, licalls = rewrite_indirect_calls(lopt.read_text())
+                check_optimized(lir, set(re.findall(r"^define internal [^@]*@([\w.$]+)\(", lir, flags=re.M)))
+                if lane_names(lir) != defs or licalls != icalls:
+                    raise lane_cycles.Refuse("instrumented module changed its definitions or calls")
+                lir, lstubs = resolve_calls(lir)
+                if lstubs != stubs:
+                    raise lane_cycles.Refuse("instrumented module changed its guest calls")
+                optir, ledger = lir, True
+            except (lane_cycles.Refuse, Reject) as e:
+                cycles.update(status="refused", reason=f"instrument: {getattr(e, 'reason', None) or e}")
+                ledger_rows = None
         final = work / f"{tag}.lane.ll"
         final.write_text(optir)
         obj = work / f"{tag}.o"
@@ -1205,18 +1298,27 @@ def build_one(entry, out, symbols, hooks, clang, info=None):
         for u in undefined:
             if u != "U" and not re.fullmatch(r"lane_(?:call_)?" + QFUNC + r"(?:__\w+)?", u) \
                     and not u.startswith("lane_icall__") \
-                    and u not in MEMORY_FNS and u not in LANE_HELPERS:
+                    and u not in MEMORY_FNS and u not in LANE_HELPERS and u not in LEDGER_SYMBOLS \
+                    and not LEDGER_SEGS.fullmatch(u):
                 raise Reject("symbols", f"object still references {u}")
         digest = member_digest(info, vram, size) if info else None
         if info and digest is None:
             raise Reject("overlay", "extent outside the member file")
         return dict(name=name, qname=qualify(member, name), member=member, vram=vram, size=size,
                     source=entry["source"], admitted=True, obj=str(obj), defs=sigs, stubs=stubs,
-                    icalls=icalls, digest=digest, cycles=cycles)
+                    icalls=icalls, digest=digest, cycles=cycles, ledger=ledger,
+                    ledger_rows=ledger_rows)
     except Reject as e:
         return dict(name=name, qname=qualify(member, name), member=member, vram=vram, size=size,
                     source=entry["source"], admitted=False, rule=e.rule, detail=e.detail,
-                    digest=member_digest(info, vram, size) if info else None, cycles=cycles)
+                    digest=member_digest(info, vram, size) if info else None,
+                    cycles=_public(cycles))
+
+
+def _public(cycles):
+    if cycles:
+        cycles.pop("_mapping", None)
+    return cycles
 
 
 def deny_cycle_analysis(entry, out, symbols, clang, info):
@@ -1248,7 +1350,8 @@ CYCLE_CLASSES = (("straight", ("straight",)), ("straight+call", ("straight+call"
 
 def cycle_summary(results):
     """Mapped/refused counts per retail shape over the admitted functions, the
-    refusal reasons, and the admitted functions phase 2b would refuse."""
+    refusal reasons, and the admitted functions that keep the fixed charge
+    (`would_refuse`: unmapped, still admitted, inexact timing; D-011)."""
     by_shape, by_class, reasons, would = {}, {}, {}, []
     for r in results:
         c = r.get("cycles")
@@ -1353,6 +1456,7 @@ def emit_table(admitted, out, entry_sites=frozenset()):
               " * directly; any other runs on the interpreter (same CPU, same loop). */"]
     direct = thunk = hooked = 0
     ovl = {"lane_" + a["qname"]: a for a in admitted if a.get("member")}
+    by_def = {"lane_" + a["qname"]: a for a in admitted}
     for sym, (callee, sig, argc, va_ret) in sorted(stubs.items()):
         addr = callee.split("func_")[-1]
         if sig is None:
@@ -1391,6 +1495,18 @@ def emit_table(admitted, out, entry_sites=frozenset()):
         if native:
             direct += 1
             cret, crext, cparams = defs[target]
+            if int(addr, 16) in INTRINSIC_PCS and not by_def[target].get("member"):
+                # D-011: the interpreter checkpoints at a host intrinsic's
+                # entry PC (and then charges nothing for it); so does the
+                # deadline guard before a direct native call to one.
+                lines.append(f"    if (musashi_lane_ledger >= musashi_lane_budget) "
+                             f"musashi_native_lane_tick_entry(0x{addr}u);")
+            if not by_def[target].get("ledger"):
+                # D-011: an unmapped native callee charges no ledger of its
+                # own; a direct call adds its fixed charge, as lane_try does
+                # for an interpreted caller (2 * words), and counts it.
+                lines.append(f"    musashi_lane_ledger += {2 * (by_def[target]['size'] // 4)}u;")
+                lines.append("    ++musashi_lane_fixed;")
             args = ", ".join(from_guest(regs[i] if i < len(regs) else "0u", t, e)
                              for i, (t, e) in enumerate(cparams))
             call = f"{target}({args})"
@@ -1444,6 +1560,23 @@ def emit_table(admitted, out, entry_sites=frozenset()):
             lines.append(f"    return {from_guest(call, ret, rext)};")
         lines.append("}")
     lines.append("")
+    lines += ["/* D-011 segment tables: per product state of a ledger-mapped body, the",
+              " * retail instructions its charge stands for (pc, interpreter cost, delay",
+              " * slot), so the deadline tick can find the instruction a device event",
+              " * falls due at. Row i is state i + 1. */"]
+    for a in sorted(admitted, key=lambda a: (a["vram"], a.get("member") or "")):
+        rows = a.get("ledger_rows")
+        if not rows:
+            continue
+        q = a["qname"]
+        insns, rrows = [], []
+        for _, _, ins in rows:
+            rrows.append(f"{{{len(insns)}u, {len(ins)}u}}")
+            insns += [f"{{0x{pc:08x}u, {c}u, {d}u}}" for pc, c, d in ins]
+        lines.append(f"static const MusashiLaneSegInsn lane_segi_{q}[] = {{{', '.join(insns) or '{0u, 0u, 0u}'}}};")
+        lines.append(f"static const MusashiLaneSegRow lane_segr_{q}[] = {{{', '.join(rrows)}}};")
+        lines.append(f"const MusashiLaneSegTable lane_segs_{q} = {{lane_segr_{q}, {len(rrows)}u, lane_segi_{q}}};")
+    lines.append("")
     entries, ovl_entries = [], []
     for a in sorted(admitted, key=lambda a: (a["vram"], a.get("member") or "")):
         d = "lane_" + a["qname"]
@@ -1462,21 +1595,21 @@ def emit_table(admitted, out, entry_sites=frozenset()):
         lines.append("}")
         cost = 2 * (a["size"] // 4)
         row = (f"{{0x{a['vram']:08x}u, {cost}u, {wrap}, \"{a['qname']}\", "
-               f"{len(params)}u, {0 if ret == 'void' else 1}u}}")
+               f"{len(params)}u, {0 if ret == 'void' else 1}u, {1 if a.get('ledger') else 0}u}}")
         if a.get("member"):
             ovl_entries.append(f"    {{{row}, {a['size']}u, 0x{a['digest']:016x}ull, \"{a['member']}\"}},")
         else:
             entries.append(f"    {row},")
     lines.append("")
     lines.append("const MusashiNativeLaneEntry musashi_native_lane_generated[] = {")
-    lines.extend(entries or ["    {0u, 0u, NULL, NULL, 0u, 0u},"])
+    lines.extend(entries or ["    {0u, 0u, NULL, NULL, 0u, 0u, 0u},"])
     lines.append("};")
     lines.append(f"const size_t musashi_native_lane_generated_count = {len(entries)}u;")
     lines.append("")
     lines.append("/* Overlay members: run only while guest RAM over the extent hashes to the")
     lines.append(" * member's digest (FNV-1a 64 of the user's own extracted member file). */")
     lines.append("const MusashiNativeLaneOverlayEntry musashi_native_lane_overlay[] = {")
-    lines.extend(ovl_entries or ["    {{0u, 0u, NULL, NULL, 0u, 0u}, 0u, 0u, NULL},"])
+    lines.extend(ovl_entries or ["    {{0u, 0u, NULL, NULL, 0u, 0u, 0u}, 0u, 0u, NULL},"])
     lines.append("};")
     lines.append(f"const size_t musashi_native_lane_overlay_count = {len(ovl_entries)}u;")
     (out / "native_lane_table.c").write_text("\n".join(lines) + "\n")
@@ -1729,15 +1862,16 @@ def main():
                                           for r in sorted(ovl_results, key=lambda r: (r["vram"], r["member"]))],
                                deduplicated=ovl_rows),
                   functions=[{k: (f"{v:016x}" if k == "digest" and v is not None else v)
-                              for k, v in r.items() if k not in ("obj", "defs", "stubs")}
+                              for k, v in r.items() if k not in ("obj", "defs", "stubs", "ledger_rows")}
                              for r in sorted(results, key=lambda r: (r["vram"], r.get("member") or ""))])
     (out / "report.json").write_text(json.dumps(report, indent=1) + "\n")
     print(f"native lane: {len(admitted)}/{len(results)} game functions admitted "
           f"({len(psyq_excluded)} PsyQ-range candidates excluded); rejected {rules}; "
           f"call stubs direct={direct} thunk={thunk} (hook-site thunks {hook_thunk})")
-    print("native lane cycles (D-011, report only): " + ", ".join(
+    print("native lane cycles (D-011): mapped " + ", ".join(
         f"{k} {v['mapped']}/{v['mapped'] + v['refused']}" for k, v in cycles["by_class"].items())
-          + f"; {len(cycles['would_refuse'])} admitted would be refused (rule cycles)")
+          + f"; ledger {sum(1 for a in admitted if a.get('ledger'))} of {len(admitted)} admitted, "
+          f"{len(cycles['would_refuse'])} keep the fixed charge (inexact timing, D-011)")
     ovl_admitted = sum(1 for a in admitted if a.get("member"))
     print(f"native lane overlay: {ovl_admitted}/{len(ovl_results)} admitted from {sorted(infos)}"
           + "".join(f"; {r['member']} {r['vram']:08x} {r['rule']}" for r in ovl_results if not r["admitted"]))

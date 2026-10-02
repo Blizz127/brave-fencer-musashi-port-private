@@ -717,6 +717,13 @@ if(MUSASHI_BUILD_PC_PORT)
             COMMAND musashi_native_lane_probe
                     ${CMAKE_CURRENT_SOURCE_DIR}/extracted/disc/files/SLUS_007.26)
         set_tests_properties(native_lane_differential PROPERTIES SKIP_RETURN_CODE 77)
+        add_executable(musashi_native_lane_guard_probe tests/native_lane_guard_probe.c)
+        target_compile_features(musashi_native_lane_guard_probe PRIVATE c_std_99)
+        target_link_libraries(musashi_native_lane_guard_probe PRIVATE musashi_native_lane)
+        add_test(NAME native_lane_guard
+            COMMAND musashi_native_lane_guard_probe
+                    ${CMAKE_CURRENT_SOURCE_DIR}/extracted/disc/files/SLUS_007.26)
+        set_tests_properties(native_lane_guard PROPERTIES SKIP_RETURN_CODE 77)
         add_executable(musashi_native_lane_targeted_probe tests/native_lane_targeted_probe.c)
         target_compile_features(musashi_native_lane_targeted_probe PRIVATE c_std_99)
         target_link_libraries(musashi_native_lane_targeted_probe PRIVATE musashi_native_lane m)

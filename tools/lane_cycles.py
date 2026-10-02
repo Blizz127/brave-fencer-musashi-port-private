@@ -465,7 +465,8 @@ class Clang:
                       ir, flags=re.M | re.S)
         if not m:
             raise Refuse(f"{fname} not in the module")
-        self.blocks, self.order, self.defs = {}, [], {}
+        self.blocks, self.order, self.defs, self.lines = {}, [], {}, {}
+        self.text, self.span = ir, (m.start(2), m.end(2))
         params = re.findall(r"(%[\w.$-]+)", m.group(1))
         # The entry block is unnamed: its number is the next free one.
         cur = "%entry"
@@ -523,7 +524,7 @@ class Clang:
         if not lines:
             return
         events = []
-        for line in lines:
+        for li, line in enumerate(lines):
             d = DEF.match(line)
             if d:
                 self.defs[d.group(1)] = d.group(2)
@@ -533,17 +534,17 @@ class Clang:
             if c:
                 callee = c.group(1)
                 if callee is None:
-                    events.append(("call", None))
+                    events.append(("call", None, li))
                 elif callee.startswith("llvm."):
                     if not re.match(r"llvm\.(memcpy|memset|memmove|dbg|lifetime)", callee):
                         raise Refuse(f"intrinsic {callee}")
                 elif callee in DIV_HELPERS:
-                    events.append(("div", callee))
+                    events.append(("div", callee, li))
                 else:
                     g = GUEST_CALL.match(callee)
                     if not g:
                         raise Refuse(f"call to {callee}")
-                    events.append(("call", int(g.group(1), 16)))
+                    events.append(("call", int(g.group(1), 16), li))
         t = lines[-1]
         if SWITCH_END.match(t):
             raise Refuse("switch")
@@ -561,6 +562,7 @@ class Clang:
         else:
             raise Refuse(f"terminator {t.strip()[:40]}")
         self.blocks[name] = (events, term)
+        self.lines[name] = lines
         self.order.append(name)
 
     # Predicate of `br i1 %c`: (family, direction, const, negated) with the
@@ -695,7 +697,7 @@ def map_function(clang, retail):
         """One DFS with the choices in `path` (list of [key, options, i]);
         new choice points are appended with option 0."""
         forced = {e[0]: e[1][e[2]] for e in path}
-        states = {}
+        states, evat = {}, {}
         stack = [(clang.entry, 0, retail.vram)]
         while stack:
             steps[0] += 1
@@ -708,6 +710,7 @@ def map_function(clang, retail):
             ev = clang_event(cb, ci)
             seg = retail.segment(rpc)
             kind = ev[0]
+            evat[key] = (ev[2], ev[3], kind)
             if kind == "call":
                 if seg["kind"] != "call":
                     raise _Fail(f"clang call at {cb} vs retail {seg['kind']} at {seg['pc']:08x}")
@@ -760,7 +763,8 @@ def map_function(clang, retail):
                     if (t in body) == (f in body):
                         raise _Fail(f"folded test at {b}: no single loop arm")
                     cont = (t, 0, rpc) if t in body else (f, 0, rpc)
-                    states[key] = [("transparent", 0, cont), ("dead", 0, None)]
+                    arms = [("transparent", 0, cont), ("dead", 0, None)]
+                    states[key] = arms if t in body else arms[::-1]
                     stack.append(cont)
                     continue
                 if pol == "transparent":
@@ -774,15 +778,15 @@ def map_function(clang, retail):
             else:
                 raise _Fail(f"clang {kind}")
         check(clang, retail, states)
-        return states
+        return states, evat
 
     def solutions():
         path = []
         while True:
             trial = [list(x) for x in path]
             try:
-                states = solve(trial)
-                yield states, trial
+                states, evat = solve(trial)
+                yield (states, evat), trial
             except (_Fail, Refuse) as e:
                 if isinstance(e, Refuse) and e.reason == "search limit":
                     raise
@@ -797,8 +801,8 @@ def map_function(clang, retail):
 
     last_fail = ["no solution"]
     found = []
-    for states, chosen in solutions():
-        found.append((score(chosen), states, chosen))
+    for (states, evat), chosen in solutions():
+        found.append((score(chosen), states, chosen, evat))
         if len(found) > 64:
             raise Refuse("search limit (solutions)")
     if not found:
@@ -808,7 +812,7 @@ def map_function(clang, retail):
     proj = projection(top[0][1])
     if any(projection(f[1]) != proj for f in top[1:]):
         raise Refuse("ambiguous mapping")
-    _, states, chosen = top[0]
+    _, states, chosen, evat = top[0]
     blocks_at = {}
     for (cb, ci, rpc) in states:
         blocks_at.setdefault(cb, set()).add(rpc)
@@ -821,6 +825,7 @@ def map_function(clang, retail):
         split_blocks=sum(1 for v in blocks_at.values() if len(v) > 1),
         div_adjust=sorted({d["kind"] for (_, _, rpc) in states for d in retail.segment(rpc)["divs"]}),
         graph=states,
+        events=evat,
     )
 
 
@@ -905,8 +910,9 @@ def analyse(ir, fname, vram, words):
             out["path_cost"] = sum(c for _, c in calls) + ret
         clang = Clang(ir, fname)
         m = map_function(clang, retail)
-        m.pop("graph")
-        out.update(m)
+        division_adjusts(clang, retail, m["graph"])
+        out["_mapping"] = (clang, retail, m)
+        out.update({k: v for k, v in m.items() if k not in ("graph", "events")})
         out["status"] = "mapped"
     except Refuse as e:
         out["reason"] = e.reason
@@ -941,3 +947,271 @@ def map_ir(ir, fname, vram, words):
     clang = Clang(ir, fname)
     retail = Retail(vram, words)
     return clang, retail, map_function(clang, retail)
+
+
+# ------------------------------------------- phase 2b: ledger instrumentation
+
+LEDGER = "musashi_lane_ledger"          # i64: cycles charged, not yet flushed
+LEDGER_LOST = "musashi_lane_ledger_lost"  # i32: a mapped body left its graph
+RESUME = "musashi_lane_resume_pc"      # i32: retail pc a guest call returns to
+SEG_EXTRA = "musashi_lane_seg_extra"   # i64: data-dependent division cycles in the open segment
+BUDGET = "musashi_lane_budget"          # i64: ledger value at the next device deadline
+TICK = "musashi_native_lane_tick"       # (segment table, state): mid-native checkpoint
+POW2_SDIV = re.compile(r"^\s*(%[\w.$-]+) = sdiv(?: exact)? i32 ([^,]+), (\d+)\s*$")
+HELPER_CALL = re.compile(r"call i32 @(lane_sdiv32|lane_srem32)\(i32 (?:noundef )?([^,]+), "
+                         r"i32 (?:noundef )?([^)]+)\)")
+
+
+def _biased_pow2(d):
+    """gcc 2.7.2 divides by 2^k (k >= 2) with a `bgez` around the bias add;
+    by 2 it is branch-free (srl 31, addu, sra), so its cost is fixed."""
+    return d >= 4 and not d & (d - 1)
+
+
+def division_adjusts(clang, retail, states):
+    """Check that the clang divisions with a data-dependent retail cost match
+    the retail idioms one for one, and return their extra costs:
+    (signed helper extra for divisor -1, power-of-two extra for a negative
+    dividend). Raises Refuse on a mismatch."""
+    retail_divs = {}
+    for (_, _, rpc) in states:
+        for d in retail.segment(rpc)["divs"]:
+            retail_divs[d["pc"]] = d
+    m1 = [d["extra"] for d in retail_divs.values() if d["kind"] == "div_m1"]
+    p2 = [d["extra"] for d in retail_divs.values() if d["kind"] == "sdiv_pow2"]
+    n_helpers = n_pow2 = 0
+    for b in clang.order:
+        for line in clang.lines[b]:
+            if HELPER_CALL.search(line):
+                n_helpers += 1
+            pm = POW2_SDIV.match(line)
+            if pm and _biased_pow2(int(pm.group(3))):
+                n_pow2 += 1
+    if n_helpers != len(m1) or len(set(m1)) > 1:
+        raise Refuse(f"division mismatch: {n_helpers} signed helper(s), {len(m1)} retail -1 check(s)")
+    if n_pow2 != len(p2) or len(set(p2)) > 1:
+        raise Refuse(f"division mismatch: {n_pow2} sdiv by 2^k, {len(p2)} retail bias branch(es)")
+    return (m1[0] if m1 else 0), (p2[0] if p2 else 0)
+
+
+def instrument(clang, retail, mapping, guard=False, segs_symbol=None):
+    """Rewrite the entry function of `clang` (its -O0 module text) so that it
+    charges the mapped retail cost into @musashi_lane_ledger as it runs.
+
+    A local %lane.st holds the current product state (1..n; 0 = lost). At
+    every event (guest call, paired or transparent branch, return) the cost
+    of that state's retail segment is added to the ledger and the successor
+    state is selected, arithmetically (select chains: no new control flow),
+    so -O2 folds the states wherever they are static. Division helpers and
+    power-of-two signed divisions add their data-dependent retail extra.
+    A state with no expected successor sets @musashi_lane_ledger_lost.
+    With `guard`, each charge that reaches @musashi_lane_budget calls
+    musashi_native_lane_tick(segment table, state) first (phase 2b step d).
+    Returns (new module text, per-state segment rows for the runtime table:
+    [(state id, retail pc of the segment, [(pc, cost, delay_slot)...])])."""
+    states, evat = mapping["graph"], mapping["events"]
+    m1_extra, p2_extra = division_adjusts(clang, retail, states)
+    ids = {k: i + 1 for i, k in enumerate(sorted(states, key=lambda k: (str(k[0]), k[1], k[2])))}
+    by_event = {}
+    for key, (b, idx, kind) in evat.items():
+        by_event.setdefault((b, idx, kind), []).append(key)
+    n = [0]
+
+    def tmp(tag):
+        n[0] += 1
+        return f"%lane.{tag}.{n[0]}"
+
+    def chain(out, st, pairs, ty, default):
+        """select chain: value of `pairs[state]`, else default."""
+        cur = default
+        for k, v in pairs:
+            e = tmp("e")
+            out.append(f"  {e} = icmp eq i32 {st}, {k}")
+            nv = tmp("v")
+            out.append(f"  {nv} = select i1 {e}, {ty} {v}, {ty} {cur}")
+            cur = nv
+        return cur
+
+    def add_ledger(out, amount):
+        a, b2 = tmp("l"), tmp("l")
+        out.append(f"  {a} = load i64, ptr @{LEDGER}, align 8")
+        out.append(f"  {b2} = add i64 {a}, {amount}")
+        out.append(f"  store i64 {b2}, ptr @{LEDGER}, align 8")
+        return b2
+
+    def add_extra(out, amount):
+        if not guard:
+            return
+        a, b2 = tmp("x"), tmp("x")
+        out.append(f"  {a} = load i64, ptr @{SEG_EXTRA}, align 8")
+        out.append(f"  {b2} = add i64 {a}, {amount}")
+        out.append(f"  store i64 {b2}, ptr @{SEG_EXTRA}, align 8")
+
+    def mark_lost(out, nxt):
+        e, z, a, o = tmp("lost"), tmp("lost"), tmp("lost"), tmp("lost")
+        out.append(f"  {e} = icmp eq i32 {nxt}, 0")
+        out.append(f"  {z} = zext i1 {e} to i32")
+        out.append(f"  {a} = load i32, ptr @{LEDGER_LOST}, align 4")
+        out.append(f"  {o} = or i32 {a}, {z}")
+        out.append(f"  store i32 {o}, ptr @{LEDGER_LOST}, align 4")
+
+    splits = {}
+
+    def charge(out, keys, nexts_t, nexts_f=None, cond=None):
+        st = tmp("s")
+        out.append(f"  {st} = load i32, ptr %lane.st, align 4")
+        cost = chain(out, st, [(ids[k], states[k][0][1]) for k in keys], "i64", "0")
+        total = add_ledger(out, cost)
+        if guard:
+            # the charge reached the deadline budget: the tick finds the
+            # retail instruction where a device event falls due and runs the
+            # interpreter's checkpoint there (IRQ delivery included)
+            bud, over = tmp("b"), tmp("b")
+            n[0] += 1
+            tick, go = f"lane.tick.{n[0]}", f"lane.go.{n[0]}"
+            out.append(f"  {bud} = load i64, ptr @{BUDGET}, align 8")
+            out.append(f"  {over} = icmp uge i64 {total}, {bud}")
+            out.append(f"  br i1 {over}, label %{tick}, label %{go}")
+            out.append(f"{tick}:")
+            out.append(f"  call void @{TICK}(ptr @{segs_symbol}, i32 {st})")
+            out.append(f"  br label %{go}")
+            out.append(f"{go}:")
+            if m1_extra or p2_extra:
+                out.append(f"  store i64 0, ptr @{SEG_EXTRA}, align 8")
+            splits[cur_block[0]] = go
+        nt = chain(out, st, [(ids[k], nexts_t[k]) for k in keys], "i32", "0")
+        if cond is not None:
+            nf = chain(out, st, [(ids[k], nexts_f[k]) for k in keys], "i32", "0")
+            nx = tmp("n")
+            out.append(f"  {nx} = select i1 {cond}, i32 {nt}, i32 {nf}")
+            nt = nx
+        mark_lost(out, nt)
+        out.append(f"  store i32 {nt}, ptr %lane.st, align 4")
+
+    def next_id(edge):
+        kind, _, nxt = edge
+        return 0 if kind == "dead" or nxt is None else ids[nxt]
+
+    blocks_out = []
+    cur_block = [None]
+    for b in clang.order:
+        cur_block[0] = b
+        events, term = clang.blocks[b]
+        lines = list(clang.lines[b])
+        inserts = {}                     # line index -> lines inserted before
+        for idx, ev in enumerate(events):
+            li = ev[2]
+            if ev[0] == "div":
+                hm = HELPER_CALL.search(lines[li])
+                if hm and m1_extra:
+                    out = []
+                    e, x = tmp("m1"), tmp("m1")
+                    out.append(f"  {e} = icmp eq i32 {hm.group(3).strip()}, -1")
+                    out.append(f"  {x} = select i1 {e}, i64 {m1_extra}, i64 0")
+                    add_ledger(out, x)
+                    add_extra(out, x)
+                    inserts.setdefault(li, []).extend(out)
+                continue
+            keys = by_event.get((b, idx, "call"), [])
+            if keys:
+                out = []
+                charge(out, keys, {k: next_id(states[k][0]) for k in keys})
+                if guard:
+                    # where the retail caller resumes: an IRQ the callee's
+                    # return left pending is delivered there, before any
+                    # native code after the call runs
+                    st2 = tmp("s")
+                    out.append(f"  {st2} = load i32, ptr %lane.st, align 4")
+                    rp = chain(out, st2, [(next_id(states[k][0]), states[k][0][2][2]) for k in keys],
+                               "i32", "0")
+                    out.append(f"  store i32 {rp}, ptr @{RESUME}, align 4")
+                inserts.setdefault(li, []).extend(out)
+        if p2_extra:
+            for li, line in enumerate(lines):
+                pm = POW2_SDIV.match(line)
+                if pm and _biased_pow2(int(pm.group(3))):
+                    out = []
+                    e, x = tmp("p2"), tmp("p2")
+                    out.append(f"  {e} = icmp slt i32 {pm.group(2).strip()}, 0")
+                    out.append(f"  {x} = select i1 {e}, i64 {p2_extra}, i64 0")
+                    add_ledger(out, x)
+                    add_extra(out, x)
+                    inserts.setdefault(li, []).extend(out)
+        tl = len(lines) - 1
+        idx = len(events)
+        if term[0] == "cond":
+            keys = by_event.get((b, idx, "cond"), [])
+            if keys:
+                out = []
+                charge(out, keys, {k: next_id(states[k][0]) for k in keys},
+                       {k: next_id(states[k][1]) for k in keys}, cond=term[1])
+                inserts.setdefault(tl, []).extend(out)
+        elif term[0] == "ret":
+            keys = by_event.get((b, idx, "ret"), [])
+            if keys:
+                out = []
+                charge(out, keys, {k: ids[k] for k in keys})
+                inserts.setdefault(tl, []).extend(out)
+        body = []
+        for li, line in enumerate(lines):
+            body.extend(inserts.get(li, []))
+            body.append(line)
+        if b == clang.entry:
+            body = ["  %lane.st = alloca i32, align 4",
+                    f"  store i32 {ids[(clang.entry, 0, retail.vram)]}, ptr %lane.st, align 4"] + body
+            blocks_out.append("\n".join(body))
+        else:
+            blocks_out.append(f"{b}:\n" + "\n".join(body))
+    if splits:
+        # a split block's terminator now sits in its last continuation:
+        # successors' phi nodes name that block as the predecessor
+        fixed = []
+        for text_block in blocks_out:
+            lines_b = text_block.split("\n")
+            for i, line in enumerate(lines_b):
+                if re.match(r"^\s*%[\w.$-]+ = phi ", line):
+                    for old, new in splits.items():
+                        line = re.sub(r"(\[[^\[\]]*,\s*)%" + re.escape(old) + r"(\s*\])", r"\g<1>%" + new + r"\2", line)
+                    lines_b[i] = line
+            fixed.append("\n".join(lines_b))
+        blocks_out = fixed
+    a, z = clang.span
+    text = clang.text[:a] + "\n\n".join(blocks_out) + "\n" + clang.text[z:]
+    decls = [f"@{LEDGER} = external global i64, align 8",
+             f"@{LEDGER_LOST} = external global i32, align 4"]
+    if guard:
+        decls += [f"@{BUDGET} = external global i64, align 8",
+                  f"@{SEG_EXTRA} = external global i64, align 8",
+                  f"@{RESUME} = external global i32, align 4",
+                  f"@{segs_symbol} = external constant i8",
+                  f"declare void @{TICK}(ptr, i32)"]
+    text = text.rstrip("\n") + "\n\n" + "\n".join(decls) + "\n"
+    rows = []
+    for key, i in sorted(ids.items(), key=lambda kv: kv[1]):
+        # what this state charges: its segment, or nothing (transparent,
+        # folded and dead states)
+        if states[key] and states[key][0][0] in ("cond", "call", "ret"):
+            seg = retail.segment(key[2])
+            insns = [(pc, retail.cost(pc), 1 if _in_delay_slot(retail, pc) else 0) for pc in seg["pcs"]]
+            if sum(c for _, c, _ in insns) != states[key][0][1]:
+                raise Refuse(f"segment table cost mismatch at {key[2]:08x}")
+            # a division idiom's data-dependent instructions (flag 2): they
+            # run after the check's delay slot when its extra is charged. The
+            # tick attributes the segment's charged extra to them in order,
+            # which is exact for one idiom per segment (all of them today).
+            if len(seg["divs"]) > 1:
+                raise Refuse(f"two division idioms in the segment at {key[2]:08x}")
+            for d in seg["divs"]:
+                cond_pcs = [d["pc"] + 8, d["pc"] + 12] if d["kind"] == "div_m1" else [d["pc"] + 8]
+                at = next(i for i, x in enumerate(insns) if x[0] == d["pc"] + 4) + 1
+                insns[at:at] = [(pc, retail.cost(pc), 2) for pc in cond_pcs]
+        else:
+            insns = []
+        rows.append((i, key[2], insns))
+    return text, rows
+
+
+def _in_delay_slot(retail, pc):
+    if pc - 4 < retail.vram:
+        return False
+    return decode(retail.word(pc - 4), pc - 4)[0] in ("cond", "j", "jal", "jalr", "jr")

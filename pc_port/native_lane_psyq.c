@@ -61,7 +61,7 @@ typedef struct PsyqRow {
     BfmPsyqStatus status;
 } PsyqRow;
 
-#define BFM_PSYQ(pc, n, st, ac, ret, w) {{pc, 2u * 8u, lane_psyq_##n, #n, ac, ret}, st},
+#define BFM_PSYQ(pc, n, st, ac, ret, w) {{pc, 2u * 8u, lane_psyq_##n, #n, ac, ret, 0u}, st},
 static const PsyqRow kPsyqRows[] = {
 #include "psyq/bfm_psyq_compat.def"
 };

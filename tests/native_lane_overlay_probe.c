@@ -472,6 +472,83 @@ static int run_case(MusashiBootMemory *memory, const uint8_t *image, size_t idx,
     return ram_differs(memory, reference, e->entry.name, "positive") ? DIFFERENT : SAME;
 }
 
+/* ---- D-011 cycle oracle (positive cases, second child) -----------------
+ * The main table holds only the generated entries (PsyQ code interpreted on
+ * both sides). The cycle total at each entry to a function outside the lane
+ * tables and at the return must match for a ledger-mapped overlay entry. */
+enum { C_SAME, C_DIFFERENT, C_NOT_COMPARABLE };
+enum { MARKS = 8192 };
+static uint64_t g_cycles;
+static struct { uint32_t pc; uint64_t cycle; } g_marks[MARKS];
+static unsigned g_nmarks;
+static int g_overflow;
+static uint32_t g_lane_pcs[4096];
+static size_t g_lane_n;
+static int cyc_advance(void *u, uint32_t c) { (void)u; g_cycles += c; return 1; }
+static const MusashiExecutionClock g_cyc_clock = {NULL, cyc_advance};
+static int pc_cmp(const void *a, const void *b) {
+    uint32_t x = *(const uint32_t *)a, y = *(const uint32_t *)b;
+    return x < y ? -1 : x > y;
+}
+static void cyc_mark(void *u, uint32_t pc, const uint32_t *r) {
+    (void)u; (void)r;
+    if (bsearch(&pc, g_lane_pcs, g_lane_n, sizeof pc, pc_cmp)) return;
+    if (g_nmarks == MARKS) { g_overflow = 1; return; }
+    g_marks[g_nmarks].pc = pc; g_marks[g_nmarks].cycle = g_cycles; ++g_nmarks;
+}
+
+static int cycle_case(MusashiBootMemory *memory, const uint8_t *image, size_t idx,
+                      const MusashiNativeLaneOverlayEntry *e, unsigned pattern) {
+    uint32_t args[8], regs[32], fixed0, lost0;
+    unsigned argc = e->entry.argc > 8u ? 8u : e->entry.argc, i, ref_n;
+    uint64_t ref_total;
+    static struct { uint32_t pc; uint64_t cycle; } ref[MARKS];
+    uint8_t *start = malloc(MUSASHI_RAM_SIZE);
+    int ok;
+    if (!start || !e->entry.ledger) return C_NOT_COMPARABLE;
+    if (musashi_native_lane_install(musashi_native_lane_generated,
+                                    musashi_native_lane_generated_count) < 0) return C_NOT_COMPARABLE;
+    musashi_formatter_set_entry_hook(cyc_mark, NULL);
+    memcpy(memory->bytes, image, MUSASHI_RAM_SIZE);
+    seed_arena(memory, e->entry.guest_pc ^ (pattern * 0x9e3779b9u));
+    make_args(pattern, args);
+    memcpy(start, memory->bytes, MUSASHI_RAM_SIZE);
+    g_cycles = 0; g_nmarks = 0; g_overflow = 0;
+    alarm(5);
+    ok = musashi_native_lane_reference_call_clocked(memory, e->entry.guest_pc, args, argc, STACK_TOP, 0,
+                                                    regs, &g_cyc_clock);
+    alarm(0);
+    if (!ok || g_overflow) return C_NOT_COMPARABLE;
+    ref_total = g_cycles; ref_n = g_nmarks;
+    memcpy(ref, g_marks, ref_n * sizeof ref[0]);
+    memcpy(memory->bytes, start, MUSASHI_RAM_SIZE);
+    g_cycles = 0; g_nmarks = 0; g_overflow = 0; g_ran[idx] = 0;
+    fixed0 = musashi_lane_fixed; lost0 = musashi_lane_ledger_lost;
+    alarm(5);
+    ok = musashi_native_lane_reference_call_clocked(memory, e->entry.guest_pc, args, argc, STACK_TOP, 1,
+                                                    regs, &g_cyc_clock);
+    alarm(0);
+    if (!ok || !g_ran[idx] || g_overflow || musashi_lane_fixed != fixed0) return C_NOT_COMPARABLE;
+    if (musashi_lane_ledger_lost != lost0) {
+        fprintf(stderr, "overlay_cycles: %s pattern %u left its mapped graph\n", e->entry.name, pattern);
+        return C_DIFFERENT;
+    }
+    for (i = 0; i < ref_n || i < g_nmarks; ++i)
+        if (i >= ref_n || i >= g_nmarks || ref[i].pc != g_marks[i].pc || ref[i].cycle != g_marks[i].cycle) {
+            fprintf(stderr, "overlay_cycles: %s pattern %u boundary %u: interp %08x@%llu native %08x@%llu\n",
+                    e->entry.name, pattern, i, i < ref_n ? ref[i].pc : 0u,
+                    i < ref_n ? (unsigned long long)ref[i].cycle : 0ull, i < g_nmarks ? g_marks[i].pc : 0u,
+                    i < g_nmarks ? (unsigned long long)g_marks[i].cycle : 0ull);
+            return C_DIFFERENT;
+        }
+    if (ref_total != g_cycles) {
+        fprintf(stderr, "overlay_cycles: %s pattern %u return: interp %llu native %llu\n", e->entry.name,
+                pattern, (unsigned long long)ref_total, (unsigned long long)g_cycles);
+        return C_DIFFERENT;
+    }
+    return C_SAME;
+}
+
 static uint8_t *read_file(const char *path, size_t *size) {
     FILE *f = fopen(path, "rb");
     uint8_t *data;
@@ -495,7 +572,7 @@ int main(int argc, char **argv) {
     const char *member;
     MusashiNativeLaneEntry *table;
     MusashiNativeLaneOverlayEntry mine[MAX_ENTRIES];
-    unsigned counts[7] = {0}, bad = 0;
+    unsigned counts[7] = {0}, bad = 0, ccounts[3] = {0}, cf[3] = {0};
     if (argc != 8) {
         fprintf(stderr, "usage: %s SLUS_007.26 MEMBER MEMBER_FILE VRAM START LOAD_OFF LOAD_END\n", argv[0]);
         return 2;
@@ -552,8 +629,12 @@ int main(int argc, char **argv) {
     start = malloc(MUSASHI_RAM_SIZE);
     if (!image || !reference || !start) return 1;
     memcpy(image, memory->bytes, MUSASHI_RAM_SIZE);
+    for (i = 0; i < musashi_native_lane_generated_count && g_lane_n < 4000u; ++i)
+        g_lane_pcs[g_lane_n++] = musashi_native_lane_generated[i].guest_pc;
+    for (i = 0; i < n && g_lane_n < 4096u; ++i) g_lane_pcs[g_lane_n++] = mine[i].entry.guest_pc;
+    qsort(g_lane_pcs, g_lane_n, sizeof g_lane_pcs[0], pc_cmp);
     for (i = 0; i < n; ++i) {
-        unsigned pattern, same = 0, fails = 0;
+        unsigned pattern, same = 0, fails = 0, cs = 0, cd = 0, cn = 0;
         const char *only = getenv("OVERLAY_PROBE_ONLY");
         if (only && strtoul(only, NULL, 16) != mine[i].entry.guest_pc) continue;
         for (pattern = 0; pattern <= PATTERNS; ++pattern) {
@@ -576,6 +657,21 @@ int main(int argc, char **argv) {
             if (outcome == FAULT) outcome = pattern == PATTERNS || g_foreign ? NEG_RAN_NATIVE : NOT_COMPARABLE;
             counts[outcome]++;
             if (outcome == SAME) same++;
+            if (pattern < PATTERNS && !g_foreign && mine[i].entry.ledger) {
+                int cstatus, c;
+                fflush(stderr);
+                child = fork();
+                if (child == 0) {
+                    signal(SIGSEGV, SIG_DFL);
+                    signal(SIGALRM, SIG_DFL);
+                    _exit(cycle_case(memory, image, i, &mine[i], pattern));
+                }
+                if (child < 0 || waitpid(child, &cstatus, 0) != child) return 1;
+                c = WIFEXITED(cstatus) && WEXITSTATUS(cstatus) <= C_NOT_COMPARABLE ? WEXITSTATUS(cstatus)
+                    : (outcome == SAME ? C_DIFFERENT : C_NOT_COMPARABLE);
+                ccounts[c]++;
+                if (c == C_SAME) cs++; else if (c == C_DIFFERENT) cd++; else cn++;
+            }
             if (outcome == DIFFERENT || outcome == NEG_RAN_NATIVE ||
                 (outcome == NOT_NATIVE)) {
                 fails++;
@@ -584,6 +680,12 @@ int main(int argc, char **argv) {
                         outcome == DIFFERENT ? "DIFFERENT" : outcome == NEG_RAN_NATIVE
                             ? "native body ran on modified bytes" : "digest did not match the loaded member");
             }
+        }
+        if (mine[i].entry.ledger) {
+            cf[cd ? C_DIFFERENT : cs ? C_SAME : C_NOT_COMPARABLE]++;
+            printf("overlay_cycles: %-34s %08x same=%u different=%u not_comparable=%u\n",
+                   mine[i].entry.name, mine[i].entry.guest_pc, cs, cd, cn);
+            bad += cd != 0;
         }
         printf("overlay_lane: %-34s %08x size=%u %s\n", mine[i].entry.name, mine[i].entry.guest_pc,
                mine[i].size, fails ? "BAD" : same ? "verified" : "negative-only (no comparable positive case)");
@@ -594,5 +696,8 @@ int main(int argc, char **argv) {
            g_foreign ? " foreign_payload" : "", n, counts[SAME],
            counts[DIFFERENT], counts[NOT_NATIVE], counts[NOT_COMPARABLE], counts[NEG_OK],
            counts[NEG_RAN_NATIVE], bad);
+    printf("overlay_cycles: member=%s functions same=%u different=%u not_comparable=%u "
+           "cases same=%u different=%u not_comparable=%u\n", member, cf[C_SAME], cf[C_DIFFERENT],
+           cf[C_NOT_COMPARABLE], ccounts[C_SAME], ccounts[C_DIFFERENT], ccounts[C_NOT_COMPARABLE]);
     return bad ? 1 : 0;
 }

@@ -13521,12 +13521,164 @@ uint32_t musashi_native_lane_arg(const MusashiNativeLaneCall *call, unsigned n) 
     return value;
 }
 
+uint64_t musashi_lane_ledger;
+uint32_t musashi_lane_ledger_lost;
+uint32_t musashi_lane_fixed;
+
+/* Charge the ledger to the CPU's clock (none: dropped, as the interpreter
+ * charges nothing without one). 0 when the clock refuses. */
+static int lane_ledger_flush(FormatterCpu *cpu) {
+    uint64_t cycles = musashi_lane_ledger;
+    musashi_lane_ledger = 0;
+    if (!cpu->clock) return 1;
+    while (cycles) {
+        uint32_t part = cycles > UINT32_MAX ? UINT32_MAX : (uint32_t)cycles;
+        if (!cpu->clock->advance || !cpu->clock->advance(cpu->clock->userdata, part)) return 0;
+        cycles -= part;
+    }
+    return 1;
+}
+
+/* ---- D-011 deadline guard ------------------------------------------------
+ * Positions are ledger values: 0 is the time already charged to the clock,
+ * a segment's instructions start at (ledger before the segment) + prefix. */
+uint64_t musashi_lane_budget = UINT64_MAX;
+uint64_t musashi_lane_seg_extra;
+uint32_t musashi_lane_resume_pc;
+uint32_t musashi_lane_sp_adj;
+static MusashiNativeLaneGuardStats g_guard;
+static int g_guard_strict = -1;
+
+void musashi_native_lane_guard_stats(MusashiNativeLaneGuardStats *out) {
+    if (out) *out = g_guard;
+}
+
+static int guard_strict(void) {
+    if (g_guard_strict < 0) {
+        const char *v = getenv("MUSASHI_LANE_GUARD_STRICT");
+        g_guard_strict = v && v[0] == '1';
+    }
+    return g_guard_strict;
+}
+
+static const MusashiExecutionClock *g_deadline_clock;
+static int (*g_deadline_fn)(void *, uint64_t *);
+
+void musashi_execution_clock_set_deadline(const MusashiExecutionClock *clock,
+                                          int (*deadline)(void *, uint64_t *)) {
+    g_deadline_clock = deadline ? clock : NULL;
+    g_deadline_fn = deadline;
+}
+
+static void lane_budget_refresh(FormatterCpu *cpu) {
+    uint64_t until = 0;
+    ++g_guard.refreshes;
+    if (guard_strict()) {
+        musashi_lane_budget = 0;   /* tests: a checkpoint before every instruction */
+        return;
+    }
+    if (!cpu->clock || cpu->clock != g_deadline_clock || !g_deadline_fn) {
+        musashi_lane_budget = UINT64_MAX;
+        return;
+    }
+    if (!g_deadline_fn(cpu->clock->userdata, &until)) {
+        /* Unknown (host clock, or a device frame owns the time): the body
+         * runs to its next guest call or return, as before D-011's guard. */
+        ++g_guard.unknown;
+        musashi_lane_budget = UINT64_MAX;
+        return;
+    }
+    musashi_lane_budget = until;
+}
+
+static int lane_ledger_flush_part(FormatterCpu *cpu, uint64_t cycles) {
+    if (cycles > musashi_lane_ledger) cycles = musashi_lane_ledger;
+    musashi_lane_ledger -= cycles;
+    if (!cpu->clock) return 1;
+    while (cycles) {
+        uint32_t part = cycles > UINT32_MAX ? UINT32_MAX : (uint32_t)cycles;
+        if (!cpu->clock->advance || !cpu->clock->advance(cpu->clock->userdata, part)) return 0;
+        cycles -= part;
+    }
+    return 1;
+}
+
+/* The interpreter's checkpoint before the retail instruction at pc (device
+ * commit, then IRQ delivery, which runs to completion and returns here). */
+static int lane_checkpoint(FormatterCpu *cpu, uint32_t pc, int delay) {
+    const MusashiCallbackDevice *device = cpu->callback_device;
+    uint32_t saved_pc = cpu->pc, saved_npc = cpu->npc, saved_branch = cpu->branch_pc;
+    uint8_t saved_delay = cpu->delay_slot;
+    int ok;
+    if (!device || !device->checkpoint) return 1;
+    cpu->pc = pc;
+    cpu->npc = pc + 4u;
+    cpu->delay_slot = delay ? 1u : 0u;
+    cpu->branch_pc = delay ? pc - 4u : 0u;
+    ok = device->checkpoint(device->userdata, cpu);
+    if (ok && cpu->npc == UINT_MAX) ok = -1;          /* host stop request */
+    cpu->pc = saved_pc;
+    cpu->npc = saved_npc;
+    cpu->delay_slot = saved_delay;
+    cpu->branch_pc = saved_branch;
+    return ok;
+}
+
+void musashi_native_lane_tick(const void *segment_table, uint32_t state) {
+    const MusashiLaneSegTable *t = segment_table;
+    LaneActive *active = g_lane_active;
+    const MusashiLaneSegRow *row;
+    uint64_t pos, cost = 0, extra;
+    uint32_t k;
+    ++g_guard.ticks;
+    if (!active || !t || !state || state > t->nrows) return;
+    row = &t->rows[state - 1u];
+    for (k = 0; k < row->count; ++k)
+        if (!(t->insns[row->first + k].flags & 2u)) cost += t->insns[row->first + k].cost;
+    cost += musashi_lane_seg_extra;
+    pos = musashi_lane_ledger >= cost ? musashi_lane_ledger - cost : 0;
+    extra = musashi_lane_seg_extra;
+    for (k = 0; k < row->count; ++k) {
+        const MusashiLaneSegInsn *in = &t->insns[row->first + k];
+        if (in->flags & 2u) {
+            /* a division idiom's data-dependent instruction: it ran only if
+             * its extra was charged (one idiom per segment is exact) */
+            if (extra < in->cost) continue;
+            extra -= in->cost;
+        }
+        if (pos >= musashi_lane_budget) {
+            int ok;
+            if (!lane_ledger_flush_part(active->cpu, pos)) longjmp(active->abort, 8);
+            pos = 0;
+            ++g_guard.checkpoints;
+            ok = lane_checkpoint(active->cpu, in->pc, in->flags & 1u);
+            if (ok < 0) longjmp(active->abort, 5);
+            if (!ok) longjmp(active->abort, 9);
+            lane_budget_refresh(active->cpu);
+        }
+        pos += in->cost;
+    }
+}
+
+void musashi_native_lane_tick_entry(uint32_t pc) {
+    LaneActive *active = g_lane_active;
+    int ok;
+    ++g_guard.ticks;
+    if (!active || musashi_lane_ledger < musashi_lane_budget) return;
+    if (!lane_ledger_flush_part(active->cpu, musashi_lane_ledger)) longjmp(active->abort, 8);
+    ++g_guard.checkpoints;
+    ok = lane_checkpoint(active->cpu, pc, 0);
+    if (ok < 0) longjmp(active->abort, 5);
+    if (!ok) longjmp(active->abort, 9);
+    lane_budget_refresh(active->cpu);
+}
+
 uint32_t musashi_native_guest_call(uint32_t target, unsigned argc,
                                    const uint32_t *args, uint32_t *v1) {
     LaneActive *active = g_lane_active;
     FormatterCpu *cpu;
     LaneRunFrame *frame;
-    uint32_t saved_pc, saved_npc, saved_ra, saved_sp, sp, v0;
+    uint32_t saved_pc, saved_npc, saved_ra, saved_sp, sp, v0, resume;
     unsigned i, extra;
     if (!active) {
         fprintf(stderr, "native_boot: NATIVE_GUEST_CALL outside a lane call target=%08x\n", target);
@@ -13534,11 +13686,22 @@ uint32_t musashi_native_guest_call(uint32_t target, unsigned argc,
     }
     cpu = active->cpu;
     if ((target & 3u) || argc > 16u) longjmp(active->abort, 3);
+    /* The caller's retail instructions up to and including the jal's delay
+     * slot run before the callee's first one. */
+    if (!lane_ledger_flush(cpu)) longjmp(active->abort, 8);
+    resume = musashi_lane_resume_pc;
+    musashi_lane_resume_pc = 0;
     saved_pc = cpu->pc; saved_npc = cpu->npc;
     saved_ra = cpu->r[31]; saved_sp = cpu->r[29];
     extra = argc > 4u ? argc - 4u : 0u;
-    /* o32: the callee owns a 16-byte home area above its own frame. */
-    sp = (saved_sp - 0x10u - extra * 4u) & ~7u;
+    if (musashi_lane_sp_adj) {
+        /* The retail stack pointer: the native callers' frames (which hold
+         * the o32 home area and the stack arguments) sit above it. */
+        sp = saved_sp - musashi_lane_sp_adj;
+    } else {
+        /* o32: the callee owns a 16-byte home area above its own frame. */
+        sp = (saved_sp - 0x10u - extra * 4u) & ~7u;
+    }
     for (i = 0; i < argc; ++i) {
         if (i < 4u) cpu->r[4u + i] = args[i];
         else if (!lane_stack_write(active->memory, sp + 0x10u + (i - 4u) * 4u, args[i]))
@@ -13571,6 +13734,20 @@ uint32_t musashi_native_guest_call(uint32_t target, unsigned argc,
      * leaves npc just past the sentinel. Do not swallow the stop. */
     if (cpu->npc == UINT_MAX) longjmp(active->abort, 5);
     if (g_lane_ovl_depth > active->ovl_base) lane_ovl_recheck(active);
+    lane_budget_refresh(cpu);
+    if (resume && musashi_lane_budget == 0) {
+        /* An IRQ is deliverable now (the callee's return held it): the
+         * interpreter takes it at the caller's next retail instruction,
+         * before that code reads what the handler writes. */
+        int ok;
+        cpu->pc = saved_pc; cpu->npc = saved_npc;
+        cpu->r[29] = saved_sp; cpu->r[31] = saved_ra;
+        ++g_guard.checkpoints;
+        ok = lane_checkpoint(cpu, resume, 0);
+        if (ok < 0) longjmp(active->abort, 5);
+        if (!ok) longjmp(active->abort, 9);
+        lane_budget_refresh(cpu);
+    }
     v0 = cpu->r[2];
     if (v1) *v1 = cpu->r[3];
     cpu->r[29] = saved_sp;
@@ -13597,11 +13774,14 @@ static int lane_try(MusashiBootMemory *memory, FormatterCpu *cpu) {
     const MusashiNativeLaneOverlayEntry *ovl = NULL;
     LaneActive active;
     LaneRunFrame *saved_frames = g_lane_run_frames;
+    uint32_t saved_sp_adj = musashi_lane_sp_adj;
     MusashiNativeLaneCall call;
     uint32_t ra, sp;
     volatile int outcome;
     entry = g_lane_count ? lane_find(cpu->pc) : NULL;
     if (!entry && lane_ovl_first(cpu->pc) == g_lane_ovl_count) return 0;
+    /* Every boundary leaves the ledger empty; an aborted call may not. */
+    if (!g_lane_active) musashi_lane_ledger = musashi_lane_seg_extra = 0;
     if (cpu->merge_pending || cpu->gte_load_pending || cpu->delay_slot ||
         cpu->npc != cpu->pc + 4u || !musashi_native_lane_usable(memory))
         return 0;
@@ -13622,16 +13802,20 @@ static int lane_try(MusashiBootMemory *memory, FormatterCpu *cpu) {
     call.memory = memory;
     call.r = cpu->r;
     g_lane_active = &active;
+    musashi_lane_sp_adj = 0;   /* this lane call's native frames start at its sp */
     {
         int code = setjmp(active.abort);
         if (code == 0) {
             if (ovl) lane_ovl_push(ovl->entry.guest_pc, ovl->size, ovl->digest);
+            lane_budget_refresh(cpu);
             outcome = entry->fn(&call) ? 1 : 0;
         } else {
             outcome = -1;
             /* 3/4/5: a guest call from native code refused or stopped;
              * 6: musashi_native_lane_abort (e.g. a trapping divisor);
-             * 7: an overlay frame's bytes changed under a guest call. */
+             * 7: an overlay frame's bytes changed under a guest call;
+             * 8: the clock refused the ledger (guest call or deadline tick);
+             * 9: a mid-native checkpoint refused (as the interpreter's would). */
             fprintf(stderr, "native_boot: NATIVE_LANE_ABORT_DETAIL pc=%08x code=%d a0=%08x a1=%08x "
                     "a2=%08x a3=%08x ra=%08x sp=%08x\n", entry->guest_pc, code,
                     cpu->r[4], cpu->r[5], cpu->r[6], cpu->r[7], ra, sp);
@@ -13640,6 +13824,8 @@ static int lane_try(MusashiBootMemory *memory, FormatterCpu *cpu) {
     g_lane_active = active.prev;
     g_lane_run_frames = saved_frames;
     g_lane_ovl_depth = active.ovl_base;
+    musashi_lane_sp_adj = saved_sp_adj;
+    if (outcome < 0) musashi_lane_ledger = musashi_lane_seg_extra = 0;
     if (outcome < 0) {
         fprintf(stderr, "native_boot: NATIVE_LANE_ABORT pc=%08x fn=%s\n",
                 entry->guest_pc, entry->name ? entry->name : "?");
@@ -13649,7 +13835,11 @@ static int lane_try(MusashiBootMemory *memory, FormatterCpu *cpu) {
     cpu->r[0] = 0;
     cpu->r[29] = sp;
     cpu->r[31] = ra;
-    if (cpu->clock && entry->cost_cycles &&
+    /* D-011: a mapped body charged its retail path into the ledger (through
+     * jr ra and its delay slot); an unmapped one gets its fixed cost. */
+    if (!lane_ledger_flush(cpu)) return -1;
+    if (!entry->ledger) ++musashi_lane_fixed;
+    if (!entry->ledger && cpu->clock && entry->cost_cycles &&
         (!cpu->clock->advance || !cpu->clock->advance(cpu->clock->userdata, entry->cost_cycles)))
         return -1;
     return formatter_return(cpu) ? 1 : -1;
@@ -16781,7 +16971,25 @@ int musashi_native_lane_reference_call(MusashiBootMemory *memory, uint32_t targe
 int musashi_native_lane_reference_call_regs(MusashiBootMemory *memory, uint32_t target,
                                             const uint32_t *args, unsigned argc,
                                             uint32_t sp, int use_lane, uint32_t regs[32]) {
-    static const MusashiCallbackDevice no_devices;
+    return musashi_native_lane_reference_call_clocked(memory, target, args, argc, sp,
+                                                      use_lane, regs, NULL);
+}
+
+int musashi_native_lane_reference_call_clocked(MusashiBootMemory *memory, uint32_t target,
+                                               const uint32_t *args, unsigned argc,
+                                               uint32_t sp, int use_lane, uint32_t regs[32],
+                                               const MusashiExecutionClock *clock) {
+    return musashi_native_lane_reference_call_checkpoint(memory, target, args, argc, sp, use_lane,
+                                                         regs, clock, NULL, NULL);
+}
+
+int musashi_native_lane_reference_call_checkpoint(MusashiBootMemory *memory, uint32_t target,
+                                                  const uint32_t *args, unsigned argc,
+                                                  uint32_t sp, int use_lane, uint32_t regs[32],
+                                                  const MusashiExecutionClock *clock,
+                                                  int (*checkpoint)(void *, const void *),
+                                                  void *userdata) {
+    MusashiCallbackDevice no_devices;
     FormatterCpu cpu = {0};
     MusashiResetGraphPrefixStop stop = {0};
     MusashiResetGraphPrefixStatus status;
@@ -16792,7 +17000,11 @@ int musashi_native_lane_reference_call_regs(MusashiBootMemory *memory, uint32_t 
     for (i = 4; i < argc; ++i)
         if (!musashi_boot_write32(memory, sp + 0x10u + (i - 4u) * 4u, args[i])) return 0;
     for (i = 0; i < argc && i < 4u; ++i) cpu.r[4u + i] = args[i];
+    memset(&no_devices, 0, sizeof no_devices);
+    no_devices.checkpoint = checkpoint;
+    no_devices.userdata = userdata;
     cpu.callback_device = &no_devices;
+    cpu.clock = clock;
     cpu.pc = target;
     cpu.npc = target + 4u;
     cpu.r[28] = 0x80074750u;

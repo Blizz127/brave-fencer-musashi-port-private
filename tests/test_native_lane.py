@@ -69,7 +69,9 @@ class NativeLaneGeneratorTest(unittest.TestCase):
 
     def test_table_shape(self):
         # Admitted entry, marshalled through the register ABI.
-        self.assertIn('{0x80019064u, 36u, wrap_80019064, "func_80019064", 1u, 0u},', self.table)
+        # The last field is the D-011 ledger flag (1: the body charges its
+        # mapped retail cost; cost_cycles is then not charged).
+        self.assertIn('{0x80019064u, 36u, wrap_80019064, "func_80019064", 1u, 0u, 1u},', self.table)
         # func_80016714 has a bespoke binding, so natively compiled callers
         # reach its guest words through the interpreter thunk.
         self.assertIn("musashi_native_guest_call(0x80016714u, 2u, args, NULL)", self.table)

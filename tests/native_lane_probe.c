@@ -11,8 +11,19 @@
  * refused (it needs a device, a BIOS call, or a wild pointer) proves
  * nothing and is counted as not comparable.
  *
- * Exit 0 when no comparable case differs and no native run failed where
- * the interpreter succeeded; 77 when the host window or the EXE is missing. */
+ * D-011 cycle oracle: each case also runs (in a second child, with only the
+ * generated table installed, so PsyQ code is interpreted on both sides) the
+ * interpreter and the lane with a recording clock. The cycle total at every
+ * entry to a function outside the generated table (the native side's
+ * thunks and everything below them) and at the return must be equal for a
+ * function whose body charges the mapped ledger. A case whose native run
+ * reached a fixed (unmapped) charge proves nothing about the mapping and is
+ * not comparable; a body that left its mapped graph (ledger_lost) differs.
+ *
+ * Exit 0 when no comparable case differs (RAM or cycles) and no native run
+ * failed where the interpreter succeeded; 77 when the host window or the EXE
+ * is missing. MUSASHI_LANE_CYCLES_REPORT=path writes one line per function:
+ * pc name ledger same different not_comparable. */
 #define _GNU_SOURCE
 #include "musashi_boot_memory.h"
 #include "musashi_native_lane.h"
@@ -34,7 +45,7 @@ extern const MusashiNativeLaneEntry musashi_native_lane_generated[];
 extern const size_t musashi_native_lane_generated_count;
 
 enum { ARENA = 0x80180000u, ARENA_SIZE = 0x40000u, STACK_TOP = 0x801fe000u,
-       FRAME_GUARD = 0x10000u, PATTERNS = 3 };
+       FRAME_GUARD = 0x10000u, PATTERNS = 3, CYCLE_PATTERNS = 5 };
 
 enum Outcome { SAME, DIFFERENT, NATIVE_FAILED, NOT_COMPARABLE, MIRROR_FAULT, WRAP_FAULT };
 
@@ -64,6 +75,108 @@ static uint32_t rng(void) {
     return rng_state;
 }
 
+static void seed_arena(MusashiBootMemory *memory, uint32_t seed);
+static void make_args(unsigned pattern, uint32_t *args);
+
+/* ---- cycle oracle --------------------------------------------------- */
+enum CycleOutcome { C_SAME, C_DIFFERENT, C_NOT_COMPARABLE, C_FIXED, C_NATIVE_FAILED, C_UNMAPPED };
+typedef struct CycleMark { uint32_t pc; uint64_t cycle; } CycleMark;
+enum { MARKS = 8192 };
+static uint64_t g_cycles;
+static CycleMark g_marks[MARKS];
+static unsigned g_nmarks;
+static int g_marks_overflow;
+static uint32_t *g_lane_pcs;
+static size_t g_lane_n;
+
+static int cycle_advance(void *userdata, uint32_t cycles) {
+    (void)userdata;
+    g_cycles += cycles;
+    return 1;
+}
+static const MusashiExecutionClock g_cycle_clock = {NULL, cycle_advance};
+
+static int pc_cmp(const void *a, const void *b) {
+    uint32_t x = *(const uint32_t *)a, y = *(const uint32_t *)b;
+    return x < y ? -1 : x > y;
+}
+static void cycle_mark(void *userdata, uint32_t pc, const uint32_t *regs) {
+    (void)userdata; (void)regs;
+    if (bsearch(&pc, g_lane_pcs, g_lane_n, sizeof pc, pc_cmp)) return;
+    if (g_nmarks == MARKS) { g_marks_overflow = 1; return; }
+    g_marks[g_nmarks].pc = pc;
+    g_marks[g_nmarks].cycle = g_cycles;
+    ++g_nmarks;
+}
+
+static int cycle_case(MusashiBootMemory *memory, const uint8_t *image,
+                      const MusashiNativeLaneEntry *entry, unsigned pattern) {
+    uint32_t args[8], regs[32];
+    unsigned argc = entry->argc > 8u ? 8u : entry->argc, i, ref_n;
+    uint64_t ref_total;
+    CycleMark *ref;
+    uint32_t lost0, fixed0;
+    int ok;
+    if (!entry->ledger) return C_UNMAPPED;
+    /* generated table only: PsyQ code is interpreted on both sides */
+    if (musashi_native_lane_install(musashi_native_lane_generated,
+                                    musashi_native_lane_generated_count) < 0)
+        return C_NOT_COMPARABLE;
+    musashi_formatter_set_entry_hook(cycle_mark, NULL);
+    memcpy(memory->bytes, image, MUSASHI_RAM_SIZE);
+    seed_arena(memory, entry->guest_pc ^ (pattern * 0x9e3779b9u));
+    make_args(pattern, args);
+    {
+        uint8_t *start = malloc(MUSASHI_RAM_SIZE);
+        if (!start) return C_NOT_COMPARABLE;
+        memcpy(start, memory->bytes, MUSASHI_RAM_SIZE);
+        g_cycles = 0; g_nmarks = 0; g_marks_overflow = 0;
+        alarm(5);
+        ok = musashi_native_lane_reference_call_clocked(memory, entry->guest_pc, args, argc,
+                                                        STACK_TOP, 0, regs, &g_cycle_clock);
+        alarm(0);
+        if (!ok || g_marks_overflow) { free(start); return C_NOT_COMPARABLE; }
+        ref_total = g_cycles;
+        ref_n = g_nmarks;
+        ref = malloc((ref_n + 1u) * sizeof *ref);
+        if (!ref) { free(start); return C_NOT_COMPARABLE; }
+        memcpy(ref, g_marks, ref_n * sizeof *ref);
+        memcpy(memory->bytes, start, MUSASHI_RAM_SIZE);
+        free(start);
+    }
+    g_cycles = 0; g_nmarks = 0; g_marks_overflow = 0;
+    lost0 = musashi_lane_ledger_lost;
+    fixed0 = musashi_lane_fixed;
+    alarm(5);
+    ok = musashi_native_lane_reference_call_clocked(memory, entry->guest_pc, args, argc,
+                                                    STACK_TOP, 1, regs, &g_cycle_clock);
+    alarm(0);
+    if (!ok) return C_NATIVE_FAILED;
+    if (musashi_lane_ledger_lost != lost0) {
+        fprintf(stderr, "native_lane_cycles: %s pattern %u left its mapped graph (ledger_lost)\n",
+                entry->name, pattern);
+        return C_DIFFERENT;
+    }
+    if (musashi_lane_fixed != fixed0 || g_marks_overflow) return C_FIXED;
+    for (i = 0; i < ref_n || i < g_nmarks; ++i) {
+        if (i >= ref_n || i >= g_nmarks || ref[i].pc != g_marks[i].pc ||
+            ref[i].cycle != g_marks[i].cycle) {
+            fprintf(stderr, "native_lane_cycles: %s pattern %u boundary %u: interp %08x@%llu native %08x@%llu\n",
+                    entry->name, pattern, i, i < ref_n ? ref[i].pc : 0u,
+                    i < ref_n ? (unsigned long long)ref[i].cycle : 0ull,
+                    i < g_nmarks ? g_marks[i].pc : 0u,
+                    i < g_nmarks ? (unsigned long long)g_marks[i].cycle : 0ull);
+            return C_DIFFERENT;
+        }
+    }
+    if (ref_total != g_cycles) {
+        fprintf(stderr, "native_lane_cycles: %s pattern %u return: interp %llu native %llu\n",
+                entry->name, pattern, (unsigned long long)ref_total, (unsigned long long)g_cycles);
+        return C_DIFFERENT;
+    }
+    return C_SAME;
+}
+
 static void seed_arena(MusashiBootMemory *memory, uint32_t seed) {
     uint32_t a;
     rng_state = seed | 1u;
@@ -78,7 +191,11 @@ static void make_args(unsigned pattern, uint32_t *args) {
     for (i = 0; i < 8; ++i) {
         if (pattern == 0) args[i] = ARENA + 0x1000u * (i + 1u);
         else if (pattern == 1) args[i] = rng() % 8u;
-        else args[i] = (i & 1u) ? rng() % 4u : ARENA + 0x800u * (i + 3u);
+        else if (pattern == 2) args[i] = (i & 1u) ? rng() % 4u : ARENA + 0x800u * (i + 3u);
+        /* cycle-only patterns: negative values reach the data-dependent
+         * division costs (divisor -1, negative dividend) */
+        else if (pattern == 3) args[i] = 0xFFFFFFFFu;
+        else args[i] = (uint32_t)-(int32_t)(1u + rng() % 64u);
     }
 }
 
@@ -142,6 +259,9 @@ int main(int argc, char **argv) {
     size_t exe_size, i, table_count = 0;
     MusashiNativeLaneEntry *table;
     unsigned counts[6] = {0}, functions_same = 0, functions_bad = 0;
+    unsigned ccounts[6] = {0}, cf_same = 0, cf_diff = 0, cf_nc = 0, mapped = 0;
+    FILE *creport = getenv("MUSASHI_LANE_CYCLES_REPORT") ?
+        fopen(getenv("MUSASHI_LANE_CYCLES_REPORT"), "w") : NULL;
     const char *only = getenv("MUSASHI_LANE_PROBE_ONLY");
     if (argc != 2) {
         fprintf(stderr, "usage: %s SLUS_007.26\n", argv[0]);
@@ -176,16 +296,22 @@ int main(int argc, char **argv) {
         fprintf(stderr, "native_lane: lane not usable\n");
         return 1;
     }
+    g_lane_n = musashi_native_lane_generated_count;
+    g_lane_pcs = malloc((g_lane_n + 1u) * sizeof *g_lane_pcs);
+    if (!g_lane_pcs) return 1;
+    for (i = 0; i < g_lane_n; ++i) g_lane_pcs[i] = musashi_native_lane_generated[i].guest_pc;
+    qsort(g_lane_pcs, g_lane_n, sizeof *g_lane_pcs, pc_cmp);
     image = malloc(MUSASHI_RAM_SIZE);
     reference = malloc(MUSASHI_RAM_SIZE);
     if (!image || !reference) return 1;
     memcpy(image, memory->bytes, MUSASHI_RAM_SIZE);
     for (i = 0; i < table_count; ++i) {
         const MusashiNativeLaneEntry *entry = &table[i];
-        unsigned pattern, same = 0, bad = 0;
+        unsigned pattern, same = 0, bad = 0, csame = 0, cdiff = 0, cnc = 0;
         if (only && strtoul(only, NULL, 16) != entry->guest_pc) continue;
-        for (pattern = 0; pattern < PATTERNS; ++pattern) {
-            int status, outcome;
+        for (pattern = 0; pattern < CYCLE_PATTERNS; ++pattern) {
+            int status, outcome = NOT_COMPARABLE;
+            if (pattern >= PATTERNS) goto cycles_only;
             pid_t child;
             fflush(stderr);
             child = fork();
@@ -218,6 +344,30 @@ int main(int argc, char **argv) {
             }
             counts[outcome]++;
             if (outcome == SAME) same++;
+        cycles_only:
+            if (entry->ledger) {
+                int cstatus, coutcome;
+                fflush(stderr);
+                child = fork();
+                if (child == 0) {
+                    struct sigaction action;
+                    memset(&action, 0, sizeof(action));
+                    action.sa_handler = SIG_DFL;
+                    sigaction(SIGSEGV, &action, NULL);
+                    signal(SIGALRM, SIG_DFL);
+                    _exit(cycle_case(memory, image, entry, pattern));
+                }
+                if (child < 0 || waitpid(child, &cstatus, 0) != child) return 1;
+                coutcome = WIFEXITED(cstatus) && WEXITSTATUS(cstatus) <= C_UNMAPPED ?
+                    WEXITSTATUS(cstatus) : C_NATIVE_FAILED;
+                /* a native fault the RAM run classed as a mirror/wrap gap */
+                if (coutcome == C_NATIVE_FAILED && outcome != SAME && outcome != DIFFERENT)
+                    coutcome = C_NOT_COMPARABLE;
+                ccounts[coutcome]++;
+                if (coutcome == C_SAME) csame++;
+                else if (coutcome == C_DIFFERENT || coutcome == C_NATIVE_FAILED) cdiff++;
+                else cnc++;
+            }
             if (outcome == DIFFERENT || outcome == NATIVE_FAILED) {
                 bad++;
                 if (outcome == NATIVE_FAILED)
@@ -227,11 +377,27 @@ int main(int argc, char **argv) {
         }
         functions_same += same && !bad;
         functions_bad += bad != 0;
+        if (entry->ledger) {
+            ++mapped;
+            if (cdiff) ++cf_diff;
+            else if (csame) ++cf_same;
+            else ++cf_nc;
+            if (creport)
+                fprintf(creport, "%08x %s ledger %u %u %u\n", entry->guest_pc, entry->name,
+                        csame, cdiff, cnc);
+        } else if (creport && i < table_count && entry->guest_pc) {
+            fprintf(creport, "%08x %s fixed 0 0 0\n", entry->guest_pc, entry->name);
+        }
     }
     printf("native_lane: entries=%zu psyq=%zu cases same=%u different=%u native_failed=%u not_comparable=%u "
            "mirror_fault=%u wrap_fault=%u functions_verified=%u functions_bad=%u\n",
            table_count, table_count - musashi_native_lane_generated_count, counts[SAME], counts[DIFFERENT],
            counts[NATIVE_FAILED], counts[NOT_COMPARABLE], counts[MIRROR_FAULT], counts[WRAP_FAULT],
            functions_same, functions_bad);
-    return functions_bad ? 1 : 0;
+    printf("native_lane_cycles: mapped=%u functions same=%u different=%u not_comparable=%u "
+           "cases same=%u different=%u not_comparable=%u fixed_reached=%u native_failed=%u\n",
+           mapped, cf_same, cf_diff, cf_nc, ccounts[C_SAME], ccounts[C_DIFFERENT],
+           ccounts[C_NOT_COMPARABLE], ccounts[C_FIXED], ccounts[C_NATIVE_FAILED]);
+    if (creport) fclose(creport);
+    return functions_bad || cf_diff ? 1 : 0;
 }
