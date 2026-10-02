@@ -44,7 +44,7 @@ class AllowFile(unittest.TestCase):
                 g.parse_overlay_allow(self.write(text))
 
     def test_tracked_allow_file_is_the_clean_room_sets(self):
-        # O1 = main_0003's 24 clean-room functions, O2 = main_0012's 69.
+        # O1 = main_0003's 24 clean-room functions, O2 = main_0012's 95 (O2 69 + B18 26).
         pairs = g.parse_overlay_allow(ALLOW)
         reg = {(m["region"], m["vram"]): m for m in
                json.loads((ROOT / "provenance/matches.json").read_text())["matches"]}
@@ -54,7 +54,7 @@ class AllowFile(unittest.TestCase):
             self.assertIsNone(g.overlay_origin_problem(m), (member, hex(vram)))
         members = sorted({member for member, _ in pairs})
         self.assertEqual(members, ["main_0003", "main_0012"])
-        for member, count in (("main_0003", 24), ("main_0012", 69)):
+        for member, count in (("main_0003", 24), ("main_0012", 95)):
             listed = sorted(v for mem, v in pairs if mem == member)
             clean = sorted(m["vram"] for m in reg.values() if m["region"] == member
                            and (m.get("origin") or "").startswith("owner re-derivation, clean room"))
@@ -134,7 +134,7 @@ class AllowCandidates(unittest.TestCase):
         if i12 is None:
             raise unittest.SkipTest("main_0012 member file not extracted")
         rows = g.allow_candidates(g.parse_overlay_allow(ALLOW), {"main_0003": i, "main_0012": i12}, True)
-        self.assertEqual(len(rows), 93)
+        self.assertEqual(len(rows), 119)
 
     def test_size_problem(self):
         i = info("x_0001", b"\0" * 64)
@@ -209,7 +209,7 @@ class EndToEnd(unittest.TestCase):
             self.assertEqual(r.returncode, 0, r.stderr[-2000:])
             rep = json.loads((Path(d) / "report.json").read_text())
             ovl = rep["overlay"]
-            self.assertEqual((ovl["members"], ovl["candidates"]), (["main_0003", "main_0012"], 93))
+            self.assertEqual((ovl["members"], ovl["candidates"]), (["main_0003", "main_0012"], 119))
             rules = {f["vram"]: f["rule"] for f in ovl["functions"]}
             # D-011: the CD retry loop charges its retail cost and is admitted
             self.assertIsNone(rules["800d2a24"])

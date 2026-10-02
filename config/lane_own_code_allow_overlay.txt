@@ -103,3 +103,30 @@ main_0012 8014b5d0
 main_0012 8014bde8
 # Clean-room hard tail 2 merged back 2026-10-02 (bfm-rederive a099235).
 main_0012 80161a90
+# Clean-room B18 (cold tail, first batch) merged back 2026-10-02 (bfm-rederive d26f931).
+main_0012 801320d0
+main_0012 8017267c
+main_0012 8012cba4
+main_0012 8012cbcc
+main_0012 8014c278
+main_0012 801484b0
+main_0012 8012931c
+main_0012 8012b6d4
+main_0012 8012d624
+main_0012 8012dfd4
+main_0012 8012b1b4
+main_0012 8014c99c
+main_0012 8012be98
+main_0012 801433f0
+main_0012 80165fa4
+main_0012 8012f214
+main_0012 8012bd3c
+main_0012 8012deb8
+main_0012 8012f038
+main_0012 8012c0ec
+main_0012 8012df34
+main_0012 8012b2cc
+main_0012 8012b608
+main_0012 8012e138
+main_0012 8012ceb0
+main_0012 8012cc88
