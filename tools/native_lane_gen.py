@@ -1135,6 +1135,12 @@ OVERLAY_DENY = {
     # (the B18 route proof's village DEVOBS/RAM/PAD differed with it native).
     # Held out to keep native-vs-interpreted runs exact, like main 800128EC.
     ("main_0012", 0x8012B608): "ambiguous retail cycle mapping (fixed charge would change guest time)",
+    # main_0012 8012DEB8 (B18): on the attract route it reads through a null
+    # object pointer (+0x12), which retail reads harmlessly from the low-RAM
+    # mirror; natively it faults the host (D-013 (4), job
+    # 20261002-170002-bfm-b18route2). Held out until the lane normalises
+    # KUSEG/null guest pointers.
+    ("main_0012", 0x8012DEB8): "reads through a null guest pointer on the attract route (KUSEG gap, host fault)",
 }
 
 
