@@ -10,9 +10,12 @@ def test_gte_data_source(tmp_path, variant):
         assert source.count(old) == 1
         return source.replace(old, "else if (rs == 19u ||")
     def swc2_site(source):
-        old = "(pc == 0x80048e98u && code_site(0x80048e98u, 36u, word))"
+        # Restore the old wrong-bank exception: an independent identity
+        # multiply must catch it, not bless the interpreter as its own oracle.
+        old = "if (!cpu->cpu_transfer->read_data(cpu->cpu_transfer->userdata,\n                                          &context, rt, &value)) {"
         assert source.count(old) == 1
-        return source.replace(old, "(pc == 0x80048e9cu && code_site(0x80048e98u, 36u, word))")
+        new = "if (!(cpu->pc == 0x80048e98u || cpu->pc == 0x80048fa8u ? cpu->cpu_transfer->read_control : cpu->cpu_transfer->read_data)(cpu->cpu_transfer->userdata, &context, rt, &value)) {"
+        return source.replace(old, new)
     def camera2_site(source):
         old = "{0x80048598u, 31u /* site group */, 0}"
         assert source.count(old) == 1
@@ -41,5 +44,5 @@ def test_gte_data_source(tmp_path, variant):
     mutate = {"immediate_load_mutant": immediate, "sub_swap_mutant": sub_swap, "srav_mutant": srav, "div_site_mutant": div_site, "mvmva_dispatch_mutant": mvmva_dispatch, "swc2_site_mutant": swc2_site, "camera2_site_mutant": camera2_site}.get(variant)
     _run_gte_source_probe(tmp_path, variant, "gte_data_source_probe.c",
         "GTE_DATA_SOURCE_PASS fixture_only=1 positive_sqrt=298 second_caller=540D8 light_case=53EA0 camera_out0=00400010 camera2_out0=0000ffff\n",
-        ((0x80047d3c, 33), (0x80053f6c, 245), (0x80053e28, 49), (0x80048d9c, 68), (0x800484ec, 88)),
+        ((0x80047d3c, 33), (0x80053f6c, 245), (0x80053e28, 49), (0x80048d9c, 68), (0x80048eac, 67), (0x800484ec, 88)),
         mutate_formatter=mutate, real_gte=True)

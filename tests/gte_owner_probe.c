@@ -219,7 +219,7 @@ int main(void) {
         assert(musashi_gte_owner_read_control(&owner, &context, i, &value));
         assert(value == expected[i]);
     }
-    /* Light-matrix control 11 is read-only: the 80048E98 SWC2 source. */
+    /* CFC2 reads light-matrix control 11; SWC2 reads data IR3 instead. */
     {
         uint32_t value = 0xdeadbeefu;
         assert(musashi_gte_owner_read_control(&owner, &context, 11, &value));

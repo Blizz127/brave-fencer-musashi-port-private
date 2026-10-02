@@ -12371,14 +12371,6 @@ static int lwc2_site(uint32_t pc, uint32_t word) {
     return 0;
 }
 
-/* The two light-matrix stores (80048E98, 80048FA8) publish control register
- * 11, so they read the shared control bank; every other admitted SWC2 site
- * reads the data bank. */
-static int swc2_control_site(uint32_t pc, uint32_t word) {
-    return (pc == 0x80048e98u && code_site(0x80048e98u, 36u, word)) ||
-           (pc == 0x80048fa8u && code_site(0x80048fa8u, 37u, word));
-}
-
 /* SWC2 stores inside exported ranges: hardware SWC2 reads the GTE data bank,
  * so each site transfers through read_data. */
 static int swc2_site(uint32_t pc, uint32_t word) {
@@ -14384,11 +14376,9 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
                     (!cpu->cpu_transfer->read_data ||
                      (!store_vector && instruction != MIPS_I(58, 5, 11, 0x0004u))))) return formatter_refuse0(__LINE__, cpu->pc);
     } else if (opcode == 58u) {
-        /* Two admitted SWC2 stores of light-matrix control 11: 80048E98 under
-         * an audited 80048D9C caller and 80048FA8 under a func_80048EAC
-         * caller. No pending MFC2 load may be live: every load of those two
-         * routines retires at its admitted successor. */
-        int control_swc2 = swc2_control_site(cpu->pc, instruction);
+        /* MulMatrix/MulMatrix2 end with SWC2 IR3 at 80048E98/80048FA8.
+         * Like every SWC2, these read the data bank. MFC2 loads retire at
+         * their admitted successors before the final store. */
         int swc2 = swc2_site(cpu->pc, instruction) ||
                    (cpu->pc == 0x80048e98u && code_site(0x80048e98u, 36u, instruction) &&
                     gte_48d9c_caller(cpu->r[31])) ||
@@ -14403,8 +14393,7 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
             (cpu->gte_load_pending && !gte_load_successor_pc(cpu->pc)) ||
             cpu->npc != cpu->pc+4u ||
             cpu->delay_slot || cpu->branch_pc ||
-            !(control_swc2 ? cpu->cpu_transfer->read_control
-                           : cpu->cpu_transfer->read_data)) return formatter_refuse0(__LINE__, cpu->pc);
+            !cpu->cpu_transfer->read_data) return formatter_refuse0(__LINE__, cpu->pc);
     }
     merge_kind = merge_kind_for(cpu->pc, instruction);
     if ((opcode == 34u || opcode == 38u || opcode == 42u || opcode == 46u) &&
@@ -14714,24 +14703,18 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
     }
     case 58: {
         MusashiCpuContext context;
-        uint32_t control;
-        /* The SC02 transform stores data IR3; the earlier admitted sites
-         * publish light-matrix control 11 from the shared control bank. */
+        uint32_t value;
         if (!musashi_boot_cpu_context(cpu, MUSASHI_CPU_CONTEXT_SOURCE, &context)) goto gte_transfer_refused;
-        /* SWC2 reads the GTE data bank on hardware (PsyCross: "returns cop2
-         * register value. SWC2 is the same kind" of MFC2), so the ordinary
-         * sites transfer through read_data; the light-matrix sites read the
-         * control bank, which is what the retail routine actually stored. */
-        if (swc2_control_site(cpu->pc, instruction)
-                ? !cpu->cpu_transfer->read_control(cpu->cpu_transfer->userdata,
-                                                   &context, rt, &control)
-                : !cpu->cpu_transfer->read_data(cpu->cpu_transfer->userdata,
-                                                &context, rt, &control)) {
+        /* Sony Inline Programming Reference, Register Access Instructions:
+         * SWC2 stores a GTE data register to memory. There is no control-bank
+         * variant; register 11 is IR3, not lighting-matrix control 11. */
+        if (!cpu->cpu_transfer->read_data(cpu->cpu_transfer->userdata,
+                                          &context, rt, &value)) {
             fprintf(stderr, "native_boot: SWC2_REFUSED pc=%08x why=gte-read reg=%u identity=%p\n",
                     cpu->pc, (unsigned)rt, context.identity);
             goto gte_transfer_refused;
         }
-        if (!cpu_write32(memory, cpu, cpu->r[rs] + (int32_t)signed_immediate, control)) {
+        if (!cpu_write32(memory, cpu, cpu->r[rs] + (int32_t)signed_immediate, value)) {
             fprintf(stderr, "native_boot: SWC2_REFUSED pc=%08x why=store address=%08x\n",
                     cpu->pc, cpu->r[rs] + (uint32_t)(int32_t)signed_immediate);
             goto gte_transfer_refused;
