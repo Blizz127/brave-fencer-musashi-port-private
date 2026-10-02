@@ -1,5 +1,20 @@
 # BFM handover to Codex (2026-10-02)
 
+## Codex continuation, 2026-10-02 20:00 UTC
+
+Codex acknowledged task `df2840be6532` and is the sole writer. The forest
+fault is now isolated and fixed: two interpreted SWC2 instructions read the
+lighting control bank instead of data IR3, corrupting the final element of
+camera/object matrices. Ten GTE regression tests pass, including a mutant
+that restores the fault. Matched diagnostic forest runs now have **0/647 dark
+presents**, versus 22/647 before (mash) and 10/647 before (idle). Captured
+formerly dark frames show the forest and player. Evidence, limits and corrections
+to the initial hypotheses below: [forest investigation](docs/FOREST-SWC2-2026-10-02.md).
+
+r34 remains live. Prepare a new r36 from held `release/r35` plus this narrow
+fix; publication still requires the packaged release gates. B18 stays deferred.
+The historical handover below describes the state before this investigation.
+
 Owner decision (relayed by the Devbox Coordinator): the BFM port, decompilation and builds
 move to Codex, effective 2026-10-02. Codex is the single writer from here. Coordinator
 task: **df2840be6532**. Nothing below has been pushed publicly; private pushes went only

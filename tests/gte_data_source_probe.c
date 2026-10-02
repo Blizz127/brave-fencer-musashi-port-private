@@ -302,19 +302,62 @@ static void camera_body(uint32_t ra) {
     assert(musashi_boot_read32(&f.memory,matrix+4u,&w)&&w==0x00020000u);
     assert(musashi_boot_read32(&f.memory,matrix+8u,&w)&&w==0x00090007u);
     assert(musashi_boot_read32(&f.memory,matrix+12u,&w)&&w==0x00000030u);
-    assert(musashi_boot_read32(&f.memory,matrix+16u,&w)&&w==0x55667788u);
+    /* Identity multiplication must preserve the input's m[2][2] = 37.
+     * SWC2 reads data IR3, never the unrelated lighting control11 sentinel. */
+    assert(musashi_boot_read32(&f.memory,matrix+16u,&w)&&w==37u);
     step_at(0x80048e9c);step_at(0x80048ea0);step_at(0x80048ea4);
     assert(f.cpu.pc==ra && f.cpu.r[2]==matrix && f.cpu.r[29]==STACK);
     assert(f.cpu.r[4]==matrix && f.cpu.r[5]==verts);
     for(unsigned i=0;i<5;++i)
         assert(musashi_boot_read32(&f.memory,verts+i*4u,&w) &&
                w==((uint32_t[]){0x00400010u,0x00020000u,0x00090007u,0x00000030u,0x00000025u})[i]);
-    assert(data_writes==6 && data_reads==8 && commands==3 && control_reads==1);
+    assert(data_writes==6 && data_reads==9 && commands==3 && control_reads==0);
 }
 static void camera_case(const uint8_t *exe,size_t size) {
     setup_camera(exe,size,0x80052edcu);
     camera_body(0x80052edcu);
     close_fixture();
+}
+static void matrix_swc2_data_cases(const uint8_t *exe,size_t size) {
+    static const uint32_t pcs[] = {0x80048e98u, 0x80048fa8u};
+    static const int32_t values[] = {0, 1, 32767, -1, -32768};
+    for (unsigned site=0;site<2;++site) {
+        for (unsigned n=0;n<sizeof(values)/sizeof(values[0]);++n) {
+            uint32_t dst, got, before_data[32], before_control[32];
+            setup_camera(exe,size,site ? 0x80052ffcu : 0x80052edcu);
+            dst=f.cpu.r[site ? 5 : 4]+16u;
+            f.cpu.pc=pcs[site];f.cpu.npc=pcs[site]+4u;
+            /* A command may leave stale upper IR bits. Architectural reads
+             * sign-extend IR3's low halfword. Keep control11 distinct. */
+            gteRegs.CP2D.p[11].d=0xabcd0000u | (uint16_t)values[n];
+            gteRegs.CP2C.p[11].d=0x55667788u;
+            for (unsigned r=0;r<32;++r) {
+                before_data[r]=gteRegs.CP2D.p[r].d;
+                before_control[r]=gteRegs.CP2C.p[r].d;
+            }
+            f.transfer.read_control=NULL; /* SWC2 has no dependency on it. */
+            before=f.memory;
+            step_mem(pcs[site]);
+            assert(musashi_boot_read32(&f.memory,dst,&got));
+            assert(got==(uint32_t)values[n]);
+            assert(data_reads==1 && control_reads==0);
+            for (unsigned r=0;r<32;++r) {
+                /* PsyCross MFC2 normalizes the sign extension in its live
+                 * IR slot as well as in the returned word. */
+                assert(gteRegs.CP2D.p[r].d==(r==11 ? (uint32_t)values[n] : before_data[r]));
+                assert(gteRegs.CP2C.p[r].d==before_control[r]);
+            }
+            for (unsigned b=0;b<sizeof(f.memory.bytes);++b)
+                if (b<(dst&0x1fffffu) || b>=(dst&0x1fffffu)+4u)
+                    assert(f.memory.bytes[b]==before.bytes[b]);
+            close_fixture();
+        }
+        setup_camera(exe,size,site ? 0x80052ffcu : 0x80052edcu);
+        f.cpu.pc=pcs[site];f.cpu.npc=pcs[site]+4u;
+        f.transfer.read_data=NULL;
+        unchanged_refusal(0);
+        close_fixture();
+    }
 }
 static void camera_jal_case(const uint8_t *exe,size_t size) {
     /* Real call edge: JAL at 80054130 with s3=verts reaches the leaf with
@@ -343,9 +386,9 @@ static void camera_refusals(const uint8_t *exe,size_t size) {
         f.cpu.pc=0x80048de8;f.cpu.npc=0x80048dec;f.transfer.command=NULL;
     unchanged_refusal(0);
     close_fixture();
-    /* Unbound control read at the SWC2. */
+    /* Unbound data read at the SWC2. */
     setup_camera(exe,size,0x80052edcu);
-        f.cpu.pc=0x80048e98;f.cpu.npc=0x80048e9c;f.transfer.read_control=NULL;
+        f.cpu.pc=0x80048e98;f.cpu.npc=0x80048e9c;f.transfer.read_data=NULL;
     unchanged_refusal(0);
     close_fixture();
     /* Refused owner command leaves the bank untouched. */
@@ -537,5 +580,6 @@ int main(int argc,char **argv) {
     second_call(exe,(size_t)size);div540e0_site(exe,(size_t)size);
     div54154_site(exe,(size_t)size);div54194_site(exe,(size_t)size);
     light_dispatch(exe,(size_t)size);    camera_case(exe,(size_t)size);camera_jal_case(exe,(size_t)size);camera_refusals(exe,(size_t)size);    camera2_case(exe,(size_t)size);camera2_refusals(exe,(size_t)size);
+    matrix_swc2_data_cases(exe,(size_t)size);
     free(exe);puts("GTE_DATA_SOURCE_PASS fixture_only=1 positive_sqrt=298 second_caller=540D8 light_case=53EA0 camera_out0=00400010 camera2_out0=0000ffff");return 0;
 }

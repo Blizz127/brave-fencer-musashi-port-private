@@ -156,4 +156,9 @@ These change retail behaviour only when a user asks for them:
 
 ## Closed
 
-(none yet)
+- Forest camera/object matrix corruption: interpreted SWC2 at `80048E98` and
+  `80048FA8` incorrectly selected control 11 instead of data IR3. Corrected
+  2026-10-02; identity-matrix regression, sign-extension/refusal coverage and
+  wrong-bank mutant pass. Matched forest dark presents fell from 22/647 to
+  0/647. Publication gates remain pending; see
+  [evidence and coverage limits](FOREST-SWC2-2026-10-02.md).

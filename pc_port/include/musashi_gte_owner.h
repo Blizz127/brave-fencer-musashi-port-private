@@ -72,11 +72,10 @@ int musashi_gte_owner_write_control(MusashiGteOwner *owner,
 
 /* Bounded CFC2 of the same control profile: rotation-matrix controls 0..4, translation 5..7,
  * background-color controls 13..15, light-color controls 16..20, plus
- * controls 21..30, via PsyCross's existing CFC2 reader. The retail
- * 80048E98 SWC2 also reads light-matrix control 11, so reads (only reads)
- * admit that selector and FLAG31; CTC2 writes to 11 and 31 stay refused. Stores like
- * SWC2 compose this read with a RAM write at the execution layer; the owner
- * never touches RAM. Refusal leaves the output untouched. */
+ * controls 21..30, via PsyCross's existing CFC2 reader. Reads also admit
+ * light-matrix control 11 and FLAG31; CTC2 writes to 11 and 31 stay refused.
+ * SWC2 uses the data-bank interface, not this control-register interface.
+ * The owner never touches RAM. Refusal leaves the output untouched. */
 int musashi_gte_owner_read_control(MusashiGteOwner *owner,
                                    const MusashiCpuContext *context,
                                    uint32_t selector, uint32_t *value);
