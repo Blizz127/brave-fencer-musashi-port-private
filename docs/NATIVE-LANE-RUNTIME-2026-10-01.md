@@ -823,3 +823,18 @@ Evidence `1dd6b7ea...c091` (matched by readback); package `e09e5c7e...5e8e`.
 | attract, 480 s | timed out (SIGTERM) at tick `2765`, MDEC 5556, on a runner shared with 3 other jobs (the `b6aac50405` gate reached its terminal refusal at tick `3aca`, MDEC 7408). The `pc=8004255c` refusals are the SIGTERM teardown; re-run with 1500 s pending |
 | attract, 1500 s (job `20261002-063321-bfm-o2attr-ea46c584a2`, evidence `ea63e7f0...bb21`) | terminal `STEP_REFUSED pc=800495ec`, tick `3aca`, MDEC 7408, display 70400/76800, the same as the `b6aac50405` gate; overlay verified 2,194,531, recheck_failed 0, ledger lost 0 |
 | attract, all 92 overlay PCs denied, 1500 s | the same terminal state (tick `3aca`, MDEC 7408, display 70400/76800) |
+
+### Entry-PC prefilter (port `b57ba35c2d`) and private build r31
+
+The first r31 candidate ran about 17% slower than r30 (blizzpc, throttled,
+interleaved: steady 67-69% against 82-84%). With `MUSASHI_NATIVE_LANE=0` it
+ran as fast as r30; denying the overlay entries, `MUSASHI_PSYQ_LANE=pure` and
+`MUSASHI_MEMCARD=0` did not help. A SIGPROF sample profile showed `lane_find`
+6.2%, `lane_try` 2.3% and `lane_ovl_first` 1.2% of CPU: `lane_try` runs
+before every interpreted instruction, and since O2 the overlay table spans
+`800CF078`-`801787D4`, so nearly every overlay instruction paid two binary
+searches. A 64 KiB bitmap of entry PCs answers misses in O(1); the probes are
+unchanged. r31 (`bfm-r31-3eddf31ad`, private channel) then measured 82-84%
+steady beside r30's 82-83% in the same job
+(`20261002-075659-bfm-r31-gate-3eddf31ad`), which also passed smoke (v3 and
+baseline), card-off, attract, inn save and cold Continue through `launch.sh`.
