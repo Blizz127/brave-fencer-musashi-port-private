@@ -63,7 +63,7 @@ extern void func_8014A6A8(Obj80146128 *obj);
 extern void func_8014A71C(Obj80146128 *obj);
 extern void func_80172588(Obj80146128 *obj);
 extern void func_801473DC(Obj80146128 *obj);
-extern void func_80015978(s32 *src, s16 *dst);
+extern u16 func_80015978(s32 *src, s16 *dst);
 
 s32 func_80146128(void)
 {

@@ -10,8 +10,9 @@
  * original declaration. */
 
 s32 func_800132BC();                                /* static */
-void func_80047D3C(s32);                               /* static */
+s32 func_80047D3C(s32);                               /* static */
 
-void func_80013294(void) {
-    func_80047D3C(func_800132BC());
+/* returns func_80047D3C's result: callers test v0 after the jal (retail leaves it there). */
+s32 func_80013294(void) {
+    return func_80047D3C(func_800132BC());
 }

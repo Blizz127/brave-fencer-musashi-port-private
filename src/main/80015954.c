@@ -14,8 +14,12 @@
 
 #include "psx_types.h"
 
-void func_80015954(u16 *arg0, u16 *arg1) {
+/* returns arg0[2]: retail leaves that lhu in v0 and callers read v0 after the jal. */
+u16 func_80015954(u16 *arg0, u16 *arg1) {
+    u16 t;
     arg1[1] = arg0[0];
     arg1[3] = arg0[1];
-    arg1[5] = arg0[2];
+    t = arg0[2];
+    arg1[5] = t;
+    return t;
 }
