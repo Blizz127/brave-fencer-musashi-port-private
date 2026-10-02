@@ -543,11 +543,19 @@ static int memcard_dir(char *out, size_t size) {
 }
 
 static int memcard_mkdirs(char *dir) {
-    char *p;
+    char *p = dir + 1;
     struct stat st;
-    for (p = dir + 1; ; p++) {
+#ifdef _WIN32
+    /* A drive ("C:\") is not a directory to create; either separator. */
+    if (dir[0] && dir[1] == ':') p = dir + 2 + (dir[2] == '\\' || dir[2] == '/');
+#endif
+    for (; ; p++) {
         char saved = *p;
+#ifdef _WIN32
+        if (saved != '/' && saved != '\\' && saved != 0) continue;
+#else
         if (saved != '/' && saved != 0) continue;
+#endif
         *p = 0;
         if (mkdir(dir, 0700) != 0 && errno != EEXIST) { *p = saved; return 0; }
         if (stat(dir, &st) != 0 || !S_ISDIR(st.st_mode)) { *p = saved; return 0; }
@@ -2467,6 +2475,9 @@ static void dev_menu_screenshot(int width, int height) {
     char dir[4096], path[4200], msg[64];
     const char *pics = getenv("XDG_PICTURES_DIR"), *home = getenv("HOME");
     uint8_t *rgb = malloc((size_t)width * (size_t)height * 3u), *flip;
+#ifdef _WIN32
+    if (!home || !home[0]) home = getenv("USERPROFILE");   /* %USERPROFILE%\Pictures */
+#endif
     time_t now = time(NULL);
     struct tm tmv;
     int ok = 0, y;
@@ -4628,6 +4639,10 @@ static const char *cache_exe_from_disc(const MusashiDiscMedia *media) {
     char dir[4096];
     const char *cache = getenv("XDG_CACHE_HOME"), *home = getenv("HOME");
     uint8_t *exe = malloc(0x65000u);
+#ifdef _WIN32
+    /* %LOCALAPPDATA%\bfm-port: machine-local, like ~/.cache. */
+    if (!cache || !cache[0]) cache = getenv("LOCALAPPDATA");
+#endif
     size_t size = 0;
     FILE *file;
     int ok;

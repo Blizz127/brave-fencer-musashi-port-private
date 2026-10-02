@@ -126,6 +126,24 @@ packages. W8 needs a Windows runtime.
 zlib stays optional (PNG texture replacement), so it is left out of phase 1.
 OpenSSL is not needed after W2.
 
+## Status (2026-10-02)
+
+| # | State |
+|---|---|
+| W1 host seam | done; Linux code moved unchanged |
+| W2 SHA-256 | done; OpenSSL no longer linked |
+| W3 lane target | done; Windows decisions and table equal Linux, objects COFF |
+| W4 Windows adapter | done (section views, VEH + unhandled filter, GetProcAddress) |
+| W5 paths/card/timing | card replace atomic. Cache in `%LOCALAPPDATA%\bfm-port`, screenshots in `%USERPROFILE%\Pictures`, card dirs accept `\` and drive prefixes. Timing uses `Sleep()` at ms granularity. SDL2 raises the system timer to 1 ms (`SDL_HINT_TIMER_RESOLUTION`); frame pacing still has to be measured on real Windows |
+| W6 CMake/zig | done; `-s` link (see retail note) |
+| W7 package | `tools/package_windows.sh`: zip with allow-listed imports, licences, manifest, retail_guard |
+| W8 runtime | Wine smoke only (not qualification); a real Windows machine is pending owner access |
+
+Findings on the way:
+- **Real UB, Linux too.** `cpu_ram_span` formed a BIOS-frame pointer 0x84d8 bytes past its array before subtracting. clang UBSan (zig's Debug default) trapped on it; gcc UBSan does not check pointer arithmetic. It is fixed and the fix is proposed to the Linux writer.
+- **Retail bytes in the exe.** zig links with `/DEBUG`, so lld-link keeps unreferenced COMDATs, among them LIBGTE's rcossin table (equal to the game's). A stripped link gets `/OPT:REF`; `package_windows.sh` refuses unstripped input.
+- **Wine attract, interpreter-only:** equal to Linux over all 46,105 guest-trace lines, to the same refusal stop.
+
 ## Risks
 
 - **Fixed VA collision.** ASLR or high-entropy DLL placement could take 0x80000000
