@@ -1129,6 +1129,12 @@ OVERLAY_DENY = {
     # 800D2A24's result there, which a native 800D2A24 did not put in v0.
     # 800D2454 now returns it, and the abi rule below (void_result_readers)
     # refuses any other void-typed function whose retail caller reads v0/v1.
+    #
+    # main_0012 8012B608 (B18, an angle step): its retail cycle mapping is
+    # ambiguous, so it would run on the fixed charge and change guest time
+    # (the B18 route proof's village DEVOBS/RAM/PAD differed with it native).
+    # Held out to keep native-vs-interpreted runs exact, like main 800128EC.
+    ("main_0012", 0x8012B608): "ambiguous retail cycle mapping (fixed charge would change guest time)",
 }
 
 
