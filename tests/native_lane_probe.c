@@ -43,6 +43,21 @@
 
 extern const MusashiNativeLaneEntry musashi_native_lane_generated[];
 extern const size_t musashi_native_lane_generated_count;
+extern const MusashiNativeLaneGuestLocal musashi_native_lane_guest_locals[];
+extern const size_t musashi_native_lane_guest_locals_count;
+
+/* 1 when guest address a is a guest-frame local of the main entry at pc
+ * called with sp = STACK_TOP: such bytes are compared although they sit in
+ * the skipped frame band (the native body keeps them where retail does). */
+static int guest_local_byte(uint32_t pc, uint32_t sp, uint32_t a) {
+    size_t k;
+    for (k = 0; k < musashi_native_lane_guest_locals_count; ++k) {
+        const MusashiNativeLaneGuestLocal *g = &musashi_native_lane_guest_locals[k];
+        uint32_t lo = sp - g->frame + g->off;
+        if (g->guest_pc == pc && !g->member && g->size && a >= lo && a < lo + g->size) return 1;
+    }
+    return 0;
+}
 
 enum { ARENA = 0x80180000u, ARENA_SIZE = 0x40000u, STACK_TOP = 0x801fe000u,
        FRAME_GUARD = 0x10000u, PATTERNS = 3, CYCLE_PATTERNS = 5 };
@@ -239,7 +254,8 @@ static int run_case(MusashiBootMemory *memory, const uint8_t *image,
         uint32_t i;
         int differ = 0;
         for (i = 0; i < MUSASHI_RAM_SIZE; ++i) {
-            if (i >= lo && i < hi) continue;
+            if (i >= lo && i < hi &&
+                !guest_local_byte(entry->guest_pc, STACK_TOP, 0x80000000u + i)) continue;
             if (memory->bytes[i] != reference[i]) {
                 fprintf(stderr, "native_lane: %s pattern %u RAM %08x interp=%02x native=%02x\n",
                         entry->name, pattern, 0x80000000u + i, reference[i], memory->bytes[i]);

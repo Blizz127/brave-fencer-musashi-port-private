@@ -49,6 +49,8 @@ extern const MusashiNativeLaneEntry musashi_native_lane_generated[];
 extern const size_t musashi_native_lane_generated_count;
 extern const MusashiNativeLaneOverlayEntry musashi_native_lane_overlay[];
 extern const size_t musashi_native_lane_overlay_count;
+extern const MusashiNativeLaneGuestLocal musashi_native_lane_guest_locals[];
+extern const size_t musashi_native_lane_guest_locals_count;
 
 enum { ARENA = 0x80180000u, ARENA_SIZE = 0x40000u, STACK_TOP = 0x801fe000u,
        FRAME_GUARD = 0x10000u, PATTERNS = 3, MAX_ENTRIES = 160 };
@@ -430,17 +432,46 @@ static void make_args(unsigned pattern, uint32_t *args) {
     for (i = 0; i < 8; ++i) {
         if (pattern == 0) args[i] = ARENA + 0x1000u * (i + 1u);
         else if (pattern == 1) args[i] = rng() % 8u;
+        else if (pattern > PATTERNS) args[i] = ARENA + ((rng() % (ARENA_SIZE - 0x2000u)) & ~3u);
         else args[i] = (i & 1u) ? rng() % 4u : ARENA + 0x800u * (i + 3u);
     }
 }
 
-static int ram_differs(const MusashiBootMemory *memory, const uint8_t *reference, const char *name,
-                       const char *what) {
+/* 1 when guest address a is a guest-frame local of the overlay entry
+ * (member, pc) called with sp = STACK_TOP: compared although it sits in the
+ * skipped frame band (the native body keeps it where retail does). */
+static int guest_local_byte(const char *member, uint32_t pc, uint32_t a) {
+    size_t k;
+    for (k = 0; k < musashi_native_lane_guest_locals_count; ++k) {
+        const MusashiNativeLaneGuestLocal *g = &musashi_native_lane_guest_locals[k];
+        uint32_t lo = STACK_TOP - g->frame + g->off;
+        if (g->guest_pc == pc && g->member && member && !strcmp(g->member, member) && g->size &&
+            a >= lo && a < lo + g->size)
+            return 1;
+    }
+    return 0;
+}
+
+enum { GL_EXTRA = 64 };
+static int has_guest_locals(const MusashiNativeLaneOverlayEntry *e) {
+    size_t k;
+    for (k = 0; k < musashi_native_lane_guest_locals_count; ++k)
+        if (musashi_native_lane_guest_locals[k].guest_pc == e->entry.guest_pc &&
+            musashi_native_lane_guest_locals[k].member && e->member &&
+            !strcmp(musashi_native_lane_guest_locals[k].member, e->member))
+            return 1;
+    return 0;
+}
+
+static int ram_differs(const MusashiBootMemory *memory, const uint8_t *reference,
+                       const MusashiNativeLaneOverlayEntry *e, const char *what) {
     const uint32_t lo = STACK_TOP - FRAME_GUARD - 0x80000000u;
     const uint32_t hi = STACK_TOP + 0x10u + 4u * 8u - 0x80000000u;
+    const char *name = e->entry.name;
     uint32_t i;
     for (i = 0; i < MUSASHI_RAM_SIZE; ++i) {
-        if (i >= lo && i < hi) continue;
+        if (i >= lo && i < hi && !guest_local_byte(e->member, e->entry.guest_pc, 0x80000000u + i))
+            continue;
         if (memory->bytes[i] != reference[i]) {
             fprintf(stderr, "overlay_lane: %s %s RAM %08x interp=%02x native=%02x\n",
                     name, what, 0x80000000u + i, reference[i], memory->bytes[i]);
@@ -450,7 +481,9 @@ static int ram_differs(const MusashiBootMemory *memory, const uint8_t *reference
     return 0;
 }
 
-/* pattern < PATTERNS: positive case; pattern == PATTERNS: negative case. */
+/* pattern != PATTERNS: positive case (above PATTERNS: the extra seeded
+ * patterns of an entry with guest-frame locals); pattern == PATTERNS:
+ * negative case. */
 static int run_case(MusashiBootMemory *memory, const uint8_t *image, size_t idx,
                     const MusashiNativeLaneOverlayEntry *e, unsigned pattern, uint8_t *reference,
                     uint8_t *start) {
@@ -496,7 +529,7 @@ static int run_case(MusashiBootMemory *memory, const uint8_t *image, size_t idx,
                 e->entry.name, pattern, ref_v0, lane_v0);
         return DIFFERENT;
     }
-    return ram_differs(memory, reference, e->entry.name, "positive") ? DIFFERENT : SAME;
+    return ram_differs(memory, reference, e, "positive") ? DIFFERENT : SAME;
 }
 
 /* ---- D-011 cycle oracle (positive cases, second child) -----------------
@@ -664,7 +697,10 @@ int main(int argc, char **argv) {
         unsigned pattern, same = 0, fails = 0, cs = 0, cd = 0, cn = 0;
         const char *only = getenv("OVERLAY_PROBE_ONLY");
         if (only && strtoul(only, NULL, 16) != mine[i].entry.guest_pc) continue;
-        for (pattern = 0; pattern <= PATTERNS; ++pattern) {
+        /* Entries with guest-frame locals get GL_EXTRA more seeded positive
+         * patterns (the generic three rarely complete their callees). */
+        unsigned last = PATTERNS + (has_guest_locals(&mine[i]) && !g_foreign ? GL_EXTRA : 0u);
+        for (pattern = 0; pattern <= last; ++pattern) {
             int status, outcome;
             pid_t child;
             fflush(stderr);
@@ -685,7 +721,7 @@ int main(int argc, char **argv) {
             if (!WIFEXITED(status)) outcome = pattern == PATTERNS || g_foreign ? NEG_RAN_NATIVE : NOT_COMPARABLE;
             counts[outcome]++;
             if (outcome == SAME) same++;
-            if (pattern < PATTERNS && !g_foreign && mine[i].entry.ledger) {
+            if (pattern != PATTERNS && !g_foreign && mine[i].entry.ledger) {
                 int cstatus, c;
                 fflush(stderr);
                 child = fork();
@@ -717,8 +753,9 @@ int main(int argc, char **argv) {
                    mine[i].entry.name, mine[i].entry.guest_pc, cs, cd, cn);
             bad += cd != 0;
         }
-        printf("overlay_lane: %-34s %08x size=%u %s\n", mine[i].entry.name, mine[i].entry.guest_pc,
-               mine[i].size, fails ? "BAD" : same ? "verified" : "negative-only (no comparable positive case)");
+        printf("overlay_lane: %-34s %08x size=%u %s positive_same=%u\n", mine[i].entry.name,
+               mine[i].entry.guest_pc, mine[i].size,
+               fails ? "BAD" : same ? "verified" : "negative-only (no comparable positive case)", same);
         bad += fails != 0;
     }
     printf("overlay_lane: member=%s%s entries=%zu same=%u different=%u not_native=%u not_comparable=%u "

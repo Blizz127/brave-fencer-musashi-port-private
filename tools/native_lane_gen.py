@@ -431,7 +431,11 @@ def hooked_pcs():
     "entry" PCs are observed only before the lane runs (see above). Word-table
     range bounds and data addresses are not hooks."""
     kinds = {}
-    context = re.compile(r"\bpc\b|->pc|\.pc|r\[31\]|raw_cpu|_caller|\bcase ")
+    # `ra == 0x...` lines are caller pins (a GTE site admitted only for an
+    # audited jal return address): a native caller reaches the callee through
+    # the thunk with the sentinel ra, so a body holding the pinned jal would
+    # abort there.
+    context = re.compile(r"\bpc\b|->pc|\.pc|r\[31\]|raw_cpu|_caller|\bcase |\bra\s*[!=]=")
     named = re.compile(r"\b([A-Z][A-Z0-9_]*)\s*=\s*0x(80[0-9a-fA-F]{6})u?\b")
     func_head = re.compile(r"^(?:static\s+)?(?:inline\s+)?[A-Za-z_][\w\s\*]*?\b(\w+)\s*\([^;]*$")
     texts = [path.read_text(errors="replace") for path in (ROOT / "pc_port").glob("*.c")]
@@ -471,6 +475,24 @@ def hooked_pcs():
     for pc in ALWAYS_HOOKED:
         kinds[pc] = "hard"
     return kinds
+
+
+_PINNED_ENTRIES = None
+
+
+def caller_pinned_entries():
+    """Guest entries whose COP2 sites the formatter admits only for a jal
+    caller (jal_caller_of(ra, kGteEntryXXXXXXXX), mips_formatter.c). A native
+    body reaching one through the interpreter thunk (sentinel ra) would abort
+    at the first such site, so a body that calls one is refused (rule hooks)."""
+    global _PINNED_ENTRIES
+    if _PINNED_ENTRIES is None:
+        text = "\n".join(p.read_text(errors="replace") for p in (ROOT / "pc_port").glob("*.c"))
+        consts = {m.group(1): int(m.group(2), 16) for m in re.finditer(
+            r"\b(kGteEntry[0-9A-Fa-f]{8})\s*=\s*0x([0-9A-Fa-f]{8})u?", text)}
+        _PINNED_ENTRIES = {consts[n] for n in re.findall(r"jal_caller_of\([^,()]+,\s*(kGteEntry[0-9A-Fa-f]{8})\)",
+                                                         text) if n in consts}
+    return _PINNED_ENTRIES
 
 
 PLAT_HOOK_SITES = ROOT / "pc_port/platform/bfm_plat_hook_sites.c"
@@ -620,7 +642,7 @@ LANE_HELPERS = ("lane_sdiv32", "lane_srem32", "lane_udiv32", "lane_urem32")
 # has charged, a lost-state flag, the deadline budget and the guard's tick.
 LEDGER_SYMBOLS = ("musashi_lane_ledger", "musashi_lane_ledger_lost", "musashi_lane_budget",
                   "musashi_lane_seg_extra", "musashi_lane_resume_pc", "musashi_lane_sp_adj",
-                  "musashi_native_lane_tick")
+                  "musashi_lane_entry_sp", "musashi_native_lane_tick")
 LEDGER_SEGS = re.compile(r"lane_segs_" + QFUNC)
 
 
@@ -1085,6 +1107,10 @@ DENY = {
     0x80016638: "no comparable differential case yet (not comparable / mirror faults)",
     0x800167F0: "no comparable differential case yet (mirror faults on generic inputs)",
     0x8002FF0C: "no comparable differential case yet (interpreter refused every case)",
+    # Guest-frame locals (place_guest_locals) admit these; held out:
+    0x800128EC: "retail cycle mapping ambiguous: would keep the fixed charge (inexact timing)",
+    0x80014168: "no comparable differential case yet (the interpreter refuses its own unaligned copy)",
+    0x80016D78: "no comparable differential case yet (its allocator callee returns NULL on probe state)",
 }
 
 
@@ -1152,6 +1178,421 @@ def add_frame_adjust(ir, fname, frame):
         lines.append(line)
     out = ir[:m.start(1)] + "\n".join(lines) + "\n" + ir[m.end(1):]
     return out.rstrip("\n") + f"\n\n@{SP_ADJ} = external global i32, align 4\n"
+
+
+# ---- Guest-frame locals (rule "escape") ----------------------------------
+#
+# A local whose address the C passes to a callee lives, in the retail run, in
+# the function's stack frame: guest RAM at (retail sp) + OFF, where the asm
+# computes the argument as `addiu aN, sp, OFF`. An interpreted callee (a
+# thunk) or a native one writes through that pointer, so the native body
+# must hand it the same guest address, not a host stack slot. place_guest_
+# locals() moves exactly those allocas into the retail frame: the D-011
+# frame adjustment (add_frame_adjust) already reserves it below the entry
+# sp, and the body's retail sp is musashi_lane_entry_sp - musashi_lane_sp_adj
+# (after its own adjustment), the same sp the guest-call thunk gives a
+# callee. OFF is read from the retail words by a forward dataflow over the
+# function's CFG; anything not proven from the asm is refused.
+
+GUEST_SP = "musashi_lane_entry_sp"
+CALLER_SAVED = frozenset([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 24, 25, 31])
+
+
+def _branch_info(w, pc):
+    """(kind, target) for a control transfer, else None. kind: 'b' (two-way
+    branch), 'j' (jump), 'call', 'ret' (jr ra), 'bad' (anything the
+    dataflow cannot follow: jr reg, jalr, branch-and-link)."""
+    op = w >> 26
+    simm = (w & 0xFFFF) - 0x10000 if w & 0x8000 else w & 0xFFFF
+    if op in (4, 5, 6, 7):
+        return "b", pc + 4 + (simm << 2)
+    if op == 1:
+        rt = (w >> 16) & 31
+        if rt in (0, 1):
+            return "b", pc + 4 + (simm << 2)
+        return "bad", None
+    if op == 2:
+        return "j", ((pc + 4) & 0xF0000000) | ((w & 0x3FFFFFF) << 2)
+    if op == 3:
+        return "call", ((pc + 4) & 0xF0000000) | ((w & 0x3FFFFFF) << 2)
+    if op == 0 and w & 63 == 8:
+        return ("ret", None) if (w >> 21) & 31 == 31 else ("bad", None)
+    if op == 0 and w & 63 == 9:
+        return "bad", None
+    if op in (0x10, 0x11, 0x12, 0x13) and (w >> 21) & 31 == 8:
+        return "bad", None  # coprocessor branch
+    return None
+
+
+def _gpr_dest(w):
+    """The GPR an instruction writes (0: none)."""
+    op = w >> 26
+    if op == 0:
+        f = w & 63
+        if f in (0x08, 0x0C, 0x0D, 0x18, 0x19, 0x1A, 0x1B, 0x11, 0x13):
+            return 0
+        return (w >> 11) & 31
+    if op in (8, 9, 10, 11, 12, 13, 14, 15) or 0x20 <= op <= 0x26:
+        return (w >> 16) & 31
+    if op in (0x10, 0x12) and (w >> 21) & 31 in (0, 2):  # mfc/cfc
+        return (w >> 16) & 31
+    if op == 3:
+        return 31
+    return 0
+
+
+def _step(w, regs, slots):
+    """Abstract effect of one non-transfer instruction. regs: {reg: off}
+    for registers proven to hold retail sp + off; slots: {sp off: off} for
+    stack words proven to hold sp + off. Returns False when the
+    instruction moves sp other than in the prologue/epilogue form."""
+    op, rs, rt, rd = w >> 26, (w >> 21) & 31, (w >> 16) & 31, (w >> 11) & 31
+    simm = (w & 0xFFFF) - 0x10000 if w & 0x8000 else w & 0xFFFF
+    if op == 0x2B:  # sw
+        if rs == 29:
+            if rt in regs:
+                slots[simm] = regs[rt]
+            else:
+                slots.pop(simm, None)
+        else:
+            slots.clear()  # may alias the frame
+        return True
+    if op in (0x28, 0x29, 0x2A, 0x2E):  # sb/sh/swl/swr
+        if rs == 29:
+            for k in [k for k in slots if k - 3 <= simm < k + 4]:
+                slots.pop(k)
+        else:
+            slots.clear()
+        return True
+    dest = _gpr_dest(w)
+    value = None
+    if op == 9 and rs in regs:  # addiu
+        value = regs[rs] + simm
+    elif op == 0 and w & 63 in (0x21, 0x20, 0x25) and rt == 0 and rs in regs:
+        value = regs[rs]  # move (addu/add/or rd, rs, zero)
+    elif op == 0 and w & 63 in (0x21, 0x20, 0x25) and rs == 0 and rt in regs:
+        value = regs[rt]
+    elif op == 0x23 and rs == 29 and simm in slots:  # lw from a proven slot
+        value = slots[simm]
+    if dest == 29:
+        if value is None:
+            return False
+    if dest:
+        if value is None:
+            regs.pop(dest, None)
+        else:
+            regs[dest] = value
+    return True
+
+
+def retail_call_args(words, vram, frame):
+    """Forward dataflow over the retail words. Returns (sites, saved) where
+    sites = [(jal pc, target, {argument index: sp offset})] lists, for every
+    jal, the arguments proven to be retail sp + offset (a0-a3, and stack
+    arguments 4-7 from the words at sp+0x10..), and saved = the sp offsets
+    the function stores a callee-saved register or ra to. Raises Reject when
+    the control flow cannot be followed."""
+    n = len(words)
+    lo, hi = vram, vram + 4 * n
+    states = [None] * (n + 1)
+    states[0] = ({29: frame}, {})
+    work = [0]
+    sites = {}
+    saved = set()
+
+    def merge(i, regs, slots):
+        if not 0 <= i <= n:
+            raise Reject("escape", f"retail flow leaves the function at {vram + 4 * i:08x}")
+        old = states[i]
+        if old is None:
+            states[i] = (dict(regs), dict(slots))
+        else:
+            r = {k: v for k, v in old[0].items() if regs.get(k) == v}
+            s = {k: v for k, v in old[1].items() if slots.get(k) == v}
+            if r == old[0] and s == old[1]:
+                return
+            states[i] = (r, s)
+        work.append(i)
+
+    def at(i):
+        return words[i] if i < n else 0
+
+    guard = 0
+    while work:
+        guard += 1
+        if guard > 20000:
+            raise Reject("escape", "retail dataflow does not converge")
+        i = work.pop()
+        if i >= n:
+            continue
+        regs, slots = dict(states[i][0]), dict(states[i][1])
+        w, pc = words[i], vram + 4 * i
+        br = _branch_info(w, pc)
+        if br is None:
+            if not _step(w, regs, slots):
+                raise Reject("escape", f"sp changes at {pc:08x}")
+            if w >> 26 == 0x2B and (w >> 21) & 31 == 29 and ((w >> 16) & 31) in \
+                    (16, 17, 18, 19, 20, 21, 22, 23, 30, 31):
+                saved.add((w & 0xFFFF) - 0x10000 if w & 0x8000 else w & 0xFFFF)
+            merge(i + 1, regs, slots)
+            continue
+        kind, target = br
+        if kind == "bad":
+            raise Reject("escape", f"retail control flow at {pc:08x} is not followed")
+        if _branch_info(at(i + 1), pc + 4) is not None:
+            raise Reject("escape", f"transfer in a delay slot at {pc + 4:08x}")
+        # The transfer reads its operands, then the delay slot runs.
+        if not _step(at(i + 1), regs, slots):
+            raise Reject("escape", f"sp changes at {pc + 4:08x}")
+        if kind == "call":
+            args = {k: regs[4 + k] for k in range(4) if 4 + k in regs}
+            for k in range(4, 8):
+                if 0x10 + 4 * (k - 4) in slots:
+                    args[k] = slots[0x10 + 4 * (k - 4)]
+            sites[pc] = (target, args)
+            for r in CALLER_SAVED:
+                regs.pop(r, None)
+            slots.clear()
+            merge(i + 2, regs, slots)
+        elif kind == "ret":
+            continue
+        elif kind == "j":
+            if not lo <= target < hi:
+                raise Reject("escape", f"retail jump out of the function at {pc:08x}")
+            merge((target - vram) // 4, regs, slots)
+        else:
+            if not lo <= target <= hi:
+                raise Reject("escape", f"retail branch out of the function at {pc:08x}")
+            merge((target - vram) // 4, regs, slots)
+            merge(i + 2, regs, slots)
+    return [(pc, t, a) for pc, (t, a) in sorted(sites.items())], saved
+
+
+def ir_type_layout(ty, types, seen=()):
+    """(size, align) of an LLVM type under the guest (and host) C layout;
+    None for a pointer or anything unrecognised."""
+    ty = ty.strip()
+    ints = {"i8": (1, 1), "i16": (2, 2), "i32": (4, 4), "i64": (8, 8)}
+    if ty in ints:
+        return ints[ty]
+    m = re.fullmatch(r"\[(\d+) x (.*)\]", ty)
+    if m:
+        el = ir_type_layout(m.group(2), types, seen)
+        return None if el is None else (int(m.group(1)) * el[0], el[1])
+    if ty in types:
+        if ty in seen:
+            return None
+        return ir_type_layout(types[ty], types, (*seen, ty))
+    packed = ty.startswith("<{") and ty.endswith("}>")
+    if packed or (ty.startswith("{") and ty.endswith("}")):
+        inner = ty[2:-2] if packed else ty[1:-1]
+        off, align = 0, 1
+        for f in split_top(inner):
+            el = ir_type_layout(f, types, seen)
+            if el is None:
+                return None
+            a = 1 if packed else el[1]
+            off = (off + a - 1) // a * a + el[0]
+            align = max(align, a)
+        return (off + align - 1) // align * align, align
+    return None
+
+
+def _struct_fields(ty, types):
+    ty = types.get(ty.strip(), ty.strip())
+    packed = ty.startswith("<{")
+    inner = ty[2:-2] if packed else ty[1:-1]
+    return split_top(inner), packed
+
+
+def gep_const_offset(src_ty, indices, types):
+    """Byte offset of a getelementptr with constant indices, or None."""
+    off = 0
+    size = ir_type_layout(src_ty, types)
+    if size is None or not indices:
+        return None
+    first = indices[0]
+    if not re.fullmatch(r"-?\d+", first):
+        return None
+    off += int(first) * size[0]
+    cur = src_ty.strip()
+    for idx in indices[1:]:
+        if not re.fullmatch(r"-?\d+", idx):
+            return None
+        k = int(idx)
+        body = types.get(cur, cur)
+        am = re.fullmatch(r"\[(\d+) x (.*)\]", body)
+        if am:
+            el = ir_type_layout(am.group(2), types)
+            if el is None:
+                return None
+            off += k * el[0]
+            cur = am.group(2).strip()
+            continue
+        if body.startswith("{") or body.startswith("<{"):
+            fields, packed = _struct_fields(cur, types)
+            if not 0 <= k < len(fields):
+                return None
+            pos = 0
+            for j, f in enumerate(fields):
+                el = ir_type_layout(f, types)
+                if el is None:
+                    return None
+                a = 1 if packed else el[1]
+                pos = (pos + a - 1) // a * a
+                if j == k:
+                    break
+                pos += el[0]
+            off += pos
+            cur = fields[k].strip()
+            continue
+        return None
+    return off
+
+
+GEP_RE = re.compile(r"getelementptr (?:inbounds |nuw |nusw |inrange\(\S+\) )*(.*)$")
+
+
+def _call_args(rhs):
+    """(callee name, [arg operand text]) for a direct call, else None."""
+    cm = re.search(r"\bcall\b[^@]*@([\w.$]+)\((.*)\)", rhs)
+    if not cm:
+        return None
+    inner, depth, end = cm.group(2), 0, None
+    for k, ch in enumerate(inner):
+        depth += ch in "([{<"
+        depth -= ch in ")]}>"
+        if depth < 0:
+            end = k
+            break
+    args = split_top(inner if end is None else inner[:end])
+    return cm.group(1), args
+
+
+def place_guest_locals(ir, fname, words, vram, frame):
+    """Move every alloca of fname whose address reaches a guest callee
+    (lane_call_* / lane_* call argument, through constant GEPs) into the
+    retail frame. Returns (ir, [(alloca, sp offset, size)]); the IR is
+    unchanged when no alloca reaches a call. Raises Reject("escape") when
+    the offset cannot be proven from the retail words."""
+    m = re.search(r"^define [^@]*@" + re.escape(fname) + r"\([^)]*\)[^{]*\{\n(.*?)^\}", ir,
+                  flags=re.M | re.S)
+    if not m:
+        return ir, []
+    types = named_types(ir)
+    lines = m.group(1).splitlines()
+    allocas, derived, calls = {}, {}, []
+    for k, line in enumerate(lines):
+        dm = DEF_RE.match(line)
+        if dm:
+            name, rhs = dm.group(1), dm.group(2)
+            am = re.fullmatch(r"alloca ([^,]+), align (\d+)", rhs.strip())
+            if am:
+                allocas[name] = (am.group(1).strip(), k)
+                derived[name] = (name, 0)
+                continue
+            gm = GEP_RE.match(rhs)
+            if gm and rhs.startswith("getelementptr"):
+                parts = split_top(gm.group(1))
+                if len(parts) >= 2 and parts[1].startswith("ptr "):
+                    base = parts[1].split()[-1]
+                    if base in derived:
+                        idx = [p.split()[-1] for p in parts[2:]]
+                        off = gep_const_offset(parts[0], idx, types)
+                        if off is None:
+                            raise Reject("escape", f"non-constant offset into local {base}")
+                        derived[name] = (derived[base][0], derived[base][1] + off)
+                continue
+        ca = _call_args(line)
+        if ca and re.match(r"lane_(?:call_)?" + QFUNC + r"$", ca[0]):
+            tainted = {}
+            for i, a in enumerate(ca[1]):
+                op = a.split()[-1] if a.split() else ""
+                if op in derived:
+                    tainted[i] = derived[op]
+            fm = re.search(r"func_([0-9A-Fa-f]{8})$", ca[0])
+            calls.append((int(fm.group(1), 16), tainted, len(ca[1])))
+    if not any(t for _, t, _ in calls):
+        return ir, []
+    if words is None or not frame:
+        raise Reject("escape", "local passed to a callee, retail frame unknown")
+    sites, saved = retail_call_args(words, vram, frame)
+    by_target = {}
+    for pc, target, args in sites:
+        by_target.setdefault(target, []).append((pc, args))
+    ir_by_target = {}
+    for target, tainted, argc in calls:
+        ir_by_target.setdefault(target, []).append((tainted, argc))
+    base = {}
+    for target, ir_calls in ir_by_target.items():
+        rsites = by_target.get(target, [])
+        if len(rsites) != len(ir_calls):
+            if any(t for t, _ in ir_calls) or any(a for _, a in rsites):
+                raise Reject("escape", f"{len(ir_calls)} calls to {target:08x} in the C, "
+                                       f"{len(rsites)} jal in the retail words")
+            continue
+        for (tainted, argc), (pc, args) in zip(ir_calls, rsites):
+            sp_args = {i: o for i, o in args.items() if i < argc}
+            if set(tainted) != set(sp_args):
+                raise Reject("escape", f"jal {target:08x} at {pc:08x}: locals at arguments "
+                                       f"{sorted(tainted)}, retail sp offsets at {sorted(sp_args)}")
+            for i, (alloca, off) in tainted.items():
+                b = sp_args[i] - off
+                if base.setdefault(alloca, b) != b:
+                    raise Reject("escape", f"local {alloca} at sp+{base[alloca]:#x} and sp+{b:#x}")
+    for target, rsites in by_target.items():
+        if target not in ir_by_target and any(a for _, a in rsites):
+            # a frame address the retail words pass where the C passes none
+            raise Reject("escape", f"retail jal {target:08x} passes an sp address the C does not")
+    placed = []
+    max_args = max([argc for _, _, argc in calls] + [4])
+    out_area = 0x10 + 4 * (max_args - 4)
+    for alloca, off in sorted(base.items(), key=lambda x: x[1]):
+        lay = ir_type_layout(allocas[alloca][0], types)
+        if lay is None:
+            raise Reject("escape", f"local {alloca} has type {allocas[alloca][0]}")
+        size = lay[0]
+        if off < out_area or off + size > frame:
+            raise Reject("escape", f"local {alloca} sp+{off:#x}+{size} outside the frame's locals "
+                                   f"[{out_area:#x}, {frame:#x})")
+        if off % lay[1]:
+            raise Reject("escape", f"local {alloca} sp+{off:#x} misaligned")
+        if any(off - 3 <= s < off + size for s in saved):
+            raise Reject("escape", f"local {alloca} sp+{off:#x}+{size} overlaps a saved register")
+        for _, o2, s2 in placed:
+            if off < o2 + s2 and o2 < off + size:
+                raise Reject("escape", f"local {alloca} sp+{off:#x} overlaps another local")
+        placed.append((alloca, off, size))
+    # Rewrite: base computed once, before the first moved alloca (allocas sit
+    # at the top of the entry block, after add_frame_adjust's prologue).
+    auto_init = set(re.findall(r'^(![\w.]+) = !\{!"auto-init"\}', ir, flags=re.M))
+    moved = {a for a, _, _ in placed}
+    offs = {a: o for a, o, _ in placed}
+    new, first = [], True
+    for line in lines:
+        dm = DEF_RE.match(line)
+        if dm and dm.group(1) in moved:
+            a = dm.group(1)
+            t = a.lstrip("%").replace('"', "")
+            if first:
+                new += [f"  %lane.gf.sp = load i32, ptr @{GUEST_SP}, align 4",
+                        f"  %lane.gf.base = sub i32 %lane.gf.sp, %lane.spa.e1"]
+                first = False
+            new += [f"  %lane.gf.a{t} = add i32 %lane.gf.base, {offs[a]}",
+                    f"  %lane.gf.z{t} = zext i32 %lane.gf.a{t} to i64",
+                    f"  {a} = inttoptr i64 %lane.gf.z{t} to ptr"]
+            continue
+        im = re.match(r"\s*call void @llvm\.memset\.[\w.]+\(ptr (?:align \d+ )?(%[\w.\"$]+), i8 0, "
+                      r"i64 \d+, i1 false\)(?:.*), !annotation (![\w.]+)\s*$", line)
+        if im and im.group(1) in moved and im.group(2) in auto_init:
+            continue  # -ftrivial-auto-var-init: retail leaves the slot as it was
+        lm = re.match(r"\s*call void @llvm\.lifetime\.\w+\.p0\((?:i64 \d+, )?ptr (%[\w.\"$]+)\)", line)
+        if lm and lm.group(1) in moved:
+            continue
+        new.append(line)
+    out = ir[:m.start(1)] + "\n".join(new) + "\n" + ir[m.end(1):]
+    out = out.rstrip("\n") + f"\n\n@{GUEST_SP} = external global i32, align 4\n"
+    return out, placed
 
 
 def cycle_analysis(ir, entry, vram, size, info):
@@ -1224,11 +1665,18 @@ def build_one(entry, out, symbols, hooks, clang, info=None):
             raise Reject("compile", (r.stderr.strip().splitlines() or ["?"])[0][:160])
         ir = o0.read_text()
         check_layout(ir)
-        rewritten = lower_arith(narrow_pointer_cells(rewrite_symbols(
-            ir, symbols, member, info["code"] if info else ())))
         words = retail_words(vram, size, info)
+        frame = retail_frame(words) if words is not None else 0
+        # Locals whose address reaches a callee move into the retail frame
+        # before narrow_pointer_cells, which then treats them as guest memory.
+        rewritten, guest_locals = place_guest_locals(
+            rewrite_symbols(ir, symbols, member, info["code"] if info else ()),
+            "lane_" + qualify(member, name), words, vram, frame)
+        rewritten = lower_arith(narrow_pointer_cells(rewritten))
         if words is not None:
-            rewritten = add_frame_adjust(rewritten, "lane_" + qualify(member, name), retail_frame(words))
+            rewritten = add_frame_adjust(rewritten, "lane_" + qualify(member, name), frame)
+        if guest_locals and "%lane.spa.e1 =" not in rewritten:
+            raise Reject("escape", "guest-frame locals without the frame adjustment")
         sub = work / f"{tag}.sub.ll"
         sub.write_text(rewritten)
         cycles = cycle_analysis(rewritten, entry, vram, size, info)
@@ -1254,6 +1702,10 @@ def build_one(entry, out, symbols, hooks, clang, info=None):
             header = next(h for h, _ in functions(optir) if re.search("@" + d + r"\(", h))
             sigs[d] = parse_signature(header, d)
         optir, stubs = resolve_calls(optir)
+        for callee, _, _, _ in stubs.values():
+            addr = int(callee.split("func_")[-1], 16)
+            if addr in caller_pinned_entries():
+                raise Reject("hooks", f"calls {addr:08x}, whose GTE sites admit only a jal caller")
         mapping = cycles.pop("_mapping", None) if cycles else None
         ledger, ledger_rows = False, None
         if vram in INTRINSIC_PCS and not info:
@@ -1309,7 +1761,8 @@ def build_one(entry, out, symbols, hooks, clang, info=None):
         return dict(name=name, qname=qualify(member, name), member=member, vram=vram, size=size,
                     source=entry["source"], admitted=True, obj=str(obj), defs=sigs, stubs=stubs,
                     icalls=icalls, digest=digest, cycles=cycles, ledger=ledger,
-                    ledger_rows=ledger_rows)
+                    ledger_rows=ledger_rows, frame=frame,
+                    guest_locals=[dict(off=o, size=n) for _, o, n in guest_locals])
     except Reject as e:
         return dict(name=name, qname=qualify(member, name), member=member, vram=vram, size=size,
                     source=entry["source"], admitted=False, rule=e.rule, detail=e.detail,
@@ -1728,6 +2181,19 @@ def emit_table(admitted, out, entry_sites=frozenset()):
     lines.extend(ovl_entries or ["    {{0u, 0u, NULL, NULL, 0u, 0u, 0u}, 0u, 0u, NULL},"])
     lines.append("};")
     lines.append(f"const size_t musashi_native_lane_overlay_count = {len(ovl_entries)}u;")
+    lines.append("")
+    lines.append("/* Guest-frame locals (place_guest_locals): guest RAM at the body's retail")
+    lines.append(" * sp + off holds them, where the retail code keeps them. The probes compare")
+    lines.append(" * these bytes, which sit inside the frame band they otherwise skip. */")
+    gl = []
+    for a in sorted(admitted, key=lambda a: (a["vram"], a.get("member") or "")):
+        member = f'"{a["member"]}"' if a.get("member") else "NULL"
+        for g in a.get("guest_locals") or ():
+            gl.append(f"    {{0x{a['vram']:08x}u, {a['frame']}u, {g['off']}u, {g['size']}u, {member}}},")
+    lines.append("const MusashiNativeLaneGuestLocal musashi_native_lane_guest_locals[] = {")
+    lines.extend(gl or ["    {0u, 0u, 0u, 0u, NULL},"])
+    lines.append("};")
+    lines.append(f"const size_t musashi_native_lane_guest_locals_count = {len(gl)}u;")
     (out / "native_lane_table.c").write_text("\n".join(lines) + "\n")
     return direct, thunk, hooked
 

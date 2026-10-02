@@ -13581,6 +13581,7 @@ uint64_t musashi_lane_budget = UINT64_MAX;
 uint64_t musashi_lane_seg_extra;
 uint32_t musashi_lane_resume_pc;
 uint32_t musashi_lane_sp_adj;
+uint32_t musashi_lane_entry_sp;
 static MusashiNativeLaneGuardStats g_guard;
 static int g_guard_strict = -1;
 
@@ -13812,6 +13813,7 @@ static int lane_try(MusashiBootMemory *memory, FormatterCpu *cpu) {
     LaneActive active;
     LaneRunFrame *saved_frames = g_lane_run_frames;
     uint32_t saved_sp_adj = musashi_lane_sp_adj;
+    uint32_t saved_entry_sp = musashi_lane_entry_sp;
     MusashiNativeLaneCall call;
     uint32_t ra, sp;
     volatile int outcome;
@@ -13841,6 +13843,7 @@ static int lane_try(MusashiBootMemory *memory, FormatterCpu *cpu) {
     call.r = cpu->r;
     g_lane_active = &active;
     musashi_lane_sp_adj = 0;   /* this lane call's native frames start at its sp */
+    musashi_lane_entry_sp = sp; /* their guest-frame locals sit below it */
     {
         int code = setjmp(active.abort);
         if (code == 0) {
@@ -13863,6 +13866,7 @@ static int lane_try(MusashiBootMemory *memory, FormatterCpu *cpu) {
     g_lane_run_frames = saved_frames;
     g_lane_ovl_depth = active.ovl_base;
     musashi_lane_sp_adj = saved_sp_adj;
+    musashi_lane_entry_sp = saved_entry_sp;
     if (outcome < 0) musashi_lane_ledger = musashi_lane_seg_extra = 0;
     if (outcome < 0) {
         fprintf(stderr, "native_boot: NATIVE_LANE_ABORT pc=%08x fn=%s\n",
@@ -17021,12 +17025,38 @@ int musashi_native_lane_reference_call_clocked(MusashiBootMemory *memory, uint32
                                                          regs, clock, NULL, NULL);
 }
 
+static int lane_reference_call(MusashiBootMemory *memory, uint32_t target,
+                               const uint32_t *args, unsigned argc,
+                               uint32_t sp, int use_lane, uint32_t regs[32],
+                               const MusashiExecutionClock *clock,
+                               int (*checkpoint)(void *, const void *),
+                               void *userdata, const MusashiCpuTransferDevice *transfer);
+
 int musashi_native_lane_reference_call_checkpoint(MusashiBootMemory *memory, uint32_t target,
                                                   const uint32_t *args, unsigned argc,
                                                   uint32_t sp, int use_lane, uint32_t regs[32],
                                                   const MusashiExecutionClock *clock,
                                                   int (*checkpoint)(void *, const void *),
                                                   void *userdata) {
+    return lane_reference_call(memory, target, args, argc, sp, use_lane, regs, clock,
+                               checkpoint, userdata, NULL);
+}
+
+int musashi_native_lane_reference_call_transfer(MusashiBootMemory *memory, uint32_t target,
+                                                const uint32_t *args, unsigned argc,
+                                                uint32_t sp, int use_lane, uint32_t regs[32],
+                                                const MusashiExecutionClock *clock,
+                                                const MusashiCpuTransferDevice *transfer) {
+    return lane_reference_call(memory, target, args, argc, sp, use_lane, regs, clock,
+                               NULL, NULL, transfer);
+}
+
+static int lane_reference_call(MusashiBootMemory *memory, uint32_t target,
+                               const uint32_t *args, unsigned argc,
+                               uint32_t sp, int use_lane, uint32_t regs[32],
+                               const MusashiExecutionClock *clock,
+                               int (*checkpoint)(void *, const void *),
+                               void *userdata, const MusashiCpuTransferDevice *transfer) {
     MusashiCallbackDevice no_devices;
     FormatterCpu cpu = {0};
     MusashiResetGraphPrefixStop stop = {0};
@@ -17042,6 +17072,7 @@ int musashi_native_lane_reference_call_checkpoint(MusashiBootMemory *memory, uin
     no_devices.checkpoint = checkpoint;
     no_devices.userdata = userdata;
     cpu.callback_device = &no_devices;
+    cpu.cpu_transfer = transfer;
     cpu.clock = clock;
     cpu.pc = target;
     cpu.npc = target + 4u;

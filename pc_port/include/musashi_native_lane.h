@@ -86,6 +86,21 @@ extern uint32_t musashi_lane_resume_pc;
  * guest call from native code runs the callee at the retail stack pointer,
  * entry sp minus this. */
 extern uint32_t musashi_lane_sp_adj;
+/* The guest sp at the current lane entry. A native body's retail sp is
+ * musashi_lane_entry_sp - musashi_lane_sp_adj (after its own adjustment);
+ * a local whose address the body passes to a callee lives in guest RAM at
+ * its retail offset from that sp (tools/native_lane_gen.py,
+ * place_guest_locals), where the retail code keeps it. */
+extern uint32_t musashi_lane_entry_sp;
+/* One guest-frame local of a generated entry: frame is the body's retail
+ * frame size, the local is guest RAM [sp + off, sp + off + size) where sp is
+ * its retail sp (entry sp - frame for a body entered from the interpreter).
+ * Tables: musashi_native_lane_guest_locals[_count] (generated). */
+typedef struct MusashiNativeLaneGuestLocal {
+    uint32_t guest_pc;
+    uint32_t frame, off, size;
+    const char *member; /* overlay member, or NULL for the main EXE */
+} MusashiNativeLaneGuestLocal;
 void musashi_native_lane_tick(const void *segment_table, uint32_t state);
 /* The checkpoint at a zero-cost native entry (a host intrinsic's PC). */
 void musashi_native_lane_tick_entry(uint32_t pc);
@@ -217,6 +232,13 @@ int musashi_native_lane_reference_call_checkpoint(MusashiBootMemory *memory, uin
                                                   const MusashiExecutionClock *clock,
                                                   int (*checkpoint)(void *, const void *),
                                                   void *userdata);
+/* ... with a CPU transfer device (the GTE: CTC2/CFC2/MTC2/MFC2 and commands;
+ * NULL: none), for differentials of functions whose callees use the GTE. */
+int musashi_native_lane_reference_call_transfer(MusashiBootMemory *memory, uint32_t target,
+                                                const uint32_t *args, unsigned argc,
+                                                uint32_t sp, int use_lane, uint32_t regs[32],
+                                                const MusashiExecutionClock *clock,
+                                                const MusashiCpuTransferDevice *transfer);
 
 /* Executed-path tracer (MUSASHI_TRACE_FUNCS=path). Called by the formatter
  * for jal/jalr targets and CPU dispatch entries; exposed for host routers
