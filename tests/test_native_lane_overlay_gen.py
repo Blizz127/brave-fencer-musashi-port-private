@@ -203,8 +203,8 @@ class EndToEnd(unittest.TestCase):
             ovl = rep["overlay"]
             self.assertEqual((ovl["members"], ovl["candidates"]), (["main_0003"], 24))
             rules = {f["vram"]: f["rule"] for f in ovl["functions"]}
-            # held out: CD poll loop that is guest-time sensitive (OVERLAY_DENY)
-            self.assertEqual(rules["800d2a24"], "deny")
+            # D-011: the CD retry loop charges its retail cost and is admitted
+            self.assertIsNone(rules["800d2a24"])
             for f in ovl["functions"]:
                 self.assertEqual(f["covers"], ["main_0003"])
                 self.assertRegex(f["digest"], "^[0-9a-f]{16}$")

@@ -346,7 +346,8 @@ class Generator(unittest.TestCase):
             d2454 = by[("main_0003", 0x800D2454)]["cycles"]
             self.assertEqual((d2454["call_costs"], d2454["return_cost"]), ([24, 4, 9, 15, 4], 18))
             d2a24 = by[("main_0003", 0x800D2A24)]
-            self.assertEqual((d2a24["admitted"], d2a24["rule"]), (False, "deny"))
+            self.assertTrue(d2a24["admitted"])
+            self.assertTrue(d2a24["ledger"])
             self.assertEqual(d2a24["cycles"]["status"], "mapped")
             self.assertIn("by_class", rep["cycles"])
             self.assertIn("native lane cycles (D-011)", r.stdout)

@@ -1090,13 +1090,13 @@ DENY = {
 
 # Overlay functions admissible by every rule but held out, keyed (member, vram).
 OVERLAY_DENY = {
-    # A CD command retry loop (Setloc via 800435CC until accepted, then the
-    # streaming read start 8004657C, retried on failure) whose outcome depends
-    # on the guest time between its guest calls. Natively its own instructions
-    # charge no cycles, so the commands reach the CD model at other moments:
-    # nested under a native 800D2454 the intro FMV stopped after 4 MDEC
-    # transfers instead of 1852 (warp request at vblank 1845, not 2207). D-013.
-    ("main_0003", 0x800D2A24): "CD command poll loop is guest-time sensitive (FMV cut short natively)",
+    # Empty. main_0003 800D2A24 was held out here as "guest-time sensitive":
+    # native under a native 800D2454 it cut the intro FMV to 4 MDEC transfers
+    # (1852). The cause was an ABI bug, not timing: 800D2454's C was typed
+    # void, but its caller tests v0 after the jal and the retail words leave
+    # 800D2A24's result there, which a native 800D2A24 did not put in v0.
+    # 800D2454 now returns it, and the abi rule below (void_result_readers)
+    # refuses any other void-typed function whose retail caller reads v0/v1.
 }
 
 
