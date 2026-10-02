@@ -368,7 +368,10 @@ static void palette_setup(MusashiBootMemory *memory,FormatterCpu *cpu,
 static void palette_refusal(MusashiBootMemory *memory,FormatterCpu *cpu,Clock *clock) {
     FormatterCpu saved=*cpu;unsigned calls=clock->calls,total=clock->total;
     static MusashiBootMemory prior;prior=*memory;
-    assert(!formatter_step(memory,cpu));
+    int accepted=formatter_step(memory,cpu);
+    if(accepted)fprintf(stderr,"unexpected acceptance pc=%08x pending=%u reg=%u next=%08x clock_refuse=%d\n",
+                        saved.pc,saved.merge_pending,saved.merge_reg,saved.merge_next_pc,clock->refuse);
+    assert(!accepted);
     assert(!memcmp(&saved,cpu,sizeof(saved)));
     assert(!memcmp(&prior,memory,sizeof(prior)));
     assert(clock->calls==calls&&clock->total==total);
@@ -420,8 +423,10 @@ static void test_palette_copy_merge(void) {
     for(unsigned i=0;i<sizeof(sites)/sizeof(sites[0]);i++) {
         FormatterCpu cpu;Clock clock;palette_setup(&memory,&cpu,&clock,0,0xff);
         cpu.pc=sites[i];cpu.npc=sites[i]+4;
-        g_overlay_sc02_0031_words=0;palette_refusal(&memory,&cpu,&clock);
-        g_overlay_sc02_0031_words=1;
+        /* Production overlay identity changes invalidate address admission. */
+        g_overlay_sc02_0031_words=0;overlay_changed();
+        palette_refusal(&memory,&cpu,&clock);
+        g_overlay_sc02_0031_words=1;overlay_changed();
         write_word(&memory,sites[i],read_word(&memory,sites[i])^1u);
         palette_refusal(&memory,&cpu,&clock);
     }
@@ -440,7 +445,99 @@ static void test_palette_copy_merge(void) {
     g_overlay_sc02_0031_words=0;
 }
 
-int main(void) {
+/* Packed-coordinate path reached by the attract demo after matrix repair.
+ * The retail block copies four bytes from object+8 to stack+0x28. */
+static const uint8_t *packed_code;
+static void packed_setup(MusashiBootMemory *memory, FormatterCpu *cpu,
+                         Clock *clock, unsigned src_align, unsigned dst_align,
+                         int scratch) {
+    memset(memory,0,sizeof(*memory));memset(clock,0,sizeof(*clock));
+    memcpy(musashi_boot_ram_span(memory,CODE_IMAGE_BASE,CODE_IMAGE_END-CODE_IMAGE_BASE),
+           packed_code+CODE_IMAGE_TEXT,CODE_IMAGE_END-CODE_IMAGE_BASE);
+    g_fetch_memory=memory;code_sites_invalidate();
+    init_cpu(cpu,clock,0x80021d88u);
+    cpu->r[11]=DATA_BASE+src_align;
+    cpu->r[29]=(scratch?0x1f800200u:DATA_BASE+0x100u)+dst_align;
+    uint8_t *src=cpu_ram_span(memory,cpu,DATA_BASE,32);
+    uint8_t *dst=cpu_ram_span(memory,cpu,cpu->r[29]-dst_align+0x20u,24);
+    assert(src&&dst);
+    for(unsigned n=0;n<32;n++)src[n]=(uint8_t)(n*17u+9u);
+    memset(dst,0xa5,24);
+}
+static void test_packed_coordinate_merge(void) {
+    packed_code=code_image();assert(packed_code);
+    /* Test production live-RAM validation, not the synthetic code-file seam. */
+    g_code_image=NULL;g_code_image_state=-1;
+    static MusashiBootMemory memory, before;
+    const uint32_t sites[]={0x80021d88u,0x80021d8cu,0x80021d94u,0x80021d98u};
+    for(unsigned sa=0;sa<4;sa++)for(unsigned da=0;da<4;da++)for(int scratch=0;scratch<2;scratch++) {
+        FormatterCpu cpu;Clock clock;
+        packed_setup(&memory,&cpu,&clock,sa,da,scratch);
+        uint8_t expected[4];
+        memcpy(expected,cpu_ram_span(&memory,&cpu,cpu.r[11]+8u,1),4);
+        uint32_t value=(uint32_t)expected[0]|((uint32_t)expected[1]<<8)|
+            ((uint32_t)expected[2]<<16)|((uint32_t)expected[3]<<24);
+        before=memory;
+        assert(formatter_step(&memory,&cpu));
+        assert(cpu.r[2]==0xa1b2c3d4u && cpu.merge_pending);
+        assert(formatter_step(&memory,&cpu));
+        assert(cpu.merge_pending);
+        assert(formatter_step(&memory,&cpu));
+        assert(cpu.r[2]==value && !cpu.merge_pending);
+        assert(formatter_step(&memory,&cpu));assert(formatter_step(&memory,&cpu));
+        assert(cpu.pc==0x80021d9cu && clock.calls==5 && clock.total==16);
+        /* Independent byte-copy oracle, including all untouched RAM/scratch. */
+        memcpy(cpu_ram_span(&before,&cpu,cpu.r[29]+0x28u,1),expected,4);
+        assert(!memcmp(&memory,&before,sizeof(memory)));
+    }
+    for(unsigned i=0;i<4;i++) {
+        FormatterCpu cpu;Clock clock;
+        packed_setup(&memory,&cpu,&clock,1,0,1);
+        uint32_t word=read_word(&memory,sites[i]);
+        assert(merge_kind_for(sites[i],word)!=MERGE_NONE);
+        for(unsigned bit=0;bit<32;bit++)assert(merge_kind_for(sites[i],word^(1u<<bit))==MERGE_NONE);
+        cpu.pc=sites[i];cpu.npc=sites[i]+4;
+        write_word(&memory,sites[i],word^1u);
+        palette_refusal(&memory,&cpu,&clock);
+    }
+    /* Both pending-load states refuse a corrupt successor without publishing
+     * the pending value or charging the clock. */
+    for(unsigned step=1;step<=2;step++) {
+        FormatterCpu cpu;Clock clock;
+        packed_setup(&memory,&cpu,&clock,1,0,1);
+        for(unsigned n=0;n<step;n++)assert(formatter_step(&memory,&cpu));
+        write_word(&memory,cpu.pc,read_word(&memory,cpu.pc)^1u);
+        palette_refusal(&memory,&cpu,&clock);
+    }
+    for(unsigned i=0;i<4;i++) {
+        FormatterCpu cpu;Clock clock;
+        packed_setup(&memory,&cpu,&clock,0,0,1);
+        cpu.pc=sites[i];cpu.npc=sites[i]+4;
+        if(i<2)cpu.r[11]=0x1f801000u-8u;else cpu.r[29]=0x1f801000u-0x28u;
+        palette_refusal(&memory,&cpu,&clock);
+    }
+    for(unsigned step=0;step<=2;step++) {
+        FormatterCpu cpu;Clock clock;
+        packed_setup(&memory,&cpu,&clock,1,0,1);
+        for(unsigned n=0;n<step;n++)assert(formatter_step(&memory,&cpu));
+        clock.refuse=1;palette_refusal(&memory,&cpu,&clock);
+    }
+    for(unsigned corrupt=0;corrupt<2;corrupt++) {
+        FormatterCpu cpu;Clock clock;
+        packed_setup(&memory,&cpu,&clock,1,0,1);
+        assert(formatter_step(&memory,&cpu));assert(formatter_step(&memory,&cpu));
+        if(corrupt)cpu.merge_reg^=1u;else cpu.merge_next_pc+=4u;
+        palette_refusal(&memory,&cpu,&clock);
+    }
+    g_code_image=(uint8_t *)packed_code;g_code_image_state=1;
+}
+
+int main(int argc, char **argv) {
+    if(argc==2 && !strcmp(argv[1],"--packed-coordinate")) {
+        test_packed_coordinate_merge();
+        puts("Packed coordinates: byte copy, alignments, delay, clock, and refusal passed");
+        return 0;
+    }
     test_palette_copy_merge();
     test_camera_snapshot_merge();
     test_movie_inline_callback_guard();test_movie_rectangle_copy();test_movie_header_copy();test_exact_source_words();
