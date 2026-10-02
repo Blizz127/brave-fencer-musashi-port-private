@@ -1,69 +1,53 @@
-/* Overlay range [8014C6F4,8014C860) from MAIN.CD member 0012.
- * SHA256(span)=d32599df553d6b756106898c2cbcbb8ab3a14a98d506da6a533bd1d406033a9a.
- * Word export for the native seam; the body below is an
- * UNVERIFIED draft, not an oracle match claim. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_8014C6F4 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Per-frame input/state update: latches the button-held byte at +0x1C3 from the +0x44/+0x48 pad words, copies 8 bytes from the linked record, then records the trail position (+0x154..) and queues func_80015978 for the matching table entry or the object itself. */
 #include "psx_types.h"
-
-/* File-scope declarations from the vendor translation unit. */
-typedef struct { char _b[8]; } M8_8014C6F4;
-
-/* func_8014C6F4 — shared body (overlay slot 0x80128158, h_exact 1ac65d84). ONE source: instantiated by #include at each
- * member's site in address order; the members are recorded in config/dedup.us.yaml (Phase 35). */
-void func_8014C6F4(u8 *a) {
-    extern u8 D_80078E78[];
-    extern s32 D_8011F9D0;
-    extern s32 func_8016F1AC(void);
-    extern void func_80015978(s32 a0, s32 *a1);
-    u8 *p = D_80078E78;
-    register u8 *e __asm__("$2");
-    register u8 *lim __asm__("$3");
-    u8 *q;
-    s32 want;
-    u8 *src;
-    if ((*(u32 *)(a + 0x44) & 2) != 0) {
-        a[0x1C3] = 1;
+struct Raw8 {
+    char b[8];
+};
+extern char D_80078E78[];
+extern char D_8011F9D0[];
+int func_8016F1AC(void);
+void func_80015978(char *a, char *b);
+void func_8014C6F4(char *o) {
+    char *g = D_80078E78;
+    char *e;
+    char *p;
+    int id;
+    if ((*(int *)(o + 0x44) & 2) != 0) {
+        *(u8 *)(o + 0x1C3) = 1;
     }
-    if (((*(u32 *)(a + 0x44) ^ *(u32 *)(a + 0x48)) & *(u32 *)(a + 0x44) & 0x200) != 0) {
-        a[0x1C3] = 0;
+    if ((((*(int *)(o + 0x44) ^ *(int *)(o + 0x48)) & *(int *)(o + 0x44)) & 0x200) != 0) {
+        *(u8 *)(o + 0x1C3) = 0;
     }
-    *(M8_8014C6F4 *)(a + 0x164) = *(M8_8014C6F4 *)(*(u8 **)(a + 0x20) + 0x10);
-    if (func_8016F1AC() != 0
-        || (((*(u32 *)(a + 0x44) & 0x200) != 0) && a[0x1C3] == 0)) {
-        *(s16 *)(a + 0x162) = 1;
-        goto tail;
-    }
-    if (p[0x49] == 0x17) {
-        want = 0x22;
-        q = (u8 *)&D_8011F9D0;
-        lim = q + 0xC30;
-        for (; q < lim; q += 0x68) {
-            if (*(u16 *)q == want) {
-                e = q;
-                goto found;
+    *(struct Raw8 *)(o + 0x164) = *(struct Raw8 *)(*(int *)(o + 0x20) + 0x10);
+    if (func_8016F1AC() != 0 || ((*(int *)(o + 0x44) & 0x200) != 0 && *(u8 *)(o + 0x1C3) == 0)) {
+        *(short *)(o + 0x162) = 1;
+    } else {
+        if (*(u8 *)(g + 0x49) == 0x17) {
+            id = 0x22;
+            for (p = D_8011F9D0; p < D_8011F9D0 + 0xC30; p += 0x68) {
+                if (*(u16 *)p == id) {
+                    e = p;
+                    goto have;
+                }
+            }
+            e = 0;
+          have:
+            if (e != 0) {
+                func_80015978(e + 4, o + 0x15C);
+                goto done;
             }
         }
-        e = 0;
-    found:
-        if (e != 0) {
-            src = e + 4;
-            goto call;
+        if (*(u16 *)o != 0x19) {
+            func_80015978(o + 4, o + 0x15C);
         }
+      done:
+        *(short *)(o + 0x162) = 0;
     }
-    if (*(u16 *)a == 0x19) {
-        goto done;
+    if (*(short *)(o + 0x15A) == 0) {
+        *(u16 *)(o + 0x154) = *(u16 *)(o + 6);
+        *(u16 *)(o + 0x156) = *(u16 *)(o + 0xA);
+        *(u16 *)(o + 0x158) = *(u16 *)(o + 0xE);
     }
-    src = a + 4;
-call:
-    func_80015978((s32)src, (s32 *)(a + 0x15C));
-done:
-    *(s16 *)(a + 0x162) = 0;
-tail:
-    if (*(s16 *)(a + 0x15A) == 0) {
-        *(u16 *)(a + 0x154) = *(u16 *)(a + 0x6);
-        *(u16 *)(a + 0x156) = *(u16 *)(a + 0xA);
-        *(u16 *)(a + 0x158) = *(u16 *)(a + 0xE);
-    }
-    *(s16 *)(a + 0x15A) = 0;
+    *(short *)(o + 0x15A) = 0;
 }

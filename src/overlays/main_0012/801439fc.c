@@ -1,49 +1,36 @@
-/* Overlay range [801439FC,80143B30) from MAIN.CD member 0012.
- * SHA256(span)=ab9e2ee01d010e6ee5e9be27a8dbe5ab6215f3a71f3a277f0b3279f4f953be5e.
- * Word export for the native seam; the body below is an
- * UNVERIFIED draft, not an oracle match claim. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_801439FC - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Per-frame sync of an attached effect node (+0xCC) with the target object (+0x64): when the target's id matches, copy its position (raised by 0x10) into the node and orient it; otherwise release the node. */
 #include "psx_types.h"
-
-/* Vendor names mapped to address-named symbols for the link-by-address harness. */
-#define ratan2 func_8004CFEC
-
-/* func_801439FC — shared body (overlay slot 0x80128158, h_exact 8890d24d). ONE source: instantiated by #include at each
- * member's site in address order; the members are recorded in config/dedup.us.yaml (Phase 35). */
-extern void func_80016714(void *a0, s32 a1);
-extern void func_8012C218(void *a0);
-extern s32 func_80134510(s32 arg);
-extern s32 ratan2(s32 a0, s32 a1);
-extern s16 D_801152AC;
-extern s16 D_801152AA;
-extern u8 D_801152A8[];
-void func_801439FC(s32 a0) {
-    s32 s1 = *(s32 *)(a0 + 0x64);
-    s32 s0 = *(s32 *)(a0 + 0xCC);
-    s16 sp[3];
-    s32 v0;
-    if (*(s16 *)(s1 + 0x36) != *(s16 *)(a0 + 0xFC)) {
-        if (a0 == 0) {
-            return;
+extern short D_801152A8;
+extern short D_801152AA;
+extern short D_801152AC;
+int func_8004CFEC(int a, int b);
+int func_80134510(u16 *p);
+void func_80016714(char *n, int a);
+void func_8012C218(char *o);
+void func_801439FC(char *o) {
+    u16 pos[3];
+    char *t = (char *)*(int *)(o + 0x64);
+    char *n = (char *)*(int *)(o + 0xCC);
+    if (*(short *)(t + 0x36) != *(short *)(o + 0xFC)) {
+        if (o != 0) {
+            func_80016714(n, 0x38);
+            func_8012C218(o);
         }
-        func_80016714((void *)s0, 0x38);
-        func_8012C218((void *)a0);
-        return;
+    } else {
+        pos[0] = *(u16 *)(t + 6);
+        pos[1] = *(u16 *)(t + 0xA) - 0x10;
+        pos[2] = *(u16 *)(t + 0xE);
+        if (func_80134510(pos) == 0) {
+            *(u32 *)(n + 4) |= 0x80000000;
+        } else {
+            *(u16 *)(n + 8) = pos[0];
+            *(u16 *)(n + 0xA) = pos[1];
+            *(u16 *)(n + 0xC) = pos[2];
+            *(int *)(n + 4) &= 0x7FFFFFFF;
+            *(u16 *)(n + 0x10) = func_8004CFEC(D_801152AC, D_801152AA) + 0x400;
+            *(u16 *)(n + 0x12) = func_8004CFEC(D_801152A8, D_801152AA);
+            *(u16 *)(n + 0x14) = -*(u16 *)(*(int *)(t + 0x20) + 0x12);
+        }
     }
-    sp[0] = *(u16 *)(s1 + 6);
-    sp[1] = *(u16 *)(s1 + 0xA) - 0x10;
-    sp[2] = *(u16 *)(s1 + 0xE);
-    if (func_80134510((s32)&sp[0]) == 0) {
-        *(s32 *)(s0 + 4) = *(s32 *)(s0 + 4) | 0x80000000;
-        return;
-    }
-    *(s16 *)(s0 + 8) = sp[0];
-    *(s16 *)(s0 + 0xA) = sp[1];
-    *(s16 *)(s0 + 0xC) = sp[2];
-    *(s32 *)(s0 + 4) = *(s32 *)(s0 + 4) & 0x7FFFFFFF;
-    *(s16 *)(s0 + 0x10) = ratan2(D_801152AC, D_801152AA) + 0x400;
-    *(s16 *)(s0 + 0x12) = ratan2(*(s16 *)D_801152A8, D_801152AA);
-    v0 = *(s32 *)(s1 + 0x20);
-    *(s16 *)(s0 + 0x14) = -(*(u16 *)(v0 + 0x12));
 }
