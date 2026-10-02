@@ -11,9 +11,17 @@ presents**, versus 22/647 before (mash) and 10/647 before (idle). Captured
 formerly dark frames show the forest and player. Evidence, limits and corrections
 to the initial hypotheses below: [forest investigation](docs/FOREST-SWC2-2026-10-02.md).
 
-r34 remains live. r36 passed forest/village/save checks but is held for a newly
-reached packed-coordinate path in attract. r37 adds its narrow merge admission;
-regression and packaged release gates remain pending. B18 stays deferred.
+**r37 is now LIVE owner-only**, published 2026-10-02T21:05:59.548006+00:00: `bfm-r37-61c60516d`,
+source `61c60516d18bf6402e6dbd937d8c8d18ebd1af4b`. It includes the narrow
+packed-coordinate admission and passed the complete packaged gate. Artifact
+8,244,817 bytes, SHA `4bb186e5010e1a04f2c739ac9e7a86d6ab33031616bfdf145934fcd11698a87e`.
+GitHub/bucket/channel readback and launcher Private upgrade detection passed.
+Receipt: `~/release-staging/bfm-r37/RECEIPT.txt`. r34 is rollback; r35/r36 remain
+held and unpublished. B18 stays deferred; the native-only milestone remains open.
+
+The old publisher worktree was removed. The established publisher is retained
+unchanged at `~/release-staging/bfm-r37/publisher/`, exported from launcher
+commit `75c5f42bb22895bbd2abaed54b628379f1482423`. Codex remains the sole writer.
 The historical handover below describes the state before this investigation.
 
 Owner decision (relayed by the Devbox Coordinator): the BFM port, decompilation and builds
@@ -25,7 +33,8 @@ to `Blizz127/brave-fencer-musashi-port-private` (remote `port-private`).
 
 | Build | Source | Status |
 |---|---|---|
-| **r34** `bfm-r34-5e0952520` | `release/r34` 5e0952520629 = r33 + pass-through call routing | **LIVE** on the channel |
+| **r37** `bfm-r37-61c60516d` | `release/r37` 61c60516d18b = r35 + matrix/SWC2 + packed-copy fixes | **LIVE** owner-only |
+| r34 `bfm-r34-5e0952520` | `release/r34` 5e0952520629 = r33 + pass-through call routing | rollback |
 | r33 `bfm-r33-70f6117f9` | `70f6117f94` | rollback; diverges from retail (8014BDE8 pass-through bug, see 3.2) |
 | r32 `bfm-r32-48abdba08` | `48abdba08c` | rollback; same 8014BDE8 bug |
 | r31 `bfm-r31-3eddf31ad` | `3eddf31ad0` | rollback; ra-pin hazard (8002C410) |
@@ -33,7 +42,7 @@ to `Blizz127/brave-fencer-musashi-port-private` (remote `port-private`).
 
 - Receipts: `~/release-staging/bfm-r3{1,2,3,4}/RECEIPT.txt`; channel snapshots
   `brave-fencer-musashi-channel-before-*.json` and `-bfm-rNN-*.json` next to them.
-- Publish recipe: `~/dev/banshee-realm-client-private-builds/scripts/publish-private-port-build.py
+- Publish recipe: `~/release-staging/bfm-r37/publisher/scripts/publish-private-port-build.py
   musashi <tarball> <build-id> --commit <FULL sha, pushed to port-private> --sha256 <sha>
   --notes NOTES.md --known-issue ...` (dry-run first). Verify: upload sha, channel
   readback, launcher `PortUpdatePolicy` revision upgrade (rN -> rN+1).
@@ -154,7 +163,7 @@ package sha256 inside every gate job (template `~/release-staging/bfm-r34/combin
 
 ## 6. Native status (disclose honestly)
 
-- Release lane (r34): main 474/500 + overlay 88/93 = 562/593 (count from report.json split by
+- Release lane (r34/r37): main 474/500 + overlay 88/93 = 562/593 (count from report.json split by
   member; the generator's "N/M game functions" line counts both together). r31/r32 notes
   originally double-counted; corrected.
 - Still HYBRID: most overlay/scene code and non-HLE PsyQ run in the interpreter; 48 native

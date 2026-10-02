@@ -966,3 +966,21 @@ the parts. The r31 and r32 private-build notes read it as main-program only:
 r31 is 458/500 main + 82/92 overlay (540/592 in total), r32 474/500 main +
 87/92 overlay (561/592), and the functions left interpreted were 42 + 10 (r31)
 and 26 + 5 (r32), not 52 + 10 and 31 + 5.
+
+
+## 2026-10-02 Codex continuation: r37 forest correction
+
+Codex is the sole writer for task df2840be6532. r37 is published owner-only
+(source61c60516d18bf6402e6dbd937d8c8d18ebd1af4b); r34 remains rollback and
+r35/r36 are held. Fixes: SWC2 matrix stores use data IR3, plus the packed-XY
+merge path exposed in attract by correct matrices. No game-C/native admission
+batch changed; B18 remains deferred. See [full evidence and receipt references](FOREST-SWC2-2026-10-02.md).
+
+Three packaged forest variants have zero dark presents/647, nine captured
+frames match the reviewed correction, five probes and ten release CTests
+pass, and save/cold Continue preserves progress/card bytes. Attract reaches
+its existing late800495EC refusal; this remains disclosed. Artifact size/SHA,
+private channel/launch contract and launcher Private upgrade detection were
+verified by readback. Most scene/non-HLE SDK still executes CPU instructions,
+48 native functions retain approximate timing, null/KUSEG is still open;
+this is not a native-only completion milestone.
