@@ -944,3 +944,17 @@ Two fixes, both in rule `hooks`:
 - The guest frame's other slots (saved registers, host-only locals) are
   still not written, as in D-011 (4).
 - No gameplay or runner result is claimed here.
+
+### Private build r32 (`bfm-r32-48abdba08`)
+
+Escape locals (guest-frame placement, see the section above) and the caller-pin
+hooks fix: main 561/592, overlay 87/92. Runner gate
+`20261002-104057-bfm-r32-gate2-48abdba08` asserts the package hash in the job.
+The first r32 gate job (`20261002-101740`) is invalid: a script error ran the
+superseded `cb2803bb6` package. Results: probes on the release binaries 0
+different; smoke (v3, baseline, two more baseline runs each of r32 and r31) to
+3008; card-off; attract terminal tick `3aca`; village 1010 equal to the
+all-overlay-denied leg; inn save and cold Continue; speed equal to r31. A
+`STEP_REFUSED pc=ffffffff` chain under native `8001FB8C` right before
+`HOST_STOP source=SIGTERM` is the timeout's teardown misreported (a host stop
+landing in a GTE load delay inside a native call), not an in-game stop.
