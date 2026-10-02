@@ -538,3 +538,39 @@ entries (`800d1d14` layout, `800d2a24` deny).
 This is the first release build that executes native overlay code. O1 is the
 plumbing slice, so the village gain is small (main_0003 is barely resident there);
 O2 targets the hot scene code.
+
+### B14 targeted native differential (port `aa251b2123`)
+
+`tests/native_lane_targeted_probe.c` (CTest `native_lane_targeted_differential`)
+runs each of the three B14 functions through the interpreter (lane off) and the
+native lane from identical seeded RAM and compares the full 2 MiB of guest RAM.
+The functions are void, so there's no v0 to compare.
+
+- `80020DA4`: 3,375 boundary angle combinations (0, 1, 2, 0x7FF, 0x800, 0xFFF,
+  0x1000, values above 0xFFF to prove masking, 0xFFFF) plus random cases; output
+  buffers at several addresses including overlapping the input; the retail
+  sin/cos table and a test-built one.
+- `8001D388` / `8001FB8C`: every guard branch (state <0/0/>0, enabled 0/non-zero,
+  type ==/!= the target, subtype 0 / last valid / first invalid / large; for FB8C
+  `*count` 0 and 0x7FFFFFFF, and aliasing the object's state word). The call path
+  runs real retail handlers through the retail table or rotated table entries. The
+  interpreter admits only whitelisted retail code, so hand-made guest stubs can't
+  run on the reference side; the interpreter's entry hook confirms the handler
+  call and that no call happens when the guard fails.
+
+| Function | Cases | Same | Different | Not comparable |
+|---|---|---|---|---|
+| `8001D388` | 3,000 | 2,685 | 0 | 315 |
+| `8001FB8C` | 3,000 | 2,626 | 0 | 374 |
+| `80020DA4` | 4,500 | 4,500 | 0 | 0 |
+
+"Not comparable" means the called retail handler made a call the interpreter
+doesn't admit, so both sides refused. Deliberate breaks (temporary source edits,
+reverted) were all detected:
+- `subtype < 12` in D388: different=1, native_failed=29;
+- a dropped `*count += 1` in FB8C: different=207, i.e. every call-path case;
+- a sign error in `m[6]` in DA4: 3,012 of 4,500 different.
+
+Release x86-64-v3 confirmation: job `20261002-010328-bfm-b14diff-aa251b2123`
+(evidence `3363c01a...a672`). Identical counts, 0 different. The lane-wide probe
+gives 440 functions verified, 0 different.
