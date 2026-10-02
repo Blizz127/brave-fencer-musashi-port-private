@@ -12,6 +12,8 @@
 s32 func_80013228();                                /* static */
 void func_80047D3C(s32);                               /* static */
 
-void func_80013200(void) {
-    func_80047D3C(func_80013228());
+/* a0/a1 pass straight through to func_80013228 (the retail words leave them
+ * untouched before the jal), so they are parameters here. */
+void func_80013200(void *a, void *b) {
+    func_80047D3C(func_80013228(a, b));
 }

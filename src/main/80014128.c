@@ -13,7 +13,7 @@
 /* Forward declaration only. The callee lives elsewhere in the executable, so
  * this reference is undefined in the compiled object and is resolved at link
  * time from its splat name, which carries its address. */
-extern void func_80048FBC(void);
+extern void func_80048FBC(s32, s32, s32);
 
 /* Non-leaf wrapper at vram 0x80014128.
  *
@@ -24,6 +24,8 @@ extern void func_80048FBC(void);
  * Signatures and types here are the loosest that reproduce the bytes; they are
  * not evidence of the original declaration.
  */
-void func_80014128(void) {
-    func_80048FBC();
+/* a0-a2 pass straight through to func_80048FBC (the retail words leave
+ * them untouched before the jal), so they are parameters here. */
+void func_80014128(s32 a0, s32 a1, s32 a2) {
+    func_80048FBC(a0, a1, a2);
 }

@@ -13,6 +13,8 @@ s32 func_800132BC();                                /* static */
 s32 func_80047D3C(s32);                               /* static */
 
 /* returns func_80047D3C's result: callers test v0 after the jal (retail leaves it there). */
-s32 func_80013294(void) {
-    return func_80047D3C(func_800132BC());
+/* a0/a1 pass straight through to func_800132BC (the retail words leave them
+ * untouched before the jal), so they are parameters here. */
+s32 func_80013294(void *a, void *b) {
+    return func_80047D3C(func_800132BC(a, b));
 }

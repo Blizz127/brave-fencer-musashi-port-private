@@ -13,11 +13,13 @@ extern s32 D_8006AEF0;
 s32 func_800435B4();                                /* static */
 extern u8 D_80076110;
 
-void func_800361CC(void) {
+/* a0 passes straight through to func_800435B4 on both paths (the retail
+ * words leave it untouched before each jal), so it is a parameter here. */
+void func_800361CC(s32 arg0) {
     if (D_80076110 == 0) {
-        D_8006AEF0 = func_800435B4();
+        D_8006AEF0 = func_800435B4(arg0);
     } else {
-        func_800435B4();
+        func_800435B4(arg0);
     }
     D_80076110 = 1;
 }
