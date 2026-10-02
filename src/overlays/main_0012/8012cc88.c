@@ -1,48 +1,38 @@
-/* Overlay range [8012CC88,8012CE2C) from MAIN.CD member 0012.
- * SHA256(span)=7fb02279dcbb59647c77d9020f773b5a301468125a6f7d612fbdb2289b49b9fb.
- * Word export for the native seam; the body below is an
- * UNVERIFIED draft, not an oracle match claim. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_8012CC88 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Moves an object by its velocity, then asks func_8012CEB0 about the swept position (+offset d); on a 0x6000 hit it zeroes the +0x14 word. Returns the query flags. */
 #include "psx_types.h"
-
-/* File-scope declarations from the vendor translation unit. */
-typedef struct { s16 vx, vy, vz, pad; } SV3_8012CC88;
-
-/* func_8012CC88 — shared body (overlay slot 0x80128158, h_exact b65d6403). ONE source: instantiated by #include at each
- * member's site in address order; the members are recorded in config/dedup.us.yaml (Phase 35). */
-extern s32 func_8012CEB0(s32 a0, s32 a1, s32 a2);
-s32 func_8012CC88(s32 a0, s32 a1, s32 a2) {
-    SV3_8012CC88 sp10;
-    SV3_8012CC88 sp18;
-    s32 v0;
-    sp10.vx = *(u16*)(a0 + 0x3A);
-    sp10.vy = *(u16*)(a0 + 0x3E);
-    sp10.vz = *(u16*)(a0 + 0x42);
-    sp10.vx += *(u16*)(a2 + 0);
-    sp10.vy += *(u16*)(a2 + 2);
-    sp10.vz += *(u16*)(a2 + 4);
-    *(s32*)(a0 + 0x10) += *(s32*)(a0 + 0x44);
-    *(s32*)(a0 + 0x14) += *(s32*)(a0 + 0x48);
-    *(s32*)(a0 + 0x18) += *(s32*)(a0 + 0x4C);
-    *(s32*)(a0 + 0x04) += *(s32*)(a0 + 0x10);
-    *(s32*)(a0 + 0x08) += *(s32*)(a0 + 0x14);
-    *(s32*)(a0 + 0x0C) += *(s32*)(a0 + 0x18);
-    sp18.vx = *(u16*)(a0 + 0x06);
-    sp18.vy = *(u16*)(a0 + 0x0A);
-    sp18.vz = *(u16*)(a0 + 0x0E);
-    sp18.vx += *(u16*)(a2 + 0);
-    sp18.vy += *(u16*)(a2 + 2);
-    sp18.vz += *(u16*)(a2 + 4);
-    v0 = func_8012CEB0((s32)&sp10, (s32)&sp18, a1);
-    sp18.vx -= *(u16*)(a2 + 0);
-    sp18.vy -= *(u16*)(a2 + 2);
-    sp18.vz -= *(u16*)(a2 + 4);
-    *(s16*)(a0 + 0x06) = sp18.vx;
-    *(s16*)(a0 + 0x0A) = sp18.vy;
-    *(s16*)(a0 + 0x0E) = sp18.vz;
-    if (v0 & 0x6000) {
-        *(s32*)(a0 + 0x14) = 0;
+int func_8012CEB0(u16 *v, u16 *w, int mode);
+int func_8012CC88(char *o, int mode, u16 *d) {
+    u16 v[4];
+    u16 w[4];
+    int r;
+    v[0] = *(u16 *)(o + 0x3A);
+    v[1] = *(u16 *)(o + 0x3E);
+    v[2] = *(u16 *)(o + 0x42);
+    v[0] += d[0];
+    v[1] += d[1];
+    v[2] += d[2];
+    *(int *)(o + 0x10) += *(int *)(o + 0x44);
+    *(int *)(o + 0x14) += *(int *)(o + 0x48);
+    *(int *)(o + 0x18) += *(int *)(o + 0x4C);
+    *(int *)(o + 4) += *(int *)(o + 0x10);
+    *(int *)(o + 8) += *(int *)(o + 0x14);
+    *(int *)(o + 0xC) += *(int *)(o + 0x18);
+    w[0] = *(u16 *)(o + 6);
+    w[1] = *(u16 *)(o + 0xA);
+    w[2] = *(u16 *)(o + 0xE);
+    w[0] += d[0];
+    w[1] += d[1];
+    w[2] += d[2];
+    r = func_8012CEB0(v, w, mode);
+    w[0] -= d[0];
+    w[1] -= d[1];
+    w[2] -= d[2];
+    *(u16 *)(o + 6) = w[0];
+    *(u16 *)(o + 0xA) = w[1];
+    *(u16 *)(o + 0xE) = w[2];
+    if ((r & 0x6000) != 0) {
+        *(int *)(o + 0x14) = 0;
     }
-    return v0;
+    return r;
 }

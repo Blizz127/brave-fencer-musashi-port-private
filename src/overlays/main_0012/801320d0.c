@@ -1,9 +1,4 @@
-/* Exact retail word export for [801320D0,801320D8); EXE and assembly verified. */
-/* Verified byte-exact against retail by tools/match_function.py
- * (2/2 words at 0x801320D0). Types and signatures are whatever
- * reproduces the bytes; they are not evidence of the original
- * declaration. */
-#include "psx_types.h"
-
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Empty function: returns immediately. */
 void func_801320D0(void) {
 }

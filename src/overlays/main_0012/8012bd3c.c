@@ -1,31 +1,20 @@
-/* Decompiled by m2c from main_0012.s, then verified byte-exact
- * against retail by tools/match_function.py. Types and signatures are
- * whatever reproduces the bytes; they are not evidence of the
- * original declaration. */
-
-#include "psx_types.h"
-
-/* HAND MODEL from m2c draft of func_8012BD3C (main_0012.s): NOT
- * verified against retail. C89-gated only; promotion requires an
- * oracle MATCH. Single function with entry at 0x8012BD3C (same prefix-fallthrough shape as func_8012A328: lh D_80126CBA with no jr, falling into the body range labelled func_8012BD44, which is a mid-function label with no separate file). No direct callers found in main_0012; reached via table or another overlay. Second BDBC argument is a sign-extended half (sll/sra pair in raw). */
-
-extern s16 D_80126CBA;
-extern u8 D_80126CB4;
-
-extern s32 func_80013478(void *arg0, void *arg1);
-extern s32 func_8012BDBC(s32 arg0, s16 arg1);
-
-s32 func_8012BD3C(s32 arg0, s16 arg1, s32 arg2) {
-    s32 v;
-
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Returns 0 when the squared distance limit a2 is below the measured distance to D_80126CB4 (or unlimited when D_80126CBA is set); otherwise returns func_8012BDBC(o, a1). */
+extern short D_80126CBA;
+extern char D_80126CB4[];
+int func_80013478(char *a, char *b);
+int func_8012BDBC(char *o, int a);
+int func_8012BD3C(char *o, int a1, int a2) {
+    int d;
+    int lim = a2;
+    int idx = a1;
     if (D_80126CBA != 0) {
-        v = 0x7FFFFFFF;
+        d = 0x7FFFFFFF;
     } else {
-        v = func_80013478((void *) (arg0 + 4), &D_80126CB4);
+        d = func_80013478(o + 4, D_80126CB4);
     }
-    if (arg2 < v) {
-        return 0;
+    if (d <= lim) {
+        return func_8012BDBC(o, (short)idx);
     }
-    return func_8012BDBC(arg0, arg1);
+    return 0;
 }
-

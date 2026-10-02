@@ -1,53 +1,43 @@
-/* Overlay range [8012E138,8012E27C) from MAIN.CD member 0012.
- * SHA256(span)=93ca1d3e6705a7113cb661d490ae5e0b4c4db03109087b529924ce9f02d420c7.
- * Word export for the native seam; the body below is an
- * UNVERIFIED draft, not an oracle match claim. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_8012E138 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Samples the global 3-short position D_80126B5E.., transforms it into the object's node space, syncs the node (position + offsets, dirty flag), then runs func_80135888 and, if it hits, writes the position back. */
 #include "psx_types.h"
-
-/* File-scope declarations from the vendor translation unit. */
-struct Cam8012E138 { u16 a, b, c; };
-
-/* func_8012E138 — shared body (overlay slot 0x80128158, h_exact 11b77ce5). ONE source: instantiated by #include at each
- * member's site in address order; the members are recorded in config/dedup.us.yaml (Phase 35). */
 extern u16 D_80126B5E;
 extern u16 D_80126B62;
 extern u16 D_80126B66;
-extern void func_8012F038(int param_1, short *param_2, short *param_3);
-extern void func_80049CAC();
-extern void func_8012F14C(s32 a0, s32 a1, s32 a2);
-extern s32 func_80135888();
-void func_8012E138(int model) {
-    struct Cam8012E138 cam;
-    int bufB[2];
-    int bufA[2];
-    int m;
-    short s;
-    cam.a = D_80126B5E;
-    cam.b = D_80126B62;
-    cam.c = D_80126B66;
-    func_8012F038(*(int *)(model + 0x20) + 0x34, &cam, bufA);
-    m = *(int *)(model + 0x20);
-    if (m != 0) {
-        int mm;
-        func_80049CAC(m + 0x10, m + 0x34);
-        mm = *(int *)(model + 0x20);
-        s = *(u16 *)(model + 6) + *(u16 *)(model + 0x50);
-        *(u16 *)(mm + 8) = s;
-        *(int *)(mm + 0x48) = s;
-        s = *(u16 *)(model + 0xA) + *(u16 *)(model + 0x52);
-        *(u16 *)(mm + 0xA) = s;
-        *(int *)(mm + 0x4C) = s;
-        s = *(u16 *)(model + 0xE) + *(u16 *)(model + 0x54);
-        *(u16 *)(mm + 0xC) = s;
-        *(u16 *)(mm + 0x2C) = *(u16 *)(mm + 0x2C) | 1;
-        *(int *)(mm + 0x50) = s;
+void func_8012F038(int node, u16 *in, u16 *out);
+void func_80049CAC(int a, int b);
+void func_8012F14C(int node, u16 *in, u16 *out);
+int func_80135888(int a, int b, u16 *c, u16 *d);
+void func_8012E138(char *o) {
+    u16 pos[3];
+    u16 w2[3];
+    u16 w[3];
+    u16 *p = w;
+    pos[0] = D_80126B5E;
+    pos[1] = D_80126B62;
+    pos[2] = D_80126B66;
+    func_8012F038(*(int *)(o + 0x20) + 0x34, pos, p);
+    if (*(int *)(o + 0x20) != 0) {
+        int n = *(int *)(o + 0x20);
+        char *q;
+        u16 x;
+        func_80049CAC(n + 0x10, n + 0x34);
+        q = (char *)*(int *)(o + 0x20);
+        x = *(u16 *)(o + 6) + *(u16 *)(o + 0x50);
+        *(u16 *)(q + 8) = x;
+        *(int *)(q + 0x48) = (short)x;
+        x = *(u16 *)(o + 0xA) + *(u16 *)(o + 0x52);
+        *(u16 *)(q + 0xA) = x;
+        *(int *)(q + 0x4C) = (short)x;
+        x = *(u16 *)(o + 0xE) + *(u16 *)(o + 0x54);
+        *(u16 *)(q + 0xC) = x;
+        *(u16 *)(q + 0x2C) |= 1;
+        *(int *)(q + 0x50) = (short)x;
     }
-    func_8012F14C(*(int *)(model + 0x20) + 0x34, bufA, bufB);
-    if (func_80135888(*(int *)(model + 0x20), *(int *)(model + 0x58), bufB, &cam)) {
-        D_80126B5E = cam.a;
-        D_80126B62 = cam.b;
-        D_80126B66 = cam.c;
+    func_8012F14C(*(int *)(o + 0x20) + 0x34, p, w2);
+    if (func_80135888(*(int *)(o + 0x20), *(int *)(o + 0x58), w2, pos) != 0) {
+        D_80126B5E = pos[0];
+        D_80126B62 = pos[1];
+        D_80126B66 = pos[2];
     }
 }

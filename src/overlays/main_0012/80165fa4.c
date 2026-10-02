@@ -1,17 +1,12 @@
-/* Decompiled by m2c from main.s, then verified byte-exact
- * against retail by tools/match_function.py. Types and signatures are
- * whatever reproduces the bytes; they are not evidence of the
- * original declaration. */
-
-#include "psx_types.h"
-void func_80013F3C();
-void func_80020F34();
-void func_80048FBC();
-typedef struct { u8 pad[0x20]; u8 *inner; } T;
-void func_80165FA4(T *p, void *a1, void *a2) {
-    s16 mtx[16];
-    func_80013F3C(mtx);
-    func_80020F34(mtx, p->inner + 0x18);
-    func_80048FBC(mtx, a1, a1);
-    func_80048FBC(mtx, a2, a2);
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Builds a transform in a local buffer, applies func_80020F34 with the object's +0x20 (+0x18) data, then runs func_80048FBC on two inputs. */
+void func_80013F3C(int *m);
+void func_80020F34(int *m, int p);
+void func_80048FBC(int *m, int a, int b);
+void func_80165FA4(char *o, int a1, int a2) {
+    int m[8];
+    func_80013F3C(m);
+    func_80020F34(m, *(int *)(o + 0x20) + 0x18);
+    func_80048FBC(m, a1, a1);
+    func_80048FBC(m, a2, a2);
 }
