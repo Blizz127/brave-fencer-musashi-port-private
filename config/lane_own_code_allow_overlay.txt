@@ -101,3 +101,5 @@ main_0012 8014b504
 main_0012 8014b5b0
 main_0012 8014b5d0
 main_0012 8014bde8
+# Clean-room hard tail 2 merged back 2026-10-02 (bfm-rederive a099235).
+main_0012 80161a90
