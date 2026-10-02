@@ -8546,6 +8546,28 @@ static int intrinsic_string(MusashiBootMemory *memory, const FormatterCpu *cpu,
 static int lane_try(MusashiBootMemory *memory, FormatterCpu *cpu);
 static size_t g_lane_count;
 
+/* One bit per word of the 2 MB KSEG0 RAM window, set where a main or
+ * overlay lane entry starts. lane_try runs before every interpreted
+ * instruction; a clear bit answers "no entry here" without the two binary
+ * searches (with O2 the overlay table spans 800CF078-801787D4, i.e. most
+ * overlay code). Entries outside the window keep the search path. */
+enum { LANE_PC_WINDOW = 0x200000u };
+static uint8_t g_lane_pc_bits[LANE_PC_WINDOW / 4u / 8u];
+static int g_lane_pc_outside;
+
+static void lane_pc_bit_set(uint32_t pc) {
+    uint32_t off = pc - 0x80000000u;
+    if (off >= LANE_PC_WINDOW) { g_lane_pc_outside = 1; return; }
+    g_lane_pc_bits[off >> 5] |= (uint8_t)(1u << ((off >> 2) & 7u));
+}
+
+static int lane_pc_maybe(uint32_t pc) {
+    uint32_t off = pc - 0x80000000u;
+    if (off >= LANE_PC_WINDOW) return g_lane_pc_outside;
+    return (g_lane_pc_bits[off >> 5] >> ((off >> 2) & 7u)) & 1u;
+}
+
+
 static int formatter_call(MusashiBootMemory *memory, FormatterCpu *cpu,
                            MusashiConsoleSink sink, void *userdata) {
     uint32_t address = cpu->pc;
@@ -8553,7 +8575,7 @@ static int formatter_call(MusashiBootMemory *memory, FormatterCpu *cpu,
     /* A host intrinsic whose matched C the lane admitted runs as that C
      * (tools/native_lane_gen.py INTRINSIC_PCS) instead of the bespoke host
      * implementation below. */
-    if (g_lane_count) {
+    if (g_lane_count && lane_pc_maybe(address)) {
         int lane = lane_try(memory, cpu);
         if (lane > 0) return 1;
         if (lane < 0) return 0;
@@ -13257,6 +13279,8 @@ static int lane_env_keeps(uint32_t guest_pc) {
     return 1;
 }
 
+static void lane_pc_bits_rebuild(void);
+
 int musashi_native_lane_install(const MusashiNativeLaneEntry *entries, size_t count) {
     MusashiNativeLaneEntry *copy = NULL;
     size_t i;
@@ -13284,6 +13308,7 @@ int musashi_native_lane_install(const MusashiNativeLaneEntry *entries, size_t co
     g_lane_count = count;
     g_lane_min = count ? copy[0].guest_pc : UINT32_MAX;
     g_lane_max = count ? copy[count - 1].guest_pc : 0;
+    lane_pc_bits_rebuild();
     return (int)count;
 }
 
@@ -13348,6 +13373,7 @@ int musashi_native_lane_install_overlay(const MusashiNativeLaneOverlayEntry *ent
     g_lane_ovl_count = count;
     g_lane_ovl_min = count ? copy[0].entry.guest_pc : UINT32_MAX;
     g_lane_ovl_max = count ? copy[count - 1].entry.guest_pc : 0u;
+    lane_pc_bits_rebuild();
     return (int)count;
 }
 
@@ -13363,6 +13389,15 @@ static int lane_ram_digest(MusashiBootMemory *memory, uint32_t pc, uint32_t size
     *out = h;
     return 1;
 }
+
+static void lane_pc_bits_rebuild(void) {
+    size_t i;
+    memset(g_lane_pc_bits, 0, sizeof(g_lane_pc_bits));
+    g_lane_pc_outside = 0;
+    for (i = 0; i < g_lane_count; ++i) lane_pc_bit_set(g_lane[i].guest_pc);
+    for (i = 0; i < g_lane_ovl_count; ++i) lane_pc_bit_set(g_lane_ovl[i].entry.guest_pc);
+}
+
 
 static size_t lane_ovl_first(uint32_t pc) {
     size_t lo = 0, hi = g_lane_ovl_count;
@@ -13761,6 +13796,8 @@ uint32_t musashi_native_guest_call(uint32_t target, unsigned argc,
  * (the interpreter proceeds); -1: the native call aborted (refuse). */
 /* The libapi stubs the BIOS memory-card file device answers. */
 static int memcard_pc(uint32_t pc) {
+    /* every stub address ends in 8: a cheap reject before the switch (per step) */
+    if ((pc & 0xfu) != 8u || pc < MEMCARD_B0_34_READ || pc > MEMCARD_B0_50_NEW_CARD) return 0;
     switch (pc) {
     case MEMCARD_B0_32_OPEN: case MEMCARD_B0_33_LSEEK: case MEMCARD_B0_34_READ: case MEMCARD_B0_35_WRITE: case MEMCARD_B0_36_CLOSE: case MEMCARD_B0_41_FORMAT: case MEMCARD_B0_42_FIRSTFILE: case MEMCARD_B0_43_NEXTFILE: case MEMCARD_B0_45_ERASE: case MEMCARD_A0_AB_CARD_INFO: case MEMCARD_A0_AC_CARD_LOAD: case MEMCARD_B0_4E_CARD_WRITE: case MEMCARD_B0_50_NEW_CARD:
         return 1;
@@ -13778,6 +13815,7 @@ static int lane_try(MusashiBootMemory *memory, FormatterCpu *cpu) {
     MusashiNativeLaneCall call;
     uint32_t ra, sp;
     volatile int outcome;
+    if (!lane_pc_maybe(cpu->pc)) return 0;
     entry = g_lane_count ? lane_find(cpu->pc) : NULL;
     if (!entry && lane_ovl_first(cpu->pc) == g_lane_ovl_count) return 0;
     /* Every boundary leaves the ledger empty; an aborted call may not. */
@@ -13866,7 +13904,7 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
         g_entry_pending = 1u;
         g_entry_hook(g_entry_hook_user, cpu->pc, cpu->r);
     }
-    if (g_lane_count || g_lane_ovl_count) {
+    if ((g_lane_count || g_lane_ovl_count) && lane_pc_maybe(cpu->pc)) {
         int lane = lane_try(memory, cpu);
         if (lane > 0) return 1;
         if (lane < 0) return formatter_refuse0(__LINE__, cpu->pc);
