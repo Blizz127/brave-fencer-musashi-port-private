@@ -52,7 +52,8 @@ extern const size_t musashi_native_lane_overlay_count;
 
 enum { ARENA = 0x80180000u, ARENA_SIZE = 0x40000u, STACK_TOP = 0x801fe000u,
        FRAME_GUARD = 0x10000u, PATTERNS = 3, MAX_ENTRIES = 160 };
-enum Outcome { SAME, DIFFERENT, NOT_NATIVE, NOT_COMPARABLE, NEG_OK, NEG_RAN_NATIVE, FAULT };
+enum Outcome { SAME, DIFFERENT, NOT_NATIVE, NOT_COMPARABLE, NEG_OK, NEG_RAN_NATIVE, MIRROR_FAULT,
+               WRAP_FAULT, FAULT, OUTCOMES };
 
 /* ---- trampolines: which overlay entries' native bodies ran ------------- */
 static MusashiNativeLaneFn g_orig[MAX_ENTRIES];
@@ -382,9 +383,31 @@ static const MusashiNativeLaneFn kTramp[MAX_ENTRIES] = {
     tramp_159,
 };
 
+/* The case the forked child is running, for the fault handler. */
+static size_t g_case_idx;
+static int g_case_negative, g_case_lane;
+
+/* A host fault during the lane run at a RAM-mirror address (low KUSEG, the
+ * mirrors above the 2 MB window, KSEG1) or past 32 bits is the main probe's
+ * documented model gap (tests/native_lane_probe.c): the interpreter decodes
+ * the mirrors and wraps guest arithmetic, the host window does not. A native
+ * callee reading through a null guest pointer (e.g. obj->model == 0 in the
+ * synthetic state) reaches it. In a negative case the verdict is whether the
+ * entry under test ran natively, not whether something faulted. Any other
+ * fault, or a fault in the interpreter-only run, is a real failure. */
 static void on_fault(int sig, siginfo_t *info, void *context) {
-    (void)sig; (void)info; (void)context;
-    _exit(FAULT);
+    uint64_t address = (uint64_t)(uintptr_t)info->si_addr;
+    int gap = address < 0x00800000u || (address >= 0x80200000u && address < 0x80800000u) ||
+              (address >= 0xa0000000u && address < 0xa0800000u);
+    int wrap = address >= 0x100000000ull;
+    (void)sig; (void)context;
+    if (!g_case_lane || (!gap && !wrap)) {
+        fprintf(stderr, "overlay_lane: fault address %llx (%s run)\n", (unsigned long long)address,
+                g_case_lane ? "lane" : "interpreter-only");
+        _exit(FAULT);
+    }
+    if (g_case_negative) _exit(g_ran[g_case_idx] ? NEG_RAN_NATIVE : NEG_OK);
+    _exit(gap ? MIRROR_FAULT : WRAP_FAULT);
 }
 
 static uint32_t rng_state = 0x1234567u;
@@ -444,6 +467,9 @@ static int run_case(MusashiBootMemory *memory, const uint8_t *image, size_t idx,
         memory->bytes[(at & 0x1fffffu)] ^= 0x01u;
     }
     memcpy(start, memory->bytes, MUSASHI_RAM_SIZE);
+    g_case_idx = idx;
+    g_case_negative = negative;
+    g_case_lane = 0;
     alarm(5);
     ok = musashi_native_lane_reference_call(memory, e->entry.guest_pc, args, argc, STACK_TOP, 0,
                                             &ref_v0, NULL);
@@ -451,6 +477,7 @@ static int run_case(MusashiBootMemory *memory, const uint8_t *image, size_t idx,
     memcpy(reference, memory->bytes, MUSASHI_RAM_SIZE);
     memcpy(memory->bytes, start, MUSASHI_RAM_SIZE);
     g_ran[idx] = 0;
+    g_case_lane = 1;
     alarm(5);
     {
         int lane_ok = musashi_native_lane_reference_call(memory, e->entry.guest_pc, args, argc,
@@ -572,7 +599,7 @@ int main(int argc, char **argv) {
     const char *member;
     MusashiNativeLaneEntry *table;
     MusashiNativeLaneOverlayEntry mine[MAX_ENTRIES];
-    unsigned counts[7] = {0}, bad = 0, ccounts[3] = {0}, cf[3] = {0};
+    unsigned counts[OUTCOMES] = {0}, bad = 0, ccounts[3] = {0}, cf[3] = {0};
     if (argc != 8) {
         fprintf(stderr, "usage: %s SLUS_007.26 MEMBER MEMBER_FILE VRAM START LOAD_OFF LOAD_END\n", argv[0]);
         return 2;
@@ -653,8 +680,9 @@ int main(int argc, char **argv) {
                 _exit(run_case(memory, image, i, &mine[i], pattern, reference, start));
             }
             if (child < 0 || waitpid(child, &status, 0) != child) return 1;
-            outcome = WIFEXITED(status) && WEXITSTATUS(status) <= FAULT ? WEXITSTATUS(status) : FAULT;
-            if (outcome == FAULT) outcome = pattern == PATTERNS || g_foreign ? NEG_RAN_NATIVE : NOT_COMPARABLE;
+            outcome = WIFEXITED(status) && WEXITSTATUS(status) < OUTCOMES ? WEXITSTATUS(status) : FAULT;
+            /* killed (the 5 s alarm): a negative case cannot show the guard held */
+            if (!WIFEXITED(status)) outcome = pattern == PATTERNS || g_foreign ? NEG_RAN_NATIVE : NOT_COMPARABLE;
             counts[outcome]++;
             if (outcome == SAME) same++;
             if (pattern < PATTERNS && !g_foreign && mine[i].entry.ledger) {
@@ -672,13 +700,15 @@ int main(int argc, char **argv) {
                 ccounts[c]++;
                 if (c == C_SAME) cs++; else if (c == C_DIFFERENT) cd++; else cn++;
             }
-            if (outcome == DIFFERENT || outcome == NEG_RAN_NATIVE ||
-                (outcome == NOT_NATIVE)) {
+            if (outcome == DIFFERENT || outcome == NEG_RAN_NATIVE || outcome == NOT_NATIVE ||
+                outcome == FAULT) {
                 fails++;
                 fprintf(stderr, "overlay_lane: %s %s: %s\n", mine[i].entry.name,
                         pattern == PATTERNS || g_foreign ? "negative" : "positive",
                         outcome == DIFFERENT ? "DIFFERENT" : outcome == NEG_RAN_NATIVE
-                            ? "native body ran on modified bytes" : "digest did not match the loaded member");
+                            ? "native body ran on modified bytes (or timed out)" : outcome == FAULT
+                            ? "host fault outside the documented mirror gap"
+                            : "digest did not match the loaded member");
             }
         }
         if (mine[i].entry.ledger) {
@@ -692,10 +722,10 @@ int main(int argc, char **argv) {
         bad += fails != 0;
     }
     printf("overlay_lane: member=%s%s entries=%zu same=%u different=%u not_native=%u not_comparable=%u "
-           "negative_ok=%u negative_ran_native=%u functions_bad=%u\n", member,
+           "negative_ok=%u negative_ran_native=%u mirror_fault=%u wrap_fault=%u fault=%u functions_bad=%u\n", member,
            g_foreign ? " foreign_payload" : "", n, counts[SAME],
            counts[DIFFERENT], counts[NOT_NATIVE], counts[NOT_COMPARABLE], counts[NEG_OK],
-           counts[NEG_RAN_NATIVE], bad);
+           counts[NEG_RAN_NATIVE], counts[MIRROR_FAULT], counts[WRAP_FAULT], counts[FAULT], bad);
     printf("overlay_cycles: member=%s functions same=%u different=%u not_comparable=%u "
            "cases same=%u different=%u not_comparable=%u\n", member, cf[C_SAME], cf[C_DIFFERENT],
            cf[C_NOT_COMPARABLE], ccounts[C_SAME], ccounts[C_DIFFERENT], ccounts[C_NOT_COMPARABLE]);
