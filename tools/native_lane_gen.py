@@ -78,6 +78,18 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import lane_cycles  # noqa: E402  (D-011 retail cycle model, report only)
 RAM_LO, RAM_HI = 0x80010000, 0x80200000
 HOST_TARGET = "x86_64-unknown-linux-gnu"
+# The lane objects' triple (--host-target). Every check runs on HOST_TARGET's
+# IR whatever it is: the SysV signext/zeroext attributes there carry the C
+# signedness of narrow arguments and returns, which the table, the call stubs
+# and to_guest() need, and Win64 IR does not record. Only the object is
+# compiled for this target (object_ir()).
+OBJECT_TARGET = HOST_TARGET
+def object_elf():
+    """ELF objects are position independent; a Windows (COFF) one has no PIE
+    model and instead needs unwind data (see build_one)."""
+    return "windows" not in OBJECT_TARGET
+def pie():
+    return ["-fPIE"] if object_elf() else []
 def host_long(text):
     """PS1 `long` is 32-bit: rewrite lone `long` / `long int` to `int` for the
     LP64 host, keeping `long long` (64-bit on both)."""
@@ -182,6 +194,31 @@ CFLAGS = [
     "-Wno-error=int-conversion", "-Wno-int-conversion",
     "-Wno-error=incompatible-pointer-types",
 ]
+
+
+def set_object_target(target):
+    global OBJECT_TARGET
+    OBJECT_TARGET = target
+    if not object_elf():
+        # A Win64 longjmp (the lane abort) unwinds every frame between the
+        # callee and the lane entry by its unwind data; -ffreestanding drops
+        # the uwtable that makes clang emit it.
+        CFLAGS.append("-fasynchronous-unwind-tables")
+
+
+def object_ir(ir):
+    """HOST_TARGET IR -> the module compiled for OBJECT_TARGET. Lane
+    signatures are integers and pointers only (abi_type), and `long` is
+    already int (host_long), so the one difference left is the SysV promise
+    that a caller extends narrow arguments and returns. A Win64 caller (the
+    table's dispatcher, compiled C) makes no such promise, so the callee must
+    not assume it; the triple and layout come from --target."""
+    if object_elf():
+        return ir
+    ir = re.sub(r"^target (?:datalayout|triple) = .*\n", "", ir, flags=re.M)
+    return re.sub(r" (?:signext|zeroext)\b", "", ir)
+
+
 SYM_RE = re.compile(r'@(?:"([^"]+)"|([A-Za-z_.$][\w.$]*))')
 GLOBAL_DECL_RE = re.compile(r'^@(?:"([^"]+)"|([\w.$]+)) = (.*)$', re.M)
 DEF_RE = re.compile(r"^\s*(%[\w.\"$]+) = (.*)$")
@@ -1761,9 +1798,17 @@ def build_one(entry, out, symbols, hooks, clang, info=None):
                 cycles.update(status="refused", reason=f"instrument: {getattr(e, 'reason', None) or e}")
                 ledger_rows = None
         final = work / f"{tag}.lane.ll"
-        final.write_text(optir)
+        final.write_text(object_ir(optir))
+        if not object_elf():
+            # clang emits unwind data for each framed function only under
+            # uwtable (frameless ones never sit below a call and need none).
+            groups = dict(re.findall(r"^attributes (#\d+) = \{(.*)\}$", optir, flags=re.M))
+            for header, _ in functions(optir):
+                refs = re.findall(r"#\d+", header.split(")")[-1])
+                if not any("uwtable" in groups.get(g, "") for g in refs):
+                    raise Reject("compile", "function without uwtable (no Win64 unwind data)")
         obj = work / f"{tag}.o"
-        r = run([clang, f"--target={HOST_TARGET}", "-O2", "-fno-vectorize", "-fno-slp-vectorize", "-fno-unroll-loops", "-c", "-fPIE", "-w", str(final), "-o", str(obj)])
+        r = run([clang, f"--target={OBJECT_TARGET}", "-O2", "-fno-vectorize", "-fno-slp-vectorize", "-fno-unroll-loops", "-c", *pie(), "-w", str(final), "-o", str(obj)])
         if r.returncode:
             raise Reject("compile", "object: " + (r.stderr.strip().splitlines() or ["?"])[0][:160])
         undefined = run(["nm", "-u", str(obj)]).stdout.split()
@@ -2809,6 +2854,9 @@ def main():
     ap.add_argument("--out", required=True, type=Path)
     ap.add_argument("--clang", default=shutil.which("clang") or "clang")
     ap.add_argument("--ar", default=shutil.which("ar") or "ar")
+    ap.add_argument("--host-target", default=OBJECT_TARGET,
+                    help="clang target triple of the lane objects (e.g. x86_64-windows-gnu); "
+                         "the checks always run on the x86-64 SysV IR")
     ap.add_argument("--jobs", type=int, default=4)
     ap.add_argument("--only", help="file of guest PCs (hex, one per line) to consider, e.g. a trace")
     ap.add_argument("--exclude", help="file of guest PCs (hex) never to admit")
@@ -2821,6 +2869,7 @@ def main():
                     help="comma-separated overlay members to compile (e.g. main_0003); each needs "
                          "config/overlay_<m>.yaml and its extracted member file for the digests")
     args = ap.parse_args()
+    set_object_target(args.host_target)
     out = args.out
     (out / "ir").mkdir(parents=True, exist_ok=True)
     def pcs(path):
@@ -2913,7 +2962,7 @@ def main():
     else:
         stub = out / "ir" / "empty.c"
         stub.write_text("typedef int musashi_native_lane_empty;\n")
-        run([args.clang, "-c", str(stub), "-o", str(out / "ir" / "empty.o")])
+        run([args.clang, f"--target={OBJECT_TARGET}", "-c", str(stub), "-o", str(out / "ir" / "empty.o")])
         run([args.ar, "rcs", str(lib), str(out / "ir" / "empty.o")])
     rules = {}
     for r in results:
