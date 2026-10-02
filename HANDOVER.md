@@ -42,6 +42,16 @@ PsyCross diagnostics; zero unresolved. Private RAM/card/capture evidence is
 excluded. The completed r37 inn save/cold Continue gate supersedes the earlier
 pending report; no runtime gates were duplicated for this unchanged runtime.
 
+**Windows is still outstanding for the same public r38 request.** The owner's
+Windows+Linux clarification arrived in Devbox message `23c4f77ef5a3979a`.
+The cached Zig compiler passed a tiny Windows COFF adapter compile and CMake
+compiler detection, but the game configure fails for missing Windows SDL2,
+and production code requires Linux memory mapping/X11 APIs and Linux-target
+native-lane objects. No Windows game binary or runtime test exists yet.
+See [Windows release blockers and evidence](docs/WINDOWS-RELEASE-2026-10-02.md).
+The coordinator was informed; preserve the running owner game/desktop and
+the existing Linux release while completing this remaining platform work.
+
 The established publisher worktree is restored at
 `~/dev/banshee-realm-client-private-builds`, branch `claude/private-port-builds`,
 commit `75c5f42bb22895bbd2abaed54b628379f1482423`. Both publisher scripts and
