@@ -1,17 +1,19 @@
-/* Exact retail word export for [8012BEE8,8012BF10); EXE and assembly verified. */
-/* Verified byte-exact against retail by tools/match_function.py
- * (10/10 words at 0x8012BEE8). Types and signatures are whatever
- * reproduces the bytes; they are not evidence of the original
- * declaration. */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Counts down the word at +0x1C; returns 1 when it is already zero or reaches zero. */
 #include "psx_types.h"
 
-s32 func_8012BEE8(s32 *p) {
-    s32 t;
+typedef struct {
+    u8 pad000[0x1C];
+    s32 timer1C;
+} Obj8012BEE8;
 
-    t = p[7];
+s32 func_8012BEE8(Obj8012BEE8 *obj)
+{
+    s32 t = obj->timer1C;
+
     if (t != 0) {
-        t -= 1;
-        p[7] = t;
+        t--;
+        obj->timer1C = t;
         return t == 0;
     }
     return 1;

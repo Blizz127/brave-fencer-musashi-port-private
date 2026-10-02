@@ -1,76 +1,98 @@
-/* Overlay range [80162B1C,80162CC4) from MAIN.CD member 0012.
- * SHA256(span)=120ecd9b610b5d531c5e798c9d68a3a566013eaf8b489648838b963535b4f14a.
- * Word export for the native seam; the C body below is kept
- * byte-identical (wrap only, no rewrite): the cleaned Druthulu/BFM-decomp
- * form (vendor/bfm-decomp, same SLUS-00726 build), re-verified against
- * retail at the recorded optimization by tools/match_function.py. */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Runs per-slot handlers for 20 entries and pushes each entry's position to its attached object. */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* func_80162B1C - 106 words. Promoted from vendor/bfm-decomp
- * (Druthulu, same SLUS-00726 build), split to an address-named file.
- * Values and locals are the loosest that reproduce the bytes; they
- * are not evidence of the original declaration. */
-extern void func_80162CC4(void);
-extern s32 D_80126D40;
-extern s32 D_8011F9D0;
+typedef struct {
+    u8 pad00[0x14];
+    /* 0x14 */ s32 x;
+    /* 0x18 */ s32 y;
+    /* 0x1C */ s32 z;
+} Sub80162B1C;
 
-void func_80162B1C(void) {
-    s32 s3 = *(s32 *)&D_80126D40;
-    s32 s2 = 0;
-    s32 s1 = 0;
-    s32 s0;
-    s32 a0;
-    s32 p;
-    s32 fp;
-    void (*f)(s32);
-    do {
-        s0 = s1 + (s32)&D_8011F9D0;
-        *(s16 *)(s0 + 0x44) = *(u16 *)(s0 + 0x6);
-        *(s16 *)(s0 + 0x46) = *(u16 *)(s0 + 0xA);
-        *(s16 *)(s0 + 0x48) = *(u16 *)(s0 + 0xE);
-        if (*(u16 *)(s0 + 0x0) != 0) {
-            fp = *(s32 *)((*(u16 *)(s0 + 0x0) << 2) + s3 - 4);
-            if (fp != 0) {
-                f = (void (*)(s32))fp;
-                f(s0);
-            } else {
-                ((void (*)(s32))func_80162CC4)(s0);
-            }
-            a0 = *(s32 *)(s0 + 0x20);
-            if (a0 != 0) {
-                if (*(u16 *)a0 == 1) {
-                    s32 b0 = *(u16 *)(s0 + 0x6);
-                    *(s16 *)(a0 + 0x8) = b0;
-                    *(s32 *)(a0 + 0x48) = (s16)b0;
-                    b0 = *(u16 *)(s0 + 0xA);
-                    *(s16 *)(a0 + 0xA) = b0;
-                    *(s32 *)(a0 + 0x4C) = (s16)b0;
-                    {
-                        s32 m = *(u16 *)(a0 + 0x2C) | 1;
-                        s32 c0 = *(u16 *)(s0 + 0xE);
-                        *(s16 *)(a0 + 0xC) = c0;
-                        *(s16 *)(a0 + 0x2C) = m;
-                        *(s32 *)(a0 + 0x50) = (s16)c0;
-                    }
-                } else if ((p = *(s32 *)(a0 + 0x34)) != 0) {
-                    s32 b0 = *(u16 *)(s0 + 0x6);
-                    *(s16 *)(a0 + 0x8) = b0;
-                    *(s32 *)(p + 0x14) = (s16)b0;
-                    b0 = *(u16 *)(s0 + 0xA);
-                    *(s16 *)(a0 + 0xA) = b0;
-                    *(s32 *)(*(s32 *)(a0 + 0x34) + 0x18) = (s16)b0;
-                    b0 = *(u16 *)(s0 + 0xE);
-                    *(s16 *)(a0 + 0xC) = b0;
-                    *(s32 *)(*(s32 *)(a0 + 0x34) + 0x1C) = (s16)b0;
-                } else {
-                    *(s16 *)(a0 + 0x8) = *(u16 *)(s0 + 0x6);
-                    *(s16 *)(a0 + 0xA) = *(u16 *)(s0 + 0xA);
-                    *(s16 *)(a0 + 0xC) = *(u16 *)(s0 + 0xE);
-                }
-            }
+typedef struct {
+    /* 0x00 */ u16 kind;
+    u8 pad02[0x08 - 0x02];
+    /* 0x08 */ s16 x;
+    /* 0x0A */ s16 y;
+    /* 0x0C */ s16 z;
+    u8 pad0E[0x2C - 0x0E];
+    /* 0x2C */ u16 flags2C;
+    u8 pad2E[0x34 - 0x2E];
+    /* 0x34 */ u32 sub34;
+    u8 pad38[0x48 - 0x38];
+    /* 0x48 */ s32 x48;
+    /* 0x4C */ s32 y4C;
+    /* 0x50 */ s32 z50;
+} Target80162B1C;
+
+typedef struct {
+    /* 0x00 */ u16 kind;
+    u8 pad02[0x06 - 0x02];
+    /* 0x06 */ s16 x;
+    u8 pad08[0x0A - 0x08];
+    /* 0x0A */ s16 y;
+    u8 pad0C[0x0E - 0x0C];
+    /* 0x0E */ s16 z;
+    u8 pad10[0x20 - 0x10];
+    /* 0x20 */ u32 target;
+    u8 pad24[0x44 - 0x24];
+    /* 0x44 */ s16 prevX;
+    /* 0x46 */ s16 prevY;
+    /* 0x48 */ s16 prevZ;
+    u8 pad4A[0x68 - 0x4A];
+} Slot80162B1C;
+
+extern Slot80162B1C D_8011F9D0[];
+extern u32 D_80126D40;
+extern void func_80162CC4(Slot80162B1C *slot);
+
+void func_80162B1C(void)
+{
+    void (**table)(Slot80162B1C *);
+    void (*fn)(Slot80162B1C *);
+    Slot80162B1C *slot;
+    Target80162B1C *t;
+    Sub80162B1C *sub;
+    s32 i;
+
+    table = (void (**)(Slot80162B1C *))D_80126D40;
+    for (i = 0; i < 20; i++) {
+        slot = &D_8011F9D0[i];
+        slot->prevX = slot->x;
+        slot->prevY = slot->y;
+        slot->prevZ = slot->z;
+        if (slot->kind == 0) {
+            continue;
         }
-        s2 += 1;
-        s1 += 0x68;
-    } while (s2 < 0x14);
+        fn = table[slot->kind - 1];
+        if (fn != 0) {
+            fn(slot);
+        } else {
+            func_80162CC4(slot);
+        }
+        t = (Target80162B1C *)slot->target;
+        if (t == 0) {
+            continue;
+        }
+        if (t->kind == 1) {
+            t->x = slot->x;
+            t->x48 = t->x;
+            t->y = slot->y;
+            t->y4C = t->y;
+            t->z = slot->z;
+            t->z50 = t->z;
+            t->flags2C |= 1;
+        } else if ((sub = (Sub80162B1C *)t->sub34) != 0) {
+            t->x = slot->x;
+            sub->x = t->x;
+            t->y = slot->y;
+            ((Sub80162B1C *)t->sub34)->y = t->y;
+            t->z = slot->z;
+            ((Sub80162B1C *)t->sub34)->z = t->z;
+        } else {
+            t->x = slot->x;
+            t->y = slot->y;
+            t->z = slot->z;
+        }
+    }
 }

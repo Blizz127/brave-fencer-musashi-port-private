@@ -1,52 +1,74 @@
-/* Overlay range [80162968,80162AC0) from MAIN.CD member 0012.
- * SHA256(span)=d2e0c33c693da4e8a2b877b03abb4dc903f772d76f08068285df8f7d6ada6239.
- * Word export for the native seam; the body below is an
- * UNVERIFIED draft, not an oracle match claim. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_80162968 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Builds an orientation matrix from a direction vector and sets a distance-based scale. */
 #include "psx_types.h"
 
-/* Vendor names mapped to address-named symbols for the link-by-address harness. */
-#define ratan2 func_8004CFEC
+typedef struct {
+    u8 pad00[0x12];
+    /* 0x12 */ s16 angle12;
+} Sub80162968;
 
-/* func_80162968 — shared body (overlay slot 0x80128158, h_exact a44c8b39). ONE source: instantiated by #include at each
- * member's site in address order; the members are recorded in config/dedup.us.yaml (Phase 35). */
-extern s32 ratan2(s32 a0, s32 a1);
-extern s32 func_80047D3C(s32 a0);
-extern void func_80013F3C(s32 a0);
-extern void func_800126C4(s32 a0, s32 a1);
-extern void func_800123F0(s32 a0, s32 a1);
-extern void func_80012558(s32 a0, s32 a1);
-void func_80162968(s32 param_1)
+typedef struct {
+    u8 pad00[0x0A];
+    /* 0x0A */ u16 base0A;
+    u8 pad0C[0x20 - 0x0C];
+    /* 0x20 */ u32 sub20;
+    u8 pad24[0x44 - 0x24];
+    /* 0x44 */ u32 flags44;
+    u8 pad48[0x80 - 0x48];
+    /* 0x80 */ s16 dir80;
+    /* 0x82 */ s16 dir82;
+    /* 0x84 */ s16 dir84;
+} Src80162968;
+
+typedef struct {
+    u8 pad00[0x10];
+    /* 0x10 */ s16 rotY;
+    u8 pad12[0x14 - 0x12];
+    /* 0x14 */ s16 rotX;
+    u8 pad16[0x18 - 0x16];
+    /* 0x18 */ s16 scaleX;
+    /* 0x1A */ s16 scaleY;
+    /* 0x1C */ s16 scaleZ;
+} Dst80162968;
+
+typedef struct {
+    u8 pad00[0x04];
+    /* 0x04 */ u32 src;
+    /* 0x08 */ u32 dst;
+    /* 0x0C */ u8 matrix[0x24 - 0x0C];
+    /* 0x24 */ s32 value24;
+} Obj80162968;
+
+extern s32 func_8004CFEC(s32 y, s32 x);
+extern s32 func_80047D3C(s32 v);
+extern void func_80013F3C(void *m);
+extern void func_800126C4(void *m, s32 angle);
+extern void func_800123F0(void *m, s32 angle);
+extern void func_80012558(void *m, s32 angle);
+
+void func_80162968(Obj80162968 *obj)
 {
-    register int p __asm__("$18");
-    register int iVar4 __asm__("$17");
-    register int iVar3 __asm__("$16");
-    register int iVar5 __asm__("$19");
-    short sVar2;
-    int iVar6;
-    p = param_1;
-    iVar4 = *(int *)(p + 4);
-    iVar5 = *(int *)(p + 8);
-    iVar3 = p + 0xc;
-    *(short *)(iVar5 + 0x10) =
-        (short)ratan2((int)*(short *)(iVar4 + 0x84), (int)*(short *)(iVar4 + 0x82));
-    sVar2 = (short)func_80047D3C((int)*(short *)(iVar4 + 0x84) * (int)*(short *)(iVar4 + 0x84) +
-                                 (int)*(short *)(iVar4 + 0x82) * (int)*(short *)(iVar4 + 0x82));
-    *(short *)(iVar5 + 0x14) =
-        (short)ratan2((int)*(short *)(iVar4 + 0x80), -(int)sVar2);
-    func_80013F3C(iVar3);
-    func_800126C4(iVar3, (int)*(short *)(iVar5 + 0x10));
-    func_800123F0(iVar3, (int)*(short *)(iVar5 + 0x14));
-    func_80012558(iVar3, (int)*(short *)(*(int *)(iVar4 + 0x20) + 0x12));
-    func_800126C4(iVar3, 0x400);
-    iVar6 = ((0x300 - (int)(short)(*(int *)(p + 0x24) - (unsigned int)*(unsigned short *)(iVar4 + 0xa))) * 0x2000) / 0x300;
-    sVar2 = (short)iVar6;
-    if ((*(unsigned int *)(iVar4 + 0x44) & 0x400) != 0) {
-        sVar2 = (short)iVar6 / 3;
+    Src80162968 *src;
+    Dst80162968 *dst;
+    void *m;
+    s16 scale;
+
+    src = (Src80162968 *)obj->src;
+    dst = (Dst80162968 *)obj->dst;
+    m = obj->matrix;
+    dst->rotY = func_8004CFEC(src->dir84, src->dir82);
+    dst->rotX = func_8004CFEC(src->dir80,
+        -(s16)func_80047D3C(src->dir84 * src->dir84 + src->dir82 * src->dir82));
+    func_80013F3C(m);
+    func_800126C4(m, dst->rotY);
+    func_800123F0(m, dst->rotX);
+    func_80012558(m, ((Sub80162968 *)src->sub20)->angle12);
+    func_800126C4(m, 0x400);
+    scale = ((0x300 - (s16)(obj->value24 - src->base0A)) << 13) / 0x300;
+    if (src->flags44 & 0x400) {
+        scale = scale / 3;
     }
-    *(short *)(iVar5 + 0x1c) = sVar2;
-    *(short *)(iVar5 + 0x1a) = sVar2;
-    *(short *)(iVar5 + 0x18) = sVar2;
-    return;
+    dst->scaleZ = scale;
+    dst->scaleY = scale;
+    dst->scaleX = scale;
 }

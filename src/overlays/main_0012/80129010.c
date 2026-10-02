@@ -1,42 +1,49 @@
-/* Overlay range [80129010,801290DC) from MAIN.CD member 0012.
- * SHA256(span)=81920458822b3684d851d5b298d56ae2a8106df0c4f426b2261ad9fcc461d7f2.
- * Word export for the native seam; the C body below is kept
- * byte-identical (wrap only, no rewrite): the cleaned Druthulu/BFM-decomp
- * form (vendor/bfm-decomp, same SLUS-00726 build), re-verified against
- * retail at the recorded optimization by tools/match_function.py. */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* When enabled, runs each of 128 active slots' type handler, then copies its position into the attached object. */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* func_80129010 - 51 words. Promoted from vendor/bfm-decomp
- * (Druthulu, same SLUS-00726 build), split to an address-named file.
- * Values and locals are the loosest that reproduce the bytes; they
- * are not evidence of the original declaration. */
+typedef struct {
+    /* 0x00 */ u16 type;
+    /* 0x02 */ u8 pad02[4];
+    /* 0x06 */ u16 x;
+    /* 0x08 */ u8 pad08[2];
+    /* 0x0A */ u16 y;
+    /* 0x0C */ u8 pad0C[2];
+    /* 0x0E */ u16 z;
+    /* 0x10 */ u8 pad10[0x10];
+    /* 0x20 */ u32 obj; /* guest pointer: Obj80129010B */
+    /* 0x24 */ u8 pad24[0x14];
+} Obj80129010; /* size 0x38 */
+
+typedef struct {
+    /* 0x00 */ u8 pad00[8];
+    /* 0x08 */ u16 x;
+    /* 0x0A */ u16 y;
+    /* 0x0C */ u16 z;
+} Obj80129010B;
+
+typedef void (*Handler80129010)(Obj80129010 *slot);
+
 extern s16 D_8011DB2C;
-extern s16 D_8011DB30;
-extern s32 D_80126AEC;
+extern Obj80129010 D_8011DB30[];
+extern u32 D_80126AEC; /* guest pointer: handler table (u32 entries) */
 
-void func_80129010(void) {
+void func_80129010(void)
+{
+    Obj80129010 *p;
     s32 i;
-    s32 s1;
-    s32 idx;
-    void (*fp)(s32);
-    s1 = (s32)&D_8011DB30;
-    if (D_8011DB2C == 0) {
-        return;
-    }
-    i = 0;
-    do {
-        idx = *(u16 *)s1;
-        if (idx != 0) {
-            fp = (void (*)(s32))(*(s32 *)((idx << 2) + (*(s32 *)&D_80126AEC)));
-            fp(s1);
-            if (*(s32 *)(s1 + 0x20) != 0) {
-                *(s16 *)(*(s32 *)(s1 + 0x20) + 0x8) = *(u16 *)(s1 + 0x6);
-                *(s16 *)(*(s32 *)(s1 + 0x20) + 0xA) = *(u16 *)(s1 + 0xA);
-                *(s16 *)(*(s32 *)(s1 + 0x20) + 0xC) = *(u16 *)(s1 + 0xE);
+
+    p = D_8011DB30;
+    if (D_8011DB2C != 0) {
+        for (i = 0; i < 0x80; i++, p++) {
+            if (p->type != 0) {
+                ((Handler80129010)((u32 *)D_80126AEC)[p->type])(p);
+                if (p->obj != 0) {
+                    ((Obj80129010B *)p->obj)->x = p->x;
+                    ((Obj80129010B *)p->obj)->y = p->y;
+                    ((Obj80129010B *)p->obj)->z = p->z;
+                }
             }
         }
-        i++;
-        s1 += 0x38;
-    } while (i < 0x80);
+    }
 }

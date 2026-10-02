@@ -1,34 +1,21 @@
-/* Decompiled by m2c from main_0012.s, then verified byte-exact
- * against retail by tools/match_function.py. Types and signatures are
- * whatever reproduces the bytes; they are not evidence of the
- * original declaration. */
-
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Integrates the three velocities at +0x10 (by +0x44) and the three positions at +0x04 (by the velocities). */
 #include "psx_types.h"
 
-/* HAND MODEL from m2c draft of func_8012AD80 (main_0012.s): NOT
- * verified against retail. C89-gated only; promotion requires an
- * oracle MATCH. All accesses grounded as lw/sw/addu words from raw asm; order matches m2c exactly. */
+typedef struct {
+    u8 pad000[4];
+    /* 0x04 */ s32 pos[3];
+    /* 0x10 */ s32 vel[3];
+    u8 pad1C[0x28];
+    /* 0x44 */ s32 acc[3];
+} Obj8012AD80;
 
-struct obj_8012AD80 {
-    u8 pad[4];
-    s32 unk4;
-    s32 unk8;
-    s32 unkC;
-    s32 unk10;
-    s32 unk14;
-    s32 unk18;
-    u8 pad2[0x28];
-    s32 unk44;
-    s32 unk48;
-    s32 unk4C;
-};
-
-void func_8012AD80(struct obj_8012AD80 *arg0) {
-    arg0->unk10 = arg0->unk10 + arg0->unk44;
-    arg0->unk14 = arg0->unk14 + arg0->unk48;
-    arg0->unk18 = arg0->unk18 + arg0->unk4C;
-    arg0->unk4 = arg0->unk4 + arg0->unk10;
-    arg0->unk8 = arg0->unk8 + arg0->unk14;
-    arg0->unkC = arg0->unkC + arg0->unk18;
+void func_8012AD80(Obj8012AD80 *obj)
+{
+    obj->vel[0] += obj->acc[0];
+    obj->vel[1] += obj->acc[1];
+    obj->vel[2] += obj->acc[2];
+    obj->pos[0] += obj->vel[0];
+    obj->pos[1] += obj->vel[1];
+    obj->pos[2] += obj->vel[2];
 }
-

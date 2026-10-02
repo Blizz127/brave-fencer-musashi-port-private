@@ -1,50 +1,45 @@
-/* Overlay range [80154F9C,801550FC) from MAIN.CD member 0012.
- * SHA256(span)=7edb80a446de4725cb4ed27ae63a05f67fd518039e25f4daf1286646ebc00846.
- * Word export for the native seam; the C body below is kept
- * byte-identical (wrap only, no rewrite): the cleaned Druthulu/BFM-decomp
- * form (vendor/bfm-decomp, same SLUS-00726 build), re-verified against
- * retail at the recorded optimization by tools/match_function.py. */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Toggles bit 24 of the object's +0xC8 flags from global input state and posts the matching request via func_801550FC. */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* func_80154F9C - 88 words. Promoted from vendor/bfm-decomp
- * (Druthulu, same SLUS-00726 build), split to an address-named file.
- * Values and locals are the loosest that reproduce the bytes; they
- * are not evidence of the original declaration. */
-extern u8 D_80078E78[];
-extern s16 D_80078E96;
-extern s16 D_80078E9E;
-extern u16 D_80078EA6;
+typedef struct {
+    u8 pad00[0x44];
+    u32 flags44;    /* 0x44 */
+    u8 pad48[0x80];
+    u32 flagsC8;    /* 0xC8 */
+} Obj80154F9C;
+
+typedef struct {
+    u8 pad00[0x1E];
+    s16 h1E;        /* 0x1E */
+    u8 pad20[0x6];
+    s16 h26;        /* 0x26 */
+    u8 pad28[0x6];
+    s16 h2E;        /* 0x2E */
+} Glob80154F9C;
+
+extern Glob80154F9C D_80078E78;
 extern u8 D_800D8D10[];
 extern s32 func_8016F1AC(void);
-extern void func_801550FC(s32 a0);
+extern void func_801550FC(u32 req);
 
-void func_80154F9C(s32 a0) {
-    u8 *base = D_80078E78;
-    if (*(s32 *)(a0 + 0xC8) & 0x1000000) {
-        if ((D_80078E96 & 0x8000) || D_80078E9E < 0x10 || (s16)D_80078EA6 < 0x10) {
+void func_80154F9C(Obj80154F9C *obj)
+{
+    Glob80154F9C *g = &D_80078E78;
+
+    if (obj->flagsC8 & 0x01000000) {
+        if ((g->h1E & 0x8000) || g->h26 < 0x10 || g->h2E < 0x10) {
             if (func_8016F1AC() == 0) {
                 return;
             }
         }
-        *(s32 *)(a0 + 0xC8) = *(s32 *)(a0 + 0xC8) & 0xC0FFFFFF;
-        func_801550FC(*(s32 *)(a0 + 0xC8));
-    } else {
-        if ((D_80078E96 & 0x8000) && func_8016F1AC() == 0) {
-            *(s32 *)(a0 + 0xC8) = *(s32 *)(a0 + 0xC8) | 0x1000000;
-            func_801550FC((s32)D_800D8D10);
-            return;
-        }
-        if (!(*(s16 *)(base + 0x26) < 0x10) && !(*(s16 *)(base + 0x2E) < 0x10)) {
-            return;
-        }
-        if (*(s32 *)(a0 + 0x44) & 0xC0) {
-            return;
-        }
-        if (func_8016F1AC() != 0) {
-            return;
-        }
-        *(s32 *)(a0 + 0xC8) = *(s32 *)(a0 + 0xC8) | 0x1000000;
+        func_801550FC(obj->flagsC8 &= 0xC0FFFFFF);
+    } else if ((g->h1E & 0x8000) && func_8016F1AC() == 0) {
+        obj->flagsC8 |= 0x01000000;
+        func_801550FC((u32)D_800D8D10);
+    } else if ((g->h26 < 0x10 || g->h2E < 0x10) && !(obj->flags44 & 0xC0)
+               && func_8016F1AC() == 0) {
+        obj->flagsC8 |= 0x01000000;
         func_801550FC(0x40000002);
     }
 }

@@ -1,113 +1,125 @@
-/* Overlay range [80146128,80146360) from MAIN.CD member 0012.
- * SHA256(span)=076ae1190d7ca1d64d4a711ebe917b9d26cac5a00d5a59e8619b7bd4c029faf6.
- * Word export for the native seam; the C body below is kept
- * byte-identical (wrap only, no rewrite): the cleaned Druthulu/BFM-decomp
- * form (vendor/bfm-decomp, same SLUS-00726 build), re-verified against
- * retail at the recorded optimization by tools/match_function.py. */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Per-frame player update: setup, mode/flag select, runs the update chain unless blocked; returns 1 if it ran. */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* func_80146128 - 142 words. Promoted from vendor/bfm-decomp
- * (Druthulu, same SLUS-00726 build), split to an address-named file.
- * Values and locals are the loosest that reproduce the bytes; they
- * are not evidence of the original declaration. */
-extern s32 D_80126B58;
-extern s32 *D_80126B78;
+typedef struct {
+    /* 0x000 */ u8 pad000[4];
+    /* 0x004 */ s32 pos[3];
+    /* 0x010 */ u8 pad010[0x34];
+    /* 0x044 */ u32 flags;
+    /* 0x048 */ u8 pad048[0x50];
+    /* 0x098 */ s16 spos[3];
+    /* 0x09E */ u8 pad09E[0x112];
+    /* 0x1B0 */ s32 timer;
+} Obj80146128;
+
+typedef struct {
+    /* 0x00 */ u8 pad00[2];
+    /* 0x02 */ s16 mode;
+} Sub80146128;
+
+typedef struct {
+    /* 0x00 */ u8 b[8];
+} Pair80146128;
+
+extern Obj80146128 D_80126B58;
+extern u32 D_80126B78; /* guest pointer: Sub80146128 */
+extern u32 D_80126B9C;
+extern Pair80146128 D_80126BE0;
+extern Pair80146128 D_801150F0;
+extern s32 D_8011F730;
+extern s16 D_801152B8;
+extern s16 D_8012693A;
 extern u8 D_80078EC1;
 extern s32 D_80078EC8;
-extern s32 D_80126B9C;
-extern s32 D_8011F730;
-extern u16 D_801152B8;
-extern u16 D_8012693A;
-extern u8 D_80126BE0[];
-extern u8 D_801150F0[];
-extern void *memcpy(void *dst, const void *src, u32 n);
-extern void func_80146FC4(s32 a0);
-extern void func_80150A70(s32 a0);
-extern void func_80147098(s32 *a0);
-extern void func_8014A638(s32 arg0);
-extern s32  func_80155458(s32 a0);
-extern s32  func_80029104(void);
+
+extern void func_80146FC4(Obj80146128 *obj);
+extern void func_80150A70(Obj80146128 *obj);
+extern void func_80147098(Obj80146128 *obj);
+extern void func_8014A638(Obj80146128 *obj);
+extern s32 func_80155458(Obj80146128 *obj);
+extern u8 func_80029104(void);
+extern void func_8014ADE0(Obj80146128 *obj);
+extern void func_8014B350(Obj80146128 *obj);
+extern void func_8014B7A4(Obj80146128 *obj);
+extern void func_80161D58(Obj80146128 *obj);
 extern void func_80029344(void);
-extern void func_8014ADE0(s32 a0);
-extern void func_8014B350(s32 a0);
-extern void func_8014B7A4(s16 *param_1);
-extern s32 func_80161D58(s32 a0);
-extern void func_80161A90(s32 a0);
-extern void func_8014B504(u16 *a0);
-extern void func_80149BEC(s32 a0);
-extern void func_8014B5D0(s32 *a0);
-extern void func_8014C99C(u8 *a0);
-extern void func_8014B190(s32 s0);
-extern void func_80148648(s32 a0, s32 a1);
-extern s32 func_80149228(s32 a0);
-extern void func_8014A59C(s32 a0);
-extern void func_8016F14C(void *a0);
-extern void func_80154418(void *a0);
-extern void func_80154BE4(s32 a0);
-extern void func_80165694(s32 arg0);
-extern void func_801654A8(s32 a0);
-extern void func_8014A680(s32 a0);
-extern void func_8014A6A8(s32 a0);
-extern void func_8014A71C(s32 a0);
-extern void func_80172588(s32 *a0);
-extern void func_801473DC(s32 *a0);
-extern void func_80015978(s32 a0, s32 *a1);
+extern void func_80161A90(Obj80146128 *obj);
+extern void func_8014B504(Obj80146128 *obj);
+extern void func_80149BEC(Obj80146128 *obj);
+extern void func_8014B5D0(Obj80146128 *obj);
+extern void func_8014C99C(Obj80146128 *obj);
+extern void func_8014B190(Obj80146128 *obj);
+extern void func_80148648(Obj80146128 *obj, u8 port);
+extern void func_80149228(Obj80146128 *obj);
+extern s32 func_8014A59C(Obj80146128 *obj);
+extern void func_8016F14C(Obj80146128 *obj);
+extern void func_80154418(Obj80146128 *obj);
+extern void func_80154BE4(Obj80146128 *obj);
+extern void func_80165694(Obj80146128 *obj);
+extern void func_801654A8(Obj80146128 *obj);
+extern void func_8014A680(Obj80146128 *obj);
+extern void func_8014A6A8(Obj80146128 *obj);
+extern void func_8014A71C(Obj80146128 *obj);
+extern void func_80172588(Obj80146128 *obj);
+extern void func_801473DC(Obj80146128 *obj);
+extern void func_80015978(s32 *src, s16 *dst);
 
 s32 func_80146128(void)
 {
-    register s32 base __asm__("$16");
-    register s32 *p   __asm__("$17");
-    p = D_80126B78;
-    base = (s32)&D_80126B58;
-    func_80146FC4(base);
-    memcpy((void *)D_801150F0, (void *)D_80126BE0, 8);
-    func_80150A70(base);
-    ((void (*)(s32))func_80147098)(base);
-    func_8014A638(base);
+    Obj80146128 *obj;
+    Sub80146128 *sub;
+
+    obj = &D_80126B58;
+    sub = (Sub80146128 *)D_80126B78;
+    func_80146FC4(obj);
+    D_801150F0 = D_80126BE0;
+    func_80150A70(obj);
+    func_80147098(obj);
+    func_8014A638(obj);
     D_8011F730 = 0;
     D_801152B8 = 0;
     D_8012693A = 0;
     if (D_80078EC1 == 0x10 && D_80078EC8 != 0) {
-        *(u16 *)((s32)p + 2) = 6;
+        *(s16 *)((u8 *)sub + 2) = 6; /* same field as sub->mode */
         D_80126B9C |= 0x800;
     } else {
-        *(u16 *)((s32)p + 2) = 1;
-        *(s32 *)(base + 0x44) &= ~0x800;
+        sub->mode = 1;
+        obj->flags &= ~0x800;
     }
-    if (*(s32 *)(base + 0x1B0) != 0) {
-        *(s32 *)(base + 0x1B0) = *(s32 *)(base + 0x1B0) - 1;
+    if (obj->timer != 0) {
+        obj->timer--;
     }
-    if (func_80155458(base) == 0 && (*(s32 *)(base + 0x44) & 0x4000000) == 0) {
-        if ((func_80029104() & 0xFF) != 0) {
-            func_8014ADE0(base);
-            func_8014B350(base);
-            ((void (*)(s32))func_8014B7A4)(base);
-            ((void (*)(s32))func_80161D58)(base);
+    if (func_80155458(obj) == 0 && !(obj->flags & 0x4000000)) {
+        if (func_80029104() != 0) {
+            func_8014ADE0(obj);
+            func_8014B350(obj);
+            func_8014B7A4(obj);
+            func_80161D58(obj);
         }
         func_80029344();
-        func_80161A90(base);
-        ((void (*)(s32))func_8014B504)(base);
-        func_80149BEC(base);
-        ((void (*)(s32))func_8014B5D0)(base);
-        ((void (*)(s32))func_8014C99C)(base);
-        func_8014B190(base);
-        func_80148648(base, 0);
-        ((void (*)(s32))func_80149228)(base);
-        func_8014A59C(base);
-        ((void (*)(s32))func_8016F14C)(base);
-        ((void (*)(s32))func_80154418)(base);
-        func_80154BE4(base);
-        func_80165694(base);
-        func_801654A8(base);
-        func_8014A680(base);
-        func_8014A6A8(base);
-        func_8014A71C(base);
-        ((void (*)(s32))func_80172588)(base);
-        ((void (*)(s32))func_801473DC)(base);
-        ((void (*)(s32, s32))func_80015978)(base + 4, base + 0x98);
+        func_80161A90(obj);
+        func_8014B504(obj);
+        func_80149BEC(obj);
+        func_8014B5D0(obj);
+        func_8014C99C(obj);
+        func_8014B190(obj);
+        func_80148648(obj, 0);
+        func_80149228(obj);
+        func_8014A59C(obj);
+        func_8016F14C(obj);
+        func_80154418(obj);
+        func_80154BE4(obj);
+        func_80165694(obj);
+        func_801654A8(obj);
+        func_8014A680(obj);
+        func_8014A6A8(obj);
+        func_8014A71C(obj);
+        func_80172588(obj);
+        func_801473DC(obj);
+        func_80015978(obj->pos, obj->spos);
         return 1;
     }
-    ((void (*)(s32, s32))func_80015978)(base + 4, base + 0x98);
+    func_80015978(obj->pos, obj->spos);
     return 0;
 }

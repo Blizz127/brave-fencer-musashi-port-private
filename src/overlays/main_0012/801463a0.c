@@ -1,72 +1,92 @@
-/* Overlay range [801463A0,80146534) from MAIN.CD member 0012.
- * SHA256(span)=7838b43b1082f45f253e7804e5eef5e8d353fee38ccf5ee5abb1d30bf0e8b8e7.
- * Word export for the native seam; the body below is an
- * UNVERIFIED draft, not an oracle match claim. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_801463A0 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Per-frame player update: runs the sub-steps, syncs the model position, latches previous state. */
 #include "psx_types.h"
 
-/* File-scope declarations from the vendor translation unit. */
-typedef struct { char _b[8]; } Blk8_801463A0;
+typedef struct {
+    /* 0x00 */ s16 x;
+    /* 0x02 */ s16 y;
+    /* 0x04 */ s16 z;
+    /* 0x06 */ s16 pad;
+} Vec801463A0; /* size 0x8 */
 
-/* func_801463A0 — shared body (overlay slot 0x80128158, h_exact f5c34dee). ONE source: instantiated by #include at each
- * member's site in address order; the members are recorded in config/dedup.us.yaml (Phase 35). */
-extern void func_8014C6F4();
-extern void func_80155150(s32 a0);
-extern void func_801470C0(s32 a0);
-extern void func_80147478(s32 a0);
-extern void func_80147118(s32 a0);
-extern void func_8014BDE8(s32 a0);
-extern short func_801508F8(s32 a0);
-extern void func_8014B5B0(s32 *a0);
-extern void func_80161D88();
+typedef struct {
+    /* 0x00 */ u8 pad00[6];
+    /* 0x06 */ s16 x;
+    /* 0x08 */ u8 pad08[2];
+    /* 0x0A */ s16 y;
+    /* 0x0C */ u8 pad0C[2];
+    /* 0x0E */ s16 z;
+    /* 0x10 */ u8 pad10[0x10];
+    /* 0x20 */ u32 model; /* guest pointer */
+    /* 0x24 */ u8 pad24[0x20];
+    /* 0x44 */ u32 state;
+    /* 0x48 */ u32 prevState;
+    /* 0x4C */ u8 pad4C[0x3C];
+    /* 0x88 */ Vec801463A0 pos;
+    /* 0x90 */ Vec801463A0 prevPos;
+    /* 0x98 */ u8 pad98[0xA0];
+    /* 0x138 */ s16 offX;
+    /* 0x13A */ s16 offY;
+    /* 0x13C */ s16 offZ;
+    /* 0x13E */ u8 pad13E[8];
+    /* 0x146 */ s16 f146;
+} Player801463A0;
+
+typedef struct {
+    /* 0x00 */ u8 pad00[8];
+    /* 0x08 */ s16 x;
+    /* 0x0A */ s16 y;
+    /* 0x0C */ s16 z;
+    /* 0x0E */ u8 pad0E[0x1E];
+    /* 0x2C */ u16 flags;
+    /* 0x2E */ u8 pad2E[0x1A];
+    /* 0x48 */ s32 wx;
+    /* 0x4C */ s32 wy;
+    /* 0x50 */ s32 wz;
+} Model801463A0;
+
+extern Player801463A0 D_80126B58;
+
+extern void func_8014C6F4(Player801463A0 *p);
+extern void func_80155150(Player801463A0 *p);
+extern void func_801470C0(Player801463A0 *p);
+extern void func_80147478(Player801463A0 *p);
+extern void func_80147118(Player801463A0 *p);
+extern void func_8014BDE8(Player801463A0 *p);
+extern s32 func_801508F8(Player801463A0 *p);
+extern void func_8014B5B0(Player801463A0 *p);
+extern void func_80161D88(Player801463A0 *p);
+
 void func_801463A0(void)
 {
-    extern s32 D_80126B58;
-    extern s32 *D_80126B78;
-    extern u16 D_80126B5E;
-    extern u16 D_80126B62;
-    extern u16 D_80126B66;
-    extern u16 D_80126C90;
-    extern u16 D_80126C92;
-    extern u16 D_80126C94;
-    extern s32 D_80126B9C;
-    extern s32 D_80126BA0;
-    extern u8 D_80126BE0[];     /* identical to the decl DEFINE_func_80146128() already emits in this TU */
-    extern u8 D_80126BE8[];
-    extern u16 D_80126BE0_hw __asm__("D_80126BE0");   /* halfword view of BE0 — see NEW IDIOM above */
-    extern u16 D_80126BE2;
-    extern u16 D_80126BE4;
-    extern s16 D_80126C9E;
-    s32 obj;
-    short v;
-    obj = (s32)D_80126B78;
-    func_8014C6F4((s32)&D_80126B58);
-    func_80155150((s32)&D_80126B58);
-    func_801470C0((s32)&D_80126B58);
-    func_80147478((s32)&D_80126B58);
-    func_80147118((s32)&D_80126B58);
-    if (obj != 0) {
-        v = D_80126B5E + D_80126C90;
-        *(short *)(obj + 8) = v;
-        *(s32 *)(obj + 0x48) = (s32)v;
-        v = D_80126B62 + D_80126C92;
-        *(short *)(obj + 0xA) = v;
-        *(s32 *)(obj + 0x4C) = (s32)v;
-        v = D_80126B66 + D_80126C94;
-        *(short *)(obj + 0xC) = v;
-        *(u16 *)(obj + 0x2C) = *(u16 *)(obj + 0x2C) | 0x11;
-        *(s32 *)(obj + 0x50) = (s32)v;
+    Player801463A0 *p;
+    Model801463A0 *model;
+
+    p = &D_80126B58;
+    model = (Model801463A0 *)p->model;
+    func_8014C6F4(p);
+    func_80155150(p);
+    func_801470C0(p);
+    func_80147478(p);
+    func_80147118(p);
+    if (model != 0) {
+        model->x = p->x + p->offX;
+        model->wx = model->x;
+        model->y = p->y + p->offY;
+        model->wy = model->y;
+        model->z = p->z + p->offZ;
+        model->wz = model->z;
+        model->flags |= 0x11;
     }
-    func_8014BDE8((s32)&D_80126B58);
-    *(Blk8_801463A0 *)&D_80126BE8 = *(Blk8_801463A0 *)&D_80126BE0;
-    D_80126BE0_hw = D_80126B5E;
-    D_80126BE2 = D_80126B62;
-    D_80126BE4 = D_80126B66;
-    D_80126BA0 = D_80126B9C;
-    D_80126B9C = D_80126B9C & 0x3FFFFFFF;
-    func_801508F8((s32)&D_80126B58);
-    D_80126C9E = 0;
-    func_8014B5B0(&D_80126B58);
-    func_80161D88((s32)&D_80126B58);
+    func_8014BDE8(p);
+    p->prevPos = p->pos;
+    p->pos.x = p->x;
+    p->pos.y = p->y;
+    p->pos.z = p->z;
+    p->prevState = p->state;
+    p->state &= 0x3FFFFFFF;
+    func_801508F8(p);
+    p->f146 = 0;
+    func_8014B5B0(p);
+    func_80161D88(p);
 }

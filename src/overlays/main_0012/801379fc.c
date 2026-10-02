@@ -1,80 +1,47 @@
-/* Overlay range [801379FC,80137B80) from MAIN.CD member 0012.
- * SHA256(span)=68af08ce9ce96315182b02587d020b3c2f2ade8695cfddf976c87e1ae4032e74.
- * Word export for the native seam; the C body below is kept
- * byte-identical (wrap only, no rewrite): the cleaned Druthulu/BFM-decomp
- * form (vendor/bfm-decomp, same SLUS-00726 build), re-verified against
- * retail at the recorded optimization by tools/match_function.py. */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Per-frame update of the three 0x4C-byte actor slots (focused one first), then the fade slots. */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* func_801379FC - 97 words. Promoted from vendor/bfm-decomp
- * (Druthulu, same SLUS-00726 build), split to an address-named file.
- * Values and locals are the loosest that reproduce the bytes; they
- * are not evidence of the original declaration. */
-extern s32 D_80127524;
-extern s32 D_80127548[];
-extern s32 D_801269F0;
-extern s16 D_801269F4;
-extern s32 D_801269F8;
-extern void func_80138BE0(s32 a0);
-extern void func_80137BD8(s32 a0);
+typedef struct {
+    /* 0x00 */ u32 active;
+    /* 0x04 */ s16 kind;
+    /* 0x06 */ u8 pad06[2];
+    /* 0x08 */ u32 flags;
+    /* 0x0C */ u8 pad0C[0x40];
+} Obj801379FC; /* size 0x4C */
+
+extern Obj801379FC D_801269F0[];
+extern u32 D_80127524; /* guest pointer to the current Obj801379FC (or 0) */
+extern s32 D_80127548;
+
+extern void func_80138BE0(Obj801379FC *obj);
+extern void func_80137BD8(Obj801379FC *obj);
 extern void func_8013A380(void);
 
-void func_801379FC(void) {
+void func_801379FC(void)
+{
     s32 i;
-    (*(s32 *)D_80127548) = 0x24;
-    if ((D_80127524 != 0) && (*(s32 *)D_80127524 != 0)) {
-        s32 p;
-        s32 idx;
-        func_80138BE0(D_80127524);
-        i = 0;
-        p = (s32)&D_801269F0;
-        idx = 0;
-        do {
-            if ((p != D_80127524) && (*(s32 *)((s32)&D_801269F0 + idx) != 0)) {
-                func_80138BE0(p);
+
+    D_80127548 = 0x24;
+    if (D_80127524 != 0 && ((Obj801379FC *)D_80127524)->active != 0) {
+        func_80138BE0((Obj801379FC *)D_80127524);
+        for (i = 0; i < 3; i++) {
+            if (&D_801269F0[i] != (Obj801379FC *)D_80127524 && D_801269F0[i].active != 0) {
+                func_80138BE0(&D_801269F0[i]);
             }
-            p = p + 0x4c;
-            i = i + 1;
-            idx = idx + 0x4c;
-        } while (i < 3);
+        }
     } else {
-        s32 p;
-        s32 idx;
-        i = 0;
-        p = (s32)&D_801269F0;
-        idx = 0;
-        do {
-            if (*(s32 *)((s32)&D_801269F0 + idx) != 0) {
-                func_80138BE0(p);
+        for (i = 0; i < 3; i++) {
+            if (D_801269F0[i].active != 0) {
+                func_80138BE0(&D_801269F0[i]);
             }
-            p = p + 0x4c;
-            i = i + 1;
-            idx = idx + 0x4c;
-        } while (i < 3);
+        }
     }
-    {
-        s32 p;
-        s32 idx;
-        s32 flags;
-        i = 0;
-        p = (s32)&D_801269F0;
-        idx = 0;
-        do {
-            if (*(s16 *)((s32)&D_801269F4 + idx) != 0) {
-                if (*(s32 *)((s32)&D_801269F0 + idx) != 0) {
-                    flags = *(s32 *)((s32)&D_801269F8 + idx);
-                    if ((flags & 0x1000) != 0) {
-                        if ((flags & 0x2000) == 0) {
-                            func_80137BD8(p);
-                        }
-                    }
-                }
-            }
-            p = p + 0x4c;
-            i = i + 1;
-            idx = idx + 0x4c;
-        } while (i < 3);
+    for (i = 0; i < 3; i++) {
+        if (D_801269F0[i].kind != 0 && D_801269F0[i].active != 0
+            && (D_801269F0[i].flags & 0x1000) && !(D_801269F0[i].flags & 0x2000)) {
+            func_80137BD8(&D_801269F0[i]);
+        }
     }
     func_8013A380();
 }

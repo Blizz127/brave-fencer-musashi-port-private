@@ -1,41 +1,37 @@
-/* Overlay range [8013A380,8013A448) from MAIN.CD member 0012.
- * SHA256(span)=0e2df53ded31d4db92d80ce8f74fa8d81d7bd0f1d8ff6b7c26fe8597337bd647.
- * Word export for the native seam; the C body below is kept
- * byte-identical (wrap only, no rewrite): the cleaned Druthulu/BFM-decomp
- * form (vendor/bfm-decomp, same SLUS-00726 build), re-verified against
- * retail at the recorded optimization by tools/match_function.py. */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Steps the two 16-byte fade slots at D_8011DA80, dispatching on each slot's state. */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* func_8013A380 - 50 words. Promoted from vendor/bfm-decomp
- * (Druthulu, same SLUS-00726 build), split to an address-named file.
- * Values and locals are the loosest that reproduce the bytes; they
- * are not evidence of the original declaration. */
-extern u8 D_8011DA80[];
-extern void func_8013A530();
-extern void func_8013A448(void *a0);
-extern void func_8013A4C4(struct S8013A4C4 *a0);
+typedef struct {
+    /* 0x00 */ s16 state;
+    /* 0x02 */ u8 pad02[0xE];
+} Slot8013A380; /* size 0x10 */
 
-void func_8013A380(void) {
-    s16 *p;
+extern Slot8013A380 D_8011DA80[];
+
+extern void func_8013A448(Slot8013A380 *slot);
+extern void func_8013A4C4(Slot8013A380 *slot);
+extern void func_8013A530(Slot8013A380 *slot);
+
+void func_8013A380(void)
+{
+    Slot8013A380 *slot;
     s32 i;
-    p = (s16 *)D_8011DA80;
-    i = 0;
-    do {
-        if (p != (s16 *)0) {
-            switch (*p) {
+
+    slot = D_8011DA80;
+    for (i = 0; i < 2; i++, slot++) {
+        if (slot != 0) {
+            switch (slot->state) {
             case 2:
-                ((void (*)(void *))func_8013A530)(p);
+                func_8013A530(slot);
                 break;
             case 1:
-                func_8013A448(p);
+                func_8013A448(slot);
                 break;
             case 3:
-                func_8013A4C4((struct S8013A4C4 *)p);
+                func_8013A4C4(slot);
                 break;
             }
         }
-        i += 1;
-        p += 8;
-    } while (i < 2);
+    }
 }

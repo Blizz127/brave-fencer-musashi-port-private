@@ -1,100 +1,102 @@
-/* Overlay range [80129CF8,80129FF4) from MAIN.CD member 0012.
- * SHA256(span)=e5434bd4b699497011d41603ea6ea784ddb5da58c68dab3966a08b08d1eb6543.
- * Word export for the native seam; the body below is an
- * UNVERIFIED draft, not an oracle match claim. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_80129CF8 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Picks the active camera block by D_801150D6, eases D_80126DB8 toward it, builds its view and publishes it in D_801151D4. */
 #include "psx_types.h"
 
-/* Vendor names mapped to address-named symbols for the link-by-address harness. */
-#define GsSetRefView2L func_80054DCC
+typedef struct Mat80129CF8 {
+    /* 0x00 */ s16 m[3][3];
+    /* 0x12 */ s16 pad12;
+    /* 0x14 */ s32 t[3];
+} Mat80129CF8; /* size 0x20 */
 
-/* File-scope declarations from the vendor translation unit. */
-struct BigCopy { s32 words[41]; };
-typedef struct { s32 vpx, vpy, vpz, vrx, vry, vrz, rz, super; } RView;
+typedef struct Cam80129CF8 {
+    /* 0x00 */ u32 hook; /* guest pointer: void (*)(Cam80129CF8 *) */
+    /* 0x04 */ u8 pad04[4];
+    /* 0x08 */ s32 h;
+    /* 0x0C */ u8 pad0C[0x30];
+    /* 0x3C */ s32 pos[7];
+    /* 0x58 */ s32 f58;
+    /* 0x5C */ s32 view[7];
+    /* 0x78 */ s32 f78;
+    /* 0x7C */ s32 ofs[7];
+    /* 0x98 */ u8 pad98[0xC];
+} Cam80129CF8; /* size 0xA4 */
 
-/* func_80129CF8 — shared body (overlay slot 0x80128158, h_exact 3602e5f8). ONE source: instantiated by #include at each
- * member's site in address order; the members are recorded in config/dedup.us.yaml (Phase 35). */
-extern void func_8012A328(void);
-extern void func_80053308(s32);
-extern s32 func_80012F74(s32, s32, s32, s32);  /* canonical s32 (engine_core); (s16)-cast the return for the sll/sra */
-extern void GsSetRefView2L(void *);
-extern s8 D_801150D6;            /* canonical (engine_core macro): s8 — access via *(u8*)& for lbu */
+typedef struct Scr80129CF8 {
+    /* 0x00 */ u8 pad00[0x18];
+    /* 0x18 */ Mat80129CF8 mat;
+} Scr80129CF8;
+
+typedef void (*Hook80129CF8)(Cam80129CF8 *cam);
+
+extern u8 D_801150D6;
 extern u8 D_80127504;
-extern s32 D_80126E60[];
-extern s32 D_80126F04[];
-extern u8 D_80126948[];          /* canonical (sibling): u8[] — cast (s32*) at use */
-extern s32 D_80126FA8[];
-extern struct BigCopy D_80126DB8;/* canonical (engine_core macro): struct BigCopy — (s32*)& at use */
-extern u8 D_800AF630[];          /* canonical (sibling): u8[] — cast (s32*) at use */
-extern s32 D_800AE688[];
-extern s32 D_801151D4;           /* canonical (10 siblings): scalar s32 — store (s32)ptr */
+extern Cam80129CF8 D_80126948;
+extern Cam80129CF8 D_80126E60;
+extern Cam80129CF8 D_80126F04;
+extern Cam80129CF8 D_80126FA8;
+extern Cam80129CF8 D_80126DB8;
+extern Scr80129CF8 D_800AF630;
+extern Mat80129CF8 D_800AE688;
+extern u32 D_801151D4; /* guest pointer: current camera */
+
+extern void func_8012A328(void);
+extern void func_80053308(s32 h);
+extern s16 func_80012F74(s16 cur, s16 target, s16 div, s16 min);
+extern void func_80054DCC(s32 *view);
+
 void func_80129CF8(void)
 {
-    RView view; /* unused: reserves the extra 0x20 frame bytes the target has */
-    s32 *cam;
-    s32 *p1;
-    s32 *p2;
-    s32 a;
-    s32 b;
-    s32 iVar2;
+    Cam80129CF8 *cam;
+    Cam80129CF8 *cur;
+    Hook80129CF8 hook;
+    Scr80129CF8 *scr;
+    Mat80129CF8 scratch; /* unreferenced: reproduces the retail 0x20-byte frame reserve */
+
     func_8012A328();
-    p2 = (s32 *)D_800AF630;
-    p1 = (s32 *)&D_80126DB8;
-    if (*(u8 *)&D_801150D6 == 1) {
-        cam = D_80126E60;
-    } else if (*(u8 *)&D_801150D6 == 2) {
-        cam = D_80126F04;
+    scr = &D_800AF630;
+    cur = &D_80126DB8;
+    if (D_801150D6 == 1) {
+        cam = &D_80126E60;
+    } else if (D_801150D6 == 2) {
+        cam = &D_80126F04;
     } else {
-        cam = (s32 *)D_80126948;
-        if (*(u8 *)&D_801150D6 == 3) {
-            cam = D_80126FA8;
+        cam = &D_80126948;
+        if (D_801150D6 == 3) {
+            cam = &D_80126FA8;
         }
     }
-    if (cam[0] != 0) {
-        (*(void (*)(s32 *))cam[0])(cam);
+    hook = (Hook80129CF8)cam->hook;
+    if (hook != 0) {
+        hook(cam);
     }
-    func_80053308(cam[2]);
+    func_80053308(cam->h);
     if (D_80127504 != 0) {
-        p1[0xf] = (s16)func_80012F74((s16)p1[0xf], (s16)cam[0xf], 2, 1);
-        p1[0x10] = (s16)func_80012F74((s16)p1[0x10], (s16)cam[0x10], 2, 1);
-        p1[0x11] = (s16)func_80012F74((s16)p1[0x11], (s16)cam[0x11], 2, 1);
-        p1[0x12] = (s16)func_80012F74((s16)p1[0x12], (s16)cam[0x12], 2, 1);
-        p1[0x13] = (s16)func_80012F74((s16)p1[0x13], (s16)cam[0x13], 2, 1);
-        p1[0x14] = (s16)func_80012F74((s16)p1[0x14], (s16)cam[0x14], 2, 1);
-        p1[0x15] = (s16)func_80012F74((s16)p1[0x15], (s16)cam[0x15], 2, 1);
-        D_80127504 = D_80127504 - 1;
+        cur->pos[0] = func_80012F74(cur->pos[0], cam->pos[0], 2, 1);
+        cur->pos[1] = func_80012F74(cur->pos[1], cam->pos[1], 2, 1);
+        cur->pos[2] = func_80012F74(cur->pos[2], cam->pos[2], 2, 1);
+        cur->pos[3] = func_80012F74(cur->pos[3], cam->pos[3], 2, 1);
+        cur->pos[4] = func_80012F74(cur->pos[4], cam->pos[4], 2, 1);
+        cur->pos[5] = func_80012F74(cur->pos[5], cam->pos[5], 2, 1);
+        cur->pos[6] = func_80012F74(cur->pos[6], cam->pos[6], 2, 1);
+        D_80127504--;
     } else {
-        p1[0xf] = cam[0xf];
-        p1[0x10] = cam[0x10];
-        p1[0x11] = cam[0x11];
-        p1[0x12] = cam[0x12];
-        p1[0x13] = cam[0x13];
-        p1[0x14] = cam[0x14];
-        p1[0x15] = cam[0x15];
+        cur->pos[0] = cam->pos[0];
+        cur->pos[1] = cam->pos[1];
+        cur->pos[2] = cam->pos[2];
+        cur->pos[3] = cam->pos[3];
+        cur->pos[4] = cam->pos[4];
+        cur->pos[5] = cam->pos[5];
+        cur->pos[6] = cam->pos[6];
     }
-    a = p1[0xf];
-    b = cam[0x1f];
-    cam[0x17] = a + b;
-    a = p1[0x10];
-    b = cam[0x20];
-    cam[0x18] = a + b;
-    a = p1[0x11];
-    b = cam[0x21];
-    cam[0x19] = a + b;
-    a = p1[0x12];
-    b = cam[0x22];
-    cam[0x1a] = a + b;
-    a = p1[0x13];
-    b = cam[0x23];
-    cam[0x1b] = a + b;
-    a = p1[0x14];
-    b = cam[0x24];
-    cam[0x1c] = a + b;
-    iVar2 = p1[0x15] + cam[0x25];
-    cam[0x1e] = cam[0x16];
-    cam[0x1d] = iVar2;
-    GsSetRefView2L(&cam[0x17]);
-    *(RView *)(p2 + 6) = *(RView *)D_800AE688;
-    D_801151D4 = (s32)cam;
+    cam->view[0] = cur->pos[0] + cam->ofs[0];
+    cam->view[1] = cur->pos[1] + cam->ofs[1];
+    cam->view[2] = cur->pos[2] + cam->ofs[2];
+    cam->view[3] = cur->pos[3] + cam->ofs[3];
+    cam->view[4] = cur->pos[4] + cam->ofs[4];
+    cam->view[5] = cur->pos[5] + cam->ofs[5];
+    cam->view[6] = cur->pos[6] + cam->ofs[6];
+    cam->f78 = cam->f58;
+    func_80054DCC(cam->view);
+    scr->mat = D_800AE688;
+    D_801151D4 = (u32)cam;
 }

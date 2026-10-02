@@ -1,18 +1,8 @@
-/* Decompiled by m2c from main_0012.s, then verified byte-exact
- * against retail by tools/match_function.py. Types and signatures are
- * whatever reproduces the bytes; they are not evidence of the
- * original declaration. */
-
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Plane test value: dot(a, b) of two s16 3-vectors plus offset c. */
 #include "psx_types.h"
 
-/* HAND MODEL of func_80134A28 (main_0012.s), decoded manually from
- * raw asm (fully visible; NOT verified against retail; C89-gated
- * only, promotion requires an oracle MATCH): frameless 3-arg s32
- * leaf, instruction-identical to func_80134310 (verified register
- * for register from raw asm): arg0[0]*arg1[0] + arg0[1]*arg1[1] +
- * arg0[2]*arg1[2] + arg2 via three mult/mflo lows summed with the
- * bias in the jr delay slot. */
-
-s32 func_80134A28(s16 *arg0, s16 *arg1, s32 arg2) {
-    return arg0[0] * arg1[0] + arg0[1] * arg1[1] + arg0[2] * arg1[2] + arg2;
+s32 func_80134A28(s16 *a, s16 *b, s32 c)
+{
+    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + c;
 }

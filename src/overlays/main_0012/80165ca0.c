@@ -1,50 +1,86 @@
-/* Overlay range [80165CA0,80165E2C) from MAIN.CD member 0012.
- * SHA256(span)=36240827ac0f2f9dc4e0bdad7c462f44e6f3a9678f198ba2b321bb545bc7ac63.
- * Word export for the native seam; the body below is an
- * UNVERIFIED draft, not an oracle match claim. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_80165CA0 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Runs per-slot handlers for 30 entries, then pushes each entry's position to its attached object. */
 #include "psx_types.h"
 
-/* File-scope declarations from the vendor translation unit. */
-#define ENGINE_SHB(x) __asm__ __volatile__("" : "=r"(x) : "0"(x))
+typedef struct {
+    u8 pad00[0x14];
+    /* 0x14 */ s32 x;
+    /* 0x18 */ s32 y;
+    /* 0x1C */ s32 z;
+} Sub80165CA0;
 
-/* func_80165CA0 — shared body (overlay slot 0x80128158, h_exact 0b19faae). ONE source: instantiated by #include at each
- * member's site in address order; the members are recorded in config/dedup.us.yaml (Phase 35). */
-void func_80165CA0(void) {
-    extern s32 D_8011D030;
-    extern s32 D_80126728;
-    register s32 i __asm__("$17");
-    s32 off;
-    u16 *q;
-    s32 a1, base;
-    short *p;
-    register short v __asm__("$2");
-    register short w __asm__("$3");
-    i = 0; q = &D_8011D030;
-    do {
-        if (*q != 0) (*(void (**)(u16 *))((u32)*q * 4 + D_80126728))(q);
-        i = i + 1; q = q + 0x2c;
-    } while (i < 0x1e);
-    i = 0; off = 0;
-    do {
-        base = (s32)&D_8011D030; ENGINE_SHB(base);
-        a1 = off + base;
-        p = *(short **)(a1 + 0x20);
-        if (p != 0) {
-            s32 q2;
-            if ((u16)*p == 1) {
-                v = *(short *)(a1 + 6); p[4] = v; ENGINE_SHB(v); *(int *)(p + 0x24) = v;
-                v = *(short *)(a1 + 0xa); p[5] = v; ENGINE_SHB(v); *(int *)(p + 0x26) = v;
-                w = *(short *)(a1 + 0xe); p[6] = w; v = p[0x16] | 1; ENGINE_SHB(w); p[0x16] = v; *(int *)(p + 0x28) = w;
-            } else if ((q2 = *(int *)(p + 0x1a)) != 0) {
-                v = *(short *)(a1 + 6); p[4] = v; ENGINE_SHB(v); *(int *)(q2 + 0x14) = v;
-                v = *(short *)(a1 + 0xa); p[5] = v; q2 = *(int *)(p + 0x1a); ENGINE_SHB(v); *(int *)(q2 + 0x18) = v;
-                v = *(short *)(a1 + 0xe); p[6] = v; q2 = *(int *)(p + 0x1a); ENGINE_SHB(v); *(int *)(q2 + 0x1c) = v;
-            } else {
-                p[4] = *(short *)(a1 + 6); p[5] = *(short *)(a1 + 0xa); p[6] = *(short *)(a1 + 0xe);
-            }
+typedef struct {
+    /* 0x00 */ u16 kind;
+    u8 pad02[0x08 - 0x02];
+    /* 0x08 */ s16 x;
+    /* 0x0A */ s16 y;
+    /* 0x0C */ s16 z;
+    u8 pad0E[0x2C - 0x0E];
+    /* 0x2C */ u16 flags2C;
+    u8 pad2E[0x34 - 0x2E];
+    /* 0x34 */ u32 sub34;
+    u8 pad38[0x48 - 0x38];
+    /* 0x48 */ s32 x48;
+    /* 0x4C */ s32 y4C;
+    /* 0x50 */ s32 z50;
+} Target80165CA0;
+
+typedef struct {
+    /* 0x00 */ u16 kind;
+    u8 pad02[0x06 - 0x02];
+    /* 0x06 */ s16 x;
+    u8 pad08[0x0A - 0x08];
+    /* 0x0A */ s16 y;
+    u8 pad0C[0x0E - 0x0C];
+    /* 0x0E */ s16 z;
+    u8 pad10[0x20 - 0x10];
+    /* 0x20 */ u32 target;
+    u8 pad24[0x58 - 0x24];
+} Slot80165CA0;
+
+extern Slot80165CA0 D_8011D030[];
+extern u32 D_80126728;
+
+void func_80165CA0(void)
+{
+    Slot80165CA0 *slot;
+    Slot80165CA0 *e;
+    Target80165CA0 *t;
+    Sub80165CA0 *sub;
+    s32 i;
+
+    i = 0;
+    slot = D_8011D030;
+    for (; i < 30; i++, slot++) {
+        if (slot->kind != 0) {
+            ((void (**)(Slot80165CA0 *))D_80126728)[slot->kind](slot);
         }
-        i = i + 1; off = off + 0x58;
-    } while (i < 0x1e);
+    }
+    for (i = 0; i < 30; i++) {
+        e = &D_8011D030[i];
+        t = (Target80165CA0 *)e->target;
+        if (t == 0) {
+            continue;
+        }
+        if (t->kind == 1) {
+            t->x = e->x;
+            t->x48 = t->x;
+            t->y = e->y;
+            t->y4C = t->y;
+            t->z = e->z;
+            t->z50 = t->z;
+            t->flags2C |= 1;
+        } else if ((sub = (Sub80165CA0 *)t->sub34) != 0) {
+            t->x = e->x;
+            sub->x = t->x;
+            t->y = e->y;
+            ((Sub80165CA0 *)t->sub34)->y = t->y;
+            t->z = e->z;
+            ((Sub80165CA0 *)t->sub34)->z = t->z;
+        } else {
+            t->x = e->x;
+            t->y = e->y;
+            t->z = e->z;
+        }
+    }
 }

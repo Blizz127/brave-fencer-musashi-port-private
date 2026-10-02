@@ -1,17 +1,16 @@
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Calls func_8004914C(a0), func_800491AC(a0) and func_8004945C(a1, a2, &out) with a local 8-byte out buffer. */
 #include "psx_types.h"
 
-/* Decompiled by m2c from main_0012.s, then verified byte-exact
- * against retail by tools/match_function.py. Types and signatures are
- * whatever reproduces the bytes; they are not evidence of the
- * original declaration. */
+extern void func_8004914C(s32 a0);
+extern void func_800491AC(s32 a0);
+extern void func_8004945C(s32 a0, s32 a1, u16 *out);
 
-void func_8004914C();                                  /* extern */
-void func_800491AC(s32);                               /* extern */
-void func_8004945C(s32, s32, void *);                         /* extern */
+void func_8012F14C(s32 a0, s32 a1, s32 a2)
+{
+    u16 out[4];
 
-void func_8012F14C(s32 arg0, s32 arg1, s32 arg2) {
-    s32 sp10;
-    func_8004914C();
-    func_800491AC(arg0);
-    func_8004945C(arg1, arg2, &sp10);
+    func_8004914C(a0);
+    func_800491AC(a0);
+    func_8004945C(a1, a2, out);
 }

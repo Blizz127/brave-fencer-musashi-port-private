@@ -1,21 +1,31 @@
-/* Decompiled by m2c from main.s, then verified byte-exact
- * against retail by tools/match_function.py. Types and signatures are
- * whatever reproduces the bytes; they are not evidence of the
- * original declaration. */
-
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Sets or clears bit 31 of word 1 of the linked record, by whether any of three byte counters is nonzero. */
 #include "psx_types.h"
-typedef struct Inner { u8 pad[4]; s32 u4; } Inner;
+
 typedef struct {
-    u8 pad[0x20]; Inner *inner;
-    u8 pad24[0x1FC]; u8 u220, u221, u222;
-} T;
-void func_801470C0(T *p) {
-    Inner *in = p->inner;
-    if (in) {
-        if (p->u221 | p->u220 | p->u222) {
-            in->u4 |= 0x80000000;
+    u32 pad0;
+    u32 flags; /* 0x4 */
+} Rec801470c0;
+
+typedef struct {
+    u8 pad0[0x20];
+    u32 link; /* 0x20: guest pointer to Rec801470c0 */
+    u8 pad1[0x220 - 0x24];
+    u8 c0; /* 0x220 */
+    u8 c1; /* 0x221 */
+    u8 c2; /* 0x222 */
+} Obj801470c0;
+
+void func_801470C0(Obj801470c0 *o)
+{
+    Rec801470c0 *r;
+
+    r = (Rec801470c0 *)o->link;
+    if (r != 0) {
+        if (o->c1 | o->c0 | o->c2) {
+            r->flags |= 0x80000000;
         } else {
-            in->u4 &= 0x7FFFFFFF;
+            r->flags &= 0x7FFFFFFF;
         }
     }
 }

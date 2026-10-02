@@ -1,48 +1,58 @@
-/* Overlay range [80165E90,80165FA4) from MAIN.CD member 0012.
- * SHA256(span)=a333e8cb00dfd8aa5c4395585cb5d118b4e81b4ec8c1666c334844ceec9cf00a.
- * Word export for the native seam; the C body below is kept
- * byte-identical (wrap only, no rewrite): the cleaned Druthulu/BFM-decomp
- * form (vendor/bfm-decomp, same SLUS-00726 build), re-verified against
- * retail at the recorded optimization by tools/match_function.py. */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Runs the two state-gated update passes on the shared controller block when its target is active. */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* func_80165E90 - 69 words. Promoted from vendor/bfm-decomp
- * (Druthulu, same SLUS-00726 build), split to an address-named file.
- * Values and locals are the loosest that reproduce the bytes; they
- * are not evidence of the original declaration. */
-extern void func_801484B0(s32 a0, s32 a1);
-extern s32 func_80165FA4(s32 a0, s32 a1, s32 a2);
-extern s32 func_80167DBC(s32 a0, s32 a1, s32 a2);
-extern void func_80148534(s32 a0, s32 a1);
-extern s32 func_80167AE0();
-extern s32 D_80126B9C;
-extern s32 D_80126B58;
-extern s32 *D_80126B78;
+typedef struct {
+    /* 0x00 */ s16 x;
+    /* 0x02 */ s16 y;
+    /* 0x04 */ s16 z;
+    /* 0x06 */ s16 pad;
+} Vec80165E90; /* 0x08 */
 
-void func_80165E90(void) {
-    s32 s1 = (s32)&D_80126B58;
-    s32 buf1[2];
-    s32 buf2[2];
-    s32 v1;
-    if ((D_80126B9C & 0x10000400) == 0x10000000) {
-        v1 = (s32)D_80126B78;
-        if (*(s32 *)(v1 + 0x4) >= 0) {
-            if (*(s32 *)(v1 + 0x20) != 0) {
-                func_801484B0((s32)buf1, (s32)buf2);
-                func_80165FA4(s1, (s32)buf1, (s32)buf2);
-                func_80167DBC(s1, (s32)buf1, (s32)buf2);
-            }
+typedef struct {
+    /* 0x00 */ u8 pad00[0x4];
+    /* 0x04 */ s32 state;
+    /* 0x08 */ u8 pad08[0x18];
+    /* 0x20 */ s32 active;
+} Target80165E90;
+
+typedef struct {
+    /* 0x00 */ u8 pad00[0x20];
+    /* 0x20 */ u32 target;
+    /* 0x24 */ u8 pad24[0x20];
+    /* 0x44 */ u32 flags;
+} Ctl80165E90;
+
+extern Ctl80165E90 D_80126B58;
+
+extern void func_801484B0(Vec80165E90 *a, Vec80165E90 *b);
+extern void func_80148534(Vec80165E90 *a, Vec80165E90 *b);
+extern void func_80165FA4(Ctl80165E90 *ctl, Vec80165E90 *a, Vec80165E90 *b);
+extern void func_80167DBC(Ctl80165E90 *ctl, Vec80165E90 *a, Vec80165E90 *b);
+extern void func_80167AE0(Ctl80165E90 *ctl, Vec80165E90 *a, Vec80165E90 *b);
+
+void func_80165E90(void)
+{
+    Vec80165E90 a;
+    Vec80165E90 b;
+    Ctl80165E90 *ctl;
+    Target80165E90 *t;
+
+    ctl = &D_80126B58;
+    if ((D_80126B58.flags & 0x10000400) == 0x10000000) {
+        t = (Target80165E90 *)D_80126B58.target;
+        if (t->state >= 0 && t->active != 0) {
+            func_801484B0(&a, &b);
+            func_80165FA4(ctl, &a, &b);
+            func_80167DBC(ctl, &a, &b);
         }
     }
-    if ((*(s32 *)(s1 + 0x44) & 0x20020400) == 0x20000000) {
-        v1 = *(s32 *)(s1 + 0x20);
-        if (*(s32 *)(v1 + 0x4) >= 0) {
-            if (*(s32 *)(v1 + 0x20) != 0) {
-                func_80148534((s32)buf1, (s32)buf2);
-                func_80165FA4(s1, (s32)buf1, (s32)buf2);
-                func_80167AE0(s1, (s32)buf1, (s32)buf2);
-            }
+    if ((ctl->flags & 0x20020400) == 0x20000000) {
+        t = (Target80165E90 *)ctl->target;
+        if (t->state >= 0 && t->active != 0) {
+            func_80148534(&a, &b);
+            func_80165FA4(ctl, &a, &b);
+            func_80167AE0(ctl, &a, &b);
         }
     }
 }

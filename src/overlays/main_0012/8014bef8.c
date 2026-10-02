@@ -1,12 +1,10 @@
-/* Decompiled by m2c from main_0012.s, then verified byte-exact
- * against retail by tools/match_function.py. Types and signatures are
- * whatever reproduces the bytes; they are not evidence of the
- * original declaration. */
-
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Returns the low byte of func_80029178(0x80). */
 #include "psx_types.h"
 
-s32 func_80029178();                               /* extern */
+extern u32 func_80029178(s32 a0);
 
-s32 func_8014BEF8(void) {
-    return func_80029178(0x80) & 0xFF;
+u8 func_8014BEF8(void *obj) /* obj unused; callers pass it (80155150: move a0,s0) */
+{
+    return func_80029178(0x80);
 }

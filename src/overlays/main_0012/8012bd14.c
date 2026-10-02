@@ -1,13 +1,12 @@
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Squared distance from the object's position (at +4) to the reference point D_80126B5C. */
 #include "psx_types.h"
 
-/* Decompiled by m2c from main_0012.s, then verified byte-exact
- * against retail by tools/match_function.py. Types and signatures are
- * whatever reproduces the bytes; they are not evidence of the
- * original declaration. */
+extern s32 D_80126B5C[];
 
-void func_80013350(s32, void *);                          /* extern */
-extern s32 *D_80126B5C;
+extern s32 func_80013350(void *a, void *b);
 
-void func_8012BD14(s32 arg0) {
-    func_80013350(arg0 + 4, &D_80126B5C);
+s32 func_8012BD14(u8 *obj)
+{
+    return func_80013350(obj + 4, D_80126B5C);
 }

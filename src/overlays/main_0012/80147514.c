@@ -1,31 +1,47 @@
-/* Overlay range [80147514,80147628) from MAIN.CD member 0012.
- * SHA256(span)=478ccbb0333aac6de5316ea64e3d6b3af5121f22afda55a18864057a0e36bd88.
- * Word export for the native seam; the body below is an
- * UNVERIFIED draft, not an oracle match claim. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Eases the look vector at 0x118 toward target(+offset) by 1/8 and converts it to angles at 0x100. */
 #include "psx_types.h"
-/* func_80147514 - byte-exact against retail at -O2 (tools/register_match.py). */
-struct V4s80147514;
-struct V4s80147514 { s16 a, b, c, d; };
-extern s32 func_80012C6C(s32 a0, s32 a1, s32 a2);
-extern s32 func_800129CC(s32 a0, s32 a1);
 
-void func_80147514(s32 arg0) {
-    s16 buf[8];
-    *(struct V4s80147514 *)buf = *(struct V4s80147514 *)(arg0 + 0x120);
-    if (((u16)buf[0] | (u16)buf[1] | (u16)buf[2]) == 0) {
-        buf[1] = -0xFFF;
+typedef struct {
+    s16 x;
+    s16 y;
+    s16 z;
+    s16 pad;
+} Vec80147514;
+
+typedef struct {
+    /* 0x000 */ u8 pad000[0x100];
+    /* 0x100 */ s16 angle[3];
+    /* 0x106 */ u8 pad106[0x12];
+    /* 0x118 */ s16 cur[3];
+    /* 0x11E */ u8 pad11E[2];
+    /* 0x120 */ Vec80147514 target;
+    /* 0x128 */ s16 offset[3];
+    /* 0x12E */ s16 useOffset;
+} Obj80147514;
+
+extern s16 func_80012C6C(s16 cur, s16 target, s16 shift);
+extern void func_800129CC(Vec80147514 *dir, s16 *angle);
+
+void func_80147514(Obj80147514 *obj)
+{
+    Vec80147514 v;
+    Vec80147514 spare;
+
+    v = obj->target;
+    if ((v.z | (v.x | v.y)) == 0) {
+        v.y = -0xFFF;
     }
-    if (*(s16 *)(arg0 + 0x12E) != 0) {
-        buf[0] = (u16)buf[0] + *(u16 *)(arg0 + 0x128);
-        buf[1] = (u16)buf[1] + *(u16 *)(arg0 + 0x12A);
-        buf[2] = (u16)buf[2] + *(u16 *)(arg0 + 0x12C);
+    if (obj->useOffset != 0) {
+        v.x += obj->offset[0];
+        v.y += obj->offset[1];
+        v.z += obj->offset[2];
     }
-    *(s16 *)(arg0 + 0x118) = func_80012C6C(*(s16 *)(arg0 + 0x118), buf[0], 8);
-    *(s16 *)(arg0 + 0x11A) = func_80012C6C(*(s16 *)(arg0 + 0x11A), buf[1], 8);
-    *(s16 *)(arg0 + 0x11C) = func_80012C6C(*(s16 *)(arg0 + 0x11C), buf[2], 8);
-    buf[0] = *(u16 *)(arg0 + 0x118);
-    buf[1] = *(u16 *)(arg0 + 0x11A);
-    buf[2] = *(u16 *)(arg0 + 0x11C);
-    func_800129CC((s32)buf, arg0 + 0x100);
+    obj->cur[0] = func_80012C6C(obj->cur[0], v.x, 8);
+    obj->cur[1] = func_80012C6C(obj->cur[1], v.y, 8);
+    obj->cur[2] = func_80012C6C(obj->cur[2], v.z, 8);
+    v.x = obj->cur[0];
+    v.y = obj->cur[1];
+    v.z = obj->cur[2];
+    func_800129CC(&v, obj->angle);
 }

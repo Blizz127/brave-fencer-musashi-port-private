@@ -1,12 +1,17 @@
-/* Decompiled by m2c from main.s, then verified byte-exact
- * against retail by tools/match_function.py. Types and signatures are
- * whatever reproduces the bytes; they are not evidence of the
- * original declaration. */
-
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Zeroes three words at offsets 0x10..0x18 of the object. */
 #include "psx_types.h"
-typedef struct { u8 pad[0x10]; s32 x, y, z; } T;
-void func_801473DC(T *p) {
-    p->z = 0;
-    p->y = 0;
-    p->x = 0;
+
+typedef struct {
+    u8 pad[0x10];
+    s32 a; /* 0x10 */
+    s32 b; /* 0x14 */
+    s32 c; /* 0x18 */
+} Obj801473dc;
+
+void func_801473DC(Obj801473dc *o)
+{
+    o->c = 0;
+    o->b = 0;
+    o->a = 0;
 }

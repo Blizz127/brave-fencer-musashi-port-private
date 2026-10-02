@@ -1,36 +1,41 @@
-/* Overlay range [80147118,80147264) from MAIN.CD member 0012.
- * SHA256(span)=d988622db65ecd73bc19f45f0d688f9fb1a4dc223c8505753b32d32b8bee3d26.
- * Word export for the native seam; the C body below is kept
- * byte-identical (wrap only, no rewrite): the cleaned Druthulu/BFM-decomp
- * form (vendor/bfm-decomp, same SLUS-00726 build), re-verified against
- * retail at the recorded optimization by tools/match_function.py. */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Combines three 4.12 scale vectors, clamps each axis to 0xFFFF and writes it to the model scale. */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* func_80147118 - 83 words. Promoted from vendor/bfm-decomp
- * (Druthulu, same SLUS-00726 build), split to an address-named file.
- * Values and locals are the loosest that reproduce the bytes; they
- * are not evidence of the original declaration. */
+typedef struct {
+    /* 0x00 */ u8 pad00[0x18];
+    /* 0x18 */ s16 scale[3];
+} Model80147118;
 
+typedef struct {
+    /* 0x00 */ u8 pad00[0x20];
+    /* 0x20 */ u32 model; /* guest pointer */
+    /* 0x24 */ u8 pad24[0x3C];
+    /* 0x60 */ s16 scaleA[4];
+    /* 0x68 */ s16 scaleB[4];
+    /* 0x70 */ s16 scaleC[3];
+} Obj80147118;
 
-void func_80147118(s32 a0) {
-    s32 vec[3];
-    vec[0] = ((s32)(*(s16 *)(a0 + 0x60) * *(s16 *)(a0 + 0x68)) / 4096);
-    vec[0] = ((s32)(vec[0] * *(s16 *)(a0 + 0x70)) / 4096);
-    vec[1] = ((s32)(*(s16 *)(a0 + 0x62) * *(s16 *)(a0 + 0x6A)) / 4096);
-    vec[1] = ((s32)(vec[1] * *(s16 *)(a0 + 0x72)) / 4096);
-    vec[2] = ((s32)(*(s16 *)(a0 + 0x64) * *(s16 *)(a0 + 0x6C)) / 4096);
-    vec[2] = ((s32)(vec[2] * *(s16 *)(a0 + 0x74)) / 4096);
-    if (0xFFFF < vec[0]) {
-        vec[0] = 0xFFFF;
+void func_80147118(Obj80147118 *obj)
+{
+    s32 s[3];
+
+    s[0] = obj->scaleA[0] * obj->scaleB[0] / 4096;
+    s[0] = s[0] * obj->scaleC[0] / 4096;
+    s[1] = obj->scaleA[1] * obj->scaleB[1] / 4096;
+    s[1] = s[1] * obj->scaleC[1] / 4096;
+    s[2] = obj->scaleA[2] * obj->scaleB[2] / 4096;
+    s[2] = s[2] * obj->scaleC[2] / 4096;
+    if (s[0] > 0xFFFF) {
+        s[0] = 0xFFFF;
     }
-    if (0xFFFF < vec[1]) {
-        vec[1] = 0xFFFF;
+    if (s[1] > 0xFFFF) {
+        s[1] = 0xFFFF;
     }
-    if (0xFFFF < vec[2]) {
-        vec[2] = 0xFFFF;
+    if (s[2] > 0xFFFF) {
+        s[2] = 0xFFFF;
     }
-    *(u16 *)(*(s32 *)(a0 + 0x20) + 0x18) = vec[0];
-    *(u16 *)(*(s32 *)(a0 + 0x20) + 0x1A) = vec[1];
-    *(u16 *)(*(s32 *)(a0 + 0x20) + 0x1C) = vec[2];
+    ((Model80147118 *)obj->model)->scale[0] = s[0];
+    ((Model80147118 *)obj->model)->scale[1] = s[1];
+    ((Model80147118 *)obj->model)->scale[2] = s[2];
 }

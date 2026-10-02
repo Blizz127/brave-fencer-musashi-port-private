@@ -1,30 +1,33 @@
-/* Overlay range [80149228,80149284) from MAIN.CD member 0012.
- * SHA256(span)=6530bb5b9ca01736f1940ee02055f5de226a14aad03eb215c8400c889efc991d.
- * Word export for the native seam; the body below is an
- * UNVERIFIED draft, not an oracle match claim. */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Per-frame repeat/hold tracker: latches the new input mask (and newly-changed bits) and ticks the s16 timer down. */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+typedef struct {
+    u8 pad0[0xAC];
+    u16 input; /* 0xAC */
+    u8 pad1[0x1DC - 0xAE];
+    u32 edge; /* 0x1DC */
+    u32 prev; /* 0x1E0 */
+    s16 timer; /* 0x1E4 */
+    u16 reload; /* 0x1E6 */
+} Obj80149228;
 
-void func_80149228(void *arg0) {
-    s32 temp_v0;
-    u16 temp_a1;
+void func_80149228(Obj80149228 *o)
+{
+    u32 in;
+    u32 t;
 
-    if (M2C_FIELD(arg0, s16 *, 0x1E4) == 0) {
-        M2C_FIELD(arg0, s32 *, 0x1DC) = 0;
-        M2C_FIELD(arg0, s32 *, 0x1E0) = 0;
-        M2C_FIELD(arg0, s16 *, 0x1E4) = (s16) M2C_FIELD(arg0, u16 *, 0x1E6);
+    if (o->timer == 0) {
+        o->edge = 0;
+        o->prev = 0;
+        o->timer = o->reload;
     }
-    temp_a1 = M2C_FIELD(arg0, u16 *, 0xAC);
-    if (temp_a1 != 0) {
-        temp_v0 = M2C_FIELD(arg0, s32 *, 0x1E0);
-        M2C_FIELD(arg0, s32 *, 0x1E0) = (s32) temp_a1;
-        M2C_FIELD(arg0, s16 *, 0x1E4) = (s16) M2C_FIELD(arg0, u16 *, 0x1E6);
-        M2C_FIELD(arg0, s32 *, 0x1DC) = (s32) (temp_a1 & temp_v0);
+    in = o->input;
+    if (in != 0) {
+        t = in & o->prev;
+        o->prev = in;
+        o->timer = o->reload;
+        o->edge = t;
     }
-    M2C_FIELD(arg0, s16 *, 0x1E4) = (s16) ((u16) M2C_FIELD(arg0, s16 *, 0x1E4) - 1);
+    o->timer = o->timer - 1;
 }

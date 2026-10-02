@@ -1,57 +1,66 @@
-/* Overlay range [8012A988,8012AAAC) from MAIN.CD member 0012.
- * SHA256(span)=a6f2d6f81233bea8cdd901da4d85aa89796b04e49c89a63c7fd8077f3d948f25.
- * Word export for the native seam; the body below is an
- * UNVERIFIED draft, not an oracle match claim. */
-/* Verified byte-exact against retail by tools/match_function.py
- * (73/73 words at 0x8012A988). Types and signatures are whatever
- * reproduces the bytes; they are not evidence of the original
- * declaration. */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Per-object animation sequence tick: counts down the delay, steps/loops the frame index, then applies the frame. */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-void func_8012AAAC(void *);                      /* static */
-s32 func_8012ACE0(void *);                          /* static */
+typedef struct {
+    u8 pad0[4];
+    s16 hold; /* +4: -1 marks the end entry */
+    u8 pad6[2];
+} Frame8012A988; /* 8 bytes */
 
-void func_8012A988(void *arg0) {
-    s16 temp_v0;
-    s16 temp_v0_2;
-    s32 temp_v0_3;
-    s32 temp_v0_4;
-    s32 temp_v0_5;
-    s32 var_v0;
-    u16 temp_v1;
+typedef struct {
+    u16 active;       /* 0x00 */
+    u8 pad02[0x70];
+    u16 flags;        /* 0x72 */
+    u8 pad74[0x1C];
+    u32 frames;       /* 0x90: guest pointer to Frame8012A988[] */
+    s32 index;        /* 0x94 */
+    s16 delay;        /* 0x98 */
+    u8 pad9A[0x27];
+    u8 state;         /* 0xC1 */
+} Obj8012A988;
 
-    M2C_FIELD(arg0, u16 *, 0x72) = (u16) (M2C_FIELD(arg0, u16 *, 0x72) & 0x9FFF);
-    if ((M2C_FIELD(arg0, u16 *, 0) != 0) && (M2C_FIELD(arg0, u8 *, 0xC1) != 0x11) && (temp_v0 = M2C_FIELD(arg0, s16 *, 0x98), (temp_v0 != 0)) && (temp_v0_2 = temp_v0 - 1, M2C_FIELD(arg0, s16 *, 0x98) = temp_v0_2, ((temp_v0_2 << 0x10) <= 0)) && (M2C_FIELD(arg0, s32 *, 0x90) != 0)) {
-        temp_v1 = M2C_FIELD(arg0, u16 *, 0x72);
-        if (temp_v1 & 0x400) {
-            temp_v0_3 = M2C_FIELD(arg0, s32 *, 0x94) - 1;
-            M2C_FIELD(arg0, s32 *, 0x94) = temp_v0_3;
-            if (temp_v0_3 < 0) {
-                M2C_FIELD(arg0, s32 *, 0x94) = 1;
-                M2C_FIELD(arg0, u16 *, 0x72) = (u16) (M2C_FIELD(arg0, u16 *, 0x72) & 0xFBFF);
-            }
-            goto block_14;
-        }
-        if (temp_v1 & 0x200) {
-            temp_v0_4 = M2C_FIELD(arg0, s32 *, 0x94) - 1;
-            M2C_FIELD(arg0, s32 *, 0x94) = temp_v0_4;
-            if (temp_v0_4 < 0) {
-                temp_v0_5 = func_8012ACE0(arg0);
-                if (M2C_FIELD(((temp_v0_5 * 8) + M2C_FIELD(arg0, s32 *, 0x90)), s16 *, 4) != -1) {
-                    M2C_FIELD(arg0, s32 *, 0x94) = 0;
-                    M2C_FIELD(arg0, s16 *, 0x98) = 0;
-                    return;
-                }
-                var_v0 = temp_v0_5 - 1;
-                goto block_13;
-            }
-            goto block_14;
-        }
-        var_v0 = M2C_FIELD(arg0, s32 *, 0x94) + 1;
-block_13:
-        M2C_FIELD(arg0, s32 *, 0x94) = var_v0;
-block_14:
-        func_8012AAAC(arg0);
+extern s32 func_8012ACE0(Obj8012A988 *obj);
+extern void func_8012AAAC(Obj8012A988 *obj);
+
+void func_8012A988(Obj8012A988 *obj)
+{
+    s32 i;
+
+    obj->flags &= 0x9FFF;
+    if (obj->active == 0) {
+        return;
     }
+    if (obj->state == 0x11) {
+        return;
+    }
+    if (obj->delay == 0) {
+        return;
+    }
+    if (--obj->delay > 0) {
+        return;
+    }
+    if (obj->frames == 0) {
+        return;
+    }
+
+    if (obj->flags & 0x400) {
+        if (--obj->index < 0) {
+            obj->index = 1;
+            obj->flags &= 0xFBFF;
+        }
+    } else if (obj->flags & 0x200) {
+        if (--obj->index < 0) {
+            i = func_8012ACE0(obj);
+            if (((Frame8012A988 *)obj->frames)[i].hold != -1) {
+                obj->index = 0;
+                obj->delay = 0;
+                return;
+            }
+            obj->index = i - 1;
+        }
+    } else {
+        obj->index++;
+    }
+    func_8012AAAC(obj);
 }

@@ -1,19 +1,25 @@
-/* Decompiled by m2c from main.s, then verified byte-exact
- * against retail by tools/match_function.py. Types and signatures are
- * whatever reproduces the bytes; they are not evidence of the
- * original declaration. */
-
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Calls func_80178840 for each of the 0x60 active entries (stride 0x10C) of table D_801202A0. */
 #include "psx_types.h"
-void func_80178840();
-extern u8 D_801202A0[];
-typedef struct { u16 id; u8 pad2[0xBE]; u8 uC0; u8 padC1[0x4B]; } S;
-void func_801787D4(void) {
-    S *s;
+
+typedef struct {
+    /* 0x000 */ u16 id;
+    u8 pad002[0xBE];
+    /* 0x0C0 */ u8 active;
+    u8 pad0C1[0x4B];
+} Ent801787D4;
+
+extern Ent801787D4 D_801202A0[];
+extern void func_80178840(Ent801787D4 *e);
+
+void func_801787D4(void)
+{
     s32 i;
-    s = (S *)D_801202A0;
-    for (i = 0; i < 0x60; i++, s++) {
-        if (s->id && s->uC0) {
-            func_80178840(s);
+    Ent801787D4 *e = D_801202A0;
+
+    for (i = 0; i < 0x60; i++, e++) {
+        if (e->id != 0 && e->active != 0) {
+            func_80178840(e);
         }
     }
 }

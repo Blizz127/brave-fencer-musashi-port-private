@@ -1,39 +1,36 @@
-/* Overlay range [8017869C,80178744) from MAIN.CD member 0012.
- * SHA256(span)=5650da561189fc5de5225bef5034db39acf7666eb8a246a853f118ac78d1362d.
- * Word export for the native seam; the C body below is kept
- * byte-identical (wrap only, no rewrite): the cleaned Druthulu/BFM-decomp
- * form (vendor/bfm-decomp, same SLUS-00726 build), re-verified against
- * retail at the recorded optimization by tools/match_function.py. */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Counts down the fade timer at +0xAA and applies a scale (0x700..0x1000, ramping at both ends) via func_80178744. */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* func_8017869C - 42 words. Promoted from vendor/bfm-decomp
- * (Druthulu, same SLUS-00726 build), split to an address-named file.
- * Values and locals are the loosest that reproduce the bytes; they
- * are not evidence of the original declaration. */
-extern void func_80178744(s32 a0, s32 a1);
+typedef struct {
+    u8 pad00[0x5E];
+    u16 mode;   /* 0x5E */
+    u8 pad60[0x4A];
+    s16 timer;  /* 0xAA */
+} Obj8017869C;
 
-void func_8017869C(s32 a0) {
-    s32 v1;
-    s32 a1;
-    if (*(s16 *)(a0 + 0xAA) == 0) {
+extern void func_80178744(Obj8017869C *obj, s32 scale);
+
+void func_8017869C(Obj8017869C *obj)
+{
+    s32 t;
+    s32 scale;
+
+    if (obj->timer == 0) {
         return;
     }
-    *(s16 *)(a0 + 0xAA) = *(s16 *)(a0 + 0xAA) - 1;
-    v1 = *(s16 *)(a0 + 0xAA);
-    if (v1 == 0) {
-        a1 = 0x1000;
-        if (*(u16 *)(a0 + 0x5E) == 0x1E) {
-            *(s16 *)(a0 + 0x5E) = 0;
+    t = --obj->timer;
+    if (t == 0) {
+        scale = 0x1000;
+        if (obj->mode == 0x1E) {
+            obj->mode = 0;
         }
-    } else if (v1 >= 0xF1) {
-        a1 = 0x1000 - (0x100 - v1) * 0x90;
+    } else if (t > 0xF0) {
+        scale = 0x1000 - (0x100 - t) * 0x90;
+    } else if (t < 0x10) {
+        scale = 0x1000 - t * 0x90;
     } else {
-        if (v1 < 0x10) {
-            a1 = 0x1000 - v1 * 0x90;
-        } else {
-            a1 = 0x700;
-        }
+        scale = 0x700;
     }
-    func_80178744(a0, a1);
+    func_80178744(obj, scale);
 }

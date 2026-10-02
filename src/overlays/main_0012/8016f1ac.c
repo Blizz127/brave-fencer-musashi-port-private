@@ -1,12 +1,10 @@
-/* Decompiled by m2c from main_0012.s, then verified byte-exact
- * against retail by tools/match_function.py. Types and signatures are
- * whatever reproduces the bytes; they are not evidence of the
- * original declaration. */
-
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Returns the global word D_80126D50 with bits 24-30 cleared (callers test it for zero). */
 #include "psx_types.h"
 
-extern s32 D_80126D50;
+extern u32 D_80126D50;
 
-s32 func_8016F1AC(void) {
+u32 func_8016F1AC(void)
+{
     return D_80126D50 & 0x80FFFFFF;
 }

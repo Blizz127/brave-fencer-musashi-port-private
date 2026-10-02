@@ -1,73 +1,79 @@
-/* Overlay range [80148648,801487F4) from MAIN.CD member 0012.
- * SHA256(span)=c38df2e27b5b509b82f6e381db3fc3539a3f6c572e27a3a7a229f6b573b584ef.
- * Word export for the native seam; the body below is an
- * UNVERIFIED draft, not an oracle match claim. */
-/* Verified byte-exact against retail by tools/match_function.py
- * (107/107 words at 0x80148648). Three signedness fixes: temp_v1_2
- * u8->s32 (slti vs sltiu against 84) and temp_a0/temp_a1 u16->s32
- * (sra vs srl for the 0x8000-bit fold). Loads stay lbu/lhu and field
- * stores stay (u16)-truncated, so only the comparison/shift kinds
- * change. Types and signatures are whatever reproduces the bytes;
- * they are not evidence of the original declaration. */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Loads an actor's pad state (button byte, sticks, analog word) for a port, applies overrides, and remaps bits. */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-void func_800120DC(void *, void *);              /* extern */
-s32 func_80014CF8(s32, s32);                    /* extern */
-u16 func_80014D68(s32);                             /* extern */
-u16 func_80014D94(s32);                             /* extern */
-u8 func_80014DC0(s32);                              /* extern */
-s32 func_800CF8B4();                                /* extern */
+typedef struct {
+    /* 0x000 */ u16 state;
+    /* 0x002 */ u8 pad002[0xA7];
+    /* 0x0A9 */ u8 kind;
+    /* 0x0AA */ u16 btn;
+    /* 0x0AC */ u16 btn2;
+    /* 0x0AE */ u16 analog;
+    /* 0x0B0 */ u8 pad0B0[0x100];
+    /* 0x1B0 */ s32 remap;
+    /* 0x1B4 */ u8 pad1B4[0x11];
+    /* 0x1C5 */ u8 locked;
+} Obj80148648;
+
 extern u8 D_800B9A64;
 
-void func_80148648(void *arg0, s32 arg1) {
-    s32 temp_s0;
-    s32 temp_s0_2;
-    s32 temp_v1_3;
-    s32 temp_a0;
-    s32 temp_a1;
-    u16 temp_v1;
-    u16 var_a2;
-    s32 temp_v1_2;
+extern u8 func_80014DC0(u8 port);
+extern u16 func_80014D68(u8 port);
+extern u16 func_80014D94(u8 port);
+extern u8 func_80014CF8(u8 port, u8 idx);
+extern void func_800120DC(u16 *a, u16 *b);
+extern s32 func_800CF8B4(void);
+
+void func_80148648(Obj80148648 *obj, u8 port)
+{
+    u8 lo;
+    u8 hi;
+    u32 a;
+    u32 b;
+    u32 c;
+    u32 k;
 
     if (D_800B9A64 == 0) {
-        temp_s0 = arg1 & 0xFF;
-        M2C_FIELD(arg0, u8 *, 0xA9) = func_80014DC0(temp_s0);
-        M2C_FIELD(arg0, u16 *, 0xAA) = func_80014D68(temp_s0);
-        M2C_FIELD(arg0, u16 *, 0xAC) = func_80014D94(temp_s0);
-        temp_s0_2 = func_80014CF8(temp_s0, 4);
-        M2C_FIELD(arg0, u16 *, 0xAE) = (u16) ((temp_s0_2 & 0xFF) | ((func_80014CF8(temp_s0, 5) & 0xFF) << 8));
+        obj->kind = func_80014DC0(port);
+        obj->btn = func_80014D68(port);
+        obj->btn2 = func_80014D94(port);
+        lo = func_80014CF8(port, 4);
+        hi = func_80014CF8(port, 5);
+        obj->analog = lo | (hi << 8);
     } else {
-        M2C_FIELD(arg0, u8 *, 0xA9) = 0x41U;
-        func_800120DC(arg0 + 0xAA, arg0 + 0xAC);
+        obj->kind = 0x41;
+        func_800120DC(&obj->btn, &obj->btn2);
     }
-    if (M2C_FIELD(arg0, u8 *, 0x1C5) != 0) {
-        M2C_FIELD(arg0, u16 *, 0xAA) = 0U;
-        M2C_FIELD(arg0, u16 *, 0xAC) = 0U;
-        M2C_FIELD(arg0, u16 *, 0xAE) = 0x8080U;
+    if (obj->locked != 0) {
+        obj->btn = 0;
+        obj->btn2 = 0;
+        obj->analog = 0x8080;
     }
-    if (func_800CF8B4() == 0) {
-        temp_v1 = M2C_FIELD(arg0, u16 *, 0);
-        if ((temp_v1 != 0x1E) && (temp_v1 != 0x1A)) {
-            M2C_FIELD(arg0, u16 *, 0xAA) = 0U;
-            M2C_FIELD(arg0, u16 *, 0xAC) = 0U;
-            M2C_FIELD(arg0, u16 *, 0xAE) = 0x8080U;
+    if (func_800CF8B4() == 0 && obj->state != 0x1E && obj->state != 0x1A) {
+        obj->btn = 0;
+        obj->btn2 = 0;
+        obj->analog = 0x8080;
+    }
+    switch (obj->kind) {
+    case 0x53:
+    case 0x73:
+        if (obj->btn & 0xF000) {
+            obj->kind = 0x41;
         }
+        break;
+    case 0x41:
+        break;
     }
-    temp_v1_2 = M2C_FIELD(arg0, u8 *, 0xA9);
-    if (((temp_v1_2 == 0x53) || (((s32) temp_v1_2 >= 0x54) && (temp_v1_2 == 0x73))) && (M2C_FIELD(arg0, u16 *, 0xAA) & 0xF000)) {
-        M2C_FIELD(arg0, u8 *, 0xA9) = 0x41U;
-    }
-    if (M2C_FIELD(arg0, s32 *, 0x1B0) != 0) {
-        temp_a0 = M2C_FIELD(arg0, u16 *, 0xAA);
-        var_a2 = M2C_FIELD(arg0, u16 *, 0xAE);
-        temp_a1 = M2C_FIELD(arg0, u16 *, 0xAC);
-        M2C_FIELD(arg0, u16 *, 0xAA) = (u16) (((temp_a0 & 0x2000) * 4) | ((s32) (temp_a0 & 0x8000) >> 2) | (temp_a0 & 0x5FFF));
-        M2C_FIELD(arg0, u16 *, 0xAC) = (u16) (((temp_a1 & 0x2000) * 4) | ((s32) (temp_a1 & 0x8000) >> 2) | (temp_a1 & 0x5FFF));
-        temp_v1_3 = var_a2 & 0xFF;
-        if (temp_v1_3 != 0x80) {
-            var_a2 = (~temp_v1_3 & 0xFF) | (var_a2 & 0xFF00);
+    if (obj->remap != 0) {
+        a = obj->btn;
+        c = obj->analog;
+        b = obj->btn2;
+        obj->btn = ((a & 0x2000) << 2) | ((s32)(a & 0x8000) >> 2) | (a & 0x5FFF);
+        obj->btn2 = ((b & 0x2000) << 2) | ((s32)(b & 0x8000) >> 2) | (b & 0x5FFF);
+        k = c & 0xFF;
+        if (k != 0x80) {
+            c = (~k & 0xFF) | (c & 0xFF00);
         }
-        M2C_FIELD(arg0, u16 *, 0xAE) = var_a2;
+        obj->analog = c;
     }
 }

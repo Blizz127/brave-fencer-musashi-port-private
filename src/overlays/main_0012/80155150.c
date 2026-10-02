@@ -1,51 +1,58 @@
-/* Overlay range [80155150,801552F4) from MAIN.CD member 0012.
- * SHA256(span)=8c483e020b14e2fe42f0d1477c9416178a6b22c7ac60906e2cd9d7e5d794c5c6.
- * Word export for the native seam; the body below is an
- * UNVERIFIED draft, not an oracle match claim. */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Sets/clears the visibility bits of model parts 0x15/0x16/0x18/0x19 from the object's +0x44 state flags. */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+typedef struct {
+    u8 pad00[0x24];
+    u32 parts24;    /* 0x24: guest pointer to u32 part-flag table */
+} Model80155150;
 
-void func_8001D130(s32, s32);                /* extern */
-void func_8001D150(s32, s32);                /* extern */
-s32 func_8014BEF8(void *);                          /* static */
+typedef struct {
+    u8 pad00[0x20];
+    u32 model20;    /* 0x20: guest pointer to Model80155150 */
+    u8 pad24[0x20];
+    u32 flags44;    /* 0x44 */
+} Obj80155150;
 
-void func_80155150(void *arg0) {
-    s32 temp_v1;
+extern void func_8001D130(u32 *parts, s32 idx);
+extern void func_8001D150(u32 *parts, s32 idx);
+extern s32 func_8014BEF8(Obj80155150 *obj);
 
-    func_8001D150(M2C_FIELD(M2C_FIELD(arg0, void **, 0x20), s32 *, 0x24), 0x19);
-    func_8001D150(M2C_FIELD(M2C_FIELD(arg0, void **, 0x20), s32 *, 0x24), 0x18);
-    func_8001D150(M2C_FIELD(M2C_FIELD(arg0, void **, 0x20), s32 *, 0x24), 0x16);
-    func_8001D150(M2C_FIELD(M2C_FIELD(arg0, void **, 0x20), s32 *, 0x24), 0x15);
-    temp_v1 = M2C_FIELD(arg0, s32 *, 0x44);
-    if (!(temp_v1 & 0x400)) {
-        if (!(temp_v1 & 0x20000)) {
-            if (temp_v1 & 0x20000000) {
-                func_8001D130(M2C_FIELD(M2C_FIELD(arg0, void **, 0x20), s32 *, 0x24), 0x19);
-                goto block_7;
-            }
-            if (func_8014BEF8(arg0) != 0) {
-                func_8001D150(M2C_FIELD(M2C_FIELD(arg0, void **, 0x20), s32 *, 0x24), 0x19);
-                func_8001D130(M2C_FIELD(M2C_FIELD(arg0, void **, 0x20), s32 *, 0x24), 0x18);
-            } else {
-                func_8001D150(M2C_FIELD(M2C_FIELD(arg0, void **, 0x20), s32 *, 0x24), 0x19);
-block_7:
-                func_8001D150(M2C_FIELD(M2C_FIELD(arg0, void **, 0x20), s32 *, 0x24), 0x18);
-            }
+#define PARTS(o) ((u32 *)((Model80155150 *)(o)->model20)->parts24)
+
+void func_80155150(Obj80155150 *obj)
+{
+    u32 flags;
+
+    func_8001D150(PARTS(obj), 0x19);
+    func_8001D150(PARTS(obj), 0x18);
+    func_8001D150(PARTS(obj), 0x16);
+    func_8001D150(PARTS(obj), 0x15);
+
+    flags = obj->flags44;
+    if (flags & 0x400) {
+        return;
+    }
+    if (!(flags & 0x20000)) {
+        if (flags & 0x20000000) {
+            func_8001D130(PARTS(obj), 0x19);
+            func_8001D150(PARTS(obj), 0x18);
+        } else if (func_8014BEF8(obj)) {
+            func_8001D150(PARTS(obj), 0x19);
+            func_8001D130(PARTS(obj), 0x18);
+        } else {
+            func_8001D150(PARTS(obj), 0x19);
+            func_8001D150(PARTS(obj), 0x18);
         }
-        if (M2C_FIELD(arg0, s32 *, 0x44) & 0x10000000) {
-            func_8001D130(M2C_FIELD(M2C_FIELD(arg0, void **, 0x20), s32 *, 0x24), 0x16);
-            goto block_11;
-        }
-        func_8001D150(M2C_FIELD(M2C_FIELD(arg0, void **, 0x20), s32 *, 0x24), 0x16);
-        func_8001D130(M2C_FIELD(M2C_FIELD(arg0, void **, 0x20), s32 *, 0x24), 0x15);
-        if (M2C_FIELD(arg0, s32 *, 0x44) & 4) {
-block_11:
-            func_8001D150(M2C_FIELD(M2C_FIELD(arg0, void **, 0x20), s32 *, 0x24), 0x15);
+    }
+    if (obj->flags44 & 0x10000000) {
+        func_8001D130(PARTS(obj), 0x16);
+        func_8001D150(PARTS(obj), 0x15);
+    } else {
+        func_8001D150(PARTS(obj), 0x16);
+        func_8001D130(PARTS(obj), 0x15);
+        if (obj->flags44 & 4) {
+            func_8001D150(PARTS(obj), 0x15);
         }
     }
 }

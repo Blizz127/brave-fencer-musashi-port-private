@@ -1,40 +1,49 @@
-/* Overlay range [801758FC,801759D8) from MAIN.CD member 0012.
- * SHA256(span)=d44053038430db6f411e94bdee48e889582ddb028a98560ab513f2e6649c1668.
- * Word export for the native seam; the body below is an
- * UNVERIFIED draft, not an oracle match claim. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Splices display list 1 of the current buffer into its OT slot and bumps the slot's word count. */
 #include "psx_types.h"
-/* func_801758FC - byte-exact against retail at -O2 (tools/register_match.py). */
-typedef struct { u32 *f0; s32 pad[4]; } S_AE7BC_801758FC;
-typedef struct { s32 g0; s32 pad[2]; } S_AF634_801758FC;
-extern s16 D_800B9A02;
-extern short D_800B9A02;
-extern s32 (*D_801819EC[])(void *);
-extern u8  D_8011F7A8;
-extern u8 D_8011F7A8;
 
-s32 func_801758FC(void)
+typedef struct {
+    /* 0x00 */ u32 ot;
+    /* 0x04 */ u8 pad04[0x10];
+} Buf801758FC; /* 0x14 */
+
+typedef struct {
+    /* 0x00 */ s32 words;
+    /* 0x04 */ u8 pad04[0x8];
+} Cnt801758FC; /* 0x0C */
+
+typedef struct {
+    /* 0x00 */ u32 head[2];
+    /* 0x08 */ u32 tail[2];
+} List801758FC; /* 0x10 */
+
+typedef struct {
+    /* 0x00 */ u8 pad00[0x18];
+    /* 0x18 */ List801758FC list[3];
+} Ctx801758FC; /* 0x48 */
+
+typedef struct {
+    /* 0x00 */ u16 idx;
+} Cur801758FC;
+
+extern Cur801758FC D_800B9A02;
+extern Buf801758FC D_800AE7BC[];
+extern Cnt801758FC D_800AF634[];
+extern Ctx801758FC D_8011F7A8;
+
+void func_801758FC(void)
 {
-    extern s16 D_800B9A02;
-    extern S_AE7BC_801758FC D_800AE7BC[];
-    extern S_AF634_801758FC D_800AF634[];
-    extern u8 D_8011F7A8;
-    u8 *p = (u8 *)&D_8011F7A8;
-    u16 *q;
-    u32 *ptr;
-    u32 old;
-    u32 *p2;
-    q = (u16 *)&(*(u16 *)&D_800B9A02);
-    ptr = D_800AE7BC[*q].f0;
-    old = ptr[3];
-    ptr[3] = (old & 0xff000000) | (*(u32 *)(p + *q * 4 + 0x30) & 0xffffff);
-    __asm__("" ::: "memory");
-    p2 = *(u32 **)(p + *q * 4 + 0x28);
-    *p2 = (*p2 & 0xff000000) | (old & 0xffffff);
-    __asm__("" ::: "memory");
-    {
-        s32 acc = D_800AF634[*q].g0;
-        s32 t = *(s32 *)(p + *q * 4 + 0x28) - 0x14;
-        D_800AF634[*q].g0 = acc + ((*(s32 *)(p + *q * 4 + 0x30) - t) >> 2);
-    }
+    Ctx801758FC *c;
+    u32 *p;
+    u32 *q;
+    u32 v;
+
+    p = (u32 *)D_800AE7BC[D_800B9A02.idx].ot;
+    v = p[3];
+    p[3] = (v & 0xFF000000) | (D_8011F7A8.list[1].tail[D_800B9A02.idx] & 0xFFFFFF);
+    q = (u32 *)D_8011F7A8.list[1].head[D_800B9A02.idx];
+    *q = (*q & 0xFF000000) | (v & 0xFFFFFF);
+    c = &D_8011F7A8;
+    D_800AF634[D_800B9A02.idx].words +=
+        (s32)(c->list[1].tail[D_800B9A02.idx] + 0x14 - c->list[1].head[D_800B9A02.idx]) >> 2;
 }

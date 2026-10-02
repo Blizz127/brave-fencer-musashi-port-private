@@ -1,13 +1,19 @@
-/* Decompiled by m2c from main.s, then verified byte-exact
- * against retail by tools/match_function.py. Types and signatures are
- * whatever reproduces the bytes; they are not evidence of the
- * original declaration. */
-
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Decrements D_80078EC8 if nonzero, unless masked bits at +0x1F8 are set. */
 #include "psx_types.h"
+
+typedef struct {
+    u8 pad000[0x1F8];
+    u32 flags1F8;
+} Obj80165694;
+
 extern s32 D_80078EC8;
-typedef struct { u8 pad[0x1F8]; s32 u1F8; } T;
-void func_80165694(T *p) {
-    if ((p->u1F8 & 0x80FFFFFF) == 0 && D_80078EC8) {
-        D_80078EC8 = D_80078EC8 - 1;
+
+void func_80165694(Obj80165694 *obj)
+{
+    if ((obj->flags1F8 & 0x80FFFFFF) == 0) {
+        if (D_80078EC8 != 0) {
+            D_80078EC8--;
+        }
     }
 }
