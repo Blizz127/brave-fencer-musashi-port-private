@@ -1,5 +1,30 @@
 # BFM handover to Codex (2026-10-02)
 
+## Public documentation published, 2026-10-02
+
+The coordinator resolved the documentation-only public exception and explicitly
+permitted Linux publication when no qualified Windows artifact exists. Public r38
+README/setup and wiki are now **LIVE and verified**:
+
+- README: https://github.com/Blizz127/brave-fencer-musashi-decomp-port/blob/main/README.md
+- Setup: https://github.com/Blizz127/brave-fencer-musashi-decomp-port/blob/main/docs/SETUP.md
+- Dev menu: https://github.com/Blizz127/brave-fencer-musashi-decomp-port/wiki/Dev-Menu
+- Milestones: https://github.com/Blizz127/brave-fencer-musashi-decomp-port/wiki/Milestones
+
+Public docs main `831e5e889827693be9a1bea6a1145b3e0ef04cfc` changes only README and setup Markdown;
+wiki master `e2b2f10e0fa1fb519cc3c7f4db6eabc62617742a` changes only Home, Dev-Menu and Milestones.
+No private source/history was pushed. Release notes explicitly say Linux-only,
+name the outstanding Windows implementation/dependency/runtime work and link the
+guides. Runtime source, release tag target and both assets are unchanged.
+
+Five raw files matched local hashes, five rendered URLs returned200, remote heads
+matched, and fresh anonymous release asset downloads matched the existing size/SHA.
+Source/package reviews, local links and all29 warp labels passed. No runtime gates
+were duplicated; no owner game/desktop actions. Receipt:
+`~/release-staging/bfm-r38-public/public-docs/RECEIPT.txt`.
+Windows remains outstanding/unqualified. Codex yields after this release completion
+for efficient routing; no model switch is claimed. Native conversion stays open.
+
 ## Codex continuation, 2026-10-02 20:00 UTC
 
 Codex acknowledged task `df2840be6532` and is the sole writer. The forest
