@@ -4,6 +4,12 @@ Goal: "port and decompile more." Two strands, both landed.
 
 ## 1. Port: GTE control bank + camera CTC2 admission
 
+**Correction, 2026-10-02:** the SWC2 conclusion below was wrong. These two
+stores must read data IR3, not control 11. The change recorded here introduced
+camera/object matrix corruption and forest flicker. The identity-matrix test
+also encoded the wrong expectation; both are now corrected. See
+[regression and route evidence](../docs/FOREST-SWC2-2026-10-02.md).
+
 `pc_port/mips_formatter.c`:
 
 - The two light-matrix SWC2 stores (`80048E98` word `E88B0010`,

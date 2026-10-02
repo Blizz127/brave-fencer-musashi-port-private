@@ -174,6 +174,10 @@ profile gained the vector slots 2..6 for the LWC2 loads and IRGB (28), which
 goes through the vendor helper because it unpacks into IR1..IR3 rather than
 storing a raw word.
 
+The two-site control-bank exception was mistakenly restored in September.
+The [2026-10-02 forest correction](FOREST-SWC2-2026-10-02.md) removes it again,
+with an independent identity-matrix expectation and a wrong-bank mutant test.
+
 **Site tables that follow the wired ranges.** `gte_bank_site`, `lwc2_site`,
 `swc2_site`, `gte_exported_srav_site`, `merge_kind_for` and the load-successor
 tables are now regenerated from the wired ranges by

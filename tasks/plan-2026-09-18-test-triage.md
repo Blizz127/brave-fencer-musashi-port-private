@@ -94,6 +94,12 @@ decision, not a test change.
 
 ### 6. Residual behavioral failures — 9 tests (not touched)
 
+**Correction, 2026-10-02:** the `camera_body` expectation below was invalid:
+SWC2 reads data IR3, and the identity multiplication should produce 37, not
+the lighting-control sentinel `55667788`. Treating that assertion as a
+runtime defect caused a later regression. See the
+[corrected tests and forest evidence](../docs/FOREST-SWC2-2026-10-02.md).
+
 These are real behavioral mismatches, not test rot; they predate this session
 and the previous one (the earlier "39 failures were compile timeouts" reading
 was incomplete — with the include cache the probes compile and the assertions
