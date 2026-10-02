@@ -777,3 +777,47 @@ overlay calls, and the run is byte-identical to the all-overlay-denied run
 (DEVOBS, PAD_TRACE, RAM). So every other overlay entry is timing-exact; the
 overlay divergence is entirely the disclosed fixed-charge residual, and it
 changes no gameplay result (FMV, village, attract).
+
+## O2: main_0012 clean-room scene functions (port `bf958679df`..`ea46c584a2`)
+
+68 clean-room main_0012 functions (rederive B15-B17, merge-back `bf958679df`,
+allow list `b6aac50405`). The first runner gate (`b6aac50405`, 55 admitted)
+found two problems:
+
+- **void-ABI bugs** (the `800D2454` class): main `80013294`, `80013328`,
+  `80013450` return `func_80047D3C`'s s32 result, `80015954`/`80015978` return
+  `u16 arg0[2]`/`arg0[5]`; main_0012 scene code reads v0 after those jals.
+  They were native in the shipped private r30 with v0 stale. Fixed in
+  `183341fa55` (byte-exact either way). `1a8f25dcaa` holds the handler tables
+  of `80162b1c`/`80165ca0`/`8017849c` as u32 guest words (layout rule).
+  `f7442de48d` stops the abi rule counting an `lwl`/`lwr` pair as a v0 read.
+  The 10 sources match in decomp (`b7d4d990e0`) and rederive (`a584b42`):
+  verify_registry MATCH 10/10, check_no_retail_data 0.
+- **`801463A0` "native body ran on modified bytes"**: a probe bug, not a
+  guard bug. Any host fault in a negative case was reported as the native
+  body running. With the byte flipped, `801463A0` ran interpreted; its
+  unflipped native callee `80155150` read through `obj->model == 0` in the
+  synthetic state (host address `0x24`, the KUSEG gap of D-013 (4)).
+  `ea46c584a2` classifies faults as the main probe does (`mirror_fault`,
+  `wrap_fault`, anything else fails the function) and judges a negative case
+  by whether the entry under test ran.
+
+Release lane at `ea46c584a2`: main 540/592, overlay 82/92 (main_0003 23/24,
+main_0012 59/68; refused: `8012f14c` hooks, `801379fc` irq, `8014a59c` ub,
+`801508f8` compile, `80147514`/`8014bde8`/`80154418`/`80154be4`/`80165e90`
+escape, i.e. a host stack address passed to a thunked callee).
+
+### O2 runner gate (job `20261002-061724-bfm-o2-ea46c584a2`)
+
+Evidence `1dd6b7ea...c091` (matched by readback); package `e09e5c7e...5e8e`.
+
+| Gate | Result |
+|---|---|
+| overlay probe main_0012 | 59 entries, same 102, different 0, negative_ok 59/59, mirror_fault 51, fault 0, functions_bad 0; cycles 40 functions same, 0 different |
+| overlay probe main_0003 | 23 entries, same 10, different 0, negative_ok 23/23, mirror_fault 6, fault 0, functions_bad 0 |
+| lane-wide probe | 440 verified, 0 bad; cycles 359 same, 0 different |
+| targeted (B14) | 8001FB8C 2626 same, 80020DA4 4500 same, 0 different |
+| village 1010 | warp at vblank 416, MDEC 1852, tick `0ae0`, display 70196/76800; overlay verified 68,147 (was 67,351), recheck_failed 0 |
+| village traced | identical to the village leg |
+| village, all 92 overlay PCs denied | identical outcome (MDEC 1852, tick `0ae0`, display) |
+| attract, 480 s | timed out (SIGTERM) at tick `2765`, MDEC 5556, on a runner shared with 3 other jobs (the `b6aac50405` gate reached its terminal refusal at tick `3aca`, MDEC 7408). The `pc=8004255c` refusals are the SIGTERM teardown; re-run with 1500 s pending |
