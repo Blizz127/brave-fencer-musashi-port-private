@@ -673,3 +673,80 @@ Tests: `tests/test_lane_cycles.py`, 13 cases.
   needed).
 - A generator run whose report carries the gate statuses with admission
   unchanged.
+
+## D-011 phases 2b/2c: ledger, deadline guard, `800D2A24` native (branch `claude/d011-cycles`)
+
+**What runs.** Each admitted function whose mapping succeeded (440 of 481: 420
+main + 20 `main_0003`; the host intrinsics among them charge 0) is built from
+an instrumented -O0 module:
+- A per-function product state (select chains that -O2 folds wherever the state
+  is static) adds the mapped retail cost of each segment to `musashi_lane_ledger`
+  at every event, plus the division idioms' data-dependent extras.
+- Every rule of the generator still runs on the uninstrumented module. The
+  instrumented one must keep the same definitions and guest calls.
+- `musashi_native_guest_call` flushes the ledger before the callee runs.
+  `lane_try` flushes it at return and charges the fixed 2 × words only for
+  unmapped bodies.
+- Deadline guard: the clock's deadline query (`musashi_execution_clock_set_deadline`; native_boot `lane_deadline`:
+  the lazy epoch's device deadline, available with the lazy epoch off too, or 0
+  when an IRQ is deliverable) sets `musashi_lane_budget`. A charge that reaches
+  it calls `musashi_native_lane_tick` with the function's segment table. The tick
+  charges the clock up to the retail instruction where the deadline falls and runs
+  the interpreter's checkpoint there: retail pc, delay-slot state, the same CPU
+  identity, at most once per instruction.
+- An IRQ left deliverable by a guest call's return is delivered at the call's
+  retail resume pc (`musashi_lane_resume_pc`).
+- Guest calls from native code run the callee at the retail stack pointer
+  (`musashi_lane_sp_adj`, the native frames' retail sizes).
+
+**Two findings on the way.**
+1. **Host intrinsics charge 0 in the interpreter.** The interpreter answers the
+   6 host-intrinsic PCs with host code that charges no guest time, so the lane-off
+   baseline is 0 there, and their native bodies now charge 0.
+2. **The `800D2A24` FMV cut was not a timing bug.** `800D2454`'s clean-room C was
+   typed `void`, but its caller (800D1F68) branches on v0 after the jal, and the
+   retail words leave `800D2A24`'s result there. Interpreted, `800D2A24` left that
+   result in v0 through the thunk; natively, v0 held 8004657C's.
+   - What ruled out timing: with the guard in strict mode (a checkpoint before
+     every retail instruction) the FMV was still cut, and with the retail stack
+     pointer fixed it still was.
+   - Fix: `800D2454` now returns `func_800D2A24`'s result. The old and new C both
+     match retail byte-exact (31/31 words, `build_candidate.py`).
+   - New generator rule `abi`: a void-typed function whose retail caller reads
+     v0/v1 after the jal, before writing it (`void_result_readers`: main EXE and
+     configured overlay members; jalr callers not covered), is refused. It hits
+     nothing in the current set. With the old C it hits 800D2454 (caller 800D1F68).
+
+**Oracle (no-march local build).**
+
+| Probe | Result |
+|---|---|
+| lane-wide RAM (unchanged) | 440 verified, 0 different |
+| lane-wide cycles (interpreter clock vs ledger at every non-lane entry and at return; 5 argument patterns, 2 of them negative for the division paths) | 359 same, 0 different, 61 not comparable |
+| ... `structural` mappings / division adjustments / node-split | 16 same, 4 not comparable / 7, 1 / 198, 55 |
+| mutation: division extras zeroed | 6 functions different (80010A08, 80015AD0, 80029CD4 and three callers), so the paths are exercised |
+| targeted B14 cycles | 8001D388 2685/0, 8001FB8C 2626/0, 80020DA4 4500/0 (same/different) |
+| overlay `main_0003` cycles | 3 same, 0 different, 16 not comparable (interpreter admission covers 9 of 22) |
+| guard (32 deadline schedules, an IRQ handler cost inside each checkpoint) | 356 same, 0 different, 64 not comparable; 117,922 mid-native checkpoints |
+| lane-wide cycles with `MUSASHI_LANE_GUARD_STRICT=1` | 359 same, 0 different |
+
+**Local village 1010 warp.** No-march RelWithDebInfo lane build, guest clock,
+unthrottled, the O1 smoke's environment and input script; 12-thread devbox,
+4 legs in parallel.
+
+| Leg | MDEC transfers | Warp request / arrival | Stop tick | Display | Wall |
+|---|---|---|---|---|---|
+| `800D2A24` native | 1852 | vblank 2207 / 416 | `0ae0` | 70196/76800 | 348 s |
+| `MUSASHI_NATIVE_LANE_DENY=800d2a24` | 1852 | 2207 / 416 | `0ae0` | 70196/76800 | 358 s |
+| native + `MUSASHI_EPOCH_LAZY_CHECK=1` | 1852 | 2207 | `0ae0` | 70196/76800 | 444 s, no `LAZY_CHECK_FAILED` |
+| native + `MUSASHI_EPOCH_LAZY=0` | 1852 | 2207 / 416 | `0ae0` | 70196/76800 | 1,264 s; IRQ deliveries 11,235; guard and ledger counters identical to the lazy legs |
+
+The native leg logged: IRQ deliveries 11,235 (the O1 baseline's lane-on count),
+`ledger lost=0`, guard ticks 12,277, mid-native checkpoints 11,185, deadline
+unknown in 154,815 of 4,756,786 refreshes. Every unknown case is the CD drive/DMA state not being at the epoch's cycle
+(the CD path owns that time; the lazy epoch counts the same states as unsettled).
+Checkpointing every instruction there would be the test-only strict mode, so
+those stretches run without mid-body checkpoints (D-011 residual 5).
+
+Not run here: the runner gates (village/attract, B14 native vs DENY identity at
+lazy 0/1, O1 overlay vs deny-all identity) on the x86-64-v3 release binary.
