@@ -71,7 +71,7 @@ for pkg in libsdl2-2.0-0 libopenal1 libssl3t64 zlib1g; do
     [ -f "/usr/share/doc/$pkg/copyright" ] && cp "/usr/share/doc/$pkg/copyright" "$stage/licenses/$pkg-copyright"
 done
 # The Debian copyright files point at common-licenses; ship the texts.
-for text in LGPL-2.1 GPL-2; do
+for text in LGPL-2.1 GPL-2 GPL-3 Apache-2.0; do
     [ -f "/usr/share/common-licenses/$text" ] && cp "/usr/share/common-licenses/$text" "$stage/licenses/$text.txt"
 done
 openal_version=$(dpkg-query -W -f='${Version}' libopenal1 2>/dev/null || echo unknown)

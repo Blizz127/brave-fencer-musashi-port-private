@@ -19,6 +19,29 @@ GitHub/bucket/channel readback and launcher Private upgrade detection passed.
 Receipt: `~/release-staging/bfm-r37/RECEIPT.txt`. r34 is rollback; r35/r36 remain
 held and unpublished. B18 stays deferred; the native-only milestone remains open.
 
+**Public r38 is now LIVE**, published 2026-10-02T21:35:28Z on the owner's
+explicit public-release instruction (Devbox message `ca58a91adbc1c261`):
+https://github.com/Blizz127/brave-fencer-musashi-decomp-port/releases/tag/bfm-r38-61c60516d
+It promotes the exact qualified r37 runtime: both executables, all libraries
+and `launch.sh` are unchanged. Only package identity/docs and dependency
+license/source material changed. Public tarball is 9,647,813 bytes, SHA
+`6b2f95732a2da966bfd876d478bf1b7a4464258a236b75be4990739d7a0a831a`.
+Both assets passed anonymous readback; GitHub Latest and launcher Public
+upgrade selection passed. Receipt: `~/release-staging/bfm-r38-public/RECEIPT.txt`.
+Private remains r37; all rollback builds remain available. The public tag
+targets the existing sanitized snapshot `ec620c78dd5f68a166f6565f7c2d8539e9c378a0`,
+while the runtime source is `61c60516d18bf6402e6dbd937d8c8d18ebd1af4b`;
+this source-snapshot limitation is explicit in the public notes. Never push
+the private development tree/history to that public repository.
+
+Public packaging requires the full Apache and GPL3 texts plus corresponding
+OpenAL source and Debian patches (r38 includes them under `licenses/`). The
+32-byte public content scan checked 788 references: 54 short matches were
+retained and classified as generic sequences, address metadata or licensed
+PsyCross diagnostics; zero unresolved. Private RAM/card/capture evidence is
+excluded. The completed r37 inn save/cold Continue gate supersedes the earlier
+pending report; no runtime gates were duplicated for this unchanged runtime.
+
 The established publisher worktree is restored at
 `~/dev/banshee-realm-client-private-builds`, branch `claude/private-port-builds`,
 commit `75c5f42bb22895bbd2abaed54b628379f1482423`. Both publisher scripts and
