@@ -25,6 +25,14 @@ were duplicated; no owner game/desktop actions. Receipt:
 Windows remains outstanding/unqualified. Codex yields after this release completion
 for efficient routing; no model switch is claimed. Native conversion stays open.
 
+The follow-up read-only Windows audit is complete; the short report is
+[Windows portability summary](docs/WINDOWS-PORTABILITY-SUMMARY-2026-10-02.md).
+No new compiler invocation, download, install or runner access was used.
+No Windows runner is authorized, the occupied Alienware is excluded, and the
+coordinator is obtaining the owner's decision before any new toolchain/dependency
+installation. Public r38 was read back and still explicitly says Windows is
+unavailable. Preserve this decision boundary for the next implementation turn.
+
 ## Codex continuation, 2026-10-02 20:00 UTC
 
 Codex acknowledged task `df2840be6532` and is the sole writer. The forest

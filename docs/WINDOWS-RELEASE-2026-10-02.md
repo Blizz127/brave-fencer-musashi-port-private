@@ -39,15 +39,16 @@ and asked to identify an authorized, unoccupied Windows verification route.
    with licenses/source obligations preserved. Keep target libraries separate
    from the Linux host libraries.
 2. Parameterize `tools/native_lane_gen.py`'s hardcoded
-   `x86_64-unknown-linux-gnu` target and connect the matching compiler/archive
-   tools through CMake. Verify COFF/Win64 ABI and unchanged admission policy;
+   `x86_64-unknown-linux-gnu` target, including the empty-object path, and
+   verify CMake's existing compiler/archive plumbing for the Windows target.
+   Verify COFF/Win64 ABI and unchanged admission policy;
    a Windows CMake toolchain alone currently still generates Linux objects.
 3. Implement shared Windows guest memory and scratchpad alias mapping in
    `musashi_native_lane_map_guest`, retaining the guard page and refusal
    semantics. Replace Linux `memfd_create`/`mmap` and native-boot
    `mprotect`/`sigaction` fault handling with validated Windows equivalents.
-4. Make X11/glibc interposition Linux-only; supply the Windows SDL entrypoint
-   and necessary environment/path/filesystem wrappers. Preserve the existing
+4. Make X11/glibc interposition Linux-only; select and validate Windows SDL
+   entrypoint handling and necessary environment/path/filesystem wrappers. Preserve the existing
    Windows APPDATA storage intent. Fix Windows card replacement's current
    remove-then-rename sequence before qualifying save safety.
 5. Build the complete game target, verify imports and package contents, and
@@ -60,3 +61,17 @@ Linux headers, and it would discard the qualified gameplay coverage. Do not
 publish a renamed Linux binary, the platform-name probe, or an untested game
 binary as Windows support. Public notes must continue to disclose the hybrid
 runtime and known refusal/coverage limits on either platform.
+
+## Coordinator constraints and audit completion
+
+The coordinator confirmed no known authorized Windows runner/toolchain on
+2026-10-02. blizzpc is Linux without MinGW/Wine/Zig in PATH; the Alienware
+is occupied and excluded. No new compiler, library, Wine or container may
+be installed before the owner's decision. The devbox's existing Zig binary
+was identified from its symlink; this follow-up reused saved probe logs and
+read source only, without invoking a compiler or accessing a runner.
+
+See [short portability report](WINDOWS-PORTABILITY-SUMMARY-2026-10-02.md) for
+build requirements and possible runtime qualification after authorization.
+The public r38 release was read back and still explicitly says Windows is
+unavailable. This audit does not establish Windows gameplay compatibility.
