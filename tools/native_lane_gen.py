@@ -1412,6 +1412,25 @@ def _gpr_writes(w):
     return set()
 
 
+def _unaligned_pair_target(w, w2):
+    """Target register when w, w2 are an lwl/lwr pair (either order) that loads
+    one unaligned word into a register: same target rt, same base rs (distinct
+    from rt, so the first load does not move the base), and offsets o+3 (lwl)
+    / o (lwr). Such a pair fully defines rt whatever the alignment. Otherwise
+    None (a lone lwl/lwr keeps its conservative read of rt)."""
+    ops = (w >> 26, w2 >> 26)
+    if sorted(ops) != [34, 38]:
+        return None
+    rs, rt = (w >> 21) & 31, (w >> 16) & 31
+    if (w2 >> 21) & 31 != rs or (w2 >> 16) & 31 != rt or rs == rt:
+        return None
+    off = lambda x: x & 0xFFFF
+    lwl, lwr = (w, w2) if ops[0] == 34 else (w2, w)
+    if off(lwl) != (off(lwr) + 3) & 0xFFFF:
+        return None
+    return rt
+
+
 def _is_transfer(w):
     op = w >> 26
     return op in (1, 2, 3, 4, 5, 6, 7) or (op == 0 and w & 63 in (8, 9))
@@ -1437,6 +1456,16 @@ def void_result_readers(target, blobs):
                 if stop is not None and j > stop:
                     break
                 x = words[j]
+                pair = (_unaligned_pair_target(x, words[j + 1])
+                        if j + 1 < n and stop is None and x >> 26 in (34, 38) else None)
+                if pair is not None:
+                    # lwl+lwr of one word: reads only the base, writes rt fully
+                    if (x >> 21) & 31 in live:
+                        hits.append(base + 4 * j)
+                        break
+                    live.discard(pair)
+                    j += 2
+                    continue
                 if _gpr_reads(x) & live:
                     hits.append(base + 4 * j)
                     break

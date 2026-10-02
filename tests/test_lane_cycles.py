@@ -273,6 +273,32 @@ class VoidResultRule(unittest.TestCase):
             self.assertEqual(g.void_result_readers(callee, self.blob(words)), [], words)
 
 
+class UnalignedPairRule(VoidResultRule):
+    """lwl+lwr of one word to v0 defines v0; a lone or mismatched one reads it."""
+
+    def lw(self, op, rt, rs, off):
+        return (op << 26) | (rs << 21) | (rt << 16) | (off & 0xFFFF)
+
+    def readers(self, *mid):
+        callee = 0x80200000
+        words = [jal(callee), NOP, *mid, NOP, JR_RA, NOP]
+        return g.void_result_readers(callee, self.blob(words))
+
+    def test_pair_is_write(self):
+        self.assertEqual(self.readers(self.lw(34, 2, 5, 3), self.lw(38, 2, 5, 0),
+                                      addiu(4, 2, 0)), [])
+        self.assertEqual(self.readers(self.lw(38, 2, 5, 0), self.lw(34, 2, 5, 3),
+                                      addiu(4, 2, 0)), [])
+
+    def test_lone_lwl_is_read(self):
+        self.assertEqual(self.readers(self.lw(34, 2, 5, 3)), [BASE + 8])
+
+    def test_mismatched_pair_is_read(self):
+        self.assertEqual(self.readers(self.lw(34, 2, 5, 3), self.lw(38, 3, 5, 0)), [BASE + 8])
+        self.assertEqual(self.readers(self.lw(34, 2, 5, 3), self.lw(38, 2, 6, 0)), [BASE + 8])
+        self.assertEqual(self.readers(self.lw(34, 2, 5, 3), self.lw(38, 2, 5, 1)), [BASE + 8])
+
+
 def exe_words(vram, size):
     exe = g.MAIN_EXE
     if not exe.exists():
