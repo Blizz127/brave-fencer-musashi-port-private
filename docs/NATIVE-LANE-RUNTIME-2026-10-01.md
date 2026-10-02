@@ -750,3 +750,30 @@ those stretches run without mid-body checkpoints (D-011 residual 5).
 
 Not run here: the runner gates (village/attract, B14 native vs DENY identity at
 lazy 0/1, O1 overlay vs deny-all identity) on the x86-64-v3 release binary.
+
+### D-011 runner gates on the release binary (port `d2ab318b7f`)
+
+Job `20261002-052918-bfm-d011-d2ab318b7f` (evidence `36e97e67...c9e`, matched by
+readback; executable `7cb2f8ec...c1a6`, x86-64-v3; retail guard 7/0; 481/524
+admitted, the ledger on 440, overlay 23/24 with `800D2A24` native):
+
+| Gate | Result |
+|---|---|
+| Intro FMV, `800D2A24` native | `MDEC transfers=1852` (identical with `DENY=800d2a24`); stop tick `0ae0`; display 70196/76800 |
+| B14 native vs `DENY=8001d388,8001fb8c,80020da4`, `EPOCH_LAZY=1` | DEVOBS byte-identical, PAD_TRACE identical, full 2 MiB RAM at the stop identical |
+| the same at `EPOCH_LAZY=0` | DEVOBS, PAD_TRACE and RAM identical |
+| native lazy=1 vs lazy=0 | DEVOBS identical |
+| overlay lane vs all 24 overlay PCs denied | differs (DEVOBS line 906,505) -> attributed below |
+| attract | same terminal refusal (`STEP_REFUSED pc=800495ec`), MDEC 7408, overlay `recheck_failed=0`, ledger `lost=0` |
+
+Before D-011 the same B14 comparison diverged at DEVOBS record 1,371,000, so
+these gates show the ledger makes guest time 1:1 with the interpreter for the
+mapped functions.
+
+Attribution, job `20261002-054235-bfm-d011attr-d2ab318b7f` (evidence
+`4a74e84c...bcf5`): denying only `800cf104` (main_0003, a `switch`, one of the
+41 fixed-charge functions, run natively 57 times on the route) leaves 158 native
+overlay calls, and the run is byte-identical to the all-overlay-denied run
+(DEVOBS, PAD_TRACE, RAM). So every other overlay entry is timing-exact; the
+overlay divergence is entirely the disclosed fixed-charge residual, and it
+changes no gameplay result (FMV, village, attract).
