@@ -13764,7 +13764,8 @@ uint32_t musashi_native_guest_call(uint32_t target, unsigned argc,
         unsigned long step;
         for (step = 0; cpu->pc != UINT_MAX; ++step)
             if (step >= FORMATTER_STEP_LIMIT || !formatter_step(active->memory, cpu))
-                longjmp(active->abort, 4);
+                /* a nested lane call's host stop stays a stop */
+                longjmp(active->abort, cpu->pc == UINT_MAX && cpu->npc == UINT_MAX ? 5 : 4);
     }
     /* A host stop request parks both pc and npc at UINT_MAX; a real return
      * leaves npc just past the sentinel. Do not swallow the stop. */
@@ -13806,6 +13807,9 @@ static int memcard_pc(uint32_t pc) {
         return 0;
     }
 }
+
+static int g_lane_last_abort;
+int musashi_native_lane_last_abort(void) { return g_lane_last_abort; }
 
 static int lane_try(MusashiBootMemory *memory, FormatterCpu *cpu) {
     const MusashiNativeLaneEntry *entry;
@@ -13852,6 +13856,11 @@ static int lane_try(MusashiBootMemory *memory, FormatterCpu *cpu) {
             outcome = entry->fn(&call) ? 1 : 0;
         } else {
             outcome = -1;
+            g_lane_last_abort = code;
+            /* A host stop is a stop, not a refusal: park it at the sentinel
+             * (as the checkpoint does) so the enclosing run ends with it.
+             * A mid-native checkpoint's stop restored pc/npc; re-park. */
+            if (code == 5) cpu->pc = cpu->npc = UINT_MAX;
             /* 3/4/5: a guest call from native code refused or stopped;
              * 6: musashi_native_lane_abort (e.g. a trapping divisor);
              * 7: an overlay frame's bytes changed under a guest call;
@@ -13911,7 +13920,11 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
     if ((g_lane_count || g_lane_ovl_count) && lane_pc_maybe(cpu->pc)) {
         int lane = lane_try(memory, cpu);
         if (lane > 0) return 1;
-        if (lane < 0) return formatter_refuse0(__LINE__, cpu->pc);
+        if (lane < 0) {
+            /* a host stop parked at the sentinel: the run loop ends it */
+            if (cpu->pc == UINT_MAX && cpu->npc == UINT_MAX) return 0;
+            return formatter_refuse0(__LINE__, cpu->pc);
+        }
     }
     if (cpu->pc == 0x80128158u) {
         static int last_sc01 = -1, last_sc02 = -1;
@@ -15229,6 +15242,21 @@ static MusashiResetGraphPrefixStatus run_startup_cpu_loop(
             return MUSASHI_RESETGRAPH_PREFIX_INVALID_INPUT;
         }
         if (cpu->gte_load_pending && !gte_load_successor_pc(cpu->pc)) {
+            /* A host stop (SIGTERM, SDL quit, a test stop) parks pc and npc
+             * at the sentinel in the checkpoint just above. Landing between
+             * an MFC2/CFC2 and its admitted successor it is still a stop,
+             * not a stray pending load: end the run as the sentinel check
+             * below does, so a guest call from native code reports the stop
+             * (lane abort 5) instead of a refusal (abort 4). The process is
+             * stopping; the abandoned load is not retired. Checked only
+             * inside this rare branch: no per-step cost. (r32 smoke: SIGTERM
+             * at 8004B6C0 under func_8001FB8C read as RUN_REFUSED.) */
+            if (cpu->pc == UINT_MAX && cpu->npc == UINT_MAX) {
+                stop->call_address = 0;
+                stop->target_address = UINT_MAX;
+                *result = (int32_t)cpu->r[2];
+                return MUSASHI_RESETGRAPH_PREFIX_COMPLETE;
+            }
             if (refusal_trace())
                 fprintf(stderr, "native_boot: RUN_REFUSED pc=%08x why=gte-load-pending next=%08x reg=%d\n",
                         cpu->pc, cpu->gte_load_next_pc, cpu->gte_load_reg);
@@ -15502,6 +15530,13 @@ static MusashiResetGraphPrefixStatus run_startup_cpu_loop(
             if (!formatter_call(memory, cpu, sink, &console))
                 return MUSASHI_RESETGRAPH_PREFIX_INVALID_INPUT;
         } else if (!formatter_step(memory, cpu)) {
+            if (cpu->pc == UINT_MAX && cpu->npc == UINT_MAX) {
+                /* a native-lane call stopped by the host (abort 5) */
+                stop->call_address = 0;
+                stop->target_address = UINT_MAX;
+                *result = (int32_t)cpu->r[2];
+                return MUSASHI_RESETGRAPH_PREFIX_COMPLETE;
+            }
             return MUSASHI_RESETGRAPH_PREFIX_INVALID_INPUT;
         }
     }
@@ -17039,7 +17074,18 @@ int musashi_native_lane_reference_call_checkpoint(MusashiBootMemory *memory, uin
                                                   int (*checkpoint)(void *, const void *),
                                                   void *userdata) {
     return lane_reference_call(memory, target, args, argc, sp, use_lane, regs, clock,
-                               checkpoint, userdata, NULL);
+                               checkpoint, userdata, NULL) == 1;
+}
+
+int musashi_native_lane_reference_call_device(MusashiBootMemory *memory, uint32_t target,
+                                              const uint32_t *args, unsigned argc,
+                                              uint32_t sp, int use_lane, uint32_t regs[32],
+                                              const MusashiExecutionClock *clock,
+                                              int (*checkpoint)(void *, const void *),
+                                              void *userdata,
+                                              const MusashiCpuTransferDevice *transfer) {
+    return lane_reference_call(memory, target, args, argc, sp, use_lane, regs, clock,
+                               checkpoint, userdata, transfer);
 }
 
 int musashi_native_lane_reference_call_transfer(MusashiBootMemory *memory, uint32_t target,
@@ -17048,7 +17094,7 @@ int musashi_native_lane_reference_call_transfer(MusashiBootMemory *memory, uint3
                                                 const MusashiExecutionClock *clock,
                                                 const MusashiCpuTransferDevice *transfer) {
     return lane_reference_call(memory, target, args, argc, sp, use_lane, regs, clock,
-                               NULL, NULL, transfer);
+                               NULL, NULL, transfer) == 1;
 }
 
 static int lane_reference_call(MusashiBootMemory *memory, uint32_t target,
@@ -17084,7 +17130,8 @@ static int lane_reference_call(MusashiBootMemory *memory, uint32_t target,
                              NULL, NULL, NULL);
     g_lane_suspended -= !use_lane;
     memcpy(regs, cpu.r, 32u * sizeof regs[0]);
-    return status == MUSASHI_RESETGRAPH_PREFIX_COMPLETE && cpu.npc != UINT_MAX;
+    if (status != MUSASHI_RESETGRAPH_PREFIX_COMPLETE) return 0;
+    return cpu.npc != UINT_MAX ? 1 : 2;   /* 2: a checkpoint's host stop */
 }
 
 MusashiResetGraphPrefixStatus musashi_boot_execute_source_call(

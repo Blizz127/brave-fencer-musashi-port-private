@@ -240,6 +240,20 @@ int musashi_native_lane_reference_call_transfer(MusashiBootMemory *memory, uint3
                                                 const MusashiExecutionClock *clock,
                                                 const MusashiCpuTransferDevice *transfer);
 
+/* ... with both a checkpoint and a transfer device. Returns 1 when the call
+ * returned, 2 when a checkpoint requested a host stop (pc and npc parked at
+ * the sentinel), 0 when it was refused. */
+int musashi_native_lane_reference_call_device(MusashiBootMemory *memory, uint32_t target,
+                                              const uint32_t *args, unsigned argc,
+                                              uint32_t sp, int use_lane, uint32_t regs[32],
+                                              const MusashiExecutionClock *clock,
+                                              int (*checkpoint)(void *, const void *),
+                                              void *userdata,
+                                              const MusashiCpuTransferDevice *transfer);
+/* The abort code of the most recent aborted lane call (0: none yet):
+ * 4 a guest call refused, 5 a host stop during a guest call, ... */
+int musashi_native_lane_last_abort(void);
+
 /* Executed-path tracer (MUSASHI_TRACE_FUNCS=path). Called by the formatter
  * for jal/jalr targets and CPU dispatch entries; exposed for host routers
  * that enter guest code without a jal. kind: 'j' jal, 'r' jalr, 'd' entry. */
