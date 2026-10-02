@@ -19,9 +19,14 @@ GitHub/bucket/channel readback and launcher Private upgrade detection passed.
 Receipt: `~/release-staging/bfm-r37/RECEIPT.txt`. r34 is rollback; r35/r36 remain
 held and unpublished. B18 stays deferred; the native-only milestone remains open.
 
-The old publisher worktree was removed. The established publisher is retained
-unchanged at `~/release-staging/bfm-r37/publisher/`, exported from launcher
-commit `75c5f42bb22895bbd2abaed54b628379f1482423`. Codex remains the sole writer.
+The established publisher worktree is restored at
+`~/dev/banshee-realm-client-private-builds`, branch `claude/private-port-builds`,
+commit `75c5f42bb22895bbd2abaed54b628379f1482423`. Both publisher scripts and
+`ports.json` were verified byte-for-byte against the unchanged export used for
+r37, retained at `~/release-staging/bfm-r37/publisher/`. The coordinator's delayed
+r36 publication request is superseded by r37: r36 failed the attract gate, and
+r37 fixes that earlier stop. r30-r34 remain available for rollback.
+Codex remains the sole writer.
 The historical handover below describes the state before this investigation.
 
 Owner decision (relayed by the Devbox Coordinator): the BFM port, decompilation and builds
@@ -42,7 +47,7 @@ to `Blizz127/brave-fencer-musashi-port-private` (remote `port-private`).
 
 - Receipts: `~/release-staging/bfm-r3{1,2,3,4}/RECEIPT.txt`; channel snapshots
   `brave-fencer-musashi-channel-before-*.json` and `-bfm-rNN-*.json` next to them.
-- Publish recipe: `~/release-staging/bfm-r37/publisher/scripts/publish-private-port-build.py
+- Publish recipe: `~/dev/banshee-realm-client-private-builds/scripts/publish-private-port-build.py
   musashi <tarball> <build-id> --commit <FULL sha, pushed to port-private> --sha256 <sha>
   --notes NOTES.md --known-issue ...` (dry-run first). Verify: upload sha, channel
   readback, launcher `PortUpdatePolicy` revision upgrade (rN -> rN+1).
