@@ -574,3 +574,102 @@ reverted) were all detected:
 Release x86-64-v3 confirmation: job `20261002-010328-bfm-b14diff-aa251b2123`
 (evidence `3363c01a...a672`). Identical counts, 0 different. The lane-wide probe
 gives 440 functions verified, 0 different.
+
+## D-011 phase 2a: retail cycle model and mapping, report only (branch `claude/d011-cycles`)
+
+Goal of D-011: a native-lane call should charge the guest time the interpreted
+retail words would, on the path actually run. Today it charges a fixed
+`2 * words` at return. Phase 2a builds the cost model and the mapping and
+**only reports**. Admission, the generated table (byte-identical to the base
+build) and every runtime charge are unchanged.
+
+- **G1** (`tools/lane_cycles.py`): decodes each function's retail words (from
+  the user's own extract) into segments. A segment is a straight run, followed
+  through unconditional jumps, that ends at a conditional branch, a call, the
+  return or a trap. Its cost uses the interpreter's own rule (`formatter_step`:
+  2 per instruction, +1 load/store, LWL/LWR 3, SWL/SWR 4, delay slots counted).
+  gcc's divide checks (`bnez rt; break 7`, the `-1`/`0x80000000` overflow
+  check) and the signed divide-by-power-of-two bias (`bgez x; addiu x,2^k-1`)
+  are folded into their segment. Their data-dependent extra cost (+4 for a
+  divisor of -1, +2 for a negative dividend) is recorded so that 2b can charge
+  it at run time. Checks: VSync(mode < 0) is 64 cycles, the same as the S2 hand
+  count. `800D2A24` costs 25 cycles to its first Setloc call and 21 per retry.
+- **G2**: a product walk of the clang -O0 CFG (after symbol rewriting, before
+  optimisation) against the retail CFG.
+  - Calls (callee and order) and the return are anchors.
+  - A clang branch pairs with the next retail branch, with the polarity taken
+    from the two predicates (equality / signed / unsigned family, direction,
+    strict constant). The definer is followed through single-predecessor
+    blocks and the predecessor's delay slot.
+  - A clang branch with no retail counterpart is transparent (gcc's
+    branch-free set-on-compare idioms).
+  - A loop header entered from outside may be folded: gcc dropped the first
+    test, so the exit arm is dead on that first evaluation.
+  - Undecidable pairings are searched with backtracking. All complete,
+    consistent product graphs are enumerated and ranked by how much they lean
+    on pairings the predicates do not support; the best-ranked ones must
+    charge identical costs, else the function is refused as ambiguous.
+  - Consistency means: every reachable retail branch and call is covered, and
+    no product cycle is free of retail cost.
+
+  This is a heuristic, not translation validation. The oracle (interpreter
+  clock vs native ledger, at each thunk and at return) is the first item of
+  phase 2b.
+
+**Release own-code set** (`--own-code-only`, 480 admitted = 458 main + 22
+`main_0003`):
+
+| Retail shape | Mapped | Refused |
+|---|---|---|
+| straight-line | 122 | 0 |
+| straight-line with calls | 133 | 0 |
+| acyclic (37 without calls, 95 with) | 118 | 14 |
+| loops (45 without calls, 40 with) | 66 | 19 |
+| retail CFG refused (guest jump table `jr $2`) | 0 | 8 |
+| **total** | **439** | **41** |
+
+Refusal reasons (the admitted functions that a phase-2b rule `cycles` would
+hold out):
+- 21 `switch` (3 of them in `main_0003`: `800CF104`, `800D0268`, `800D0740`);
+- 8 jump tables;
+- 7 retail-only loops: gcc's inline struct-copy loops against clang's
+  `memcpy`, `80029274` and kin;
+- 2 ambiguous;
+- 3 other (`80018F20`, `8002C3B0`, `80038FC4`).
+
+Caveats on the mapped set:
+- Of the 439, 20 rely on at least one pairing that the search decided rather
+  than the predicates (`structural` > 0 in `report.json`).
+- 268 have a clang block reached at more than one retail pc, which 2b
+  node-splits.
+- 8 carry a data-dependent division adjustment (6 `div_m1`, 2 `sdiv_pow2`).
+- 251 of the 255 straight-line functions have an exact path cost different
+  from today's `2 * words` charge. Example: `80020DA4` is 222, today 200.
+
+**Gate functions.**
+
+| Function | Status | Notes |
+|---|---|---|
+| `800D2A24` | mapped | Still `deny`; analysed anyway; 25/21 |
+| `800D2454` | mapped | Calls cost 24, 4, 9, 15, 4; return 18; total 74 (today 62) |
+| `8001D388` | mapped | 23 / 32 / 41 / 52 per failed guard; 56 + 9 through the jalr (today 58 on every path) |
+| `8001FB8C` | mapped | |
+| `80020DA4` | mapped | 222 |
+
+**Hot route functions.** Top 20 generated-lane entries by native calls on the
+O1 village traced leg; direct native-to-native calls are not counted. 18 are
+mapped. `80031BE0` (2,750 calls, switch) and `8001AF34` (1,456, jump table) are
+refused.
+
+Tests: `tests/test_lane_cycles.py`, 13 cases.
+- The cost rule.
+- Call and return costs of a straight-line function.
+- A folded bottom-tested loop is charged exactly (4 iterations: 52).
+- Refusals: call order, retail-only branch, ambiguous polarity, switch and
+  jump table.
+- Predicate-decided polarity.
+- The division folds.
+- VSync = 64 and `800D2A24` 25/21, retail walk and product graph (extract
+  needed).
+- A generator run whose report carries the gate statuses with admission
+  unchanged.

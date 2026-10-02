@@ -66,6 +66,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import lane_cycles  # noqa: E402  (D-011 retail cycle model, report only)
 RAM_LO, RAM_HI = 0x80010000, 0x80200000
 HOST_TARGET = "x86_64-unknown-linux-gnu"
 def host_long(text):
@@ -1090,17 +1092,45 @@ OVERLAY_DENY = {
 }
 
 
+def retail_words(vram, size, info=None):
+    """The function's retail words from the user's own extract, or None."""
+    words = [guest_word(vram + i, info) for i in range(0, size, 4)]
+    return None if any(w is None for w in words) else words
+
+
+def cycle_analysis(ir, entry, vram, size, info):
+    """D-011 phase 2a: the retail cycle model and the clang/retail mapping
+    for one function. Report only: it changes no admission and no charge."""
+    member = info["member"] if info else None
+    words = retail_words(vram, size, info)
+    if words is None:
+        return dict(shape=None, status="refused", reason="retail words unavailable")
+    res = lane_cycles.analyse(ir, "lane_" + qualify(member, entry["name"]), vram, words)
+    res["today_cost"] = 2 * (size // 4)
+    return res
+
+
 def build_one(entry, out, symbols, hooks, clang, info=None):
     vram, size, src = entry["vram"], entry["size"], ROOT / entry["source"]
     name = entry["name"]
     member = info["member"] if info else None
     tag = f"{member}_{vram:08x}" if member else f"{vram:08x}"
     work = out / "ir"
+    cycles = None
+    denied = None
     try:
         if vram in DENY and not info:
-            raise Reject("deny", DENY[vram])
+            denied = DENY[vram]
         if info and (info["member"], vram) in OVERLAY_DENY:
-            raise Reject("deny", OVERLAY_DENY[(info["member"], vram)])
+            denied = OVERLAY_DENY[(info["member"], vram)]
+        if denied:
+            # Still analysed for the cycle report (a held-out function's
+            # mapping status is part of D-011); it stays refused.
+            try:
+                cycles = deny_cycle_analysis(entry, out, symbols, clang, info)
+            except Exception as e:  # report only: never fail the build
+                cycles = dict(shape=None, status="refused", reason=f"analysis: {e}")
+            raise Reject("deny", denied)
         for pc, kind in hooks.items():
             if not vram <= pc < vram + size:
                 continue
@@ -1142,6 +1172,7 @@ def build_one(entry, out, symbols, hooks, clang, info=None):
             ir, symbols, member, info["code"] if info else ())))
         sub = work / f"{tag}.sub.ll"
         sub.write_text(rewritten)
+        cycles = cycle_analysis(rewritten, entry, vram, size, info)
         opt = work / f"{tag}.opt.ll"
         # No auto-vectorisation or unrolling: their splat and remainder idioms
         # (insertelement poison, phi poison) trip
@@ -1181,11 +1212,64 @@ def build_one(entry, out, symbols, hooks, clang, info=None):
             raise Reject("overlay", "extent outside the member file")
         return dict(name=name, qname=qualify(member, name), member=member, vram=vram, size=size,
                     source=entry["source"], admitted=True, obj=str(obj), defs=sigs, stubs=stubs,
-                    icalls=icalls, digest=digest)
+                    icalls=icalls, digest=digest, cycles=cycles)
     except Reject as e:
         return dict(name=name, qname=qualify(member, name), member=member, vram=vram, size=size,
                     source=entry["source"], admitted=False, rule=e.rule, detail=e.detail,
-                    digest=member_digest(info, vram, size) if info else None)
+                    digest=member_digest(info, vram, size) if info else None, cycles=cycles)
+
+
+def deny_cycle_analysis(entry, out, symbols, clang, info):
+    """The -O0 compile and symbol rewrite of build_one, for a denied entry,
+    feeding only the cycle analysis."""
+    vram, size, src = entry["vram"], entry["size"], ROOT / entry["source"]
+    member = info["member"] if info else None
+    tag = f"{member}_{vram:08x}" if member else f"{vram:08x}"
+    work = out / "ir"
+    raw = src.read_text(errors="replace")
+    stripped = strip_empty_asm(host_long(host_source(raw)))
+    if stripped is None:
+        return dict(shape=None, status="refused", reason="analysis: empty asm with an untied output")
+    compile_src = work / f"{tag}.deny.host.c"
+    compile_src.write_text(stripped[0])
+    o0 = work / f"{tag}.deny.O0.ll"
+    r = run([clang, *CFLAGS, "-O0", "-Xclang", "-disable-O0-optnone", "-S", "-emit-llvm",
+             "-I", str(ROOT / "include"), "-I", str(src.parent), str(compile_src), "-o", str(o0)])
+    if r.returncode:
+        return dict(shape=None, status="refused", reason="analysis: compile failed")
+    rewritten = lower_arith(narrow_pointer_cells(rewrite_symbols(
+        o0.read_text(), symbols, member, info["code"] if info else ())))
+    return cycle_analysis(rewritten, entry, vram, size, info)
+
+
+CYCLE_CLASSES = (("straight", ("straight",)), ("straight+call", ("straight+call",)),
+                 ("acyclic", ("acyclic", "acyclic+call")), ("loop", ("loop", "loop+call")))
+
+
+def cycle_summary(results):
+    """Mapped/refused counts per retail shape over the admitted functions, the
+    refusal reasons, and the admitted functions phase 2b would refuse."""
+    by_shape, by_class, reasons, would = {}, {}, {}, []
+    for r in results:
+        c = r.get("cycles")
+        if not r["admitted"] or not c:
+            continue
+        shape = c.get("shape") or "unknown"
+        ok = c["status"] == "mapped"
+        d = by_shape.setdefault(shape, dict(mapped=0, refused=0))
+        d["mapped" if ok else "refused"] += 1
+        cls = next((k for k, v in CYCLE_CLASSES if shape in v), "unknown")
+        d = by_class.setdefault(cls, dict(mapped=0, refused=0))
+        d["mapped" if ok else "refused"] += 1
+        if not ok:
+            key = re.split(r" at | \(|:", c.get("reason") or "?")[0]
+            reasons[key] = reasons.get(key, 0) + 1
+            would.append(dict(vram=f"{r['vram']:08x}", member=r["member"], shape=shape,
+                              reason=c.get("reason")))
+    order = [k for k, _ in CYCLE_CLASSES] + ["unknown"]
+    return dict(by_class={k: by_class[k] for k in order if k in by_class},
+                by_shape=dict(sorted(by_shape.items())), refusal_reasons=reasons,
+                would_refuse=would)
 
 
 def psyq_hooked(hooks):
@@ -1624,7 +1708,9 @@ def main():
     for r in results:
         if not r["admitted"]:
             rules[r["rule"]] = rules.get(r["rule"], 0) + 1
+    cycles = cycle_summary(results)
     report = dict(candidates=len(results), admitted=len(admitted), rejected_by_rule=rules,
+                  cycles=cycles,
                   psyq_excluded=len(psyq_excluded),
                   psyq_hooked=[f"{pc:08x}" for pc in blocked],
                   call_stubs=dict(direct=direct, interpreter_thunk=thunk,
@@ -1649,6 +1735,9 @@ def main():
     print(f"native lane: {len(admitted)}/{len(results)} game functions admitted "
           f"({len(psyq_excluded)} PsyQ-range candidates excluded); rejected {rules}; "
           f"call stubs direct={direct} thunk={thunk} (hook-site thunks {hook_thunk})")
+    print("native lane cycles (D-011, report only): " + ", ".join(
+        f"{k} {v['mapped']}/{v['mapped'] + v['refused']}" for k, v in cycles["by_class"].items())
+          + f"; {len(cycles['would_refuse'])} admitted would be refused (rule cycles)")
     ovl_admitted = sum(1 for a in admitted if a.get("member"))
     print(f"native lane overlay: {ovl_admitted}/{len(ovl_results)} admitted from {sorted(infos)}"
           + "".join(f"; {r['member']} {r['vram']:08x} {r['rule']}" for r in ovl_results if not r["admitted"]))
