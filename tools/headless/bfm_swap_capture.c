@@ -5,6 +5,8 @@
  *   BFM_CAPTURE_DIR          output directory (required; the shim is inert
  *                            without it)
  *   BFM_CAPTURE_EVERY        also write PNGs every N frames (default 600)
+ *   BFM_CAPTURE_PNG_IN_WINDOWS  1: also write the PNG (and VRAM) of every frame inside
+ *                            the BFM_CAPTURE_OT_FRAMES windows
  *   BFM_CAPTURE_VRAM_OFFSET  hex offset of PsyCross's `vram` array (1024x512
  *                            16-bit) in the executable (from `nm`); when set,
  *                            the full VRAM is written next to each frame PNG
@@ -79,6 +81,7 @@ static PixelStoreFn pixel_store;
 static const char *dir;
 static FILE *log_file;
 static unsigned long frame, every = 600;
+static int png_in_windows; /* BFM_CAPTURE_PNG_IN_WINDOWS=1: also PNG+VRAM every frame inside BFM_CAPTURE_OT_FRAMES */
 static uintptr_t vram_addr;
 static int last_lit = -1, ready;
 static struct timespec t0;
@@ -108,6 +111,7 @@ static void init(void) {
     ready = -1;
     if (!(dir = getenv("BFM_CAPTURE_DIR")) || !dir[0]) return;
     if ((e = getenv("BFM_CAPTURE_EVERY")) && atol(e) > 0) every = (unsigned long)atol(e);
+    if ((e = getenv("BFM_CAPTURE_PNG_IN_WINDOWS")) && e[0] == '1') png_in_windows = 1;
     if ((e = getenv("BFM_CAPTURE_VRAM_OFFSET")) && e[0]) {
         uintptr_t base = 0;
         dl_iterate_phdr(first_object, &base);
@@ -385,7 +389,7 @@ static void capture(SDL_Window *w) {
                 (double)(t.tv_sec - t0.tv_sec) + (t.tv_nsec - t0.tv_nsec) / 1e9, lit, width, height);
         fflush(log_file);
     }
-    if ((int)(lit > 0) != last_lit || frame % every == 0) {
+    if ((int)(lit > 0) != last_lit || frame % every == 0 || (png_in_windows && in_window_now())) {
         char path[1024];
         /* GL rows are bottom-up; PNG wants top-down, RGB */
         if ((flip = (uint8_t *)malloc((size_t)width * height * 3)) != NULL) {
