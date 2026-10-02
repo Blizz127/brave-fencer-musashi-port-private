@@ -56,7 +56,7 @@ extern void func_8013E370(void);
 void func_8017849C(void)
 {
     Obj8017849C *obj;
-    void (**tbl)(Obj8017849C *);
+    u32 *tbl;
     s32 i;
 
     obj = D_801202A0;
@@ -73,11 +73,11 @@ void func_8017849C(void)
         obj->prevPos.x.w = obj->pos.x.w;
         obj->prevPos.y.w = obj->pos.y.w;
         obj->prevPos.z.w = obj->pos.z.w;
-        tbl = (void (**)(Obj8017849C *))D_8011DB08;
+        tbl = (u32 *)D_8011DB08; /* guest handler table: u32 elements, cast at use */
         if (obj->altA != 0 && obj->altB != 0) {
             func_80130D0C(obj);
         } else {
-            tbl[obj->type](obj);
+            ((void (*)(Obj8017849C *))tbl[obj->type])(obj);
         }
         if (obj->child != 0) {
             ((Child8017849C *)obj->child)->x = obj->pos.x.h.hi + obj->offX;

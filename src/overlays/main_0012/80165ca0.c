@@ -53,7 +53,7 @@ void func_80165CA0(void)
     slot = D_8011D030;
     for (; i < 30; i++, slot++) {
         if (slot->kind != 0) {
-            ((void (**)(Slot80165CA0 *))D_80126728)[slot->kind](slot);
+            ((void (*)(Slot80165CA0 *))((u32 *)D_80126728)[slot->kind])(slot); /* guest handler table: u32 elements, cast at use */
         }
     }
     for (i = 0; i < 30; i++) {

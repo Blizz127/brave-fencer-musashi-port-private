@@ -48,14 +48,14 @@ extern void func_80162CC4(Slot80162B1C *slot);
 
 void func_80162B1C(void)
 {
-    void (**table)(Slot80162B1C *);
+    u32 *table;
     void (*fn)(Slot80162B1C *);
     Slot80162B1C *slot;
     Target80162B1C *t;
     Sub80162B1C *sub;
     s32 i;
 
-    table = (void (**)(Slot80162B1C *))D_80126D40;
+    table = (u32 *)D_80126D40; /* guest table of handler pointers: held as u32, cast at use */
     for (i = 0; i < 20; i++) {
         slot = &D_8011F9D0[i];
         slot->prevX = slot->x;
@@ -64,7 +64,7 @@ void func_80162B1C(void)
         if (slot->kind == 0) {
             continue;
         }
-        fn = table[slot->kind - 1];
+        fn = (void (*)(Slot80162B1C *))table[slot->kind - 1];
         if (fn != 0) {
             fn(slot);
         } else {
