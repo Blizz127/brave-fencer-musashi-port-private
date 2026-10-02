@@ -972,14 +972,16 @@ class GpuControllerTests(unittest.TestCase):
 
     def test_gp0_gouraud_polyline_terminator_in_colour_slot(self):
         # 0x58: c0|cmd, v0, c1, v1, c2, v2, terminator (colour position).
-        # A vertex that looks like a terminator is still a vertex.
-        # Its segments are 1024+ wide and not drawn (psx-spx), so the only
-        # pixels come from the last in-range segment (16,16)-(0,16).
+        # A vertex that looks like a terminator is still a vertex: v1 is
+        # 0x50005000, which as signed 11-bit coordinates (psx-spx; the upper
+        # bits are ignored) is (0,0). So the segments are (0,0)-(0,0),
+        # (0,0)-(16,16) and (16,16)-(0,16).
         stored = self._polyline([0x580000F8, 0x00000000, 0x0000F800, 0x50005000,
                                  0x00F80000, 0x00100010, 0x000000F8, 0x00100000,
                                  0x50005000])
         self.assertFalse(self.controller.poly_active)
-        self.assertEqual({(x, y) for x, y, _ in stored}, {(x, 16) for x in range(17)})
+        self.assertEqual({(x, y) for x, y, _ in stored},
+                         {(x, 16) for x in range(17)} | {(i, i) for i in range(17)})
         self.assertEqual(self.write(0xE1000000), 1)
 
     def test_gp0_line_clipped_to_drawing_area(self):
@@ -998,6 +1000,41 @@ class GpuControllerTests(unittest.TestCase):
         self.assertTrue(self.controller.poly_active)
         self.assertEqual(self.write(0x01000000, GPUSTAT), 1)
         self.assertFalse(self.controller.poly_active)
+
+    def _flat_tri(self, v0, v1, v2):
+        stored = []
+        self.store_cb = STORE(lambda _, x, y, p: stored.append((x, y)) or 1)
+        self.controller.backend.store_vram = self.store_cb
+        self.assertEqual(self.write(0xE3000000), 1)
+        self.assertEqual(self.write(0xE407FFFF), 1)  # drawing area to 1023, 511
+        for w in (0x2000F800, v0, v1, v2):
+            self.assertEqual(self.write(w), 1)
+        return stored
+
+    def test_gp0_triangle_too_large_is_not_drawn(self):
+        # psx-spx: a polygon whose vertices are 1024+ apart horizontally or
+        # 512+ vertically is not rendered (games rely on it for polygons that
+        # cross the camera plane). 1023 wide / 511 tall still draws.
+        def xy(x, y):
+            return ((y & 0xFFFF) << 16) | (x & 0xFFFF)
+        self.assertEqual(self._flat_tri(xy(0, 0), xy(1024, 0), xy(0, 8)), [])
+        self.setUp()
+        self.assertEqual(self._flat_tri(xy(0, 0), xy(8, 0), xy(0, 512)), [])
+        self.setUp()
+        self.assertEqual(self._flat_tri(xy(-500, 0), xy(524, 4), xy(0, 8)), [])
+        self.setUp()
+        self.assertNotEqual(self._flat_tri(xy(0, 0), xy(1023, 0), xy(0, 8)), [])
+        self.setUp()
+        self.assertNotEqual(self._flat_tri(xy(0, 0), xy(8, 0), xy(0, 511)), [])
+
+    def test_gp0_vertex_coordinates_are_signed_11_bit(self):
+        # The upper five bits of each coordinate halfword are ignored:
+        # 0xF808 is x = 8 and 0x07FF is x = -1 (psx-spx).
+        a = self._flat_tri(0x00000000, 0x0000F808, 0x00080000)
+        self.setUp()
+        b = self._flat_tri(0x00000000, 0x00000008, 0x00080000)
+        self.assertEqual(sorted(a), sorted(b))
+        self.assertNotEqual(a, [])
 
     def test_gp0_poly_f4_flat_quad_five_words(self):
         for opcode in (0x28, 0x29, 0x2A, 0x2B):
