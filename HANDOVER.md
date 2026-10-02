@@ -11,8 +11,9 @@ presents**, versus 22/647 before (mash) and 10/647 before (idle). Captured
 formerly dark frames show the forest and player. Evidence, limits and corrections
 to the initial hypotheses below: [forest investigation](docs/FOREST-SWC2-2026-10-02.md).
 
-r34 remains live. Prepare a new r36 from held `release/r35` plus this narrow
-fix; publication still requires the packaged release gates. B18 stays deferred.
+r34 remains live. r36 passed forest/village/save checks but is held for a newly
+reached packed-coordinate path in attract. r37 adds its narrow merge admission;
+regression and packaged release gates remain pending. B18 stays deferred.
 The historical handover below describes the state before this investigation.
 
 Owner decision (relayed by the Devbox Coordinator): the BFM port, decompilation and builds
