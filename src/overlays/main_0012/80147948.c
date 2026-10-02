@@ -1,29 +1,15 @@
-/* Overlay range [80147948,8014799C) from MAIN.CD member 0012.
- * SHA256(span)=b8162a120ca51f9d3e10eae932a8a61cc292f8faead422f3517ca2e93f1459ce.
- * Word export for the native seam; the body below is an
- * UNVERIFIED draft, not an oracle match claim. */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Adds delta to the signed 32-bit value at offset 0x24 of the object and clamps it to [-limit, limit]. */
 #include "psx_types.h"
-#include "m2c_macros.h"
 
-/* m2c draft from main_0012.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
-
-void func_80147948(void *arg0, s32 arg1, s32 arg2) {
-    s32 temp_v0;
-    s32 temp_v1;
-
-    temp_v0 = M2C_FIELD(arg0, s32 *, 0x24) + arg1;
-    M2C_FIELD(arg0, s32 *, 0x24) = temp_v0;
-    if (arg1 < 0) {
-        temp_v1 = -arg2;
-        if (temp_v1 >= temp_v0) {
-            M2C_FIELD(arg0, s32 *, 0x24) = temp_v1;
-            return;
-        }
+void func_80147948(u8 *obj, s32 delta, s32 limit) {
+    s32 v = *(s32 *)(obj + 0x24) + delta;
+    *(s32 *)(obj + 0x24) = v;
+    if (delta < 0 && v <= -limit) {
+        *(s32 *)(obj + 0x24) = -limit;
+        return;
     }
-    if ((arg1 > 0) && (M2C_FIELD(arg0, s32 *, 0x24) >= arg2)) {
-        M2C_FIELD(arg0, s32 *, 0x24) = arg2;
+    if (delta > 0 && *(s32 *)(obj + 0x24) >= limit) {
+        *(s32 *)(obj + 0x24) = limit;
     }
 }

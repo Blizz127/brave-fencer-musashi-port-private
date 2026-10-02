@@ -1,47 +1,37 @@
-/* Overlay range [8014FFDC,80150150) from MAIN.CD member 0012.
- * SHA256(span)=38ce7ed37ba95ad398e2d7698414eff5266772650b9ce1c78524b7162508be88.
- * Word export for the native seam; the body below is an
- * UNVERIFIED draft, not an oracle match claim. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_8014FFDC - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Scans the actor table for an active, targetable entry whose probe lands lower than the current best; stores that probe and the default marker. */
 #include "psx_types.h"
 
-/* File-scope declarations from the vendor translation unit. */
-typedef struct { s16 unk0, unk2, unk4, unk6; } Vec8_c1;
+typedef struct {
+    s16 x;
+    s16 y;
+    s16 z;
+    s16 w;
+} V8;
 
-/* func_8014FFDC — shared body (overlay slot 0x80128158, h_exact 8e65f9ef). ONE source: instantiated by #include at each
- * member's site in address order; the members are recorded in config/dedup.us.yaml (Phase 35). */
-extern s32 func_80135D20(s32 a0, s32 a1, void *a2);
-s32 func_8014FFDC(s32 e, void *a1, void *a2) {
-    extern u8 D_801202A0[];
-    extern u8 D_80126720[];
-    extern u8 D_801152A8[];
-    Vec8_c1 save;
-    Vec8_c1 test;
+extern u8 D_801202A0[];
+extern V8 D_801152A8;
+extern s32 func_80135D20(u32 a, u32 b, V8 *probe);
+
+s32 func_8014FFDC(void *unused, V8 *best, V8 *out) {
+    V8 cur;
+    V8 probe;
+    u8 *e;
     s32 found;
-    u8 *p;
     found = 0;
-    __builtin_memcpy(&save, a1, 8);
-    *(s16 *)((s32)a1 + 2) = 0x7fff;
-    p = D_801202A0;
-    if (p < p + 0x6480) {
-        do {
-            if (*(u16 *)p != 0) {
-                if ((*(u16 *)(p + 0x5C) & 0x400) != 0) {
-                    if (*(s32 *)(p + 0x58) != 0) {
-                        test = save;
-                        if (func_80135D20(*(s32 *)(p + 0x20), *(s32 *)(p + 0x58), &test) != 0) {
-                            found = 1;
-                            if (test.unk2 < *(s16 *)((s32)a1 + 2)) {
-                                __builtin_memcpy(a1, &test, 8);
-                                __builtin_memcpy(a2, D_801152A8, 8);
-                            }
-                        }
-                    }
+    cur = *best;
+    best->y = 0x7FFF;
+    for (e = D_801202A0; e < D_801202A0 + 0x6480; e += 0x10C) {
+        if (*(u16 *)e != 0 && (*(u16 *)(e + 0x5C) & 0x400) != 0 && *(u32 *)(e + 0x58) != 0) {
+            probe = cur;
+            if (func_80135D20(*(u32 *)(e + 0x20), *(u32 *)(e + 0x58), &probe) != 0) {
+                found = 1;
+                if (probe.y < best->y) {
+                    *best = probe;
+                    *out = D_801152A8;
                 }
             }
-            p += 0x10C;
-        } while (p < D_80126720);
+        }
     }
     return found;
 }

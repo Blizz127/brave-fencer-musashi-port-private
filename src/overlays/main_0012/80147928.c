@@ -1,15 +1,9 @@
-/* Decompiled by m2c from main_0012.s, then verified byte-exact
- * against retail by tools/match_function.py. Types and signatures are
- * whatever reproduces the bytes; they are not evidence of the
- * original declaration. */
-
-/* Decompiled by m2c from main.s, then verified byte-exact
- * against retail by tools/match_function.py. Types and signatures are
- * whatever reproduces the bytes; they are not evidence of the
- * original declaration. */
-
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Calls func_80147948 with a clamp limit of 0x1F0000. */
 #include "psx_types.h"
-void func_80147948();
-void func_80147928(void *a, void *b) {
-    func_80147948(a, b, 0x1F0000);
+
+extern void func_80147948(void *obj, s32 delta, s32 limit);
+
+void func_80147928(void *obj, s32 delta) {
+    func_80147948(obj, delta, 0x1F0000);
 }

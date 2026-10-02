@@ -1,14 +1,12 @@
-/* Decompiled by m2c from main.s, then verified byte-exact
- * against retail by tools/match_function.py. Types and signatures are
- * whatever reproduces the bytes; they are not evidence of the
- * original declaration. */
-
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Copies six signed bytes into two triples of halfwords. */
 #include "psx_types.h"
-void func_801485B8(s8 *src, s16 *xy, s16 *uv) {
-    xy[0] = src[0];
-    xy[1] = src[1];
-    xy[2] = src[2];
-    uv[0] = src[3];
-    uv[1] = src[4];
-    uv[2] = src[5];
+
+void func_801485B8(s8 *src, s16 *dst0, s16 *dst1) {
+    dst0[0] = src[0];
+    dst0[1] = src[1];
+    dst0[2] = src[2];
+    dst1[0] = src[3];
+    dst1[1] = src[4];
+    dst1[2] = src[5];
 }

@@ -1,19 +1,12 @@
-/* Decompiled by m2c from main.s, then verified byte-exact
- * against retail by tools/match_function.py. Types and signatures are
- * whatever reproduces the bytes; they are not evidence of the
- * original declaration. */
-
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Returns 0 if flags 0x404 are set in the word at 0x44, otherwise whether bit 0x80 is set in the halfword at 0xAC. */
 #include "psx_types.h"
-typedef struct {
-    u8 pad[0x44]; s32 flags;
-    u8 pad48[0x64]; u16 uAC;
-} T;
-s32 func_80149AA8(T *p) {
-    if ((p->flags & 0x404) != 0) {
-        return 0;
-    }
-    if (p->uAC & 0x80) {
-        return 1;
+
+s32 func_80149AA8(u8 *obj) {
+    u32 t;
+    if ((*(u32 *)(obj + 0x44) & 0x404) == 0) {
+        t = *(u16 *)(obj + 0xAC) & 0x80;
+        return t != 0;
     }
     return 0;
 }
