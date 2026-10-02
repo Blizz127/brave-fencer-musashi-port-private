@@ -23455,7 +23455,7 @@
       "optimization": "-O2",
       "recovery": "c",
       "extent": "function",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": "owner re-derivation, clean room (bfm-rederive a099235), clean input set (asm+m2c+owner headers)"
     },
     {
       "name": "func_80161B18",
