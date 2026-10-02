@@ -24,6 +24,11 @@ set(MUSASHI_LANE_HOST_TARGET "x86_64-windows-gnu" CACHE STRING "")
 # build's GCC has no sanitizer; match it.
 set(CMAKE_C_FLAGS_INIT "-fno-sanitize=undefined")
 set(CMAKE_CXX_FLAGS_INIT "-fno-sanitize=undefined")
+# zig links with /DEBUG unless stripped, and lld-link then defaults to
+# /OPT:NOREF: unreferenced COMDATs stay, among them LIBGTE's rcossin table,
+# which equals the game's own (retail_guard). The Linux build drops it with
+# --gc-sections; a stripped link gets /OPT:REF.
+set(CMAKE_EXE_LINKER_FLAGS_INIT "-s")
 
 # Programs (python, clang for the lane generator) come from the build host;
 # libraries and headers only from the Windows dependency prefixes.
