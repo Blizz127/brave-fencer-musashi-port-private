@@ -1,6 +1,6 @@
 #include "musashi_boot_memory.h"
 
-#include <openssl/evp.h>
+#include "platform/bfm_plat_sha256.h"
 #include <string.h>
 
 uint8_t *musashi_boot_ram_span(MusashiBootMemory *memory,
@@ -70,12 +70,14 @@ int musashi_boot_map_exe(MusashiBootMemory *memory, const uint8_t *exe,
         0x72, 0x96, 0xbd, 0x4b, 0xac, 0x29, 0xc8, 0x5b,
         0x8b, 0xf7, 0xbb, 0x9d, 0xb3, 0x49, 0x71, 0x4a
     };
-    uint8_t digest[EVP_MAX_MD_SIZE];
-    unsigned int digest_size = 0;
+    uint8_t digest[32];
+    BfmPlatSha256 sha;
     if (!memory || !exe || exe_size != 0x65000u)
         return 0;
-    if (EVP_Digest(exe, exe_size, digest, &digest_size, EVP_sha256(), NULL) != 1 ||
-        digest_size != sizeof(expected) || memcmp(digest, expected, sizeof(expected)))
+    bfm_plat_sha256_init(&sha);
+    bfm_plat_sha256_update(&sha, exe, exe_size);
+    bfm_plat_sha256_final(&sha, digest);
+    if (memcmp(digest, expected, sizeof(expected)))
         return 0;
 
     memmove(memory->bytes + 0x10000u, exe + 0x800u, 0x64800u);

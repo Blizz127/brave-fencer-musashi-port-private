@@ -1,6 +1,6 @@
 #include "musashi_disc_media.h"
 
-#include <openssl/evp.h>
+#include "platform/bfm_plat_sha256.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -28,14 +28,15 @@ static int hex_value(char value) {
 
 static int sha256_matches(const unsigned char *data, size_t size,
                           const char *expected_hex) {
-    unsigned char digest[EVP_MAX_MD_SIZE];
-    unsigned int digest_size = 0;
+    unsigned char digest[32];
+    BfmPlatSha256 sha;
     size_t i;
 
-    if (!data || !expected_hex || strlen(expected_hex) != 64u ||
-        EVP_Digest(data, size, digest, &digest_size, EVP_sha256(), NULL) != 1 ||
-        digest_size != 32u)
+    if (!data || !expected_hex || strlen(expected_hex) != 64u)
         return 0;
+    bfm_plat_sha256_init(&sha);
+    bfm_plat_sha256_update(&sha, data, size);
+    bfm_plat_sha256_final(&sha, digest);
     for (i = 0; i < 32u; ++i) {
         int high = hex_value(expected_hex[i * 2u]);
         int low = hex_value(expected_hex[i * 2u + 1u]);

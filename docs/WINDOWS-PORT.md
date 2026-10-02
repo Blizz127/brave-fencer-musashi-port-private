@@ -42,8 +42,41 @@ Measured on 402cf86301.
 | Card replace | `bfm_plat_storage.c:382` | `rename(tmp, path)` (atomic) | The current `_WIN32` branch removes the old card *then* renames, which loses the save if a crash lands in between. Use `MoveFileExW(tmp, path, MOVEFILE_REPLACE_EXISTING \| MOVEFILE_WRITE_THROUGH)` |
 | Timing | `bfm_plat_timing.c` | `clock_gettime(CLOCK_MONOTONIC)`, `nanosleep` | `_WIN32` branch exists. Verify it uses QPC and a high-resolution waitable timer, not 15.6 ms `Sleep` granularity (this is a frame-pacing risk) |
 | SHA-256 | `boot_memory.c`, `bios_exception.c`, `native_boot.c` | OpenSSL `EVP_Digest`/`SHA256` | Switch to the in-tree `bfm_plat_sha256.c`, which removes OpenSSL from both targets. Linux digests must be byte-identical (unit test against the OpenSSL output) |
-| `long` width | 70 sites in `pc_port` | LP64 (64-bit) | LLP64 (32-bit). Audit every `long` that holds a host pointer or size; `uintptr_t`/`size_t` instead |
-| Native-lane target | `tools/native_lane_gen.py:80` `HOST_TARGET`, `-fPIE`, `nm`, `ar` | x86_64-unknown-linux-gnu ELF | `--host-target x86_64-windows-gnu`; drop `-fPIE`; `llvm-nm`/`llvm-ar` (or `zig ar`). Windows lane IR differs (LLP64, Win64 CC), so **lane parity is re-proven on Windows output, never inherited from Linux** |
+| `long` width | 70 sites in `pc_port` | LP64 (64-bit) | LLP64 (32-bit). Host code: audit any `long` holding a pointer or size. Lane code: moot, `host_long` already rewrites decomp `long` to `int` |
+| Native-lane target | `tools/native_lane_gen.py` `HOST_TARGET`, `-fPIE` | x86_64-unknown-linux-gnu ELF | `--host-target x86_64-windows-gnu` sets only the **object** triple (see "Native lane on Win64" below); GNU `nm`/`ar` read COFF |
+
+## Native lane on Win64 (implemented, W3)
+
+Every admission check still runs on the x86-64 SysV IR. Only the final
+object compile targets Win64. The reason is that Win64 IR has no
+`signext`/`zeroext` attributes, while the generator reads the C signedness of
+narrow arguments and returns from them. That signedness feeds the dispatch
+table's prototypes, `to_guest()` (sign-extension into v0) and the call-stub
+names.
+
+When the first attempt compiled the IR for Win64 directly, decisions matched
+but 201 table prototypes lost their signedness (`int16_t` → `uint16_t`). A
+signed short return would then have been zero-extended into v0.
+
+`object_ir()` drops the SysV extension promises and the triple/layout before
+`clang -c --target=x86_64-windows-gnu`. This is sound for lane code because:
+- lane signatures are ints and pointers only (`abi_type`);
+- `long` is already `int`;
+- a Win64 callee must not rely on its caller extending narrow values.
+
+COFF objects add `-fasynchronous-unwind-tables`. `-ffreestanding` drops the
+Win64 `uwtable` default, and without it a lane function gets no `.pdata`, so
+the lane abort's `longjmp` (SEH unwind on Win64) could not pass through it. A
+function without `uwtable` is now refused.
+
+Result on 402cf86301 + this branch (`--overlay-members main_0003`):
+- 655/785 game functions plus 30/58 overlay functions admitted, the same as Linux;
+- per-function decisions, cycle ledger, pass-through and call stubs identical;
+- `native_lane_table.c` byte-identical to the Linux one;
+- all objects are x86-64 COFF.
+
+The default (Linux) generator output is byte-identical to the baseline
+(`libmusashi_native_lane.a`, `native_lane_table.c`).
 
 ## Work items
 
@@ -79,7 +112,7 @@ packages. W8 needs a Windows runtime.
    - the W1–W3 refactor must give byte-identical `musashi_native_boot` hashes where the code is unchanged, or else identical DEVOBS/RAM/PAD on the village and attract routes;
    - lane_all/overlay/host_stop probes unchanged.
 4. **Runtime:**
-   - (a) Wine on this dev box, headless, no `DISPLAY`. The probes (lane_all, overlay, host_stop) are console programs; routes run with the SDL dummy video driver and the existing capture shim. Wine is not a Windows qualification. It finds gross breakage only, and its results are reported as "Wine".
+   - (a) Wine on this dev box (owner-installed wine-10.0, prefix `.wineprefix` in this worktree), with a private `xvfb-run -a` X server and Mesa GL. It never touches a desktop. The probes (lane_all, overlay, host_stop) are console programs; routes run with the SDL dummy video driver and the existing capture shim. Wine is not a Windows qualification. It finds gross breakage only, and its results are reported as "Wine".
    - (b) The real gate is a Windows VM or test machine (not the owner's desktop) for routes, plus one owner-visible smoke run when the owner wants it.
 
 ## Dependencies needing approval (not downloaded)
