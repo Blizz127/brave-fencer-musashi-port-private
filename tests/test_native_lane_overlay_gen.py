@@ -43,18 +43,23 @@ class AllowFile(unittest.TestCase):
             with self.assertRaises(g.BuildError, msg=text):
                 g.parse_overlay_allow(self.write(text))
 
-    def test_tracked_allow_file_is_main_0003_clean_room(self):
+    def test_tracked_allow_file_is_the_clean_room_sets(self):
+        # O1 = main_0003's 24 clean-room functions, O2 = main_0012's 68.
         pairs = g.parse_overlay_allow(ALLOW)
-        self.assertEqual(len(pairs), 24)
         reg = {(m["region"], m["vram"]): m for m in
                json.loads((ROOT / "provenance/matches.json").read_text())["matches"]}
         for member, vram in pairs:
             m = reg[(member, vram)]
             self.assertTrue(m["origin"].startswith("owner re-derivation, clean room"), (member, hex(vram)))
             self.assertIsNone(g.overlay_origin_problem(m), (member, hex(vram)))
-        clean = sorted(m["vram"] for m in reg.values() if m["region"] == "main_0003"
-                       and (m.get("origin") or "").startswith("owner re-derivation, clean room"))
-        self.assertEqual(sorted(v for _, v in pairs), clean)
+        members = sorted({member for member, _ in pairs})
+        self.assertEqual(members, ["main_0003", "main_0012"])
+        for member, count in (("main_0003", 24), ("main_0012", 68)):
+            listed = sorted(v for mem, v in pairs if mem == member)
+            clean = sorted(m["vram"] for m in reg.values() if m["region"] == member
+                           and (m.get("origin") or "").startswith("owner re-derivation, clean room"))
+            self.assertEqual(len(listed), count, member)
+            self.assertEqual(listed, clean, member)
 
 
 class MemberChecks(unittest.TestCase):
@@ -125,8 +130,11 @@ class AllowCandidates(unittest.TestCase):
         # main_0003's vendor-derived 800D2C88: a registry row, but not own code
         with self.assertRaisesRegex(g.BuildError, "origin"):
             g.allow_candidates([("main_0003", 0x800D2C88)], {"main_0003": i}, True)
-        rows = g.allow_candidates(g.parse_overlay_allow(ALLOW), {"main_0003": i}, True)
-        self.assertEqual(len(rows), 24)
+        i12 = g.member_info("main_0012")
+        if i12 is None:
+            raise unittest.SkipTest("main_0012 member file not extracted")
+        rows = g.allow_candidates(g.parse_overlay_allow(ALLOW), {"main_0003": i, "main_0012": i12}, True)
+        self.assertEqual(len(rows), 92)
 
     def test_size_problem(self):
         i = info("x_0001", b"\0" * 64)
@@ -190,8 +198,8 @@ class EndToEnd(unittest.TestCase):
 
     def test_release_overlay_report(self):
         clang = shutil.which("clang")
-        if not clang or g.member_info("main_0003") is None:
-            raise unittest.SkipTest("needs clang and the main_0003 extract")
+        if not clang or g.member_info("main_0003") is None or g.member_info("main_0012") is None:
+            raise unittest.SkipTest("needs clang and the main_0003/main_0012 extracts")
         with tempfile.TemporaryDirectory() as d:
             only = Path(d) / "only.txt"
             only.write_text("80011b7c\n80010bb4\n")  # a hook site and one native caller
@@ -201,12 +209,12 @@ class EndToEnd(unittest.TestCase):
             self.assertEqual(r.returncode, 0, r.stderr[-2000:])
             rep = json.loads((Path(d) / "report.json").read_text())
             ovl = rep["overlay"]
-            self.assertEqual((ovl["members"], ovl["candidates"]), (["main_0003"], 24))
+            self.assertEqual((ovl["members"], ovl["candidates"]), (["main_0003", "main_0012"], 92))
             rules = {f["vram"]: f["rule"] for f in ovl["functions"]}
             # D-011: the CD retry loop charges its retail cost and is admitted
             self.assertIsNone(rules["800d2a24"])
             for f in ovl["functions"]:
-                self.assertEqual(f["covers"], ["main_0003"])
+                self.assertEqual(f["covers"], [f["member"]])
                 self.assertRegex(f["digest"], "^[0-9a-f]{16}$")
                 self.assertEqual(f["rule"] is None, f["admitted"])
             table = (Path(d) / "native_lane_table.c").read_text()
