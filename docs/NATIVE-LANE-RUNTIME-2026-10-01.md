@@ -802,7 +802,7 @@ found two problems:
   `wrap_fault`, anything else fails the function) and judges a negative case
   by whether the entry under test ran.
 
-Release lane at `ea46c584a2`: main 540/592, overlay 82/92 (main_0003 23/24,
+Release lane at `ea46c584a2`: 540/592 in total (main 458/500, overlay 82/92: main_0003 23/24,
 main_0012 59/68; refused: `8012f14c` hooks, `801379fc` irq, `8014a59c` ub,
 `801508f8` compile, `80147514`/`8014bde8`/`80154418`/`80154be4`/`80165e90`
 escape, i.e. a host stack address passed to a thunked callee).
@@ -948,7 +948,7 @@ Two fixes, both in rule `hooks`:
 ### Private build r32 (`bfm-r32-48abdba08`)
 
 Escape locals (guest-frame placement, see the section above) and the caller-pin
-hooks fix: main 561/592, overlay 87/92. Runner gate
+hooks fix: 561/592 in total (main 474/500, overlay 87/92). Runner gate
 `20261002-104057-bfm-r32-gate2-48abdba08` asserts the package hash in the job.
 The first r32 gate job (`20261002-101740`) is invalid: a script error ran the
 superseded `cb2803bb6` package. Results: probes on the release binaries 0
@@ -958,3 +958,11 @@ all-overlay-denied leg; inn save and cold Continue; speed equal to r31. A
 `STEP_REFUSED pc=ffffffff` chain under native `8001FB8C` right before
 `HOST_STOP source=SIGTERM` is the timeout's teardown misreported (a host stop
 landing in a GTE load delay inside a native call), not an in-game stop.
+
+**Correction (2026-10-02).** The generator's `native lane: N/M game functions
+admitted` line counts the main EXE and the overlay entries together
+(`results += ovl_results`); `report.json` `functions` split by `member` gives
+the parts. The r31 and r32 private-build notes read it as main-program only:
+r31 is 458/500 main + 82/92 overlay (540/592 in total), r32 474/500 main +
+87/92 overlay (561/592), and the functions left interpreted were 42 + 10 (r31)
+and 26 + 5 (r32), not 52 + 10 and 31 + 5.
