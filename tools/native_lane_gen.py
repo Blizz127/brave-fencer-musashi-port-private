@@ -33,7 +33,13 @@ Rules (each rejection names the first rule that failed, in report.json):
   abi     : parameters/returns limited to 8/16/32-bit integers and pointers;
             no direct call passing fewer arguments than the callee reads;
             no void-typed function whose retail caller reads v0/v1 after
-            the jal (the retail words return a value the C does not)
+            the jal (the retail words return a value the C does not);
+            no caller that passes a pass-through function (below) fewer
+            arguments than it reads unless the caller passes them through
+  (pass-through, not a rejection): a function whose retail words read an
+            argument register past its C prototype's (a0/a1 left untouched
+            before `jal callee`) is never called directly; native callers
+            reach it through the guest-call thunk and lane_try runs it
   memory  : (also) no volatile access, which in decomp C means a device
   irq     : no loop that neither stores nor calls (a native call runs
             without IRQ delivery, so a polling loop could spin forever)
@@ -1944,6 +1950,455 @@ def retail_code_blobs(infos):
     return blobs
 
 
+# ---- Implicit argument pass-through ---------------------------------------
+#
+# MIPS passes the first four arguments in a0-a3, so a function can hand its
+# own arguments to a callee without touching them: `jal f` with a0/a1 still
+# holding what its caller put there. Byte-matched C may then declare fewer
+# parameters than the retail words pass on (80013328 is `s32 f(void)` around
+# `jal 80013350`, which reads a0). Entered from the interpreter (lane_try)
+# the native body works by accident: the guest registers still hold the
+# caller's arguments when its 0-argument thunk runs the callee. A direct
+# native call carries host values only, so the guest a0-a3 are stale there.
+#
+# ArgLiveness computes, from the retail words alone, which of a0-a3
+# each function reads before writing them on some path from its entry
+# (upward-exposed), following its control flow (including tail jumps into
+# other functions) and using the same summary for every jal it makes
+# (interprocedural, to a least fixpoint). A function whose summary names a
+# register at or past its C prototype's argument slots under-declares its
+# arguments; emit_table() never calls such a function directly: the call
+# goes through musashi_native_guest_call, which writes a0-a3 from the
+# caller's arguments, and lane_try still runs the body natively with the
+# guest registers it reads (apply_passthrough refuses a caller whose own
+# arguments do not cover them). Where it keeps the byte match, the better
+# fix is the C prototype (80013328 now takes and passes a, b).
+
+A_MASK = 0xF          # bit k: a(k) = GPR 4 + k
+LIVE_UNKNOWN = A_MASK  # an unresolvable sink may read any of a0-a3
+
+
+def _arg_bits(regs):
+    return sum(1 << (r - 4) for r in regs if 4 <= r <= 7)
+
+
+def _a_reads(w):
+    """Bits of a0-a3 a MIPS I word reads (conservative)."""
+    op, rs = w >> 26, (w >> 21) & 31
+    if op in (16, 17, 19):     # cop0/cop1/cop3 moves: mtcN/ctcN read rt
+        return _arg_bits({(w >> 16) & 31}) if rs in (4, 6) else 0
+    return _arg_bits(_gpr_reads(w))
+
+
+def _a_writes(w):
+    op, rs = w >> 26, (w >> 21) & 31
+    if op in (16, 17, 19):
+        return _arg_bits({(w >> 16) & 31}) if rs in (0, 2) else 0
+    return _arg_bits(_gpr_writes(w))
+
+
+def _xfer(w, pc):
+    """(kind, target) for a control transfer, else None. kind: 'b' (two-way
+    branch), 'j', 'call' (jal), 'icall' (jalr, or a branch-and-link), 'ret'
+    (jr ra), 'jr' (jr to another register)."""
+    op = w >> 26
+    simm = (w & 0xFFFF) - 0x10000 if w & 0x8000 else w & 0xFFFF
+    if op in (4, 5, 6, 7):
+        return "b", pc + 4 + (simm << 2)
+    if op == 1:
+        rt = (w >> 16) & 31
+        if rt in (0, 1):
+            return "b", pc + 4 + (simm << 2)
+        if rt in (16, 17):
+            return "icall", pc + 4 + (simm << 2)
+        return None
+    if op == 2:
+        return "j", ((pc + 4) & 0xF0000000) | ((w & 0x3FFFFFF) << 2)
+    if op == 3:
+        return "call", ((pc + 4) & 0xF0000000) | ((w & 0x3FFFFFF) << 2)
+    if op == 0 and w & 63 == 8:
+        return ("ret", None) if (w >> 21) & 31 == 31 else ("jr", None)
+    if op == 0 and w & 63 == 9:
+        return "icall", None
+    if op in (0x10, 0x11, 0x12, 0x13) and (w >> 21) & 31 == 8:
+        return "b", pc + 4 + (simm << 2)
+    return None
+
+
+class ArgLiveness:
+    """Interprocedural upward-exposed a0-a3 per function entry, from retail
+    words. word_at(key, pc) -> word or None; key_of(key, pc) -> the key a
+    transfer target from code under `key` is analysed under (its member, or
+    None for main); extent_of(key, pc) -> (lo, hi) of the registry function
+    holding pc, or None (a `jr reg` switch may reach anything in it).
+    Unresolvable sinks (jalr, a `jr reg` outside a known extent, unknown
+    words, a walk past `limit` instructions) read LIVE_UNKNOWN when strict,
+    nothing otherwise; `unknown` records which functions met one."""
+
+    def __init__(self, word_at, key_of, extent_of, strict=True, limit=8192, varargs=False):
+        self.word_at, self.key_of, self.extent_of = word_at, key_of, extent_of
+        self.strict, self.limit, self.varargs = strict, limit, varargs
+        self.summary = {}      # (key, pc) -> bits
+        self.unknown = {}      # (key, pc) -> first unresolvable sink pc
+        self.cfg = {}          # (key, pc) -> nodes
+        self.callers = {}      # (key, pc) -> {(key, pc) of callers}
+
+    def _walk(self, fn):
+        key, entry = fn
+        nodes, todo, unk = {}, [entry], None
+        extents = {}           # jr pc -> its possible targets
+        spills = self._vararg_spills(key, entry) if self.varargs else {}
+        while todo:
+            pc = todo.pop()
+            if pc in nodes:
+                continue
+            if len(nodes) >= self.limit:
+                unk = unk or pc
+                nodes[pc] = ("unknown", None, None, None)
+                continue
+            w = self.word_at(key, pc)
+            if w is None:
+                unk = unk or pc
+                nodes[pc] = ("unknown", None, None, None)
+                continue
+            x = _xfer(w, pc)
+            if x is None:
+                nodes[pc] = ("op", w & ~(31 << 16) if pc in spills else w, None, None)
+                todo.append(pc + 4)
+                continue
+            kind, target = x
+            d = self.word_at(key, pc + 4)
+            if d is not None and pc + 4 in spills:
+                d &= ~(31 << 16)
+            if d is None or _xfer(d, pc + 4) is not None:
+                unk = unk or pc
+                nodes[pc] = ("unknown", None, None, None)
+                continue
+            if kind == "jr":
+                ext = self.extent_of(key, pc)
+                targets = self._jump_table(key, pc, ext) if ext else None
+                if ext is None:
+                    unk = unk or pc
+                elif targets:
+                    extents[pc] = targets
+                    todo.extend(targets)
+                else:
+                    extents[pc] = list(range(ext[0], ext[1], 4))
+                    todo.extend(extents[pc])
+            if kind == "icall":
+                unk = unk or pc
+            nodes[pc] = (kind, w, d, target)
+            if kind == "b":
+                todo += [target, pc + 8]
+            elif kind == "j":
+                todo.append(target)
+            elif kind in ("call", "icall"):
+                todo.append(pc + 8)
+                if kind == "icall" and target is not None:
+                    todo.append(target)
+        return nodes, unk, extents
+
+    def _solve(self, fn):
+        nodes, extents = self.cfg[fn]
+        live = {pc: 0 for pc in nodes}
+        order = sorted(nodes, reverse=True)
+        changed = True
+        while changed:
+            changed = False
+            for pc in order:
+                kind, w, d, target = nodes[pc]
+                if kind == "unknown":
+                    v = LIVE_UNKNOWN if self.strict else 0
+                elif kind == "op":
+                    v = (live.get(pc + 4, 0) & ~_a_writes(w)) | _a_reads(w)
+                else:
+                    v = self._after(fn, pc, kind, target, live, extents)
+                    v = (v & ~_a_writes(d)) | _a_reads(d) | _a_reads(w)
+                if v != live[pc]:
+                    live[pc] = v
+                    changed = True
+        return live
+
+    def _after(self, fn, pc, kind, target, live, extents):
+        """Live a-register bits after the delay slot of the transfer at pc."""
+        if kind == "b":
+            return live.get(target, 0) | live.get(pc + 8, 0)
+        if kind == "j":
+            return live.get(target, 0)
+        if kind == "call":
+            return self.summary.get(self._callee(fn, target), 0)
+        if kind == "icall":
+            return (LIVE_UNKNOWN if self.strict else 0) | (live.get(target, 0) if target else 0)
+        if kind == "ret":
+            return 0
+        # jr reg: its jump-table targets, else any instruction of the
+        # registry function holding it, else anything
+        if pc not in extents:
+            return LIVE_UNKNOWN if self.strict else 0
+        v = 0
+        for p in extents[pc]:
+            v |= live.get(p, 0)
+        return v
+
+    def _vararg_spills(self, key, entry):
+        """pcs of a varargs prologue's home-area spills `sw aN, F+4N(sp)`
+        (a run aK..a3, before any write to them): with varargs=True these
+        count as no read, since a varargs callee reads its unnamed arguments
+        only as its named ones (a format) ask, which the caller's C passes.
+        Otherwise {}."""
+        frame, out, written, last = 0, {}, 0, 12
+        for i in range(12):
+            if i > last:
+                break
+            w = self.word_at(key, entry + 4 * i)
+            if w is None:
+                break
+            if _xfer(w, entry + 4 * i) is not None:
+                last = i + 1   # its delay slot still runs first
+                continue
+            op, rs, rt = w >> 26, (w >> 21) & 31, (w >> 16) & 31
+            simm = (w & 0xFFFF) - 0x10000 if w & 0x8000 else w & 0xFFFF
+            if op == 9 and rs == 29 and rt == 29:
+                frame -= simm
+            elif op == 0x2B and rs == 29 and 4 <= rt <= 7 and not written >> (rt - 4) & 1 \
+                    and simm == frame + 4 * (rt - 4):
+                out[entry + 4 * i] = rt
+            written |= _a_writes(w)
+        regs = sorted(set(out.values()))
+        if not regs or regs[-1] != 7 or regs != list(range(regs[0], 8)):
+            return {}
+        return out
+
+    def _jump_table(self, key, pc, ext):
+        """Targets of a gcc switch `lui at,%hi(T); addu at,at,rI; lw rJ,
+        %lo(T)(at); jr rJ` (bounded by a preceding `sltiu rX, rK, N` when
+        there is one): the table words that land inside the extent. None
+        when the pattern is not found."""
+        w = self.word_at(key, pc)
+        rj = (w >> 21) & 31
+        lw = lui = count = None
+        for back in range(1, 16):
+            x = self.word_at(key, pc - 4 * back)
+            if x is None:
+                return None
+            op, rs, rt = x >> 26, (x >> 21) & 31, (x >> 16) & 31
+            if lw is None and op == 0x23 and rt == rj:
+                lw = (rs, (x & 0xFFFF) - 0x10000 if x & 0x8000 else x & 0xFFFF)
+            elif lw is not None and lui is None and op == 0x0F and rt == lw[0]:
+                lui = (x & 0xFFFF) << 16
+            elif lui is not None and op == 0x0B:
+                count = x & 0xFFFF
+                break
+        if lw is None or lui is None:
+            return None
+        table = (lui + lw[1]) & 0xFFFFFFFF
+        out = []
+        for i in range(count if count else 512):
+            t = self.word_at(key, table + 4 * i)
+            if t is None or not (ext[0] <= t < ext[1]) or t & 3:
+                if count:
+                    return None
+                break
+            out.append(t)
+        return sorted(set(out)) or None
+
+    def _callee(self, fn, target):
+        return (self.key_of(fn[0], target), target)
+
+    def analyse(self, roots):
+        """Summaries for roots and everything they reach by jal."""
+        todo = list(roots)
+        seen = set()
+        while todo:
+            fn = todo.pop()
+            if fn in seen:
+                continue
+            seen.add(fn)
+            nodes, unk, extents = self._walk(fn)
+            self.cfg[fn] = (nodes, extents)
+            if unk is not None:
+                self.unknown[fn] = unk
+            self.summary.setdefault(fn, 0)
+            for pc, (kind, _, _, target) in nodes.items():
+                if kind == "call":
+                    c = self._callee(fn, target)
+                    self.callers.setdefault(c, set()).add(fn)
+                    todo.append(c)
+        work = list(seen)
+        while work:
+            fn = work.pop()
+            live = self._solve(fn)
+            v = live.get(fn[1], 0)
+            if v != self.summary[fn]:
+                self.summary[fn] = v
+                work.extend(self.callers.get(fn, ()))
+        return self.summary
+
+    def sites(self, fn, bits):
+        """[(pc, kind, target, bits)]: where a register of `bits`, still
+        holding its entry value on some path, is read (a jal/j whose target
+        reads it, a direct read, or an unresolvable sink)."""
+        nodes, extents = self.cfg[fn]
+        # forward: registers not yet written on some path (may-untouched)
+        keep = {fn[1]: A_MASK}
+        work = [fn[1]]
+        while work:
+            pc = work.pop()
+            if pc not in nodes:
+                continue
+            kind, w, d, target = nodes[pc]
+            if kind == "unknown":
+                continue
+            v = keep[pc]
+            if kind == "op":
+                succ = [(pc + 4, v & ~_a_writes(w))]
+            else:
+                o = v & ~_a_writes(d)
+                if kind == "b":
+                    succ = [(target, o), (pc + 8, o)]
+                elif kind == "j":
+                    succ = [(target, o)] if target in nodes else []
+                elif kind in ("call", "icall"):
+                    succ = [(pc + 8, 0)]
+                elif kind == "jr":
+                    succ = [(p, o) for p in extents.get(pc, ())]
+                else:
+                    succ = []
+            for s, o in succ:
+                n = keep.get(s, 0) | o
+                if n != keep.get(s):
+                    keep[s] = n
+                    work.append(s)
+        out = []
+        for pc in sorted(keep):
+            if pc not in nodes:
+                continue
+            kind, w, d, target = nodes[pc]
+            v = keep[pc]
+            if kind == "unknown":
+                use = LIVE_UNKNOWN if self.strict else 0
+            elif kind == "op":
+                use = _a_reads(w)
+            else:
+                use = _a_reads(w) | _a_reads(d)
+                after = v & ~_a_writes(d)
+                if kind == "call":
+                    use |= self.summary.get(self._callee(fn, target), 0) & after
+                elif kind == "icall" and self.strict:
+                    use |= LIVE_UNKNOWN & after
+                elif kind == "jr" and self.strict and pc not in extents:
+                    use |= LIVE_UNKNOWN & after
+            hit = use & v & bits
+            if hit:
+                out.append((pc, kind, target, hit))
+        return out
+
+
+def arg_slots(params):
+    """a0-a3 slots a C parameter list occupies (o32: a 64-bit integer takes
+    an aligned register pair)."""
+    n = 0
+    for ty, _ in params:
+        if ty == "i64":
+            n = (n + 1) // 2 * 2 + 2
+        else:
+            n += 1
+    return n
+
+
+def regs_text(bits):
+    return ",".join(f"a{k}" for k in range(4) if bits >> k & 1)
+
+
+def registry_extents():
+    """region -> sorted [(lo, hi)] of the registry functions with a size."""
+    ext = {}
+    for m in json.loads((ROOT / "provenance/matches.json").read_text())["matches"]:
+        if m.get("size"):
+            ext.setdefault(m["region"], []).append((m["vram"], m["vram"] + m["size"]))
+    return {k: sorted(v) for k, v in ext.items()}
+
+
+def make_arg_liveness(infos, strict=False, varargs=False):
+    """An ArgLiveness over the main EXE (key None) and the member files in
+    infos (key = member name, for code inside that member's code ranges)."""
+    import bisect
+    extents = registry_extents()
+
+    def key_of(key, pc):
+        info = infos.get(key) if key else None
+        return key if info and any(lo <= pc < hi for lo, hi in info["code"]) else None
+
+    def word_at(key, pc):
+        return guest_word(pc, infos.get(key) if key else None)
+
+    def extent_of(key, pc):
+        rows = extents.get(key or "main", [])
+        i = bisect.bisect_right(rows, (pc, 0xFFFFFFFF)) - 1
+        return rows[i] if i >= 0 and rows[i][0] <= pc < rows[i][1] else None
+
+    return ArgLiveness(word_at, key_of, extent_of, strict=strict, varargs=varargs)
+
+
+def passthrough_flags(admitted, infos, strict=False, varargs=True):
+    """lane_<qname> -> dict(bits, sites, unknown) for each admitted function
+    whose retail words read an argument register at or past the slots its C
+    prototype declares (see ArgLiveness). The release policy: reads proven
+    through known code only (strict=False: a jalr target or other
+    unresolvable sink is not assumed to read a0-a3, and the function records
+    it in "unknown"), and a varargs prologue's home-area spills are not reads
+    (varargs=True: what a varargs callee reads past its named arguments is
+    decided by them, which the caller's C passes)."""
+    al = make_arg_liveness(infos, strict, varargs)
+    al.analyse([(a.get("member"), a["vram"]) for a in admitted])
+    flags = {}
+    for a in admitted:
+        fn = (a.get("member"), a["vram"])
+        d = "lane_" + a["qname"]
+        slots = arg_slots(a["defs"][d][2])
+        bits = al.summary.get(fn, 0) & ~((1 << slots) - 1) & A_MASK
+        if bits:
+            flags[d] = dict(bits=bits, slots=slots, sites=al.sites(fn, bits), unknown=al.unknown.get(fn))
+    return flags
+
+
+def passthrough_detail(flag):
+    """"implicit argument pass-through: a0,a1 live at jal 80013350" etc."""
+    parts = []
+    for pc, kind, target, bits in flag["sites"][:3]:
+        what = {"call": "jal", "j": "j", "icall": "jalr", "jr": "jr"}.get(kind, "read")
+        to = f" {target:08x}" if target is not None and kind in ("call", "j") else ""
+        parts.append(f"{regs_text(bits)} live at {what}{to} ({pc:08x})")
+    return ("implicit argument pass-through: " + ("; ".join(parts) or regs_text(flag["bits"]))
+            + f" (C declares {flag['slots']})")
+
+
+def apply_passthrough(admitted, flags):
+    """Mark each flagged function (a["passthrough"] = detail; emit_table then
+    reaches it only through the thunk) and refuse (rule abi) an admitted
+    caller that passes it fewer arguments than it reads without passing the
+    missing registers through itself: past the arguments the thunk writes,
+    the callee reads whatever the guest registers hold at the call, which is
+    the caller's own entry value only in that case."""
+    for a in admitted:
+        f = flags.get("lane_" + a["qname"])
+        if f:
+            a["passthrough"] = passthrough_detail(f)
+    for a in admitted:
+        own = flags.get("lane_" + a["qname"], {}).get("bits", 0) | \
+            ((1 << arg_slots(a["defs"]["lane_" + a["qname"]][2])) - 1)
+        for sym, (callee, sig, argc, _) in sorted(a["stubs"].items()):
+            f = flags.get("lane_" + callee)
+            if not f:
+                continue
+            short = f["bits"] & ~((1 << argc) - 1) & ~own & A_MASK
+            if short:
+                a.update(admitted=False, rule="abi",
+                         detail=f"passes {argc} arguments to {callee}, which reads {regs_text(short)} "
+                                f"through (implicit argument pass-through)")
+                break
+
+
 def psyq_hooked(hooks):
     """PsyQ compat-table entry points (pc_port/platform/psyq/bfm_psyq_compat.def)
     whose body contains a PC the port sequences or observes: the lane must
@@ -1999,10 +2454,12 @@ def from_guest(expr, ty, ext):
     return f"({c_type(ty, ext)})({expr})"
 
 
-def emit_table(admitted, out, entry_sites=frozenset()):
-    """Write native_lane_table.c. Returns (direct, thunk, hooked): direct
-    native calls, interpreter thunks, and admitted callees reached through
-    the thunk because they are platform entry-hook sites."""
+def emit_table(admitted, out, entry_sites=frozenset(), passthrough=frozenset()):
+    """Write native_lane_table.c. Returns (direct, thunk, hooked, passed):
+    direct native calls, interpreter thunks, and admitted callees reached
+    through the thunk because they are platform entry-hook sites or pass
+    arguments through implicitly (passthrough: lane_* names; the thunk
+    writes a0-a3 from the caller's arguments, lane_try runs them natively)."""
     defs = {}
     for a in admitted:
         defs.update(a["defs"])
@@ -2023,7 +2480,7 @@ def emit_table(admitted, out, entry_sites=frozenset()):
               " * register the MIPS ABI carries, so caller and callee prototypes may",
               " * disagree exactly as they can on the PS1. An admitted callee is called",
               " * directly; any other runs on the interpreter (same CPU, same loop). */"]
-    direct = thunk = hooked = 0
+    direct = thunk = hooked = passed = 0
     ovl = {"lane_" + a["qname"]: a for a in admitted if a.get("member")}
     by_def = {"lane_" + a["qname"]: a for a in admitted}
     for sym, (callee, sig, argc, va_ret) in sorted(stubs.items()):
@@ -2041,8 +2498,9 @@ def emit_table(admitted, out, entry_sites=frozenset()):
         # A platform entry-hook site is reached through the thunk even when
         # it is admitted: the thunk arms the hook as a jal would, a direct
         # native call would skip it.
-        native = target in defs and int(addr, 16) not in entry_sites
-        hooked += target in defs and not native
+        native = target in defs and int(addr, 16) not in entry_sites and target not in passthrough
+        hooked += target in defs and int(addr, 16) in entry_sites
+        passed += target in defs and int(addr, 16) not in entry_sites and target in passthrough
         ovl_target = ovl.get(target) if native else None
         if ovl_target:
             # Another overlay function: native only while its own bytes are
@@ -2195,7 +2653,7 @@ def emit_table(admitted, out, entry_sites=frozenset()):
     lines.append("};")
     lines.append(f"const size_t musashi_native_lane_guest_locals_count = {len(gl)}u;")
     (out / "native_lane_table.c").write_text("\n".join(lines) + "\n")
-    return direct, thunk, hooked
+    return direct, thunk, hooked, passed
 
 
 # --own-code-only: a registry entry is third-party-derived when its origin or
@@ -2407,10 +2865,23 @@ def main():
             a.update(admitted=False, rule="abi",
                      detail="void callee, caller reads v0/v1 at " + ", ".join(f"{p:08x}" for p in readers[:4]))
     admitted = [a for a in admitted if a["admitted"]]
+    # Implicit argument pass-through (ArgLiveness): an admitted function
+    # whose retail words read an argument register its C does not declare
+    # is never called directly; native callers reach it through the thunk,
+    # whose guest registers carry their arguments, and lane_try still runs
+    # it natively. Registers past the arguments a caller passes keep the
+    # guest value they hold at the call, which is the caller's own entry
+    # value only when the caller passes that register through too; a caller
+    # that does not is refused (rule abi).
+    flags = passthrough_flags(admitted, infos)
+    apply_passthrough(admitted, flags)
+    admitted = [a for a in admitted if a["admitted"]]
     # A native caller of an admitted callee links to it directly; otherwise
     # the thunk runs the guest words. Duplicate definitions cannot occur:
     # each TU defines only its own registry function under lane_func_*.
-    direct, thunk, hook_thunk = emit_table(admitted, out, frozenset(plat_hook_sites()))
+    direct, thunk, hook_thunk, pass_thunk = emit_table(
+        admitted, out, frozenset(plat_hook_sites()),
+        frozenset("lane_" + a["qname"] for a in admitted if a.get("passthrough")))
     blocked = psyq_hooked(hooks)
     with open(out / "native_lane_table.c", "a") as table:
         table.write("\n/* PsyQ compat entries whose body holds a port-sequenced PC. */\n")
@@ -2442,7 +2913,10 @@ def main():
                   psyq_excluded=len(psyq_excluded),
                   psyq_hooked=[f"{pc:08x}" for pc in blocked],
                   call_stubs=dict(direct=direct, interpreter_thunk=thunk,
-                                  hook_site_thunk=hook_thunk),
+                                  hook_site_thunk=hook_thunk, passthrough_thunk=pass_thunk),
+                  passthrough=[dict(member=a.get("member"), vram=f"{a['vram']:08x}", detail=a["passthrough"])
+                               for a in sorted(admitted, key=lambda a: (a["vram"], a.get("member") or ""))
+                               if a.get("passthrough")],
                   overlay=dict(members=sorted(infos), missing=missing,
                                allow=str(args.overlay_allow) if args.overlay_allow else None,
                                candidates=len(ovl_todo),
@@ -2462,7 +2936,8 @@ def main():
     (out / "report.json").write_text(json.dumps(report, indent=1) + "\n")
     print(f"native lane: {len(admitted)}/{len(results)} game functions admitted "
           f"({len(psyq_excluded)} PsyQ-range candidates excluded); rejected {rules}; "
-          f"call stubs direct={direct} thunk={thunk} (hook-site thunks {hook_thunk})")
+          f"call stubs direct={direct} thunk={thunk} (hook-site thunks {hook_thunk}, "
+          f"pass-through thunks {pass_thunk}; {len(flags)} admitted functions pass arguments through)")
     print("native lane cycles (D-011): mapped " + ", ".join(
         f"{k} {v['mapped']}/{v['mapped'] + v['refused']}" for k, v in cycles["by_class"].items())
           + f"; ledger {sum(1 for a in admitted if a.get('ledger'))} of {len(admitted)} admitted, "
