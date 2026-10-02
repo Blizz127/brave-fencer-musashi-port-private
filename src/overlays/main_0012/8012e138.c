@@ -12,11 +12,10 @@ void func_8012E138(char *o) {
     u16 pos[3];
     u16 w2[3];
     u16 w[3];
-    u16 *p = w;
     pos[0] = D_80126B5E;
     pos[1] = D_80126B62;
     pos[2] = D_80126B66;
-    func_8012F038(*(int *)(o + 0x20) + 0x34, pos, p);
+    func_8012F038(*(int *)(o + 0x20) + 0x34, pos, w);
     if (*(int *)(o + 0x20) != 0) {
         int n = *(int *)(o + 0x20);
         char *q;
@@ -34,7 +33,7 @@ void func_8012E138(char *o) {
         *(u16 *)(q + 0x2C) |= 1;
         *(int *)(q + 0x50) = (short)x;
     }
-    func_8012F14C(*(int *)(o + 0x20) + 0x34, p, w2);
+    func_8012F14C(*(int *)(o + 0x20) + 0x34, w, w2);
     if (func_80135888(*(int *)(o + 0x20), *(int *)(o + 0x58), w2, pos) != 0) {
         D_80126B5E = pos[0];
         D_80126B62 = pos[1];
