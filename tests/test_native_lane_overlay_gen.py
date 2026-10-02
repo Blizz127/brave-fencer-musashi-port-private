@@ -44,7 +44,7 @@ class AllowFile(unittest.TestCase):
                 g.parse_overlay_allow(self.write(text))
 
     def test_tracked_allow_file_is_the_clean_room_sets(self):
-        # O1 = main_0003's 24 clean-room functions, O2 = main_0012's 99 (O2 69 + B18 30).
+        # O1 = main_0003's 24 clean-room functions, main_0012's 99 (O2 69 + B18 30) admitted; later batches may be merged as source first.
         pairs = g.parse_overlay_allow(ALLOW)
         reg = {(m["region"], m["vram"]): m for m in
                json.loads((ROOT / "provenance/matches.json").read_text())["matches"]}
@@ -59,7 +59,9 @@ class AllowFile(unittest.TestCase):
             clean = sorted(m["vram"] for m in reg.values() if m["region"] == member
                            and (m.get("origin") or "").startswith("owner re-derivation, clean room"))
             self.assertEqual(len(listed), count, member)
-            self.assertEqual(listed, clean, member)
+            # Clean-room sources merge back before their route proof; the
+            # list admits a subset (B19 is merged as source only).
+            self.assertTrue(set(listed) <= set(clean), member)
 
 
 class MemberChecks(unittest.TestCase):
