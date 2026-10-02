@@ -130,3 +130,8 @@ main_0012 8012b608
 main_0012 8012e138
 main_0012 8012ceb0
 main_0012 8012cc88
+# Clean-room hard tail 3 (B18 remainder) merged back 2026-10-02 (bfm-rederive 11303b9).
+main_0012 801439fc
+main_0012 80143ebc
+main_0012 80128ed8
+main_0012 8014c6f4
