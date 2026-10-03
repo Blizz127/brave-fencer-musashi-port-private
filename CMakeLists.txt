@@ -421,6 +421,12 @@ if(MUSASHI_BUILD_PC_PORT)
     target_link_libraries(musashi_device_epoch_probe PRIVATE musashi_pc_port)
     add_test(NAME device_epoch_boundary COMMAND musashi_device_epoch_probe)
 
+    # Cue FILE entries resolve against the cue's folder for any cwd and separator.
+    add_executable(musashi_disc_cue_path_probe tests/disc_cue_path_probe.c)
+    target_link_libraries(musashi_disc_cue_path_probe PRIVATE musashi_pc_port)
+    add_test(NAME disc_cue_path COMMAND musashi_disc_cue_path_probe
+             ${CMAKE_CURRENT_BINARY_DIR}/disc_cue_path_probe.tmp)
+
     if(MUSASHI_WITH_PSYCROSS)
         # Own pinned entry state and IRQ lifetime in an executable. This
         # currently stops at the first missing device; it is not a menu demo.
