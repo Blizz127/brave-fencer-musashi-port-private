@@ -18,6 +18,10 @@
  *     interpreter-only run of the same modified bytes when that is
  *     comparable.
  *
+ * Ledger-mapped positive cases also run the D-011 cycle oracle and the
+ * deadline guard (the overlay counterpart of native_lane_guard_probe: IRQs
+ * due mid-body are delivered at the interpreter's retail pc and cycle).
+ *
  * OVERLAY_PROBE_FOREIGN=1: MEMBER_FILE and its mapping belong to a different
  * member loaded at the same address (e.g. main_0001 in main_0003's window).
  * Every case is then negative: the native body must never run, because the
@@ -30,6 +34,7 @@
  * the host window. Synthetic arguments only. */
 #define _GNU_SOURCE
 #include "musashi_boot_memory.h"
+#include "musashi_cpu_status.h"
 #include "musashi_native_lane.h"
 #include "musashi_native_lane_psyq.h"
 
@@ -672,6 +677,151 @@ static int cycle_case(MusashiBootMemory *memory, const uint8_t *image, size_t id
     return C_SAME;
 }
 
+/* ---- D-011 deadline guard (positive cases, third child) ----------------
+ * native_lane_guard_probe's check for overlay entries: device events fall
+ * due on a fixed schedule (first at phase D0, then every P cycles); the
+ * checkpoint, called before every interpreted instruction and by the lane's
+ * tick, "delivers" a due event by charging an IRQ handler's cost and
+ * recording the CPU context (retail pc, delay slot, branch pc, instruction)
+ * and the clock. Interpreter and lane must record the same deliveries and
+ * the same total. Main table as in the cycle oracle (PsyQ interpreted).
+ * Diagnostics: OVERLAY_GUARD_VERBOSE=1 prints each schedule's deliveries;
+ * OVERLAY_GUARD_PLANT (below) steers an entry (with OVERLAY_PROBE_ONLY) onto
+ * a deeper path, e.g. 8014C99C: "b:800AE66B:ff,w:80126D50:1". */
+enum { G_SAME, G_DIFFERENT, G_NOT_COMPARABLE };
+enum { MAX_DELIVERIES = 512, HANDLER_CYCLES = 50u };
+static const uint32_t G_PHASES[] = {1u, 2u, 3u, 4u, 5u, 6u, 7u, 9u, 11u, 13u, 17u, 23u, 31u, 47u, 64u, 101u};
+static const uint32_t G_PERIODS[] = {37u, 211u};
+#define GN(a) (sizeof(a) / sizeof((a)[0]))
+typedef struct GDelivery { uint32_t pc, branch_pc, instruction; uint8_t delay_slot; uint64_t cycle; } GDelivery;
+typedef struct GRun {
+    uint64_t cycles, next_due, period;
+    GDelivery d[MAX_DELIVERIES];
+    unsigned n;
+    int overflow, identity_bad;
+    const void *identity;
+} GRun;
+static GRun g_grun;
+static int g_advance(void *u, uint32_t c) { (void)u; g_grun.cycles += c; return 1; }
+static int g_deadline(void *u, uint64_t *until) {
+    (void)u;
+    *until = g_grun.next_due > g_grun.cycles ? g_grun.next_due - g_grun.cycles : 0;
+    return 1;
+}
+static const MusashiExecutionClock g_guard_clock = {NULL, g_advance};
+static int g_checkpoint(void *u, const void *continuation) {
+    MusashiCpuContext ctx;
+    (void)u;
+    if (!g_grun.identity) g_grun.identity = continuation;
+    else if (g_grun.identity != continuation) g_grun.identity_bad = 1;
+    if (g_grun.cycles < g_grun.next_due) return 1;
+    if (!musashi_boot_cpu_context(continuation, MUSASHI_CPU_CONTEXT_SOURCE, &ctx)) return 0;
+    if (g_grun.n == MAX_DELIVERIES) { g_grun.overflow = 1; return 1; }
+    g_grun.d[g_grun.n].pc = ctx.pc;
+    g_grun.d[g_grun.n].branch_pc = ctx.delay_slot ? ctx.branch_pc : 0u;
+    g_grun.d[g_grun.n].instruction = ctx.instruction_valid ? ctx.instruction : 0u;
+    g_grun.d[g_grun.n].delay_slot = ctx.delay_slot ? 1u : 0u;
+    g_grun.d[g_grun.n].cycle = g_grun.cycles;
+    ++g_grun.n;
+    g_grun.cycles += HANDLER_CYCLES;
+    while (g_grun.next_due <= g_grun.cycles) g_grun.next_due += g_grun.period;
+    return 1;
+}
+static int guard_run(MusashiBootMemory *memory, const MusashiNativeLaneOverlayEntry *e, const uint32_t *args,
+                     unsigned argc, int use_lane, uint32_t phase, uint32_t period) {
+    uint32_t regs[32];
+    int ok;
+    memset(&g_grun, 0, sizeof g_grun);
+    g_grun.next_due = phase;
+    g_grun.period = period;
+    alarm(5);
+    ok = musashi_native_lane_reference_call_checkpoint(memory, e->entry.guest_pc, args, argc, STACK_TOP,
+                                                       use_lane, regs, &g_guard_clock, g_checkpoint, NULL);
+    alarm(0);
+    return ok;
+}
+
+static int guard_case(MusashiBootMemory *memory, const uint8_t *image, size_t idx,
+                      const MusashiNativeLaneOverlayEntry *e, unsigned pattern) {
+    uint32_t args[8], fixed0, lost0;
+    unsigned argc = e->entry.argc > 8u ? 8u : e->entry.argc, p, q, i, compared = 0;
+    uint8_t *start = malloc(MUSASHI_RAM_SIZE);
+    static GRun ref;
+    if (!start || !e->entry.ledger) return G_NOT_COMPARABLE;
+    if (musashi_native_lane_install(musashi_native_lane_generated,
+                                    musashi_native_lane_generated_count) < 0) return G_NOT_COMPARABLE;
+    musashi_execution_clock_set_deadline(&g_guard_clock, g_deadline);
+    memcpy(memory->bytes, image, MUSASHI_RAM_SIZE);
+    seed_arena(memory, e->entry.guest_pc ^ (pattern * 0x9e3779b9u));
+    make_args(pattern, args);
+    if (pattern > PATTERNS && is_t161(e)) t161_apply(memory, pattern, args);
+    {   /* OVERLAY_GUARD_PLANT="b:ADDR:VAL,w:ADDR:VAL": guest state that steers
+         * the entry onto a path the seeded arena does not reach */
+        const char *plant = getenv("OVERLAY_GUARD_PLANT");
+        char kind;
+        unsigned addr, val;
+        int used;
+        while (plant && sscanf(plant, "%c:%x:%x%n", &kind, &addr, &val, &used) == 3) {
+            if (kind == 'b') { uint8_t *b = musashi_boot_ram_span(memory, addr, 1); if (b) *b = (uint8_t)val; }
+            else musashi_boot_write32(memory, addr, val);
+            plant += used;
+            if (*plant == ',') ++plant;
+        }
+    }
+    memcpy(start, memory->bytes, MUSASHI_RAM_SIZE);
+    for (q = 0; q < GN(G_PERIODS); ++q)
+        for (p = 0; p < GN(G_PHASES); ++p) {
+            memcpy(memory->bytes, start, MUSASHI_RAM_SIZE);
+            if (!guard_run(memory, e, args, argc, 0, G_PHASES[p], G_PERIODS[q]) || g_grun.overflow) continue;
+            ref = g_grun;
+            memcpy(memory->bytes, start, MUSASHI_RAM_SIZE);
+            g_ran[idx] = 0;
+            fixed0 = musashi_lane_fixed; lost0 = musashi_lane_ledger_lost;
+            if (!guard_run(memory, e, args, argc, 1, G_PHASES[p], G_PERIODS[q])) {
+                fprintf(stderr, "overlay_guard: %s pattern %u phase %u period %u: native run failed\n",
+                        e->entry.name, pattern, G_PHASES[p], G_PERIODS[q]);
+                return G_DIFFERENT;
+            }
+            if (!g_ran[idx] || musashi_lane_fixed != fixed0 || g_grun.overflow) return G_NOT_COMPARABLE;
+            if (musashi_lane_ledger_lost != lost0) {
+                fprintf(stderr, "overlay_guard: %s pattern %u left its mapped graph\n", e->entry.name, pattern);
+                return G_DIFFERENT;
+            }
+            if (g_grun.identity_bad) {
+                fprintf(stderr, "overlay_guard: %s: a checkpoint saw another CPU identity\n", e->entry.name);
+                return G_DIFFERENT;
+            }
+            for (i = 0; i < ref.n || i < g_grun.n; ++i) {
+                const GDelivery *a = i < ref.n ? &ref.d[i] : NULL, *b = i < g_grun.n ? &g_grun.d[i] : NULL;
+                if (!a || !b || a->pc != b->pc || a->cycle != b->cycle || a->delay_slot != b->delay_slot ||
+                    a->branch_pc != b->branch_pc || a->instruction != b->instruction) {
+                    fprintf(stderr, "overlay_guard: %s pattern %u phase %u period %u delivery %u/%u/%u: "
+                            "interp %08x%s@%llu native %08x%s@%llu\n", e->entry.name, pattern, G_PHASES[p],
+                            G_PERIODS[q], i, ref.n, g_grun.n, a ? a->pc : 0u, a && a->delay_slot ? "(slot)" : "",
+                            a ? (unsigned long long)a->cycle : 0ull, b ? b->pc : 0u,
+                            b && b->delay_slot ? "(slot)" : "", b ? (unsigned long long)b->cycle : 0ull);
+                    return G_DIFFERENT;
+                }
+            }
+            if (g_grun.cycles != ref.cycles) {
+                fprintf(stderr, "overlay_guard: %s pattern %u phase %u period %u: total %llu/%llu\n",
+                        e->entry.name, pattern, G_PHASES[p], G_PERIODS[q], (unsigned long long)ref.cycles,
+                        (unsigned long long)g_grun.cycles);
+                return G_DIFFERENT;
+            }
+            if (getenv("OVERLAY_GUARD_VERBOSE")) {
+                size_t k;
+                fprintf(stderr, "overlay_guard: %s pattern %u phase %u period %u deliveries=%u total=%llu ran:",
+                        e->entry.name, pattern, G_PHASES[p], G_PERIODS[q], ref.n, (unsigned long long)ref.cycles);
+                for (k = 0; k < MAX_ENTRIES; ++k) if (g_ran[k]) fprintf(stderr, " %zu", k);
+                fprintf(stderr, "\n");
+            }
+            ++compared;
+        }
+    free(start);
+    return compared ? G_SAME : G_NOT_COMPARABLE;
+}
+
 static uint8_t *read_file(const char *path, size_t *size) {
     FILE *f = fopen(path, "rb");
     uint8_t *data;
@@ -695,7 +845,7 @@ int main(int argc, char **argv) {
     const char *member;
     MusashiNativeLaneEntry *table;
     MusashiNativeLaneOverlayEntry mine[MAX_ENTRIES];
-    unsigned counts[OUTCOMES] = {0}, bad = 0, ccounts[3] = {0}, cf[3] = {0};
+    unsigned counts[OUTCOMES] = {0}, bad = 0, ccounts[3] = {0}, cf[3] = {0}, gcounts[3] = {0}, gf[3] = {0};
     if (argc != 8) {
         fprintf(stderr, "usage: %s SLUS_007.26 MEMBER MEMBER_FILE VRAM START LOAD_OFF LOAD_END\n", argv[0]);
         return 2;
@@ -757,7 +907,7 @@ int main(int argc, char **argv) {
     for (i = 0; i < n && g_lane_n < 4096u; ++i) g_lane_pcs[g_lane_n++] = mine[i].entry.guest_pc;
     qsort(g_lane_pcs, g_lane_n, sizeof g_lane_pcs[0], pc_cmp);
     for (i = 0; i < n; ++i) {
-        unsigned pattern, same = 0, fails = 0, cs = 0, cd = 0, cn = 0;
+        unsigned pattern, same = 0, fails = 0, cs = 0, cd = 0, cn = 0, gs = 0, gd = 0, gn = 0;
         const char *only = getenv("OVERLAY_PROBE_ONLY");
         if (only && strtoul(only, NULL, 16) != mine[i].entry.guest_pc) continue;
         /* Entries with guest-frame locals get GL_EXTRA more seeded positive
@@ -804,6 +954,18 @@ int main(int argc, char **argv) {
                 ccounts[c]++;
                 if (c == C_SAME && is_t161(&mine[i]) && pattern > PATTERNS) k_cyc_same[t161_seed(pattern).cls]++;
                 if (c == C_SAME) cs++; else if (c == C_DIFFERENT) cd++; else cn++;
+                fflush(stderr);
+                child = fork();
+                if (child == 0) {
+                    signal(SIGSEGV, SIG_DFL);
+                    signal(SIGALRM, SIG_DFL);
+                    _exit(guard_case(memory, image, i, &mine[i], pattern));
+                }
+                if (child < 0 || waitpid(child, &cstatus, 0) != child) return 1;
+                c = WIFEXITED(cstatus) && WEXITSTATUS(cstatus) <= G_NOT_COMPARABLE ? WEXITSTATUS(cstatus)
+                    : G_NOT_COMPARABLE;
+                gcounts[c]++;
+                if (c == G_SAME) gs++; else if (c == G_DIFFERENT) gd++; else gn++;
             }
             if (outcome == DIFFERENT || outcome == NEG_RAN_NATIVE || outcome == NOT_NATIVE ||
                 outcome == FAULT) {
@@ -828,6 +990,10 @@ int main(int argc, char **argv) {
             printf("overlay_cycles: %-34s %08x same=%u different=%u not_comparable=%u\n",
                    mine[i].entry.name, mine[i].entry.guest_pc, cs, cd, cn);
             bad += cd != 0;
+            gf[gd ? G_DIFFERENT : gs ? G_SAME : G_NOT_COMPARABLE]++;
+            printf("overlay_guard: %-34s %08x same=%u different=%u not_comparable=%u\n",
+                   mine[i].entry.name, mine[i].entry.guest_pc, gs, gd, gn);
+            bad += gd != 0;
         }
         printf("overlay_lane: %-34s %08x size=%u %s positive_same=%u\n", mine[i].entry.name,
                mine[i].entry.guest_pc, mine[i].size,
@@ -842,5 +1008,8 @@ int main(int argc, char **argv) {
     printf("overlay_cycles: member=%s functions same=%u different=%u not_comparable=%u "
            "cases same=%u different=%u not_comparable=%u\n", member, cf[C_SAME], cf[C_DIFFERENT],
            cf[C_NOT_COMPARABLE], ccounts[C_SAME], ccounts[C_DIFFERENT], ccounts[C_NOT_COMPARABLE]);
+    printf("overlay_guard: member=%s functions same=%u different=%u not_comparable=%u "
+           "cases same=%u different=%u not_comparable=%u\n", member, gf[G_SAME], gf[G_DIFFERENT],
+           gf[G_NOT_COMPARABLE], gcounts[G_SAME], gcounts[G_DIFFERENT], gcounts[G_NOT_COMPARABLE]);
     return bad ? 1 : 0;
 }

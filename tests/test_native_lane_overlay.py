@@ -52,6 +52,8 @@ class OverlayLane(unittest.TestCase):
             self.assertEqual(r.returncode, 0, (summary, r.stderr[-2000:]))
             self.assertIn("different=0", summary[0])
             self.assertIn("negative_ran_native=0", summary[0])
+            guard = [l for l in r.stdout.splitlines() if l.startswith("overlay_guard: member=")]
+            self.assertTrue(guard and "functions same=" in guard[0] and " different=0 " in guard[0], guard)
 
 
 class LoadPlan(unittest.TestCase):
