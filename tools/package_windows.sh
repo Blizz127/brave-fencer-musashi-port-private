@@ -3,7 +3,7 @@
 #
 #   tools/package_windows.sh --binary BUILD-WIN/musashi_native_boot.exe --run N \
 #       --deps DEPS --out DIR --status TEXT [--known-issue TEXT ...] \
-#       [--exe YOUR/SLUS_007.26 --extracted YOUR/extracted/disc] [--zig ZIG-ROOT]
+#       [--exe YOUR/SLUS_007.26 --extracted YOUR/extracted/disc] [--zig ZIG-ROOT] [--public]
 #
 # Stages bfm-r<N>-<commit>-windows-x64/ (exe, SDL2.dll, OpenAL32.dll, launch.cmd,
 # README, licenses, manifest.json with the size and SHA-256 of every file), runs
@@ -31,6 +31,10 @@ status=""
 issues=""
 guard_args=""
 zig_root=""
+# --public: a binary-only public package (own-code-only lane build required by
+# the caller); only the distribution field and the owner-test wording change.
+distribution=private-owner-only
+kind=owner-test
 nl='
 '
 
@@ -45,6 +49,7 @@ while [ $# -gt 0 ]; do
         --exe) guard_args="$guard_args --exe $2"; shift 2 ;;
         --extracted) guard_args="$guard_args --extracted $2"; shift 2 ;;
         --zig) zig_root=$2; shift 2 ;;
+        --public) distribution=public-binary-only; kind=test; shift ;;
         *) echo "package_windows: unknown option $1" >&2; exit 2 ;;
     esac
 done
@@ -114,8 +119,8 @@ cp "$ref/compiler-rt-LICENSE.txt" "$stage/licenses/LLVM-compiler-rt-LICENSE.txt"
 cp "$ref/mingw-DISCLAIMER.PD" "$stage/licenses/mingw-w64-DISCLAIMER.PD"
 cp "$ref/GCC-RUNTIME-EXCEPTION.txt" "$stage/licenses/"
 cp "$ref/GNU-GPL-3.txt" "$stage/licenses/"
-cat > "$stage/licenses/THIRD-PARTY.txt" <<'TXT'
-This is a Windows owner-test package; UNVERIFIED on real Windows.
+{ echo "This is a Windows $kind package; UNVERIFIED on real Windows."
+cat <<'TXT'
 Game content and BIOS are excluded. The hybrid native-lane/interpreter
 disclosure in README.txt still applies.
 
@@ -145,6 +150,7 @@ This package is produced by tools/package_windows.sh from the windows-port
 tree; its notice set and launch.cmd contract equal the r40 owner-test package.
 No real-Windows qualification, native-only execution or new route gate is claimed.
 TXT
+} > "$stage/licenses/THIRD-PARTY.txt"
 
 # CRLF: cmd.exe reads labels and goto targets unreliably from LF-only files.
 # This is the launcher-gated contract (0.9.241): BFM_DISC first, then
@@ -241,9 +247,9 @@ TXT
 } > "$stage/README.txt"
 sed -i 's/$/\r/' "$stage/README.txt"
 
-python3 - "$stage" "$name" "$commit" "$branch" "$status" "$issues" "$imports" "$oal_src" "$zig_root" <<'PY'
+python3 - "$stage" "$name" "$commit" "$branch" "$status" "$issues" "$imports" "$oal_src" "$zig_root" "$distribution" <<'PY'
 import hashlib, json, os, pathlib, re, sys, tarfile
-stage, name, commit, branch, status, issues, imports, oal_src, zig_root = sys.argv[1:]
+stage, name, commit, branch, status, issues, imports, oal_src, zig_root, distribution = sys.argv[1:]
 lic = os.path.join(stage, "licenses")
 sha = lambda b: hashlib.sha256(b).hexdigest()
 
@@ -327,7 +333,7 @@ manifest = {
     "launch": "launch.cmd [native port options]",
     "packaging_revision": "licenses1-discenv1",
     "contains_game_data": False,
-    "distribution": "private-owner-only",
+    "distribution": distribution,
     "files": files,
 }
 json.dump(manifest, open(os.path.join(stage, "manifest.json"), "w"), indent=2)
