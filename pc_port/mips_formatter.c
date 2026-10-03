@@ -8241,7 +8241,7 @@ static uint8_t *cpu_ram_span(MusashiBootMemory *memory, const FormatterCpu *cpu,
              address != (physical | 0xa0000000u)) ||
             physical < MUSASHI_BIOS_CALLBACK_STACK_BASE ||
             physical > MUSASHI_BIOS_CALLBACK_STACK_TOP - width) return NULL;
-        return cpu->bios_frame->scratch + physical - MUSASHI_BIOS_CALLBACK_STACK_BASE;
+        return cpu->bios_frame->scratch + (physical - MUSASHI_BIOS_CALLBACK_STACK_BASE);
     }
     if (memory && physical >= 0x1f800000u && physical + width <= 0x1f800400u) {
         /* 1KB data-cache scratchpad. musashi_boot_ram_span still refuses it. */
