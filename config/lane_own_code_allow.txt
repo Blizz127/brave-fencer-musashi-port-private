@@ -523,3 +523,12 @@
 8001d388
 8001fb8c
 80020da4
+# Clean-room B20 hard tail merged back 2026-10-03 (bfm-rederive bb00152), main region.
+80028694
+8002dc68
+8001b3c4
+8002d904
+80034314
+8001a114
+8001d3fc
+8001b86c
