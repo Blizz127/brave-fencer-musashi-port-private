@@ -22,16 +22,25 @@ matched, and fresh anonymous release asset downloads matched the existing size/S
 Source/package reviews, local links and all29 warp labels passed. No runtime gates
 were duplicated; no owner game/desktop actions. Receipt:
 `~/release-staging/bfm-r38-public/public-docs/RECEIPT.txt`.
-Windows remains outstanding/unqualified. Codex yields after this release completion
-for efficient routing; no model switch is claimed. Native conversion stays open.
+Windows is now deferred to a separate owner-scheduled host-port project.
+No Windows route is awaited and r38 release work is complete. Return to normal
+BFM work with the same sole writer and efficient routing. Native conversion stays open.
+
+Normal BFM work resumes with the deferred B18 timing mismatch at overlay
+`main_0012:8014C99C`. The recorded route summary confirms village equality
+and 72 attract DEVOBS differences with equal RAM/PAD; the local archive does
+not contain the full DEVOBS streams. The next focused step is an overlay
+deadline regression: `native_lane_guard_probe` currently covers main entries
+only, while `native_lane_overlay_probe` compares call/return timing. Keep B18
+out of release builds until eager-epoch village and attract proofs pass.
 
 The follow-up read-only Windows audit is complete; the short report is
 [Windows portability summary](docs/WINDOWS-PORTABILITY-SUMMARY-2026-10-02.md).
 No new compiler invocation, download, install or runner access was used.
 No Windows runner is authorized, the occupied Alienware is excluded, and the
-coordinator is obtaining the owner's decision before any new toolchain/dependency
-installation. Public r38 was read back and still explicitly says Windows is
-unavailable. Preserve this decision boundary for the next implementation turn.
+future Windows task must explicitly authorize any toolchain/dependency
+installation. Public r38 says Windows is unavailable. Work items, rough effort
+and a test route avoiding the owner desktop are in [WINDOWS-PORT.md](docs/WINDOWS-PORT.md).
 
 ## Codex continuation, 2026-10-02 20:00 UTC
 
@@ -75,15 +84,16 @@ PsyCross diagnostics; zero unresolved. Private RAM/card/capture evidence is
 excluded. The completed r37 inn save/cold Continue gate supersedes the earlier
 pending report; no runtime gates were duplicated for this unchanged runtime.
 
-**Windows is still outstanding for the same public r38 request.** The owner's
-Windows+Linux clarification arrived in Devbox message `23c4f77ef5a3979a`.
+**Windows is deferred to a separate owner-scheduled project.** The owner's
+earlier Windows+Linux clarification arrived in Devbox message `23c4f77ef5a3979a`;
+the coordinator subsequently closed r38 with Linux only.
 The cached Zig compiler passed a tiny Windows COFF adapter compile and CMake
 compiler detection, but the game configure fails for missing Windows SDL2,
 and production code requires Linux memory mapping/X11 APIs and Linux-target
 native-lane objects. No Windows game binary or runtime test exists yet.
 See [Windows release blockers and evidence](docs/WINDOWS-RELEASE-2026-10-02.md).
-The coordinator was informed; preserve the running owner game/desktop and
-the existing Linux release while completing this remaining platform work.
+Preserve the running owner game/desktop and existing Linux release. Do not
+start Windows work or wait for a route under the completed r38 request.
 
 The established publisher worktree is restored at
 `~/dev/banshee-realm-client-private-builds`, branch `claude/private-port-builds`,

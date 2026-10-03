@@ -2,6 +2,8 @@
 
 **No qualified Windows game build or authorized Windows runtime exists.**
 Public r38 remains Linux-only; its release notes still say Windows is unavailable.
+Windows is deferred to a separate owner-scheduled host-port project; stop
+waiting for a runner. See [work plan and estimate](WINDOWS-PORT.md).
 Audit target: qualified runtime source `61c60516d18bf6402e6dbd937d8c8d18ebd1af4b`.
 
 The devbox already has Zig 0.13.0. Saved checks produced a Windows COFF
@@ -40,7 +42,7 @@ must be reported separately from actual Windows execution.
 
 No such runner is currently authorized. blizzpc is Linux; the occupied
 Alienware is excluded. Do not install a toolchain, dependencies, Wine or
-containers, or create a VM, while the coordinator awaits the owner's decision.
+containers, or create a VM, unless a separate owner-scheduled task authorizes it.
 
 Detailed source findings and saved evidence:
 [Windows release audit](WINDOWS-RELEASE-2026-10-02.md).

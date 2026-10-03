@@ -1,10 +1,11 @@
-# Windows addition to public r38: blocked, not published
+# Windows host-port audit: deferred, not published
 
 Owner clarification at 2026-10-02 21:10:35 UTC, delivered in Devbox message
 `23c4f77ef5a3979a`: the same public release must include Windows and Linux.
-Linux r38 is live and qualified. Windows remains an outstanding part of this
-request, not a completed platform or a second release request. Preserve the
-existing Linux artifact and use the same release when Windows qualifies.
+Linux r38 is live and qualified. The coordinator subsequently closed the
+release with Linux only and deferred Windows to a separate owner-scheduled
+host-port task. Stop waiting for a Windows route; preserve the Linux release.
+The scoped future plan is [WINDOWS-PORT.md](WINDOWS-PORT.md).
 
 The owner is playing. No desktop/device access, remote runner job, update,
 restart or game interaction was performed during this audit. Codex remains
@@ -67,7 +68,8 @@ runtime and known refusal/coverage limits on either platform.
 The coordinator confirmed no known authorized Windows runner/toolchain on
 2026-10-02. blizzpc is Linux without MinGW/Wine/Zig in PATH; the Alienware
 is occupied and excluded. No new compiler, library, Wine or container may
-be installed before the owner's decision. The devbox's existing Zig binary
+be installed; the owner must separately schedule and authorize that work.
+The devbox's existing Zig binary
 was identified from its symlink; this follow-up reused saved probe logs and
 read source only, without invoking a compiler or accessing a runner.
 
