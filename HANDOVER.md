@@ -1,4 +1,183 @@
-# BFM handover to Codex (2026-10-02)
+# BFM handover to Claude Opus 5.5 (2026-10-03)
+
+## Current handoff checkpoint — supersedes historical ownership below
+
+Owner/coordinator routing change: transfer this project from Codex to Claude
+Opus 5.5. Claude starts only after the coordinator receives `HANDED OVER`.
+Codex stops all project writes after that report. Do not start competing workers.
+Authoritative Linux worktree: `/home/blizz/dev/bfm-port-integration`, branch
+`port/native-lane`. Last code checkpoint is `d52d99922a` (standalone BIOS scratch
+pointer UB fix); last recorded checkpoint before this handover is `3a1f5e61d2`.
+The handover commit is the latest local commit touching this file. No push.
+
+Original matching-source worktree `/home/blizz/dev/brave-fencer-musashi-decomp`
+on `main` was `a4b343946b`; its root HANDOVER is a pointer to this authoritative
+handover, not a request to merge private runtime source into public main.
+Qualified Linux release worktree `/home/blizz/dev/bfm-r36` is branch
+`release/r37`, source `61c60516d18bf6402e6dbd937d8c8d18ebd1af4b` (directory
+name is historical). Preserve it and qualified packages. Windows source remains
+separate task `ce62b0f3dc66`, `/home/blizz/dev/bfm-windows`, `windows-port`;
+coordinate shared-file integration through the coordinator. This routing change
+does not authorize another Windows writer or a new toolchain installation.
+
+Tracked changes are committed. Pre-existing untracked integration control files
+`AGENTS.md`, `CLAUDE.md` are preserved. Original source worktree also has existing
+untracked `-`, `AGENTS.md`, `CLAUDE.md`, `tools/patches/psycross-local.patch`.
+These were not deleted, moved, hidden or included in the handover commit.
+There is no unfinished Codex runtime edit or uncommitted publisher edit.
+
+## Latest private/public publication state
+
+- Linux private remains **r37**, build `bfm-r37-61c60516d`, 8,244,817 bytes,
+  SHA `4bb186e5010e1a04f2c739ac9e7a86d6ab33031616bfdf145934fcd11698a87e`.
+  Receipt `/home/blizz/release-staging/bfm-r37/RECEIPT.txt`; qualified forest,
+  village/attract, inn save and isolated cold Continue gates are banked.
+- Windows owner-test **r40 is LIVE** in the same owner-only bucket channel,
+  build `bfm-r40-b33bdee18-windows-x64`, source
+  `b33bdee18e852d255e86fbf862bd74572c8d243b` plus staged packaging/script updates.
+  ZIP **3,997,835 bytes**, SHA
+  `b10d2870a4dc0862e858bba567e935de1ff984467ec615fd23f8fc24014b05e2`.
+  Key `brave-fencer-musashi/builds/bfm-r40-b33bdee18-windows-x64/bfm-r40-b33bdee18-windows-x64.zip`.
+  **UNVERIFIED on real Windows**, owner waived that gate for private testing
+  only, not licence gates. No GitHub Windows release/tag was created.
+- Channel `brave-fencer-musashi/channel.json` stays schemaVersion 2. ALL
+  top-level Linux fields are unchanged. Only optional `artifacts.windows-x64`
+  was added: `version`, `packageKey`, `sha256`, `packageSize`, `archiveFormat:zip`.
+  No `platforms`, commands, URLs or credentials; optional Windows publishedAt
+  omitted. Signed full ZIP and channel GET readback passed; unsigned object
+  request denied with Authorization error. Actual gated selector source with
+  live JSON selects Windows r40/Linux r37, no Windows fallback, x64 enforced.
+- Launcher **0.9.240+ required** for Windows, gated source `8b0edc99d4957ed3399749ec95ee421a8bca75aa`.
+  Gate `/home/blizz/scratch/bfm240-final/receipt.json`: build 0 warnings/errors,
+  2199 passed, 16 pre-existing failures, none new; old 238 parser ignores extension.
+  This is a gated source/framework build, not a claim the owner has the packaged
+  launcher installed. Launcher packaged delivery remains its integrator's job.
+- Final Windows evidence `/home/blizz/release-staging/bfm-windows-owner-test-b33bdee18/`:
+  `PUBLISH-RECEIPT.{json,txt}`, `signed-readback.json`, `channel-live-readback.json`,
+  `live-selection-proof.json`, `LAUNCHER-CONTRACT.json`, `R40-RECEIPT.txt`.
+  Rollback remote `brave-fencer-musashi/channel.json.bak-20261003T013219Z`, local
+  `brave-fencer-musashi-channel-before-20261003T013219Z.json` there; exact old
+  bytes verified. Older r0/r39 and rejected intermediate ZIPs retained as evidence.
+  Keep Linux r30–r34 rollback; do not delete existing packages.
+- r40 EXE/SDL2/OpenAL DLLs are unchanged from side-lane test build; complete
+  matching OpenAL Soft 1.25.1 upstream source, PFFFT/fmt/GSL notices, SDL2 notice
+  and Zig/mingw/LLVM/musl runtime notices added. Final retail guard 27 files/0.
+  Script now honours BFM_DISC or BFM_DISC_DIR/disc.cue, returns66/no picker for
+  missing explicit env inputs, and safely remembers paths with spaces/&/!.
+  Five isolated headless Wine cmd tests use a stub child, not a game runtime.
+- Existing owner-only data pack `brave-fencer-musashi/data/manifest.json` is
+  already uploaded; no new data upload occurred. Launcher restores game-root
+  `disc/disc.cue` plus adjacent `disc.bin`, `disc/files/SLUS_007.26`; cue FILE is
+  exactly `disc.bin`. ZIP has one enclosing build-name directory, entry
+  `launch.cmd`, binary `musashi_native_boot.exe`. Launcher passes absolute
+  BFM_DISC/BFM_DISC_DIR and no custom Windows args. Saves/config/logs default
+  `%APPDATA%/bfm-port`, card `bfm_card0.mcd`; launcher does not relocate them.
+- Private publisher worktree `/home/blizz/dev/banshee-realm-client-private-builds`
+  on `claude/private-port-builds`, local commit
+  `fd0716cc27e8049c33e023593c8e99ab419dc16a`: script
+  `scripts/publish-owner-port-package.py --windows-zip ZIP --port musashi
+  --build-id ID --commit COMMIT --sha256 SHA [--dry-run]` adds only the leaf,
+  validates manifest/hash, protects immutable objects, keeps rollback, checks
+  full upload size/SHA and channel concurrency/readback. 14 publisher +7
+  existing private-release tests pass. Do not use the older tar-only mirror
+  to replace this channel and accidentally drop the Windows extension.
+- Public **r38 stays Linux-only**, exact qualified r37 runtime; tar 9,647,813
+  bytes, SHA `6b2f95732a2da966bfd876d478bf1b7a4464258a236b75be4990739d7a0a831a`.
+  Receipt `/home/blizz/release-staging/bfm-r38-public/RECEIPT.txt`. Public docs
+  main `7da1b3c55860513c7a612311675396dae29ba969`; wiki
+  `e2b2f10e0fa1fb519cc3c7f4db6eabc62617742a`. No private source/history push.
+
+## Milestone, owner goal and blockers
+
+Owner endpoint is native gameplay/engine executed as compiled host code, with a
+useful playable slice demonstrated with the CPU interpreter disabled/absent,
+zero fallback and semantic/visual/audio/timing/save evidence, then broader coverage.
+**Not achieved.** Current useful builds are HYBRID. Retail/vendor-derived routines
+not admitted for rights or semantic reasons remain interpreted; native BIOS/HLE
+services do not make the whole game native. Unsupported/stubbed paths and known
+800495ec attract refusal remain disclosed. Null/KUSEG gap, 48 approximate cycle
+charges and full hardware audio/visual fidelity remain open. No measured share
+of production executed guest instructions/frames/time native vs interpreted.
+Release candidate census is 562/593 functions (94.77%), 17022/18556 words (91.73%)
+within the selected lane candidate set; these are NOT whole-retail coverage or
+executed workload shares. No useful interpreter-disabled zero-fallback slice yet.
+
+Next normal Linux/native milestone: deferred **B18 timing mismatch** at
+`main_0012:8014C99C`: village equal; attract72 DEVOBS differences, RAM/PAD equal.
+Local old route archive lacks full DEVOBS streams; do not pretend the historical
+3-IRQ/2-cycle explanation was independently reconstructed. Add focused overlay
+deadline regression: existing native_lane_guard_probe covers main only, overlay
+probe compares call/return timing. Keep B18 out of releases pending fresh eager
+epoch village/attract evidence. Integration contains B18 admission/B19 source;
+integration build is not automatically the qualified r37 release.
+
+Shared Windows patches0001–0005 remain UNAPPLIED pending refreshed test linkage
+and docs collision fixes. Only standalone UB patch accepted as d52d99922a.
+See `docs/WINDOWS-PATCH-REVIEW-2026-10-03.md`: SHA replacement breaks direct-link
+Python harnesses (undefined bfm_plat_sha256_final;47 files mention -lcrypto),
+and patch0005 creates existing docs/WINDOWS-PORT.md. Require complete Linux review,
+probes/routes/release gates before shipping. Packaging libcrypto cleanup must
+follow actual dependency audit. Windows lane should incorporate staged
+`launch-disc-env.patch` into its generator when resumed; current live ZIP script
+is an intentional packaging-only update, not a Windows source-branch commit.
+
+## Build, test, run and runner collection
+
+No new job was started for handover. No Codex BFM local child or runner job is
+in flight. Read-only check of blizzpc running/queue found no BFM job; relevant
+process listing likewise empty. Do not stop other projects' jobs or owner game.
+The completed r37 gate is `20261002-154305-bfm-r37-gate-61c60516d-1141388`;
+local job/script/evidence are `/home/blizz/release-staging/bfm-r37/{job.txt,gate.sh,gate-evidence.tar.gz}`.
+
+Linux integration cached development build (main_0003 overlay only):
+
+```sh
+cd /home/blizz/dev/bfm-port-integration
+cmake -S . -B build/lanes/owncode -DCMAKE_BUILD_TYPE=RelWithDebInfo -DMUSASHI_NATIVE_LANE=ON -DMUSASHI_LANE_OWN_CODE_ONLY=ON -DMUSASHI_WITH_PSYCROSS=ON -DMUSASHI_LANE_OVERLAY_MEMBERS=main_0003
+cmake --build build/lanes/owncode -j2
+ctest --test-dir build/lanes/owncode --output-on-failure
+python3 -m pytest -q tests/test_input_bios_callback.py
+```
+
+Offload heavy builds/gates rather than run large local jobs. Existing callback
+probe passes GCC and Clang UBSan/bounds with unrelated pre-existing warning
+errors downgraded diagnostically; unmodified pytest currently fails GCC
+Wclobbered at lane_try. Clang also needs its unrelated unused declaration
+warning downgraded. No source/test harness change concealed those warnings.
+Native lane configuration is release-specific; r37 uses own-code-only
+main_0003+main_0012 (93 selected overlay pairs), baseline and x86-64-v3.
+Use banked release job/script as the exact recipe; do not broaden the integration
+allowlist into a release accidentally. package_legion.sh takes --binary,
+--binary-v3, --run, --out, --status plus retail --exe/--extracted references;
+BFM_PKG_COMMIT/BFM_PKG_BRANCH must match exported source.
+
+Authorized headless host `blizz@100.87.173.93` (blizzpc). Use one BFM slot;
+chain work under existing runner. Current runner.conf read at handoff:
+CPU_QUOTA450%, MEM_MAX3G, timeout default6h, nice19/idle IO, thermal start<90C,
+gaming max1 aggregate slot, disk free floor30GiB and runner30GiB cap; memory
+headroom2GiB above slot cap. Runner README contains older limits; config and
+guards take precedence. Do not loosen caps or use occupied Alienware/desktop.
+
+```sh
+ssh blizz@100.87.173.93 '~/devbox-runner/bin/submit bfm-NAME' < job.sh
+ssh blizz@100.87.173.93 'ls ~/devbox-runner/jobs/running ~/devbox-runner/jobs/queue'
+ssh blizz@100.87.173.93 'cat ~/devbox-runner/logs/JOB.exit; tail -80 ~/devbox-runner/logs/JOB.log'
+scp blizz@100.87.173.93:devbox-runner/work/JOB/evidence.tar.gz ./
+```
+
+Assert package SHA inside every job. Existing disc on runner at
+`~/devbox-runner/gamedata/bfm/disc.cue`; use in place, no new transfer. Run with
+DISPLAY/WAYLAND_DISPLAY/XAUTHORITY unset, SDL_VIDEODRIVER=offscreen,
+EGL_PLATFORM=surfaceless, MUSASHI_AUDIO=null, MUSASHI_INTERACTIVE=0;
+isolate HOME/XDG state/config/cache and cards inside job work dir. Gating includes
+forest captures, native-vs-denied village/attract DEVOBS/RAM/PAD, inn save and
+separate cold Continue. Ordinary host-stop exit/abort must be distinguished from
+runtime refusal/fault; see completed gate summaries. No physical audio/pad fidelity
+claim from null/headless tests. Let any later owner-authorized jobs finish and
+collect via logs/work above; never cancel another lane's jobs.
+
+Everything below is retained historical context, with ownership, live releases,
+Windows availability and caps superseded by this checkpoint.
 
 ## Windows patch handoff review, 2026-10-03
 
