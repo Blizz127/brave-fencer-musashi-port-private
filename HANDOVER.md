@@ -28,10 +28,26 @@ There is no unfinished Codex runtime edit or uncommitted publisher edit.
 
 ## Latest private/public publication state
 
-- Linux private remains **r37**, build `bfm-r37-61c60516d`, 8,244,817 bytes,
-  SHA `4bb186e5010e1a04f2c739ac9e7a86d6ab33031616bfdf145934fcd11698a87e`.
-  Receipt `/home/blizz/release-staging/bfm-r37/RECEIPT.txt`; qualified forest,
-  village/attract, inn save and isolated cold Continue gates are banked.
+- Linux private is **r41** (2026-10-03 06:20Z), build `bfm-r41-3634893fe`,
+  source `release/r41` 3634893fe1 (= r37 + B18 main_0012 native admissions,
+  D-011 overlay deadline guard, D-043 route-proof rule, pass-through prototype
+  fixes, BIOS UB fix), 8,300,787 bytes,
+  SHA `90fc5307023cb9ce19583980e9dade79f6988be8a98a67e3bfb38c4174ed4c25`.
+  Receipt `/home/blizz/release-staging/bfm-r41/RECEIPT.txt`: full combined gate
+  (67/67 checks), eager-epoch route proof, interleaved speed vs r37, launcher
+  detection r37->r41. r37 (`bfm-r37-61c60516d`, receipt
+  `/home/blizz/release-staging/bfm-r37/RECEIPT.txt`) stays as rollback.
+- Windows owner-test is **r42** (2026-10-03 05:16Z), `bfm-r42-d0ac23d9c-windows-x64`
+  (windows-port d0ac23d9ce: cue FILE entries resolved against the cue folder for
+  backslash/drive paths; fixes r40's "disc.bin is missing" from the launcher),
+  3,998,185 bytes, SHA `007378926fbb266c53179118cf060bb2e7b5c268b948ffe094eb4dfca1aee205`,
+  receipt `/home/blizz/release-staging/bfm-r42-windows/PUBLISH-RECEIPT.json`.
+  Package = live r40 with only the EXE/README/THIRD-PARTY/manifest changed;
+  `tools/package_windows.sh` on windows-port (26380e9408) now emits that
+  contract. The Linux publisher keeps the Windows leaf
+  (`claude/private-port-builds` 391ca9b). Still UNVERIFIED on real Windows.
+- Earlier state (superseded): Linux private r37 since 2026-10-02; qualified forest,
+  village/attract, inn save and isolated cold Continue gates banked there.
 - Windows owner-test **r40 is LIVE** in the same owner-only bucket channel,
   build `bfm-r40-b33bdee18-windows-x64`, source
   `b33bdee18e852d255e86fbf862bd74572c8d243b` plus staged packaging/script updates.
@@ -102,7 +118,12 @@ Release candidate census is 562/593 functions (94.77%), 17022/18556 words (91.73
 within the selected lane candidate set; these are NOT whole-retail coverage or
 executed workload shares. No useful interpreter-disabled zero-fallback slice yet.
 
-Next normal Linux/native milestone: deferred **B18 timing mismatch** at
+B18 is resolved (3634893fe1, `docs/B18-TIMING-2026-10-03.md`: the attract
+DEVOBS differences were the deny leg's thunk-return IRQ hold, D-043) and shipped
+in r41. The strict interpreter-free build option (`MUSASHI_STRICT_NATIVE`,
+`docs/STRICT-NATIVE-BUILD.md`) is the acceptance tool for the zero-fallback
+slice; a release-configuration executed-share trace of r41 follows.
+Historical text of the B18 milestone: deferred **B18 timing mismatch** at
 `main_0012:8014C99C`: village equal; attract72 DEVOBS differences, RAM/PAD equal.
 Local old route archive lacks full DEVOBS streams; do not pretend the historical
 3-IRQ/2-cycle explanation was independently reconstructed. Add focused overlay
