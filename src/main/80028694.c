@@ -1,107 +1,116 @@
-/* Main-exec range [80028694,80028A30) from the SLUS executable.
- * SHA256(span)=de0479e6f3926950d785905250305293c9816e5e0631aeba7eef8bb535040ca5.
- * Word export for the native seam; the body below is an
- * UNVERIFIED draft, not an oracle match claim. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_80028694 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Pad-1 debug display shift: save/restore the three display rects, nudge the origin with R2+D-pad, rebuild the display env. */
 #include "psx_types.h"
 
-/* Vendor names mapped to address-named symbols for the link-by-address harness. */
-#define SetDefDispEnv func_80058B04
+typedef struct {
+    s16 x;
+    s16 y;
+    s16 w;
+    s16 h;
+} Rect;
 
-extern u8 D_800B9A15;
-extern s32 D_80075818;
-extern s32 D_8007581C;
-extern u16 D_80075820[];
-extern u16 D_80075824[];
-extern u16 D_80075828[];
-extern u16 D_8007582C[];
-extern u16 D_80075830[];
-extern u16 D_80075834[];
-extern u8 D_800AF737;
-extern u8 D_800AF6DB;
-extern u8 D_800AF67F;
-extern u16 D_800AF77C[];
-extern u16 D_800AF780[];
-extern u16 D_800AF790[];
-extern u16 D_800AF794[];
-extern u16 D_800AF7A4[];
-extern u16 D_800AF7A8[];
-extern u8 D_800AF630[];
+/* 0x5C bytes, libgpu DRAWENV layout. */
+typedef struct {
+    Rect clip;
+    s16 ofs[2];
+    Rect tw;
+    u16 tpage;
+    u8 dtd;
+    u8 dfe;
+    u8 isbg;
+    u8 r0;
+    u8 g0;
+    u8 b0;
+    u32 dr_env[16];
+} DrawEnv;
 
-void func_80028694(void) {
-    u8 *s0 = D_800AF630;
-    u32 m;
+/* 0x14 bytes, libgpu DISPENV layout. */
+typedef struct {
+    Rect disp;
+    Rect screen;
+    u8 isinter;
+    u8 isrgb24;
+    u8 pad0;
+    u8 pad1;
+} DispEnv;
 
-    if (D_800B9A15 != 0) {
-        return;
+/* Only the fields this function touches are laid out. */
+typedef struct {
+    u8 pad0[0x38];
+    DrawEnv draw[3];  /* 0x38 */
+    DispEnv disp[3];  /* 0x14C */
+    u16 cur;          /* 0x188: display env index */
+    u8 pad18A[0xA3E5 - 0x18A];
+    u8 lock;          /* 0xA3E5 (D_800B9A15) */
+    u8 padA3E6[2];
+    s32 step;         /* 0xA3E8 */
+} State;
+
+extern State D_800AF630;
+extern s32 D_80075818;    /* display origin x offset */
+extern s32 D_8007581C;    /* display origin y offset */
+extern Rect D_80075820[3]; /* saved disp rects */
+extern s32 func_80014C54(u32, u32, u32);
+extern u16 func_80014BFC(u8);
+extern u16 func_80014B10(s32);
+extern u32 func_80058B04(void *, s32, s32, s32, s32); /* returns its first argument */
+
+void func_80028694(void)
+{
+    State *p = &D_800AF630;
+
+    if (p->lock != 0) return;
+    if ((s16)func_80014C54(1, 0, 2)) {
+        p->draw[0].dfe = p->draw[1].dfe = p->draw[2].dfe = 1;
+        D_80075818 = D_8007581C = 0;
+        D_80075820[0].x = p->disp[0].disp.x;
+        D_80075820[0].y = p->disp[0].disp.y;
+        D_80075820[0].w = p->disp[0].disp.w;
+        D_80075820[0].h = p->disp[0].disp.h;
+        D_80075820[1].x = p->disp[1].disp.x;
+        D_80075820[1].y = p->disp[1].disp.y;
+        D_80075820[1].w = p->disp[1].disp.w;
+        D_80075820[1].h = p->disp[1].disp.h;
+        D_80075820[2].x = p->disp[2].disp.x;
+        D_80075820[2].y = p->disp[2].disp.y;
+        D_80075820[2].w = p->disp[2].disp.w;
+        D_80075820[2].h = p->disp[2].disp.h;
+    } else if ((func_80014BFC(1) & 2) && !(func_80014B10(1) & 2)) {
+        p->draw[0].dfe = p->draw[1].dfe = p->draw[2].dfe = 0;
+        p->disp[0].disp.x = D_80075820[0].x;
+        p->disp[0].disp.y = D_80075820[0].y;
+        p->disp[0].disp.w = D_80075820[0].w;
+        p->disp[0].disp.h = D_80075820[0].h;
+        p->disp[1].disp.x = D_80075820[1].x;
+        p->disp[1].disp.y = D_80075820[1].y;
+        p->disp[1].disp.w = D_80075820[1].w;
+        p->disp[1].disp.h = D_80075820[1].h;
+        p->disp[2].disp.x = D_80075820[2].x;
+        p->disp[2].disp.y = D_80075820[2].y;
+        p->disp[2].disp.w = D_80075820[2].w;
+        p->disp[2].disp.h = D_80075820[2].h;
     }
-
-    if ((s16)func_80014C54(1, 0, 2) != 0) {
-        D_800AF737 = 1;
-        D_800AF6DB = 1;
-        D_800AF67F = 1;
-        D_8007581C = 0;
-        D_80075818 = 0;
-        D_80075820[0] = D_800AF77C[0];
-        D_80075820[1] = D_800AF77C[1];
-        D_80075824[0] = D_800AF780[0];
-        D_80075824[1] = D_800AF780[1];
-        D_80075828[0] = D_800AF790[0];
-        D_80075828[1] = D_800AF790[1];
-        D_8007582C[0] = D_800AF794[0];
-        D_8007582C[1] = D_800AF794[1];
-        D_80075830[0] = D_800AF7A4[0];
-        D_80075830[1] = D_800AF7A4[1];
-        D_80075834[0] = D_800AF7A8[0];
-        D_80075834[1] = D_800AF7A8[1];
-    } else {
-        if (((func_80014BFC(1) & 2) != 0) && ((func_80014B10(1) & 2) == 0)) {
-            D_800AF737 = 0;
-            D_800AF6DB = 0;
-            D_800AF67F = 0;
-            D_800AF77C[0] = D_80075820[0];
-            D_800AF77C[1] = D_80075820[1];
-            D_800AF780[0] = D_80075824[0];
-            D_800AF780[1] = D_80075824[1];
-            D_800AF790[0] = D_80075828[0];
-            D_800AF790[1] = D_80075828[1];
-            D_800AF794[0] = D_8007582C[0];
-            D_800AF794[1] = D_8007582C[1];
-            D_800AF7A4[0] = D_80075830[0];
-            D_800AF7A4[1] = D_80075830[1];
-            D_800AF7A8[0] = D_80075834[0];
-            D_800AF7A8[1] = D_80075834[1];
+    if ((s16)func_80014C54(1, 1, 2)) {
+        switch (func_80014B10(1) & 0x5000) {
+        case 0x1000:
+            D_8007581C -= p->step * 2;
+            break;
+        case 0x4000:
+            D_8007581C += p->step * 2;
+            break;
         }
-    }
-
-    if ((s16)func_80014C54(1, 1, 2) == 0) {
-        return;
-    }
-
-    m = func_80014B10(1) & 0x5000;
-    if (m == 0x1000) goto minus1;
-    if (m == 0x4000) goto plus1;
-    goto skip1;
-minus1:
-    D_8007581C = D_8007581C - *(s32 *)(s0 + 0xA3E8) * 2;
-    goto store1;
-plus1:
-    D_8007581C = D_8007581C + *(s32 *)(s0 + 0xA3E8) * 2;
-store1:
-skip1:
-    m = func_80014B10(1) & 0xA000;
-    if (m == 0x2000) goto plus2;
-    if (m != 0x8000) goto skip2;
-    D_80075818 = D_80075818 - *(s32 *)(s0 + 0xA3E8) * 2;
-    goto store2;
-plus2:
-    D_80075818 = D_80075818 + *(s32 *)(s0 + 0xA3E8) * 2;
-store2:
-skip2:
-    if ((s16)func_80014C54(1, 1, 8) != 0) {
-        SetDefDispEnv(s0 + (*(u16 *)(s0 + 0x188) * 20 + 0x14C), D_80075818, D_8007581C, 0x140, 0xF0);
-    } else {
-        SetDefDispEnv(s0 + (*(u16 *)(s0 + 0x188) * 20 + 0x14C), D_80075818, D_8007581C, 0x280, 0x1E0);
+        switch (func_80014B10(1) & 0xA000) {
+        case 0x8000:
+            D_80075818 -= p->step * 2;
+            break;
+        case 0x2000:
+            D_80075818 += p->step * 2;
+            break;
+        }
+        if ((s16)func_80014C54(1, 1, 8)) {
+            func_80058B04(&p->disp[p->cur], D_80075818, D_8007581C, 320, 240);
+        } else {
+            func_80058B04(&p->disp[p->cur], D_80075818, D_8007581C, 640, 480);
+        }
     }
 }
