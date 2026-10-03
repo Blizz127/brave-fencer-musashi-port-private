@@ -1,5 +1,16 @@
 # BFM handover to Codex (2026-10-02)
 
+## Current ownership, 2026-10-03
+
+Codex is the sole **Linux writer/integrator**. Windows implementation is owned
+by separate task `ce62b0f3dc66`, the BFM Claude lane in `~/dev/bfm-windows`,
+branch `windows-port`. Stop Windows work in this lane. Shared-file changes
+from Windows must arrive as proposed patches through the coordinator before
+Linux integration. The coordinator reports SDL2/OpenAL dependencies and
+wine64 are already present in that side worktree; this lane made no installs.
+Resume Linux/native work under efficient routing. The earlier Windows audit
+and planning documents are historical findings, not an active Codex task.
+
 ## Public documentation published, 2026-10-02
 
 The coordinator resolved the documentation-only public exception and explicitly
