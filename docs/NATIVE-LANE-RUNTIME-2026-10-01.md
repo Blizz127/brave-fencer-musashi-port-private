@@ -984,3 +984,17 @@ private channel/launch contract and launcher Private upgrade detection were
 verified by readback. Most scene/non-HLE SDK still executes CPU instructions,
 48 native functions retain approximate timing, null/KUSEG is still open;
 this is not a native-only completion milestone.
+
+## 2026-10-03 Claude: B18 timing resolved (port `562afa10d9`+)
+
+The B18 attract DEVOBS difference at `main_0012:8014C99C` was the deny leg's
+thunk-return IRQ hold (D-043), not a native timing error. Denying only
+`8014C99C` reproduced the whole difference. The 48 lines were 2 deliveries
+at the native slot `8014c9fc` against the deny resume pc `801462b0`, +2
+cycles. A control that also interprets the caller `80146128` is
+byte-identical on attract (12,411,230 records) and village (2,413,283), and
+village native vs B18-denied is identical at `6b13b176`. The refined proof
+rule, the tool and the overlay deadline-guard probe are in
+[B18-TIMING](B18-TIMING-2026-10-03.md). B18 may enter the next private
+candidate (r41+). Still hybrid; the native share is unmeasured.
+
