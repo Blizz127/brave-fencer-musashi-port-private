@@ -136,7 +136,7 @@ OpenSSL is not needed after W2.
 | W4 Windows adapter | done (section views, VEH + unhandled filter, GetProcAddress) |
 | W5 paths/card/timing | card replace atomic. Cache in `%LOCALAPPDATA%\bfm-port`, screenshots in `%USERPROFILE%\Pictures`, card dirs accept `\` and drive prefixes. Timing uses `Sleep()` at ms granularity. SDL2 raises the system timer to 1 ms (`SDL_HINT_TIMER_RESOLUTION`); frame pacing still has to be measured on real Windows |
 | W6 CMake/zig | done; `-s` link (see retail note) |
-| W7 package | `tools/package_windows.sh`: zip with allow-listed imports, licences, manifest, retail_guard |
+| W7 package | `tools/package_windows.sh`: zip with allow-listed imports, licences, manifest, retail_guard. Since 2026-10-03 it emits the r40 owner-test contract: launch.cmd honours launcher-managed `BFM_DISC`/`BFM_DISC_DIR` (exit 66, no picker, when they point nowhere), the full runtime notice set plus the complete OpenAL Soft source (`deps/openal/openal-soft-1.25.1.tar.bz2`, `tools/windows/licenses-reference/`), manifest `contains_game_data`/`distribution`, and a `--status` that must say "UNVERIFIED on real Windows" (publisher requirement). Regenerating r42 from the same exe reproduced the published package in 24/27 files; README/THIRD-PARTY/manifest differ in wording only |
 | W8 runtime | Wine smoke only (not qualification); a real Windows machine is pending owner access |
 
 Findings on the way:
