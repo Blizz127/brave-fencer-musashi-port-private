@@ -3,6 +3,9 @@
  * behaviour; no Psy-Q code. See bfm_psyq_compat.h. */
 #include "bfm_psyq_compat.h"
 #include "../bfm_plat.h"
+#ifdef MUSASHI_STRICT_NATIVE
+#include "../../include/musashi_strict.h"
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -53,6 +56,12 @@ int bfm_psyq_call(uint32_t pc, uint32_t *r) {
     int ok;
     if (!e || !r) return 0;
     ok = e->fn(r);
+#ifdef MUSASHI_STRICT_NATIVE
+    /* Seam: psyq_refused. A wrapper that refuses (STUB, a held-back row, or
+     * a PsyCross class compiled out) means the hybrid build would interpret
+     * the retail entry; a strict build refuses visibly instead. */
+    if (!ok) musashi_strict_abort("psyq_refused", e->name, pc);
+#endif
     if (!ok) stats.refused++;
     return ok;
 }

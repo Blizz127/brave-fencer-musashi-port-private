@@ -16,6 +16,21 @@ option(MUSASHI_DEV_MENU_PRESET_TABLE "Build the dev menu's Finish Area with a lo
 if(MUSASHI_DEV_MENU_PRESET_TABLE)
     add_compile_definitions(MUSASHI_DEV_MENU_PRESET_TABLE)
 endif()
+# Strict native build: every remaining entry into the MIPS interpreter aborts
+# with a diagnostic (the seam guards in pc_port/mips_formatter.c, the
+# musashi_native_guest_call thunk and the PsyQ compat refusal path) instead of
+# executing retail words. The interpreter still compiles as dead code until its
+# support symbols move out of mips_formatter.c; no interpreted instruction can
+# execute either way. Enforcement/acceptance tool for the interpreter-free
+# native slice (docs/STRICT-NATIVE-BUILD.md): expect an early abort until the
+# slice conversion is done. Scoped to the two seam TUs so toggling it in an
+# existing build directory recompiles only those.
+option(MUSASHI_STRICT_NATIVE "Abort every interpreter entry instead of executing retail MIPS" OFF)
+if(MUSASHI_STRICT_NATIVE)
+    set_source_files_properties(pc_port/mips_formatter.c pc_port/platform/psyq/bfm_psyq_compat.c
+        PROPERTIES COMPILE_DEFINITIONS MUSASHI_STRICT_NATIVE=1)
+    message(STATUS "MUSASHI_STRICT_NATIVE: interpreter entries abort (strict build)")
+endif()
 option(MUSASHI_USE_VENDOR_BFM
     "Prefer cleaned house-style matched leaves reconciled with vendor/bfm-decomp (Druthulu)"
     OFF)
@@ -228,6 +243,7 @@ if(MUSASHI_BUILD_PC_PORT)
         pc_port/boot_memory.c
         pc_port/startup_bindings.c
         pc_port/mips_formatter.c
+        pc_port/mips_formatter_strict.c
         pc_port/gpu_bindings.c
         pc_port/device_reset_bindings.c
         pc_port/callback_bindings.c
@@ -416,6 +432,7 @@ if(MUSASHI_BUILD_PC_PORT)
             pc_port/irq_scheduler.c
             pc_port/cpu_status.c
             pc_port/mips_formatter.c
+            pc_port/mips_formatter_strict.c
             pc_port/irq_controller.c
             pc_port/boot_memory.c
             pc_port/libetc_irq_dispatch.c

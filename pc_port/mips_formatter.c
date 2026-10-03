@@ -7,6 +7,7 @@
 #include "musashi_callback_registration.h"
 #include "musashi_mips_div.h"
 #include "musashi_native_lane.h"
+#include "musashi_strict.h"
 #include "platform/psyq/bfm_psyq_libpad.h"
 
 #include <limits.h>
@@ -13711,6 +13712,13 @@ void musashi_native_lane_tick_entry(uint32_t pc) {
 
 uint32_t musashi_native_guest_call(uint32_t target, unsigned argc,
                                    const uint32_t *args, uint32_t *v1) {
+#ifdef MUSASHI_STRICT_NATIVE
+    /* Seam: lane_guest_call. A native-lane callee that is not itself in the
+     * lane can only run on the interpreter; strict builds refuse that here
+     * instead of thunking into run_startup_cpu. */
+    (void)argc; (void)args; (void)v1;
+    musashi_strict_abort("lane_guest_call", __func__, target);
+#endif
     LaneActive *active = g_lane_active;
     FormatterCpu *cpu;
     LaneRunFrame *frame;
@@ -15893,6 +15901,12 @@ int musashi_boot_execute_input_bios_callback(MusashiBootMemory *memory,
     const MusashiInputDevice *device, MusashiBiosCallbackFrame *frame,
     uint32_t target, int32_t argument, int32_t *result,
     MusashiResetGraphPrefixStop *stop) {
+#ifdef MUSASHI_STRICT_NATIVE
+    /* Seam: input_bios_callback. The pad's BIOS card/input callbacks are
+     * retail guest code; strict builds refuse to step them. */
+    (void)memory; (void)device; (void)frame; (void)argument; (void)result; (void)stop;
+    musashi_strict_abort("input_bios_callback", __func__, target);
+#endif
     FormatterCpu cpu = {0};
     struct { uint32_t pc, sp; } returns[8];
     unsigned remaining = g_input_callback_budget, depth = 0;
@@ -16585,6 +16599,14 @@ int musashi_boot_execute_cd_irq_with_services(MusashiBootMemory *memory,
     const MusashiCdRegisterDevice *device, const MusashiExecutionClock *clock,
     const MusashiCdIrqServices *services, MusashiCdIrqFrame *frame, uint32_t context, uint32_t target,
     MusashiResetGraphPrefixStop *stop) {
+#ifdef MUSASHI_STRICT_NATIVE
+    /* Seam: cd_irq. Overlay streaming, XA audio decode setup and the CD
+     * driver all run as guest code inside this router; strict builds refuse
+     * it wholesale (the native slice must stream overlays through
+     * bfm_plat_storage instead). */
+    (void)memory; (void)device; (void)clock; (void)services; (void)frame; (void)context; (void)stop;
+    musashi_strict_abort("cd_irq", __func__, target);
+#endif
     int result;
     musashi_native_lane_suspend(1);
     result = cd_irq_execute(memory, device, clock, services, frame, context, target, stop);
@@ -16964,6 +16986,12 @@ int musashi_boot_execute_cd_irq(MusashiBootMemory *memory,
 }
 
 int musashi_boot_execute_bios_event(void *userdata, uint32_t callback) {
+#ifdef MUSASHI_STRICT_NATIVE
+    /* Seam: bios_event. BIOS event delivery steps guest callback words; a
+     * strict build refuses (native code must emit bfm_plat events instead). */
+    (void)userdata;
+    musashi_strict_abort("bios_event", __func__, callback);
+#endif
     MusashiBootMemory *memory = userdata;
     FormatterCpu cpu = {0};
     unsigned step;
@@ -16987,6 +17015,15 @@ MusashiResetGraphPrefixStatus musashi_boot_run_entry_with_devices(
     MusashiConsoleSink sink, void *sink_userdata,
     MusashiEntryObserver observer, void *observer_userdata,
     MusashiEntryRunStop *stop) {
+#ifdef MUSASHI_STRICT_NATIVE
+    /* Seam: boot_entry. The whole interpreted startup/game loop lives behind
+     * this entry; a strict build has nothing to run it and refuses here.
+     * (This fires first in every strict run until a native frame driver and
+     * the slice lane exist.) */
+    (void)memory; (void)incoming_ra; (void)devices; (void)sink; (void)sink_userdata;
+    (void)observer; (void)observer_userdata; (void)stop;
+    musashi_strict_abort("boot_entry", __func__, 0x80010000u);
+#endif
     FormatterCpu cpu = {0};
     int32_t result;
     if (!memory || !devices || !devices->callback || !sink || !stop)
@@ -17130,6 +17167,14 @@ MusashiResetGraphPrefixStatus musashi_boot_execute_source_call(
     uint32_t target, uint32_t first, uint32_t second, int32_t *result,
     MusashiConsoleSink sink, void *sink_userdata,
     MusashiResetGraphPrefixStop *stop) {
+#ifdef MUSASHI_STRICT_NATIVE
+    /* Seam: source_call. Fixed-entry guest execution: IRQ callbacks and the
+     * memory-card request handlers reach the interpreter through this
+     * router (and execute_source_function above it); strict builds refuse. */
+    (void)memory; (void)devices; (void)first; (void)second; (void)result; (void)sink;
+    (void)sink_userdata; (void)stop;
+    musashi_strict_abort("source_call", __func__, target);
+#endif
     FormatterCpu cpu = {0};
     if (!memory || !devices || !devices->callback || !sink || !stop || !result || (target & 3u))
         return MUSASHI_RESETGRAPH_PREFIX_INVALID_INPUT;
