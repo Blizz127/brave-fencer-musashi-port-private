@@ -16,6 +16,8 @@ ran, passed its retail scan or qualified for publication.
 Saved commands, logs and SHA-256s:
 `~/release-staging/bfm-r38-public/windows-audit/RESULT.json` and adjacent
 `toolchain.cmake`, `configure.log`, `formatter-compile.log`, `x11-compile.log`.
+The [evidence snapshot](WINDOWS-PORT-EVIDENCE.json) is retained in this repo;
+all seven referenced file hashes were checked when recording it.
 See [detailed audit](WINDOWS-RELEASE-2026-10-02.md) and
 [short findings](WINDOWS-PORTABILITY-SUMMARY-2026-10-02.md).
 

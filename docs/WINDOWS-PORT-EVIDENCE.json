@@ -1,0 +1,27 @@
+{
+  "request_message": "23c4f77ef5a3979a",
+  "linux_release": "bfm-r38-61c60516d",
+  "source_examined": "61c60516d18bf6402e6dbd937d8c8d18ebd1af4b",
+  "toolchain": "existing Zig0.13.0 x86_64-windows-gnu (Clang18.1.6)",
+  "platform_name_adapter_coff_compile": "passed; tiny adapter only, not game build",
+  "cmake_c_and_cxx_abi_detection": "passed",
+  "game_configure": "failed: Windows SDL2 package missing from target sysroot",
+  "game_formatter_syntax": "failed: sys/mman.h absent for Windows target",
+  "x11_interposer_syntax": "failed: dlfcn.h absent for Windows target",
+  "native_lane_codegen": "static audit: hardcoded Linux target/ELF ABI; Windows target plumbing absent",
+  "windows_game_link": "not reached",
+  "windows_game_runtime": "not performed; no Windows/Wine runtime identified, owner desktop excluded",
+  "windows_artifact": "none; not qualified for upload",
+  "owner_device_actions": "none",
+  "installed_dependencies": "none",
+  "evidence": {
+    "platform.obj": "a6a14ee54b6ee3220935e3acc9927539885bfb414bb12fa28c02f840e210ea64",
+    "platform-compile.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "formatter-compile.log": "bfa50d512ea353c0b6831ba48726258b01f7dc255d11e1faf96c2280a5e28e32",
+    "x11-compile.log": "c9f7a21f75f25726b4c8fb6fb4cb246bf3e358f812928cea8ff69be959ab3344",
+    "configure.log": "c1d29e16717700f1354fff95e2b5e3b1cadfd9a98170e765f7571cdc040ebb19",
+    "toolchain.cmake": "bc542fb538a1b1204dd6c5c906fbc8d56fad8171be2bb5a17804554da39d2d79"
+  },
+  "scheduling": "Deferred to a separate owner-scheduled host-port task; no Windows route awaited.",
+  "recorded_in_repo": "2026-10-03; preserved prior compile/configure results, no new compiler invocation."
+}
