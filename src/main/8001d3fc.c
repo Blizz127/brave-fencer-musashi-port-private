@@ -82,7 +82,7 @@ void func_8001D3FC(Obj *obj)
             pf = part->flags;
             x = obj->tx + (part->u >> shift);
             y = obj->ty + part->v;
-            D_800A5E60 += sizeof(PolyFT4);
+            D_800A5E60 += 0x28; /* sizeof(PolyFT4): the lane bars sizeof (host widths differ) */
             p->tag.len = 9;
             p->code = 0x2C;
             if (flags & 0x40000000) {
