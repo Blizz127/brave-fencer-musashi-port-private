@@ -1,5 +1,16 @@
 # BFM handover to Codex (2026-10-02)
 
+## Windows patch handoff review, 2026-10-03
+
+Standalone BIOS callback scratch-pointer UB fix accepted as `d52d99922a`.
+Existing callback probe passes GCC and Clang UBSan/bounds with unrelated
+pre-existing warning errors downgraded for those diagnostic runs. Series
+0001–0005 is held for missing in-tree SHA linkage in Python probe harnesses
+(boot-memory setup reproduced an undefined SHA symbol) and an existing
+`docs/WINDOWS-PORT.md` path collision. Details and required follow-up:
+[shared patch review](docs/WINDOWS-PATCH-REVIEW-2026-10-03.md).
+No route/release gates or publication were performed for this handoff.
+
 ## Current ownership, 2026-10-03
 
 Codex is the sole **Linux writer/integrator**. Windows implementation is owned
