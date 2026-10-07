@@ -2467,7 +2467,7 @@
       "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": "owner re-derivation, clean room (Decomp Bot box sandbox 2026-10-07, branch cursor/native-cleanroom-b23), clean input set (retail disassembly + owner headers)"
     },
     {
       "name": "func_80015954",
@@ -3182,7 +3182,7 @@
       "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": "owner re-derivation, clean room (Decomp Bot box sandbox 2026-10-07, branch cursor/native-cleanroom-b23), clean input set (retail disassembly + owner headers)"
     },
     {
       "name": "func_80018714",
