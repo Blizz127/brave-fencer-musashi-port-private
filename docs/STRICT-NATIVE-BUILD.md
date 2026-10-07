@@ -74,7 +74,8 @@ candidate. What the zero-fallback slice still needs, in order:
 1. the support-symbol split above, so strict can link without the interpreter;
 2. a native frame driver behind the `boot_entry` seam (frame loop over lane
    entries, VSync-paced through `bfm_plat_timing`, overlay selection through
-   the existing digest hooks);
+   the existing digest hooks; design and per-frame callee status in
+   `docs/NATIVE-FRAME-DRIVER.md`);
 3. the slice lane itself: boot -> title -> village -> inn save -> Continue
    with every function on the route admitted (the measured release-trace
    ranking in the draft's §2-3 is the work order);
