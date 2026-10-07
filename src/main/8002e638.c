@@ -1,53 +1,44 @@
-/* Exact retail word export for [8002E638,8002E700); EXE and assembly verified. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* Owner re-derivation from retail assembly (clean input set). */
 #include "psx_types.h"
 
-/* func_8002E638 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Starts sound cue id: through the sequencer when it is active, otherwise by
+ * programming the fallback value registers. */
+typedef struct {
+    u16 channel;
+    u16 unk2;
+} CueVoice;
 
-extern u16 D_800A4E8E;
-extern s16 D_800A4E86;
-extern s32 D_80078F10;
-extern u16 D_8006A99C[];
-extern u16 D_800A46B8;
-extern u8 D_8006AEEC;
-extern s32 D_800A46B4;
-extern u8 D_800A46BA;
-extern u16 D_800A4EF4;
+extern u16      D_800A4E8E;
+extern s16      D_800A4E86;
+extern s32      D_80078F10;
+extern CueVoice D_8006A99C[];
+extern u16      D_800A46B8;
+extern s32      D_800A46B4;
+extern u8       D_800A46BA;
+extern u8       D_8006AEEC;
+extern u16      D_800A4EF4;
 
-extern s32 func_8003836C(s32 a0);
-extern void func_8002E700(s32 a0);
+extern s16  func_8003836C(s32 handle);
+extern void func_8002E700(u16 id);
 
-void func_8002E638(s32 a0) {
-    s32 s0;
-    s16 temp;
-    u16 a0_masked;
-    u16 v1;
+void func_8002E638(u16 id)
+{
+    u16 value;
 
-    s0 = a0;
-
-    if ((D_800A4E8E & 4) != 0) {
-        temp = D_800A4E86;
-        if ((func_8003836C(temp) << 16) != 0) {
-            func_8002E700(s0 & 0xFFFF);
-            return;
-        }
-    }
-
-    if (D_80078F10 == 0) {
+    if ((D_800A4E8E & 4) && func_8003836C(D_800A4E86) != 0) {
+        func_8002E700(id);
         return;
     }
-
-    a0_masked = s0 & 0xFFFF;
-
-    if (a0_masked < 5) {
-        v1 = *(u16 *)((u8 *)D_8006A99C + a0_masked * 4);
-    } else {
-        v1 = 0x1F;
+    if (D_80078F10 != 0) {
+        if (id < 5) {
+            value = D_8006A99C[id].channel;
+        } else {
+            value = 31;
+        }
+        D_800A46B8 = value;
+        value = D_8006AEEC;
+        D_800A46B4 = 0xFFFF;
+        D_800A46BA = 1;
+        D_800A4EF4 = value;
     }
-
-    D_800A46B8 = v1;
-    v1 = D_8006AEEC;
-    D_800A46B4 = 0xFFFF;
-    D_800A46BA = 1;
-    D_800A4EF4 = v1;
 }

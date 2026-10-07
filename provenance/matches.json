@@ -2082,7 +2082,7 @@
       "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": "owner re-derivation, clean room (Decomp Bot box sandbox 2026-10-07, branch cursor/native-cleanroom-b21), clean input set (retail disassembly + owner headers)"
     },
     {
       "name": "func_800146B0",
@@ -31679,7 +31679,7 @@
       "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": "owner re-derivation, clean room (Decomp Bot box sandbox 2026-10-07, branch cursor/native-cleanroom-b21), clean input set (retail disassembly + owner headers)"
     },
     {
       "name": "func_8001AE90",
@@ -31778,7 +31778,7 @@
       "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": "owner re-derivation, clean room (Decomp Bot box sandbox 2026-10-07, branch cursor/native-cleanroom-b21), clean input set (retail disassembly + owner headers)"
     },
     {
       "name": "func_8001FB8C",
@@ -31844,7 +31844,7 @@
       "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": "owner re-derivation, clean room (Decomp Bot box sandbox 2026-10-07, branch cursor/native-cleanroom-b21), clean input set (retail disassembly + owner headers)"
     },
     {
       "name": "func_800373D0",
@@ -31932,7 +31932,7 @@
       "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": "owner re-derivation, clean room (Decomp Bot box sandbox 2026-10-07, branch cursor/native-cleanroom-b21), clean input set (retail disassembly + owner headers)"
     },
     {
       "name": "func_8002F150",
@@ -32251,7 +32251,7 @@
       "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": "owner re-derivation, clean room (Decomp Bot box sandbox 2026-10-07, branch cursor/native-cleanroom-b21), clean input set (retail disassembly + owner headers)"
     },
     {
       "name": "func_8001C0C8",
@@ -32438,7 +32438,7 @@
       "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": "owner re-derivation, clean room (Decomp Bot box sandbox 2026-10-07, branch cursor/native-cleanroom-b21), clean input set (retail disassembly + owner headers)"
     },
     {
       "name": "func_8002F4E4",
@@ -32515,7 +32515,7 @@
       "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": "owner re-derivation, clean room (Decomp Bot box sandbox 2026-10-07, branch cursor/native-cleanroom-b21), clean input set (retail disassembly + owner headers)"
     },
     {
       "name": "func_8002CCD8",
@@ -33135,7 +33135,7 @@
       "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": "owner re-derivation, clean room (Decomp Bot box sandbox 2026-10-07, branch cursor/native-cleanroom-b21), clean input set (retail disassembly + owner headers)"
     },
     {
       "name": "func_800363CC",
