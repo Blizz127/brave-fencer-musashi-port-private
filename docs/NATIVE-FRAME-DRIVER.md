@@ -69,7 +69,7 @@ other = other game code. psyq = Sony library range.
 
 | Callee | Name | Class (B22) | Subtree | native | own | vendor | other | psyq | jalr |
 |---|---|---|---|---|---|---|---|---|---|
-| `80014238` | session reset (outer) | own | 76 | 27 | 7 | 0 | 1 | 41 | 10 |
+| `80014238` | session reset (outer) | own | 76 | 27 | 8 | 0 | 0 | 41 | 10 |
 | `80014390` | (outer) | native | 1 | 1 | 0 | 0 | 0 | 0 | 0 |
 | `800191A8` | (outer) | own, lane rules pass on box | 1 | 0 | 1 | 0 | 0 | 0 | 0 |
 | `80010A98` | (outer) | native | 3 | 1 | 0 | 0 | 0 | 2 | 2 |
@@ -93,8 +93,8 @@ other = other game code. psyq = Sony library range.
 | `8001513C` | empty hook | own, lane rules pass on box | 1 | 0 | 1 | 0 | 0 | 0 | 0 |
 | `80042610` | (inner-loop exit) | PsyQ **STUB** | 1 | | | | | 1 | 1 |
 
-Union of all subtrees: 279 functions. 127 are native, 29 own (not admitted),
-28 vendor, 2 other game code and 93 PsyQ.
+Union of all subtrees: 279 functions. 127 are native, 30 own (not admitted),
+28 vendor, 1 other game function and 93 PsyQ.
 
 - **Vendor, interpreted in release (28):**
   - direct callees: `80015208`, `800184F0`, `8002D034`;
@@ -104,19 +104,17 @@ Union of all subtrees: 279 functions. 127 are native, 29 own (not admitted),
     `80030A14`, `80030D80`, `80030F80`, `800314DC`, `80032048`, `800322A8`,
     `800324A4`, `80032774`, `80032A74`, `800336A8`, `8003388C`, `80034DFC`,
     `800363CC`, `80036AF8`, `80037144`, `800383A4`, `80038698`.
-- **Own, not admitted (29).** 21 pass the lane rules on the box. The rest are
-  refused:
+- **Own, not admitted (30).** 22 pass the lane rules on the box, including
+  `800147B8` (recovery `mixed` before B22, now plain C). The rest are refused:
   - `hooks` (the port references a PC inside the function): `80014238`,
     `80014444`, `800145EC`, `80014928`, `8002FC64`;
   - `escape`, retail frame proof pending on the runner: `8001D1C4`,
     `8002E5F8`, `80036D58`;
   - `deny`: `80015498`;
   - `ub`: `80018A20` (no return value on the unknown-state path, as in retail).
-- **Other game code (2):**
-  - `800147B8`: recovery `mixed`. B22 got a clean-room candidate down to one
-    instruction (`move` vs `andi 0xffff`).
-  - `80018E9C`: under the pad poll. Only an unverified m2c draft exists and
-    there is no registry match, so the box has no retail bytes to work from.
+- **Other game code (1):** `80018E9C`, under the pad poll. Only an
+  unverified m2c draft exists and there is no registry match, so the box has
+  no retail bytes to work from.
 - **PsyQ (93):**
   - 16 HLE and 6 PsyCross rows are served by `bfm_psyq_call`;
   - 27 have no compat row (internal to a library body);

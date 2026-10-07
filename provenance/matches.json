@@ -2113,9 +2113,10 @@
       "size": 368,
       "region": "main",
       "source": "src/main/800147b8.c",
-      "recovery": "mixed",
+      "recovery": "c",
       "extent": "function",
-      "optimization": "-O2"
+      "optimization": "-O2",
+      "origin": "owner re-derivation, clean room (Decomp Bot box sandbox 2026-10-07, branch cursor/native-cleanroom-b22), clean input set (retail disassembly + owner headers)"
     },
     {
       "name": "func_80014928",
