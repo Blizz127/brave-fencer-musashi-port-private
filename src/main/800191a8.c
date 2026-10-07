@@ -1,13 +1,10 @@
-/* Exact retail word export for [800191A8,800191BC); EXE and assembly verified. */
+/* Owner re-derivation from retail assembly (clean input set). */
 #include "psx_types.h"
 
-/* Decompiled by m2c from main.s, then verified byte-exact
- * against retail by tools/match_function.py. Types and signatures are
- * whatever reproduces the bytes; they are not evidence of the
- * original declaration. */
-
+/* Marks D_80078E30 as unset (-1); called once per outer-loop pass of main. */
 extern s32 D_80078E30;
 
-void func_800191A8(void) {
+void func_800191A8(void)
+{
     D_80078E30 = -1;
 }

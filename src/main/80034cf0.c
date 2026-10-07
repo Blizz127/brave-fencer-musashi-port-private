@@ -1,58 +1,68 @@
-/* Exact retail word export for [80034CF0,80034DFC); EXE and assembly verified. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* Owner re-derivation from retail assembly (clean input set). */
 #include "psx_types.h"
 
-/* func_80034CF0 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Queues a request in the four-entry ring at D_80076118 with the queue lock
+ * (D_8006AEF5) held. Returns 0 when the ring is full, otherwise the queued
+ * slot index + 1. */
+typedef struct {
+    u8  active;
+    u8  unk1;
+    u8  unk2;
+    u8  unk3;
+    u8  unk4[3];
+    u8  unk7;
+    s32 unk8;
+    s32 unkC;
+    s32 unk10;
+    s32 unk14;
+    s32 unk18;
+    s32 unk1C;
+    s32 unk20;
+    s32 unk24;
+    s32 unk28;
+    s32 slot;
+} QueueEntry;   /* 0x30 bytes */
 
-extern u8 D_8006AEF5;
-extern s32 D_8006AEF8;
-extern s32 D_8006AEFC;
-extern u8 D_80076118[];
+extern s32        D_8006AEFC;
+extern u8         D_8006AEF5;
+extern s32        D_8006AEF8;
+extern QueueEntry D_80076118[4];
 
-s32 func_80034CF0(u8 *p) {
-    s32 idx = D_8006AEFC;
-    u8 saved = D_8006AEF5;
-    s32 limit = D_8006AEF8;
-    u8 *self;
-    s32 f28;
-    s32 oldIdx;
-    s32 ret;
+s32 func_80034CF0(QueueEntry *req)
+{
+    s32 next = D_8006AEFC;
+    u8 locked = D_8006AEF5;
+    s32 head = D_8006AEF8;
+    QueueEntry *entry;
+    s32 slot;
 
     D_8006AEF5 = 1;
-    idx = idx + 1;
-    if (idx >= 4) {
-        idx = 0;
+    next++;
+    if (next >= 4) {
+        next = 0;
     }
-
-    if (idx == limit) {
-        D_8006AEF5 = saved;
+    if (next == head) {
+        D_8006AEF5 = locked;
         return 0;
     }
-
-    self = D_80076118 + D_8006AEFC * 0x30;
-
-    *(s32 *)(self + 0x8) = *(s32 *)(p + 0x8);
-    *(s32 *)(self + 0xC) = *(s32 *)(p + 0xC);
-    *(s32 *)(self + 0x10) = *(s32 *)(p + 0x10);
-    *(s32 *)(self + 0x14) = *(s32 *)(p + 0x14);
-    *(s32 *)(self + 0x18) = *(s32 *)(p + 0x18);
-    *(s32 *)(self + 0x1C) = *(s32 *)(p + 0x1C);
-    *(s32 *)(self + 0x20) = *(s32 *)(p + 0x20);
-    *(s32 *)(self + 0x24) = *(s32 *)(p + 0x24);
-    f28 = *(s32 *)(p + 0x28);
-
-    self[0] = 1;
-    self[1] = 0;
-    self[2] = 0;
-    self[3] = 0;
-    self[7] = 1;
-
-    oldIdx = D_8006AEFC;
-    D_8006AEFC = idx;
-    D_8006AEF5 = saved;
-
-    ret = oldIdx + 1;
-    *(s32 *)(self + 0x28) = f28;
-    *(s32 *)(self + 0x2C) = oldIdx;
-    return ret;
+    entry = &D_80076118[D_8006AEFC];
+    entry->unk8 = req->unk8;
+    entry->unkC = req->unkC;
+    entry->unk10 = req->unk10;
+    entry->unk14 = req->unk14;
+    entry->unk18 = req->unk18;
+    entry->unk1C = req->unk1C;
+    entry->unk20 = req->unk20;
+    entry->unk24 = req->unk24;
+    entry->unk28 = req->unk28;
+    entry->active = 1;
+    entry->unk1 = 0;
+    entry->unk2 = 0;
+    entry->unk3 = 0;
+    entry->unk7 = 1;
+    slot = D_8006AEFC;
+    entry->slot = slot;
+    D_8006AEFC = next;
+    D_8006AEF5 = locked;
+    return slot + 1;
 }

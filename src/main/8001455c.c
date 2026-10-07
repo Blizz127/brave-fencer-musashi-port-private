@@ -1,10 +1,7 @@
+/* Owner re-derivation from retail assembly (clean input set). */
 #include "psx_types.h"
 
-/* Decompiled by m2c from main.s, then verified byte-exact
- * against retail by tools/match_function.py. Types and signatures are
- * whatever reproduces the bytes; they are not evidence of the
- * original declaration. */
-
-void func_8001455C(void) {
-
+/* Empty init hook called from func_80014444. */
+void func_8001455C(void)
+{
 }

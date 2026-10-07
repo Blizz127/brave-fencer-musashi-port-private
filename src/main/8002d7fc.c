@@ -1,13 +1,10 @@
-/* Exact retail word export for [8002D7FC,8002D80C); EXE and assembly verified. */
+/* Owner re-derivation from retail assembly (clean input set). */
 #include "psx_types.h"
 
-/* Decompiled by m2c from main.s, then verified byte-exact
- * against retail by tools/match_function.py. Types and signatures are
- * whatever reproduces the bytes; they are not evidence of the
- * original declaration. */
-
+/* Stores the sound driver word at D_800A4E7C. */
 extern s32 D_800A4E7C;
 
-void func_8002D7FC(s32 arg0) {
-    D_800A4E7C = arg0;
+void func_8002D7FC(s32 value)
+{
+    D_800A4E7C = value;
 }
