@@ -642,8 +642,11 @@ if(MUSASHI_BUILD_PC_PORT)
         set(MUSASHI_LANE_OVERLAY_MEMBERS "main_0003" CACHE STRING
             "comma-separated overlay members for the native lane (dev builds)")
         option(MUSASHI_LANE_OWN_CODE_ONLY "Native lane compiles only owner-authored C" OFF)
+        # A cache path so a build host without disc extracts (CI, the box) can
+        # point it at an empty list and still build the own-code main lane.
         set(MUSASHI_LANE_OVERLAY_ALLOW
-            ${CMAKE_CURRENT_SOURCE_DIR}/config/lane_own_code_allow_overlay.txt)
+            ${CMAKE_CURRENT_SOURCE_DIR}/config/lane_own_code_allow_overlay.txt
+            CACHE FILEPATH "own-code overlay allow list (<member> <vram> lines)")
         if(MUSASHI_LANE_OWN_CODE_ONLY)
             file(STRINGS ${MUSASHI_LANE_OVERLAY_ALLOW} MUSASHI_LANE_OVERLAY_ALLOW_LINES
                 REGEX "^[a-z]+[0-9]*_[0-9][0-9][0-9][0-9][ \t]")
@@ -760,6 +763,24 @@ if(MUSASHI_BUILD_PC_PORT)
         if(TARGET musashi_native_boot)
             target_compile_definitions(musashi_native_boot PRIVATE MUSASHI_NATIVE_LANE_TABLE=1)
             target_link_libraries(musashi_native_boot PRIVATE musashi_native_lane)
+            if(MUSASHI_STRICT_NATIVE)
+                # The native frame driver replaces the interpreted crt0/main
+                # (docs/NATIVE-FRAME-DRIVER.md); strict builds only.
+                target_sources(musashi_native_boot PRIVATE pc_port/native_frame_driver.c)
+                target_compile_definitions(musashi_native_boot PRIVATE MUSASHI_STRICT_NATIVE=1)
+            endif()
+        endif()
+        if(MUSASHI_STRICT_NATIVE)
+            # Strict lane-table dispatch on synthetic entries (no retail data).
+            add_executable(musashi_native_frame_driver_probe
+                tests/native_frame_driver_probe.c pc_port/native_frame_driver.c)
+            target_compile_features(musashi_native_frame_driver_probe PRIVATE c_std_99)
+            target_compile_definitions(musashi_native_frame_driver_probe PRIVATE
+                MUSASHI_STRICT_NATIVE=1)
+            target_include_directories(musashi_native_frame_driver_probe PRIVATE pc_port/include)
+            target_link_libraries(musashi_native_frame_driver_probe PRIVATE musashi_native_lane)
+            add_test(NAME native_frame_driver_dispatch COMMAND musashi_native_frame_driver_probe)
+            set_tests_properties(native_frame_driver_dispatch PROPERTIES SKIP_RETURN_CODE 77)
         endif()
     endif()
 

@@ -97,8 +97,8 @@ Union of all subtrees: 279 functions. 127 are native, 30 own (not admitted),
 28 vendor, 1 other game function and 93 PsyQ.
 
 - **Vendor, interpreted in release (28):**
-  - direct callees: `80015208`, `800184F0`, `8002D034`;
-  - under 80015498: `80015608`, `80015760`, `80015908`;
+  - direct callees: `80015208`, `800184F0` (clean room in B23), `8002D034`;
+  - under 80015498: `80015608`, `80015760`, `80015908` (clean room in B23);
   - under 8001C00C: `8001F9F8`;
   - in the sound driver: `80019AF8`, `8001B0D4`, `8002FF0C`, `80030730`,
     `80030A14`, `80030D80`, `80030F80`, `800314DC`, `80032048`, `800322A8`,
@@ -146,13 +146,15 @@ Union of all subtrees: 279 functions. 127 are native, 30 own (not admitted),
    buffer swap are written as host C over guest RAM (`memory.bytes`), using the
    same addresses as above.
 4. **Scratchpad stack.** 80015498, 8001C00C and 800D25FC run with guest
-   `sp = 0x1F8003FC`. Native code cannot reach the scratchpad (a known model
-   gap). The driver therefore has two options:
-   - keep the guest sp context pointing at the scratchpad and refuse
-     `place_guest_locals` in those subtrees (8001D1C4 passes a local to a
-     callee, so it is affected); or
-   - map the scratchpad in the lane's guest window first.
-   The first option is the safe default.
+   `sp = 0x1F8003FC`. Correction (B23): native code *can* reach the
+   scratchpad. `musashi_native_lane_map_guest` maps a scratchpad alias at
+   host 0x1F800000 next to the RAM window (native_boot logs
+   `scratchpad alias at 1f800000 unavailable` when it cannot), and
+   800184F0 already builds its upload rectangle there. The driver therefore
+   enters those three calls with the guest sp at 0x1F8003FC, as main does;
+   guest-frame locals (`place_guest_locals`, e.g. 8001D1C4) land in the
+   aliased scratchpad. Without the alias, the first scratchpad access from
+   native code ends the run with `HOST_FAULT ... lane_pc=...` (exit 139).
 5. **Pacing.** `VSync(p[0xA3E8])` is a waiting mode, and the lane only
    completes `mode < 0`. The driver replaces this call with
    `bfm_plat_frame_end(fields)`, which already presents and paces through
@@ -172,6 +174,71 @@ Union of all subtrees: 279 functions. 127 are native, 30 own (not admitted),
    callees under 8001C00C/8003500C resolve through the existing overlay digest
    hooks and the `main_0003`/`main_0012` lane members. Any other member
    reports a `lane_guest_call` miss.
+
+## Implementation status (B23, 2026-10-07)
+
+Behind `MUSASHI_STRICT_NATIVE` (with `MUSASHI_NATIVE_LANE=ON`), nothing in a
+hybrid build changes:
+
+- `pc_port/native_frame_driver.c` (+ `pc_port/include/musashi_native_frame_driver.h`):
+  host C for main, written clean room from main's retail disassembly. It covers
+  `__main`'s run-once flag, the init list, the session (outer) loop with
+  `80042610(0)` on exit, and the frame (inner) loop. The frame loop includes
+  all of main's inline bookkeeping: frame counter, buffer index (reread from
+  `p+0xA3D2` at every use, as main does), primitive cursor, packet slot,
+  counters, both OT rows, the scratchpad-stack calls, the display/draw
+  buffer swap, CatPrim and the two DrawOTag calls.
+- **Dispatch.** Every call goes through `musashi_native_lane_invoke`
+  (`mips_formatter.c`, strict only): a fresh CPU bound to the boot devices,
+  entered through `lane_try`, with no `formatter_step` fallback. A miss stops
+  the process with
+  `STRICT_INTERPRETER_ENTRY seam=frame_driver routine=not_in_lane func_XXXXXXXX [psyq=<why held back>]`.
+  Inside native code, `musashi_native_guest_call` now dispatches the callee
+  through the lane table in strict builds. That table holds generated C, the
+  installed PsyQ compat wrappers and the driver's own entries. Only a miss is
+  `lane_guest_call` (`routine=not_in_lane`).
+- **Pacing.** At main's `VSync(p[0xA3E8])` the driver handles the modes:
+  - `mode < 0`: goes to the VSync lane HLE;
+  - otherwise the wait becomes `bfm_plat_frame_end(fields)`, which emits
+    FRAME_END, presents and paces through `bfm_plat_timing`. Then
+    `fields x MUSASHI_GUEST_FRAME_CYCLES` of execution clock are charged.
+    Fields are 1 for mode 0, 0 for mode 1 and n for n > 1.
+
+  Without bfm_plat, only `bfm_plat_timing_vsync` paces (with
+  `MUSASHI_TIMING=bfm_plat`). `bfm_plat_frame_wait()` (FRAME_BEGIN, input
+  poll, pause) runs before 800189A8. `MUSASHI_DRIVER_FRAMES=n` stops after n
+  frames.
+- **Native replacements for STUB Sony rows** (driver lane entries, appended
+  to the installed table in strict `native_boot`):
+
+  | PC | Entry | Replacement |
+  |---|---|---|
+  | `8005CE18` | InitHeap | BIOS A0:39 through the boot heap device (`init_heap`) |
+  | `8005CF08` / `8005CF18` | Enter/ExitCriticalSection (SYS1/SYS2 wrappers) | the CD device's `enter_critical_result` (v0 = previous state) and the callback device's `exit_critical_section`, as the interpreter's syscall path does |
+  | `80043974` | CdMix | the same seven CD register writes as 80044A8C, through the four register pointers at `8006CF4C..58` and the CD register device; returns 1 |
+  | `8005F0C8` | PadInitDirect | records the two receive buffers; the driver writes the host pad into them in wire form before 800189A8 each frame (`00 41 lo hi`, or `FF` with no pad) |
+  | `8005D0F8` / `8005D118` | PadStartCom / PadStopCom | accepted (the driver exchanges at its frame boundary) |
+  | `8005D184` | PadGetState | 2 (FindCTP1: a pad without extended functions) when the host pad answers, else 0 |
+  | `8005D244` | PadInfoMode | term 1: the pad id's high nibble (4 for digital); 2, 3, 4: 0 |
+  | `8005D4B8` / `8005D538` | PadSetActAlign / PadSetAct | accepted, v0 = 1 |
+
+  The libpad entries are not in the registry, so they are written from the
+  documented library behaviour and 80018A20's use of the results (states 0,
+  1, 2 and 6, and PadInfoMode term 2), not from retail words.
+
+**Still open:**
+- **crt0 (80010000..8001009F).** Not in the registry. The driver assumes
+  that the BSS clear is redundant on fresh zeroed guest RAM, and that the
+  stack top is the PsyQ default 0x801FFFF0 (`MAIN_SP` = top - 56). Both must
+  be checked against the retail words once a disc is on the box.
+- **IRQ delivery.** Item 7 above. The clock charge at VSync can make IRQs
+  deliverable, and their handlers are still the `cd_irq`, `bios_event` and
+  `source_call` seams.
+- **The libetc VBlank counter.** It only advances through the VBlank IRQ
+  handler.
+- **Lane admission.** Every callee still has to be admitted (allow list plus
+  retail-proved frames). Until then a strict run stops at the first callee
+  that is not admitted, by design.
 
 ## Work order this implies
 

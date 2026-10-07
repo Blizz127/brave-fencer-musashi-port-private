@@ -8,6 +8,9 @@
 #include "musashi_mips_div.h"
 #include "musashi_native_lane.h"
 #include "musashi_strict.h"
+#ifdef MUSASHI_STRICT_NATIVE
+#include "musashi_native_frame_driver.h"
+#endif
 #include "platform/psyq/bfm_psyq_libpad.h"
 
 #include <limits.h>
@@ -13710,14 +13713,64 @@ void musashi_native_lane_tick_entry(uint32_t pc) {
     lane_budget_refresh(active->cpu);
 }
 
+#ifdef MUSASHI_STRICT_NATIVE
+/* Strict lane-table dispatch for a guest call made from native code: the
+ * callee runs only if it is itself a lane entry (generated decomp C, a PsyQ
+ * compat wrapper or a frame-driver replacement), entered through lane_try on
+ * the caller's CPU exactly as the interpreter's jal would reach it. Anything
+ * else is the lane_guest_call seam: there is no interpreter to thunk into. */
+static uint32_t lane_strict_guest_call(uint32_t target, unsigned argc,
+                                       const uint32_t *args, uint32_t *v1) {
+    LaneActive *active = g_lane_active;
+    FormatterCpu *cpu;
+    uint32_t saved_pc, saved_npc, saved_ra, saved_sp, sp, v0;
+    unsigned i, extra;
+    int ran;
+    if (!active) musashi_strict_abort("lane_guest_call", "no_lane_call", target);
+    cpu = active->cpu;
+    if ((target & 3u) || argc > 16u) longjmp(active->abort, 3);
+    if (!lane_ledger_flush(cpu)) longjmp(active->abort, 8);
+    musashi_lane_resume_pc = 0;   /* no interpreter to take a held IRQ at */
+    saved_pc = cpu->pc; saved_npc = cpu->npc;
+    saved_ra = cpu->r[31]; saved_sp = cpu->r[29];
+    extra = argc > 4u ? argc - 4u : 0u;
+    if (musashi_lane_sp_adj) sp = saved_sp - musashi_lane_sp_adj;
+    else sp = (saved_sp - 0x10u - extra * 4u) & ~7u;
+    for (i = 0; i < argc; ++i) {
+        if (i < 4u) cpu->r[4u + i] = args[i];
+        else if (!lane_stack_write(active->memory, sp + 0x10u + (i - 4u) * 4u, args[i]))
+            longjmp(active->abort, 3);
+    }
+    cpu->r[29] = sp;
+    cpu->r[31] = UINT_MAX;
+    cpu->pc = target;
+    cpu->npc = target + 4u;
+    cpu->delay_slot = 0;
+    cpu->branch_pc = 0;
+    musashi_trace_function_entry(target, saved_pc, 'j');
+    ran = lane_try(active->memory, cpu);
+    if (ran == 0) musashi_strict_abort("lane_guest_call", "not_in_lane", target);
+    if (ran < 0) longjmp(active->abort, cpu->pc == UINT_MAX && cpu->npc == UINT_MAX ? 5 : 4);
+    if (cpu->npc == UINT_MAX) longjmp(active->abort, 5);
+    if (g_lane_ovl_depth > active->ovl_base) lane_ovl_recheck(active);
+    lane_budget_refresh(cpu);
+    v0 = cpu->r[2];
+    if (v1) *v1 = cpu->r[3];
+    cpu->r[29] = saved_sp;
+    cpu->r[31] = saved_ra;
+    cpu->pc = saved_pc;
+    cpu->npc = saved_npc;
+    return v0;
+}
+#endif
+
 uint32_t musashi_native_guest_call(uint32_t target, unsigned argc,
                                    const uint32_t *args, uint32_t *v1) {
 #ifdef MUSASHI_STRICT_NATIVE
-    /* Seam: lane_guest_call. A native-lane callee that is not itself in the
-     * lane can only run on the interpreter; strict builds refuse that here
-     * instead of thunking into run_startup_cpu. */
-    (void)argc; (void)args; (void)v1;
-    musashi_strict_abort("lane_guest_call", __func__, target);
+    /* Seam: lane_guest_call (inside lane_strict_guest_call). A callee that
+     * is not itself in the lane can only run on the interpreter; strict
+     * builds refuse that instead of thunking into run_startup_cpu. */
+    return lane_strict_guest_call(target, argc, args, v1);
 #endif
     LaneActive *active = g_lane_active;
     FormatterCpu *cpu;
@@ -13903,6 +13956,47 @@ static int lane_try(MusashiBootMemory *memory, FormatterCpu *cpu) {
         return -1;
     return formatter_return(cpu) ? 1 : -1;
 }
+
+#ifdef MUSASHI_STRICT_NATIVE
+/* Frame-driver entry into the lane (musashi_native_frame_driver.h): a fresh
+ * CPU bound to the boot devices, as musashi_boot_run_entry_with_devices
+ * would build, entered at `target` with ra at the host sentinel. Only
+ * lane_try runs; there is no formatter_step fallback. */
+int musashi_native_lane_invoke(MusashiBootMemory *memory,
+                               const MusashiStartupPrefixDevice *devices,
+                               uint32_t target, const uint32_t *args, unsigned argc,
+                               uint32_t sp, uint32_t *v0) {
+    FormatterCpu cpu = {0};
+    unsigned i;
+    int ran;
+    if (!memory || !devices || (target & 3u) || argc > 16u || (argc && !args)) return -1;
+    if (!(g_lane_count || g_lane_ovl_count) || !lane_pc_maybe(target)) return 0;
+    for (i = 4; i < argc; ++i)
+        if (!musashi_boot_write32(memory, sp + 0x10u + (i - 4u) * 4u, args[i])) return -1;
+    cpu.callback_device = devices->callback;
+    cpu.cd_device = devices->cd;
+    cpu.event_device = devices->event;
+    cpu.input_device = devices->input;
+    cpu.clock = devices->clock;
+    cpu.cd_register_device = devices->cd_registers;
+    cpu.cd_spu_device = devices->cd_spu;
+    cpu.heap_device = devices->heap;
+    cpu.gpu_io_device = devices->gpu_io;
+    cpu.cpu_transfer = devices->cpu_transfer;
+    cpu.bios_image = devices->bios_image;
+    for (i = 0; i < argc && i < 4u; ++i) cpu.r[4u + i] = args[i];
+    cpu.r[28] = 0x80074750u;   /* crt0's gp */
+    cpu.r[29] = cpu.r[30] = sp;
+    cpu.r[31] = UINT_MAX;
+    cpu.pc = target;
+    cpu.npc = target + 4u;
+    musashi_trace_function_entry(target, 0, 'd');
+    ran = lane_try(memory, &cpu);
+    if (ran > 0 && cpu.npc == UINT_MAX) return -1;   /* a host stop */
+    if (ran > 0 && v0) *v0 = cpu.r[2];
+    return ran;
+}
+#endif
 
 static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
     uint32_t instruction, opcode, rs, rt, rd, immediate, old_npc;

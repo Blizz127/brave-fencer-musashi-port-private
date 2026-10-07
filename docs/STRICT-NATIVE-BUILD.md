@@ -40,12 +40,13 @@ interpreter TU from the link, at which point a lane miss becomes a link error.
 
 | Seam id | Entry | Reached in the hybrid build from |
 |---|---|---|
-| `boot_entry` | `musashi_boot_run_entry_with_devices` | `main()`'s boot call at pc 80010000: the whole startup/game loop |
+| `boot_entry` | `musashi_boot_run_entry_with_devices` | `main()`'s boot call at pc 80010000: the whole startup/game loop | In a strict `musashi_native_boot` with the lane, `main()` calls the frame driver instead (B23), so this seam now fires only in probes and lane-less strict builds. |
+| `frame_driver` | `musashi_frame_driver_run` (`pc_port/native_frame_driver.c`) | strict only: a callee of main that the lane table cannot run (`routine=not_in_lane func_XXXXXXXX [psyq=...]`), a lane abort, or a refused device/guest access |
 | `cd_irq` | `musashi_boot_execute_cd_irq_with_services` | `runtime_irq_callback` (irq_scheduler.c): overlay disc streaming, XA setup, the CD driver |
 | `bios_event` | `musashi_boot_execute_bios_event` | `musashi_bios_events_deliver`: card/CD event callbacks |
 | `input_bios_callback` | `musashi_boot_execute_input_bios_callback` | the pad BIOS card/input callbacks (native_boot.c `input_execute`) |
 | `source_call` | `musashi_boot_execute_source_call` (and `..._source_function` through it) | `source_irq_execute`: non-special IRQ callbacks; the memory-card request handlers |
-| `lane_guest_call` | `musashi_native_guest_call` | generated lane thunks calling a callee that is not in the lane |
+| `lane_guest_call` | `musashi_native_guest_call` | generated lane thunks calling a callee that is not in the lane. Since B23 the strict build first dispatches the callee through the lane table (generated C, PsyQ compat wrappers, frame-driver replacements) and stops only on a miss (`routine=not_in_lane`) |
 | `psyq_refused` | `bfm_psyq_call` when a wrapper refuses | STUB rows, held-back wrappers, PsyCross classes compiled out |
 
 The `musashi_boot_run_8xxxxxxx_prefix` routers in `mips_formatter.c` are
@@ -75,7 +76,9 @@ candidate. What the zero-fallback slice still needs, in order:
 2. a native frame driver behind the `boot_entry` seam (frame loop over lane
    entries, VSync-paced through `bfm_plat_timing`, overlay selection through
    the existing digest hooks; design and per-frame callee status in
-   `docs/NATIVE-FRAME-DRIVER.md`);
+   `docs/NATIVE-FRAME-DRIVER.md`). **Started in B23**: `pc_port/native_frame_driver.c`
+   runs main's init, session and frame loops through the lane table with the
+   `frame_driver` stop; see "Implementation status" in that note;
 3. the slice lane itself: boot -> title -> village -> inn save -> Continue
    with every function on the route admitted (the measured release-trace
    ranking in the draft's §2-3 is the work order);

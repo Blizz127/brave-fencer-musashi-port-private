@@ -5060,6 +5060,9 @@ static void hold_window(NativeBoot *boot) {
 #include "musashi_native_lane.h"
 #include "musashi_native_lane_psyq.h"
 #include "psyq/bfm_psyq_libpad.h"
+#ifdef MUSASHI_STRICT_NATIVE
+#include "musashi_native_frame_driver.h"
+#endif
 #ifndef MAP_FIXED_NOREPLACE
 #define MAP_FIXED_NOREPLACE 0x100000
 #endif
@@ -5164,6 +5167,30 @@ static NativeBoot *native_boot_owner(NativeBoot *fallback) {
                                                 classes, &count);
         table = merged ? merged : musashi_native_lane_generated;
         if (!merged) count = musashi_native_lane_generated_count;
+#ifdef MUSASHI_STRICT_NATIVE
+        {
+            /* Strict: the frame driver's native replacements for the STUB
+             * Sony rows on the frame path join the table (a compat row for
+             * the same PC, if one is ever installed, wins). */
+            size_t extra = musashi_frame_driver_lane_entries(NULL, 0), i, j, n = count;
+            MusashiNativeLaneEntry *own = malloc(sizeof *own * extra);
+            MusashiNativeLaneEntry *all = malloc(sizeof *all * (count + extra));
+            if (!own || !all) {
+                fputs("native_boot: FRAME_DRIVER lane entries: out of memory\n", stderr);
+                exit(2);
+            }
+            (void)musashi_frame_driver_lane_entries(own, extra);
+            memcpy(all, table, sizeof *all * count);
+            for (i = 0; i < extra; ++i) {
+                for (j = 0; j < count && table[j].guest_pc != own[i].guest_pc; ++j) {}
+                if (j == count) all[n++] = own[i];
+            }
+            free(own);
+            table = all;   /* kept for the process lifetime */
+            fprintf(stderr, "native_boot: FRAME_DRIVER lane entries +%u\n", (unsigned)(n - count));
+            count = n;
+        }
+#endif
         installed = musashi_native_lane_install(table, count);
         if (installed < 0) {
             fprintf(stderr, "native_boot: NATIVE_LANE table rejected; interpreter only\n");
@@ -5387,6 +5414,77 @@ static void plat_timing_attach(int guest_clock, int unthrottled) {
     }
     g_plat_timing_on = 1;
     fprintf(stderr, "native_boot: TIMING bfm_plat pacing=%s\n", unthrottled ? "uncapped" : "ntsc");
+}
+#endif
+
+#ifdef MUSASHI_STRICT_NATIVE
+#ifndef MUSASHI_NATIVE_LANE_TABLE
+#error "a strict-native build needs the native lane (MUSASHI_NATIVE_LANE=ON)"
+#endif
+/* Frame-driver platform services (musashi_native_frame_driver.h). */
+static int driver_frame_begin(void *user) {
+    (void)user;
+#ifdef MUSASHI_WITH_BFM_PLAT
+    if (g_plat_started) {
+        (void)bfm_plat_frame_wait();
+        return bfm_plat_quit_requested();
+    }
+#endif
+    SDL_PumpEvents();
+    return 0;
+}
+
+static int driver_frame_end(void *user, unsigned fields) {
+    (void)user;
+#ifdef MUSASHI_WITH_BFM_PLAT
+    if (g_plat_started) {
+        (void)bfm_plat_frame_end(fields);
+        return bfm_plat_quit_requested();
+    }
+    if (g_plat_timing_on) (void)bfm_plat_timing_vsync(fields);
+#else
+    (void)fields;
+#endif
+    return 0;
+}
+
+static int driver_vblank(void *user, unsigned fields) {
+    NativeBoot *boot = user;
+    /* Guest time moves one NTSC field per VBlank the game waited for. */
+    if (!boot->execution_clock.advance) return 1;
+    while (fields--)
+        if (!boot->execution_clock.advance(boot->execution_clock.userdata,
+                                           MUSASHI_GUEST_FRAME_CYCLES))
+            return 0;
+    return 1;
+}
+
+static size_t driver_pad_wire(void *user, unsigned port, uint8_t out[8]) {
+    uint16_t buttons = 0xFFFFu;   /* active low */
+    if (port != 0u) return 0;
+#ifdef MUSASHI_WITH_BFM_PLAT
+    if (g_plat_input_on) {
+        BfmPlatPad pad;
+        if (bfm_plat_input_pad(0, &pad) != 0 || !pad.connected) return 0;
+        return bfm_plat_pad_to_wire(&pad, out);
+    }
+#endif
+    if (!sample_keyboard_pad(user, &buttons)) return 0;
+    out[0] = 0x41u;
+    out[1] = 0x5Au;
+    out[2] = (uint8_t)buttons;
+    out[3] = (uint8_t)(buttons >> 8);
+    return 4;
+}
+
+static MusashiResetGraphPrefixStatus strict_frame_driver_run(NativeBoot *boot) {
+    static MusashiFrameDriverOps ops;
+    ops.user = boot;
+    ops.frame_begin = driver_frame_begin;
+    ops.frame_end = driver_frame_end;
+    ops.vblank = driver_vblank;
+    ops.pad_wire = driver_pad_wire;
+    return musashi_frame_driver_run(&boot->memory, &boot->startup_devices, &ops);
 }
 #endif
 
@@ -5890,8 +5988,15 @@ int main(int argc, char **argv) {
         musashi_psyx_shutdown();
         return 2;
     }
+#ifdef MUSASHI_STRICT_NATIVE
+    /* Strict: the native frame driver performs main itself through the lane
+     * table; nothing enters the interpreter at 0x80010000. */
+    (void)entry_stop;
+    status = strict_frame_driver_run(&boot);
+#else
     status = musashi_boot_run_entry_with_devices(&boot.memory, 0, &boot.startup_devices,
         console_bytes, NULL, observe_entry, &boot, &entry_stop);
+#endif
     {
         MusashiCpuStatusSnapshot state;
         MusashiGteSnapshot gte;
