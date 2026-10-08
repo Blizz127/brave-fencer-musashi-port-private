@@ -9933,6 +9933,50 @@
       "extent": "function"
     },
     {
+      "name": "func_800CEEC8",
+      "vram": 2148331208,
+      "size": 60,
+      "region": "main_0004",
+      "source": "src/overlays/main_0004/800ceec8.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "owner re-derivation, clean room (B28 box sandbox, retail disassembly only)"
+    },
+    {
+      "name": "func_800CEF04",
+      "vram": 2148331268,
+      "size": 184,
+      "region": "main_0004",
+      "source": "src/overlays/main_0004/800cef04.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "owner re-derivation, clean room (B28 box sandbox, retail disassembly only)"
+    },
+    {
+      "name": "func_800CFB3C",
+      "vram": 2148334396,
+      "size": 224,
+      "region": "main_0004",
+      "source": "src/overlays/main_0004/800cfb3c.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "owner re-derivation, clean room (B28 box sandbox, retail disassembly only)"
+    },
+    {
+      "name": "func_800D1E18",
+      "vram": 2148343320,
+      "size": 64,
+      "region": "main_0004",
+      "source": "src/overlays/main_0004/800d1e18.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "owner re-derivation, clean room (B28 box sandbox, retail disassembly only)"
+    },
+    {
       "name": "func_800CEE2C",
       "vram": 2148331052,
       "size": 208,

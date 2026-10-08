@@ -46,6 +46,20 @@ Increment 2:
   This is dis2.py with a member file and base argument; rebuild it from
   dis2.py if /tmp is gone.
 
+Increment 3:
+- Added `config/overlay_main_0004.yaml` (sha1 checked; the 0x800 header means
+  file offset 0 maps to 800CE5F8) and a `main_0004 all` line in the strict
+  overlay allow list.
+- Clean-room, byte-matched C in `src/overlays/main_0004/`: 800CEEC8
+  (dispatcher), 800CEF04 (state 0), 800D1E18 (CdSearchFile of the movie),
+  800CFB3C (record walk, LoadImage). Check them with
+  `SIZE=0x.. python3 /tmp/cr/tryov.py VRAM SRC`, which compares against
+  extracted/overlays/main/0004.bin at vram-800CE5F8. Add registry rows with
+  `/tmp/cr/addrowov.py VRAM SIZE`.
+- libsnd HLE: SsSetSerialAttr 8003D650, SsSetSerialVol 8003EDE8.
+- First stop: `guest_pc=800cf010`, main_0004 state 2. State 0 advances the
+  state twice, so state 1 is skipped.
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits

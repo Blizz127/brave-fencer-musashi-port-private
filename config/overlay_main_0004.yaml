@@ -1,0 +1,49 @@
+# MAIN.CD member 0004: intro movie (MDEC/STR) overlay, loaded after the logo
+# overlay main_0001 (B28).
+#
+# CONTAINER: a 0x800-byte header, then the payload, which loads at 0x800CEDF8.
+# File offset 0 therefore maps to 0x800CE5F8. Evidence:
+#   - 80010F80 calls 0x800CEEC8 every frame. At file offset 0x8D0 the member
+#     holds a state dispatcher prologue there (lhu 800B99E4 / jalr through
+#     table 800D3598).
+#   - All 8 entries of that table (0x800CEF04..0x800CF3A4) land on prologues.
+# The payload opens with libpress MDEC message strings [0x800CEDF8,0x800CEEC8).
+# Game code runs [0x800CEEC8,0x800D3540), followed by data (the table at
+# 0x800D3598).
+name: MAIN.CD member 0004
+sha1: 5b4e0f2e322e376cf5c0f3ede6d3e10bfe77099e
+
+options:
+  platform: psx
+  basename: main_0004
+  base_path: ../
+  target_path: extracted/overlays/main/0004.bin
+  asm_path: asm/overlays/main_0004
+  src_path: src/overlays/main_0004
+  build_path: build
+  ld_script_path: config/main_0004.ld
+  symbol_addrs_path:
+    - config/symbol_addrs.main_0004.txt
+  undefined_syms_auto_path: config/undefined_syms.main_0004.auto.txt
+  undefined_funcs_auto_path: config/undefined_funcs.main_0004.auto.txt
+  create_undefined_syms_auto: True
+  create_undefined_funcs_auto: True
+  create_asm_dependencies: True
+  find_file_boundaries: True
+  use_legacy_include_asm: False
+  asm_inc_header: ""
+  section_order: [".text", ".data", ".rodata", ".bss"]
+
+segments:
+  - name: main_0004
+    type: code
+    start: 0x0
+    vram: 0x800CE5F8
+    subsegments:
+      - [0x0, data, main_0004_container]
+      - [0x800, data, main_0004_strings]
+      - [0x8D0, c, main_0004]
+      - [0x4F48, data, main_0004_data]
+
+  # End marker: the member is 0x2B800 bytes.
+  - [0x2B800]

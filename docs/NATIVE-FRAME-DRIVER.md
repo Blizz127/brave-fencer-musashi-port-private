@@ -498,3 +498,12 @@ All rows below were written from the retail disassembly:
   next member, main_0004, is loaded about 50 frames later. Strict then stops at
   its dispatcher 800CEEC8, which has no C yet (the repo holds a word export
   only).
+
+### B28 increment 3: intro movie overlay main_0004 (2026-10-08)
+
+- Added libsnd HLE from disassembly: SsSetSerialAttr 8003D650 and
+  SsSetSerialVol 8003EDE8. Each builds a one-field SpuCommonAttr in the retail
+  frame and applies it through `spu_set_common_attr`.
+- main_0004 now has clean-room C for its dispatcher and state 0, admitted
+  through `config/overlay_main_0004.yaml` and the strict overlay allow list.
+  The strict stop moves to state 2 (800CF010).

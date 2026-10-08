@@ -3192,6 +3192,42 @@ static int32_t ss_vm_set_vab(uint32_t a0, uint32_t a1) {
     return 0;
 }
 SPU_ENTRY(hle_ss_vm_set_vab) { call->r[2] = (uint32_t)ss_vm_set_vab(call->r[4], call->r[5]); return 1; }
+SPU_ENTRY(hle_ss_set_serial_attr) {
+    /* 8003D650 SsSetSerialAttr(s_num, attr, mode): s_num 0 = CD, 1 = EXT;
+     * attr 0 = mix, 1 = reverb. Builds a one-field SpuCommonAttr in the retail
+     * frame (sp-64+16) and calls SpuSetCommonAttr. When no pair matches,
+     * retail passes an uninitialised mask; here nothing is written. */
+    uint32_t s = call->r[4] & 0xFFu, a = call->r[5] & 0xFFu, attr = call->r[29] - 64u + 16u;
+    uint32_t mask = 0u, off = 0u;
+    if (s == 0u && a == 0u) { mask = 0x200u; off = 24u; }
+    else if (s == 0u && a == 1u) { mask = 0x100u; off = 20u; }
+    else if (s == 1u && a == 0u) { mask = 0x2000u; off = 36u; }
+    else if (s == 1u && a == 1u) { mask = 0x1000u; off = 32u; }
+    if (mask) {
+        wr32(attr, mask);
+        wr32(attr + off, call->r[6] & 0xFFu);
+        spu_set_common_attr(attr);
+    }
+    return 1;
+}
+SPU_ENTRY(hle_ss_set_serial_vol) {
+    /* 8003EDE8 SsSetSerialVol(s_num, voll, volr): s_num 0 = CD (mask 0xC0,
+     * attr+16/18), 1 = EXT (mask 0xC00, attr+28/30). Each volume is capped at
+     * 127 (signed 16-bit compare, no lower bound) and scaled by 258. Same
+     * frame layout as retail (attr at sp-64+16); no write for other s_num,
+     * where retail passes an uninitialised mask. */
+    uint32_t s = call->r[4] & 0xFFu, attr = call->r[29] - 64u + 16u, off;
+    int32_t l = (int16_t)call->r[5], r = (int16_t)call->r[6];
+    if (s > 1u) return 1;
+    if (l >= 128) l = 127;
+    if (r >= 128) r = 127;
+    off = s ? 28u : 16u;
+    wr32(attr, s ? 0xC00u : 0xC0u);
+    wr16(attr + off, (uint16_t)(l * 258));
+    wr16(attr + off + 2u, (uint16_t)(r * 258));
+    spu_set_common_attr(attr);
+    return 1;
+}
 SPU_ENTRY(hle_ss_ut_get_vag_addr) {
     /* 8003F380 SsUtGetVagAddr(vab, vag): the VAG's SPU address that
      * SsVabOpenHead stored in program-table slot (vag-1)/2 (+12 odd, +14 even) */
@@ -3496,6 +3532,8 @@ static const MusashiNativeLaneEntry k_driver_entries[] = {
     {0x800414E4u, 0, hle_ss_vm_set_vab,   "_SsVmSetVab",         2, 1, 0},
     {0x8003F144u, 0, hle_ss_ut_get_vag_atr, "SsUtGetVagAtr",     4, 1, 0},
     {0x8003F380u, 0, hle_ss_ut_get_vag_addr, "SsUtGetVagAddr",   2, 1, 0},
+    {0x8003D650u, 0, hle_ss_set_serial_attr, "SsSetSerialAttr",  3, 0, 0},
+    {0x8003EDE8u, 0, hle_ss_set_serial_vol, "SsSetSerialVol",    3, 0, 0},
     {0x8004162Cu, 0, hle_spu_free,        "SpuFree",             1, 0, 0},
     {0x800415A8u, 0, hle_ss_vab_close,    "SsVabClose",          1, 0, 0},
     {0x800419B0u, 0, hle_ss_vab_trans_start, "SsVabTransBody(start)", 1, 1, 0},
