@@ -2841,6 +2841,166 @@ static int hle_gs_preset_object(MusashiNativeLaneCall *call) {
     call->r[2] = gs_preset_object(call->r[4], call->r[5], call->r[8]);
     return 1;
 }
+static void gte_sincos_tbl(int16_t angle, int32_t *sn, int32_t *cs) {
+    /* the RotMatrix* angle lookup: word table at 8006DF1C, low half sin,
+     * high half cos, indexed by |angle| & 0xFFF; sin takes the angle's sign */
+    int32_t a = angle;
+    uint32_t e = rd32(0x8006DF1Cu + (((uint32_t)(a < 0 ? -a : a) & 0xFFFu) << 2));
+    *sn = a < 0 ? -(int32_t)(int16_t)e : (int32_t)(int16_t)e;
+    *cs = (int32_t)e >> 16;
+}
+
+static int32_t gte_fmul12(int32_t a, int32_t b) {    /* multu, mflo, sra 12 */
+    return (int32_t)((uint32_t)a * (uint32_t)b) >> 12;
+}
+
+static int hle_rot_matrix_zyx(MusashiNativeLaneCall *call) {
+    /* 80049CAC RotMatrixZYX(r, m): rotation part of m from the SVECTOR
+     * angles r (x, y, z); m's translation is left alone. Returns m. */
+    const uint32_t r = call->r[4], m = call->r[5];
+    int32_t sx, cx, sy, cy, sz, cz, t;
+    gte_sincos_tbl((int16_t)rd16(r + 0u), &sx, &cx);
+    gte_sincos_tbl((int16_t)rd16(r + 2u), &sy, &cy);
+    gte_sincos_tbl((int16_t)rd16(r + 4u), &sz, &cz);
+    wr16(m + 12u, (uint16_t)-sy);
+    wr16(m + 14u, (uint16_t)gte_fmul12(sx, cy));
+    wr16(m + 16u, (uint16_t)gte_fmul12(cx, cy));
+    wr16(m + 0u, (uint16_t)gte_fmul12(cy, cz));
+    wr16(m + 6u, (uint16_t)gte_fmul12(sz, cy));
+    t = gte_fmul12(sx, sy);
+    wr16(m + 2u, (uint16_t)(gte_fmul12(t, cz) - gte_fmul12(sz, cx)));
+    wr16(m + 8u, (uint16_t)(gte_fmul12(t, sz) + gte_fmul12(cx, cz)));
+    t = gte_fmul12(sy, cx);
+    wr16(m + 4u, (uint16_t)(gte_fmul12(t, cz) + gte_fmul12(sx, sz)));
+    wr16(m + 10u, (uint16_t)(gte_fmul12(t, sz) - gte_fmul12(sx, cz)));
+    call->r[2] = m;
+    return 1;
+}
+static int hle_apply_transpose_matrix_lv(MusashiNativeLaneCall *call) {
+    /* 8004D504 ApplyTransposeMatrixLV(m, v, out): out = M^T v for a 32-bit
+     * VECTOR, done as the retail GTE sequence does it: v = hi * 32768 + lo
+     * (sign-symmetric split), out = (M^T hi) * 8 + (M^T lo) >> 12, with
+     * each MAC kept to its low 32 bits. Returns out. */
+    const uint32_t m = call->r[4], v = call->r[5], out = call->r[6];
+    int16_t mt[3][3], hi[3], lo[3];
+    unsigned i, j;
+    for (i = 0; i < 3u; i++)
+        for (j = 0; j < 3u; j++) mt[j][i] = (int16_t)rd16(m + (i * 3u + j) * 2u);
+    for (i = 0; i < 3u; i++) {
+        int32_t x = (int32_t)rd32(v + i * 4u);
+        if (x >= 0) { hi[i] = (int16_t)(x >> 15); lo[i] = (int16_t)(x & 0x7FFF); }
+        else {
+            int32_t n = (int32_t)(0u - (uint32_t)x);
+            hi[i] = (int16_t)-(n >> 15);
+            lo[i] = (int16_t)-(n & 0x7FFF);
+        }
+    }
+    for (i = 0; i < 3u; i++) {
+        int64_t h = 0, l = 0;
+        for (j = 0; j < 3u; j++) {
+            h += (int64_t)mt[i][j] * hi[j];
+            l += (int64_t)mt[i][j] * lo[j];
+        }
+        wr32(out + i * 4u, (uint32_t)(int32_t)(l >> 12) + ((uint32_t)(int32_t)h << 3));
+    }
+    call->r[2] = out;
+    return 1;
+}
+
+static int hle_vector_normal_ss(MusashiNativeLaneCall *call) {
+    /* 80047E98 VectorNormalSS(v0, v1): SVECTOR to unit length (4.12). The
+     * retail code squares (SQR), takes the reciprocal square root from the
+     * table at 8006DA80 by the sum's leading-bit count, scales (GPF) and
+     * shifts. */
+    const uint32_t a = call->r[4], b = call->r[5];
+    int32_t x = (int16_t)rd16(a + 0u), y = (int16_t)rd16(a + 2u), z = (int16_t)rd16(a + 4u);
+    int32_t sum = (int32_t)((uint32_t)(x * x) + (uint32_t)(y * y) + (uint32_t)(z * z));
+    uint32_t lz = gte_lzc((uint32_t)sum) & ~1u;
+    int32_t sh = (31 - (int32_t)lz) >> 1, t, k;
+    t = (int32_t)lz - 24 >= 0 ? (int32_t)((uint32_t)sum << ((lz - 24u) & 31u))
+                              : sum >> ((24u - lz) & 31u);
+    t = (t - 64) * 2;
+    k = (int16_t)rd16(0x8006DA80u + (uint32_t)t);
+    wr16(b + 0u, (uint16_t)((int32_t)((uint32_t)k * (uint32_t)x) >> ((uint32_t)sh & 31u)));
+    wr16(b + 2u, (uint16_t)((int32_t)((uint32_t)k * (uint32_t)y) >> ((uint32_t)sh & 31u)));
+    wr16(b + 4u, (uint16_t)((int32_t)((uint32_t)k * (uint32_t)z) >> ((uint32_t)sh & 31u)));
+    return 1;
+}
+
+static int hle_square0(MusashiNativeLaneCall *call) {
+    /* 80049324 Square0(v0, v1): v1[i] = v0[i]^2 on the low 16 bits of each
+     * VECTOR word (SQR, no shift). Returns v1. */
+    unsigned i;
+    for (i = 0; i < 3u; i++) {
+        int32_t x = (int16_t)rd32(call->r[4] + i * 4u);
+        wr32(call->r[5] + i * 4u, (uint32_t)(x * x));
+    }
+    call->r[2] = call->r[5];
+    return 1;
+}
+
+static int hle_square12(MusashiNativeLaneCall *call) {
+    /* 800492FC Square12(v0, v1): as Square0 with the 12-bit shift */
+    unsigned i;
+    for (i = 0; i < 3u; i++) {
+        int32_t x = (int16_t)rd32(call->r[4] + i * 4u);
+        wr32(call->r[5] + i * 4u, (uint32_t)((x * x) >> 12));
+    }
+    call->r[2] = call->r[5];
+    return 1;
+}
+
+static int hle_sqrt12(MusashiNativeLaneCall *call) {
+    /* 800480EC SquareRoot12(a): 4.12 square root from the 8006D8EC table */
+    int32_t a = (int32_t)call->r[4], t, sh, k;
+    uint32_t lz = gte_lzc((uint32_t)a), even;
+    if (lz == 32u) { call->r[2] = 0; return 1; }
+    even = lz & ~1u;
+    sh = (19 - (int32_t)even) >> 1;
+    t = (int32_t)even - 24 >= 0 ? (int32_t)((uint32_t)a << ((even - 24u) & 31u))
+                                : a >> ((24u - even) & 31u);
+    t = (t - 64) * 2;
+    k = (int16_t)rd16(0x8006D8ECu + (uint32_t)t);
+    call->r[2] = sh >= 0 ? (uint32_t)k << ((uint32_t)sh & 31u) : (uint32_t)k >> ((uint32_t)-sh & 31u);
+    return 1;
+}
+
+static uint32_t gpu_get_draw_mode(uint32_t dfe, uint32_t dtd, uint32_t tpage) {
+    /* 8005AB00 GetDrawMode: the E1 draw-mode word; GPU type 1/2 (byte at
+     * 80072788) uses the other bit layout */
+    uint32_t hi = 0xE1000000u, lo;
+    uint32_t type = (uint32_t)rd8(0x80072788u);
+    if ((uint32_t)(type - 1u) < 2u) {
+        if (dtd) hi |= 0x800u;
+        lo = tpage & 0x27FFu;
+        if (dfe) lo |= 0x1000u;
+    } else {
+        if (dtd) hi |= 0x200u;
+        lo = tpage & 0x9FFu;
+        if (dfe) lo |= 0x400u;
+    }
+    return hi | lo;
+}
+
+static uint32_t gpu_get_tex_window(uint32_t tw) {
+    /* 8005AD34 GetTexWindow: the E2 texture-window word (0 for no RECT) */
+    uint32_t x, y, w, h;
+    if (tw == 0u) return 0;
+    x = (uint32_t)rd8(tw + 0u) >> 3;
+    y = (uint32_t)rd8(tw + 2u) >> 3;
+    w = ((uint32_t)-(int32_t)(int16_t)rd16(tw + 4u) & 0xFFu) >> 3;
+    h = ((uint32_t)-(int32_t)(int16_t)rd16(tw + 6u) & 0xFFu) >> 3;
+    return 0xE2000000u | (y << 15) | (x << 10) | (h << 5) | w;
+}
+
+static int hle_set_draw_mode(MusashiNativeLaneCall *call) {
+    /* 8005A600 SetDrawMode(p, dfe, dtd, tpage, tw): a 2-word DR_MODE */
+    const uint32_t p = call->r[4], tw = rd32(call->r[29] + 16u);
+    wr8(p + 3u, 2);
+    wr32(p + 4u, gpu_get_draw_mode(call->r[5], call->r[6], call->r[7] & 0xFFFFu));
+    wr32(p + 8u, gpu_get_tex_window(tw));
+    return 1;
+}
 static int hle_rcos(MusashiNativeLaneCall *call) { call->r[2] = (uint32_t)gte_rcos((int32_t)call->r[4]); return 1; }
 static int hle_rsin(MusashiNativeLaneCall *call) { call->r[2] = (uint32_t)gte_rsin((int32_t)call->r[4]); return 1; }
 static int hle_sqrt0(MusashiNativeLaneCall *call) { call->r[2] = (uint32_t)gte_sqrt0((int32_t)call->r[4]); return 1; }
@@ -3919,6 +4079,13 @@ static const MusashiNativeLaneEntry k_driver_entries[] = {
     {0x80054DCCu, 0, hle_gs_set_ref_view2l,"GsSetRefView2L",     1, 1, 0},
     {0x800553F4u, 0, hle_gs_preset_object,"GsPresetObject",      2, 1, 0},
     {0x80047B3Cu, 0, hle_csqrt,          "csqrt",               1, 1, 0},
+    {0x80049CACu, 0, hle_rot_matrix_zyx, "RotMatrixZYX",        2, 1, 0},
+    {0x8004D504u, 0, hle_apply_transpose_matrix_lv, "ApplyTransposeMatrixLV", 3, 1, 0},
+    {0x80047E98u, 0, hle_vector_normal_ss, "VectorNormalSS",    2, 0, 0},
+    {0x80049324u, 0, hle_square0,        "Square0",             2, 1, 0},
+    {0x800492FCu, 0, hle_square12,       "Square12",            2, 1, 0},
+    {0x800480ECu, 0, hle_sqrt12,         "SquareRoot12",        1, 1, 0},
+    {0x8005A600u, 0, hle_set_draw_mode,  "SetDrawMode",         5, 0, 0},
     {0x80047948u, 0, hle_rcos,            "rcos",                1, 1, 0},
     {0x8004787Cu, 0, hle_rsin,            "rsin",                1, 1, 0},
     {0x80047D3Cu, 0, hle_sqrt0,           "SquareRoot0",         1, 1, 0},

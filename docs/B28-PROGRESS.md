@@ -187,6 +187,16 @@ Increment 14 (generator, strict only):
   The overlay lane is now 2662/3269 (`escape` refusals 100 -> 37).
 - First stop: `guest_pc=80049cac` (libgte RotMatrixZYX, compat stub).
 
+Increment 15 (driver HLE, strict only):
+- New native PsyQ reimplementations from the retail disassembly:
+  RotMatrixZYX (80049CAC, sin/cos word table at 8006DF1C),
+  ApplyTransposeMatrixLV (8004D504, the hi/lo split GTE MVMVA sequence),
+  VectorNormalSS (80047E98), Square0 (80049324), Square12 (800492FC),
+  SquareRoot12 (800480EC) and SetDrawMode (8005A600, with GetDrawMode
+  8005AB00 and GetTexWindow 8005AD34).
+- With RotMatrixZYX the boot passes 80049CAC. The next stop is
+  `guest_pc=8012944c` (main_0012/sc02_0031 shared, `inttoptr`).
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits
