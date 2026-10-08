@@ -1,15 +1,12 @@
-/* Exact retail word export for [8002FAE0,8002FB08); EXE-verified. */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Clears the halfword at 800A46CC, then runs 8002C8BC. */
 #include "psx_types.h"
 
-/* Decompiled by m2c from main.s, then verified byte-exact
- * against retail by tools/match_function.py. Types and signatures are
- * whatever reproduces the bytes; they are not evidence of the
- * original declaration. */
-
-void func_8002C8BC();                                  /* static */
 extern s16 D_800A46CC;
+extern void func_8002C8BC(void);
 
-void func_8002FAE0(void) {
+void func_8002FAE0(void)
+{
     D_800A46CC = 0;
     func_8002C8BC();
 }

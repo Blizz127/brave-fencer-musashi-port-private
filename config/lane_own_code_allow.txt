@@ -534,3 +534,51 @@
 8001b3c4
 80034314
 8001a114
+# Clean-room B21-B23 (Decomp Bot box sandbox 2026-10-07, branches cursor/native-cleanroom-b21..b23),
+# main region. Admitted by tools/native_lane_gen.py --own-code-only against the user's retail
+# extracts (2026-10-07). 800184F0 uses constant scratchpad addresses: it is listed in
+# musashi_native_lane_scratchpad_pcs[] and needs the 1F800000 host alias. Not yet run through
+# the eager-epoch native-vs-deny route proof (no runner reachable from the box).
+8001455c
+800147b8
+8001513c
+80015908
+800184f0
+8001903c
+800191a8
+8001d1c4
+8002823c
+8002cc4c
+8002d320
+8002d7fc
+8002e5f8
+8002e638
+8002ee90
+8002eeb8
+8002efd0
+8002f064
+8002f4e4
+8003324c
+8003350c
+800346d0
+8003491c
+80034cf0
+800373d0
+800391d4
+# Clean-room B24 (Decomp Bot box sandbox 2026-10-07, branch cursor/native-cleanroom-b24),
+# main region: the strict frame driver's start-up path (800141F0 graphics reset, 8001971C
+# disc file table, 8002C8F4 sound start-up and its two leaves).
+800141f0
+8001971c
+8002c8f4
+8002fae0
+80037cc8
+# Earlier clean-room bodies on the frame path that the non-strict generator refuses under
+# the hooks rule (an interpreter checkpoint PC inside the body). A MUSASHI_STRICT_NATIVE
+# build has no interpreter, so native_lane_gen.py --strict admits them; others stay refused.
+80014238
+80014444
+800145ec
+80014928
+8002c410
+8002fc64

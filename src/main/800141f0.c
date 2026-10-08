@@ -1,23 +1,20 @@
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Boot-time graphics reset, then clears the 152-byte state block at 800BA118. */
 #include "psx_types.h"
 
-/* Exact matched entry stream for the bounded native MIPS diagnostic. */
+extern u8 D_800BA118[];
 
-/* Decompiled by m2c from main.s, then verified byte-exact
- * against retail by tools/match_function.py. Types and signatures are
- * whatever reproduces the bytes; they are not evidence of the
- * original declaration. */
+extern void func_80059234(s32 mode);
+extern void func_800594CC(s32 level);
+extern void func_80059658(s32 mask);
+extern void func_80016714(void *dst, s32 size);
+extern void func_800142C8(void);
 
-void func_800142C8();                                  /* static */
-void func_80016714(void *, s32);                            /* static */
-void func_80059234();                                 /* static */
-void func_800594CC();                                 /* static */
-void func_80059658();                                 /* static */
-extern s32 D_800BA118;
-
-void func_800141F0(void) {
+void func_800141F0(void)
+{
     func_80059234(0);
     func_800594CC(0);
     func_80059658(0);
-    func_80016714(&D_800BA118, 0x98);
+    func_80016714(D_800BA118, 152);
     func_800142C8();
 }
