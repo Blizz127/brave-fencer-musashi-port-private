@@ -1001,6 +1001,8 @@ def rewrite_symbols(ir, symbols, member=None, member_code=()):
         decl_globals[m.group(1) or m.group(2)] = m.group(3)
     replace = {}
     for name, rest in decl_globals.items():
+        if STRICT and name in (SP_ADJ, GUEST_SP) and rest.startswith("external "):
+            continue  # the guest sp pair (scratch_call_host), a host global
         if rest.startswith("external "):
             addr = guest_address(name, symbols)
             if addr is None:
@@ -1891,6 +1893,47 @@ LA_ASM_RE = re.compile(r'\b(?:__asm__|asm)\s*(?:volatile\s*|__volatile__\s*)?\(\
                        r'\s*:\s*"=r"\s*\(\s*(\w+)\s*\)\s*\)\s*;')
 
 
+# Strict (B28): the scratchpad stack switch around one call (80128564):
+#   register s32 p __asm__("$6") = 0x1F8003FC;
+#   asm volatile("addu $8,%0,$zero; sw $sp,0($8); addiu $8,$8,-4;
+#                 addu $sp,$8,$zero; jal func_X; addiu $sp,$sp,4;
+#                 lw $sp,0($sp)" : : "r"(p) : "$8", "memory");
+# saves the caller's sp at P and runs func_X with sp = P (the delay slot
+# adds the 4 back), then reloads sp. In the lane the guest sp of a body is
+# musashi_lane_entry_sp - musashi_lane_sp_adj, so the host copy stores that
+# value at P, gives the call entry sp P, and restores both afterwards.
+SCRATCH_CALL_RE = re.compile(
+    r'\b(?:__asm__|asm)\s*(?:volatile\s*|__volatile__\s*)?\(\s*'
+    r'"addu\s+\$8,\s*%0,\s*\$zero\\n"\s*"sw\s+\$sp,\s*0\(\$8\)\\n"\s*'
+    r'"addiu\s+\$8,\s*\$8,\s*-4\\n"\s*"addu\s+\$sp,\s*\$8,\s*\$zero\\n"\s*'
+    r'"jal\s+(func_[0-9A-Fa-f]{8})\\n"\s*"addiu\s+\$sp,\s*\$sp,\s*4\\n"\s*'
+    r'"lw\s+\$sp,\s*0\(\$sp\)\\n"\s*:\s*:\s*"r"\s*\(\s*(\w+)\s*\)\s*:\s*"\$8"\s*,\s*"memory"\s*\)\s*;')
+
+
+def scratch_call_host(text):
+    """Rewrite SCRATCH_CALL_RE asm when its operand is a register variable
+    initialised with a scratchpad constant; None when it does not apply."""
+    def sub(m):
+        init = re.search(r"\bregister\b[^;={}]*\b" + re.escape(m.group(2)) +
+                         r'\s*(?:(?:__asm__|asm)\s*\(\s*"\$\w+"\s*\)\s*)?=\s*(0x[0-9A-Fa-f]+)\s*;', text)
+        if not init:
+            raise ValueError
+        c = int(init.group(1), 16)
+        if not (0x1F800000 <= c < 0x1F800400) or c & 3:
+            raise ValueError
+        f = m.group(1)
+        return ("{ extern void %s(); extern unsigned int musashi_lane_entry_sp, musashi_lane_sp_adj;"
+                " unsigned int lane_ss_e = musashi_lane_entry_sp, lane_ss_a = musashi_lane_sp_adj;"
+                " *(unsigned int *)0x%08X = lane_ss_e - lane_ss_a;"
+                " musashi_lane_entry_sp = 0x%08Xu; musashi_lane_sp_adj = 0; %s();"
+                " musashi_lane_entry_sp = lane_ss_e; musashi_lane_sp_adj = lane_ss_a; }"
+                % (f, c, c, f))
+    try:
+        return SCRATCH_CALL_RE.sub(sub, text)
+    except ValueError:
+        return None
+
+
 GLOBAL_PIN_RE = re.compile(r'^register\s+([^;{}=]*?)\s*(?:__asm__|asm)\s*\(\s*"\$\w+"\s*\)\s*;', re.M)
 
 
@@ -1913,6 +1956,7 @@ def host_source(text):
                           text, flags=re.M)
         text = LA_ASM_RE.sub(lambda m: f"{m.group(2)} = (__typeof__({m.group(2)}))&{m.group(1)};",
                              text)
+        text = scratch_call_host(text) or text
     return REG_PIN_RE.sub(r"\1", text)
 
 
@@ -2005,6 +2049,8 @@ def add_frame_adjust(ir, fname, frame):
                       f"  store i32 %lane.spa.r{n}b, ptr @{SP_ADJ}, align 4"]
         lines.append(line)
     out = ir[:m.start(1)] + "\n".join(lines) + "\n" + ir[m.end(1):]
+    if re.search(r"^@" + SP_ADJ + r" = ", out, flags=re.M):
+        return out  # already declared (scratch_call_host)
     return out.rstrip("\n") + f"\n\n@{SP_ADJ} = external global i32, align 4\n"
 
 
@@ -2598,7 +2644,8 @@ def place_guest_locals(ir, fname, words, vram, frame, info=None):
             continue
         new.append(line)
     out = ir[:m.start(1)] + "\n".join(new) + "\n" + ir[m.end(1):]
-    out = out.rstrip("\n") + f"\n\n@{GUEST_SP} = external global i32, align 4\n"
+    if not re.search(r"^@" + GUEST_SP + r" = ", out, flags=re.M):
+        out = out.rstrip("\n") + f"\n\n@{GUEST_SP} = external global i32, align 4\n"
     return out, placed
 
 
@@ -3735,6 +3782,8 @@ def strict_mixed_ok(m):
         return False
     text = REG_PIN_RE.sub(r"\1", src.read_text(errors="replace"))
     text = LA_ASM_RE.sub("", text)
+    ss = scratch_call_host(text)
+    text = SCRATCH_CALL_RE.sub("", ss) if ss is not None else text
     asms = re.findall(r'(?:__asm__|\basm)\s*(?:volatile\s*|__volatile__\s*)?\(\s*("[^"]*")', text)
     return all(a == '""' for a in asms)
 

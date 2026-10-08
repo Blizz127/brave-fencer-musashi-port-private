@@ -354,6 +354,18 @@ Increment 28 (source, main_0012 and sc02_0031 80177940):
 - Main lane 3458/4011, overlay lane 2757/3275.
 - First stop: `guest_pc=80128564` (overlay), frame ~1200, no host fault.
 
+Increment 29 (generator, strict only):
+- The scratchpad stack switch around one call (80128564: save sp at
+  1F8003FC, `jal func_80178608` with sp = 1F8003FC, reload sp) becomes C in
+  the strict host copy (`scratch_call_host`). It stores the body's guest sp
+  (`musashi_lane_entry_sp - musashi_lane_sp_adj`) at the scratchpad word,
+  runs the call with entry sp 1F8003FC and adjustment 0, then restores
+  both. This is the same contract as the driver's call_scratch. The row
+  counts as C for `mixed`, and the guest sp pair is a host global for
+  rewrite_symbols.
+- Main lane 3459/4012, overlay lane 2758/3276.
+- First stop: `guest_pc=8012c1b8` (overlay), frame ~1200, no host fault.
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits
