@@ -299,6 +299,16 @@ Increment 22 (generator, strict only):
 - First stop: `guest_pc=80175ab8` (sc02_0031, `memory`: volatile access to
   a device register), frame ~1200, no host fault.
 
+Increment 23 (generator, strict only):
+- `i32_signed_range` (a conservative interval over casts, shifts, add/sub/
+  mul by constants and masks) and `zext_in_game_ram`: an `inttoptr` of
+  `zext i32 X` whose interval maps into game RAM counts as a RAM address
+  for the volatile-access rule (as do SCEV-proven ones). 80175AB8's
+  `*(volatile u32 *)&slot[6]` with `slot = (s16)idx * 4 + 0x8011F7A8` is
+  ordinary RAM. Device registers stay refused.
+- Main lane 3435/4011, overlay lane 2736/3275.
+- First stop: `guest_pc=80176d94` (sc02_0031), frame ~1200, no host fault.
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits

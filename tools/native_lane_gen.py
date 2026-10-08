@@ -148,6 +148,66 @@ def scev_in_game_ram(ir, header, val):
     return bool(rng) and GAME_RAM[0] <= rng[0] and rng[1] - 1 + 16 < GAME_RAM[1]
 
 
+def i32_signed_range(val, defs, depth=0):
+    """Strict only (B28): a conservative signed interval (lo, hi) of an i32
+    SSA value or constant from its defining instructions (casts from narrow
+    types, shifts, add/sub/mul by constants, masks); the full i32 range when
+    nothing narrower is known or a step could wrap."""
+    full = (-(1 << 31), (1 << 31) - 1)
+    v = val.strip()
+    if re.fullmatch(r"-?\d+", v):
+        return (int(v), int(v))
+    d = defs.get(v)
+    if d is None or depth > 24:
+        return full
+
+    def fit(lo, hi):
+        return (lo, hi) if full[0] <= lo <= hi <= full[1] else full
+
+    m = re.fullmatch(r"(sext|zext)(?: nneg)? i(8|16) (%[\w.\"$]+) to i32", d)
+    if m:
+        b = int(m.group(2))
+        return (-(1 << (b - 1)), (1 << (b - 1)) - 1) if m.group(1) == "sext" else (0, (1 << b) - 1)
+    m = re.fullmatch(r"(add|sub|mul|shl|ashr|lshr|and)(?: nuw| nsw| exact)* i32 ([^,]+), ([^,]+)", d)
+    if not m:
+        return full
+    op = m.group(1)
+    a = i32_signed_range(m.group(2), defs, depth + 1)
+    b = i32_signed_range(m.group(3), defs, depth + 1)
+    if op == "add":
+        return fit(a[0] + b[0], a[1] + b[1])
+    if op == "sub":
+        return fit(a[0] - b[1], a[1] - b[0])
+    if b[0] != b[1]:
+        return full
+    c = b[0]
+    if op == "mul":
+        return fit(*sorted((a[0] * c, a[1] * c)))
+    if op == "shl" and 0 <= c < 32:
+        return fit(a[0] << c, a[1] << c)
+    if op == "ashr" and 0 <= c < 32:
+        return (a[0] >> c, a[1] >> c)
+    if op == "lshr" and 0 < c < 32:
+        return (a[0] >> c, a[1] >> c) if a[0] >= 0 else (0, ((1 << 32) - 1) >> c)
+    if op == "and" and c >= 0:
+        return (0, c) if a[0] < 0 else (0, min(c, a[1]))
+    return full
+
+
+def zext_in_game_ram(val, defs):
+    """Strict only (B28): val is `zext i32 X to i64` and X's signed interval
+    (i32_signed_range) maps onto one unsigned interval inside game RAM (with
+    the 16-byte slack of bounded_guest_affine)."""
+    m = re.fullmatch(r"zext(?: nneg)? i32 ([^ ]+) to i64", defs.get(val, ""))
+    if not m:
+        return False
+    lo, hi = i32_signed_range(m.group(1), defs)
+    if lo < 0 <= hi:
+        return False
+    lo, hi = lo & 0xFFFFFFFF, hi & 0xFFFFFFFF
+    return GAME_RAM[0] <= lo and hi + 16 < GAME_RAM[1]
+
+
 def bounded_guest_affine(val, defs):
     """Strict only (B28): an inttoptr from `add nuw nsw i64 X, C` where C is a
     game-RAM address and X is provably small: a counted induction variable
@@ -1449,6 +1509,14 @@ def check_optimized(ir, module_internal):
                        if r.split()[0] in ("getelementptr", "phi", "select", "bitcast")
                        and (r.startswith("phi ptr") or r.startswith("select") or
                             r.startswith("bitcast ptr") or r.startswith("getelementptr"))}
+            # an address computed in integers whose unsigned range LLVM
+            # proves inside game RAM (scev_in_game_ram, 80175AB8's
+            # `slot = idx * 4 + (s32)arr`; or zext_in_game_ram) is RAM as well
+            for n_, r in defs.items():
+                im = re.fullmatch(r"inttoptr i64 (%[\w.\"$]+) to ptr", r)
+                if im and (zext_in_game_ram(im.group(1), defs) or
+                           scev_in_game_ram(ir, header, im.group(1))):
+                    ram_ptr.add(n_)
             changed = True
             while changed:
                 changed = False
@@ -1465,6 +1533,8 @@ def check_optimized(ir, module_internal):
                     elif op == "select":
                         parts = split_top(r[len("select"):])
                         ok = len(parts) == 3 and all(ram_value(v, ram_ptr) for v in parts[1:])
+                    elif op == "inttoptr":
+                        ok = True
                     else:
                         ok = ram_value(r[len("bitcast"):].split(" to ")[0], ram_ptr)
                     if not ok:
