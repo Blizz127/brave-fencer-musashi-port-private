@@ -558,6 +558,21 @@ Increment 32 (generator, strict only):
 - Strict stop moves to 80133784. Frames reach 1200, prims=0 draw=0: no
   frame drawn yet.
 
+### Increment 42: register-copy asm as host assignments; 801504D8 returns v0
+
+- 80133784 (main_0012, sc02_0031) keeps two moves with
+  `asm("addu %0,%1,$zero" : "=r"(x) : "r"(y))` for the byte match. Strict-only:
+  `MOVE_ASM_RE` turns that exact form (addu/or with $zero, one output, one
+  input) into `x = (__typeof__(x))(y);` in host_source, and strict_mixed_ok
+  ignores it. Other instruction asm is still refused.
+- 801504D8 (main_0012): the stray file-scope `s32 a1; s32 a2;` are gone and
+  it returns 80150528's v0 (80150480 stores it); byte-identical.
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0. Lanes: main 3586/4055,
+  overlay 2884/3319. Nothing lost; gained 80133784, 80133AB0, 80134A74,
+  801365B8 (both members), 8012B0B4, 801504D8.
+- Strict stop moves to 80133CD4. Frames reach 1200, prims=0 draw=0: no
+  frame drawn yet.
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits

@@ -2022,6 +2022,18 @@ def scratch_call_host(text):
         return None
 
 
+# Strict (B28): a register copy written as asm so GCC keeps a move it would
+# otherwise coalesce (80133784: `asm("addu %0,%1,$zero" : "=r"(x) : "r"(y))`)
+# is the assignment `x = y` on the host.
+MOVE_ASM_RE = re.compile(r'\b(?:__asm__|asm)\s*(?:volatile\s*|__volatile__\s*)?\(\s*'
+                         r'"(?:addu|or)\s+%0,\s*%1,\s*\$zero"\s*:\s*"=r"\s*\(\s*(\w+)\s*\)\s*'
+                         r':\s*"r"\s*\(\s*(\w+)\s*\)\s*\)\s*;')
+
+
+def move_asm_host(text):
+    return MOVE_ASM_RE.sub(lambda m: f"{m.group(1)} = (__typeof__({m.group(1)}))({m.group(2)});", text)
+
+
 GLOBAL_PIN_RE = re.compile(r'^register\s+([^;{}=]*?)\s*(?:__asm__|asm)\s*\(\s*"\$\w+"\s*\)\s*;', re.M)
 
 
@@ -2045,6 +2057,7 @@ def host_source(text):
         text = LA_ASM_RE.sub(lambda m: f"{m.group(2)} = (__typeof__({m.group(2)}))&{m.group(1)};",
                              text)
         text = scratch_call_host(text) or text
+        text = move_asm_host(text)
     return REG_PIN_RE.sub(r"\1", text)
 
 
@@ -3896,6 +3909,7 @@ def strict_mixed_ok(m):
         return False
     text = REG_PIN_RE.sub(r"\1", src.read_text(errors="replace"))
     text = LA_ASM_RE.sub("", text)
+    text = MOVE_ASM_RE.sub("", text)
     ss = scratch_call_host(text)
     text = SCRATCH_CALL_RE.sub("", ss) if ss is not None else text
     asms = re.findall(r'(?:__asm__|\basm)\s*(?:volatile\s*|__volatile__\s*)?\(\s*("[^"]*")', text)

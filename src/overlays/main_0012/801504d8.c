@@ -8,11 +8,9 @@
 struct V3;
 struct V3 { s16 x; s16 y; s16 z; };
 typedef struct { s16 x, y, z; } V3;
-s32 a1;
-s32 a2;
 extern s32 func_80150528(void *a0, void *a1, void *a2);
 
-void func_801504D8(u16 *a0) {
+s32 func_801504D8(u16 *a0) { /* v0 of the call (80150480 stores it) */
     struct V3 a;
     struct V3 b;
     s32 t6 = a0[3];    
@@ -26,5 +24,5 @@ void func_801504D8(u16 *a0) {
     b.y = ta + 1;
     b.z = te;
     a.z = te;
-    func_80150528(a0, &a, &b);
+    return func_80150528(a0, &a, &b);
 }
