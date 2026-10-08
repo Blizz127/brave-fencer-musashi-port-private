@@ -266,6 +266,15 @@ Increment 19 (generator, strict only; build fix):
 - First stop: `guest_pc=8013cf68` (sc02_0031 resident), frame ~1200, no host
   fault.
 
+Increment 20 (generator, strict only):
+- `asm("la %0, SYM" : "=r"(var));` (an address load kept for the byte match)
+  becomes `var = (__typeof__(var))&SYM;` in the strict host copy. A `mixed`
+  registry row whose only asm is this form, empty barriers or register pins
+  counts as C in strict builds, including overlay rows (`<member> all` and
+  explicit allow pairs). Hybrid lists still take recovery "c" only.
+- 8013CF68 (main_0012 and sc02_0031) is admitted. Overlay lane: 2730/3275.
+- First stop: `guest_pc=800363cc` (main EXE), frame ~1200, no host fault.
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits

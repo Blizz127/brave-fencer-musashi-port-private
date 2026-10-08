@@ -423,7 +423,7 @@ def parse_strict_overlay_allow(path):
             # registry function (a registry inconsistency, e.g. main_0012
             # 8012ACE0/801457A4); naming one explicitly still reports it.
             got = sorted(r["vram"] for r in registry if r["region"] == m.group(1)
-                         and r.get("recovery") == "c" and (ROOT / r["source"]).exists()
+                         and lane_recovery(r) and (ROOT / r["source"]).exists()
                          and not (r.get("size") and r["vram"] in nxt
                                   and r["vram"] + r["size"] > nxt[r["vram"]]))
             if not got:
@@ -1726,6 +1726,14 @@ def empty_asm_identity(rhs):
 REG_PIN_RE = re.compile(r'(\bregister\b[^;={}]*?)\s*(?:__asm__|asm)\s*\(\s*"\$\w+"\s*\)')
 
 
+# Strict (B28): `asm("la %0, SYM" : "=r"(var));` only materialises the
+# address of SYM in var's register (lui/addiu) so the byte match keeps the
+# retail base register. On the host it is the C assignment `var = &SYM`
+# (SYM must be declared in scope, otherwise the compile fails: rule compile).
+LA_ASM_RE = re.compile(r'\b(?:__asm__|asm)\s*(?:volatile\s*|__volatile__\s*)?\(\s*"la %0, ?(\w+)"'
+                       r'\s*:\s*"=r"\s*\(\s*(\w+)\s*\)\s*\)\s*;')
+
+
 GLOBAL_PIN_RE = re.compile(r'^register\s+([^;{}=]*?)\s*(?:__asm__|asm)\s*\(\s*"\$\w+"\s*\)\s*;', re.M)
 
 
@@ -1741,6 +1749,8 @@ def host_source(text):
             local = "".join(f" {d};" for d in decls)
             text = re.sub(r"^(\w[^;{}()]*\([^;{}]*\)\s*\{)", lambda m: m.group(1) + local,
                           text, flags=re.M)
+        text = LA_ASM_RE.sub(lambda m: f"{m.group(2)} = (__typeof__({m.group(2)}))&{m.group(1)};",
+                             text)
     return REG_PIN_RE.sub(r"\1", text)
 
 
@@ -3551,6 +3561,7 @@ def strict_mixed_ok(m):
     if not src.exists():
         return False
     text = REG_PIN_RE.sub(r"\1", src.read_text(errors="replace"))
+    text = LA_ASM_RE.sub("", text)
     asms = re.findall(r'(?:__asm__|\basm)\s*(?:volatile\s*|__volatile__\s*)?\(\s*("[^"]*")', text)
     return all(a == '""' for a in asms)
 
@@ -3593,7 +3604,8 @@ def candidates(only=None, excluded=None):
 
 def overlay_candidates(members, only=None):
     registry = json.loads((ROOT / "provenance/matches.json").read_text())["matches"]
-    return [m for m in registry if m["region"] in members and m.get("recovery") == "c"
+    return [m for m in registry if m["region"] in members
+            and (m.get("recovery") == "c" or strict_mixed_ok(m))
             and (ROOT / m["source"]).exists() and (not only or m["vram"] in only)]
 
 
@@ -3612,7 +3624,7 @@ def allow_candidates(pairs, infos, own_code_only):
         if m is None:
             problems.append(f"{where}: no registry row")
             continue
-        if m.get("recovery") != "c" or not (ROOT / m["source"]).exists():
+        if not lane_recovery(m) or not (ROOT / m["source"]).exists():
             problems.append(f"{where}: registry row is not matched C with a source file")
             continue
         why = overlay_size_problem(m, infos[member], starts[member])
