@@ -105,6 +105,20 @@ Increment 6:
   frame local is passed through a pointer variable). The movie most likely
   ends early. Check whether frames decode once the stream callbacks run.
 
+Increment 7 (generator, strict only):
+- `pointer_slot_sources`: a frame local copied through a pointer variable
+  (`argp = buf; f(argp)`) is still mapped to its retail frame slot (`escape`).
+  This admits main_0003 800CFC1C.
+- `switch_tables_internal`: a gcc switch whose jump-table entries (read from
+  the member file) all point inside the function is no longer refused under
+  `jumptable`. The native switch never reads the guest table. This admits
+  5 main_0010 functions.
+- Strict boot: logo, then the intro movie overlay (states 0..5, about frames
+  525..1125), then main_0010 (resident engine). First stop:
+  `guest_pc=8001c0c8`, a main row with origin "vendor-referenced
+  (Druthulu/BFM-decomp)", which the strict provenance allow list did not
+  name yet (fixed in increment 8).
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits

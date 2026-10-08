@@ -441,6 +441,51 @@ def guest_jump_table(info, vram, size):
     return None
 
 
+def switch_tables_internal(info, vram, size):
+    """Strict only: every `jr rs` (rs != ra) in the extent is the gcc switch
+    idiom `sltiu rB, rI, N; beqz rB, ...; sll rT, rI, 2; lui at, hi;
+    addu at, at, rT; lw rs, lo(at); jr rs`, and all N table words (read
+    from the member file) are instruction addresses inside the extent. The
+    native body compiles the switch from the matched C and never reads the
+    guest table. The table only maps cases onto this function's own code,
+    which the per-call digest already pins, so leaving it out of the digest
+    cannot change the behaviour. Returns False on any doubt."""
+    off = vram - info["vram"] + info["start"]
+    words = [int.from_bytes(info["data"][off + i:off + i + 4], "little") for i in range(0, size, 4)]
+    found = False
+    for k, w in enumerate(words):
+        if not (w >> 26 == 0 and w & 0x3F == 0x08 and (w >> 21) & 31 != 31):
+            continue
+        rs = (w >> 21) & 31
+        # lw rs, lo(at) within the 3 words before the jr (a nop may sit between)
+        lw = next((j for j in range(k - 1, max(k - 4, -1), -1)
+                   if words[j] >> 26 == 0x23 and (words[j] >> 16) & 31 == rs), None)
+        if lw is None or lw < 2:
+            return False
+        base = (words[lw] >> 21) & 31
+        lo = words[lw] & 0xFFFF
+        lo = lo - 0x10000 if lo & 0x8000 else lo
+        addu, lui = words[lw - 1], words[lw - 2]
+        if not (addu >> 26 == 0 and addu & 0x3F == 0x21 and (addu >> 11) & 31 == base):
+            return False
+        if not (lui >> 26 == 0x0F and (lui >> 16) & 31 == base):
+            return False
+        table = (((lui & 0xFFFF) << 16) + lo) & 0xFFFFFFFF
+        bound = None
+        for j in range(lw - 3, max(lw - 12, -1), -1):
+            if words[j] >> 26 == 0x0B:  # sltiu
+                bound = words[j] & 0xFFFF
+                break
+        if not bound or bound > 256:
+            return False
+        for n in range(bound):
+            t = guest_word(table + 4 * n, info)
+            if t is None or t & 3 or not vram <= t < vram + size:
+                return False
+        found = True
+    return found
+
+
 MAIN_EXE = ROOT / "extracted/disc/files/SLUS_007.26"
 _MAIN_EXE_BYTES = None
 IO_LO, IO_HI = 0x1F801000, 0x1F803000
@@ -1779,6 +1824,40 @@ def _call_args(rhs):
     return cm.group(1), args
 
 
+def pointer_slot_sources(lines):
+    """Strict only (O0 IR): {slot: value} for a pointer local (`alloca ptr`)
+    that every store fills with the same SSA value and whose address is used
+    only as the pointer operand of loads and stores (the auto-init null store
+    at the declaration aside). A load from such a slot
+    is that value, so a frame local copied through a pinned pointer variable
+    (`argp = buf; f(argp)`) still reaches the callee as the local."""
+    slots, stores, bad = set(), {}, set()
+    for line in lines:
+        dm = DEF_RE.match(line)
+        if dm and re.fullmatch(r"alloca ptr, align \d+", dm.group(2).strip()):
+            slots.add(dm.group(1))
+    if not slots:
+        return {}
+    for line in lines:
+        dm = DEF_RE.match(line)
+        if dm and dm.group(1) in slots:
+            continue
+        if re.match(r"\s*store ptr null, ptr %[\w.\"$]+, align \d+, !annotation !\d+\s*$", line):
+            continue  # the compiler's auto-init of the declaration, not a value
+        sm = re.match(r"\s*store ptr (%[\w.\"$]+), ptr (%[\w.\"$]+)(?:, align \d+)?(?:, ![\w.]+ !\d+)*\s*$", line)
+        if sm and sm.group(2) in slots:
+            stores.setdefault(sm.group(2), set()).add(sm.group(1))
+            rest = [sm.group(1)]
+        else:
+            lm = re.match(r"\s*%[\w.\"$]+ = load ptr, ptr (%[\w.\"$]+)(?:, align \d+)?(?:, ![\w.]+ !\d+)*\s*$", line)
+            rest = [] if lm and lm.group(1) in slots else [line]
+        for text in rest:
+            for t in re.findall(r"%[\w.\"$]+", text):
+                if t in slots:
+                    bad.add(t)
+    return {s: next(iter(v)) for s, v in stores.items() if len(v) == 1 and s not in bad}
+
+
 def place_guest_locals(ir, fname, words, vram, frame):
     """Move every alloca of fname whose address reaches a guest callee
     (lane_call_* / lane_* call argument, through constant GEPs) into the
@@ -1792,10 +1871,15 @@ def place_guest_locals(ir, fname, words, vram, frame):
     types = named_types(ir)
     lines = m.group(1).splitlines()
     allocas, derived, calls = {}, {}, []
+    slot_src = pointer_slot_sources(lines) if STRICT else {}
     for k, line in enumerate(lines):
         dm = DEF_RE.match(line)
         if dm:
             name, rhs = dm.group(1), dm.group(2)
+            lm = re.fullmatch(r"load ptr, ptr (%[\w.\"$]+)(?:, align \d+)?", rhs.strip())
+            if lm and slot_src.get(lm.group(1)) in derived:
+                derived[name] = derived[slot_src[lm.group(1)]]
+                continue
             am = re.fullmatch(r"alloca ([^,]+), align (\d+)", rhs.strip())
             if am:
                 allocas[name] = (am.group(1).strip(), k)
@@ -1957,7 +2041,7 @@ def build_one(entry, out, symbols, hooks, clang, info=None):
             raise Reject("hooks", f"port references {pc:08x}")
         if info:
             jt = guest_jump_table(info, vram, size)
-            if jt:
+            if jt and not (STRICT and switch_tables_internal(info, vram, size)):
                 raise Reject("jumptable", f"jr ${jt[1]} at {jt[0]:08x} (switch table outside the digest)")
         text = strip_comments(src.read_text(errors="replace"))
         body = text.split("#else", 1)[1] if "#else" in text else text

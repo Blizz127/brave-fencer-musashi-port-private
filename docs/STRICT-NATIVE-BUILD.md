@@ -232,3 +232,13 @@ Increment 5 (strict only):
   accepted a pinned output as an identity and dropped the move.
 - **Overlay allow list:** `main_0003 all` is added. Its vendor C also runs
   for main_0004 wherever the bytes are identical.
+
+Increment 7 (strict only):
+- **Pointer slots (`escape`):** at O0, a pointer local that every store
+  fills with the same frame-local address (ignoring the compiler's auto-init
+  null) and that is used only through loads and stores carries that local to
+  callees. `place_guest_locals` can then place it.
+- **Switch tables (`jumptable`):** a switch is accepted when every `jr` is the
+  gcc idiom (sltiu bound, lui/addu/lw table load) and all of its table words
+  (from the member file) are addresses inside the function. The native body
+  switches on its own compiled table.
