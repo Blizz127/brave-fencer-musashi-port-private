@@ -66,7 +66,7 @@ void func_80159C84(u8 *p) {
     extern s32 D_800D49F4;
     s32 t;
 
-    if (((s32 (*)(void))func_80149D9C)() != 0) {
+    if (func_80149D9C((s32)p) != 0) {
         D_8018730C[*(u16 *)p](p);
         ((void (*)(u8 *))func_80149FA8)(p);
         return;

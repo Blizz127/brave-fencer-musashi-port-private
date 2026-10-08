@@ -9,7 +9,7 @@ typedef double f64;
 #define NULL ((void *)0)
 #endif
 
-extern void func_8016B234();
+extern void func_8016B234(s32 a0);
 extern void func_800D22E4(s32 a0);
 extern void func_8012A568(void (*a0)(void));
 
@@ -18,7 +18,7 @@ void func_8016AE5C(s32 param_1) {
 
     sp = *(s32 *)(param_1 + 0x20);
     if (*(u32 *)(param_1 + 0x2C) < 6) {
-        func_8016B234();
+        func_8016B234(param_1);
     }
     switch (*(u32 *)(param_1 + 0x2C)) {
     case 0:

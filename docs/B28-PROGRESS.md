@@ -630,6 +630,16 @@ Increment 32 (generator, strict only):
   overlay 2894/3328; no lost functions (gained 80159A20 in both members).
 - Strict stop moves 80159A20 -> 8015126C. Frame 1200 reached, prims=0 draw=0 (no frame drawn).
 
+### Increment 47 — a0 passed through at four more call sites
+
+- `func_8015126C` and `func_80151780` pass the s16 already pinned in a0 to
+  `func_80029D3C(s32)`; `func_80159C84` passes `p` to `func_80149D9C`; `func_8016AE5C`
+  passes `param_1` to `func_8016B234` (main_0012 and sc02_0031). Retail has a0 live at
+  each `jal`; every object is identical to the previously verified source.
+- Gate: build 0, lane table identical, ctest 37/37, m2c 0. Lane: main 3605/4066,
+  overlay 2900/3328; no lost functions.
+- Strict stop moves 8015126C -> 80012558 (main executable). Frame 1200, prims=0 draw=0.
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits
