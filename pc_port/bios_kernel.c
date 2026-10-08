@@ -162,12 +162,12 @@ int musashi_bios_kernel_dequeue_from_handler(MusashiBiosKernel *kernel,
     return dequeue_node(kernel, node);
 }
 
-int musashi_bios_kernel_dispatch_with_context(MusashiBiosKernel *kernel,
-    uint16_t pending, const struct MusashiCpuExceptionToken *token) {
+static int dispatch_chains(MusashiBiosKernel *kernel, uint16_t pending,
+    const struct MusashiCpuExceptionToken *token, int native_entry) {
     unsigned priority;
     if (!kernel || kernel->dispatching || (pending & ~0x7ffu)) return 0;
     kernel->dispatching = 1;
-    if (!run_exception_entry(kernel, token) || !run_early_hook(kernel)) {
+    if ((!native_entry && !run_exception_entry(kernel, token)) || !run_early_hook(kernel)) {
         kernel->dispatching = 0;
         return 0;
     }
@@ -191,6 +191,18 @@ int musashi_bios_kernel_dispatch_with_context(MusashiBiosKernel *kernel,
     }
     kernel->dispatching = 0;
     return 1;
+}
+
+int musashi_bios_kernel_dispatch_with_context(MusashiBiosKernel *kernel,
+    uint16_t pending, const struct MusashiCpuExceptionToken *token) {
+    return dispatch_chains(kernel, pending, token, 0);
+}
+
+/* Strict builds: the native frame driver is the exception entry (there is
+ * no CPU exception frame to verify), so only the early hook and the
+ * priority chains run. */
+int musashi_bios_kernel_dispatch_native_entry(MusashiBiosKernel *kernel, uint16_t pending) {
+    return dispatch_chains(kernel, pending, NULL, 1);
 }
 
 int musashi_bios_kernel_dispatch(MusashiBiosKernel *kernel, uint16_t pending) {

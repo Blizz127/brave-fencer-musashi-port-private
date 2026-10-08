@@ -70,6 +70,9 @@ int musashi_bios_kernel_enqueue(MusashiBiosKernel *kernel,
 int musashi_bios_kernel_dequeue(MusashiBiosKernel *kernel,
     MusashiBiosIrqNode *node);
 int musashi_bios_kernel_dispatch(MusashiBiosKernel *kernel, uint16_t pending);
+/* Strict builds: the frame driver is the exception entry; runs the early
+ * hook and the priority chains without the CPU exception-frame check. */
+int musashi_bios_kernel_dispatch_native_entry(MusashiBiosKernel *kernel, uint16_t pending);
 /* The live priority handler may mutate its own strictly earlier-priority
  * resources. The current/later iteration lists, other userdata owners, early
  * hooks and callers outside dispatch have no such capability. */

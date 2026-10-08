@@ -1,0 +1,9 @@
+# Strict-build-only additions to config/lane_own_code_allow.txt (same
+# owner-authored matched C rules). These four have approximate fixed cycle
+# charges (unmapped loop shapes), so the normal build keeps them interpreted:
+# its native-vs-deny DEVOBS route proof is cycle-exact (B24). A strict build
+# has no interpreter and no route proof, so they run native there.
+800147b8
+80015908
+8001d1c4
+8003324c

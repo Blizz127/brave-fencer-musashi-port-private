@@ -297,6 +297,51 @@ are not yet in the lane. Of those:
 
   Each of these needs a native HLE against the port's device owners.
 
+## Native libetc core and interrupt delivery (B25, 2026-10-07)
+
+Strict builds now own interrupts in the driver (`pc_port/native_frame_driver.c`,
+written from the retail disassembly of 80042580..80043060, 80059234, 800594CC,
+8005FC68 and 8005FCB8):
+
+- **libetc** lane entries: ResetCallback 80042580 / init 80042718 (same RAM
+  state as retail: I_MASK/I_STAT/DPCR writes, 1050-word clear of 8006BAFC,
+  setjmp context ra 80042780 / sp 8006CB14, root-counter 1 mode 0x107, VBlank
+  tick and slots, IRQ0 = 80042CE8, IRQ3 = 80042E08, service-table slots [1]
+  and [5], A0:72, ExitCriticalSection); InterruptCallback 800425B0/800429DC and
+  DMACallback 800425E0/80042F8C (decomp-owned bodies); VSyncCallback 80042610,
+  VSyncCallbacks 80042644/80042D60; CheckCallback, GetIntrMask, SetIntrMask.
+  B0:19 HookEntryInt is **not** issued: no interpreter scheduler is armed.
+- **Interrupt point** (`driver_irq_poll`): after every top-level driver call
+  and every VSync point, with interrupts enabled and `I_STAT & I_MASK` set,
+  the BIOS kernel's priority chains run first (`ops->bios_irq`, the native
+  entry `musashi_bios_kernel_dispatch_native_entry`: card/SIO and CD nodes),
+  then libetc's custom exit, the decomp-owned dispatcher 800427F4, on the IRQ
+  stack 8006CB14. Handlers 80042CE8 (VBlank: tick 8006CBB8 + 8 slots),
+  80042E08 (DMA) and 800616D0 (card VBlank) run natively; other targets are
+  lane calls. `musashi_frame_driver_irq_point()` lets host BIOS waits
+  (`_bu_init`) deliver interrupts too.
+- **Critical sections** (8005CF08/8005CF18 and the libcard/event helpers) are
+  the driver's own interrupt-enable flag; the BIOS model's internal SYS1/SYS2
+  pairs are no-ops without an interpreter continuation.
+- The guest-clock VBlank source is live from the driver's start
+  (`g_driver_irq_source`), so the game's VBlank counter advances natively
+  (5 fields during the 2.8M-cycle `_bu_init` wait on the first run).
+- **libgpu/libcard**: ResetGraph 80059234 (modes 0/3/5 native, others call
+  jtb[13](1)), SetGraphDebug 800594CC, InitCARD 8005FC68, StartCARD 8005FCB8.
+
+Strict boot now runs main through ResetCallback, 800141F0 (ResetGraph,
+SetGraphDebug, PadInitDirect...), InitCARD (`_bu_init` completes:
+result 0, cards disconnected), StartCARD and 80018918, and stops at **CdInit
+80043300** (libcd, `not_in_lane`), still 0 frames. Everything after it in
+main's startup (8002C8F4, 8001971C) is in the lane except libcd; the frame
+loop needs the file loader, which drives libcd (CdControl 800435CC, CdSync
+800434BC, CdReady 8004355C, CdReadyCallback 800435B4, CdGetSector 80043994,
+CdControlB 80043830, CdControlF 80043704, CdRead 80046630, CdReadSync
+8004674C, CdGetToc 800430B8 and the CdInit/CdReset chain 80043300/80043450/
+80044D38/80044670/80044124/80043B9C). That HLE libcd (against the CD
+register device and IRQ 2 through the driver's interrupt point) is the next
+wall.
+
 ## Work order this implies
 
 1. Clean-room the 3 vendor direct callees (80015208, 800184F0, 8002D034) and

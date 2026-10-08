@@ -113,3 +113,18 @@ Until then every useful build stays hybrid and is disclosed as such.
   design. The hybrid build of the same tree passes all 37 tests against the
   retail extracts.
 
+
+## Strict-only allow list and RAM volatile (B25, 2026-10-07)
+
+- `config/lane_strict_allow.txt` is passed as a second `--only` (the
+  generator takes the union) only when `MUSASHI_STRICT_NATIVE`: 800147B8,
+  80015908, 8001D1C4, 8003324C. Their fixed cycle charges are approximate, so
+  the normal build keeps them interpreted and its lane table is unchanged
+  (regenerated hybrid `native_lane_table.c` byte-identical; route proof
+  unaffected).
+- With `--strict`, the memory rule admits a volatile load/store whose address
+  provably derives from a constant guest RAM/scratchpad address (inttoptr
+  bases through getelementptr/phi/select/bitcast, greatest fixpoint for loop
+  phis) or is a local alloca. Matched C uses volatile to pin gcc 2.7.2 store
+  order or pad frames (80018FC8, 80015310); device registers and pointer
+  cells stay refused. Strict admits 647 functions.

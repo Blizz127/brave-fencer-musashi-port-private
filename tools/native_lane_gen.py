@@ -839,6 +839,62 @@ def check_optimized(ir, module_internal):
             return any(re.search(re.escape(t) + r"\b", text) for t in tainted) or \
                 any(re.search("@" + re.escape(g) + r"\b", text) for g in private_globals)
 
+        # Strict builds: a volatile access whose address provably derives from
+        # a constant guest RAM or scratchpad address (inttoptr bases through
+        # getelementptr/phi/select/bitcast only), or is a local, is ordinary
+        # memory. Matched C
+        # uses volatile on RAM fields to pin gcc 2.7.2's store order; device
+        # registers stay refused (their addresses are MMIO or pointer cells).
+        def const_ram(text):
+            nums = [int(n) for n in re.findall(r"inttoptr \(i\d+ (-?\d+) to ptr\)", text)]
+            return bool(nums) and all(0x80000000 <= (n & 0xFFFFFFFF) < 0x80200000 or
+                                      0x1F800000 <= (n & 0xFFFFFFFF) < 0x1F800400
+                                      for n in nums)
+        def ram_value(v, ram):
+            v = v.strip()
+            if v.startswith("ptr "):
+                v = v[4:].strip()
+            if v.startswith("%"):
+                return v in ram
+            return const_ram(v) and "%" not in v
+
+        ram_ptr = set()
+        if STRICT:
+            # greatest fixpoint: loop phis are RAM-derived unless some
+            # incoming pointer is not
+            ram_ptr = {n for n, r in defs.items()
+                       if r.split()[0] in ("getelementptr", "phi", "select", "bitcast")
+                       and (r.startswith("phi ptr") or r.startswith("select") or
+                            r.startswith("bitcast ptr") or r.startswith("getelementptr"))}
+            changed = True
+            while changed:
+                changed = False
+                for name in sorted(ram_ptr):
+                    r = defs[name]
+                    op = r.split()[0]
+                    if op == "getelementptr":
+                        body = re.sub(r"^getelementptr (?:inbounds |nuw |nusw )*", "", r)
+                        parts = split_top(body)
+                        ok = len(parts) > 1 and ram_value(parts[1], ram_ptr)
+                    elif op == "phi":
+                        vals = re.findall(r"\[\s*(.+?),\s*%[\w.\"$]+\s*\]", r)
+                        ok = bool(vals) and all(ram_value(v, ram_ptr) for v in vals)
+                    elif op == "select":
+                        parts = split_top(r[len("select"):])
+                        ok = len(parts) == 3 and all(ram_value(v, ram_ptr) for v in parts[1:])
+                    else:
+                        ok = ram_value(r[len("bitcast"):].split(" to ")[0], ram_ptr)
+                    if not ok:
+                        ram_ptr.discard(name)
+                        changed = True
+
+        def ram_address(addr):
+            # a local (alloca: host stack frame, e.g. gcc frame padding) is
+            # ordinary memory too
+            a = addr.strip()
+            a = a[4:].strip() if a.startswith("ptr ") else a
+            return ram_value(addr, ram_ptr) or defs.get(a, "").startswith("alloca ")
+
         for line in lines:
             s = line.strip()
             if not s or s.endswith(":") or s.startswith(";"):
@@ -856,7 +912,12 @@ def check_optimized(ir, module_internal):
             if re.match(r"(load|store) volatile ", rhs) or "i1 true)" in rhs and "llvm.mem" in rhs:
                 # Decomp C marks device access volatile; a pointer cell such
                 # as D_8006B560 holds an MMIO address the host cannot map.
-                raise Reject("memory", "volatile access (device register)")
+                vol_ok = False
+                if STRICT and re.match(r"(load|store) volatile ", rhs):
+                    parts = split_top(re.sub(r"^(load|store) volatile ", "", rhs))
+                    vol_ok = len(parts) > 1 and ram_address(parts[1])
+                if not vol_ok:
+                    raise Reject("memory", "volatile access (device register)")
             if re.match(r"load (volatile )?", rhs):
                 ty = split_top(re.sub(r"^load (volatile )?", "", rhs))[0]
                 addr = split_top(re.sub(r"^load (volatile )?", "", rhs))[1]
@@ -2839,7 +2900,10 @@ def main():
     ap.add_argument("--clang", default=shutil.which("clang") or "clang")
     ap.add_argument("--ar", default=shutil.which("ar") or "ar")
     ap.add_argument("--jobs", type=int, default=4)
-    ap.add_argument("--only", help="file of guest PCs (hex, one per line) to consider, e.g. a trace")
+    ap.add_argument("--only", action="append",
+                    help="file of guest PCs (hex, one per line) to consider, e.g. a trace; "
+                         "repeatable (the union is used: strict builds add "
+                         "config/lane_strict_allow.txt)")
     ap.add_argument("--exclude", help="file of guest PCs (hex) never to admit")
     ap.add_argument("--own-code-only", action="store_true",
                     help="compile only owner-authored matched C (see third_party_derived)")
@@ -2859,7 +2923,7 @@ def main():
     def pcs(path):
         return {int(t.split()[0], 16) for t in Path(path).read_text().splitlines()
                 if t.strip() and not t.startswith("#")}
-    only = pcs(args.only) if args.only else None
+    only = set().union(*(pcs(f) for f in args.only)) if args.only else None
     exclude = pcs(args.exclude) if args.exclude else set()
     symbols = load_symbol_addrs()
     global STRICT

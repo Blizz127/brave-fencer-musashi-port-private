@@ -697,8 +697,17 @@ if(MUSASHI_BUILD_PC_PORT)
         endif()
         # Strict builds have no interpreter: no PC is observed, so the
         # generator drops the interpreter-only hook rules (tools/native_lane_gen.py).
+        # config/lane_strict_allow.txt: matched functions whose fixed cycle
+        # charge is approximate, so they stay out of the normal build (its
+        # native-vs-deny route proof is cycle-exact) but are native in strict.
         if(MUSASHI_STRICT_NATIVE)
             set(MUSASHI_LANE_STRICT_FLAG --strict)
+            if(MUSASHI_LANE_OWN_CODE_ONLY)
+                list(APPEND MUSASHI_LANE_STRICT_FLAG
+                    --only ${CMAKE_CURRENT_SOURCE_DIR}/config/lane_strict_allow.txt)
+                list(APPEND MUSASHI_LANE_OWN_CODE_DEPENDS
+                    ${CMAKE_CURRENT_SOURCE_DIR}/config/lane_strict_allow.txt)
+            endif()
         else()
             set(MUSASHI_LANE_STRICT_FLAG)
         endif()

@@ -661,6 +661,17 @@ static int native_sys(NativeBoot *boot, MusashiCpuExceptionKind kind, int host, 
     MusashiCpuExceptionToken token={0};
     int accepted;
     int32_t sys_result=0;
+#ifdef MUSASHI_STRICT_NATIVE
+    /* Strict builds have no interpreter continuation and no exception
+     * model: the frame driver owns the interrupt-enable state and delivery.
+     * A BIOS service's own SYS1/SYS2 pair (card start, CD removal) is then
+     * a no-op; SYS1 reports interrupts as disabled inside the service. */
+    if (!boot->continuation) {
+        if (kind==MUSASHI_CPU_EXCEPTION_SYS1 && !result) return 0;
+        if (result) *result=0;
+        return 1;
+    }
+#endif
     if ((kind==MUSASHI_CPU_EXCEPTION_SYS1 && !result) || !boot->continuation || boot->irq.scheduler.delivering || boot->irq.scheduler.pumping ||
         !(host ? musashi_boot_cpu_context(boot->continuation,MUSASHI_CPU_CONTEXT_HOST_BIOS_SERVICE,&context) :
                  musashi_boot_cpu_context(boot->continuation,MUSASHI_CPU_CONTEXT_SOURCE,&context))) return 0;
@@ -1936,6 +1947,10 @@ static int input_write8(void *userdata, uint32_t address, uint8_t value) {
  * fraction of a frame's work, so each game loop spanned ~5 VBlanks instead of
  * retail's and every timed sequence ran slow. Host time is used only to hold
  * the guest back to real speed (epoch_wait), never to push it forward. */
+/* Strict builds: the frame driver delivers interrupts (no B0:19 scheduler
+ * install), so the guest-clock VBlank source is live from its start. */
+static int g_driver_irq_source;
+
 static int guest_clock_collect(NativeBoot *boot, MusashiIrqSourceBatch *batch) {
     static unsigned drain_countdown;
     /* PsyCross still publishes host-time VBlanks; drain them so its queue
@@ -1955,7 +1970,7 @@ static int guest_clock_collect(NativeBoot *boot, MusashiIrqSourceBatch *batch) {
     while (boot->guest_next_vblank <= boot->guest_tick) {
         /* Before the source handler is installed the host path published no
          * edges either; keep the frame grid, deliver nothing. */
-        if (boot->irq.scheduler.installed) {
+        if (boot->irq.scheduler.installed || g_driver_irq_source) {
             if (batch->count >= MUSASHI_IRQ_SOURCE_CAPACITY) return 0;
             batch->edges[batch->count++] =
                 (MusashiIrqSourceEdge){++boot->guest_sequence, boot->guest_next_vblank};
@@ -3740,12 +3755,41 @@ static int checkpoint(void *userdata, const void *continuation) {
     }
 }
 
+#ifdef MUSASHI_STRICT_NATIVE
+void musashi_frame_driver_irq_point(void);
+#endif
 static int run_backup_unit(void *userdata, int32_t *guest_result) {
     NativeBoot *boot = userdata;
     Uint32 started = SDL_GetTicks();
     const void *continuation = boot->continuation;
     uint64_t epoch_started = boot->epoch.cycle;
     uint64_t source_started = boot->source_clock.cycles;
+#ifdef MUSASHI_STRICT_NATIVE
+    if (!continuation && guest_result) {
+        /* Strict: the BIOS wait spends guest time and the frame driver
+         * delivers the interrupts that complete the request. */
+        if (!musashi_bios_backup_unit_begin(&boot->backup_unit)) return 0;
+        for (;;) {
+            int complete;
+            if (!musashi_bios_backup_unit_poll(&boot->backup_unit, &complete, guest_result))
+                return 0;
+            if (complete) {
+                fprintf(stderr, "native_boot: BU_RETURN result=%d (strict) cycles=%llu\n",
+                        (int)*guest_result,
+                        (unsigned long long)(boot->epoch.cycle - epoch_started));
+                return 1;
+            }
+            if (!boot->execution_clock.advance ||
+                !boot->execution_clock.advance(boot->execution_clock.userdata, 1024u))
+                return 0;
+            musashi_frame_driver_irq_point();
+            if ((Uint32)(SDL_GetTicks() - started) >= 10000u) {
+                fputs("native_boot: backup-unit wait observation timed out\n", stderr);
+                return 0;
+            }
+        }
+    }
+#endif
     if (!continuation || !guest_result || boot->irq.scheduler.pumping ||
         !musashi_bios_backup_unit_begin(&boot->backup_unit))
         return 0;
@@ -5174,8 +5218,9 @@ static NativeBoot *native_boot_owner(NativeBoot *fallback) {
 #ifdef MUSASHI_STRICT_NATIVE
         {
             /* Strict: the frame driver's native replacements for the STUB
-             * Sony rows on the frame path join the table (a compat row for
-             * the same PC, if one is ever installed, wins). */
+             * Sony rows on the frame path and the native libetc core join
+             * the table; they replace a compat row for the same PC (the
+             * driver owns interrupt delivery in strict builds). */
             size_t extra = musashi_frame_driver_lane_entries(NULL, 0), i, j, n = count;
             MusashiNativeLaneEntry *own = malloc(sizeof *own * extra);
             MusashiNativeLaneEntry *all = malloc(sizeof *all * (count + extra));
@@ -5186,8 +5231,9 @@ static NativeBoot *native_boot_owner(NativeBoot *fallback) {
             (void)musashi_frame_driver_lane_entries(own, extra);
             memcpy(all, table, sizeof *all * count);
             for (i = 0; i < extra; ++i) {
-                for (j = 0; j < count && table[j].guest_pc != own[i].guest_pc; ++j) {}
+                for (j = 0; j < count && all[j].guest_pc != own[i].guest_pc; ++j) {}
                 if (j == count) all[n++] = own[i];
+                else all[j] = own[i];
             }
             free(own);
             table = all;   /* kept for the process lifetime */
@@ -5518,6 +5564,26 @@ static size_t driver_pad_wire(void *user, unsigned port, uint8_t out[8]) {
     return 4;
 }
 
+static int driver_bios_a0_72(void *user) {
+    /* No interpreter continuation in strict builds: the BIOS kernel model's
+     * CD-handler removal runs directly (the driver owns the critical
+     * section around it). */
+    NativeBoot *boot = user;
+    return musashi_bios_kernel_remove_cd(&boot->bios);
+}
+
+static int driver_bios_irq(void *user, uint16_t pending) {
+    /* before_irq_dispatch without an exception token: the memory card's
+     * VBlank completion, then the kernel's priority chains. */
+    NativeBoot *boot = user;
+    if ((pending & 1u) && boot->memcard.pending_spec &&
+        !musashi_bios_memcard_vblank(&boot->memcard, &boot->bios.events, execute_event, boot)) {
+        fprintf(stderr, "native_boot: MEMCARD completion refused\n");
+        return 0;
+    }
+    return musashi_bios_kernel_dispatch_native_entry(&boot->bios, pending);
+}
+
 static MusashiResetGraphPrefixStatus strict_frame_driver_run(NativeBoot *boot) {
     static MusashiFrameDriverOps ops;
     ops.user = boot;
@@ -5525,6 +5591,10 @@ static MusashiResetGraphPrefixStatus strict_frame_driver_run(NativeBoot *boot) {
     ops.frame_end = driver_frame_end;
     ops.vblank = driver_vblank;
     ops.pad_wire = driver_pad_wire;
+    ops.dma_irq = &boot->dma_irq;
+    ops.bios_a0_72 = driver_bios_a0_72;
+    ops.bios_irq = driver_bios_irq;
+    g_driver_irq_source = 1;
     return musashi_frame_driver_run(&boot->memory, &boot->startup_devices, &ops);
 }
 #endif

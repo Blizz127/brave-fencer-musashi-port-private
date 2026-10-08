@@ -50,6 +50,13 @@ typedef struct MusashiFrameDriverOps {
      * 0x73 analog, out[1] = 0x5A, out[2..3] = ~buttons, out[4..7] sticks.
      * Returns the bytes written, 0 when no pad is connected. */
     size_t (*pad_wire)(void *user, unsigned port, uint8_t out[8]);
+    /* DICR owner for the native libetc DMA callbacks (80042F8C/80042E08). */
+    const struct MusashiDmaCallbackRegistrationDevice *dma_irq;
+    /* BIOS A0:72 (_96_remove) as libetc's init issues it. 0: refused. */
+    int (*bios_a0_72)(void *user);
+    /* The BIOS kernel's IRQ priority chains for `pending` (I_STAT & I_MASK),
+     * run before libetc's custom exit. 0: refused. */
+    int (*bios_irq)(void *user, uint16_t pending);
 } MusashiFrameDriverOps;
 
 /* The driver's own lane entries: native replacements for the Sony library
@@ -58,6 +65,10 @@ typedef struct MusashiFrameDriverOps {
  * PadSetAct/PadSetActAlign, InitHeap, the libapi Enter/ExitCriticalSection
  * syscall wrappers and libcd CdMix). Copies at most `cap` entries to `out`
  * and returns how many exist. native_boot appends them to the lane table. */
+/* The driver's interrupt point (strict builds): deliver a pending enabled
+ * IRQ now. For host BIOS services that wait on interrupts (_bu_init). */
+void musashi_frame_driver_irq_point(void);
+
 size_t musashi_frame_driver_lane_entries(MusashiNativeLaneEntry *out, size_t cap);
 
 /* Runs main from its first call until quit (or MUSASHI_DRIVER_FRAMES
