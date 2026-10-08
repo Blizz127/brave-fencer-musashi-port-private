@@ -7,6 +7,8 @@
 
 void func_80160F00();                                  /* static */
 
-void func_80160EE0(void) {
-    func_80160F00();
+/* B28: the retail body leaves a0 untouched, so func_80160F00 receives this
+ * function's own arguments. Byte-identical (gcc-2.7.2-psx -O2). */
+void func_80160EE0(s32 arg0) {
+    func_80160F00(arg0);
 }

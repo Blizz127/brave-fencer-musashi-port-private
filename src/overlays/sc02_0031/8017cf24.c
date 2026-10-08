@@ -16,6 +16,8 @@ typedef double f64;
 extern void func_8012A568(void (*a0)(void));
 extern void func_8012C218(void *a0);
 
-void func_8017CF24(void) {
-        ((void (*)(void))func_8012C218)();
-    }
+/* B28: the retail body leaves a0 untouched, so func_8012C218 receives this
+ * function's own arguments. Byte-identical (gcc-2.7.2-psx -O2). */
+void func_8017CF24(void *arg0) {
+    ((void (*)(void *))func_8012C218)(arg0);
+}

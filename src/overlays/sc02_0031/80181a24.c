@@ -13,6 +13,9 @@ typedef double f64;
 extern void func_8012A568(void (*a0)(void));
 extern s32 func_8012AD50(void *a0);
 
-void func_80181A24(void) {
-        ((void (*)(void))func_8012AD50)();
+/* B28: the retail body leaves a0 untouched, so 8012AD50 receives this
+ * function's own first argument (the object it updates). Byte-identical
+ * (gcc-2.7.2-psx -O2). */
+void func_80181A24(void *arg0) {
+        func_8012AD50(arg0);
     }

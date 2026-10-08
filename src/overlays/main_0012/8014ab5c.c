@@ -7,6 +7,8 @@
 
 void func_8014AB7C();                                  /* static */
 
-void func_8014AB5C(void) {
-    func_8014AB7C();
+/* B28: the retail body leaves a0 untouched, so func_8014AB7C receives this
+ * function's own arguments. Byte-identical (gcc-2.7.2-psx -O2). */
+void func_8014AB5C(s32 arg0) {
+    func_8014AB7C(arg0);
 }

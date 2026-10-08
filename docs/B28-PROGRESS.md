@@ -378,6 +378,23 @@ Increment 30 (source, main_0012 and sc02_0031):
 - Main lane 3473/4012, overlay lane 2772/3276.
 - First stop: `guest_pc=80181a24` (sc02_0031), frame ~1200, no host fault.
 
+Increment 31 (source, main_0012 and sc02_0031):
+- Wrappers that the C declared `void f(void)` but whose retail body leaves
+  a0-a3 untouched before calling a callee that reads them (rule abi: calls
+  X with 0 of N declared arguments) now take the callee's parameters and pass
+  them on. There are 29 of them (main_0012 8012A8E8 80149704 80149724
+  80149788 80149864 801498C0 80149C94 80149CB4 8014A218 8014A4FC 8014A830
+  8014AB5C 8014ABF0 80151924 80155F60 8015BE74 8015BEE4 8015CCB0 8015CFFC
+  8015F360 80160EE0 80164DB0 80168A88 8016ED6C 8016EFA8 801749A8 8017ADE8;
+  sc02_0031 8017CF24 80181A24).
+- The callee declarations in 8015D1B8 and 80164BDC now match their casts.
+  8012C658 loses two stray file-scope variables named like its parameters
+  (rule symbols: TU defines data).
+- Every changed file was rebuilt with gcc-2.7.2-psx -O2 and is
+  byte-identical to the member bytes.
+- Main lane 3503/4012, overlay lane 2802/3276, no function lost.
+- First stop: `guest_pc=8012a828` (overlay), frame ~1200, no host fault.
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits

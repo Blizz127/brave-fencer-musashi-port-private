@@ -16,8 +16,8 @@ struct S8012C658 {
     s16 unkE;
     s32 unk10;
 };
-s16 arg1;
-u8 *arg2;
+/* B28: the stray file-scope `s16 arg1; u8 *arg2;` (shadowed by the
+ * parameters, no code) are gone; the function bytes are unchanged. */
 extern u8 D_80126720[];
 extern s32 func_8012C890(s32 a0, s32 a1, s32 a2);
 

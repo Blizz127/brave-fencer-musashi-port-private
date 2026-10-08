@@ -10,7 +10,7 @@ extern void func_80146578(void);
 extern void func_80146CA0(void *a0);
 extern void func_8001CD50(s32 a0, s32 a1);
 extern void func_80164DD0(s32 a0);
-extern void func_80164DB0(void);
+extern void func_80164DB0(s32);
 
 void func_80164BDC(s32 param_1)
 {
