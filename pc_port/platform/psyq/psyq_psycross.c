@@ -111,6 +111,8 @@ int bfm_psyq_ReadGeomOffset(uint32_t *r) {
 SET_MATRIX(SetRotMatrix, bfm_psyq_SetRotMatrix)
 SET_MATRIX(SetTransMatrix, bfm_psyq_SetTransMatrix)
 SET_MATRIX(SetLightMatrix, bfm_psyq_SetLightMatrix)
+/* 800538BC SetColorMatrix: not a compat row, the strict driver calls it (B28) */
+SET_MATRIX(SetColorMatrix, bfm_psyq_SetColorMatrix)
 
 int bfm_psyq_ReadRotMatrix(uint32_t *r) {
     MATRIX *m = (MATRIX *)P(A(0), sizeof(MATRIX));

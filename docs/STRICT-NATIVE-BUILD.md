@@ -161,3 +161,49 @@ re-derivation). The hybrid lane table is unchanged.
 - Strict lane: 691 of 752 candidates admitted (84 upstream-derived main
   functions now candidates). See docs/NATIVE-FRAME-DRIVER.md (B27) for the
   libgs start-up HLE and the first remaining stop.
+
+## Strict-only generator widening (B28, 2026-10-07)
+
+All of these apply only with `--strict` (`MUSASHI_STRICT_NATIVE=ON`). The
+hybrid lane table stays byte-identical, and the hybrid ctest and guards pass.
+
+- **Provenance tokens** in `config/lane_strict_provenance_allow.txt`:
+  - `@own-code` admits every clean-room/owner origin that names no
+    third-party code.
+  - `@untagged` admits matched main C that has no registry origin and a source
+    header that names no third-party code. This is the in-repo decompilation of
+    `main.s`, which is at most upstream-derived.
+  - PsyQ library ranges stay out (HLE/PsyCross owns them).
+- **Overlays:** `config/lane_strict_overlay_allow.txt` (`--strict-overlay-allow`,
+  CMake cache path `MUSASHI_STRICT_OVERLAY_ALLOW`) holds `<member> all` or
+  `<member> <vram>` lines. They are checked like the release overlay list
+  (member SHA-1, registry row, extent) and digest-verified per call. The
+  starting set is `main_0001`, `main_0008` and `main_0010`, which share the
+  entry `800CEDFC`.
+- **`layout`:** `narrow_aggregate_pointers` gives pointer-bearing structs and
+  arrays their guest layout. A `ptr` member becomes `i32`, and `T **`
+  indexing strides by 4. Aggregate allocas count as guest-layout slots for
+  `narrow_pointer_cells`. A function that also calls llvm.memcpy, memmove or
+  memset is still refused, because the front end sized those calls with host
+  pointers.
+- **`inttoptr`:** `bounded_guest_affine` admits `add nuw nsw i64 (k*X), C` when
+  C is in game RAM and X is a counted induction variable (a phi from 0 with
+  step +1 and an `icmp eq` exit at N) or a zext from i8/i16. C + max·k must
+  stay inside game RAM. 80030F80 is an example.
+- **`deny`:** holds of the form "no comparable differential case" do not apply
+  (strict has no interpreter to compare against). Cycle holds such as 800128EC
+  still apply.
+- **Bespoke bindings:** files that carry `MUSASHI_NATIVE_*` hybrid bindings are
+  still candidates. The lane compiles their plain matched body.
+- **`mixed` rows:** a row recorded `mixed` only for empty barriers and register
+  pins is lane C. 800146B0 is an example.
+- **Empty asm:**
+  - It is replaced by `((void)0);` instead of a comment, which broke when
+    asm text appeared inside a comment (80030F80).
+  - An untied output that names a register-pinned local is treated as an
+    identity (80016224).
+  - A file-scope GCC global register variable becomes a local in each
+    function (800118AC).
+
+Result: 950 or more main functions plus 267 overlay functions are admitted. Strict boot
+runs 2400 driver frames with no strict stop (see docs/B28-PROGRESS.md).

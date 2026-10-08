@@ -1,33 +1,31 @@
-/* Body below is an UNVERIFIED draft, not an oracle match
- * claim; promotion requires tools/match_function.py MATCH. */
+/* Clean-room re-derivation from the retail disassembly only (B28): port-1
+ * pad hold counter (button 0x100 held: counter 226 steps to 90, then fires). */
 #include "psx_types.h"
 
-/* m2c draft from main.s: NOT verified against retail. C89-gated only;
- * promotion requires an oracle MATCH (tools/match_function.py). Types
- * and signatures are whatever the decompiler guessed; they are not
- * evidence of the original declaration. */
+typedef struct {
+    u8 unk0[0x32];
+    u16 held;
+    u8 unk34[0x18];
+} PadState;     /* 0x4C bytes */
 
-void func_80028D78();                                 /* static */
-void func_800291A0(s32, s32);                            /* static */
-s32 func_800291B4();                               /* static */
-extern s32 *D_80078D98;
-extern u16 D_80078DCA;
+extern PadState D_80078D98[2];
+extern s32 func_800291B4(s32 id);
+extern void func_800291A0(s32 id, s32 value);
+extern void func_80028D78(s32 arg);
 
-void func_80018E9C(s32 arg0) {
-    s32 var_a1;
-    s32 var_s0;
+void func_80018E9C(PadState *pad) {
+    s32 count;
 
-    if (arg0 == &D_80078D98) {
-        if (D_80078DCA & 0x100) {
-            var_s0 = func_800291B4(0xE2) + 1;
-            if ((u32) (var_s0 & 0xFF) >= 0x5AU) {
-                var_s0 = 0;
+    if (pad == &D_80078D98[0]) {
+        if (D_80078D98[0].held & 0x100) {
+            count = func_800291B4(226) + 1;
+            if ((u8)count >= 90) {
+                count = 0;
                 func_80028D78(1);
             }
-            var_a1 = var_s0 & 0xFF;
+            func_800291A0(226, (u8)count);
         } else {
-            var_a1 = 0;
+            func_800291A0(226, 0);
         }
-        func_800291A0(0xE2, var_a1);
     }
 }

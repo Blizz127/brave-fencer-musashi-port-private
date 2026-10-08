@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 
 #include "musashi_native_lane_psyq.h"
 #include "musashi_strict.h"
@@ -622,6 +623,7 @@ int musashi_frame_driver_irq_enabled(void) { return g_irq_enabled && !g_in_irq; 
 int bfm_psyq_VSync(uint32_t *r);
 int bfm_psyq_SetFarColor(uint32_t *r);
 int bfm_psyq_ClearImage(uint32_t *r);
+int bfm_psyq_SetColorMatrix(uint32_t *r);
 int bfm_psyq_InitGeom(uint32_t *r);
 int bfm_psyq_SetGeomOffset(uint32_t *r);
 static uint32_t g_cd_sp;
@@ -2483,6 +2485,407 @@ static int hle_clear_image(MusashiNativeLaneCall *call) {
     return 1;
 }
 
+/* ---- libgte/libgs view helpers (B28) ----------------------------------------
+ * From the retail disassembly. Table reads use the same guest addresses as
+ * the retail code (the sine table at 8006D0A8 and its mirrored indexing, the
+ * square-root table at 8006D8EC). MulMatrix, MulMatrix2, ApplyMatrixLV and
+ * GsGetLw run as their compat lane rows. */
+static int32_t gte_rcos(int32_t a) {
+    uint32_t x = (uint32_t)(a < 0 ? -a : a) & 0xFFFu;
+    if (x < 2049u)
+        return x < 1025u ? (int16_t)rd16(0x8006D0A8u + (1024u - x) * 2u)
+                         : -(int32_t)(int16_t)rd16(0x8006C8A8u + x * 2u);
+    return x < 3073u ? -(int32_t)(int16_t)rd16(0x8006D0A8u + (3072u - x) * 2u)
+                     : (int16_t)rd16(0x8006B8A8u + x * 2u);
+}
+
+static int32_t gte_sin_core(uint32_t x) {           /* 800478B8, x in 0..4095 */
+    if (x < 2049u)
+        return x < 1025u ? (int16_t)rd16(0x8006D0A8u + x * 2u)
+                         : (int16_t)rd16(0x8006D0A8u + (2048u - x) * 2u);
+    return x < 3073u ? -(int32_t)(int16_t)rd16(0x8006C0A8u + x * 2u)
+                     : -(int32_t)(int16_t)rd16(0x8006D0A8u + (4096u - x) * 2u);
+}
+
+static int32_t gte_rsin(int32_t a) {
+    return a >= 0 ? gte_sin_core((uint32_t)a & 0xFFFu) : -gte_sin_core((uint32_t)-a & 0xFFFu);
+}
+
+static uint32_t gte_lzc(uint32_t v) {               /* GTE LZCR: leading sign bits */
+    uint32_t n = 0, sign = v >> 31;
+    while (n < 32u && ((v >> (31u - n)) & 1u) == sign) n++;
+    return n;
+}
+
+static int32_t gte_sqrt0(int32_t a) {                /* 80047D3C SquareRoot0 */
+    uint32_t lz = gte_lzc((uint32_t)a), even, sh;
+    int32_t t4;
+    if (lz == 32u) return 0;
+    even = lz & ~1u;
+    sh = (uint32_t)((int32_t)(31u - even) >> 1);
+    t4 = (int32_t)even - 24 >= 0 ? (int32_t)((uint32_t)a << (even - 24u))
+                                 : a >> (24u - even);
+    t4 = (t4 - 64) * 2;
+    return (int32_t)(((uint32_t)(int32_t)(int16_t)rd16(0x8006D8ECu + (uint32_t)t4) << sh) >> 12);
+}
+
+static void gte_copy_matrix(uint32_t dst, uint32_t src) { gs_copy32(dst, src); }
+
+static void gte_call(uint32_t sp, uint32_t pc, unsigned argc, uint32_t a0, uint32_t a1,
+                     uint32_t a2) {
+    uint32_t a[3] = {a0, a1, a2};
+    (void)call_at(sp, pc, argc, a);
+}
+
+static void gte_rot_axis(uint32_t m, int32_t s, int32_t c, uint32_t axis) {
+    /* 80053E28(m, s, c, axis): identity from 800AE620, then one rotation */
+    gte_copy_matrix(m, 0x800AE620u);
+    switch (axis & 0xFFu) {
+    case 'X': case 'x':
+        wr16(m + 8u, (uint16_t)c); wr16(m + 16u, (uint16_t)c);
+        wr16(m + 10u, (uint16_t)-s); wr16(m + 14u, (uint16_t)s);
+        break;
+    case 'Y': case 'y':
+        wr16(m + 0u, (uint16_t)c); wr16(m + 16u, (uint16_t)c);
+        wr16(m + 4u, (uint16_t)s); wr16(m + 12u, (uint16_t)-s);
+        break;
+    case 'Z': case 'z':
+        wr16(m + 0u, (uint16_t)c); wr16(m + 8u, (uint16_t)c);
+        wr16(m + 2u, (uint16_t)-s); wr16(m + 6u, (uint16_t)s);
+        break;
+    default:
+        break;
+    }
+}
+
+static void gte_transpose(uint32_t m, uint32_t out) {  /* 8004974C TransposeMatrix */
+    uint16_t v[9];
+    unsigned i, j;
+    for (i = 0; i < 9u; i++) v[i] = rd16(m + i * 2u);
+    for (i = 0; i < 3u; i++)
+        for (j = 0; j < 3u; j++) wr16(out + (i * 3u + j) * 2u, v[j * 3u + i]);
+}
+
+static void gs_rot_z(uint32_t sp, uint32_t m, int32_t angle) {
+    /* 80053B20(m, angle): m = m * RotZ(angle / 360), skipped for angle 0 */
+    int32_t a = angle / 360, c = gte_rcos(a), sn = gte_rsin(a);
+    uint32_t r = sp + 16u;
+    if (angle == 0) return;
+    wr16(r + 0u, (uint16_t)c); wr16(r + 2u, (uint16_t)-sn); wr16(r + 4u, 0);
+    wr16(r + 6u, (uint16_t)sn); wr16(r + 8u, (uint16_t)c); wr16(r + 10u, 0);
+    wr16(r + 12u, 0); wr16(r + 14u, 0); wr16(r + 16u, 4096);
+    wr32(r + 20u, 0); wr32(r + 24u, 0); wr32(r + 28u, 0);
+    gte_call(sp, 0x80048D9Cu, 2, m, r, 0);
+}
+
+static void gs_scale_view(uint32_t pv, uint32_t out) {
+    /* 80054340: the six view words, shifted right so the largest magnitude
+     * fits 16 bits (80054430 max |v|, 800544F8 bit count) */
+    int32_t mx = 0, v;
+    unsigned i, bits = 0;
+    for (i = 0; i < 6u; i++) {
+        v = (int32_t)rd32(pv + i * 4u);
+        if (v < 0) v = -v;
+        if (i == 0u || mx < v) mx = v;
+    }
+    for (v = mx; v > 0; v >>= 1) bits++;
+    for (i = 0; i < 6u; i++) {
+        v = (int32_t)rd32(pv + i * 4u);
+        wr32(out + i * 4u, (uint32_t)(bits >= 16u ? v >> (bits - 15u) : v));
+    }
+}
+
+static int32_t gs_div(int32_t n, int32_t d, uint32_t pc) {
+    if (d == 0 || (d == -1 && n == INT32_MIN)) driver_stop("libgs_div_trap", pc);
+    return d ? n / d : 0;
+}
+
+static void gs_comp_matrix(uint32_t sp, uint32_t m0, uint32_t m1) {
+    /* 80052FCC(m0, m1): t = m0 * m1.t; m1 = m0 * m1 (MulMatrix2); m1.t = t + m0.t */
+    uint32_t t = sp + 16u;
+    unsigned i;
+    gte_call(sp, 0x800484ECu, 3, m0, m1 + 20u, t);
+    gte_call(sp, 0x80048EACu, 2, m0, m1, 0);
+    for (i = 0; i < 3u; i++) wr32(m1 + 20u + i * 4u, rd32(t + i * 4u) + rd32(m0 + 20u + i * 4u));
+}
+
+static uint32_t gs_set_ref_view2(uint32_t caller_sp, uint32_t pv) {
+    /* 80053F6C GsSetRefView2(pv): GsWSMATRIX (800AE688) from the view
+     * point/reference point, roll and super coordinate; copy to 800A5EB8 */
+    const uint32_t ws = 0x800AE688u, sp = caller_sp - 192u;
+    const uint32_t v = sp + 16u, m = sp + 48u, mt = sp + 80u, neg = sp + 144u;
+    int32_t dx, dy, dz, len, flat, s, c;
+    gte_copy_matrix(ws, 0x800AE7F0u);
+    gs_rot_z(sp - 64u, ws, -(int32_t)rd32(pv + 24u));
+    gs_scale_view(pv, v);
+    dx = (int32_t)(rd32(v + 12u) - rd32(v + 0u));
+    dy = (int32_t)(rd32(v + 16u) - rd32(v + 4u));
+    dz = (int32_t)(rd32(v + 20u) - rd32(v + 8u));
+    len = gte_sqrt0((int32_t)((uint32_t)dx * (uint32_t)dx + (uint32_t)dy * (uint32_t)dy +
+                              (uint32_t)dz * (uint32_t)dz));
+    if (len == 0) return 1;
+    s = -gs_div((int32_t)((uint32_t)-dy << 12), len, 0x80054070u);
+    flat = gte_sqrt0((int32_t)((uint32_t)dx * (uint32_t)dx + (uint32_t)dz * (uint32_t)dz));
+    c = gs_div((int32_t)((uint32_t)flat << 12), len, 0x800540E0u);
+    gte_rot_axis(m, (int16_t)s, (int16_t)c, 'x');
+    gte_call(sp, 0x80048D9Cu, 2, ws, m, 0);
+    if (flat != 0) {
+        s = gs_div((int32_t)((uint32_t)dx << 12), flat, 0x80054154u);
+        c = gs_div((int32_t)((uint32_t)dz << 12), flat, 0x80054194u);
+        gte_rot_axis(m, (int16_t)-s, (int16_t)c, 'y');
+        gte_call(sp, 0x80048D9Cu, 2, ws, m, 0);
+    }
+    wr32(neg + 0u, (uint32_t)-(int32_t)rd32(pv + 0u));
+    wr32(neg + 4u, (uint32_t)-(int32_t)rd32(pv + 4u));
+    wr32(neg + 8u, (uint32_t)-(int32_t)rd32(pv + 8u));
+    gte_call(sp, 0x800484ECu, 3, ws, neg, ws + 20u);
+    if (rd32(pv + 28u) != 0u) {
+        gte_call(sp, 0x80054514u, 2, rd32(pv + 28u), m, 0);       /* GsGetLw */
+        gte_transpose(m, mt);
+        gte_call(sp, 0x800484ECu, 3, mt, m + 20u, neg);
+        wr32(mt + 20u, (uint32_t)-(int32_t)rd32(neg + 0u));
+        wr32(mt + 28u, (uint32_t)-(int32_t)rd32(neg + 8u));
+        wr32(mt + 24u, (uint32_t)-(int32_t)rd32(neg + 4u));
+        gs_comp_matrix(sp, ws, mt);
+        gte_copy_matrix(ws, mt);
+    }
+    gte_copy_matrix(0x800A5EB8u, ws);
+    return 0;
+}
+
+static int hle_gs_set_ref_view2(MusashiNativeLaneCall *call) {
+    call->r[2] = gs_set_ref_view2(call->r[29], call->r[4]);
+    return 1;
+}
+static int hle_rcos(MusashiNativeLaneCall *call) { call->r[2] = (uint32_t)gte_rcos((int32_t)call->r[4]); return 1; }
+static int hle_rsin(MusashiNativeLaneCall *call) { call->r[2] = (uint32_t)gte_rsin((int32_t)call->r[4]); return 1; }
+static int hle_sqrt0(MusashiNativeLaneCall *call) { call->r[2] = (uint32_t)gte_sqrt0((int32_t)call->r[4]); return 1; }
+static int hle_transpose(MusashiNativeLaneCall *call) {
+    gte_transpose(call->r[4], call->r[5]);
+    call->r[2] = call->r[5];
+    return 1;
+}
+static int hle_gs_rot_axis(MusashiNativeLaneCall *call) {
+    gte_rot_axis(call->r[4], (int16_t)call->r[5], (int16_t)call->r[6], call->r[7]);
+    return 1;
+}
+static int hle_gs_rot_z(MusashiNativeLaneCall *call) {
+    gs_rot_z(call->r[29] - 64u, call->r[4], (int32_t)call->r[5]);
+    return 1;
+}
+static int hle_gs_scale_view(MusashiNativeLaneCall *call) { gs_scale_view(call->r[4], call->r[5]); return 1; }
+static int hle_gs_comp_matrix(MusashiNativeLaneCall *call) {
+    gs_comp_matrix(call->r[29] - 48u, call->r[4], call->r[5]);
+    return 1;
+}
+
+static void gte_set_color_matrix(uint32_t m) {          /* 800538BC */
+    uint32_t r[32] = {0};
+    r[4] = m;
+    if (!bfm_psyq_SetColorMatrix(r)) driver_stop("SetColorMatrix_refused", 0x800538BCu);
+}
+
+static void gs_set_color_matrix(uint32_t m) {          /* 80053804 */
+    gte_copy_matrix(0x800A6558u, m);
+    gte_set_color_matrix(0x800A6558u);
+}
+
+static int16_t gs_color12(uint32_t c) {                 /* (c << 12) / 255, retail form */
+    int32_t v = (int32_t)(c << 12);
+    int32_t hi = (int32_t)(((int64_t)v * (int64_t)(int32_t)0x80808081u) >> 32);
+    return (int16_t)((hi + v) >> 7);
+}
+
+static uint32_t gs_set_flat_light(uint32_t caller_sp, int32_t id, uint32_t lt) {
+    /* 80053328 GsSetFlatLight(id, lt): light direction row `id` of the light
+     * matrix (800A63F0) and colour column `id` of the colour matrix */
+    const uint32_t sp = caller_sp - 176u, lm = sp + 16u, cm = sp + 48u;
+    uint32_t cr = rd8(lt + 12u), cg = rd8(lt + 13u), cb = rd8(lt + 14u);
+    int32_t vx = (int32_t)rd32(lt + 0u), vy = (int32_t)rd32(lt + 4u), vz = (int32_t)rd32(lt + 8u);
+    int32_t len;
+    gte_copy_matrix(lm, 0x800A63F0u);
+    gte_copy_matrix(cm, 0x800A6558u);
+    len = gte_sqrt0((int32_t)((uint32_t)vx * (uint32_t)vx + (uint32_t)vy * (uint32_t)vy +
+                              (uint32_t)vz * (uint32_t)vz));
+    if (len == 0) return (uint32_t)-1;
+    if (id >= 0 && id <= 2) {
+        uint32_t row = lm + (uint32_t)id * 6u, col = cm + (uint32_t)id * 2u;
+        wr16(row + 0u, (uint16_t)gs_div((int32_t)((uint32_t)-vx << 12), len, 0x8005343Cu));
+        wr16(row + 2u, (uint16_t)gs_div((int32_t)((uint32_t)-vy << 12), len, 0x80053480u));
+        wr16(row + 4u, (uint16_t)gs_div((int32_t)((uint32_t)-vz << 12), len, 0x800534C4u));
+        wr16(col + 0u, (uint16_t)gs_color12(cr));
+        wr16(col + 6u, (uint16_t)gs_color12(cg));
+        wr16(col + 12u, (uint16_t)gs_color12(cb));
+    }
+    gte_copy_matrix(0x800A63F0u, lm);
+    gs_set_color_matrix(cm);
+    return 0;
+}
+
+static int hle_gs_set_flat_light(MusashiNativeLaneCall *call) {
+    call->r[2] = gs_set_flat_light(call->r[29], (int32_t)call->r[4], call->r[5]);
+    return 1;
+}
+static int hle_gs_set_color_matrix(MusashiNativeLaneCall *call) { gs_set_color_matrix(call->r[4]); return 1; }
+static int hle_set_color_matrix(MusashiNativeLaneCall *call) { gte_set_color_matrix(call->r[4]); return 1; }
+
+static int hle_draw_sync_callback(MusashiNativeLaneCall *call) {
+    /* 800595FC DrawSyncCallback(func): the debug-level log, then swap the
+     * libgpu draw-sync callback word 80072794 and return the old one. The
+     * native GPU path completes draws synchronously, so no completion
+     * interrupt invokes it (see docs/NATIVE-FRAME-DRIVER.md B28). */
+    uint32_t old = rd32(0x80072794u);
+    if (rd8(0x8007278Au) >= 2u)
+        fprintf(stderr, "native_boot: FRAME_DRIVER DrawSyncCallback(%08x)\n", (unsigned)call->r[4]);
+    wr32(0x80072794u, call->r[4]);
+    call->r[2] = old;
+    return 1;
+}
+
+static int hle_spu_get_all_keys_status(MusashiNativeLaneCall *call) {
+    /* 8003D25C SpuGetAllKeysStatus(min, max, status): clamp the voice range
+     * to 0..23 (-3 when empty), then per voice the key-on shadow bit
+     * (8006B0E4) and the voice's ENVX register (regs cell 8006B54C,
+     * voice*16 + 12): 1 on+env, 3 on+silent, 2 off+env, 0 off+silent. */
+    int32_t lo = (int32_t)call->r[4], hi = (int32_t)call->r[5], i;
+    uint32_t st = call->r[6];
+    if (lo < 0) lo = 0;
+    if (lo >= 24) { call->r[2] = (uint32_t)-3; return 1; }
+    if (hi >= 24) hi = 23;
+    if (hi < 0 || hi < lo) { call->r[2] = (uint32_t)-3; return 1; }
+    for (i = lo; i <= hi; ++i) {
+        uint16_t env = hw16(rd32(SP_REGS) + (uint32_t)i * 16u + 12u);
+        int on = (rd32(SP_G0E4) & (1u << i)) != 0;
+        wr8(st + (uint32_t)i, (uint8_t)(on ? (env ? 1 : 3) : (env ? 2 : 0)));
+    }
+    call->r[2] = 0;
+    return 1;
+}
+
+/* ---- libspu transfer API (retail 8003AE14, 8003AF4C, 8003C438..8003C598),
+ * written from the retail disassembly (B28) ---------------------------- */
+static uint32_t spu_fset_rxx(int32_t reg, uint32_t addr) {
+    /* 8003AF4C _spu_FsetRXX: round up to the transfer block when 8006B570
+     * is set, scale by the address shift; -2 returns the rounded address,
+     * -1 the scaled 16-bit value, otherwise store it to SPU register reg */
+    uint32_t v;
+    if (rd32(SP_G570)) {
+        uint32_t blk = rd32(SP_G578);
+        if (!blk) { driver_stop("spu_fsetrxx_div0", 0x8003AF78u); return 0; }
+        if (addr % blk) addr = (addr + blk) & ~rd32(SP_G57C);
+    }
+    v = addr >> (rd32(SP_SHIFT) & 31u);
+    if (reg == -2) return addr;
+    if (reg == -1) return v & 0xFFFFu;
+    hw16w(rd32(SP_REGS) + (uint32_t)reg * 2u, (uint16_t)v);
+    return addr;
+}
+static uint32_t spu_write_data(uint32_t src, uint32_t size) {
+    /* 8003AE14 _spu_write: DMA (_spu_t 2/1/3) unless 8006B568 selects I/O */
+    if (!rd32(SP_DMAINIT)) {
+        (void)spu_transfer(2, (uint32_t)rd16(SP_TADDR) << (rd32(SP_SHIFT) & 31u), 0);
+        (void)spu_transfer(1, 0, 0);
+        (void)spu_transfer(3, src, size);
+    } else {
+        spu_write_manual(src, size);
+    }
+    return size;
+}
+SPU_ENTRY(hle_spu_fset_rxx) { call->r[2] = spu_fset_rxx((int32_t)call->r[4], call->r[5]); return 1; }
+SPU_ENTRY(hle_spu_write_data) { CD_SP(); call->r[2] = spu_write_data(call->r[4], call->r[5]); return 1; }
+SPU_ENTRY(hle_spu_write) {
+    /* 8003C438 SpuWrite(addr, size) */
+    uint32_t size = call->r[5] > 0x7EFF0u ? 0x7EFF0u : call->r[5];
+    CD_SP();
+    (void)spu_write_data(call->r[4], size);
+    if (!rd32(SP_TCB)) wr32(SP_G580, 0);
+    call->r[2] = size;
+    return 1;
+}
+SPU_ENTRY(hle_spu_set_transfer_start_addr) {
+    /* 8003C498 SpuSetTransferStartAddr(addr) */
+    uint32_t a = call->r[4];
+    if (a - 0x1010u <= 0x7EFE8u) {
+        wr16(SP_TADDR, (uint16_t)spu_fset_rxx(-1, a));
+        call->r[2] = (uint32_t)rd16(SP_TADDR) << (rd32(SP_SHIFT) & 31u);
+    } else {
+        call->r[2] = 0;
+    }
+    return 1;
+}
+SPU_ENTRY(hle_spu_is_transfer_completed) {
+    /* 8003C4F0 SpuIsTransferCompleted(flag): I/O mode or no pending DMA -> 1;
+     * else TestEvent on the transfer event (flag 1 waits for it) */
+    int32_t r;
+    if (rd32(SP_G0E8) == 1u || rd32(SP_G580) == 1u) { call->r[2] = 1; return 1; }
+    if ((int32_t)call->r[4] == 1) {
+        (void)bios_wait_event((int32_t)rd32(SP_EVENT));
+        wr32(SP_G580, 1);
+        call->r[2] = 1;
+        return 1;
+    }
+    if (!g_driver.ops || !g_driver.ops->bios_event ||
+        !g_driver.ops->bios_event(g_driver.ops->user, 0x0Bu, rd32(SP_EVENT), 0, 0, 0, &r))
+        driver_stop("TestEvent_refused", 0x8003C4F0u);
+    if (r == 1) wr32(SP_G580, 1);
+    call->r[2] = (uint32_t)r;
+    return 1;
+}
+
+/* ---- strict seams for registry game functions the lane refuses (B28) -----
+ * 80018A20 (pad port poll) is matched owner C, but the lane rejects it as
+ * "ub": retail reads the caller's s2 as the PadGetState slot for ports other
+ * than 0/1 and returns whatever v0 holds for unlisted pad states (1 for
+ * negative states, 6 otherwise), which C cannot express. This entry follows
+ * the retail words, including those returns; an out-of-range port stops. */
+static uint32_t seam_call(MusashiNativeLaneCall *call, uint32_t pc, unsigned argc, uint32_t a0,
+                          uint32_t a1, uint32_t a2) {
+    uint32_t a[3] = {a0, a1, a2};
+    return call_at(call->r[29] - 0x40u, pc, argc, a);
+}
+
+static int seam_pad_poll(MusashiNativeLaneCall *call) {
+    uint32_t port = call->r[4], pad = 0x80078D98u + port * 76u, slot;
+    int32_t state;
+    if (port > 1u) driver_stop("pad_poll_port_reads_caller_s2", 0x80018A20u);
+    slot = port ? 0x10u : 0u;
+    state = (int32_t)seam_call(call, 0x8005D184u, 1, slot, 0, 0);       /* PadGetState */
+    switch (state) {
+    case 0:
+        if (port == 0u) {
+            uint32_t n = rd32(0x800AE610u);
+            wr32(0x800AE610u, n + 1u);
+            if (n >= 10u) { wr32(0x800AE610u, 0); wr32(0x800A5E78u, 0); }
+        }
+        /* fall through */
+    case 1:
+        (void)seam_call(call, 0x80018F88u, 1, pad, 0, 0);
+        call->r[2] = 0;
+        return 1;
+    case 2:
+    case 6:
+        call->r[2] = 1;
+        if (port != 0u) return 1;
+        wr32(0x800AE610u, 0);
+        if ((seam_call(call, 0x8005D244u, 3, slot, 2, 0) != 0u) == (state == 2)) return 1;
+        if (seam_call(call, 0x80028D58u, 0, 0, 0, 0) == 0u) {
+            if (state == 2) wr8(0x80062BBDu, (uint8_t)((rd8(pad + 0x4Au) | rd8(pad + 0x4Bu)) != 0));
+            else { wr8(0x800747B8u, rd8(pad + 0x4Au)); wr8(0x800747B9u, rd8(pad + 0x4Bu)); }
+            wr8(pad + 0x4Bu, 0);
+            wr8(pad + 0x4Au, 0);
+        } else {
+            (void)seam_call(call, 0x80018FC8u, 0, 0, 0, 0);
+        }
+        (void)seam_call(call, 0x8005D538u, 3, slot, state == 2 ? 0x80062BBCu : 0x800747B8u, 2);
+        (void)seam_call(call, 0x8005D4B8u, 2, slot, state == 2 ? 0x80062BACu : 0x80062BB4u, 0);
+        call->r[2] = 1;
+        return 1;
+    default:
+        call->r[2] = state < 0 ? 1u : 6u;
+        return 1;
+    }
+}
+
 static int hle_set_graph_debug(MusashiNativeLaneCall *call) {
     /* 800594CC SetGraphDebug(level): old level byte at 8007278A; store the
      * new one (the nonzero case prints a console line); return old. */
@@ -2676,6 +3079,26 @@ static const MusashiNativeLaneEntry k_driver_entries[] = {
     {0x80053EECu, 0, hle_gs_def_disp_buff2,"GsDefDispBuff2",     4, 0, 0},
     {0x80058A4Cu, 0, hle_set_def_draw_env,"SetDefDrawEnv",       4, 1, 0},
     {0x80059888u, 0, hle_clear_image,     "ClearImage",          4, 1, 0},
+    {0x80053F6Cu, 0, hle_gs_set_ref_view2,"GsSetRefView2",       1, 1, 0},
+    {0x80047948u, 0, hle_rcos,            "rcos",                1, 1, 0},
+    {0x8004787Cu, 0, hle_rsin,            "rsin",                1, 1, 0},
+    {0x80047D3Cu, 0, hle_sqrt0,           "SquareRoot0",         1, 1, 0},
+    {0x8004974Cu, 0, hle_transpose,       "TransposeMatrix",     2, 1, 0},
+    {0x80053E28u, 0, hle_gs_rot_axis,     "GsRotAxisMatrix",     4, 0, 0},
+    {0x80053B20u, 0, hle_gs_rot_z,        "GsRotZMul",           2, 0, 0},
+    {0x80054340u, 0, hle_gs_scale_view,   "GsScaleView",         2, 0, 0},
+    {0x80052FCCu, 0, hle_gs_comp_matrix,  "GsCompMatrix",        2, 0, 0},
+    {0x80053328u, 0, hle_gs_set_flat_light,"GsSetFlatLight",     2, 1, 0},
+    {0x80053804u, 0, hle_gs_set_color_matrix,"GsSetColorMatrix", 1, 0, 0},
+    {0x800538BCu, 0, hle_set_color_matrix,"SetColorMatrix",      1, 0, 0},
+    {0x800595FCu, 0, hle_draw_sync_callback,"DrawSyncCallback",  1, 1, 0},
+    {0x8003D25Cu, 0, hle_spu_get_all_keys_status,"SpuGetAllKeysStatus", 3, 1, 0},
+    {0x8003AE14u, 0, hle_spu_write_data,  "_spu_write",          2, 1, 0},
+    {0x8003AF4Cu, 0, hle_spu_fset_rxx,    "_spu_FsetRXX",        2, 1, 0},
+    {0x8003C438u, 0, hle_spu_write,       "SpuWrite",            2, 1, 0},
+    {0x8003C498u, 0, hle_spu_set_transfer_start_addr, "SpuSetTransferStartAddr", 1, 1, 0},
+    {0x8003C4F0u, 0, hle_spu_is_transfer_completed, "SpuIsTransferCompleted", 1, 1, 0},
+    {0x80018A20u, 0, seam_pad_poll,       "pad_port_poll",       1, 1, 0},
     {0x8005D0F8u, 0, hle_pad_start_stop,  "PadStartCom",         0, 0, 0},
     {0x8005D118u, 0, hle_pad_start_stop,  "PadStopCom",          0, 0, 0},
     {0x8005D184u, 0, hle_pad_get_state,   "PadGetState",         1, 1, 0},

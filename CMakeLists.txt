@@ -720,6 +720,27 @@ if(MUSASHI_BUILD_PC_PORT)
                     list(APPEND MUSASHI_LANE_OWN_CODE_DEPENDS
                         ${CMAKE_CURRENT_SOURCE_DIR}/config/lane_strict_provenance_allow.txt)
                     message(STATUS "MUSASHI_STRICT_UPSTREAM_PROVENANCE: strict lane admits upstream-derived matched C")
+                    # Overlay members the strict boot path loads ('<member> all'
+                    # or '<member> <vram>'), digest-verified per call like the
+                    # release overlay list. A cache path so a host without disc
+                    # extracts can point it at an empty file (B28).
+                    set(MUSASHI_STRICT_OVERLAY_ALLOW
+                        ${CMAKE_CURRENT_SOURCE_DIR}/config/lane_strict_overlay_allow.txt
+                        CACHE FILEPATH "strict overlay allow list (<member> all|<vram> lines)")
+                    list(APPEND MUSASHI_LANE_STRICT_FLAG --strict-overlay-allow ${MUSASHI_STRICT_OVERLAY_ALLOW})
+                    list(APPEND MUSASHI_LANE_OWN_CODE_DEPENDS ${MUSASHI_STRICT_OVERLAY_ALLOW})
+                    file(STRINGS ${MUSASHI_STRICT_OVERLAY_ALLOW} MUSASHI_STRICT_OVERLAY_LINES
+                        REGEX "^[a-z]+[0-9]*_[0-9][0-9][0-9][0-9][ \t]")
+                    foreach(line IN LISTS MUSASHI_STRICT_OVERLAY_LINES)
+                        string(REGEX MATCH "^[a-z]+[0-9]*_[0-9][0-9][0-9][0-9]" member "${line}")
+                        list(APPEND MUSASHI_LANE_OWN_CODE_DEPENDS
+                            ${CMAKE_CURRENT_SOURCE_DIR}/config/overlay_${member}.yaml)
+                        file(GLOB member_sources CONFIGURE_DEPENDS
+                            ${CMAKE_CURRENT_SOURCE_DIR}/src/overlays/${member}/*.c)
+                        list(APPEND MUSASHI_LANE_OWN_CODE_DEPENDS ${member_sources})
+                    endforeach()
+                    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+                        ${MUSASHI_STRICT_OVERLAY_ALLOW})
                 endif()
             endif()
         else()

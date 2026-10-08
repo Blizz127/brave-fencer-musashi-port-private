@@ -1,0 +1,10 @@
+# Overlay functions a strict own-code build also compiles (B28), with
+# MUSASHI_STRICT_UPSTREAM_PROVENANCE=ON (origins admitted by
+# config/lane_strict_provenance_allow.txt). '<member> all' takes every matched
+# C function of the member; '<member> <vram>' one function. Each entry runs
+# only while the resident bytes hash to the member's (per-call digest), the
+# member file must match its yaml SHA-1, and every lane rule still applies.
+# Listed by what the strict boot path loads at the shared entry 800CEDFC.
+main_0001 all
+main_0008 all
+main_0010 all

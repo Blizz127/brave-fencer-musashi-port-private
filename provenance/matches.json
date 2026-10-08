@@ -3269,6 +3269,17 @@
       "extent": "function"
     },
     {
+      "name": "func_80018E9C",
+      "vram": 2147585692,
+      "size": 132,
+      "region": "main",
+      "source": "src/main/80018e9c.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "owner re-derivation, clean room (B28 box sandbox, retail disassembly only)"
+    },
+    {
       "name": "func_80018F20",
       "vram": 2147585824,
       "size": 104,

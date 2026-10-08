@@ -447,3 +447,26 @@ reaches them yet.
   guest-call targets from admitted code is about 180 entries: lane-rule
   rejections of registry C (layout, deny, calls, escape, inttoptr), STUB
   PsyQ rows (libgs/libgte/libsnd/libspu) and overlay entry points.
+
+## B28: GsSetRefView2, flat light, pad poll and libspu transfer (2026-10-07)
+
+All rows below were written from the retail disassembly:
+
+- **GsSetRefView2 (80053F6C) and its callees:**
+  - 80053E28 rotation axis, 80053B20 RotZ by angle/360, 80054340 scale view,
+    80052FCC CompMatrix.
+  - Math: rcos 80047948, rsin 8004787C, SquareRoot0 80047D3C,
+    TransposeMatrix 8004974C.
+- **Lighting:**
+  - GsSetFlatLight 80053328 and GsSetLightMatrix-style 80053804/800538BC.
+  - SetColorMatrix through the PsyCross compat path.
+- **DrawSyncCallback 800595FC:** swaps the callback word 80072794. Nothing
+  invokes the callback, because the native GPU path completes synchronously.
+- **Pad poll seam 80018A20:** the lane refuses it (`ub`: no return value on the
+  unknown-state path, as in retail), so it is reproduced exactly in host C.
+  Its callee 80018E9C is now matched clean-room C.
+- **libspu:**
+  - SpuGetAllKeysStatus 8003D25C, _spu_write 8003AE14, _spu_FsetRXX 8003AF4C,
+    SpuWrite 8003C438, SpuSetTransferStartAddr 8003C498.
+  - SpuIsTransferCompleted 8003C4F0: with flag 1 it waits through
+    `bios_wait_event`, which is an interrupt point.

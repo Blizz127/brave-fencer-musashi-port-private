@@ -9,3 +9,14 @@
 # (non-strict own-code) builds and the hybrid lane are unaffected. Other
 # projects' PsyQ C (parasite/xenogears) is not listed and stays out.
 vendor-derived (Druthulu/BFM-decomp)
+#
+# @own-code: every matched clean-room/owner main function (registry origin
+# says clean room or owner, names no third-party code) is a strict candidate,
+# not only those in lane_own_code_allow.txt / lane_strict_allow.txt (B28).
+@own-code
+#
+# @untagged: matched main C with no registry origin and a source header that
+# names no third-party code (in-repo decompilation of main.s; at most
+# upstream-derived). PsyQ library ranges, hooks, cycle and hardware-register
+# rules still exclude what they always did (B28).
+@untagged

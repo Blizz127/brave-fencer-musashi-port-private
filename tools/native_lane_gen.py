@@ -85,6 +85,56 @@ RAM_LO, RAM_HI = 0x80010000, 0x80200000
 SCRATCH_LO, SCRATCH_HI = 0x1F800000, 0x1F800400
 
 
+GAME_RAM = (0x80010000, 0x80200000)
+
+
+def bounded_guest_affine(val, defs):
+    """Strict only (B28): an inttoptr from `add nuw nsw i64 X, C` where C is a
+    game-RAM address and X is provably small: a counted induction variable
+    (phi from 0, +1 step, exit at `icmp eq next, N`) or a zext from i8/i16,
+    scaled by a constant (mul/shl nuw nsw). The guest's 32-bit sum then
+    never wraps and stays inside game RAM, so the host pointer equals the
+    guest address (an array of structs indexed by a loop counter)."""
+    d = defs.get(val, "")
+    m = re.fullmatch(r"(?:add|or)(?: nuw| nsw| disjoint)* i64 (%[\w.]+), (\d+)", d) or \
+        re.fullmatch(r"(?:add|or)(?: nuw| nsw| disjoint)* i64 (\d+), (%[\w.]+)", d)
+    if not m:
+        return False
+    x, c = (m.group(1), int(m.group(2))) if m.group(1).startswith("%") else \
+           (m.group(2), int(m.group(1)))
+    if not GAME_RAM[0] <= c < GAME_RAM[1]:
+        return False
+
+    def bound(v):
+        """Largest value v can take (inclusive), or None."""
+        dv = defs.get(v, "")
+        z = re.fullmatch(r"zext(?: nneg)? i(8|16) %[\w.]+ to i64", dv)
+        if z:
+            return (1 << int(z.group(1))) - 1
+        ph = re.fullmatch(r"phi i64 \[ 0, %[\w.]+ \], \[ (%[\w.]+), %[\w.]+ \]", dv) or \
+            re.fullmatch(r"phi i64 \[ (%[\w.]+), %[\w.]+ \], \[ 0, %[\w.]+ \]", dv)
+        if ph:
+            nxt = ph.group(1)
+            if not re.fullmatch(r"add nuw nsw i64 " + re.escape(v) + r", 1", defs.get(nxt, "")):
+                return None
+            ns = [int(e.group(1)) for e in (re.fullmatch(
+                r"icmp eq i64 " + re.escape(nxt) + r", (\d+)", r) for r in defs.values()) if e]
+            return max(ns) - 1 if len(ns) == 1 and ns[0] > 0 else None
+        return None
+
+    dx = defs.get(x, "")
+    sc = re.fullmatch(r"mul nuw nsw i64 (%[\w.]+), (\d+)", dx)
+    sh = re.fullmatch(r"shl nuw nsw i64 (%[\w.]+), (\d+)", dx)
+    if sc:
+        b, k = bound(sc.group(1)), int(sc.group(2))
+    elif sh:
+        b, k = bound(sh.group(1)), 1 << min(int(sh.group(2)), 40)
+    else:
+        b, k = bound(x), 1
+    return b is not None and c + b * k + 16 < GAME_RAM[1]
+
+
+
 def const_addr_ok(val):
     return RAM_LO <= val < RAM_HI or SCRATCH_LO <= val < SCRATCH_HI
 
@@ -148,7 +198,7 @@ def split_operands(text):
     return out
 
 
-def strip_empty_asm(text):
+def strip_empty_asm(text, orig=None):
     """Drop empty-template asm statements that are identities on the host:
     no outputs, or every output tied to an input ("N") with the same
     expression; clobbers (incl. "memory") only steer MIPS scheduling. Returns
@@ -156,6 +206,11 @@ def strip_empty_asm(text):
     would be whatever the MIPS register held)."""
     pat = re.compile(r'\b(?:__asm__|__asm|asm)\s*(?:__volatile__|volatile)?\s*\(\s*""\s*')
     pos, pieces, dropped = 0, [], 0
+    # Strict (B28): an untied output naming a register-pinned local is an
+    # identity too. The template emits no instruction, so the pinned MIPS
+    # register (the variable itself) keeps its value.
+    pinned = set(re.findall(r'\bregister\b[^;={}]*?\b(\w+)\s*(?:__asm__|asm)\s*\(\s*"\$\w+"\s*\)',
+                            orig or text)) if STRICT else set()
     for m in pat.finditer(text):
         if m.start() < pos:
             continue
@@ -175,10 +230,14 @@ def strip_empty_asm(text):
         if outs is None or ins is None:
             return None
         for k, (cons, expr) in enumerate(outs):
-            if not any(c == str(k) and e == expr for c, e in ins):
+            if not any(c == str(k) and e == expr for c, e in ins) and \
+                    not (STRICT and expr.strip() in pinned):
                 return None
         pieces.append(text[pos:m.start()])
-        pieces.append("/* empty asm removed for the host */")
+        # A comment marker breaks when the asm text sits inside a comment
+        # (80030F80 quotes it in its notes): strict uses a no-op expression,
+        # non-strict keeps the old text so its lane stays byte-identical.
+        pieces.append("((void)0);" if STRICT else "/* empty asm removed for the host */")
         pos = j + 1
         dropped += 1
     pieces.append(text[pos:])
@@ -275,6 +334,34 @@ def member_info(member, strict=False):
     return dict(member=member, path=path, vram=vram, start=start, code=code, data=data)
 
 
+def parse_strict_overlay_allow(path):
+    """Like parse_overlay_allow, plus '<member> all': every registry row of
+    matched C (recovery "c", source present) in that member, in vram order."""
+    registry = json.loads((ROOT / "provenance/matches.json").read_text())["matches"]
+    pairs, seen = [], set()
+    for n, line in enumerate(Path(path).read_text().splitlines(), 1):
+        text = line.split("#", 1)[0].strip()
+        if not text:
+            continue
+        m = re.fullmatch(r"([a-z]+\d*_\d{4})\s+all", text)
+        if m:
+            got = sorted(r["vram"] for r in registry if r["region"] == m.group(1)
+                         and r.get("recovery") == "c" and (ROOT / r["source"]).exists())
+            if not got:
+                raise BuildError(f"{path}:{n}: {m.group(1)} has no matched C")
+            new = [(m.group(1), v) for v in got]
+        else:
+            m = re.fullmatch(r"([a-z]+\d*_\d{4})\s+(?:0x)?([0-9A-Fa-f]{8})", text)
+            if not m:
+                raise BuildError(f"{path}:{n}: expected '<member> <vram>' or '<member> all'")
+            new = [(m.group(1), int(m.group(2), 16))]
+        for pair in new:
+            if pair not in seen:
+                seen.add(pair)
+                pairs.append(pair)
+    return pairs
+
+
 def parse_overlay_allow(path):
     """'<member> <vram>' lines ('#' comments, blank lines ignored) ->
     ordered list of (member, vram). Malformed or repeated lines are errors."""
@@ -304,6 +391,8 @@ OWN_ORIGIN = re.compile(r"\bclean[ -]room\b|\bowner\b", re.I)
 
 def overlay_origin_problem(m):
     origin = m.get("origin") or ""
+    if provenance_allowed(m):
+        return None  # strict + --strict-provenance-allow (B28)
     if not origin.strip():
         return "registry origin is untagged"
     if not OWN_ORIGIN.search(origin):
@@ -752,7 +841,11 @@ def narrow_pointer_cells(ir):
             allocas, sext_defs = set(), {}
         m = DEF_RE.match(line)
         if m:
-            if m.group(2).startswith("alloca "):
+            # strict: an aggregate slot (narrow_aggregate_pointers gave it
+            # guest layout) holds 32-bit pointers, so only scalar slots are
+            # host-width (B28)
+            if m.group(2).startswith("alloca ") and not (
+                    STRICT and re.match(r"alloca (%|\[|\{)", m.group(2))):
                 allocas.add(m.group(1))
             sm = re.match(r"sext (i\d+) (%[\w.\"$]+) to i64", m.group(2))
             if sm:
@@ -792,6 +885,37 @@ def narrow_pointer_cells(ir):
             continue
         out.append(line)
     return "\n".join(out) + "\n"
+
+
+def narrow_aggregate_pointers(ir):
+    """Strict only (B28): give pointer-bearing aggregates their guest layout.
+    Guest pointers are 32-bit, so in every named type and array type a `ptr`
+    member becomes `i32`, and pointer-element indexing (`p[i]` on a `T **`)
+    strides by 4. Field and element addresses then match the guest's, and
+    narrow_pointer_cells turns each pointer load/store through them into the
+    32-bit access it already uses for scalar guest pointer cells. Copies and
+    fills whose byte count the front end sized with host pointers cannot be
+    fixed up and are refused. -> (ir, changed)."""
+    types = named_types(ir)
+    if not any(type_has_ptr(t, types) for t in types.values()) and \
+            not re.search(r"\[\d+ x ptr\]|getelementptr (?:inbounds |nuw |nusw )*ptr,", ir):
+        return ir, False
+    out = []
+    for line in ir.splitlines():
+        if re.match(r"^%[\w.\"$]+ = type ", line):
+            head, body = line.split(" = type ", 1)
+            line = head + " = type " + re.sub(r"\bptr\b", "i32", body)
+        else:
+            prev = None
+            while prev != line:
+                prev = line
+                line = re.sub(r"\[(\d+) x ptr\]", r"[\1 x i32]", line)
+            line = re.sub(r"getelementptr ((?:inbounds |nuw |nusw )*)ptr,", r"getelementptr \1i32,", line)
+        out.append(line)
+    ir = "\n".join(out) + "\n"
+    if re.search(r"@llvm\.mem(?:cpy|move|set)", ir):
+        raise Reject("layout", "aggregate copy/fill sized with host pointer width")
+    return ir, True
 
 
 def check_layout(ir):
@@ -940,7 +1064,8 @@ def check_optimized(ir, module_internal):
                 if val.startswith("%"):
                     d = defs.get(val, "")
                     if not (d.startswith("zext i32") or d.startswith("zext nneg i32") or
-                            re.match(r"and i64 .*, 4294967295$", d)):
+                            re.match(r"and i64 .*, 4294967295$", d) or
+                            (STRICT and bounded_guest_affine(val, defs))):
                         raise Reject("inttoptr", f"integer->pointer from '{d[:40]}'")
                 elif re.fullmatch(r"-?\d+", val) and not const_addr_ok(int(val)):
                     raise Reject("inttoptr", f"constant address {int(val):x}")
@@ -1184,7 +1309,21 @@ def empty_asm_identity(rhs):
 REG_PIN_RE = re.compile(r'(\bregister\b[^;={}]*?)\s*(?:__asm__|asm)\s*\(\s*"\$\w+"\s*\)')
 
 
+GLOBAL_PIN_RE = re.compile(r'^register\s+([^;{}=]*?)\s*(?:__asm__|asm)\s*\(\s*"\$\w+"\s*\)\s*;', re.M)
+
+
 def host_source(text):
+    if STRICT:
+        # Strict (B28): a file-scope register variable (GCC global register
+        # binding, 800118AC) only pins a caller-saved MIPS register for the
+        # byte match; no value survives a call or return in it. On the host
+        # it becomes a plain local of every function body.
+        decls = GLOBAL_PIN_RE.findall(text)
+        if decls:
+            text = GLOBAL_PIN_RE.sub("", text)
+            local = "".join(f" {d};" for d in decls)
+            text = re.sub(r"^(\w[^;{}()]*\([^;{}]*\)\s*\{)", lambda m: m.group(1) + local,
+                          text, flags=re.M)
     return REG_PIN_RE.sub(r"\1", text)
 
 
@@ -1716,7 +1855,12 @@ def build_one(entry, out, symbols, hooks, clang, info=None):
     cycles = None
     denied = None
     try:
-        if vram in DENY and not info:
+        # Strict builds have no interpreter to compare against or fall back
+        # to: a hold-out for missing differential coverage does not apply
+        # there (the C is byte-matched and passed every other rule). Cycle
+        # and hardware hold-outs still apply in strict (B28).
+        if vram in DENY and not info and not (
+                STRICT and DENY[vram].startswith("no comparable differential case")):
             denied = DENY[vram]
         if info and (info["member"], vram) in OVERLAY_DENY:
             denied = OVERLAY_DENY[(info["member"], vram)]
@@ -1752,7 +1896,7 @@ def build_one(entry, out, symbols, hooks, clang, info=None):
         # byte match only; it has no meaning on the host. Empty asm statements
         # that are identities go too; any other inline asm is still refused
         # (rule "calls").
-        stripped = strip_empty_asm(host)
+        stripped = strip_empty_asm(host, raw)
         if stripped is None:
             raise Reject("calls", "empty asm with an untied output")
         host = stripped[0]
@@ -1764,6 +1908,8 @@ def build_one(entry, out, symbols, hooks, clang, info=None):
         if r.returncode:
             raise Reject("compile", (r.stderr.strip().splitlines() or ["?"])[0][:160])
         ir = o0.read_text()
+        if STRICT:
+            ir, _ = narrow_aggregate_pointers(ir)
         check_layout(ir)
         words = retail_words(vram, size, info)
         frame = retail_frame(words) if words is not None else 0
@@ -2770,11 +2916,29 @@ THIRD_PARTY_MARK = re.compile(r"vendor|Druthulu|BFM-decomp|psyq|Sony|parasite|xe
 # strict own-code lane even though they name upstream code. The registry keeps
 # recording the origin; only the strict lane's own-code filter is widened, and
 # every lane rule (hardware registers, cycles, layout, ...) still applies.
+# The token "@own-code" admits every clean-room/owner origin (OWN_ORIGIN, no
+# third-party mark) without listing each function in an allow list.
 STRICT_PROVENANCE_ALLOW = set()
 
 
+# The token "@untagged" admits matched main C with no registry origin whose
+# source header names no third-party code (in-repo decompilation of main.s;
+# at most upstream-derived, which Will allowed for strict on 2026-10-07).
+# PsyQ library ranges stay excluded by candidates(); hook, cycle and hardware
+# rules still apply to every admitted body.
 def provenance_allowed(m):
-    return STRICT and (m.get("origin") or "") in STRICT_PROVENANCE_ALLOW
+    origin = m.get("origin") or ""
+    if not STRICT:
+        return False
+    if origin in STRICT_PROVENANCE_ALLOW:
+        return True
+    if ("@own-code" in STRICT_PROVENANCE_ALLOW and OWN_ORIGIN.search(origin)
+            and not THIRD_PARTY_MARK.search(origin)):
+        return True
+    if "@untagged" not in STRICT_PROVENANCE_ALLOW or origin:
+        return False
+    src = ROOT / m["source"]
+    return src.exists() and not THIRD_PARTY_MARK.search(src.read_text(errors="replace")[:2000])
 
 
 def third_party_derived(m):
@@ -2786,6 +2950,25 @@ def third_party_derived(m):
     return src.exists() and bool(THIRD_PARTY_MARK.search(src.read_text(errors="replace")[:2000]))
 
 
+def strict_mixed_ok(m):
+    """Strict only (B28): a registry row recorded `mixed` only for empty
+    compiler barriers and register pins (no instruction asm) is C as far as
+    the lane is concerned: host_source/strip_empty_asm drop both, and any
+    other asm is still refused (rule calls)."""
+    if not STRICT or m.get("recovery") != "mixed":
+        return False
+    src = ROOT / m["source"]
+    if not src.exists():
+        return False
+    text = REG_PIN_RE.sub(r"\1", src.read_text(errors="replace"))
+    asms = re.findall(r'(?:__asm__|\basm)\s*(?:volatile\s*|__volatile__\s*)?\(\s*("[^"]*")', text)
+    return all(a == '""' for a in asms)
+
+
+def lane_recovery(m):
+    return m.get("recovery") == "c" or strict_mixed_ok(m)
+
+
 def candidates(only=None, excluded=None):
     """Game-code candidates. Sony PsyQ library ranges (config/psyq_ranges.txt)
     never enter the lane: their entry points belong to PsyCross/HLE."""
@@ -2795,7 +2978,7 @@ def candidates(only=None, excluded=None):
     registry = json.loads((ROOT / "provenance/matches.json").read_text())["matches"]
     picked = []
     for m in registry:
-        if m["region"] != "main" or m.get("recovery") != "c":
+        if m["region"] != "main" or not lane_recovery(m):
             continue
         if psyq_manifest.psyq_segment(m["vram"], psyq):
             if excluded is not None:
@@ -2806,8 +2989,11 @@ def candidates(only=None, excluded=None):
             continue
         text = src.read_text(errors="replace")
         other = set(re.findall(r"MUSASHI_NATIVE_[A-Z0-9_]+", text))
-        if other and not (m["vram"] in INTRINSIC_PCS and
-                          all(o.endswith("_BINDING") for o in other)):
+        # Strict builds never use the hybrid's bespoke bindings: the lane
+        # compiles the file's plain matched body (macros undefined), and the
+        # irq/hardware/cycle rules still judge it (B28).
+        if other and not STRICT and not (m["vram"] in INTRINSIC_PCS and
+                                         all(o.endswith("_BINDING") for o in other)):
             continue  # bespoke binding already owns this file
         if only and m["vram"] not in only:
             continue
@@ -2878,6 +3064,14 @@ def select_overlays(args, only, exclude):
     rows of deduplicated candidates)."""
     infos, missing = {}, []
     pairs = parse_overlay_allow(args.overlay_allow) if args.overlay_allow else None
+    if getattr(args, "strict_overlay_allow", None):
+        if not (STRICT and STRICT_PROVENANCE_ALLOW):
+            raise SystemExit("native_lane_gen: --strict-overlay-allow needs --strict and "
+                             "--strict-provenance-allow")
+        extra = parse_strict_overlay_allow(args.strict_overlay_allow)
+        have = set(pairs or [])
+        pairs = (pairs or []) + [p for p in extra if p not in have]
+        print(f"native_lane_gen: strict overlay allow: {len(extra)} pairs")
     if pairs is not None:
         members = sorted({m for m, _ in pairs})
         for mem in members:
@@ -2924,6 +3118,10 @@ def main():
     ap.add_argument("--overlay-allow", type=Path,
                     help="file of '<member> <vram>' overlay functions to compile (release); "
                          "the overlay candidates are exactly these, checked strictly")
+    ap.add_argument("--strict-overlay-allow", type=Path,
+                    help="strict builds with --strict-provenance-allow: extra overlay pairs "
+                         "('<member> <vram>' or '<member> all' = every matched C function "
+                         "of that member), checked like --overlay-allow")
     ap.add_argument("--strict", action="store_true",
                     help="MUSASHI_STRICT_NATIVE build: there is no interpreter, so no PC is "
                          "observed by formatter_step or a checkpoint; the hooks rule, the "
@@ -2957,7 +3155,7 @@ def main():
             if t.strip() and not t.startswith("#"))
         registry = json.loads((ROOT / "provenance/matches.json").read_text())["matches"]
         extra = {m["vram"] for m in registry
-                 if m["region"] == "main" and m.get("recovery") == "c" and provenance_allowed(m)}
+                 if m["region"] == "main" and lane_recovery(m) and provenance_allowed(m)}
         if only is not None:
             only = only | extra
         print(f"native_lane_gen: strict provenance allow: {len(extra)} main functions with origins "
