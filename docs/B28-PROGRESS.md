@@ -695,6 +695,30 @@ Increment 32 (generator, strict only):
   (800128EC admitted with an exact ledger), overlay 2925/3328; no lost functions.
 - Strict stop moves 800128EC -> 80047E58 (main). Frame 1200, prims=0 draw=0.
 
+### Increment 51 — VectorNormal HLE (strict only), jalr dataflow, bare returns
+
+- PsyQ VectorNormalS / VectorNormal / VectorNormalSS (80047E58 / 80047E6C /
+  80047E98) are now BFM_PSYQ_HLE: exact C ports of the retail bodies and their
+  shared core 80047EC8 (pc_port/platform/psyq/bfm_psyq_libgte.c). They compute
+  IR = (s16)in, len2 = sum IR*IR (sqr sf=0), scale and mantissa from LZCR, and
+  IR0 from the guest's own invsqrt table D_8006DA80 (no table is embedded). The
+  output is (IR0*IR) >> ((31 - lzcr&~1) >> 1) (gpf sf=0), with v0 = len2 and
+  v1 = lzcr&~1 as retail leaves them. A non-strict build holds the three PCs back
+  (native_lane_psyq.c kHeldBack under `#ifndef MUSASHI_STRICT_NATIVE`; the strict
+  define now also reaches native_lane_psyq.c), so the hybrid runtime is unchanged.
+  bfm_psyq_compat.def was edited by hand to match tools/psyq_compat_status.py;
+  tools/psyq_callsites.py needs the vendor tree, which is not on this box.
+- tools/native_lane_gen.py (strict only): the retail dataflow for guest-frame
+  locals follows `jalr reg` (rd=ra) like a jal: the delay slot runs, the
+  caller-saved registers and argument words are dropped, and the call adds no
+  static site. 8015C128 is admitted.
+- Strict host CFLAGS add `-Wno-return-type -Wno-return-mismatch`, so a bare
+  `return;` in an int function compiles to `ret undef`. void_result_returns
+  then returns 0 only where no caller can read v0 (801508F8, 8017CF3C).
+- Gate: build 0, lane table identical, ctest 37/37, m2c 0. Lane: main 3646/4071,
+  overlay 2937/3328; no lost functions.
+- Strict stop moves 80047E58 -> 80148AFC (overlay). Frame 1200, prims=0 draw=0.
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits

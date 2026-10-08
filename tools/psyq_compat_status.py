@@ -130,6 +130,9 @@ TABLE: dict[str, Status] = {
     "ratan2": Status(H, 2, 1, "bfm_psyq_ratan2", "exact port of func_8004CFEC over the guest atan table D_80071F1C"),
     "csqrt": Status(S, 0, 0, None, "stateless but not in PsyCross; fixed-point semantics to pin before an HLE"),
     "catan": Status(S, 0, 0, None, "stateless but not in PsyCross"),
+    "VectorNormalS": Status(H, 2, 1, "bfm_psyq_VectorNormalS", "exact port of func_80047E58 (VECTOR->SVECTOR) over D_8006DA80"),
+    "VectorNormal": Status(H, 2, 1, "bfm_psyq_VectorNormal", "exact port of func_80047E6C over D_8006DA80"),
+    "VectorNormalSS": Status(H, 2, 1, "bfm_psyq_VectorNormalSS", "exact port of func_80047E98 over D_8006DA80"),
     "SquareRoot12": Status(S, 0, 0, None, "stateless but not in PsyCross"),
     # GTE state through the bridge: PsyCross works on the gteRegs bank gte_owner leases
     "func_80049440": Status(H, 1, 1, "bfm_psyq_LZC", "GTE-bank access under the gte_owner lease; no device I/O, no guest RAM: MTC2 LZCS=a0, v0 = MFC2 LZCR (leading sign bits, 1..32); leaves LZCS/LZCR and the owner's data read/write counters as retail does; same-input differential vs retail func_80049440 in tests/psyq_lzc_probe.c"),

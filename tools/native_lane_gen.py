@@ -414,6 +414,7 @@ CFLAGS = [
     "-w", "-Werror=implicit-function-declaration", "-Werror=implicit-int",
     "-Wno-error=int-conversion", "-Wno-int-conversion",
     "-Wno-error=incompatible-pointer-types",
+    "-Wno-return-type", "-Wno-return-mismatch",
 ]
 SYM_RE = re.compile(r'@(?:"([^"]+)"|([A-Za-z_.$][\w.$]*))')
 GLOBAL_DECL_RE = re.compile(r'^@(?:"([^"]+)"|([\w.$]+)) = (.*)$', re.M)
@@ -2540,6 +2541,22 @@ def retail_call_args(words, vram, frame, jtargets=None):
                 raise Reject("escape", f"sp changes at {pc + 4:08x}")
             for t in jtargets[i]:
                 merge((t - vram) // 4, regs, slots)
+            continue
+        if kind == "bad" and STRICT and w >> 26 == 0 and w & 63 == 9 and (w >> 11) & 31 == 31 \
+                and (w >> 21) & 31 not in (29, 31):
+            # Strict (B28): `jalr reg` (an indirect call through a handler
+            # table, 8015C128) returns like a jal: the delay slot runs, the
+            # caller-saved registers and the outgoing-argument words are
+            # dropped, and the flow continues after the slot. It names no
+            # static target, so it adds no call site.
+            if _branch_info(at(i + 1), pc + 4) is not None:
+                raise Reject("escape", f"transfer in a delay slot at {pc + 4:08x}")
+            if not _step(at(i + 1), regs, slots):
+                raise Reject("escape", f"sp changes at {pc + 4:08x}")
+            for r in CALLER_SAVED:
+                regs.pop(r, None)
+            slots.clear()
+            merge(i + 2, regs, slots)
             continue
         if kind == "bad":
             raise Reject("escape", f"retail control flow at {pc:08x} is not followed")

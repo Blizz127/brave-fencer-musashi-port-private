@@ -199,3 +199,87 @@ int bfm_psyq_LZC(uint32_t *r) {
     r[2] = lzcr;
     return 1;
 }
+
+/* ---- VectorNormal{,S,SS} -------------------------------------------------
+ * Exact ports of the retail Psy-Q bodies at 80047E58 / 80047E6C / 80047E98
+ * (shared core 80047EC8). The GTE commands (sqr, LZCS/LZCR, gpf) are
+ * evaluated in C over the guest's own invsqrt table D_8006DA80; the cop2
+ * bank is not touched (nothing reads the core's IR/MAC leftovers before
+ * reloading them). Strict native builds only: a non-strict build holds
+ * these PCs back (native_lane_psyq.c), so its interpreter runs the retail
+ * code as before. v0 = the squared length, v1 = LZCR & ~1, as retail. */
+
+#define VNORM_TABLE  0x8006DA80u
+
+static uint32_t psyq_lzc(uint32_t v) {
+    uint32_t n = 0, sign = v >> 31;
+    while (n < 32u && ((v >> (31u - n)) & 1u) == sign) n++;
+    return n;
+}
+
+/* Core of VectorNormal* (80047EC8): IR = (s16)a (mtc2); len2 = sum(IR*IR);
+ * scale from LZCR(len2); IR0 = VNORM_TABLE[(mant-64)<<1]; out = (IR0*IR) >> sh.
+ * Leaves out[0..2]. Returns 0 if the guest table is unmapped. */
+static int psyq_vnorm_core(int32_t x, int32_t y, int32_t z, int32_t out[3], uint32_t *r) {
+    int32_t ir1 = (int16_t)x, ir2 = (int16_t)y, ir3 = (int16_t)z;
+    /* sqr sf=0 (0x4AA00428): MAC = IR*IR, no shift; `add` sums them */
+    uint32_t mac1 = (uint32_t)(ir1 * ir1), mac2 = (uint32_t)(ir2 * ir2), mac3 = (uint32_t)(ir3 * ir3);
+    int32_t v0 = (int32_t)(mac1 + mac2 + mac3);
+    uint32_t v1 = psyq_lzc((uint32_t)v0) & ~1u;
+    int32_t t6 = (int32_t)(31u - v1) >> 1;
+    int32_t t3 = (int32_t)v1 - 24;
+    int32_t t4 = t3 >= 0 ? (int32_t)((uint32_t)v0 << ((uint32_t)t3 & 31u))
+                         : v0 >> ((24u - v1) & 31u);
+    const uint8_t *e;
+    int32_t ir0;
+    t4 = (t4 - 64) << 1;
+    e = (const uint8_t *)bfm_psyq_ptr(VNORM_TABLE + (uint32_t)t4, 2u);
+    if (!e) return 0;
+    ir0 = s16at(e);
+    r[2] = (uint32_t)v0;
+    r[3] = v1;
+    /* gpf sf=0 (0x4B90003D): MAC = IR0*IR, no shift; srav by t6 (low 5 bits) */
+    out[0] = (ir0 * ir1) >> ((uint32_t)t6 & 31u);
+    out[1] = (ir0 * ir2) >> ((uint32_t)t6 & 31u);
+    out[2] = (ir0 * ir3) >> ((uint32_t)t6 & 31u);
+    return 1;
+}
+
+/* VectorNormalS (80047E58): VECTOR* -> SVECTOR* (load words, store halfwords). */
+int bfm_psyq_VectorNormalS(uint32_t *r) {
+    uint8_t *src = (uint8_t *)bfm_psyq_ptr(A(0), 12u);
+    uint8_t *dst = (uint8_t *)bfm_psyq_ptr(A(1), 6u);
+    int32_t out[3];
+    if (!src || !dst) return 0;
+    if (!psyq_vnorm_core(s32at(src), s32at(src + 4), s32at(src + 8), out, r)) return 0;
+    w16(dst + 0, out[0]);
+    w16(dst + 2, out[1]);
+    w16(dst + 4, out[2]);
+    return 1;
+}
+
+/* VectorNormal (80047E6C): VECTOR* -> VECTOR*. */
+int bfm_psyq_VectorNormal(uint32_t *r) {
+    uint8_t *src = (uint8_t *)bfm_psyq_ptr(A(0), 12u);
+    uint8_t *dst = (uint8_t *)bfm_psyq_ptr(A(1), 12u);
+    int32_t out[3];
+    if (!src || !dst) return 0;
+    if (!psyq_vnorm_core(s32at(src), s32at(src + 4), s32at(src + 8), out, r)) return 0;
+    w32(dst + 0, out[0]);
+    w32(dst + 4, out[1]);
+    w32(dst + 8, out[2]);
+    return 1;
+}
+
+/* VectorNormalSS (80047E98): SVECTOR* -> SVECTOR*. */
+int bfm_psyq_VectorNormalSS(uint32_t *r) {
+    uint8_t *src = (uint8_t *)bfm_psyq_ptr(A(0), 6u);
+    uint8_t *dst = (uint8_t *)bfm_psyq_ptr(A(1), 6u);
+    int32_t out[3];
+    if (!src || !dst) return 0;
+    if (!psyq_vnorm_core(s16at(src), s16at(src + 2), s16at(src + 4), out, r)) return 0;
+    w16(dst + 0, out[0]);
+    w16(dst + 2, out[1]);
+    w16(dst + 4, out[2]);
+    return 1;
+}

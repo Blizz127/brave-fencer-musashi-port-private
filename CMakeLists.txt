@@ -28,6 +28,7 @@ endif()
 option(MUSASHI_STRICT_NATIVE "Abort every interpreter entry instead of executing retail MIPS" OFF)
 if(MUSASHI_STRICT_NATIVE)
     set_source_files_properties(pc_port/mips_formatter.c pc_port/platform/psyq/bfm_psyq_compat.c
+            pc_port/native_lane_psyq.c
         PROPERTIES COMPILE_DEFINITIONS MUSASHI_STRICT_NATIVE=1)
     message(STATUS "MUSASHI_STRICT_NATIVE: interpreter entries abort (strict build)")
 endif()

@@ -80,6 +80,14 @@ static const char *const kDeviceNames[] = {
  * (srand, strcpy, SetLineG4, CdIntToPos, RotMatrixYXZ, Push/PopMatrix) were
  * fixed in port/platform-layer 7935600a2. */
 static const struct { uint32_t pc; const char *why; } kHeldBack[] = {
+#ifndef MUSASHI_STRICT_NATIVE
+    /* VectorNormal{,S,SS}: new HLE (B28). Held back outside strict so the
+     * hybrid/own-code lane table stays byte-identical (interpreter runs the
+     * retail Psy-Q bodies). Strict builds have no interpreter, so they admit. */
+    {0x80047E58u, "VectorNormalS HLE is strict-only (B28)"},
+    {0x80047E6Cu, "VectorNormal HLE is strict-only (B28)"},
+    {0x80047E98u, "VectorNormalSS HLE is strict-only (B28)"},
+#endif
     {0u, NULL},
 };
 
