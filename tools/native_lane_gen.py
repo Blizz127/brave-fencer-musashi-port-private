@@ -1951,45 +1951,71 @@ LA_ASM_RE = re.compile(r'\b(?:__asm__|asm)\s*(?:volatile\s*|__volatile__\s*)?\(\
 #   asm volatile("addu $8,%0,$zero; sw $sp,0($8); addiu $8,$8,-4;
 #                 addu $sp,$8,$zero; jal func_X; addiu $sp,$sp,4;
 #                 lw $sp,0($sp)" : : "r"(p) : "$8", "memory");
-# saves the caller's sp at P and runs func_X with sp = P (the delay slot
-# adds the 4 back), then reloads sp. In the lane the guest sp of a body is
+# saves the caller's sp at P and runs func_X with sp = P - 4 (the asm is
+# assembled in reorder mode: the jal delay slot is a nop, the `addiu` runs
+# after the return), then reloads sp. In the lane the guest sp of a body is
 # musashi_lane_entry_sp - musashi_lane_sp_adj, so the host copy stores that
-# value at P, gives the call entry sp P, and restores both afterwards.
+# value at P, gives the call entry sp P - 4, and restores both afterwards.
 # Optionally the call's v0 is stored to a global before sp is reloaded
 # (`lui $at,%%hi(SYM); sw $v0,%%lo(SYM)($at)`, 801285E4): host `SYM = f()`.
 # The operand may also be in/out (`"=r"(p) : "0"(p)`) with $31 clobbered,
 # so GCC rematerialises P for the next switch and saves ra (8014607C).
+# The indirect form (8014E934) switches back to the stack whose sp the
+# outer switch saved in the cell: `lw $9,0($8); nop; sw $sp,0($9);
+# addiu $9,$9,-4; addu $sp,$9,$zero`, so P = *(u32 *)C. Extra `"r"(x)`
+# inputs are register variables pinned to $4..$7 in order: the call's
+# arguments (a0.. stay live into the jal).
 SCRATCH_CALL_RE = re.compile(
     r'\b(?:__asm__|asm)\s*(?:volatile\s*|__volatile__\s*)?\(\s*'
-    r'"addu\s+\$8,\s*%0,\s*\$zero\\n"\s*"sw\s+\$sp,\s*0\(\$8\)\\n"\s*'
-    r'"addiu\s+\$8,\s*\$8,\s*-4\\n"\s*"addu\s+\$sp,\s*\$8,\s*\$zero\\n"\s*'
-    r'"jal\s+(func_[0-9A-Fa-f]{8})\\n"\s*'
-    r'(?:"lui\s+\$at,\s*%%hi\((\w+)\)\\n"\s*"sw\s+\$v0,\s*%%lo\(\2\)\(\$at\)\\n"\s*)?'
+    r'"addu\s+\$8,\s*%0,\s*\$zero\\n"\s*'
+    r'(?:(?P<ind>"lw\s+\$9,\s*0\(\$8\)\\n"\s*"nop\\n"\s*"sw\s+\$sp,\s*0\(\$9\)\\n"\s*'
+    r'"addiu\s+\$9,\s*\$9,\s*-4\\n"\s*"addu\s+\$sp,\s*\$9,\s*\$zero\\n"\s*)'
+    r'|"sw\s+\$sp,\s*0\(\$8\)\\n"\s*"addiu\s+\$8,\s*\$8,\s*-4\\n"\s*"addu\s+\$sp,\s*\$8,\s*\$zero\\n"\s*)'
+    r'"jal\s+(?P<f>func_[0-9A-Fa-f]{8})\\n"\s*'
+    r'(?:"lui\s+\$at,\s*%%hi\((?P<sym>\w+)\)\\n"\s*"sw\s+\$v0,\s*%%lo\((?P=sym)\)\(\$at\)\\n"\s*)?'
     r'"addiu\s+\$sp,\s*\$sp,\s*4\\n"\s*'
     r'"lw\s+\$sp,\s*0\(\$sp\)\\n"\s*:\s*'
-    r'(?::\s*"r"\s*\(\s*(\w+)\s*\)|"=r"\s*\(\s*(\w+)\s*\)\s*:\s*"0"\s*\(\s*\4\s*\))'
-    r'\s*:\s*"\$8"\s*,\s*(?:"\$31"\s*,\s*)?"memory"\s*\)\s*;')
+    r'(?::\s*"r"\s*\(\s*(?P<p1>\w+)\s*\)|"=r"\s*\(\s*(?P<p2>\w+)\s*\)\s*:\s*"0"\s*\(\s*(?P=p2)\s*\))'
+    r'(?P<args>(?:\s*,\s*"r"\s*\(\s*\w+\s*\))*)'
+    r'\s*:\s*"\$8"\s*,\s*(?:"\$9"\s*,\s*)?(?:"\$31"\s*,\s*)?"memory"\s*\)\s*;')
 
 
 def scratch_call_host(text):
     """Rewrite SCRATCH_CALL_RE asm when its operand is a register variable
     initialised with a scratchpad constant; None when it does not apply."""
     def sub(m):
-        init = re.search(r"\bregister\b[^;={}]*\b" + re.escape(m.group(3) or m.group(4)) +
+        init = re.search(r"\bregister\b[^;={}]*\b" + re.escape(m.group("p1") or m.group("p2")) +
                          r'\s*(?:(?:__asm__|asm)\s*\(\s*"\$\w+"\s*\)\s*)?=\s*(0x[0-9A-Fa-f]+)\s*;', text)
         if not init:
             raise ValueError
         c = int(init.group(1), 16)
         if not (0x1F800000 <= c < 0x1F800400) or c & 3:
             raise ValueError
-        f, sym = m.group(1), m.group(2)
-        call = ("%s = (__typeof__(%s))%s()" % (sym, sym, f)) if sym else ("%s()" % f)
+        args = re.findall(r'"r"\s*\(\s*(\w+)\s*\)', m.group("args"))
+        if len(args) > 4:
+            raise ValueError
+        for i, a in enumerate(args):
+            # pinned to $4+i (strict_mixed_ok sees the text with pins removed)
+            am = re.search(r"\bregister\b[^;={}]*\b" + re.escape(a) +
+                           r'\s*(?:(?:__asm__|asm)\s*\(\s*"\$(\d+)"\s*\)\s*)?=', text)
+            if not am or (am.group(1) and int(am.group(1)) != 4 + i):
+                raise ValueError
+        f, sym = m.group("f"), m.group("sym")
+        call = "%s(%s)" % (f, ", ".join(args))
+        if sym:
+            call = "%s = (__typeof__(%s))%s" % (sym, sym, call)
+        if m.group("ind"):
+            cell = (" unsigned int lane_ss_p = *(unsigned int *)0x%08X;"
+                    " *(unsigned int *)lane_ss_p = lane_ss_e - lane_ss_a;"
+                    " musashi_lane_entry_sp = lane_ss_p - 4u;" % c)
+        else:
+            cell = (" *(unsigned int *)0x%08X = lane_ss_e - lane_ss_a;"
+                    " musashi_lane_entry_sp = 0x%08Xu;" % (c, c - 4))
         return ("{ extern %s %s(); extern unsigned int musashi_lane_entry_sp, musashi_lane_sp_adj;"
                 " unsigned int lane_ss_e = musashi_lane_entry_sp, lane_ss_a = musashi_lane_sp_adj;"
-                " *(unsigned int *)0x%08X = lane_ss_e - lane_ss_a;"
-                " musashi_lane_entry_sp = 0x%08Xu; musashi_lane_sp_adj = 0; %s;"
+                "%s musashi_lane_sp_adj = 0; %s;"
                 " musashi_lane_entry_sp = lane_ss_e; musashi_lane_sp_adj = lane_ss_a; }"
-                % ("int" if sym else "void", f, c, c, call))
+                % ("int" if sym else "void", f, cell, call))
     try:
         return SCRATCH_CALL_RE.sub(sub, text)
     except ValueError:

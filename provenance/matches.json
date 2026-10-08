@@ -18458,8 +18458,10 @@
       "size": 88,
       "region": "main_0012",
       "source": "src/overlays/main_0012/8014e934.c",
-      "recovery": "assembly",
-      "extent": "function"
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8014E98C",
@@ -149113,7 +149115,7 @@
       "size": 88,
       "region": "sc02_0031",
       "source": "src/overlays/sc02_0031/8014e934.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"

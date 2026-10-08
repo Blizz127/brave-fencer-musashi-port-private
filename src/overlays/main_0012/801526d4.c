@@ -11,7 +11,7 @@ void func_8014F3E8(s32);                               /* static */
 void func_80152714(s32);                               /* static */
 
 void func_801526D4(s32 arg0) {
-    func_8014E934();
+    func_8014E934(arg0);
     func_8014CC28(arg0);
     func_8014F3E8(arg0);
     func_80152714(arg0);

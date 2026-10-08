@@ -506,6 +506,27 @@ Increment 32 (generator, strict only):
 - Strict stop moves to 8014E934. Frames reach 1200, prims=0 draw=0: no frame
   drawn yet.
 
+### Increment 39: indirect scratchpad switch-back call (8014E934) as C; callee sp fixed to P - 4
+
+- 8014E934 (main_0012 and sc02_0031, recovery `assembly`) calls 8014E98C
+  on the stack whose sp the outer scratchpad switch saved in 0x1F8003FC
+  (`lw $9,0($8); sw $sp,0($9); addiu $9,$9,-4; addu $sp,$9,$zero`), passes
+  its a0 through and returns the stored v0. Rewritten as C plus that asm,
+  byte-identical (verify bad 0); registry rows now `mixed` (the main_0012
+  row also gets the `-O2` / vendor-derived origin its source carries).
+  Its main_0012 callers that left a0 for it now pass their first argument
+  (10 by script, byte-identical).
+- Generator (strict-only): `SCRATCH_CALL_RE` rewritten with named groups;
+  it also takes the indirect form (host: P = *(u32 *)C) and extra `"r"(x)`
+  inputs pinned to $4..$7 as the call's arguments. Correction to increment
+  29: the asm is assembled in reorder mode, so the jal delay slot is a nop
+  and the callee runs with sp = P - 4 (was P); the host now sets
+  `musashi_lane_entry_sp` to P - 4.
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0. Lanes: main 3539/4018,
+  overlay 2837/3282. Nothing lost; 8014E934 gained in both members.
+- Strict stop moves to 8014CC28. Frames reach 1200, prims=0 draw=0: no
+  frame drawn yet.
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits
