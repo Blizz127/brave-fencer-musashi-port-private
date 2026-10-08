@@ -1660,8 +1660,12 @@ def check_optimized(ir, module_internal):
                 val = src[-1]
                 if val.startswith("%"):
                     d = defs.get(val, "")
+                    am = re.match(r"and i64 .*, (\d+)$", d)
                     if not (d.startswith("zext i32") or d.startswith("zext nneg i32") or
                             re.match(r"and i64 .*, 4294967295$", d) or
+                            # strict (B28): any mask within 32 bits (801719A4's
+                            # word-aligned 0xFFFFFFFC) leaves a 32-bit guest value
+                            (STRICT and am and int(am.group(1)) <= 0xFFFFFFFF) or
                             (STRICT and bounded_guest_affine(val, defs)) or
                             (STRICT and scev_in_game_ram(ir, header, val))):
                         raise Reject("inttoptr", f"integer->pointer from '{d[:40]}'")

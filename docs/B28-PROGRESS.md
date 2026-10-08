@@ -609,6 +609,18 @@ Increment 32 (generator, strict only):
 - Strict stop moves to 801719A4. Frames reach 1200, prims=0 draw=0: no
   frame drawn yet.
 
+### Increment 45: inttoptr of any value masked within 32 bits
+
+- 801719A4 (main_0012) stores through `&D_8011F738 + i*4`; the lowering
+  masks that address with `and i64 x, 0xFFFFFFFC`, and the inttoptr rule
+  only took the exact 0xFFFFFFFF mask. Strict-only: an `and i64` with any
+  constant mask <= 0xFFFFFFFF yields a 32-bit guest value and is accepted.
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0. Lanes: main 3597/4066,
+  overlay 2892/3328. Nothing lost; 801719A4 and three main-EXE functions
+  (8001D16C, 80023570, 8002374C) gained.
+- Strict stop moves to 80159A20. Frames reach 1200, prims=0 draw=0: no frame
+  drawn yet.
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits
