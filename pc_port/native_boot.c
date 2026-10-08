@@ -5601,6 +5601,11 @@ static int driver_spend(void *user, uint32_t cycles) {
            boot->execution_clock.advance(boot->execution_clock.userdata, cycles);
 }
 
+static int driver_cop2_enable(void *user) {
+    NativeBoot *boot = user;
+    return musashi_cpu_status_enable_cop2(boot->irq.cpu_status);
+}
+
 static int driver_deliver_event(void *user, uint32_t class_word, uint32_t spec) {
     /* B0:07 DeliverEvent: matching enabled records are marked; a callback
      * record runs through the native BIOS event executor. */
@@ -5653,6 +5658,14 @@ static MusashiResetGraphPrefixStatus strict_frame_driver_run(NativeBoot *boot) {
     ops.spend = driver_spend;
     ops.deliver_event = driver_deliver_event;
     ops.bios_event = driver_bios_event;
+    ops.cop2_enable = driver_cop2_enable;
+    /* The cop2 lease: interpreter builds take it at the first checkpoint;
+     * strict has none, so the frame driver's native libgte calls (B27
+     * GsInitGraph HLE) lease it here. No source context ever presents this
+     * identity, so only the native bridge uses the owner. */
+    if (!boot->gte.initialized &&
+        !musashi_gte_owner_init(&boot->gte, boot->irq.cpu_status, epoch_owner, boot, &boot->gte))
+        fprintf(stderr, "native_boot: FRAME_DRIVER gte owner init refused\n");
     boot->callback.checkpoint = strict_checkpoint;
     g_driver_irq_source = 1;
     return musashi_frame_driver_run(&boot->memory, &boot->startup_devices, &ops);

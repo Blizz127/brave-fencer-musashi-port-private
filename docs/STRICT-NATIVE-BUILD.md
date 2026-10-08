@@ -137,3 +137,27 @@ native driver entries. Lane spin loops take interrupts through the strict
 checkpoint and a pending-IRQ deadline. First remaining stop:
 `not_in_lane func_80019AF8` (vendor-derived game code awaiting clean-room
 re-derivation). The hybrid lane table is unchanged.
+
+## Clean-room set and the strict provenance allow (B27, 2026-10-07)
+
+- Clean-room, byte-matched from the retail disassembly and admitted to the
+  strict allow list: 80019AF8 (disc file loader), 8001A338 (its CD data
+  callback), 8001B0D4 (music load step), 800383A4 (sequence key-off). Their
+  registry origin is now "owner re-derivation, clean room (B27 ...)".
+- Will (2026-10-07, 9:49 PM CT): strict native builds may compile the
+  upstream Druthulu/BFM-decomp derived C. Native only still means no
+  emulation and no interpreter fallback. CMake option
+  `MUSASHI_STRICT_UPSTREAM_PROVENANCE` (default ON; only takes effect with
+  `MUSASHI_STRICT_NATIVE=ON` + `MUSASHI_LANE_OWN_CODE_ONLY=ON`) passes
+  `--strict-provenance-allow config/lane_strict_provenance_allow.txt` to the
+  generator. Registry rows whose origin is listed there verbatim (today
+  `vendor-derived (Druthulu/BFM-decomp)`; other projects' PsyQ C is not
+  listed) join the strict candidate set; every lane rule (hardware registers,
+  cycle/deny, layout, ...) still applies, and the report marks them with
+  `strict_provenance_allow`. The registry keeps recording every origin and
+  the clean-room tracking is unchanged; OFF restores the clean-room-only
+  strict lane. Non-strict builds never see the flag: the hybrid
+  `native_lane_table.c` is byte-identical.
+- Strict lane: 691 of 752 candidates admitted (84 upstream-derived main
+  functions now candidates). See docs/NATIVE-FRAME-DRIVER.md (B27) for the
+  libgs start-up HLE and the first remaining stop.

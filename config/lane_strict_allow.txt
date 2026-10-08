@@ -7,3 +7,10 @@
 80015908
 8001d1c4
 8003324c
+# Clean-room B27 (box sandbox 2026-10-07, branch cursor/native-cleanroom-b27): former
+# vendor-derived bodies on main's static call graph, re-derived from retail disassembly
+# only. Strict-only so the normal (hybrid) lane table stays byte-identical.
+80019af8
+8001a338
+800383a4
+8001b0d4

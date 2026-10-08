@@ -64,6 +64,15 @@ int bfm_psyq_InitGeom(uint32_t *r) {
     return 1;
 }
 
+/* 80053AD8 SetFarColor(r, g, b): FC = (r, g, b) << 4 (CTC2 21..23). Not a
+ * compat row: the strict frame driver's GsInitGraph HLE calls it (B27). */
+int bfm_psyq_SetFarColor(uint32_t *r) {
+    GTE_BEGIN();
+    SetFarColor((int)A(0), (int)A(1), (int)A(2));
+    GTE_END(0);
+    return 1;
+}
+
 int bfm_psyq_SetGeomOffset(uint32_t *r) {
     GTE_BEGIN();
     SetGeomOffset((int)(int16_t)A(0), (int)(int16_t)A(1));

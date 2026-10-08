@@ -420,3 +420,30 @@ reaches them yet.
 5. Write the driver (above). Then run a strict boot to the title, which should
    abort with a `frame_driver` miss naming the next missing piece instead of
    `boot_entry`.
+
+## B27: ResetGraph(1), libgs start-up and the GTE lease (2026-10-07)
+
+- ResetGraph modes other than 0/3/5 whose jump-table reset entry is 8005BD7C
+  call the port-owned 8005BD7C HLE instead of the guest entry.
+- New driver entries, written from the retail disassembly: GsInitGraph
+  (800525DC, with its helpers 80052654, 80053CF8, 8005283C, 80052D00,
+  80052BEC inlined), GsInitGraph2 (800527C4), GsDefDispBuff (80053178),
+  GsDefDispBuff2 (80053EEC), the libgs 3D init 80053218, SetDefDrawEnv
+  (80058A4C) and ClearImage (80059888, a renderer fill with the GPU's
+  16-pixel granularity; compat function `bfm_psyq_ClearImage`, not a row).
+- InitGeom/SetFarColor/SetGeomOffset run through the compat module's
+  PsyCross wrappers. That needs the cop2 lease: strict boot now initialises
+  the GTE owner before the driver starts (interpreter builds still take it
+  at the first checkpoint), and a new driver op `cop2_enable`
+  (`musashi_cpu_status_enable_cop2`) sets Status CU2 as retail InitGeom's
+  mtc0 does. `_patch_gte` (8004D16C) only rewrites the BIOS RAM exception
+  handler, which the native exception path never runs, so it is not
+  reproduced.
+- Strict boot (600-frame budget) now gets through GsInitGraph and the
+  display-buffer set-up, still at frames=0. First remaining stop:
+  `STRICT_INTERPRETER_ENTRY seam=lane_guest_call routine=not_in_lane
+  guest_pc=80053f6c` (libgs GsSetRefView2, a GTE matrix routine with
+  callees 80053B20, 80054340, 80047D3C). The static worklist of not-yet-native
+  guest-call targets from admitted code is about 180 entries: lane-rule
+  rejections of registry C (layout, deny, calls, escape, inttoptr), STUB
+  PsyQ rows (libgs/libgte/libsnd/libspu) and overlay entry points.

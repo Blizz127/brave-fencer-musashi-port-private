@@ -54,6 +54,9 @@ int musashi_cpu_status_read(MusashiCpuStatus *, uint32_t *);
 int musashi_cpu_status_irq_eligible(MusashiCpuStatus *, int *);
 /* Native BIOS policy / fixture adapter, NOT an implicit SYS or hook. */
 int musashi_cpu_status_set_enabled(MusashiCpuStatus *, int enabled);
+/* Native libgte adapter (strict GsInitGraph HLE): SR |= CU2, as retail
+ * InitGeom's mfc0/or 0x40000000/mtc0 at 80047CD0. Outside an exception only. */
+int musashi_cpu_status_enable_cop2(MusashiCpuStatus *);
 /* Bounded MTC0 Status: same value or old value OR CU2, outside exception. */
 int musashi_cpu_status_write_source(MusashiCpuStatus *,
     const MusashiCpuContext *, uint32_t value);

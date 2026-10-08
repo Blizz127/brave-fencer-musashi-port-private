@@ -65,6 +65,8 @@ typedef struct MusashiFrameDriverOps {
      * 0C enable, 0D disable) with its arguments. 0: refused. */
     int (*bios_event)(void *user, unsigned fn, uint32_t a0, uint32_t a1, uint32_t a2,
                       uint32_t a3, int32_t *result);
+    /* Status CU2 on (libgte InitGeom's mtc0, 80047CD0). 0: refused. */
+    int (*cop2_enable)(void *user);
 } MusashiFrameDriverOps;
 
 /* The driver's own lane entries: native replacements for the Sony library

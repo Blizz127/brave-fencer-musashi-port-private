@@ -707,6 +707,20 @@ if(MUSASHI_BUILD_PC_PORT)
                     --only ${CMAKE_CURRENT_SOURCE_DIR}/config/lane_strict_allow.txt)
                 list(APPEND MUSASHI_LANE_OWN_CODE_DEPENDS
                     ${CMAKE_CURRENT_SOURCE_DIR}/config/lane_strict_allow.txt)
+                # Strict builds may compile upstream-derived (Druthulu/BFM-decomp)
+                # matched C (Will, 2026-10-07). The registry keeps each function's
+                # origin; this only widens the strict own-code filter to the
+                # origins listed in the provenance allow file. OFF restores the
+                # clean-room-only strict lane. Never affects non-strict builds.
+                option(MUSASHI_STRICT_UPSTREAM_PROVENANCE
+                    "Strict own-code lane also compiles registry C whose origin is in config/lane_strict_provenance_allow.txt" ON)
+                if(MUSASHI_STRICT_UPSTREAM_PROVENANCE)
+                    list(APPEND MUSASHI_LANE_STRICT_FLAG --strict-provenance-allow
+                        ${CMAKE_CURRENT_SOURCE_DIR}/config/lane_strict_provenance_allow.txt)
+                    list(APPEND MUSASHI_LANE_OWN_CODE_DEPENDS
+                        ${CMAKE_CURRENT_SOURCE_DIR}/config/lane_strict_provenance_allow.txt)
+                    message(STATUS "MUSASHI_STRICT_UPSTREAM_PROVENANCE: strict lane admits upstream-derived matched C")
+                endif()
             endif()
         else()
             set(MUSASHI_LANE_STRICT_FLAG)

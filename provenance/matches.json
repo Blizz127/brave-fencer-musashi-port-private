@@ -3525,7 +3525,7 @@
       "extent": "function",
       "optimization": "-O2",
       "rodata_base": 2147953228,
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": "owner re-derivation, clean room (B27 box sandbox, retail disassembly only)"
     },
     {
       "name": "func_8001A0FC",
@@ -3560,7 +3560,7 @@
       "extent": "function",
       "optimization": "-O2",
       "rodata_base": 2147953300,
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": "owner re-derivation, clean room (B27 box sandbox, retail disassembly only)"
     },
     {
       "name": "func_8001A9D8",
@@ -32575,10 +32575,10 @@
       "size": 260,
       "region": "main",
       "source": "src/main/800383a4.c",
-      "recovery": "mixed",
+      "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": "owner re-derivation, clean room (B27 box sandbox, retail disassembly only)"
     },
     {
       "name": "func_8002D6D8",
@@ -33269,7 +33269,7 @@
       "extent": "function",
       "optimization": "-O2",
       "rodata_base": 2147953444,
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": "owner re-derivation, clean room (B27 box sandbox, retail disassembly only)"
     },
     {
       "name": "func_80020248",

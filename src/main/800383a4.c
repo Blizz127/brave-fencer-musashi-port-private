@@ -1,56 +1,41 @@
-/* Exact retail word export for [800383A4,800384A8); EXE and assembly verified. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* Clean-room re-derivation from the retail disassembly only (B27): keys off every voice a sequence's tracks hold. */
 #include "psx_types.h"
-/* func_800383A4 - byte-exact against retail at -O2 (tools/register_match.py). */
 
+typedef struct {
+    /* 0x00 */ u8 unk00[0x5D];
+    /* 0x5D */ u8 unk5D;
+    /* 0x5E */ u8 unk5E;
+    /* 0x5F */ u8 unk5F;
+} Voice;
 
-extern u8 D_800B9CD8[];
 extern u8 D_800A4F1D;
-extern u8 D_800C6E2D[];
-extern s32 D_80073140[][1];  /* [][1] spelling: load-bearing for func_800391D4 (S79 lever; §500-I) */
-extern void func_8003916C(s16 arg0);
-extern void func_8002EFF8(s32 a0, s32 a1);
+extern u8 D_800B9CD8[];
+extern Voice D_800C6DD0[];
+extern s32 D_80073140[];
+extern void func_8003916C(s16 index);
+extern void func_8002EFF8(s32 mode, s32 bits);
 
-void func_800383A4(a0)
-    s16 a0;
-{
-    u8 *base;
-    u8 *p;
-    u8 *q;
-    u8 *r;
-    s32 *t;
-    s32 *table;
+void func_800383A4(s32 seq) {
+    u8 *base = D_800B9CD8 + seq * 508;
+    u8 *track = base + 26;
+    u8 *used;
+    u8 *state;
     s32 i;
     s32 j;
-    s32 one;
-    register s32 aa __asm__("$2");
 
-    __asm__("sll %0, %1, 7\n\tsubu %0, %0, %1\n\tsll %0, %0, 2" : "=r"(aa) : "r"(a0));
-    base = &D_800B9CD8[aa];
-    p = base + 0x1A;
-    i = 0;
-    one = 1;
-    table = (s32 *)D_80073140;
     D_800A4F1D = 1;
-    base[0x1FA] = 0;
-    do {
-        q = p + 9;
-        j = 0;
-        r = D_800C6E2D;
-        t = table;
-        do {
-            if (*q++ != 0) {
-                r[1] = one;
-                r[0] = 0;
-                func_8003916C((s16)j);
-                func_8002EFF8(0, *t);
+    base[506] = 0;
+    for (i = 0; i < 16; i++) {
+        used = track + 9;
+        for (j = 0, state = &D_800C6DD0[0].unk5D; j < 16; j++, state += 0x60) {
+            if (*used++ != 0) {
+                state[1] = 1;
+                state[0] = 0;
+                func_8003916C(j);
+                func_8002EFF8(0, D_80073140[j]);
             }
-            t++;
-            j++;
-            r += 0x60;
-        } while (j < 0x10);
-        i++;
-        p += 0x1A;
-    } while (i < 0x10);
+        }
+        track += 26;
+    }
     D_800A4F1D = 0;
 }

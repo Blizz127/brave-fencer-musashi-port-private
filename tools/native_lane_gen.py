@@ -2765,7 +2765,21 @@ def emit_table(admitted, out, entry_sites=frozenset(), passthrough=frozenset()):
 THIRD_PARTY_MARK = re.compile(r"vendor|Druthulu|BFM-decomp|psyq|Sony|parasite|xenogears", re.I)
 
 
+# --strict-provenance-allow FILE (strict builds only): registry origins listed
+# verbatim in FILE (config/lane_strict_provenance_allow.txt) are admitted to a
+# strict own-code lane even though they name upstream code. The registry keeps
+# recording the origin; only the strict lane's own-code filter is widened, and
+# every lane rule (hardware registers, cycles, layout, ...) still applies.
+STRICT_PROVENANCE_ALLOW = set()
+
+
+def provenance_allowed(m):
+    return STRICT and (m.get("origin") or "") in STRICT_PROVENANCE_ALLOW
+
+
 def third_party_derived(m):
+    if provenance_allowed(m):
+        return False
     if THIRD_PARTY_MARK.search(m.get("origin") or ""):
         return True
     src = ROOT / m["source"]
@@ -2914,6 +2928,10 @@ def main():
                     help="MUSASHI_STRICT_NATIVE build: there is no interpreter, so no PC is "
                          "observed by formatter_step or a checkpoint; the hooks rule, the "
                          "caller-pinned GTE rule and the PsyQ hooked hold-back do not apply")
+    ap.add_argument("--strict-provenance-allow", type=Path,
+                    help="with --strict --own-code-only: registry origins (one per line, verbatim) "
+                         "whose matched main C is also compiled, e.g. upstream-derived C "
+                         "(config/lane_strict_provenance_allow.txt)")
     ap.add_argument("--overlay-members", default="",
                     help="comma-separated overlay members to compile (e.g. main_0003); each needs "
                          "config/overlay_<m>.yaml and its extracted member file for the digests")
@@ -2931,6 +2949,19 @@ def main():
     if STRICT:
         os.environ["MUSASHI_LANE_STRICT"] = "1"
     hooks = {} if STRICT else hooked_pcs()
+    if args.strict_provenance_allow:
+        if not STRICT:
+            raise SystemExit("native_lane_gen: --strict-provenance-allow needs --strict")
+        STRICT_PROVENANCE_ALLOW.update(
+            t.strip() for t in args.strict_provenance_allow.read_text().splitlines()
+            if t.strip() and not t.startswith("#"))
+        registry = json.loads((ROOT / "provenance/matches.json").read_text())["matches"]
+        extra = {m["vram"] for m in registry
+                 if m["region"] == "main" and m.get("recovery") == "c" and provenance_allowed(m)}
+        if only is not None:
+            only = only | extra
+        print(f"native_lane_gen: strict provenance allow: {len(extra)} main functions with origins "
+              f"{sorted(STRICT_PROVENANCE_ALLOW)}")
     psyq_excluded = []
     todo = [m for m in candidates(only, psyq_excluded) if m["vram"] not in exclude]
     if args.own_code_only:
@@ -2944,6 +2975,9 @@ def main():
         results = list(pool.map(lambda m: build_one(m, out, symbols, hooks, args.clang), todo))
         ovl_results = list(pool.map(lambda m: build_one(m, out, msyms[m["region"]], hooks, args.clang,
                                                         infos[m["region"]]), ovl_todo))
+    for m, r in zip(todo, results):
+        if provenance_allowed(m):
+            r["strict_provenance_allow"] = m.get("origin") or ""
     for m, r in zip(ovl_todo, ovl_results):
         r["covers"] = m["covers"]
         r["origin"] = m.get("origin") or ""

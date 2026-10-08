@@ -97,6 +97,12 @@ int musashi_cpu_status_set_enabled(MusashiCpuStatus *o, int enabled) {
     o->state.sr = (o->state.sr & ~UINT32_C(0x401)) | (enabled ? 0x401u : 0u);
     return leave(o, 1);
 }
+int musashi_cpu_status_enable_cop2(MusashiCpuStatus *o) {
+    if (!enter(o, 0)) return 0;
+    if (o->state.active) return refuse(o);
+    o->state.sr |= UINT32_C(0x40000000);
+    return leave(o, 1);
+}
 int musashi_cpu_status_write_source(MusashiCpuStatus *o,
     const MusashiCpuContext *c, uint32_t value) {
     if (!enter(o, 0)) return 0;

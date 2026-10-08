@@ -1,0 +1,11 @@
+# Registry origins (provenance/matches.json "origin", verbatim, one per line)
+# whose matched main C a strict own-code build also compiles
+# (cmake -DMUSASHI_STRICT_NATIVE=ON -DMUSASHI_LANE_OWN_CODE_ONLY=ON,
+# option MUSASHI_STRICT_UPSTREAM_PROVENANCE, default ON).
+#
+# Will (2026-10-07): strict native builds may compile the upstream
+# Druthulu/BFM-decomp derived C. Native only still holds: no emulation and no
+# interpreter fallback. Provenance stays recorded in the registry; release
+# (non-strict own-code) builds and the hybrid lane are unaffected. Other
+# projects' PsyQ C (parasite/xenogears) is not listed and stays out.
+vendor-derived (Druthulu/BFM-decomp)

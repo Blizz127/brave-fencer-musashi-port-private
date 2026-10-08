@@ -620,6 +620,10 @@ int musashi_frame_driver_irq_enabled(void) { return g_irq_enabled && !g_in_irq; 
  * 8006CECC (parameter count). Register addresses come from the pointer
  * cells 8006CF4C..8006CF90 as in retail. */
 int bfm_psyq_VSync(uint32_t *r);
+int bfm_psyq_SetFarColor(uint32_t *r);
+int bfm_psyq_ClearImage(uint32_t *r);
+int bfm_psyq_InitGeom(uint32_t *r);
+int bfm_psyq_SetGeomOffset(uint32_t *r);
 static uint32_t g_cd_sp;
 
 enum {
@@ -2216,8 +2220,16 @@ static int hle_reset_graph(MusashiNativeLaneCall *call) {
     uint32_t mode = call->r[4] & 7u, s0 = 0x80072788u, type;
     int32_t result = 0;
     if (mode != 0u && mode != 3u && mode != 5u) {
-        uint32_t a = 1u;
-        call->r[2] = call_at(call->r[29] - 0x40u, rd32(rd32(0x80072780u) + 52u), 1, &a);
+        uint32_t a = 1u, fn = rd32(rd32(0x80072780u) + 52u);
+        if (fn == 0x8005BD7Cu) {
+            /* The table's reset entry is the port-owned 8005BD7C HLE (B27). */
+            if (!cb || !musashi_boot_call_8005bd7c(g_driver.memory, cb->reset_device, 1,
+                                                   &result))
+                driver_stop("ResetGraph_reset_refused", 0x8005BD7Cu);
+            call->r[2] = (uint32_t)result;
+            return 1;
+        }
+        call->r[2] = call_at(call->r[29] - 0x40u, fn, 1, &a);
         return 1;
     }
     if (mode != 5u)
@@ -2240,6 +2252,234 @@ static int hle_reset_graph(MusashiNativeLaneCall *call) {
         !musashi_boot_call_8005c29c(g_driver.memory, s0 + 108u, -1, 20u))
         driver_stop("ResetGraph_env_refused", 0x80059234u);
     call->r[2] = type;
+    return 1;
+}
+
+/* ---- libgs startup (B27) ---------------------------------------------------
+ * GsInitGraph (800525DC) and its libgs8 helpers, from the retail disassembly.
+ * libgpu/libgte callees go through the lane (ResetGraph, PutDrawEnv and
+ * PutDispEnv HLE); InitGeom, SetFarColor and SetGeomOffset use the compat
+ * module's PsyCross wrappers over the GTE bridge. */
+static void gs_call(MusashiNativeLaneCall *call, uint32_t pc, unsigned argc, uint32_t a0,
+                    uint32_t a1) {
+    uint32_t a[2] = {a0, a1};
+    (void)call_at(call->r[29] - 0x40u, pc, argc, a);
+}
+
+static void gs_set_geom_offset(MusashiNativeLaneCall *call, uint32_t ox, uint32_t oy) {
+    /* 8004921C SetGeomOffset through the compat module's GTE bridge */
+    uint32_t r[32] = {0};
+    r[4] = ox; r[5] = oy; r[29] = call->r[29];
+    if (!bfm_psyq_SetGeomOffset(r)) driver_stop("SetGeomOffset_refused", 0x8004921Cu);
+}
+
+static void gs_copy32(uint32_t dst, uint32_t src) {
+    unsigned i;
+    for (i = 0; i < 32u; i += 4u) wr32(dst + i, rd32(src + i));
+}
+
+static void gs_init_graph_body(MusashiNativeLaneCall *call, uint32_t x, uint32_t y,
+                               uint32_t intmode, uint32_t dith, uint32_t vram) {
+    /* 80052654: ResetGraph, the DRAWENV at 800A6438, the DISPENV at 800A6498 */
+    static const uint32_t zero16[] = {0x800A6442u, 0x800A6440u, 0x800A644Au, 0x800A6448u,
+                                      0x800A6446u, 0x800A6444u, 0x800A644Cu};
+    unsigned i;
+    gs_call(call, 0x80059234u, 1, ((intmode >> 4) & 3u) == 3u ? 3u : 0u, 0);
+    for (i = 0; i < sizeof zero16 / sizeof zero16[0]; i++) wr16(zero16[i], 0);
+    wr8(0x800A644Eu, (uint8_t)dith);
+    wr8(0x800A644Fu, 0);
+    wr8(0x800A6450u, 0);
+    gs_call(call, 0x80059D68u, 1, 0x800A6438u, 0);
+    for (i = 0; i < 8u; i++) wr16(0x800A6498u + i * 2u, 0);
+    wr16(0x800A649Cu, (uint16_t)x);
+    wr16(0x800A649Eu, (uint16_t)y);
+    if (rd32(0x8006CBE8u) == 1u) {          /* GetVideoMode() == MODE_PAL */
+        wr16(0x800A64A2u, 24);
+        wr8(0x800A64AAu, 1);
+    }
+    wr8(0x800A64A8u, (uint8_t)(intmode & 1u));
+    wr16(0x800C7C88u, (uint16_t)(intmode & 4u));
+    wr8(0x800A64A9u, (uint8_t)vram);
+    gs_call(call, 0x80059FC0u, 1, 0x800A6498u, 0);
+}
+
+static void gs_init_coord(uint32_t x, uint32_t y) {
+    /* 8005283C: projection/screen globals from the resolution */
+    static const uint32_t zero16[] = {0x800AE624u, 0x800AE622u, 0x800AE62Au, 0x800AE626u,
+                                      0x800AE62Eu, 0x800AE62Cu};
+    int32_t q;
+    unsigned i;
+    wr32(0x800AE61Cu, y);
+    wr32(0x800AE618u, x);
+    if (x == 0u) driver_stop("GsInitGraph_div0", 0x80052868u);
+    q = (int32_t)(y << 14) / (int32_t)x;
+    for (i = 0; i < sizeof zero16 / sizeof zero16[0]; i++) wr16(zero16[i], 0);
+    wr32(0x800AE63Cu, 0); wr32(0x800AE638u, 0); wr32(0x800AE634u, 0);
+    wr16(0x800AE620u, 4096); wr16(0x800AE628u, 4096); wr16(0x800AE630u, 4096);
+    gs_copy32(0x800AE7F0u, 0x800AE620u);
+    gs_copy32(0x800A63F0u, 0x800AE620u);
+    wr16(0x800A6400u, 0); wr16(0x800A63F8u, 0); wr16(0x800A63F0u, 0);
+    gs_copy32(0x800A6558u, 0x800A63F0u);
+    wr16(0x800A4F3Cu, 0); wr16(0x800A4F3Eu, 0); wr16(0x800A4F40u, 0); wr16(0x800A4F42u, 0);
+    wr16(0x800A5E52u, 0); wr16(0x800A5E50u, 0); wr16(0x800AE822u, 0);
+    wr16(0x800AE7F8u, (uint16_t)(q / 3));
+    wr16(0x800AE820u, 0);
+    wr8(0x80078817u, 2); wr8(0x80078827u, 2);
+    wr16(0x800AE824u, (uint16_t)rd32(0x800AE618u));
+    wr16(0x800AE826u, (uint16_t)rd32(0x800AE61Cu));
+    wr8(0x80078813u, 3); wr8(0x80078823u, 3);
+    wr32(0x800C7C70u, 1);
+}
+
+static void gs_set_clip(MusashiNativeLaneCall *call) {
+    /* 80052D00: clip rectangle of the current buffer, PutDrawEnv */
+    uint32_t i = (uint32_t)(int32_t)(int16_t)rd16(0x800C7C74u) * 2u;
+    int16_t ox = (int16_t)rd16(0x800794E0u + i), oy = (int16_t)rd16(0x800794E4u + i);
+    wr16(0x800A643Cu, rd16(0x800AE824u));
+    wr16(0x800A643Eu, rd16(0x800AE826u));
+    wr16(0x800A6438u, (uint16_t)((int16_t)rd16(0x800AE820u) + ox));
+    wr16(0x800A643Au, (uint16_t)((int16_t)rd16(0x800AE822u) + oy));
+    gs_call(call, 0x80059D68u, 1, 0x800A6438u, 0);
+}
+
+static void gs_set_offset(MusashiNativeLaneCall *call) {
+    /* 80052BEC: draw offset (interlaced: in the DRAWENV) or geometry offset */
+    int16_t buf = (int16_t)rd16(0x800C7C74u);
+    if ((int16_t)rd16(0x800C7C88u) != 0) {
+        uint32_t i = (uint32_t)(int32_t)buf * 2u;
+        wr16(0x800A654Au, 0);
+        wr16(0x800A6548u, 0);
+        wr16(0x800A6440u, (uint16_t)(rd16(0x800A5E50u) + rd16(0x800794E0u + i)));
+        wr16(0x800A6442u, (uint16_t)(rd16(0x800A5E52u) + rd16(0x800794E4u + i)));
+        gs_call(call, 0x80059D68u, 1, 0x800A6438u, 0);
+    } else {
+        int32_t ox = (int16_t)rd16(0x800A5E50u) + (int16_t)rd16(buf ? 0x800794E0u : 0x800794E2u);
+        int32_t oy = (int16_t)rd16(0x800A5E52u) + (int16_t)rd16(buf ? 0x800794E4u : 0x800794E6u);
+        gs_set_geom_offset(call, (uint32_t)ox, (uint32_t)oy);
+        wr16(0x800A6548u, (uint16_t)ox);
+        wr16(0x800A654Au, (uint16_t)oy);
+    }
+}
+
+static int hle_gs_init_graph(MusashiNativeLaneCall *call) {
+    /* 800525DC GsInitGraph(x, y, intmode, dith, vram) */
+    uint32_t x = call->r[4] & 0xFFFFu, y = call->r[5] & 0xFFFFu;
+    uint32_t far[32] = {0};
+    gs_init_graph_body(call, x, y, call->r[6] & 0xFFFFu, call->r[7] & 0xFFFFu,
+                       rd16(call->r[29] + 16u));
+    /* 80053CF8: InitGeom, SetFarColor(0, 0, 0), SetGeomOffset(0, 0) */
+    /* 80047CB4 InitGeom: _patch_gte (8004D16C) rewrites the BIOS RAM
+     * exception handler for GTE-in-delay-slot returns; the native exception
+     * path runs no MIPS handler, so that patch has nothing to act on. Then
+     * Status CU2 on and the PsyCross InitGeom control-register setup. */
+    if (!g_driver.ops || !g_driver.ops->cop2_enable || !g_driver.ops->cop2_enable(g_driver.ops->user))
+        driver_stop("InitGeom_cu2_refused", 0x80047CD0u);
+    if (!bfm_psyq_InitGeom(far)) driver_stop("InitGeom_refused", 0x80047CB4u);
+    if (!bfm_psyq_SetFarColor(far)) driver_stop("SetFarColor_refused", 0x80053AD8u);
+    gs_set_geom_offset(call, 0, 0);
+    wr16(0x800A654Au, 0);
+    wr16(0x800A6548u, 0);
+    wr16(0x800C7C74u, 0);
+    gs_init_coord(x, y);
+    gs_set_clip(call);
+    gs_set_offset(call);
+    return 1;
+}
+
+static int hle_gs_def_disp_buff(MusashiNativeLaneCall *call) {
+    /* 80053178 GsDefDispBuff(x0, y0, x1, y1): the two buffer origins; the
+     * non-interlaced case also keeps them as the clip origins */
+    wr16(0x800794E0u, (uint16_t)call->r[4]);
+    wr16(0x800794E2u, (uint16_t)call->r[6]);
+    wr16(0x800794E4u, (uint16_t)call->r[5]);
+    wr16(0x800794E6u, (uint16_t)call->r[7]);
+    if ((int16_t)rd16(0x800C7C88u) != 0) {
+        wr16(0x800A4F3Cu, 0); wr16(0x800A4F3Eu, 0); wr16(0x800A4F40u, 0); wr16(0x800A4F42u, 0);
+    } else {
+        wr16(0x800A4F3Cu, (uint16_t)call->r[4]);
+        wr16(0x800A4F3Eu, (uint16_t)call->r[6]);
+        wr16(0x800A4F40u, (uint16_t)call->r[5]);
+        wr16(0x800A4F42u, (uint16_t)call->r[7]);
+    }
+    gs_set_clip(call);
+    gs_set_offset(call);
+    return 1;
+}
+
+static int hle_gs_init_3d(MusashiNativeLaneCall *call) {
+    /* 80053218: projection centre = half the resolution, the offset, and
+     * three libgs defaults */
+    int32_t w = (int32_t)rd32(0x800AE618u), h = (int32_t)rd32(0x800AE61Cu);
+    wr16(0x800A5E50u, (uint16_t)(w / 2));
+    wr16(0x800A5E52u, (uint16_t)(h / 2));
+    gs_set_offset(call);
+    wr32(0x800C73D0u, 10);
+    wr32(0x800C6DC8u, 0);
+    wr32(0x800AE7E8u, 16383);
+    return 1;
+}
+
+static int hle_gs_init_graph2(MusashiNativeLaneCall *call) {
+    /* 800527C4 GsInitGraph2(x, y, intmode, dith, vram): no ResetGraph */
+    uint32_t intmode = call->r[6];
+    wr16(0x800A649Cu, (uint16_t)call->r[4]);
+    wr16(0x800A649Eu, (uint16_t)call->r[5]);
+    wr16(0x800A644Cu, 0);
+    wr8(0x800A644Eu, (uint8_t)call->r[7]);
+    wr8(0x800A644Fu, 0);
+    wr8(0x800A6450u, 0);
+    wr8(0x800A64A8u, (uint8_t)(intmode & 1u));
+    wr16(0x800C7C88u, (uint16_t)(intmode & 4u));
+    wr8(0x800A64A9u, (uint8_t)rd16(call->r[29] + 16u));
+    gs_init_coord(call->r[4] & 0xFFFFu, call->r[5] & 0xFFFFu);
+    return 1;
+}
+
+static int hle_gs_def_disp_buff2(MusashiNativeLaneCall *call) {
+    /* 80053EEC: GsDefDispBuff without the clip/offset refresh */
+    wr16(0x800794E0u, (uint16_t)call->r[4]);
+    wr16(0x800794E2u, (uint16_t)call->r[6]);
+    wr16(0x800794E4u, (uint16_t)call->r[5]);
+    wr16(0x800794E6u, (uint16_t)call->r[7]);
+    if ((int16_t)rd16(0x800C7C88u) != 0) {
+        wr16(0x800A4F3Cu, 0); wr16(0x800A4F3Eu, 0); wr16(0x800A4F40u, 0); wr16(0x800A4F42u, 0);
+    } else {
+        wr16(0x800A4F3Cu, (uint16_t)call->r[4]);
+        wr16(0x800A4F3Eu, (uint16_t)call->r[6]);
+        wr16(0x800A4F40u, (uint16_t)call->r[5]);
+        wr16(0x800A4F42u, (uint16_t)call->r[7]);
+    }
+    return 1;
+}
+
+static int hle_set_def_draw_env(MusashiNativeLaneCall *call) {
+    /* 80058A4C SetDefDrawEnv(env, x, y, w, h) -> env */
+    uint32_t env = call->r[4], x = call->r[5], y = call->r[6];
+    int32_t h = (int32_t)rd32(call->r[29] + 16u);
+    unsigned i;
+    wr16(env + 0u, (uint16_t)x);
+    wr16(env + 2u, (uint16_t)y);
+    wr16(env + 4u, (uint16_t)call->r[7]);
+    for (i = 12u; i <= 18u; i += 2u) wr16(env + i, 0);
+    wr8(env + 25u, 0); wr8(env + 26u, 0); wr8(env + 27u, 0);
+    wr8(env + 22u, 1);
+    wr16(env + 6u, (uint16_t)h);
+    wr8(env + 23u, (uint8_t)(rd32(0x8006CBE8u) ? h < 289 : h < 257));   /* dfe */
+    wr16(env + 8u, (uint16_t)x);
+    wr16(env + 10u, (uint16_t)y);
+    wr16(env + 20u, 10);
+    wr8(env + 24u, 0);
+    call->r[2] = env;
+    return 1;
+}
+
+static int hle_clear_image(MusashiNativeLaneCall *call) {
+    /* 80059888 ClearImage(rect, r, g, b): the debug-level rect check
+     * (80059760) only prints; the queued GPU fill runs at once through the
+     * renderer (the frame driver's DrawSync points find an idle queue). */
+    if ((int8_t)rd8(0x8007278Au) >= 2)
+        fprintf(stderr, "native_boot: FRAME_DRIVER ClearImage rect=%08x\n", (unsigned)call->r[4]);
+    if (!bfm_psyq_ClearImage(call->r)) driver_stop("ClearImage_refused", 0x80059888u);
     return 1;
 }
 
@@ -2429,6 +2669,13 @@ static const MusashiNativeLaneEntry k_driver_entries[] = {
     {0x8005CF18u, 0, hle_exit_critical,   "ExitCriticalSection", 0, 0, 0},
     {0x80059234u, 0, hle_reset_graph,     "ResetGraph",          1, 1, 0},
     {0x800594CCu, 0, hle_set_graph_debug, "SetGraphDebug",       1, 1, 0},
+    {0x800525DCu, 0, hle_gs_init_graph,   "GsInitGraph",         4, 0, 0},
+    {0x80053178u, 0, hle_gs_def_disp_buff,"GsDefDispBuff",       4, 0, 0},
+    {0x80053218u, 0, hle_gs_init_3d,      "GsInit3D",            0, 0, 0},
+    {0x800527C4u, 0, hle_gs_init_graph2,  "GsInitGraph2",        4, 0, 0},
+    {0x80053EECu, 0, hle_gs_def_disp_buff2,"GsDefDispBuff2",     4, 0, 0},
+    {0x80058A4Cu, 0, hle_set_def_draw_env,"SetDefDrawEnv",       4, 1, 0},
+    {0x80059888u, 0, hle_clear_image,     "ClearImage",          4, 1, 0},
     {0x8005D0F8u, 0, hle_pad_start_stop,  "PadStartCom",         0, 0, 0},
     {0x8005D118u, 0, hle_pad_start_stop,  "PadStopCom",          0, 0, 0},
     {0x8005D184u, 0, hle_pad_get_state,   "PadGetState",         1, 1, 0},

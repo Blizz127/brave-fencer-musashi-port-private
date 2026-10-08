@@ -280,6 +280,30 @@ int bfm_psyq_LoadImage(uint32_t *r) {
     return 1;
 }
 
+/* 80059888 ClearImage(rect, r, g, b): the GPU fill (GP0 02) through the
+ * renderer, with the fill's 16-pixel x/width granularity. Not a compat row:
+ * the strict frame driver's HLE calls it (B27). */
+int bfm_psyq_ClearImage(uint32_t *r) {
+    BfmPlatRect rc;
+    uint16_t *px, c;
+    size_t n, i;
+    if (!read_rect(A(0), &rc)) return 0;
+    rc.x &= 0x3F0;
+    rc.w = (int16_t)(((rc.w & 0x3FF) + 0xF) & ~0xF);
+    if (rc.x + rc.w > 1024) rc.w = (int16_t)(1024 - rc.x);
+    if (rc.w <= 0 || rc.h <= 0) { RET(0); return 1; }
+    if (!bfm_plat_rect_valid(&rc)) return 0;
+    c = (uint16_t)(((A(3) & 0xF8u) << 7) | ((A(2) & 0xF8u) << 2) | ((A(1) & 0xFFu) >> 3));
+    n = (size_t)rc.w * (size_t)rc.h;
+    px = (uint16_t *)malloc(n * 2u);
+    if (!px) return 0;
+    for (i = 0; i < n; i++) px[i] = c;
+    bfm_plat_renderer_upload_vram(&rc, px);
+    free(px);
+    RET(0);
+    return 1;
+}
+
 int bfm_psyq_StoreImage(uint32_t *r) {
     BfmPlatRect rc;
     uint8_t *dst;
