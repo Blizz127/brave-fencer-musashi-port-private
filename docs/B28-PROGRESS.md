@@ -366,6 +366,18 @@ Increment 29 (generator, strict only):
 - Main lane 3459/4012, overlay lane 2758/3276.
 - First stop: `guest_pc=8012c1b8` (overlay), frame ~1200, no host fault.
 
+Increment 30 (source, main_0012 and sc02_0031):
+- Single-call wrappers that the C declared void, while the retail tail call
+  leaves the callee's result in v0 for callers that read it (rule abi: void
+  callee, caller reads v0), now return that result with the callee's own
+  definition type (pointers as `void *`). Each one was rebuilt with
+  gcc-2.7.2-psx -O2 and is byte-identical to the member bytes:
+  main_0012 801288B0 8012C194 8012C1B8 8012CBF4 8012CC64 80143970 80146578
+  8014659C 801465C0 80161208 80161240 80161418 80161450 8016158C;
+  sc02_0031 8012C194 8012C1B8 80146578 8014659C 801465C0.
+- Main lane 3473/4012, overlay lane 2772/3276.
+- First stop: `guest_pc=80181a24` (sc02_0031), frame ~1200, no host fault.
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits

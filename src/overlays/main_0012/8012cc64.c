@@ -33,9 +33,11 @@ struct obj_8012CC88 {
 
 extern u16 D_800D3918[];
 
-void func_8012CC88(struct obj_8012CC88 *arg0, s32 arg1, u16 *arg2);
+int func_8012CC88(struct obj_8012CC88 *arg0, s32 arg1, u16 *arg2);
 
-void func_8012CC64(struct obj_8012CC88 *arg0, u16 *arg1) {
-    func_8012CC88(arg0, 0x11, arg1);
+/* B28: returns func_8012CC88's result; the retail tail call leaves it in v0,
+ * which callers read. Byte-identical (gcc-2.7.2-psx -O2). */
+int func_8012CC64(struct obj_8012CC88 *arg0, u16 *arg1) {
+    return func_8012CC88(arg0, 0x11, arg1);
 }
 

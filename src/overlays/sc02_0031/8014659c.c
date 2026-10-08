@@ -13,8 +13,10 @@ typedef double f64;
 #define NULL ((void *)0)
 #endif
 
-extern void func_8001CFDC(s32, s32);
+extern void * func_8001CFDC(s32, s32);
 
-void func_8014659C(void) {
-    func_8001CFDC(6, 0x16);
+/* B28: returns func_8001CFDC's result; the retail tail call leaves it in v0,
+ * which callers read. Byte-identical (gcc-2.7.2-psx -O2). */
+void * func_8014659C(void) {
+    return func_8001CFDC(6, 0x16);
 }

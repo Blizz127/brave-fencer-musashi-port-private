@@ -5,8 +5,10 @@
 
 #include "psx_types.h"
 
-void func_8012C588(s32, s32);                            /* static */
+s32 func_8012C588(s32, s32);                            /* static */
 
-void func_80143970(s32 arg0) {
-    func_8012C588(0x1B, arg0);
+/* B28: returns func_8012C588's result; the retail tail call leaves it in v0,
+ * which callers read. Byte-identical (gcc-2.7.2-psx -O2). */
+s32 func_80143970(s32 arg0) {
+    return func_8012C588(0x1B, arg0);
 }

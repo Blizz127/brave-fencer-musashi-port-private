@@ -5,10 +5,12 @@
  * whatever reproduces the bytes; they are not evidence of the
  * original declaration. */
 
-void func_8001ABBC(s32, s32, void *, s32, s32);               /* extern */
+int func_8001ABBC(s32, s32, void *, s32, s32);               /* extern */
 extern s32 D_80182D1C;
 extern s32 *D_800AEFD0;
 
-void func_801288B0(void) {
-    func_8001ABBC(0, 0, &D_800AEFD0, D_80182D1C, 0);
+/* B28: returns func_8001ABBC's result; the retail tail call leaves it in v0,
+ * which callers read. Byte-identical (gcc-2.7.2-psx -O2). */
+int func_801288B0(void) {
+    return func_8001ABBC(0, 0, &D_800AEFD0, D_80182D1C, 0);
 }

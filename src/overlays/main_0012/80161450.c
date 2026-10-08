@@ -5,7 +5,9 @@
 
 #include "psx_types.h"
 s32 func_801615C4();
-void func_80161774();
-void func_80161450(void *p) {
-    func_80161774(p, func_801615C4(p, 0));
+s32 func_80161774();
+/* B28: returns func_80161774's result; the retail tail call leaves it in v0,
+ * which callers read. Byte-identical (gcc-2.7.2-psx -O2). */
+s32 func_80161450(void *p) {
+    return func_80161774(p, func_801615C4(p, 0));
 }

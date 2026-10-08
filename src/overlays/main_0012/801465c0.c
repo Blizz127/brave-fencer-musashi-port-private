@@ -5,8 +5,10 @@
 
 #include "psx_types.h"
 
-void func_8001D074(s32, s32);                              /* extern */
+void * func_8001D074(s32, s32);                              /* extern */
 
-void func_801465C0(void) {
-    func_8001D074(0x16, 0x3E);
+/* B28: returns func_8001D074's result; the retail tail call leaves it in v0,
+ * which callers read. Byte-identical (gcc-2.7.2-psx -O2). */
+void * func_801465C0(void) {
+    return func_8001D074(0x16, 0x3E);
 }

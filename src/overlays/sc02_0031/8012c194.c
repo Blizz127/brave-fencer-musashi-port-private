@@ -13,8 +13,10 @@ typedef double f64;
 #define NULL ((void *)0)
 #endif
 
-extern void func_8001D074(s32 a, s32 b);
+extern void * func_8001D074(s32 a, s32 b);
 
-void func_8012C194(void) {
-    func_8001D074(0x3E, 0x7D);
+/* B28: returns func_8001D074's result; the retail tail call leaves it in v0,
+ * which callers read. Byte-identical (gcc-2.7.2-psx -O2). */
+void * func_8012C194(void) {
+    return func_8001D074(0x3E, 0x7D);
 }
