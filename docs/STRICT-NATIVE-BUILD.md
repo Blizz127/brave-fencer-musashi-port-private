@@ -258,3 +258,7 @@ Increment 13 (strict only):
 - **Symbol-binding asm:** file-scope `.globl`/`.set` asm that binds a symbol
   to a retail address is dropped when the IR never names that symbol. Other
   module asm is refused.
+
+Increment 14 (strict only):
+- **Int-cast frame addresses:** `(s32)&local` passed to a callee counts as
+  the local's address for retail-frame placement.

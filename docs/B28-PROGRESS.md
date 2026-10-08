@@ -180,6 +180,13 @@ Increment 13 (generator, strict only):
 - The overlay lane is now 2617/3269. First stop: `guest_pc=801814e4`
   (sc02_0031), refused as `escape` (`(s32)&local` passed as an int).
 
+Increment 14 (generator, strict only):
+- `place_guest_locals` follows `ptrtoint ptr %local to i32`. A local whose
+  address reaches a callee as an int (`(s32)&m1`) moves into the retail frame
+  like a pointer argument, and its integer value is then the guest address.
+  The overlay lane is now 2662/3269 (`escape` refusals 100 -> 37).
+- First stop: `guest_pc=80049cac` (libgte RotMatrixZYX, compat stub).
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits

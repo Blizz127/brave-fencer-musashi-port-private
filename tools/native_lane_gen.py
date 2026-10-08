@@ -2045,6 +2045,12 @@ def place_guest_locals(ir, fname, words, vram, frame):
             if lm and slot_src.get(lm.group(1)) in derived:
                 derived[name] = derived[slot_src[lm.group(1)]]
                 continue
+            pm = re.fullmatch(r"ptrtoint ptr (%[\w.\"$]+) to i32", rhs.strip())
+            if STRICT and pm and pm.group(1) in derived:
+                # `(s32)&local` passed as an int argument: once the local
+                # sits in the retail frame its address is the guest one
+                derived[name] = derived[pm.group(1)]
+                continue
             am = re.fullmatch(r"alloca ([^,]+), align (\d+)", rhs.strip())
             if am:
                 allocas[name] = (am.group(1).strip(), k)
