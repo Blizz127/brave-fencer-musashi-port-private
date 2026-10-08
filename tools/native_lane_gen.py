@@ -987,7 +987,7 @@ LANE_HELPERS = ("lane_sdiv32", "lane_srem32", "lane_udiv32", "lane_urem32")
 # has charged, a lost-state flag, the deadline budget and the guard's tick.
 LEDGER_SYMBOLS = ("musashi_lane_ledger", "musashi_lane_ledger_lost", "musashi_lane_budget",
                   "musashi_lane_seg_extra", "musashi_lane_resume_pc", "musashi_lane_sp_adj",
-                  "musashi_lane_entry_sp", "musashi_native_lane_tick")
+                  "musashi_lane_entry_sp", "musashi_native_lane_tick", "musashi_lane_gte_mac")
 LEDGER_SEGS = re.compile(r"lane_segs_" + QFUNC)
 
 
@@ -1001,7 +1001,7 @@ def rewrite_symbols(ir, symbols, member=None, member_code=()):
         decl_globals[m.group(1) or m.group(2)] = m.group(3)
     replace = {}
     for name, rest in decl_globals.items():
-        if STRICT and name in (SP_ADJ, GUEST_SP) and rest.startswith("external "):
+        if STRICT and name in (SP_ADJ, GUEST_SP, GTE_MAC) and rest.startswith("external "):
             continue  # the guest sp pair (scratch_call_host), a host global
         if rest.startswith("external "):
             addr = guest_address(name, symbols)
@@ -2034,6 +2034,79 @@ def move_asm_host(text):
     return MOVE_ASM_RE.sub(lambda m: f"{m.group(1)} = (__typeof__({m.group(1)}))({m.group(2)});", text)
 
 
+# Strict (B28): a load written as asm to pin its scheduling (80133CD4:
+# `asm("lh %0, 2(%2)" : "=r"(h) : "0"(h), "r"(p) : "memory")`) is the C load.
+LOAD_ASM_RE = re.compile(r'\b(?:__asm__|asm)\s*(?:volatile\s*|__volatile__\s*)?\(\s*'
+                         r'"(lh|lhu|lb|lbu|lw)\s+%0,\s*(-?\d+)\(%(\d)\)"\s*:\s*"=r"\s*\(\s*(\w+)\s*\)\s*'
+                         r':\s*((?:"\w*"\s*\(\s*\w+\s*\)\s*,?\s*)+)(?::\s*"memory"\s*)?\)\s*;')
+LOAD_ASM_TYPE = {"lh": "short", "lhu": "unsigned short", "lb": "signed char",
+                 "lbu": "unsigned char", "lw": "int"}
+
+
+def load_asm_host(text):
+    def sub(m):
+        ins = re.findall(r'"(\w*)"\s*\(\s*(\w+)\s*\)', m.group(5))
+        k = int(m.group(3)) - 1  # %0 is the output
+        if not 0 <= k < len(ins) or ins[k][0] != "r":
+            return m.group(0)
+        return (f"{m.group(4)} = (__typeof__({m.group(4)}))*({LOAD_ASM_TYPE[m.group(1)]} *)"
+                f"((char *)({ins[k][1]}) + {int(m.group(2))});")
+    return LOAD_ASM_RE.sub(sub, text)
+
+
+# Strict (B28): the GTE square of a three-word vector (8012BFA8, 80133CD4,
+# 8013E2C4): `lwc2 $9/$10/$11, 0/4/8(%0); nop; nop; sqr 0` loads IR1-3 (the
+# low halves, sign-extended) and computes MAC1-3 = IRn * IRn (sf=0), and a
+# later `swc2 $25/$26/$27, 0/4/8(%0)` stores MAC1-3. On the host both become C
+# through musashi_lane_gte_mac (pc_port/mips_formatter.c); applied only when
+# a TU has both halves, so no MAC value comes from GTE state set elsewhere.
+GTE_SQR_RE = re.compile(r'\b(?:__asm__|asm)\s*(?:volatile\s*|__volatile__\s*)?\(\s*'
+                        r'"lwc2\s+\$9,\s*0\(%0\)\\n"\s*"lwc2\s+\$10,\s*4\(%0\)\\n"\s*"lwc2\s+\$11,\s*8\(%0\)\\n"\s*'
+                        r'"nop\\n"\s*"nop\\n"\s*"sqr\s+0\\n"\s*:\s*:\s*"r"\s*\(\s*([^()]+?)\s*\)\s*'
+                        r':\s*"\$9"\s*,\s*"\$10"\s*,\s*"\$11"\s*,\s*"memory"\s*\)\s*;')
+GTE_MAC_STORE_RE = re.compile(r'\b(?:__asm__|asm)\s*(?:volatile\s*|__volatile__\s*)?\(\s*'
+                              r'"swc2\s+\$25,\s*0\(%0\)\\n"\s*"swc2\s+\$26,\s*4\(%0\)\\n"\s*"swc2\s+\$27,\s*8\(%0\)\\n"\s*'
+                              r':\s*:\s*"r"\s*\(\s*([^()]+?)\s*\)\s*:\s*"memory"\s*\)\s*;')
+GTE_MAC = "musashi_lane_gte_mac"
+
+
+def gte_host(text):
+    if not (GTE_SQR_RE.search(text) and GTE_MAC_STORE_RE.search(text)):
+        return text
+    text = GTE_SQR_RE.sub(lambda m: (
+        "{ extern int %s[3]; const int *lane_gi = (const int *)(%s);"
+        " %s[0] = (int)(short)lane_gi[0] * (int)(short)lane_gi[0];"
+        " %s[1] = (int)(short)lane_gi[1] * (int)(short)lane_gi[1];"
+        " %s[2] = (int)(short)lane_gi[2] * (int)(short)lane_gi[2]; }"
+        % (GTE_MAC, m.group(1), GTE_MAC, GTE_MAC, GTE_MAC)), text)
+    return GTE_MAC_STORE_RE.sub(lambda m: (
+        "{ extern int %s[3]; int *lane_go = (int *)(%s);"
+        " lane_go[0] = %s[0]; lane_go[1] = %s[1]; lane_go[2] = %s[2]; }"
+        % (GTE_MAC, m.group(1), GTE_MAC, GTE_MAC, GTE_MAC)), text)
+
+
+# Strict (B28): top-level asm that only defines assembler macros (the GTE
+# mnemonics of gte_macros.inc) emits no code; the host TU drops it.
+MACRO_ASM_RE = re.compile(r'^(?:__asm__|asm)\s*\(\s*((?:"(?:[^"\\]|\\.)*"\s*)+)\)\s*;', re.M)
+
+
+def strip_macro_asm(text):
+    def sub(m):
+        body = "".join(re.findall(r'"((?:[^"\\]|\\.)*)"', m.group(1)))
+        lines = [l for l in body.split("\\n") if l.strip()]
+        depth = 0
+        for l in lines:
+            t = l.strip()
+            if t.startswith(".macro"):
+                depth += 1
+            elif t.startswith(".endm"):
+                depth -= 1
+            elif depth <= 0:
+                return m.group(0)
+        return "" if depth == 0 and lines else m.group(0)
+    return MACRO_ASM_RE.sub(sub, text)
+
+
 GLOBAL_PIN_RE = re.compile(r'^register\s+([^;{}=]*?)\s*(?:__asm__|asm)\s*\(\s*"\$\w+"\s*\)\s*;', re.M)
 
 
@@ -2058,6 +2131,9 @@ def host_source(text):
                              text)
         text = scratch_call_host(text) or text
         text = move_asm_host(text)
+        text = load_asm_host(text)
+        text = gte_host(text)
+        text = strip_macro_asm(text)
     return REG_PIN_RE.sub(r"\1", text)
 
 
@@ -3910,6 +3986,9 @@ def strict_mixed_ok(m):
     text = REG_PIN_RE.sub(r"\1", src.read_text(errors="replace"))
     text = LA_ASM_RE.sub("", text)
     text = MOVE_ASM_RE.sub("", text)
+    text = load_asm_host(text)
+    text = gte_host(text)
+    text = strip_macro_asm(text)
     ss = scratch_call_host(text)
     text = SCRATCH_CALL_RE.sub("", ss) if ss is not None else text
     asms = re.findall(r'(?:__asm__|\basm)\s*(?:volatile\s*|__volatile__\s*)?\(\s*("[^"]*")', text)

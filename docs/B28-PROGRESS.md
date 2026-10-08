@@ -573,6 +573,27 @@ Increment 32 (generator, strict only):
 - Strict stop moves to 80133CD4. Frames reach 1200, prims=0 draw=0: no
   frame drawn yet.
 
+### Increment 43: GTE square, asm loads and assembler-macro asm as host C
+
+- 80133CD4 (main_0012, sc02_0031) squares a vector on the GTE
+  (`lwc2 $9-$11; nop; nop; sqr 0`, then `swc2 $25-$27`), pins one halfword
+  load as `asm("lh %0, 2(%2)")`, and carries the gte_macros.inc mnemonics as
+  top-level `.macro` asm. Strict-only host rewrites:
+  - `gte_host`: the exact sqr-0 load and MAC store pair become C through
+    `musashi_lane_gte_mac[3]` (new int32 global in pc_port/mips_formatter.c):
+    MACn = (s16)word_n * (s16)word_n, stored where the retail swc2 stores it.
+    Applied only when a TU has both halves, so no MAC value is taken from GTE
+    state set elsewhere. IR1-3 are not modelled (no reader in these TUs).
+  - `load_asm_host`: `lh/lhu/lb/lbu/lw %0, off(%n)` with one output becomes
+    the typed C load.
+  - `strip_macro_asm`: top-level asm made only of `.macro ... .endm`
+    definitions (emits no code) is dropped.
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0. Lanes: main 3591/4064,
+  overlay 2889/3326. Nothing lost; gained 8012BFA8, 80133CD4, 8013E2C4
+  (main_0012), 80133CD4 and 80183DC0 (sc02_0031).
+- Strict stop moves to 80150A70. Frames reach 1200, prims=0 draw=0: no frame
+  drawn yet.
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits

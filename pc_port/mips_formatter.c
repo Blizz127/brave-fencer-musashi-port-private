@@ -13586,6 +13586,9 @@ uint64_t musashi_lane_seg_extra;
 uint32_t musashi_lane_resume_pc;
 uint32_t musashi_lane_sp_adj;
 uint32_t musashi_lane_entry_sp;
+/* GTE MAC1-3 of a native body's `sqr` (strict native lane, B28): the
+ * generated C computes them and stores them where the retail swc2 does. */
+int32_t musashi_lane_gte_mac[3];
 static MusashiNativeLaneGuardStats g_guard;
 static int g_guard_strict = -1;
 
