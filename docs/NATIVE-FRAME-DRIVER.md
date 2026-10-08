@@ -507,3 +507,17 @@ All rows below were written from the retail disassembly:
 - main_0004 now has clean-room C for its dispatcher and state 0, admitted
   through `config/overlay_main_0004.yaml` and the strict overlay allow list.
   The strict stop moves to state 2 (800CF010).
+
+### B28 increment 5: libpress MDEC and the stream ring (2026-10-08)
+
+- **libpress low level, linked into the movie overlays:** MDEC_reset
+  800D2D68, MDEC_in 800D2E64, MDEC_out 800D2EF8, the in/out syncs
+  800D2F88/800D3020, status 800D30B8 and the timeout report 800D30D0.
+  - They go through the pointer cells 800DB63C..800DB674 to the
+    `gpu_io` device (MDEC 1F801820/24, DMA0/1). DPCR falls back to the CD
+    register device.
+  - Each entry checks an FNV-1a 64 hash of the resident bytes and stops when
+    another member is loaded. A driver entry shadows overlay lane functions at
+    the same PC; no allowed member collides today.
+- **libcd streaming:** StSetRing 80043088, StClearRing 8004689C, and the
+  slot clear at 80046BFC.

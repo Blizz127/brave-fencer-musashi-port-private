@@ -225,3 +225,10 @@ Increment 4 (strict only):
   every site must be covered. Any remaining tie is resolved by the locals'
   definition order (the compiler's frame layout order). If no assignment
   fits, or the tie stays unresolved, the old refusal stands.
+
+Increment 5 (strict only):
+- **Tied empty asm:** an empty asm whose output is tied to a different input
+  expression is emitted as an assignment (`out = (in);`). Before, strict
+  accepted a pinned output as an identity and dropped the move.
+- **Overlay allow list:** `main_0003 all` is added. Its vendor C also runs
+  for main_0004 wherever the bytes are identical.

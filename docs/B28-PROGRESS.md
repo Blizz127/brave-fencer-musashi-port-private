@@ -77,6 +77,23 @@ Increment 4:
   covers most of the movie player and libpress. Then HLE or C for whatever
   the lane still refuses (MDEC hardware access).
 
+Increment 5:
+- Added `main_0003 all` to the strict overlay allow list. Its vendor C
+  (Druthulu) covers the movie player and libpress wherever main_0004's bytes
+  are identical (digest-matched per call). Overlay lane: 291/319.
+- Generator fix (strict): an empty asm whose output is tied to a different
+  input (`"=r"(s1) : "0"(arg0)`) becomes `s1 = (arg0);`. Before this fix,
+  strict treated a pinned output as an identity, which left s1 uninitialised
+  (host fault in main_0003 800CFB3C).
+- libpress MDEC low level (800D2D68 reset, 800D2E64 in, 800D2EF8 out,
+  800D2F88/800D3020 syncs, 800D30B8 status, 800D30D0 timeout) as driver HLE
+  through the gpu_io device (MDEC + DMA0/1). It is guarded by an FNV-1a 64
+  hash of the resident bytes, since overlays share addresses.
+- libcd streaming: StSetRing 80043088, StClearRing 8004689C, 80046BFC.
+- First stop: `guest_pc=80046abc` (libcd streaming). Next: the remaining St*
+  functions (StSetStream, StGetNext, StFreeRing, StUnSetRing 800468FC and the
+  ring-filling ready callback), then the MDEC decode path.
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits

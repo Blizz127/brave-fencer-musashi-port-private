@@ -3192,6 +3192,158 @@ static int32_t ss_vm_set_vab(uint32_t a0, uint32_t a1) {
     return 0;
 }
 SPU_ENTRY(hle_ss_vm_set_vab) { call->r[2] = (uint32_t)ss_vm_set_vab(call->r[4], call->r[5]); return 1; }
+/* ---- libpress MDEC low level, linked into the movie overlays (B28) ----
+ * main_0003 and main_0004 carry the same bytes at 800D2D68..800D3200. Those
+ * functions touch MDEC and DMA0/1 registers through the pointer cells
+ * 800DB63C..800DB674, which the lane refuses (rule "memory"), so they are
+ * reproduced here from the disassembly. Overlays share addresses, so each
+ * entry first checks that the resident bytes hash (FNV-1a 64, the lane's
+ * member digest) to the expected function; a hash is not game data. */
+enum { MD_DMA0_MADR = 0x800DB63Cu, MD_DMA0_BCR = 0x800DB640u, MD_DMA0_CHCR = 0x800DB644u,
+       MD_DMA1_MADR = 0x800DB648u, MD_DMA1_BCR = 0x800DB64Cu, MD_DMA1_CHCR = 0x800DB650u,
+       MD_CMD = 0x800DB66Cu, MD_CTRL = 0x800DB670u, MD_DPCR = 0x800DB674u };
+
+static void ovl_resident(uint32_t pc, uint32_t size, uint64_t want) {
+    uint64_t h = 0xCBF29CE484222325ull;
+    uint32_t i;
+    for (i = 0; i < size; ++i) h = (h ^ rd8(pc + i)) * 0x100000001B3ull;
+    if (h != want) driver_stop("overlay_hle_not_resident", pc);
+}
+static uint32_t md_r(uint32_t cell) {
+    uint32_t a = rd32(cell), v = 0;
+    const MusashiGpuIoDevice *g = g_driver.devices ? g_driver.devices->gpu_io : NULL;
+    if (g && g->read32 && g->read32(g->userdata, a, &v)) return v;
+    return hw32(a);
+}
+static void md_w(uint32_t cell, uint32_t v) {
+    uint32_t a = rd32(cell);
+    const MusashiGpuIoDevice *g = g_driver.devices ? g_driver.devices->gpu_io : NULL;
+    if (g && g->write32 && g->write32(g->userdata, a, v)) return;
+    hw32w(a, v);
+}
+static void mdec_reset_regs(int read_back) {
+    md_w(MD_CTRL, 0x80000000u);
+    md_w(MD_DMA0_CHCR, 0);
+    md_w(MD_DMA1_CHCR, 0);
+    if (read_back) (void)md_r(MD_DMA1_CHCR);
+    md_w(MD_CTRL, 0x60000000u);
+}
+static uint32_t mdec_timeout(const char *what) {
+    /* 800D30D0: report and reset; returns 0 */
+    uint32_t st = md_r(MD_CTRL);
+    fprintf(stderr, "native_boot: MDEC %s timeout status=%08x dma0=%08x dma1=%08x\n",
+            what, st, md_r(MD_DMA0_CHCR), md_r(MD_DMA1_CHCR));
+    mdec_reset_regs(1);
+    return 0;
+}
+static uint32_t mdec_in_sync(void) {
+    /* 800D2F88: wait while the input FIFO is busy (bit 29), 0x100000 tries */
+    int32_t count = 0x100000;
+    while (md_r(MD_CTRL) & 0x20000000u) {
+        if (--count == -1) { (void)mdec_timeout("in_sync"); return (uint32_t)-1; }
+        driver_spin(16u);
+    }
+    return 0;
+}
+static uint32_t mdec_out_sync(void) {
+    /* 800D3020: wait while DMA1 runs (CHCR bit 24), 0x100000 tries */
+    int32_t count = 0x100000;
+    while (md_r(MD_DMA1_CHCR) & 0x1000000u) {
+        if (--count == -1) { (void)mdec_timeout("out_sync"); return (uint32_t)-1; }
+        driver_spin(16u);
+    }
+    return 0;
+}
+static void mdec_in(uint32_t addr, uint32_t size) {
+    /* 800D2E64: DMA0 from addr+4, first word is the MDEC command */
+    (void)mdec_in_sync();
+    md_w(MD_DPCR, md_r(MD_DPCR) | 0x88u);
+    md_w(MD_DMA0_MADR, addr + 4u);
+    md_w(MD_DMA0_BCR, ((size >> 5) << 16) | 0x20u);
+    md_w(MD_CMD, rd32(addr));
+    md_w(MD_DMA0_CHCR, 0x1000201u);
+}
+static void mdec_out(uint32_t addr, uint32_t size) {
+    /* 800D2EF8 */
+    (void)mdec_out_sync();
+    md_w(MD_DPCR, md_r(MD_DPCR) | 0x88u);
+    md_w(MD_DMA1_CHCR, 0);
+    md_w(MD_DMA1_MADR, addr);
+    md_w(MD_DMA1_BCR, ((size >> 5) << 16) | 0x20u);
+    md_w(MD_DMA1_CHCR, 0x1000200u);
+}
+SPU_ENTRY(hle_mdec_reset) {
+    /* 800D2D68 MDEC_reset(mode): 0 full reset plus the two default tables
+     * (800DB52C, 800DB5B0, 32 bytes each, through MDEC_in), 1 registers only */
+    ovl_resident(0x800D2D68u, 252u, 0x2F280E9FC3D5B9BAull);
+    if (call->r[4] == 0u) {
+        mdec_reset_regs(0);
+        mdec_in(0x800DB52Cu, 32u);
+        mdec_in(0x800DB5B0u, 32u);
+    } else if (call->r[4] == 1u) {
+        mdec_reset_regs(1);
+    } else {
+        fprintf(stderr, "native_boot: MDEC_rest:bad option(%d)\n", (int)call->r[4]);
+    }
+    return 1;
+}
+SPU_ENTRY(hle_mdec_in) {
+    ovl_resident(0x800D2E64u, 148u, 0x628028B0D6EDFF60ull);
+    mdec_in(call->r[4], call->r[5]);
+    return 1;
+}
+SPU_ENTRY(hle_mdec_out) {
+    ovl_resident(0x800D2EF8u, 144u, 0x17076E67904BB97Cull);
+    mdec_out(call->r[4], call->r[5]);
+    return 1;
+}
+SPU_ENTRY(hle_mdec_in_sync) {
+    ovl_resident(0x800D2F88u, 152u, 0x576FF23633C63E08ull);
+    call->r[2] = mdec_in_sync();
+    return 1;
+}
+SPU_ENTRY(hle_mdec_out_sync) {
+    ovl_resident(0x800D3020u, 152u, 0x44FECBF9FE4ACC6Dull);
+    call->r[2] = mdec_out_sync();
+    return 1;
+}
+SPU_ENTRY(hle_mdec_status) {
+    ovl_resident(0x800D30B8u, 24u, 0x66DCECDE0526A9D6ull);
+    call->r[2] = md_r(MD_CTRL);
+    return 1;
+}
+SPU_ENTRY(hle_mdec_timeout) {
+    ovl_resident(0x800D30D0u, 304u, 0x0147896EE4EA6E2Full);
+    call->r[2] = mdec_timeout("print");
+    return 1;
+}
+/* ---- libcd streaming (St*), retail 80043088.., from the disassembly ---- */
+enum { ST_RING = 0x800C7C94u, ST_RING_SIZE = 0x800C7F00u };
+static void st_clear_slots(uint32_t first, uint32_t count) {
+    /* 80046BFC: zero the first word of each 32-byte slot header */
+    uint32_t i;
+    for (i = 0; i < count; ++i) wr32(rd32(ST_RING) + ((first + i) << 5), 0);
+}
+static void st_clear_ring(void) {
+    /* 8004689C StClearRing */
+    wr32(0x800C6D40u, 0);
+    wr32(0x800C6D3Cu, 0);
+    wr32(0x800C6D38u, 0);
+    wr32(0x800AE644u, 0);
+    st_clear_slots(0, rd32(ST_RING_SIZE));
+    wr32(0x800A5F1Cu, 0);
+    wr16(0x800A2B94u, 0);
+    wr32(0x80078E38u, 0);
+}
+SPU_ENTRY(hle_st_set_ring) {
+    /* 80043088 StSetRing(ring, size) */
+    wr32(ST_RING, call->r[4]);
+    wr32(ST_RING_SIZE, call->r[5]);
+    st_clear_ring();
+    return 1;
+}
+SPU_ENTRY(hle_st_clear_ring) { st_clear_ring(); return 1; }
+SPU_ENTRY(hle_st_clear_slots) { st_clear_slots(call->r[4], call->r[5]); return 1; }
 SPU_ENTRY(hle_ss_set_serial_attr) {
     /* 8003D650 SsSetSerialAttr(s_num, attr, mode): s_num 0 = CD, 1 = EXT;
      * attr 0 = mix, 1 = reverb. Builds a one-field SpuCommonAttr in the retail
@@ -3534,6 +3686,16 @@ static const MusashiNativeLaneEntry k_driver_entries[] = {
     {0x8003F380u, 0, hle_ss_ut_get_vag_addr, "SsUtGetVagAddr",   2, 1, 0},
     {0x8003D650u, 0, hle_ss_set_serial_attr, "SsSetSerialAttr",  3, 0, 0},
     {0x8003EDE8u, 0, hle_ss_set_serial_vol, "SsSetSerialVol",    3, 0, 0},
+    {0x800D2D68u, 0, hle_mdec_reset,     "MDEC_reset(ovl)",     1, 0, 0},
+    {0x800D2E64u, 0, hle_mdec_in,        "MDEC_in(ovl)",        2, 0, 0},
+    {0x800D2EF8u, 0, hle_mdec_out,       "MDEC_out(ovl)",       2, 0, 0},
+    {0x800D2F88u, 0, hle_mdec_in_sync,   "MDEC_in_sync(ovl)",   0, 1, 0},
+    {0x800D3020u, 0, hle_mdec_out_sync,  "MDEC_out_sync(ovl)",  0, 1, 0},
+    {0x800D30B8u, 0, hle_mdec_status,    "MDEC_status(ovl)",    0, 1, 0},
+    {0x800D30D0u, 0, hle_mdec_timeout,   "MDEC_timeout(ovl)",   1, 1, 0},
+    {0x80043088u, 0, hle_st_set_ring,    "StSetRing",           2, 0, 0},
+    {0x8004689Cu, 0, hle_st_clear_ring,  "StClearRing",         0, 0, 0},
+    {0x80046BFCu, 0, hle_st_clear_slots, "StClearSlots",        2, 0, 0},
     {0x8004162Cu, 0, hle_spu_free,        "SpuFree",             1, 0, 0},
     {0x800415A8u, 0, hle_ss_vab_close,    "SsVabClose",          1, 0, 0},
     {0x800419B0u, 0, hle_ss_vab_trans_start, "SsVabTransBody(start)", 1, 1, 0},

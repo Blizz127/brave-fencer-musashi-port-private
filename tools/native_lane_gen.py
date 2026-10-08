@@ -229,15 +229,27 @@ def strip_empty_asm(text, orig=None):
         ins = split_operands(sections[2]) if len(sections) > 2 else []
         if outs is None or ins is None:
             return None
+        moves = []
         for k, (cons, expr) in enumerate(outs):
-            if not any(c == str(k) and e == expr for c, e in ins) and \
-                    not (STRICT and expr.strip() in pinned):
+            if any(c == str(k) and e == expr for c, e in ins):
+                continue
+            tied = [e for c, e in ins if c == str(k)]
+            if STRICT and len(tied) == 1:
+                # Strict: an output tied to a different input expression
+                # receives that input's value (the template emits nothing,
+                # so the shared register carries it): `out = (in);`.
+                moves.append((expr.strip(), tied[0].strip()))
+                continue
+            if not (STRICT and not tied and expr.strip() in pinned):
                 return None
         pieces.append(text[pos:m.start()])
         # A comment marker breaks when the asm text sits inside a comment
         # (80030F80 quotes it in its notes): strict uses a no-op expression,
         # non-strict keeps the old text so its lane stays byte-identical.
-        pieces.append("((void)0);" if STRICT else "/* empty asm removed for the host */")
+        if moves:
+            pieces.append(" ".join(f"{o} = ({i});" for o, i in moves))
+        else:
+            pieces.append("((void)0);" if STRICT else "/* empty asm removed for the host */")
         pos = j + 1
         dropped += 1
     pieces.append(text[pos:])
