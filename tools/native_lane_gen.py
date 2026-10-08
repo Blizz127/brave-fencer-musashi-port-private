@@ -1831,6 +1831,72 @@ def _call_args(rhs):
     return cm.group(1), args
 
 
+_CALL_USE = None
+
+
+def _call_use_index():
+    """func name -> True when some C source (other than its own file) uses it
+    other than as an extern declaration or a bare call statement."""
+    global _CALL_USE
+    if _CALL_USE is not None:
+        return _CALL_USE
+    used, tok = {}, re.compile(r"\bfunc_[0-9A-Fa-f]{8}\b")
+    for path in (ROOT / "src").rglob("*.c"):
+        text = re.sub(r"/\*.*?\*/", " ", path.read_text(errors="replace"), flags=re.S)
+        text = re.sub(r"//[^\n]*", "", text)
+        rel = str(path.relative_to(ROOT))
+        for line in text.splitlines():
+            names = tok.findall(line)
+            if not names:
+                continue
+            st = line.strip()
+            for n in names:
+                n = "func_" + n[5:].upper()
+                ok = (st.startswith("extern") and st.endswith(";")) or \
+                    re.fullmatch(re.escape(n) + r"\s*\(.*\)\s*;", st, flags=re.I) is not None or \
+                    (re.match(r"(?:\w+\s+)+\**\s*" + re.escape(n) + r"\s*\([^;=]*(?:\)\s*;|\{|$)",
+                              st, flags=re.I) is not None and "=" not in st)
+                used.setdefault(n, {}).setdefault(rel, []).append(ok)
+    _CALL_USE = used
+    return used
+
+
+def void_result_returns(optir, fname, name, info, own_source):
+    """Strict only: a body whose every return is `ret iN undef` (the matched C
+    falls off the end of a function declared to return a value) returns 0
+    instead, but only when nothing can read the value:
+    - every use in every other C source is an extern declaration, a bare
+      call statement (`func_X(...);`), a prototype, or another member's
+      definition header (comments ignored);
+    - no word of the member file or the main EXE equals the function's
+      address (no function-pointer table that could call it for a value).
+    In retail, v0 holds a leftover there that no caller reads."""
+    m = re.search(r"^define [^@]*@" + re.escape(fname) + r"\([^)]*\)[^{]*\{\n(.*?)^\}", optir,
+                  flags=re.M | re.S)
+    if not m:
+        return optir
+    body = m.group(1)
+    rets = re.findall(r"^\s*ret (i\d+) (\S+)\s*$", body, flags=re.M)
+    if not rets or any(v != "undef" for _, v in rets):
+        return optir
+    uses = _call_use_index().get("func_" + name[5:].upper(), {})
+    if any(not all(oks) for src, oks in uses.items() if src != own_source):
+        return optir
+    vram = int(name[5:], 16)
+    word = vram.to_bytes(4, "little")
+    blobs = [info["data"]] if info else []
+    if MAIN_EXE.exists():
+        blobs.append(MAIN_EXE.read_bytes())
+    for blob in blobs:
+        k = blob.find(word)
+        while k >= 0:
+            if k % 4 == 0:
+                return optir
+            k = blob.find(word, k + 1)
+    new_body = re.sub(r"^(\s*)ret (i\d+) undef\s*$", r"\1ret \2 0", body, flags=re.M)
+    return optir[:m.start(1)] + new_body + optir[m.end(1):]
+
+
 def pointer_slot_sources(lines):
     """Strict only (O0 IR): {slot: value} for a pointer local (`alloca ptr`)
     that every store fills with the same SSA value and whose address is used
@@ -2103,6 +2169,9 @@ def build_one(entry, out, symbols, hooks, clang, info=None):
         if r.returncode:
             raise Reject("compile", "optimize: " + (r.stderr.strip().splitlines() or ["?"])[0][:160])
         optir, icalls = rewrite_indirect_calls(opt.read_text())
+        if STRICT:
+            optir = void_result_returns(optir, f"lane_{qualify(member, name)}", name, info,
+                                        entry["source"])
         internal = set(re.findall(r"^define internal [^@]*@([\w.$]+)\(", optir, flags=re.M))
         check_optimized(optir, internal)
         check_device_pointers(optir, info)

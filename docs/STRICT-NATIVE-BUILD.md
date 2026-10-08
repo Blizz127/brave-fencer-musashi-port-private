@@ -242,3 +242,10 @@ Increment 7 (strict only):
   gcc idiom (sltiu bound, lui/addu/lw table load) and all of its table words
   (from the member file) are addresses inside the function. The native body
   switches on its own compiled table.
+
+Increment 11 (strict only):
+- **Void-result returns:** `void_result_returns` rewrites `ret iN undef` to
+  `ret iN 0` when every return in the function is undef, no other C file uses
+  the call's result, and the function address appears in no aligned data
+  word (member or main EXE). Callers that test the result keep the `ub`
+  refusal (800CFD68 was fixed in clean-room C instead).

@@ -149,6 +149,17 @@ Increment 10:
 - First stop: `guest_pc=80145cec`, sc02_0031 (resident, digest-checked from
   the stop RAM), refused as `ub` (undef/poison operand).
 
+Increment 11:
+- New strict-only generator rule `void_result_returns`. A function whose
+  every return is `ret iN undef` (it falls off the end without a value)
+  returns 0 instead. The rule applies only when no other C file uses the
+  result (every use is an extern, a prototype, a definition header or a bare
+  call statement) and no aligned word in the member or the main EXE equals
+  the function address (so it is never an indirect target). 80145CEC passes;
+  800CFD68 (its callers test the result) is still refused.
+- The overlay lane is now 2616/3269. First stop: `guest_pc=800553d8`
+  (libgs6, GsLinkObject4). Next: a driver HLE for it.
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits
