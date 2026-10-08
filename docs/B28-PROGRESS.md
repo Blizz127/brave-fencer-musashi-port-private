@@ -344,6 +344,16 @@ Increment 27 (generator, strict only):
 - Main lane 3457/4011, overlay lane 2756/3275.
 - First stop: `guest_pc=80177940` (sc02_0031), frame ~1200, no host fault.
 
+Increment 28 (source, main_0012 and sc02_0031 80177940):
+- func_80177940 now returns the advanced primitive pointer (`return r;`,
+  return type `u32 *`). The retail epilogue leaves r in v0 and 80175AB8
+  uses it as the call's result, which the void form could not express
+  (rule abi: void callee, caller reads v0). Rebuilt with gcc-2.7.2-psx -O2
+  (build_candidate), it is byte-identical to the member bytes, and so is
+  the old form.
+- Main lane 3458/4011, overlay lane 2757/3275.
+- First stop: `guest_pc=80128564` (overlay), frame ~1200, no host fault.
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits

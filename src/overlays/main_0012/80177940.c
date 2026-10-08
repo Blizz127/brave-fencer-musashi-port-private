@@ -13,7 +13,10 @@
  * are not evidence of the original declaration. */
 extern s32 func_80029504(void);
 
-void func_80177940(u32 *p, u32 a_, u32 b_, u32 c_)
+/* B28: returns the advanced primitive pointer. The retail epilogue leaves it
+ * in v0 and 80175AB8 uses it as the result; returning it is byte-identical
+ * (rebuilt with gcc-2.7.2-psx -O2). */
+u32 *func_80177940(u32 *p, u32 a_, u32 b_, u32 c_)
 {
   int new_var;
 register u32 a __asm__("$18");
@@ -76,4 +79,5 @@ __asm__("" : "=r"(v) : "0"(v));
 __asm__("" : "=r"(r) : "0"(r));
   *((u16 *) (r - 8)) += 6;
   *((u16 *) (r - 3)) += 6;
+  return r;
 }
