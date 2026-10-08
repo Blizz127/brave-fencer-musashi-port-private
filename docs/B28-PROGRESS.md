@@ -60,6 +60,23 @@ Increment 3:
 - First stop: `guest_pc=800cf010`, main_0004 state 2. State 0 advances the
   state twice, so state 1 is skipped.
 
+Increment 4:
+- More clean-room, byte-matched C for main_0004: 800CF010 (state 2),
+  800CF078 (state 3), 800D1E58, and 800D1E9C (the blocking movie play loop,
+  0x4F8 bytes).
+- Strict generator (`escape` rule): when the compiler cross-jumped identical
+  call tails, the retail words hold fewer `jal` sites than the C has calls.
+  `merged_call_bases` now finds the one frame-offset assignment that maps
+  every C call onto a retail site and covers every site. A tie is broken by
+  the locals' definition order. This admits 800D1E9C.
+- First stop: `guest_pc=800d2d68` (libpress MDEC reset, linked into the
+  overlay), reached through main_0003's 800D2AA0. main_0003 is the sibling
+  movie overlay: same code at the same addresses, vendor C, digest-identical,
+  so its C runs for main_0004.
+- Next: add `main_0003 all` to the strict overlay allow list. Its vendor C
+  covers most of the movie player and libpress. Then HLE or C for whatever
+  the lane still refuses (MDEC hardware access).
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits

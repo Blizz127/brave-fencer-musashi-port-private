@@ -216,3 +216,12 @@ Increment 2 (strict only):
 - **DMA4:** the SPU DMA now raises its completion interrupt (see
   NATIVE-FRAME-DRIVER.md). The boot gets through the logo load and stops in
   main_0004 at 800CEEC8.
+
+Increment 4 (strict only):
+- **Cross-jumped call sites (`escape`):** when the retail words hold fewer
+  `jal` sites to a callee than the C has calls (the compiler merged identical
+  tails), `merged_call_bases` assigns each frame-passed local a single retail
+  sp offset. Every C call must land on a site with exactly those offsets, and
+  every site must be covered. Any remaining tie is resolved by the locals'
+  definition order (the compiler's frame layout order). If no assignment
+  fits, or the tie stays unresolved, the old refusal stands.

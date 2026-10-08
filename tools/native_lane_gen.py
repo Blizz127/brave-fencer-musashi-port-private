@@ -1442,6 +1442,57 @@ def add_frame_adjust(ir, fname, frame):
 # function's CFG; anything not proven from the asm is refused.
 
 GUEST_SP = "musashi_lane_entry_sp"
+
+
+def merged_call_bases(ir_calls, rsites, known, order=()):
+    """Strict only: the compiler cross-jumped identical call tails, so the
+    retail words hold fewer jal sites to a target than the C has calls. Find
+    the single assignment of a frame offset to each local passed to that
+    target such that (1) every C call has a retail site passing exactly those
+    sp offsets in exactly those argument slots, and (2) every retail site is
+    the image of at least one C call. Locals already placed by other calls
+    keep their offset. When the sites alone fit several assignments (two
+    same-typed locals swapped), keep the one whose offsets ascend in the
+    locals' definition order, which is how this compiler lays out its frame.
+    Any non-overlapping choice gives the callees the same values, because
+    only the C body and its callees use these addresses. Returns
+    {alloca: base}, or None when nothing fits or the tie stays unresolved."""
+    import itertools
+    sites = [{i: o for i, o in args.items() if i < argc}
+             for (_, args) in rsites for argc in [max(a for _, a in ir_calls)]]
+    cand = {}
+    for tainted, argc in ir_calls:
+        for i, (alloca, off) in tainted.items():
+            opts = {s[i] - off for s in sites if i in s}
+            cand[alloca] = cand.get(alloca, opts) & opts
+    if not cand or any(not v for v in cand.values()):
+        return None
+    for a in list(cand):
+        if a in known:
+            if known[a] not in cand[a]:
+                return None
+            cand[a] = {known[a]}
+    names = sorted(cand)
+    fits = []
+    for combo in itertools.product(*(sorted(cand[a]) for a in names)):
+        b = dict(zip(names, combo))
+        images = []
+        for tainted, argc in ir_calls:
+            want = {i: b[a] + off for i, (a, off) in tainted.items()}
+            hit = [k for k, s in enumerate(sites)
+                   if {i: o for i, o in s.items() if i < argc} == want]
+            if not hit:
+                break
+            images += hit
+        else:
+            if set(images) == set(range(len(sites))):
+                fits.append(b)
+    if len(fits) > 1:
+        rank = {a: n for n, a in enumerate(order)}
+        fits = [b for b in fits
+                if [b[a] for a in sorted(b, key=lambda a: rank.get(a, 0))] == sorted(b.values())]
+    return fits[0] if len(fits) == 1 else None
+
 CALLER_SAVED = frozenset([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 24, 25, 31])
 
 
@@ -1774,9 +1825,15 @@ def place_guest_locals(ir, fname, words, vram, frame):
     for target, ir_calls in ir_by_target.items():
         rsites = by_target.get(target, [])
         if len(rsites) != len(ir_calls):
-            if any(t for t, _ in ir_calls) or any(a for _, a in rsites):
+            if not (any(t for t, _ in ir_calls) or any(a for _, a in rsites)):
+                continue
+            merged = (merged_call_bases(ir_calls, rsites, base,
+                                        sorted(allocas, key=lambda a: allocas[a][1]))
+                      if STRICT and 0 < len(rsites) < len(ir_calls) else None)
+            if merged is None:
                 raise Reject("escape", f"{len(ir_calls)} calls to {target:08x} in the C, "
                                        f"{len(rsites)} jal in the retail words")
+            base.update(merged)
             continue
         for (tainted, argc), (pc, args) in zip(ir_calls, rsites):
             sp_args = {i: o for i, o in args.items() if i < argc}
