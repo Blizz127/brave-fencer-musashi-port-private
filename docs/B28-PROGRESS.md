@@ -119,6 +119,17 @@ Increment 7 (generator, strict only):
   (Druthulu/BFM-decomp)", which the strict provenance allow list did not
   name yet (fixed in increment 8).
 
+Increment 8:
+- `vendor-referenced (Druthulu/BFM-decomp)` (6 main rows) is added to the
+  strict provenance allow list. Same upstream class as vendor-derived.
+- main_0010 800CFD68 is now clean-room C that returns the callee's value.
+  The vendor version fell off the end of a non-void function (`ub`), while
+  its callers test the result.
+- Strict boot passes main_0010 set-up and stops at frame ~1200:
+  `guest_pc=80128158` (main_0012, the game's main overlay, 2359 C rows; only
+  a hand-picked subset is admitted). Next: `main_0012 all` in the strict
+  overlay allow list.
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits

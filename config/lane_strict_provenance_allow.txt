@@ -20,3 +20,7 @@ vendor-derived (Druthulu/BFM-decomp)
 # upstream-derived). PsyQ library ranges, hooks, cycle and hardware-register
 # rules still exclude what they always did (B28).
 @untagged
+# B28: C written against Druthulu/BFM-decomp as a reference. Same upstream
+# class as vendor-derived, so the same policy applies. 6 main rows, among them
+# 8001C0C8 (hit by the strict boot after the intro movie).
+vendor-referenced (Druthulu/BFM-decomp)

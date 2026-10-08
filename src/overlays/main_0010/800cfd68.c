@@ -1,18 +1,14 @@
-/* Exact retail overlay 0010 export [800CFD68,800CFDA4), offset 0x20F70. */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_800CFD68 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Clean-room re-derivation from the retail disassembly only (B28): MAIN.CD
+ * member 0010. Looks up entry (arg0 with bits 12..15 cleared) of the table
+ * 800D34AC and passes its low 12 bits to 800191D4. Returns what 800191D4
+ * returns: retail leaves its v0 untouched, and the callers 800CF628 and
+ * 800D1EBC test it. The earlier source fell off the end of a non-void
+ * function, which the lane refuses as undefined. */
 #include "psx_types.h"
-typedef float f32;
-typedef unsigned long long u64;
-typedef long long s64;
-typedef double f64;
-#ifndef NULL
-#define NULL ((void *)0)
-#endif
 
 extern s32 D_800D34AC[];
-extern void func_800191D4(s32 arg0);
+extern s32 func_800191D4(s32);
 
 s32 func_800CFD68(s32 arg0) {
-    func_800191D4(D_800D34AC[arg0 & 0xFFFF0FFF] & 0xFFF);
+    return func_800191D4(D_800D34AC[arg0 & 0xFFFF0FFF] & 0xFFF);
 }

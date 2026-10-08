@@ -35956,7 +35956,7 @@
       "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": "owner re-derivation, clean room (B28 box sandbox, retail disassembly only)"
     },
     {
       "name": "func_800CFDA4",
