@@ -15,7 +15,7 @@ extern s32 D_800AE6B0;
 extern u16 D_800AE6DC;
 
 void func_80150C48(void *arg0) {
-    if (func_80150480() != 0) {
+    if (func_80150480(arg0) != 0) {
         D_800AE6B0 = M2C_FIELD(M2C_FIELD(arg0, void **, 0x1A4), s32 *, 0xDC);
         D_800AE6DC = M2C_FIELD(M2C_FIELD(arg0, void **, 0x1A4), u16 *, 0xFC);
     }

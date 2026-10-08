@@ -527,6 +527,23 @@ Increment 32 (generator, strict only):
 - Strict stop moves to 8014CC28. Frames reach 1200, prims=0 draw=0: no
   frame drawn yet.
 
+### Increment 40: 14 more switch-back wrappers as C (both members); 8014CC28 returns its handler's v0
+
+- The 88-byte switch-back wrappers of the 8014E934 shape (8014CCB4,
+  8014D04C, 8014D3E0, 8014D738, 8014DF3C, 8014E434, 8014E6A0, 8014ED28,
+  8014F1F4, 8014F468, 8014F6F4, 8014FBC0, 8014FCFC, 80150480) in main_0012
+  and sc02_0031 were whole-asm. Converted by script
+  (/workspace/scratch/c37/conv_ind.py: match the exact asm, emit the C form,
+  rebuild and compare, revert on mismatch; 28/28 byte-identical); registry
+  rows `assembly` -> `mixed`. main_0012 headers name no third-party source.
+- 8014CC28 tail-calls one of three wrappers and its callers test v0; it now
+  returns the handler's value (byte-identical). Two 0-argument callers now
+  pass their a0 (byte-identical).
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0. Lanes: main 3568/4046,
+  overlay 2866/3310. Nothing lost; 8014CC28 and the 28 wrappers gained.
+- Strict stop moves to 8014CD0C (the callee of 8014CCB4). Frames reach 1200,
+  prims=0 draw=0: no frame drawn yet.
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits

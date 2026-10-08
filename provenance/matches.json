@@ -18226,7 +18226,7 @@
       "size": 88,
       "region": "main_0012",
       "source": "src/overlays/main_0012/8014ccb4.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function"
     },
     {
@@ -18268,7 +18268,7 @@
       "size": 88,
       "region": "main_0012",
       "source": "src/overlays/main_0012/8014d04c.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function"
     },
     {
@@ -18309,7 +18309,7 @@
       "size": 88,
       "region": "main_0012",
       "source": "src/overlays/main_0012/8014d3e0.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function"
     },
     {
@@ -18350,7 +18350,7 @@
       "size": 88,
       "region": "main_0012",
       "source": "src/overlays/main_0012/8014d738.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function"
     },
     {
@@ -18369,7 +18369,7 @@
       "size": 88,
       "region": "main_0012",
       "source": "src/overlays/main_0012/8014df3c.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function"
     },
     {
@@ -18389,7 +18389,7 @@
       "size": 88,
       "region": "main_0012",
       "source": "src/overlays/main_0012/8014e434.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function"
     },
     {
@@ -18418,7 +18418,7 @@
       "size": 88,
       "region": "main_0012",
       "source": "src/overlays/main_0012/8014e6a0.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function"
     },
     {
@@ -18491,7 +18491,7 @@
       "size": 88,
       "region": "main_0012",
       "source": "src/overlays/main_0012/8014ed28.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function"
     },
     {
@@ -18521,7 +18521,7 @@
       "size": 88,
       "region": "main_0012",
       "source": "src/overlays/main_0012/8014f1f4.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function"
     },
     {
@@ -18561,7 +18561,7 @@
       "size": 88,
       "region": "main_0012",
       "source": "src/overlays/main_0012/8014f468.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function"
     },
     {
@@ -18570,7 +18570,7 @@
       "size": 88,
       "region": "main_0012",
       "source": "src/overlays/main_0012/8014f6f4.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function"
     },
     {
@@ -18590,7 +18590,7 @@
       "size": 88,
       "region": "main_0012",
       "source": "src/overlays/main_0012/8014fbc0.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function"
     },
     {
@@ -18610,7 +18610,7 @@
       "size": 88,
       "region": "main_0012",
       "source": "src/overlays/main_0012/8014fcfc.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function"
     },
     {
@@ -18684,7 +18684,7 @@
       "size": 88,
       "region": "main_0012",
       "source": "src/overlays/main_0012/80150480.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function"
     },
     {
@@ -148796,7 +148796,7 @@
       "size": 88,
       "region": "sc02_0031",
       "source": "src/overlays/sc02_0031/8014ccb4.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
@@ -148840,7 +148840,7 @@
       "size": 88,
       "region": "sc02_0031",
       "source": "src/overlays/sc02_0031/8014d04c.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
@@ -148884,7 +148884,7 @@
       "size": 88,
       "region": "sc02_0031",
       "source": "src/overlays/sc02_0031/8014d3e0.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
@@ -148928,7 +148928,7 @@
       "size": 88,
       "region": "sc02_0031",
       "source": "src/overlays/sc02_0031/8014d738.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
@@ -148983,7 +148983,7 @@
       "size": 88,
       "region": "sc02_0031",
       "source": "src/overlays/sc02_0031/8014df3c.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
@@ -149027,7 +149027,7 @@
       "size": 88,
       "region": "sc02_0031",
       "source": "src/overlays/sc02_0031/8014e434.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
@@ -149071,7 +149071,7 @@
       "size": 88,
       "region": "sc02_0031",
       "source": "src/overlays/sc02_0031/8014e6a0.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
@@ -149137,7 +149137,7 @@
       "size": 88,
       "region": "sc02_0031",
       "source": "src/overlays/sc02_0031/8014ed28.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
@@ -149181,7 +149181,7 @@
       "size": 88,
       "region": "sc02_0031",
       "source": "src/overlays/sc02_0031/8014f1f4.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
@@ -149225,7 +149225,7 @@
       "size": 88,
       "region": "sc02_0031",
       "source": "src/overlays/sc02_0031/8014f468.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
@@ -149247,7 +149247,7 @@
       "size": 88,
       "region": "sc02_0031",
       "source": "src/overlays/sc02_0031/8014f6f4.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
@@ -149291,7 +149291,7 @@
       "size": 88,
       "region": "sc02_0031",
       "source": "src/overlays/sc02_0031/8014fbc0.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
@@ -149313,7 +149313,7 @@
       "size": 88,
       "region": "sc02_0031",
       "source": "src/overlays/sc02_0031/8014fcfc.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
@@ -149412,7 +149412,7 @@
       "size": 88,
       "region": "sc02_0031",
       "source": "src/overlays/sc02_0031/80150480.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
