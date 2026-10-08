@@ -395,6 +395,16 @@ Increment 31 (source, main_0012 and sc02_0031):
 - Main lane 3503/4012, overlay lane 2802/3276, no function lost.
 - First stop: `guest_pc=8012a828` (overlay), frame ~1200, no host fault.
 
+Increment 32 (generator, strict only):
+- fix_short_calls: when a TU's prototype for a callee is a strict prefix of
+  the callee's own definition (`void f(void);` for `void f(void *a0)`, from
+  kr_callee_params), the definition's parameters are used and the declare
+  is widened. The missing arguments then go through the usual proofs
+  (retail entry argument at every jal, or provably dead); otherwise the
+  call is still refused. 8012A828 hands its untouched arg0 to 8012AAAC.
+- Main lane 3511/4012, overlay lane 2809/3276, no function lost.
+- First stop: `guest_pc=8012c588` (overlay), frame ~1200, no host fault.
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits

@@ -1215,10 +1215,18 @@ def fix_short_calls(ir, words, vram, src_dir=None, info=None):
     (entry_arg_at_calls), the register still holds the caller's own k-th
     argument there: the call gets the caller's parameter k. Any other short
     call is refused (abi)."""
-    decls, kr = {}, set()
+    decls, kr, widen = {}, set(), set()
     for m in re.finditer(r"^declare\b[^@]*@([\w.$]+)\((.*)\)[^(]*$", ir, flags=re.M):
         if "..." not in m.group(2):
             decls[m.group(1)] = [p.split()[0] for p in split_top(m.group(2)) if p]
+            # (B28) the TU's prototype is a prefix of the callee's own
+            # definition (`void f(void);` for `void f(void *a0)`): the
+            # definition's parameters are what the callee reads
+            want = kr_callee_params(m.group(1), src_dir) if src_dir is not None else None
+            if want and len(want) > len(decls[m.group(1)]) and \
+                    want[:len(decls[m.group(1)])] == decls[m.group(1)]:
+                decls[m.group(1)] = want
+                widen.add(m.group(1))
         elif m.group(2).strip() == "..." and src_dir is not None:
             # `extern void f();` (no prototype): the callee's own definition
             # gives the parameters it reads; only int-sized ones qualify
@@ -1304,6 +1312,9 @@ def fix_short_calls(ir, words, vram, src_dir=None, info=None):
                            " @" + cm.group(2) + "(", fixed, count=1)
         out.append(fixed)
     text = "\n".join(out) + "\n"
+    for name in widen:
+        text = re.sub(r"^(declare\b[^@]*@" + re.escape(name) + r")\([^()]*\)",
+                      lambda m: m.group(1) + "(" + ", ".join(decls[name]) + ")", text, flags=re.M)
     for name in kr:
         text = re.sub(r"^(declare\b[^@]*@" + re.escape(name) + r")\(\.\.\.\)", 
                       lambda m: m.group(1) + "(" + ", ".join(decls[name]) + ")", text, flags=re.M)
