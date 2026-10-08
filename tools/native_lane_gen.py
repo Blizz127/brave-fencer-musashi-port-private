@@ -1807,12 +1807,39 @@ def check_polling_loops(ir):
             if m:
                 labels["%" + m.group(1)] = idx
         # The entry block is unlabeled; numbered blocks still get "N:" lines.
+        # Strict (B28): a branch to a block placed earlier in the text is a
+        # loop only when that block reaches the branch again in the CFG
+        # (801379FC branches forward to a `.preheader` laid out above it).
+        block_of, succs, cur = {}, {}, "%entry"
+        for idx, line in enumerate(lines):
+            m = re.match(r"^([\w.$-]+):", line)
+            if m:
+                cur = "%" + m.group(1)
+            block_of[idx] = cur
+            if re.match(r"\s*(?:br|switch|indirectbr)\b", line) or \
+                    (cur in succs and re.match(r"\s+(?:i\d+ -?\d+, )?label ", line)):
+                succs.setdefault(cur, set()).update(re.findall(r"label (%[\w.$\"-]+)", line))
+
+        def cfg_reaches(src, dst):
+            seen, todo = set(), [src]
+            while todo:
+                b = todo.pop()
+                if b == dst:
+                    return True
+                if b in seen:
+                    continue
+                seen.add(b)
+                todo.extend(succs.get(b, ()))
+            return False
+
         for idx, line in enumerate(lines):
             if not line.strip().startswith("br "):
                 continue
             for target in re.findall(r"label (%[\w.$\"-]+)", line):
                 start = labels.get(target)
                 if start is None or start > idx:
+                    continue
+                if STRICT and not cfg_reaches(target, block_of[idx]):
                     continue
                 body = lines[start: idx + 1]
                 if not any(re.search(r"\bstore\b", l) or

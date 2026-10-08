@@ -462,6 +462,23 @@ Increment 32 (generator, strict only):
 - Stop stays at 800D18DC, now refused as abi "void callee, caller reads v0"
   (801285E4 stores its result). Frames reach 1200, prims=0: no frame drawn.
 
+### Increment 36: 800D18DC returns its handler's value; CFG-checked polling loops
+
+- 800D18DC (main_0010) tail-dispatches through its copied table and
+  801285E4 stores the result (`sw v0` after the jal), so the C returns the
+  handler's `s32` (the handlers 800D1938/800D1984/800D19DC return s32);
+  byte-identical (verify bad 0).
+- `check_polling_loops` took any branch to a block laid out earlier in the
+  text as a loop back edge. Strict-only: it must also close a cycle in the
+  CFG; 801379FC branches forward to a `.preheader` placed above it. A real
+  load-only spin loop is still refused (checked offline).
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0 (the polling change is
+  STRICT-gated and landed after the hybrid build of the same run). Lanes:
+  main 3535/4016, overlay 2833/3280. Nothing lost; 800D18DC and 801379FC
+  gained.
+- Strict stop moves to 8016EF78 (main_0012: calls func_8016EFC8 with 0 of
+  2 declared arguments). Frames reach 1200, prims=0: no frame drawn yet.
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits

@@ -6,15 +6,15 @@
 #include "psx_types.h"
 
 typedef struct {
-    void (*fn[3])(void *);
+    s32 (*fn[3])(void *);
 } FnTbl3;
 
 extern u8 D_800AE6BC;
 extern FnTbl3 D_801141BC;
 extern s32 D_800AE6A8;
 
-void func_800D18DC(void) {
+s32 func_800D18DC(void) {
     u8 idx = D_800AE6BC;
     FnTbl3 local = D_801141BC;
-    local.fn[idx](&D_800AE6A8);
+    return local.fn[idx](&D_800AE6A8); /* v0 is the handler's (801285E4 stores it) */
 }
