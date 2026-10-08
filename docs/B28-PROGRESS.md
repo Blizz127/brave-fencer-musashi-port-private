@@ -479,6 +479,19 @@ Increment 32 (generator, strict only):
 - Strict stop moves to 8016EF78 (main_0012: calls func_8016EFC8 with 0 of
   2 declared arguments). Frames reach 1200, prims=0: no frame drawn yet.
 
+### Increment 37: 8016EF78 chain passes a0/a1 through (byte-identical)
+
+- 8016EF78 (main_0012) jals 8016EFC8 with the a0/a1 it received, and
+  8016EFC8 reads both (`D_80126D54 = a0`, `D_80126D50 = *a0 | 0x4000000 | a1`).
+  8016EE40 does the same with 8016EF78, and 8016EDBC calls 8016EE40 with
+  its own a0/a1. The C now carries `(s32 a0, s32 a1)` along that chain
+  with prototypes (8016EDBC's stray third argument dropped). All three
+  byte-identical (verify bad 0).
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0. Lanes: main 3536/4016,
+  overlay 2834/3280. Nothing lost; 8016EF78 gained.
+- Strict stop moves to 80161104 (main_0012). Frames reach 1200, prims=0:
+  no frame drawn yet.
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits

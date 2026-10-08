@@ -5,11 +5,11 @@
 
 #include "psx_types.h"
 
-void func_8016EFC8();                                  /* static */
+s32 func_8016EFC8(s32, s32);
 void func_801726D0(void *);                               /* static */
 extern s32 *D_80126B58;
 
-void func_8016EF78(void) {
-    func_8016EFC8();
+void func_8016EF78(s32 a0, s32 a1) {
+    func_8016EFC8(a0, a1); /* a0/a1 pass through (retail) */
     func_801726D0(&D_80126B58);
 }
