@@ -17,13 +17,13 @@ typedef double f64;
 #endif
 
 extern void func_8012A568(void (*a0)(void));
-extern s32 func_80161104(void);
+extern s32 func_80161104();
 extern s32 func_80175218(void *a0);
 extern void func_80146CA0(void *a0);
 
 void func_801751D8(void *a0) {
     void *s = a0;
-    if (func_80161104()) {
+    if (func_80161104(s)) {
         func_80175218(s);
         func_80146CA0(s);
     }

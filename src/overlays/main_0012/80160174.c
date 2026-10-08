@@ -9,7 +9,7 @@ void func_801601AC(s32);                               /* static */
 s32 func_80161104();                                /* static */
 
 void func_80160174(s32 arg0) {
-    if (func_80161104() != 0) {
+    if (func_80161104(arg0) != 0) {
         func_801601AC(arg0);
     }
 }

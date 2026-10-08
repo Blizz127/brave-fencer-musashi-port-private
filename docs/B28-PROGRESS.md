@@ -492,6 +492,20 @@ Increment 32 (generator, strict only):
 - Strict stop moves to 80161104 (main_0012). Frames reach 1200, prims=0:
   no frame drawn yet.
 
+### Increment 38: 80161104 and its 44 callers pass a0 through (byte-identical)
+
+- 80161104 (main_0012 and sc02_0031) is `return func_80161208(a0) == 0`
+  with the a0 it received; 80161208 dereferences it. The C now takes and
+  passes `void *p`. Its callers (`if (func_80161104() != 0) ...` as the
+  first statement, a0 untouched) now pass their own first argument: 43
+  rewritten by script (/workspace/scratch/c37/fixcallers.py, each rebuilt
+  and compared, mismatches reverted: none) plus sc02_0031 801751D8 by hand.
+  Three main_0012 callers already passed it. verify: bad 0.
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0. Lanes: main 3537/4016,
+  overlay 2835/3280. Nothing lost; 80161104 gained.
+- Strict stop moves to 8014E934. Frames reach 1200, prims=0 draw=0: no frame
+  drawn yet.
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits

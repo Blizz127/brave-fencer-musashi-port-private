@@ -16,11 +16,11 @@ typedef double f64;
 #define NULL ((void *)0)
 #endif
 
-extern s32 func_80161104(void);
+extern s32 func_80161104();
 extern void func_8015E95C(s32);
 
 void func_8015E924(s32 a0) {
-    if (func_80161104() != 0) {
+    if (func_80161104(a0) != 0) {
         func_8015E95C(a0);
     }
 }

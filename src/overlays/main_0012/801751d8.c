@@ -10,7 +10,7 @@ s32 func_80161104();                                /* static */
 void func_80175218(s32);                               /* static */
 
 void func_801751D8(s32 arg0) {
-    if (func_80161104() != 0) {
+    if (func_80161104(arg0) != 0) {
         func_80175218(arg0);
         func_80146CA0(arg0);
     }

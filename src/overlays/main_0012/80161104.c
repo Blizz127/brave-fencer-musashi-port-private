@@ -5,8 +5,8 @@
 
 #include "psx_types.h"
 
-s32 func_80161208();                                /* static */
+s32 func_80161208(void *);
 
-s32 func_80161104(void) {
-    return func_80161208() == 0;
+s32 func_80161104(void *p) {
+    return func_80161208(p) == 0; /* a0 passes through (retail) */
 }

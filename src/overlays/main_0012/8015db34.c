@@ -9,7 +9,7 @@ void func_8015DB6C(s32);                               /* static */
 s32 func_80161104();                                /* static */
 
 void func_8015DB34(s32 arg0) {
-    if (func_80161104() != 0) {
+    if (func_80161104(arg0) != 0) {
         func_8015DB6C(arg0);
     }
 }
