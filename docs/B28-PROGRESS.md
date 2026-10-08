@@ -327,6 +327,16 @@ Increment 25 (generator, strict only):
 - Main lane 3446/4011, overlay lane 2747/3275.
 - First stop: `guest_pc=801783d0` (sc02_0031), frame ~1200, no host fault.
 
+Increment 26 (generator, strict only):
+- Variable shifts: an amount that is a phi/select of masked (`and`, <= 31)
+  or constant 0..31 values is masked (`masked_amount`). The optimizer sinks
+  lower_arith's mask into a loop-exit phi (801783D0).
+- Polling rule: a loop that loads nothing is pure register work (no IRQ or
+  device can change its exit) and is not a polling loop (801783D0's BCD
+  digit loop).
+- Main lane 3454/4011, overlay lane 2753/3275.
+- First stop: `guest_pc=80177b5c` (sc02_0031), frame ~1200, no host fault.
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits

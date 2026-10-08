@@ -274,6 +274,30 @@ def host_long(text):
     return text.replace("\0LL\0", "long long")
 
 
+def masked_amount(val, defs, seen=None):
+    """Strict only (B28): a shift amount that is a constant 0..31, an
+    `and` with a constant <= 31, or a phi/select of such values (the
+    optimizer sinks lower_arith's mask into a loop-exit phi, 801783D0)."""
+    v = val.strip()
+    if re.fullmatch(r"\d+", v):
+        return int(v) <= 31
+    seen = set() if seen is None else seen
+    if v in seen:
+        return True  # a phi cycle adds no new value
+    seen.add(v)
+    d = defs.get(v, "")
+    mm = re.match(r"and i\d+ (?:%[\w.\"$]+, (\d+)|(\d+), %[\w.\"$]+)$", d)
+    if mm:
+        return int(mm.group(1) or mm.group(2)) <= 31
+    if d.startswith("phi "):
+        vals = re.findall(r"\[\s*(.+?),\s*%[\w.\"$]+\s*\]", d)
+        return bool(vals) and all(masked_amount(x, defs, seen) for x in vals)
+    if d.startswith("select "):
+        parts = split_top(d[len("select"):])
+        return len(parts) == 3 and all(masked_amount(x.split()[-1], defs, seen) for x in parts[1:])
+    return False
+
+
 def lower_arith(ir):
     """MIPS semantics for i32 shifts and divisions with a variable operand:
     shift counts are masked to 5 bits (SLLV/SRLV/SRAV use the low 5 bits;
@@ -1630,7 +1654,7 @@ def check_optimized(ir, module_internal):
                     d = defs.get(amount, "")
                     mm = re.match(r"and i\d+ (?:%[\w.\"$]+, (\d+)|(\d+), %[\w.\"$]+)$", d)
                     mask = int(mm.group(1) or mm.group(2)) if mm else None
-                    if mask is None or mask > 31:
+                    if (mask is None or mask > 31) and not (STRICT and masked_amount(amount, defs)):
                         raise Reject("arith", "unmasked variable shift")
                 elif int(amount) >= int(sm.group(2)[1:]):
                     raise Reject("arith", "oversized constant shift")
@@ -1765,7 +1789,11 @@ def check_polling_loops(ir):
                 body = lines[start: idx + 1]
                 if not any(re.search(r"\bstore\b", l) or
                            (re.search(r"\bcall\b", l) and "@llvm." not in l) for l in body) \
-                        and not loop_walks_memory(body):
+                        and not loop_walks_memory(body) \
+                        and not (STRICT and not any(re.search(r"=\s*load\b", l) for l in body)):
+                    # strict (B28): a loop that loads nothing works on
+                    # registers alone (801783D0's BCD digit loop); no IRQ or
+                    # device can change its exit condition
                     raise Reject("irq", "loop with no store or call (polling)")
 
 
