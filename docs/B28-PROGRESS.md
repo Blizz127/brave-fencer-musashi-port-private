@@ -445,6 +445,23 @@ Increment 32 (generator, strict only):
   "non-constant offset into local": the indexed load from the copied
   function table). Frames reach 1200, prims=0 draw=0: no frame drawn yet.
 
+### Increment 35: variable indexes into locals that never escape; 801754A8 prototyped dispatch
+
+- 800D18DC and 800D19F0 (main_0010) copy a function table to a local and
+  call `tbl[idx]`; `place_guest_locals` refused the variable-offset GEP
+  ("non-constant offset into local"). Strict-only: such an element address
+  is accepted when it is only loaded from or stored to (never passed,
+  stored as a value, or converted); anything else is still refused.
+- 801754A8 (main_0012 and sc02_0031) called through an unprototyped
+  `int (*)()` table, which clang emits as a variadic call type the indirect
+  call rewrite does not take; the typedef is now `void (*)(void *)`
+  (byte-identical, verify bad 0).
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0. Lanes: main 3533/4016,
+  overlay 2831/3280. Nothing lost; gained 800D19F0, 80138AB4, 801754A8 (both
+  members), 8017CBC8.
+- Stop stays at 800D18DC, now refused as abi "void callee, caller reads v0"
+  (801285E4 stores its result). Frames reach 1200, prims=0: no frame drawn.
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits

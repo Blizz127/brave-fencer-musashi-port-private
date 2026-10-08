@@ -5,7 +5,7 @@
 /* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
 /* func_801754A8 - byte-exact against retail at -O2 (tools/register_match.py). */
-typedef int (*DispatchFn)();
+typedef void (*DispatchFn)(void *);
 extern s32 func_80029504(void);
 extern unsigned char D_800B9A13;
 extern s32 D_80126B9C;

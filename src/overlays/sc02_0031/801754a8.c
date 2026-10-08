@@ -13,7 +13,7 @@ typedef double f64;
 #define NULL ((void *)0)
 #endif
 
-typedef int (*DispatchFn)();
+typedef void (*DispatchFn)(void *);
 extern s32 func_80029504(void);
 
 void func_801754A8(void) {

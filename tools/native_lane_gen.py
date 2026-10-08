@@ -2553,6 +2553,11 @@ def place_guest_locals(ir, fname, words, vram, frame, info=None):
     types = named_types(ir)
     lines = m.group(1).splitlines()
     allocas, derived, calls = {}, {}, []
+    # Strict (B28): a variable index into a local (`tbl[i]` of a copied
+    # table, 800D18DC) has no fixed frame offset; that is fine as long as
+    # the element address is only loaded from or stored to, never passed
+    # on (checked below), because then nothing outside sees the address.
+    dynamic = {}
     slot_src = pointer_slot_sources(lines) if STRICT else {}
     for k, line in enumerate(lines):
         dm = DEF_RE.match(line)
@@ -2582,8 +2587,13 @@ def place_guest_locals(ir, fname, words, vram, frame, info=None):
                         idx = [p.split()[-1] for p in parts[2:]]
                         off = gep_const_offset(parts[0], idx, types)
                         if off is None:
-                            raise Reject("escape", f"non-constant offset into local {base}")
+                            if not STRICT:
+                                raise Reject("escape", f"non-constant offset into local {base}")
+                            dynamic[name] = base
+                            continue
                         derived[name] = (derived[base][0], derived[base][1] + off)
+                    elif base in dynamic:
+                        dynamic[name] = base
                 continue
         ca = _call_args(line)
         if ca and re.match(r"lane_(?:call_)?" + QFUNC + r"$", ca[0]):
@@ -2594,6 +2604,21 @@ def place_guest_locals(ir, fname, words, vram, frame, info=None):
                     tainted[i] = derived[op]
             fm = re.search(r"func_([0-9A-Fa-f]{8})$", ca[0])
             calls.append((int(fm.group(1), 16), tainted, len(ca[1])))
+    if dynamic:
+        for line in lines:
+            dm = DEF_RE.match(line)
+            if dm and dm.group(1) in dynamic:
+                continue  # the GEP itself
+            lm = re.match(r"\s*%[\w.\"$]+ = load [^,]+, ptr (%[\w.\"$]+)(?:, align \d+)?(?:, ![\w.]+ !\d+)*\s*$", line)
+            sm = re.match(r"\s*store [^,]+, ptr (%[\w.\"$]+)(?:, align \d+)?(?:, ![\w.]+ !\d+)*\s*$", line)
+            text = line
+            if lm and lm.group(1) in dynamic:
+                text = ""
+            elif sm and sm.group(1) in dynamic:
+                text = line[:line.rindex(", ptr " + sm.group(1))]
+            for t in re.findall(r"%[\w.\"$]+", text):
+                if t in dynamic:
+                    raise Reject("escape", f"non-constant offset into local {dynamic[t]}")
     if not any(t for _, t, _ in calls):
         return ir, []
     if words is None or not frame:
