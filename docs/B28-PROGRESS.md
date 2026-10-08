@@ -223,6 +223,15 @@ Increment 17 (registry + generator, strict only):
 - With these the boot passes 8013B83C. The overlay lane is 2651/3273. First
   stop: `guest_pc=8013d53c` (sc02_0031, `layout`, a 9-byte struct copy).
 
+Increment 18 (generator, strict only):
+- A constant-length memcpy/memmove is admitted unchanged in a module with
+  pointer-bearing types when its length equals the host size of a
+  pointer-free named struct and of no pointer-bearing type. Such a copy is a
+  plain struct assignment and has the same size on host and guest.
+  8013D53C copies a 9-byte record this way.
+- First stop: `guest_pc=8013d3d4` (sc02_0031, `abi`: an unprototyped
+  `func_8013D53C()` call that passes 0 of 1 arguments).
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits

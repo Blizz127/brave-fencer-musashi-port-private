@@ -1223,6 +1223,15 @@ def narrow_aggregate_pointers(ir):
     # auto-init of a local) is sized the same on host and guest
     alloca_types = dict(re.findall(r"^\s*(%[\w.\"$]+) = alloca (.*?), align \d+", ir, flags=re.M))
     plain = {n for n, t in alloca_types.items() if not type_has_ptr(t, types)}
+    plain_sizes, ptr_sizes = set(), set()
+    for tn in types:
+        lay = llvm_type_layout(tn, types, 8)
+        if lay is None:
+            ptr_sizes.add(-1)
+            continue
+        (ptr_sizes if type_has_ptr(tn, types) else plain_sizes).add(lay[0])
+    if -1 in ptr_sizes:
+        plain_sizes = set()
     # a copy whose end is a global or local of one named pointer-bearing
     # type and whose constant length is that type's host size is a whole
     # struct assignment: it gets the guest-layout size (B28)
@@ -1268,6 +1277,12 @@ def narrow_aggregate_pointers(ir):
             if ms and ms.group(1) in plain:
                 continue
             if line.endswith("; strict-struct-assign"):
+                continue
+            # a constant-length copy the size of a pointer-free struct and of
+            # no pointer-bearing type is a plain struct assignment (the same
+            # size on host and guest; 8013D53C copies a 9-byte record)
+            cl = re.search(r"@llvm\.mem(?:cpy|move)[\w.]*\(.*, i64 (\d+), i1 false\)", line)
+            if cl and int(cl.group(1)) in plain_sizes and int(cl.group(1)) not in ptr_sizes:
                 continue
             raise Reject("layout", "aggregate copy/fill sized with host pointer width")
     return ir, True
