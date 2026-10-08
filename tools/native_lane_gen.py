@@ -357,8 +357,15 @@ def parse_strict_overlay_allow(path):
             continue
         m = re.fullmatch(r"([a-z]+\d*_\d{4})\s+all", text)
         if m:
+            starts = sorted({r["vram"] for r in registry if r["region"] == m.group(1)})
+            nxt = {a: b for a, b in zip(starts, starts[1:])}
+            # 'all' skips rows whose recorded size runs into the next
+            # registry function (a registry inconsistency, e.g. main_0012
+            # 8012ACE0/801457A4); naming one explicitly still reports it.
             got = sorted(r["vram"] for r in registry if r["region"] == m.group(1)
-                         and r.get("recovery") == "c" and (ROOT / r["source"]).exists())
+                         and r.get("recovery") == "c" and (ROOT / r["source"]).exists()
+                         and not (r.get("size") and r["vram"] in nxt
+                                  and r["vram"] + r["size"] > nxt[r["vram"]]))
             if not got:
                 raise BuildError(f"{path}:{n}: {m.group(1)} has no matched C")
             new = [(m.group(1), v) for v in got]

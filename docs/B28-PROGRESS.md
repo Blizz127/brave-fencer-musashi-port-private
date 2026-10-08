@@ -130,6 +130,20 @@ Increment 8:
   a hand-picked subset is admitted). Next: `main_0012 all` in the strict
   overlay allow list.
 
+Increment 9:
+- Added `main_0012 all` to the strict overlay allow list. The overlay lane is
+  now 2032/2577. The strict build takes ~4 min the first time, so run it
+  detached: `setsid nohup bash /tmp/srun.sh ... &`.
+- `'<member> all'` skips registry rows whose size runs into the next
+  function. Two main_0012 rows (8012ACE0, 801457A4) have that registry
+  inconsistency.
+- New strict-only evidence switch: `MUSASHI_STRICT_STOP_RAM=/tmp/x.bin`
+  dumps guest RAM at a not_in_lane stop. Compare it with each member's
+  digest to find the resident overlay. Keep the dump in /tmp only (it is game
+  data).
+- First stop: `guest_pc=80128288`. The resident member is sc02_0031 (a scene
+  overlay with vendor C), not main_0012. Next: `sc02_0031 all`.
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits

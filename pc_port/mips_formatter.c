@@ -13749,7 +13749,20 @@ static uint32_t lane_strict_guest_call(uint32_t target, unsigned argc,
     cpu->branch_pc = 0;
     musashi_trace_function_entry(target, saved_pc, 'j');
     ran = lane_try(active->memory, cpu);
-    if (ran == 0) musashi_strict_abort("lane_guest_call", "not_in_lane", target);
+    if (ran == 0) {
+        /* Opt-in evidence at the stop: the guest's own 2 MiB RAM, so a
+         * shared overlay address can be matched to the resident member. */
+        const char *ram_path = getenv("MUSASHI_STRICT_STOP_RAM");
+        uint8_t *ram = ram_path && ram_path[0]
+            ? musashi_boot_ram_span(active->memory, 0x80000000u, 0x200000u) : NULL;
+        FILE *out = ram ? fopen(ram_path, "wb") : NULL;
+        if (out) {
+            fwrite(ram, 1u, 0x200000u, out);
+            fclose(out);
+            fprintf(stderr, "native_boot: STRICT_STOP_RAM path=%s\n", ram_path);
+        }
+        musashi_strict_abort("lane_guest_call", "not_in_lane", target);
+    }
     if (ran < 0) longjmp(active->abort, cpu->pc == UINT_MAX && cpu->npc == UINT_MAX ? 5 : 4);
     if (cpu->npc == UINT_MAX) longjmp(active->abort, 5);
     if (g_lane_ovl_depth > active->ovl_base) lane_ovl_recheck(active);
