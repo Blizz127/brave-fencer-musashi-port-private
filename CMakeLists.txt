@@ -315,6 +315,14 @@ if(MUSASHI_BUILD_PC_PORT)
             pc_port/gte_owner.c
             pc_port/audio_sdl.c
         )
+        # PsyCross libgpu.h uses static_assert; do not rely on SDL headers
+        # (sdl2-compat) pulling in <assert.h> transitively.
+        set_source_files_properties(pc_port/gpu_psycross.c
+            pc_port/psyq_probe.c pc_port/irq_scheduler.c pc_port/native_boot.c
+            pc_port/render_quad.c pc_port/render_tmd.c
+            pc_port/platform/bfm_plat_config.c
+            pc_port/platform/bfm_plat_backends.c
+            PROPERTIES COMPILE_OPTIONS "-include;assert.h")
         target_link_libraries(musashi_pc_port PUBLIC psycross_static)
         target_compile_definitions(musashi_pc_port PUBLIC MUSASHI_WITH_PSYCROSS=1)
     endif()

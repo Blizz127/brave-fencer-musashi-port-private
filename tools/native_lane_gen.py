@@ -1110,7 +1110,7 @@ def entry_arg_at_calls(words, vram, k):
     return sites
 
 
-def fix_short_calls(ir, words, vram):
+def fix_short_calls(ir, words, vram, src_dir=None):
     """Strict only (B28): a direct call that passes fewer arguments than the
     callee's declaration takes (`((void (*)(void))f)()` on an `f(s32)`).
     The retail jal hands the callee whatever a0-a3 still hold; the optimizer
@@ -1120,10 +1120,18 @@ def fix_short_calls(ir, words, vram):
     (entry_arg_at_calls), the register still holds the caller's own k-th
     argument there: the call gets the caller's parameter k. Any other short
     call is refused (abi)."""
-    decls = {}
+    decls, kr = {}, set()
     for m in re.finditer(r"^declare\b[^@]*@([\w.$]+)\((.*)\)[^(]*$", ir, flags=re.M):
         if "..." not in m.group(2):
             decls[m.group(1)] = [p.split()[0] for p in split_top(m.group(2)) if p]
+        elif m.group(2).strip() == "..." and src_dir is not None:
+            # `extern void f();` (no prototype): the callee's own definition
+            # gives the parameters it reads; only int-sized ones qualify
+            want = kr_callee_params(m.group(1), src_dir)
+            calls = re.findall(r"\bcall [^@]*@" + re.escape(m.group(1)) + r"\((.*)\)", ir)
+            if want and calls and all(not c.strip() for c in calls):
+                decls[m.group(1)] = want
+                kr.add(m.group(1))
     dm = re.search(r"^define\b[^@]*@([\w.$]+)\((.*)\)[^(]*\{$", ir, flags=re.M)
     own = []
     if dm and "..." not in dm.group(2):
@@ -1174,8 +1182,46 @@ def fix_short_calls(ir, words, vram):
         if why is not None:
             raise Reject("abi", f"calls {cm.group(2)} with {len([a for a in split_top(cm.group(3)) if a])} "
                                 f"of {len(want)} declared arguments ({why})")
-        out.append(line[:cm.start(3)] + ", ".join(args) + line[cm.end(3):])
-    return "\n".join(out) + "\n"
+        fixed = line[:cm.start(3)] + ", ".join(args) + line[cm.end(3):]
+        if cm.group(2) in kr:
+            fixed = fixed.replace(" (...) @" + cm.group(2) + "(", " @" + cm.group(2) + "(", 1)
+        out.append(fixed)
+    text = "\n".join(out) + "\n"
+    for name in kr:
+        text = re.sub(r"^(declare\b[^@]*@" + re.escape(name) + r")\(\.\.\.\)", 
+                      lambda m: m.group(1) + "(" + ", ".join(decls[name]) + ")", text, flags=re.M)
+    return text
+
+
+def kr_callee_params(name, src_dir):
+    """Strict only (B28): LLVM types of the parameters in the definition of
+    func_XXXXXXXX in src_dir/<addr>.c (or src/main/<addr>.c): `i32` for
+    32-bit integers, `ptr` for pointers. None when the file is missing, the
+    definition does not parse, or a parameter is narrower than a register."""
+    m = re.fullmatch(r"func_([0-9A-Fa-f]{8})", name)
+    if not m:
+        return None
+    for d in (Path(src_dir), ROOT / "src/main"):
+        f = d / f"{m.group(1).lower()}.c"
+        if not f.exists():
+            continue
+        text = strip_comments(f.read_text(errors="replace"))
+        dm = re.search(r"^[\w\s\*]*\b" + re.escape(name) + r"\s*\(([^)]*)\)\s*\{", text, flags=re.M)
+        if not dm:
+            return None
+        params = [p.strip() for p in dm.group(1).split(",") if p.strip()]
+        if params == ["void"]:
+            return []
+        out = []
+        for prm in params:
+            if "*" in prm:
+                out.append("ptr")
+            elif re.fullmatch(r"(?:const\s+)?(?:s32|u32|int|unsigned(?:\s+int)?|signed(?:\s+int)?)\s+\w+", prm):
+                out.append("i32")
+            else:
+                return None
+        return out
+    return None
 
 
 def strip_symbol_binding_asm(ir):
@@ -2449,7 +2495,7 @@ def build_one(entry, out, symbols, hooks, clang, info=None):
         ir = o0.read_text()
         if STRICT:
             ir = strip_symbol_binding_asm(ir)
-            ir = fix_short_calls(ir, retail_words(vram, size, info), vram)
+            ir = fix_short_calls(ir, retail_words(vram, size, info), vram, src.parent)
             ir, _ = narrow_aggregate_pointers(ir)
         check_layout(ir)
         words = retail_words(vram, size, info)
