@@ -1164,11 +1164,20 @@ def fix_short_calls(ir, words, vram, src_dir=None):
             why = "retail words unavailable"
         elif not re.fullmatch(r"func_[0-9A-Fa-f]{8}", cm.group(2)):
             why = "the callee has no retail address"
-        elif len(want) > 4 or len(own) < len(want):
+        elif len(want) > 4:
             why = "the caller does not receive the missing arguments"
         if why is None:
             ind = re.match(r"^\s*", line).group(0) or "  "
+            dead = retail_dead_args(int(cm.group(2)[5:], 16))
             for k in range(len(args), len(want)):
+                if dead >> k & 1:
+                    # nothing reachable from the callee reads a(k): any
+                    # value is the retail behaviour; pass a defined one
+                    args.append("ptr null" if want[k] == "ptr" else f"{want[k]} 0")
+                    continue
+                if k >= len(own):
+                    why = "the caller does not receive the missing arguments"
+                    break
                 live = entry_arg_at_calls(words, vram, k)
                 if not live or not live.get(int(cm.group(2)[5:], 16)):
                     why = f"a{k} is not the caller's argument at every retail jal"
@@ -1200,6 +1209,31 @@ def fix_short_calls(ir, words, vram, src_dir=None):
         text = re.sub(r"^(declare\b[^@]*@" + re.escape(name) + r")\(\.\.\.\)", 
                       lambda m: m.group(1) + "(" + ", ".join(decls[name]) + ")", text, flags=re.M)
     return text
+
+
+_DEAD_ARGS = {}
+
+
+def retail_dead_args(target):
+    """Strict only (B28): bits of a0-a3 that nothing reachable from the main
+    EXE function at target reads (ArgLiveness over the retail words). A
+    `jalr` is not a read: strict builds have no interpreter, so an indirect
+    call from native code passes exactly the arguments of its C call, never
+    a register left over from the caller. 0 (nothing proven dead) when the
+    walk meets unknown words, an unresolved `jr reg`, or code outside the
+    main EXE."""
+    if target in _DEAD_ARGS:
+        return _DEAD_ARGS[target]
+    bits = 0
+    if guest_word(target) is not None and 0x80010000 <= target < 0x80800000:
+        al = make_arg_liveness({}, strict=False)
+        summary = al.analyse([(None, target)])
+        clean = all(n[0] != "unknown" and (n[0] != "jr" or pc in ext)
+                    for nodes, ext in al.cfg.values() for pc, n in nodes.items())
+        if clean:
+            bits = A_MASK & ~summary.get((None, target), A_MASK)
+    _DEAD_ARGS[target] = bits
+    return bits
 
 
 def kr_callee_params(name, src_dir):

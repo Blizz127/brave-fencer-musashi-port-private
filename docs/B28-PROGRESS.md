@@ -286,6 +286,19 @@ Increment 21 (generator, strict only):
 - First stop: `guest_pc=8002d904` (main, `abi`: calls func_8002EE64 with 0 of
   4 declared arguments), frame ~1200, no host fault.
 
+Increment 22 (generator, strict only):
+- Short calls (fix_short_calls): a missing argument a(k) that nothing
+  reachable from the main EXE callee reads (`retail_dead_args`, ArgLiveness
+  over the retail words) is passed as a defined 0/null. A `jalr` does not
+  count as a read: strict builds have no interpreter, so an indirect call
+  from native code passes only its C call's arguments. Unknown words, an
+  unresolved `jr reg` or a non-main callee prove nothing (the call is still
+  refused). 8002D904 calls func_8002EE64() whose 4 declared parameters are
+  dead (it forwards them to 80036EB4, which reads none).
+- Main lane 3433/4011, overlay lane 2734/3275.
+- First stop: `guest_pc=80175ab8` (sc02_0031, `memory`: volatile access to
+  a device register), frame ~1200, no host fault.
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits
