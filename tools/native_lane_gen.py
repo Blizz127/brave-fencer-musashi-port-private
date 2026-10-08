@@ -1196,9 +1196,18 @@ def fix_short_calls(ir, words, vram, src_dir=None, info=None):
         elif m.group(2).strip() == "..." and src_dir is not None:
             # `extern void f();` (no prototype): the callee's own definition
             # gives the parameters it reads; only int-sized ones qualify
+            # (B28): calls with no arguments get padded below; calls that
+            # pass exactly the defined parameters, type for type, become
+            # prototyped (a K&R call is not limited to the register-width
+            # unprototyped stubs, 80176D94 -> 801777BC passes 7)
             want = kr_callee_params(m.group(1), src_dir)
             calls = re.findall(r"\bcall [^@]*@" + re.escape(m.group(1)) + r"\((.*)\)", ir)
-            if want and calls and all(not c.strip() for c in calls):
+
+            def exact(c):
+                got = [a.split()[0] for a in split_top(c) if a.strip()]
+                return got == want
+
+            if want is not None and calls and all(not c.strip() or exact(c) for c in calls):
                 decls[m.group(1)] = want
                 kr.add(m.group(1))
     dm = re.search(r"^define\b[^@]*@([\w.$]+)\((.*)\)[^(]*\{$", ir, flags=re.M)
@@ -1217,6 +1226,9 @@ def fix_short_calls(ir, words, vram, src_dir=None, info=None):
         args = [a for a in split_top(cm.group(3)) if a]
         want = decls[cm.group(2)]
         if len(args) >= len(want):
+            if cm.group(2) in kr:
+                line = re.sub(r" \([^()]*\.\.\.\) @" + re.escape(cm.group(2)) + r"\(",
+                              " @" + cm.group(2) + "(", line, count=1)
             out.append(line)
             continue
         why = None
@@ -1262,7 +1274,8 @@ def fix_short_calls(ir, words, vram, src_dir=None, info=None):
                                 f"of {len(want)} declared arguments ({why})")
         fixed = line[:cm.start(3)] + ", ".join(args) + line[cm.end(3):]
         if cm.group(2) in kr:
-            fixed = fixed.replace(" (...) @" + cm.group(2) + "(", " @" + cm.group(2) + "(", 1)
+            fixed = re.sub(r" \([^()]*\.\.\.\) @" + re.escape(cm.group(2)) + r"\(",
+                           " @" + cm.group(2) + "(", fixed, count=1)
         out.append(fixed)
     text = "\n".join(out) + "\n"
     for name in kr:

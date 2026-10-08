@@ -318,6 +318,15 @@ Increment 24 (generator, strict only):
   `unprototyped func_801777BC with 7 arguments` (stack arguments through a
   K&R call).
 
+Increment 25 (generator, strict only):
+- K&R calls (`extern T f();`) whose every call passes exactly the
+  parameters of f's own definition, type for type (pointers and 32-bit
+  integers only), become prototyped calls. They are no longer limited to
+  the register-width unprototyped stubs (at most 6 arguments). 80176D94
+  calls func_801777BC with 7.
+- Main lane 3446/4011, overlay lane 2747/3275.
+- First stop: `guest_pc=801783d0` (sc02_0031), frame ~1200, no host fault.
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits
