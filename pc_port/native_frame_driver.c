@@ -597,6 +597,1611 @@ static void driver_irq_poll(void) {
 }
 
 void musashi_frame_driver_irq_point(void) { driver_irq_poll(); }
+int musashi_frame_driver_irq_enabled(void) { return g_irq_enabled && !g_in_irq; }
+
+/* ---- libcd (80043060..80046D1C) ------------------------------------------
+ * Native replacements written from the retail disassembly, as a set: they
+ * share libcd's guest RAM state, so the game's direct reads (CdStatus,
+ * CdMode, the sync/ready results) and the remaining guest callers see what
+ * retail would leave. Hardware goes through the CD register device (the
+ * 1F801800..3 ports, CDROM/COMMON delay, DPCR, DMA3) and the SPU device
+ * (CD volume). The CD IRQ handler 80045290 is registered with the native
+ * InterruptCallback and runs from the driver's interrupt point; every retail
+ * busy-wait (CD_sync, CD_ready, CD_cw, CD_datasync, the DMA/FIFO polls,
+ * VSync(n)) spends guest time and checks for interrupts on each iteration.
+ *
+ * RAM: 8006CC84 sync callback, 8006CC88 ready callback, 8006CC90 debug
+ * level, 8006CC94/98 status bytes 0/1 (words), 8006CC9C shell-open count,
+ * 8006CCA0 last Setloc position, 8006CCA4 mode, 8006CCA5 last command;
+ * 8006CF64/65/66 sync/ready/data-end interrupt codes with 8-byte results at
+ * 800763D8/E0/E8; the timeout record at 800763F0. Per-command tables:
+ * 8006CBFC (Setloc first), 8006CD4C (acknowledge then complete), 8006CDCC
+ * (clears the ready code), 8006CE4C (acknowledge updates the status),
+ * 8006CECC (parameter count). Register addresses come from the pointer
+ * cells 8006CF4C..8006CF90 as in retail. */
+int bfm_psyq_VSync(uint32_t *r);
+static uint32_t g_cd_sp;
+
+enum {
+    CD_CBSYNC = 0x8006CC84u, CD_CBREADY = 0x8006CC88u, CD_DEBUG = 0x8006CC90u,
+    CD_STATUS = 0x8006CC94u, CD_STATUS1 = 0x8006CC98u, CD_NOPEN = 0x8006CC9Cu,
+    CD_POS = 0x8006CCA0u, CD_MODE = 0x8006CCA4u, CD_COM = 0x8006CCA5u,
+    CD_T_SETLOC = 0x8006CBFCu, CD_T_ACK2 = 0x8006CD4Cu, CD_T_RDCLR = 0x8006CDCCu,
+    CD_T_STATUPD = 0x8006CE4Cu, CD_T_NPARAM = 0x8006CECCu,
+    CD_C_REG0 = 0x8006CF4Cu, CD_C_COMDELAY = 0x8006CF5Cu, CD_C_SPU = 0x8006CF60u,
+    CD_C_CDDELAY = 0x8006CF80u, CD_C_DPCR = 0x8006CF84u, CD_C_MADR = 0x8006CF88u,
+    CD_C_BCR = 0x8006CF8Cu, CD_C_CHCR = 0x8006CF90u,
+    CD_INTR = 0x8006CF64u, CD_RES_SYNC = 0x800763D8u, CD_RES_READY = 0x800763E0u,
+    CD_RES_END = 0x800763E8u, CD_TO_TICK = 0x800763F0u, CD_TO_COUNT = 0x800763F4u,
+    CD_TO_MSG = 0x800763F8u, CD_READCB = 0x8006CF9Cu, CD_CB_CFD0 = 0x8006CFD0u,
+    CD_IRQ_HANDLER = 0x80045290u, CD_SPIN = 256u
+};
+
+static const MusashiCdRegisterDevice *cd_dev(void) {
+    return g_driver.devices ? g_driver.devices->cd_registers : NULL;
+}
+static uint8_t cd_r8(unsigned reg) {
+    const MusashiCdRegisterDevice *d = cd_dev();
+    uint8_t v = 0;
+    if (!d || !d->read8 || !d->read8(d->userdata, rd32(CD_C_REG0 + reg * 4u), &v))
+        driver_stop("cd_register_read_refused", 0x80043B9Cu);
+    return v;
+}
+static void cd_w8(unsigned reg, uint8_t v) {
+    const MusashiCdRegisterDevice *d = cd_dev();
+    if (!d || !d->write8 || !d->write8(d->userdata, rd32(CD_C_REG0 + reg * 4u), v))
+        driver_stop("cd_register_write_refused", 0x80044670u);
+}
+static uint32_t cd_r32(uint32_t cell) {
+    const MusashiCdRegisterDevice *d = cd_dev();
+    uint32_t v = 0;
+    if (!d || !d->read32 || !d->read32(d->userdata, rd32(cell), &v))
+        driver_stop("cd_word_read_refused", cell);
+    return v;
+}
+static void cd_w32(uint32_t cell, uint32_t v) {
+    const MusashiCdRegisterDevice *d = cd_dev();
+    if (!d || !d->write32 || !d->write32(d->userdata, rd32(cell), v))
+        driver_stop("cd_word_write_refused", cell);
+}
+
+/* One iteration of a retail busy-wait: guest time passes and a pending
+ * interrupt is delivered (outside interrupt context, as on hardware). */
+static void driver_spin(uint32_t cycles) {
+    if (g_driver.ops && g_driver.ops->spend && !g_driver.ops->spend(g_driver.ops->user, cycles))
+        driver_stop("spend_refused", 0u);
+    driver_irq_poll();
+}
+
+static uint32_t vcount(void) { return rd32(ETC_VS_TICK); }
+
+static uint32_t cd_call2(uint32_t fn, uint32_t a0, uint32_t a1) {
+    uint32_t a[2] = {a0, a1};
+    return call_at(g_cd_sp, fn, 2, a);
+}
+
+static void cd_copy8(uint32_t dst, uint32_t src) {
+    unsigned i;
+    if (!dst) return;
+    for (i = 0; i < 8u; ++i) wr8(dst + i, rd8(src + i));
+}
+
+static void cd_ack_all(void) {
+    /* the ack loop shared by 80044B14 and 80044D38 */
+    cd_w8(0, 1);
+    while (!g_driver.quit && (cd_r8(3) & 7u)) {
+        cd_w8(0, 1);
+        cd_w8(3, 7);
+        cd_w8(2, 7);
+    }
+    wr8(CD_INTR + 2u, 0);
+    wr8(CD_INTR + 1u, 0);
+    wr8(CD_INTR, 2);
+    cd_w8(0, 0);
+    cd_w8(3, 0);
+    cd_w32(CD_C_COMDELAY, 0x1325u);
+}
+
+static void cd_flush(void) { cd_ack_all(); }   /* 80044B14 */
+
+static int cd_getintr(void) {
+    /* 80043B9C */
+    uint8_t intr, res[8];
+    unsigned n = 0, i;
+    int s1 = 0, v;
+    uint32_t com;
+    cd_w8(0, 1);
+    intr = cd_r8(3) & 7u;
+    if (!intr) return 0;
+    for (;;) {
+        uint8_t now = cd_r8(3) & 7u;
+        if (now == intr) break;
+        intr = cd_r8(3) & 7u;
+    }
+    while (n < 8u && (cd_r8(0) & 0x20u)) res[n++] = cd_r8(1);
+    for (i = n; i < 8u; ++i) res[i] = 0;
+    cd_w8(0, 1);
+    cd_w8(3, 7);
+    cd_w8(2, 7);
+    com = rd8(CD_COM);
+    if (intr != 3u || rd32(CD_T_STATUPD + com * 4u)) {
+        if (!(rd32(CD_STATUS) & 0x10u) && (res[0] & 0x10u))
+            wr32(CD_NOPEN, rd32(CD_NOPEN) + 1u);
+        wr32(CD_STATUS, res[0]);
+        wr32(CD_STATUS1, res[1]);
+        s1 = res[0] & 0x1Du;
+    }
+    if (intr == 5u && (int32_t)rd32(CD_DEBUG) > 0)
+        fprintf(stderr, "native_boot: libcd DiskError com=%02x stat=%02x %02x\n",
+                (unsigned)com, res[0], res[1]);
+    switch (intr) {
+    case 1:   /* DataReady */
+        v = 1;
+        if (s1) {
+            if (n == 1u) s1 = 0;
+            if (s1) v = 5;
+        }
+        wr8(CD_INTR + 1u, (uint8_t)v);
+        for (i = 0; i < 8u; ++i) wr8(CD_RES_READY + i, res[i]);
+        cd_w8(0, 0);
+        cd_w8(3, 0);
+        return 4;
+    case 2:   /* Complete */
+        wr8(CD_INTR, s1 ? 5u : 2u);
+        for (i = 0; i < 8u; ++i) wr8(CD_RES_SYNC + i, res[i]);
+        return 2;
+    case 3:   /* Acknowledge */
+        v = s1 ? 5 : rd32(CD_T_ACK2 + com * 4u) ? 3 : 2;
+        wr8(CD_INTR, (uint8_t)v);
+        for (i = 0; i < 8u; ++i) wr8(CD_RES_SYNC + i, res[i]);
+        return v == 3 ? 1 : 2;
+    case 4:   /* DataEnd */
+        wr8(CD_INTR + 2u, 4);
+        wr8(CD_INTR + 1u, 4);
+        for (i = 0; i < 8u; ++i) wr8(CD_RES_END + i, res[i]);
+        for (i = 0; i < 8u; ++i) wr8(CD_RES_READY + i, res[i]);
+        return 4;
+    case 5:   /* DiskError */
+        wr8(CD_INTR + 1u, 5);
+        wr8(CD_INTR, 5);
+        for (i = 0; i < 8u; ++i) wr8(CD_RES_SYNC + i, res[i]);
+        for (i = 0; i < 8u; ++i) wr8(CD_RES_READY + i, res[i]);
+        return 6;
+    default:
+        fprintf(stderr, "native_boot: libcd unknown intr %u\n", (unsigned)intr);
+        return 0;
+    }
+}
+
+static void cd_service(void) {
+    /* the body of the IRQ handler 80045290 (and of the in-interrupt paths
+     * of CD_sync/CD_ready/CD_cw): drain interrupts, run the callbacks */
+    uint8_t save = cd_r8(0) & 3u;
+    int r;
+    while (!g_driver.quit && (r = cd_getintr()) != 0) {
+        if ((r & 4) && rd32(CD_CBREADY))
+            (void)cd_call2(rd32(CD_CBREADY), rd8(CD_INTR + 1u), CD_RES_READY);
+        if ((r & 2) && rd32(CD_CBSYNC))
+            (void)cd_call2(rd32(CD_CBSYNC), rd8(CD_INTR), CD_RES_SYNC);
+    }
+    cd_w8(0, save);
+}
+
+static void cd_to_start(uint32_t msg) {
+    wr32(CD_TO_TICK, vcount() + 960u);
+    wr32(CD_TO_COUNT, 0);
+    wr32(CD_TO_MSG, msg);
+}
+
+static int cd_to_expired(void) {
+    uint32_t c;
+    if (!((int32_t)rd32(CD_TO_TICK) < (int32_t)vcount())) {
+        c = rd32(CD_TO_COUNT);
+        wr32(CD_TO_COUNT, c + 1u);
+        if (!((int32_t)c > 0x3C0000)) return 0;
+    }
+    fprintf(stderr, "native_boot: libcd timeout (msg %08x) sync=%u ready=%u com=%02x\n",
+            rd32(CD_TO_MSG), rd8(CD_INTR), rd8(CD_INTR + 1u), rd8(CD_COM));
+    cd_flush();
+    return 1;
+}
+
+/* wait-loop step: in interrupt context retail polls the controller itself */
+static void cd_wait_step(void) {
+    if (rd16(ETC_STATE + 2u)) {
+        if (g_driver.ops && g_driver.ops->spend)
+            (void)g_driver.ops->spend(g_driver.ops->user, CD_SPIN);
+        cd_service();
+    } else {
+        driver_spin(CD_SPIN);
+    }
+}
+
+static int32_t cd_sync(int mode, uint32_t result) {
+    /* 80044124 CdSync */
+    cd_to_start(0x800737E0u);
+    for (;;) {
+        uint8_t s;
+        if (cd_to_expired()) return -1;
+        if (g_driver.quit) return -1;
+        s = rd8(CD_INTR);
+        if (s == 2u || s == 5u) {
+            wr8(CD_INTR, 2);
+            cd_copy8(result, CD_RES_SYNC);
+            return s;
+        }
+        if (mode) return 0;
+        cd_wait_step();
+    }
+}
+
+static int32_t cd_ready(int mode, uint32_t result) {
+    /* 800443A4 CdReady */
+    cd_to_start(0x800737E8u);
+    for (;;) {
+        uint8_t s;
+        if (cd_to_expired()) return -1;
+        if (g_driver.quit) return -1;
+        s = rd8(CD_INTR + 2u);
+        if (s) {
+            wr8(CD_INTR + 2u, 0);
+            cd_copy8(result, CD_RES_END);
+            return s;
+        }
+        s = rd8(CD_INTR + 1u);
+        if (s) {
+            wr8(CD_INTR + 1u, 0);
+            cd_copy8(result, CD_RES_READY);
+            return s;
+        }
+        if (mode) return 0;
+        cd_wait_step();
+    }
+}
+
+static int32_t cd_cw(uint32_t com, uint32_t param, uint32_t result, int async) {
+    /* 80044670: issue one command; wait for its first response */
+    int32_t i, n;
+    com &= 0xFFu;
+    if ((int32_t)rd32(CD_DEBUG) >= 2)
+        fprintf(stderr, "native_boot: libcd com %02x\n", (unsigned)com);
+    if (rd32(CD_T_NPARAM + com * 4u) && !param) return -2;
+    (void)cd_sync(0, 0);
+    if (com == 2u)
+        for (i = 0; i < 4; ++i) wr8(CD_POS + (uint32_t)i, rd8(param + (uint32_t)i));
+    if (com == 14u) wr8(CD_MODE, rd8(param));
+    wr8(CD_INTR, 0);
+    if (rd32(CD_T_RDCLR + com * 4u)) wr8(CD_INTR + 1u, 0);
+    cd_w8(0, 0);
+    n = (int32_t)rd32(CD_T_NPARAM + com * 4u);
+    for (i = 0; i < n; ++i) cd_w8(2, rd8(param + (uint32_t)i));
+    wr8(CD_COM, (uint8_t)com);
+    cd_w8(1, (uint8_t)com);
+    if (async) return 0;
+    cd_to_start(0x8007380Cu);
+    while (rd8(CD_INTR) == 0u) {
+        if (cd_to_expired() || g_driver.quit) return -1;
+        cd_wait_step();
+    }
+    cd_copy8(result, CD_RES_SYNC);
+    return rd8(CD_INTR) == 5u ? -1 : 0;
+}
+
+static int cd_control_common(uint32_t com, uint32_t param, uint32_t result,
+                             uint32_t final_result, int async) {
+    /* 800435CC / 80043704 / 80043830: four tries; a Setloc first for
+     * position commands; Getstat first while the shell is open. The sync
+     * callback is suspended during the retries. */
+    uint32_t cb = rd32(CD_CBSYNC);
+    int tries = 3;
+    com &= 0xFFu;
+    for (;;) {
+        wr32(CD_CBSYNC, 0);
+        if (com != 1u && (rd8(CD_STATUS) & 0x10u)) (void)cd_cw(1, 0, 0, 0);
+        if (!param || !rd32(CD_T_SETLOC + com * 4u) || cd_cw(2, param, result, 0) == 0) {
+            wr32(CD_CBSYNC, cb);
+            if (cd_cw(com, param, final_result, async) == 0) return 1;
+        }
+        if (--tries == -1 || g_driver.quit) {
+            wr32(CD_CBSYNC, cb);
+            return 0;
+        }
+    }
+}
+
+static int32_t cd_initvol(void) {
+    /* 80044BF4: SPU CD/main volumes, then the CD mix 80/00/80/00 */
+    const MusashiCdSpuDevice *spu = g_driver.devices ? g_driver.devices->cd_spu : NULL;
+    uint32_t base = rd32(CD_C_SPU);
+    uint16_t a = 0, b = 0;
+    if (!spu || !spu->read16 || !spu->write16) {
+        driver_stop("cd_spu_device_missing", 0x80044BF4u);
+        return -1;
+    }
+    if (!spu->read16(spu->userdata, base + 440u, &a)) driver_stop("spu_read_refused", 0x80044BF4u);
+    if (!a && (!spu->read16(spu->userdata, base + 442u, &b) || !b)) {
+        if (!spu->write16(spu->userdata, base + 384u, 0x3FFF) ||
+            !spu->write16(spu->userdata, base + 386u, 0x3FFF))
+            driver_stop("spu_write_refused", 0x80044BF4u);
+    }
+    if (!spu->write16(spu->userdata, base + 432u, 0x3FFF) ||
+        !spu->write16(spu->userdata, base + 434u, 0x3FFF) ||
+        !spu->write16(spu->userdata, base + 426u, 0xC001))
+        driver_stop("spu_write_refused", 0x80044BF4u);
+    cd_w8(0, 2);
+    cd_w8(2, 0x80);
+    cd_w8(3, 0);
+    cd_w8(0, 3);
+    cd_w8(1, 0x80);
+    cd_w8(2, 0);
+    cd_w8(3, 0x20);
+    return 0;
+}
+
+static void cd_initintr(void) {
+    /* 80044CE8 */
+    wr32(CD_CBREADY, 0);
+    wr32(CD_CBSYNC, 0);
+    wr32(CD_STATUS1, 0);
+    wr32(CD_STATUS, 0);
+    (void)etc_init();
+    (void)etc_irq_set(2, CD_IRQ_HANDLER);
+}
+
+static int32_t cd_init(void) {
+    /* 80044D38 */
+    fprintf(stderr, "native_boot: FRAME_DRIVER libcd CD_init\n");
+    wr8(CD_COM, 0);
+    wr8(CD_MODE, 0);
+    cd_initintr();
+    cd_ack_all();
+    (void)cd_cw(1, 0, 0, 0);
+    if (rd32(CD_STATUS) & 0x10u) (void)cd_cw(1, 0, 0, 0);
+    if (cd_cw(10, 0, 0, 0)) return -1;
+    if (cd_cw(12, 0, 0, 0)) return -1;
+    return cd_sync(0, 0) == 2 ? 0 : -1;
+}
+
+static int32_t cd_reset(int32_t mode) {
+    /* 80043450 CdReset */
+    if (mode == 2) {
+        cd_initintr();
+        return 1;
+    }
+    if (cd_init()) return 0;
+    if (mode == 1 && cd_initvol()) return 0;
+    return 1;
+}
+
+static int cd_wait_fifo_then(uint32_t chcr, int wait_done) {
+    /* tail of 80045090 / 80045190 */
+    while (!g_driver.quit && !(cd_r8(0) & 0x40u)) driver_spin(16u);
+    cd_w32(CD_C_CHCR, chcr);
+    if (wait_done)
+        while (!g_driver.quit && (cd_r32(CD_C_CHCR) & 0x01000000u)) driver_spin(16u);
+    else
+        (void)cd_r32(CD_C_CHCR);
+    return 0;
+}
+
+static int32_t cd_getsector(uint32_t madr, uint32_t size) {
+    /* 80045090: BFRD, DMA3 burst, wait for completion */
+    cd_w8(0, 0);
+    cd_w8(3, 0x80);
+    cd_w32(CD_C_CDDELAY, 0x00020943u);
+    cd_w32(CD_C_COMDELAY, 0x1323u);
+    cd_w32(CD_C_DPCR, cd_r32(CD_C_DPCR) | 0x8000u);
+    cd_w32(CD_C_MADR, madr);
+    cd_w32(CD_C_BCR, size | 0x10000u);
+    (void)cd_wait_fifo_then(0x11000000u, 1);
+    cd_w32(CD_C_COMDELAY, 0x1325u);
+    return 0;
+}
+
+static int32_t cd_getsector2(uint32_t madr, uint32_t size) {
+    /* 80045190: the same set-up, started without waiting */
+    cd_w8(0, 0);
+    cd_w8(3, 0x80);
+    cd_w32(CD_C_CDDELAY, 0x21020843u);
+    cd_w32(CD_C_COMDELAY, 0x1325u);
+    cd_w32(CD_C_DPCR, cd_r32(CD_C_DPCR) | 0x8000u);
+    cd_w32(CD_C_MADR, madr);
+    cd_w32(CD_C_BCR, size | 0x10000u);
+    (void)cd_wait_fifo_then(0x11400100u, 0);
+    return 0;
+}
+
+static int32_t cd_datasync(int mode) {
+    /* 80044F24 */
+    cd_to_start(0x80073860u);
+    for (;;) {
+        if (cd_to_expired() || g_driver.quit) return -1;
+        if (!(cd_r32(CD_C_CHCR) & 0x01000000u)) return 0;
+        if (mode) return 1;
+        driver_spin(CD_SPIN);
+    }
+}
+
+static void driver_vsync_wait(uint32_t fields) {
+    /* VSync(n) from native code: n fields of guest time, interrupts on */
+    uint32_t target = vcount() + fields;
+    unsigned long guard = 0;
+    while (!g_driver.quit && (int32_t)(vcount() - target) < 0) {
+        driver_spin(2048u);
+        if (++guard > 4000000ul) {
+            driver_stop("vsync_wait_no_vblank", F_VSYNC);
+            return;
+        }
+    }
+}
+
+/* lane entries */
+#define CD_ENTRY(name) static int name(MusashiNativeLaneCall *call)
+#define CD_SP() (g_cd_sp = call->r[29] - 0x40u)
+
+CD_ENTRY(hle_cd_init) {
+    /* 80043300 CdInit */
+    int tries;
+    CD_SP();
+    for (tries = 4; tries > 0 && !g_driver.quit; --tries) {
+        if (cd_reset(1) == 1) {
+            wr32(CD_CBSYNC, 0x80043398u);
+            wr32(CD_CBREADY, 0x800433C0u);
+            wr32(CD_READCB, 0x800433E8u);
+            wr32(CD_CB_CFD0, 0);
+            call->r[2] = 1;
+            return 1;
+        }
+    }
+    fprintf(stderr, "native_boot: FRAME_DRIVER CdInit failed\n");
+    call->r[2] = 0;
+    return 1;
+}
+CD_ENTRY(hle_cd_reset) { CD_SP(); call->r[2] = (uint32_t)cd_reset((int32_t)call->r[4]); return 1; }
+CD_ENTRY(hle_cd_flush) { CD_SP(); cd_flush(); return 1; }
+CD_ENTRY(hle_cd_sync) {
+    CD_SP();
+    call->r[2] = (uint32_t)cd_sync((int)call->r[4], call->r[5]);
+    return 1;
+}
+CD_ENTRY(hle_cd_ready) {
+    CD_SP();
+    call->r[2] = (uint32_t)cd_ready((int)call->r[4], call->r[5]);
+    return 1;
+}
+CD_ENTRY(hle_cd_cw) {
+    CD_SP();
+    call->r[2] = (uint32_t)cd_cw(call->r[4], call->r[5], call->r[6], (int)call->r[7]);
+    return 1;
+}
+CD_ENTRY(hle_cd_getintr) { CD_SP(); call->r[2] = (uint32_t)cd_getintr(); return 1; }
+CD_ENTRY(hle_cd_control) {
+    CD_SP();
+    call->r[2] = (uint32_t)cd_control_common(call->r[4], call->r[5], call->r[6], call->r[6], 0);
+    return 1;
+}
+CD_ENTRY(hle_cd_control_f) {
+    CD_SP();
+    call->r[2] = (uint32_t)cd_control_common(call->r[4], call->r[5], 0, 0, 1);
+    return 1;
+}
+CD_ENTRY(hle_cd_control_b) {
+    CD_SP();
+    if (cd_control_common(call->r[4], call->r[5], call->r[6], call->r[6], 0))
+        call->r[2] = cd_sync(0, call->r[6]) == 2 ? 1u : 0u;
+    else
+        call->r[2] = 0;
+    return 1;
+}
+CD_ENTRY(hle_cd_getsector) {
+    CD_SP();
+    call->r[2] = cd_getsector(call->r[4], call->r[5]) == 0;
+    return 1;
+}
+CD_ENTRY(hle_cd_getsector2) {
+    CD_SP();
+    call->r[2] = cd_getsector2(call->r[4], call->r[5]) == 0;
+    return 1;
+}
+CD_ENTRY(hle_cd_datasync) { CD_SP(); call->r[2] = (uint32_t)cd_datasync((int)call->r[4]); return 1; }
+CD_ENTRY(hle_cd_data_callback) {
+    /* 800439D4 CdDataCallback(f) = DMACallback(3, f) */
+    uint32_t previous = 0;
+    if (!g_driver.ops || !g_driver.ops->dma_irq ||
+        !musashi_boot_call_80042f8c(g_driver.memory, g_driver.ops->dma_irq, 3,
+                                    call->r[4], &previous))
+        driver_stop("CdDataCallback_refused", 0x800439D4u);
+    call->r[2] = previous;
+    return 1;
+}
+CD_ENTRY(hle_cd_irq) {   /* 80045290 */
+    uint32_t saved = g_cd_sp;
+    CD_SP();
+    cd_service();
+    g_cd_sp = saved;
+    return 1;
+}
+CD_ENTRY(hle_cd_initvol) { CD_SP(); call->r[2] = (uint32_t)cd_initvol(); return 1; }
+CD_ENTRY(hle_cd_initintr) { CD_SP(); cd_initintr(); return 1; }
+CD_ENTRY(hle_cd_init_body) { CD_SP(); call->r[2] = (uint32_t)cd_init(); return 1; }
+
+static int cd_xchg(MusashiNativeLaneCall *call, uint32_t cell) {
+    call->r[2] = rd32(cell);
+    wr32(cell, call->r[4]);
+    return 1;
+}
+CD_ENTRY(hle_cd_sync_callback) { return cd_xchg(call, CD_CBSYNC); }      /* 8004359C */
+CD_ENTRY(hle_cd_ready_callback) { return cd_xchg(call, CD_CBREADY); }    /* 800435B4 */
+CD_ENTRY(hle_cd_set_debug) { return cd_xchg(call, CD_DEBUG); }           /* 800434DC */
+CD_ENTRY(hle_cd_read_callback) { return cd_xchg(call, CD_READCB); }      /* 8004654C */
+CD_ENTRY(hle_cd_cb_cfd0) { return cd_xchg(call, CD_CB_CFD0); }           /* 80046564 */
+CD_ENTRY(hle_cd_status) { call->r[2] = rd8(CD_STATUS); return 1; }       /* 80043410 */
+CD_ENTRY(hle_cd_mode) { call->r[2] = rd8(CD_MODE); return 1; }           /* 80043420 */
+CD_ENTRY(hle_cd_lastcom) { call->r[2] = rd8(CD_COM); return 1; }         /* 80043430 */
+CD_ENTRY(hle_cd_lastpos) { call->r[2] = CD_POS; return 1; }              /* 80043440 */
+CD_ENTRY(hle_cd_get_cbe8) { call->r[2] = rd32(0x8006CBE8u); return 1; }  /* 80043078 */
+CD_ENTRY(hle_cd_comstr) {
+    /* 800434F4: command name pointer (28 commands) or "none" */
+    uint32_t c = call->r[4] & 0xFFu;
+    call->r[2] = c < 28u ? rd32(0x8006CCACu + c * 4u) : 0x80073614u;
+    return 1;
+}
+CD_ENTRY(hle_cd_intstr) {
+    uint32_t c = call->r[4] & 0xFFu;
+    call->r[2] = c < 7u ? rd32(0x8006CD2Cu + c * 4u) : 0x80073614u;
+    return 1;
+}
+static int cd_deliver(uint32_t spec) {
+    /* 80043398 / 800433C0 / 800433E8: DeliverEvent(F0000003, spec) (B0:07) */
+    if (!g_driver.ops || !g_driver.ops->deliver_event ||
+        !g_driver.ops->deliver_event(g_driver.ops->user, 0xF0000003u, spec))
+        driver_stop("DeliverEvent_refused", 0x8005CE68u);
+    return 1;
+}
+CD_ENTRY(hle_cd_cb_sync_default) { (void)call; return cd_deliver(0x20u); }
+CD_ENTRY(hle_cd_cb_ready_default) { (void)call; return cd_deliver(0x40u); }
+
+static uint32_t bcd2int(uint8_t b) { return (uint32_t)(b >> 4) * 10u + (b & 15u); }
+
+static uint32_t cd_get_toc(uint32_t loc) {
+    /* 800430DC(1, loc): GetTN, then GetTD for the lead-out (track 0) and
+     * each track; loc[k] = {mm, ss, 0, -}. Returns the track count. */
+    uint32_t old = rd32(CD_CBSYNC), first, last, t, n = 1, res = g_cd_sp + 0x18u,
+             param = g_cd_sp + 0x20u, out = loc + 4u;
+    wr32(CD_CBSYNC, 0);
+    if (!(cd_control_common(19, 0, res, res, 0) && cd_sync(0, res) == 2)) goto fail;
+    first = bcd2int(rd8(res + 1u));
+    last = bcd2int(rd8(res + 2u));
+    wr8(param, 0);
+    if (!(cd_control_common(20, param, res, res, 0) && cd_sync(0, res) == 2)) goto fail;
+    wr8(loc, rd8(res + 1u));
+    wr8(loc + 1u, rd8(res + 2u));
+    wr8(loc + 2u, 0);
+    for (t = first; t <= last; ++t) {
+        wr8(param, (uint8_t)(((t / 10u) << 4) | (t % 10u)));
+        if (!(cd_control_common(20, param, res, res, 0) && cd_sync(0, res) == 2)) goto fail;
+        ++n;
+        wr8(out, rd8(res + 1u));
+        wr8(out + 2u, 0);
+        wr8(out + 1u, rd8(res + 2u));
+        out += 4u;
+    }
+    wr32(CD_CBSYNC, old);
+    return n - 1u;
+fail:
+    wr32(CD_CBSYNC, old);
+    return 0;
+}
+CD_ENTRY(hle_cd_get_toc) { CD_SP(); call->r[2] = cd_get_toc(call->r[4]); return 1; }
+CD_ENTRY(hle_cd_get_toc2) { CD_SP(); call->r[2] = cd_get_toc(call->r[5]); return 1; }
+
+static int cd_controlb(uint32_t com, uint32_t param, uint32_t res) {
+    return cd_control_common(com, param, res, res, 0) && cd_sync(0, res) == 2;
+}
+
+CD_ENTRY(hle_cd_disk_ready) {
+    /* 80046630(mode): Nop; shell open -> 0x10; GetTN until the drive
+     * spins (mode 1: one try) */
+    uint32_t res = call->r[29] - 0x30u, ok, tries = 0;
+    uint8_t st;
+    g_cd_sp = call->r[29] - 0x80u;
+    (void)cd_controlb(1, 0, res);
+    if (rd8(res) & 0x10u) { call->r[2] = 16; return 1; }
+    ok = (uint32_t)cd_controlb(19, 0, res);
+    if (call->r[4] == 1u) {
+        call->r[2] = (rd8(res) == 2u && ok) ? 2u : 5u;
+        return 1;
+    }
+    for (;;) {
+        if (g_driver.quit) { call->r[2] = 5; return 1; }
+        st = rd8(res);
+        if (st & 2u) {
+            if (st == 2u && ok) { call->r[2] = 2; return 1; }
+            driver_vsync_wait(30);
+            ok = (uint32_t)cd_controlb(19, 0, res);
+            continue;
+        }
+        driver_vsync_wait(30);
+        ok = (uint32_t)cd_controlb(19, 0, res);
+        if (++tries >= 10u) { call->r[2] = 5; return 1; }
+    }
+}
+
+CD_ENTRY(hle_cd_disk_type) {
+    /* 8004674C: Getstat; ReadS at 00:02:16 (sector 16); wait for a sector;
+     * Pause; read 2048 bytes; "CD001" at byte 1 -> 2 (PlayStation/ISO),
+     * else 1; no sector: 0x10 shell open, 1 error with seek, 0/1 status */
+    uint32_t frame = call->r[29] - 2096u, res = frame + 2072u, pos = frame + 16u,
+             buf = frame + 24u, s0 = 0, i;
+    int32_t r;
+    g_cd_sp = frame - 0x40u;
+    (void)cd_control_common(1, 0, res, res, 0);
+    if (rd8(res) & 0x10u) { call->r[2] = 16; return 1; }
+    {   /* CdIntToPos(16, pos) */
+        uint32_t l = 16u + 150u, m = l / 4500u, sec = (l / 75u) % 60u, f = l % 75u;
+        wr8(pos, (uint8_t)(((m / 10u) << 4) | (m % 10u)));
+        wr8(pos + 1u, (uint8_t)(((sec / 10u) << 4) | (sec % 10u)));
+        wr8(pos + 2u, (uint8_t)(((f / 10u) << 4) | (f % 10u)));
+    }
+    (void)cd_control_common(27, pos, 0, 0, 0);
+    for (;;) {
+        r = cd_ready(0, res);
+        ++s0;
+        if (r == 1 || s0 >= 10u || g_driver.quit) break;
+        (void)cd_control_common(27, pos, 0, 0, 0);
+    }
+    if (r == 1) {
+        static const char iso[5] = {'C', 'D', '0', '0', '1'};
+        (void)cd_control_common(9, 0, 0, 0, 0);
+        (void)cd_getsector(buf, 512u);
+        for (i = 0; i < 5u && rd8(buf + 1u + i) == (uint8_t)iso[i]; ++i) {}
+        call->r[2] = i == 5u ? 2u : 1u;
+        return 1;
+    }
+    if (rd8(res) & 0x10u) { call->r[2] = 16; return 1; }
+    if ((rd8(res) & 1u) && (rd8(res + 1u) & 0x40u)) { call->r[2] = 1; return 1; }
+    call->r[2] = (rd8(res) & 2u) ? 1u : 0u;
+    return 1;
+}
+
+
+/* ---- libcd CdRead / CdSearchFile (retail 8004637C..80046548, 80045374) */
+enum {
+    CR_TOTAL = 0x8006CFA0u, CR_BUF0 = 0x8006CFA4u, CR_BUF = 0x8006CFA8u,
+    CR_MODE = 0x8006CFACu, CR_SIZE = 0x8006CFB0u, CR_LEFT = 0x8006CFB4u,
+    CR_LAST = 0x8006CFB8u, CR_START = 0x8006CFBCu, CR_POS = 0x8006CFC0u,
+    CR_SVSYNC = 0x8006CFC4u, CR_SVREADY = 0x8006CFC8u, CR_SVDMA = 0x8006CFCCu,
+    CR_RESULT = 0x8006CFD4u, CR_READY_CB = 0x80045D00u, CR_DMA_CB = 0x80045FD0u,
+    CS_NOPEN_SEEN = 0x8006CF98u, CS_SECTOR = 0x80078000u, CS_FILES = 0x800763F8u
+};
+
+static uint32_t cd_dmacb(uint32_t f) {
+    uint32_t previous = 0;
+    if (!g_driver.ops || !g_driver.ops->dma_irq ||
+        !musashi_boot_call_80042f8c(g_driver.memory, g_driver.ops->dma_irq, 3, f, &previous))
+        driver_stop("DMACallback3_refused", 0x80042F8Cu);
+    return previous;
+}
+
+static void cd_inttopos(uint32_t lba, uint32_t pos) {
+    uint32_t l = lba + 150u, m = l / 4500u, s = (l / 75u) % 60u, f = l % 75u;
+    wr8(pos, (uint8_t)(((m / 10u) << 4) | (m % 10u)));
+    wr8(pos + 1u, (uint8_t)(((s / 10u) << 4) | (s % 10u)));
+    wr8(pos + 2u, (uint8_t)(((f / 10u) << 4) | (f % 10u)));
+}
+
+static uint32_t cd_postoint(uint32_t pos) {
+    return (bcd2int(rd8(pos)) * 60u + bcd2int(rd8(pos + 1u))) * 75u + bcd2int(rd8(pos + 2u)) - 150u;
+}
+
+static void cd_read_finish(void) {
+    /* restore the caller's callbacks; Pause */
+    wr32(CD_CBSYNC, rd32(CR_SVSYNC));
+    wr32(CD_CBREADY, rd32(CR_SVREADY));
+    if (rd32(CD_CB_CFD0) & 1u) (void)cd_dmacb(rd32(CR_SVDMA));
+    (void)cd_control_common(9, 0, 0, 0, 1);
+}
+
+static int32_t cd_read_start(int retry) {
+    /* 800460CC: (re)issue Setloc/Setmode/ReadN for the current request */
+    uint32_t param = g_cd_sp + 0x18u, mode;
+    wr32(CD_CBSYNC, 0);
+    wr32(CD_CBREADY, 0);
+    if (rd32(CD_CB_CFD0) & 1u) (void)cd_dmacb(0);
+    if (rd8(CD_STATUS) & 0x10u) {
+        if (!(vcount() & 0x3Fu)) fprintf(stderr, "native_boot: CdRead: Shell open...\n");
+        (void)cd_control_common(1, 0, 0, 0, 1);
+        wr32(CR_START, vcount());
+        wr32(CR_LEFT, UINT32_MAX);
+        return -1;
+    }
+    if (retry) {
+        fprintf(stderr, "native_boot: CdRead: retry...\n");
+        (void)cd_control_common(9, 0, 0, 0, 0);
+        if (!cd_control_common(2, CD_POS, 0, 0, 0)) { wr32(CR_LEFT, UINT32_MAX); return -1; }
+    }
+    cd_flush();
+    mode = rd32(CR_MODE) & 0xFFu;
+    wr8(param, (uint8_t)mode);
+    if ((mode != rd8(CD_MODE) || retry) && !cd_control_common(14, param, 0, 0, 0)) {
+        wr32(CR_LEFT, UINT32_MAX);
+        return -1;
+    }
+    wr32(CR_POS, cd_postoint(CD_POS));
+    wr32(CD_CBREADY, CR_READY_CB);
+    if (rd32(CD_CB_CFD0) & 1u) (void)cd_dmacb(CR_DMA_CB);
+    wr32(CR_BUF, rd32(CR_BUF0));
+    (void)cd_control_common(6, 0, 0, 0, 1);
+    wr32(CR_LEFT, rd32(CR_TOTAL));
+    wr32(CR_LAST, vcount());
+    return (int32_t)rd32(CR_LEFT);
+}
+
+static int32_t cd_read(uint32_t sectors, uint32_t buf, uint32_t mode) {
+    /* 8004637C CdRead(sectors, buf, mode) */
+    uint32_t m = mode & 0x30u;
+    wr32(CR_MODE, mode);
+    wr32(CR_SIZE, m == 0u ? 512u : m == 0x20u ? 585u : 582u);
+    wr32(CR_MODE, mode | 0x20u);
+    wr32(CR_BUF0, buf);
+    wr32(CR_TOTAL, sectors);
+    wr32(CR_SVSYNC, rd32(CD_CBSYNC)); wr32(CD_CBSYNC, 0);
+    wr32(CR_SVREADY, rd32(CD_CBREADY)); wr32(CD_CBREADY, 0);
+    if (rd32(CD_CB_CFD0) & 1u) wr32(CR_SVDMA, cd_dmacb(0));
+    wr32(CR_START, vcount());
+    if (rd8(CD_STATUS) & 0xE0u) (void)cd_controlb(9, 0, 0);
+    return cd_read_start(0) > 0;
+}
+
+static int32_t cd_read_sync(int mode, uint32_t result) {
+    /* 80046480 CdReadSync */
+    int32_t left;
+    for (;;) {
+        if (g_driver.quit) { left = -1; break; }
+        if ((int32_t)(vcount() - (rd32(CR_START) + 1200u)) > 0) {
+            left = -1;
+        } else if ((int32_t)rd32(CR_LEFT) < 0 ||
+                   (int32_t)(vcount() - (rd32(CR_LAST) + 60u)) > 0) {
+            (void)cd_read_start(1);
+            left = (int32_t)rd32(CR_TOTAL);
+        } else {
+            left = (int32_t)rd32(CR_LEFT);
+        }
+        if (mode || left <= 0) break;
+        driver_spin(CD_SPIN);
+    }
+    (void)cd_ready(1, result);
+    return left;
+}
+
+static void cd_read_tail(uint32_t result) {
+    /* 80045EA4: timeout / completion check after each sector */
+    int32_t left;
+    wr32(CR_LAST, vcount());
+    if ((int32_t)rd32(CR_LEFT) < 0) (void)cd_read_start(1);
+    if ((int32_t)(vcount() - (rd32(CR_START) + 1200u)) > 0) wr32(CR_LEFT, UINT32_MAX);
+    left = (int32_t)rd32(CR_LEFT);
+    if (left != 0 && (int32_t)(vcount() - (rd32(CR_START) + 1200u)) <= 0) return;
+    cd_read_finish();
+    if (rd32(CD_READCB)) (void)cd_call2(rd32(CD_READCB), left == 0 ? 2u : 5u, result);
+}
+
+CD_ENTRY(hle_cd_read_ready_cb) {
+    /* 80045D00(intr, result): one sector per data-ready interrupt */
+    uint32_t intr = call->r[4] & 0xFFu, result = call->r[5], hdr = call->r[29] - 0x10u;
+    CD_SP();
+    wr32(CR_RESULT, result);
+    if (intr != 1u) {
+        wr32(CR_LEFT, UINT32_MAX);
+    } else if ((int32_t)rd32(CR_LEFT) > 0) {
+        if (rd32(CR_SIZE) == 512u) {
+            /* header + subheader first, checked against the expected sector */
+            if (rd32(CD_CB_CFD0) & 1u) {
+                (void)cd_dmacb(0);
+                (void)cd_getsector2(hdr, 3);
+                (void)cd_datasync(0);
+                (void)cd_dmacb(CR_DMA_CB);
+            } else {
+                (void)cd_getsector(hdr, 3);
+            }
+            if (cd_postoint(hdr) != rd32(CR_POS)) {
+                fprintf(stderr, "native_boot: CdRead: sector error\n");
+                wr32(CR_LEFT, UINT32_MAX);
+            }
+        }
+        if (rd32(CD_CB_CFD0) & 1u) {
+            (void)cd_getsector2(rd32(CR_BUF), rd32(CR_SIZE));
+        } else {
+            (void)cd_getsector(rd32(CR_BUF), rd32(CR_SIZE));
+            wr32(CR_BUF, rd32(CR_BUF) + rd32(CR_SIZE) * 4u);
+            wr32(CR_LEFT, rd32(CR_LEFT) - 1u);
+            wr32(CR_POS, rd32(CR_POS) + 1u);
+        }
+    }
+    cd_read_tail(result);
+    return 1;
+}
+
+CD_ENTRY(hle_cd_read_dma_cb) {
+    /* 80045FD0: DMA-completion form of the sector step */
+    CD_SP();
+    wr32(CR_BUF, rd32(CR_BUF) + rd32(CR_SIZE) * 4u);
+    wr32(CR_LEFT, rd32(CR_LEFT) - 1u);
+    wr32(CR_POS, rd32(CR_POS) + 1u);
+    if (rd32(CR_LEFT) == 0u) {
+        cd_read_finish();
+        if (rd32(CD_READCB)) (void)cd_call2(rd32(CD_READCB), 2u, rd32(CR_RESULT));
+    }
+    return 1;
+}
+
+CD_ENTRY(hle_cd_read) {
+    CD_SP();
+    call->r[2] = (uint32_t)cd_read(call->r[4], call->r[5], call->r[6]);
+    return 1;
+}
+CD_ENTRY(hle_cd_read_sync) {
+    CD_SP();
+    call->r[2] = (uint32_t)cd_read_sync((int)call->r[4], call->r[5]);
+    return 1;
+}
+CD_ENTRY(hle_cd_read_start) {
+    CD_SP();
+    call->r[2] = (uint32_t)cd_read_start((int)call->r[4]);
+    return 1;
+}
+CD_ENTRY(hle_cd_read_break) {
+    /* 800462E0 CdReadBreak */
+    CD_SP();
+    if (rd32(CD_CB_CFD0) & 1u) (void)cd_datasync(0);
+    wr32(CR_LEFT, 0);
+    cd_read_finish();
+    return 1;
+}
+
+static int cd_read_lba(uint32_t lba, uint32_t sectors, uint32_t buf) {
+    /* 80045C94: Setloc, CdRead(mode 0x80), CdReadSync(0) == 0 */
+    uint32_t pos = g_cd_sp + 0x20u;
+    cd_inttopos(lba, pos);
+    (void)cd_control_common(2, pos, 0, 0, 0);
+    (void)cd_read(sectors, buf, 0x80u);
+    return cd_read_sync(0, 0) == 0;
+}
+CD_ENTRY(hle_cd_read_lba) {
+    CD_SP();
+    call->r[2] = (uint32_t)cd_read_lba(call->r[5], call->r[4], call->r[6]);
+    return 1;
+}
+
+/* CdSearchFile: the ISO 9660 path table and directory records, read
+ * through CdRead into the library's sector buffer at 80078000. A found
+ * entry is cached in the library's file table (CdlFILE, 24 bytes:
+ * pos[4] BCD, size, name[16]) and copied out. */
+static struct { uint32_t lba; uint16_t parent; char name[32]; } g_cs_dirs[128];
+static unsigned g_cs_ndirs;
+
+static uint32_t le32_at(uint32_t a) {
+    return rd8(a) | (uint32_t)rd8(a + 1u) << 8 | (uint32_t)rd8(a + 2u) << 16 |
+           (uint32_t)rd8(a + 3u) << 24;
+}
+
+static int cd_search_load_paths(void) {
+    uint32_t ptsize, ptlba, off = 0;
+    if (!cd_read_lba(16, 1, CS_SECTOR)) return 0;
+    if (rd8(CS_SECTOR) != 1u || rd8(CS_SECTOR + 1u) != 'C' || rd8(CS_SECTOR + 2u) != 'D' ||
+        rd8(CS_SECTOR + 3u) != '0' || rd8(CS_SECTOR + 4u) != '0' || rd8(CS_SECTOR + 5u) != '1') {
+        fprintf(stderr, "native_boot: CdSearchFile: disc error\n");
+        return 0;
+    }
+    ptsize = le32_at(CS_SECTOR + 132u);
+    ptlba = le32_at(CS_SECTOR + 140u);
+    if (!cd_read_lba(ptlba, 1, CS_SECTOR)) return 0;
+    g_cs_ndirs = 0;
+    if (ptsize > 2048u) ptsize = 2048u;
+    while (off + 8u <= ptsize && g_cs_ndirs < 128u) {
+        uint32_t len = rd8(CS_SECTOR + off), i;
+        if (!len) break;
+        g_cs_dirs[g_cs_ndirs].lba = le32_at(CS_SECTOR + off + 2u);
+        g_cs_dirs[g_cs_ndirs].parent = (uint16_t)(rd8(CS_SECTOR + off + 6u) |
+                                                  rd8(CS_SECTOR + off + 7u) << 8);
+        for (i = 0; i < len && i < 31u; ++i)
+            g_cs_dirs[g_cs_ndirs].name[i] = (char)rd8(CS_SECTOR + off + 8u + i);
+        g_cs_dirs[g_cs_ndirs].name[i] = 0;
+        ++g_cs_ndirs;
+        off += 8u + len + (len & 1u);
+    }
+    return g_cs_ndirs != 0;
+}
+
+static uint32_t cd_search_file(uint32_t fp, uint32_t name) {
+    char comp[8][32];
+    unsigned ncomp = 0, i, dir = 1;   /* path-table records are 1-based */
+    uint32_t p = name, off;
+    if (rd32(CS_NOPEN_SEEN) != rd32(CD_NOPEN)) {
+        if (!cd_search_load_paths()) return 0;
+        wr32(CS_NOPEN_SEEN, rd32(CD_NOPEN));
+    }
+    if (rd8(p) != '\\') return 0;
+    while (rd8(p) == '\\' && ncomp < 8u) {
+        unsigned n = 0;
+        ++p;
+        while (rd8(p) && rd8(p) != '\\' && n < 31u) comp[ncomp][n++] = (char)rd8(p++);
+        comp[ncomp][n] = 0;
+        ++ncomp;
+    }
+    if (rd8(p) || !ncomp || !comp[ncomp - 1u][0]) {
+        fprintf(stderr, "native_boot: CdSearchFile: path level error\n");
+        return 0;
+    }
+    for (i = 0; i + 1u < ncomp; ++i) {
+        unsigned d, found = 0;
+        for (d = 0; d < g_cs_ndirs; ++d)
+            if (g_cs_dirs[d].parent == dir && d + 1u != dir &&
+                !strcmp(g_cs_dirs[d].name, comp[i])) { found = d + 1u; break; }
+        if (!found) {
+            fprintf(stderr, "native_boot: CdSearchFile: dir not found\n");
+            return 0;
+        }
+        dir = found;
+    }
+    if (dir > g_cs_ndirs || !cd_read_lba(g_cs_dirs[dir - 1u].lba, 1, CS_SECTOR)) return 0;
+    for (off = 0; off + 33u < 2048u;) {
+        uint32_t len = rd8(CS_SECTOR + off), nlen, k;
+        char ident[32];
+        if (!len) break;
+        nlen = rd8(CS_SECTOR + off + 32u);
+        for (k = 0; k < nlen && k < 31u; ++k) ident[k] = (char)rd8(CS_SECTOR + off + 33u + k);
+        ident[k] = 0;
+        if (!strcmp(ident, comp[ncomp - 1u])) {
+            uint32_t entry = CS_FILES, size = le32_at(CS_SECTOR + off + 10u);
+            cd_inttopos(le32_at(CS_SECTOR + off + 2u), entry);
+            wr8(entry + 3u, 0);
+            wr32(entry + 4u, size);
+            for (k = 0; k < 16u; ++k) wr8(entry + 8u + k, 0);
+            for (k = 0; k < 15u && ident[k]; ++k) wr8(entry + 8u + k, (uint8_t)ident[k]);
+            for (k = 0; k < 24u; ++k) wr8(fp + k, rd8(entry + k));
+            return entry;
+        }
+        off += len;
+    }
+    fprintf(stderr, "native_boot: CdSearchFile: %s not found\n", comp[ncomp - 1u]);
+    return 0;
+}
+CD_ENTRY(hle_cd_search_file) {
+    CD_SP();
+    g_cd_sp = call->r[29] - 0x80u;
+    call->r[2] = cd_search_file(call->r[4], call->r[5]);
+    return 1;
+}
+
+
+/* ---- libspu / libsnd startup (retail 8003A424..8003C928, 8003D518..
+ * 8003D62C, 8003FA64..80040934), written from the retail disassembly. The
+ * library reaches the SPU through pointer cells (8006B54C regs, 8006B550..
+ * 8006B55C DMA4 MADR/BCR/CHCR/DPCR, 8006B560 SPU_DELAY; libsnd's 8006B8FC);
+ * a queued SpuSetEnv redirects voice-bit writes to the RAM shadow 800A6288. */
+enum {
+    SP_REGS = 0x8006B54Cu, SP_MADR = 0x8006B550u, SP_BCR = 0x8006B554u,
+    SP_CHCR = 0x8006B558u, SP_DPCR = 0x8006B55Cu, SP_DELAY = 0x8006B560u,
+    SP_TADDR = 0x8006B564u, SP_DMAINIT = 0x8006B568u, SP_G56C = 0x8006B56Cu,
+    SP_G570 = 0x8006B570u, SP_SHIFT = 0x8006B574u, SP_G578 = 0x8006B578u,
+    SP_G57C = 0x8006B57Cu, SP_G580 = 0x8006B580u, SP_TCB = 0x8006B584u,
+    SP_G588 = 0x8006B588u, SP_ZERO16 = 0x8006B58Cu, SP_TMODE = 0x8006B59Cu,
+    SP_TADR = 0x8006B5A0u, SP_TBLK = 0x8006B5A4u, SP_MNUM = 0x8006B5A8u,
+    SP_MCNT = 0x8006B5ACu, SP_MTBL = 0x8006B5B0u, SP_REVTOP = 0x8006B5B4u,
+    SP_ENV = 0x8006B544u, SP_EVINIT = 0x8006B548u, SP_EVENT = 0x8006B0E0u,
+    SP_G0E4 = 0x8006B0E4u, SP_G0E8 = 0x8006B0E8u, SP_REVON = 0x8006B0ECu,
+    SP_REVRSV = 0x8006B0F0u, SP_REVADDR = 0x8006B0F4u, SP_REVMODE = 0x8006B0FCu,
+    SP_DEPTHL = 0x8006B100u, SP_DEPTHR = 0x8006B102u, SP_DELAYV = 0x8006B104u,
+    SP_FEEDBK = 0x8006B108u, SP_G10C = 0x8006B10Cu, SP_VBITS = 0x8006B110u,
+    SP_VOLTBL = 0x8006B112u, SP_ZERO1K = 0x8006B144u, SP_PRESET = 0x8006B604u,
+    SP_SHADOW = 0x800A6288u, SP_DMA_IRQ = 0x8003AA18u, SV_REGS = 0x8006B8FCu
+};
+enum { SR_MVOLL = 384, SR_MVOLR = 386, SR_RVOLL = 388, SR_RVOLR = 390,
+       SR_KONL = 392, SR_KONH = 394, SR_KOFFL = 396, SR_KOFFH = 398,
+       SR_PMONL = 400, SR_NONL = 404, SR_EONL = 408, SR_EONH = 410,
+       SR_MBASE = 418, SR_TADDR = 422, SR_FIFO = 424, SR_CNT = 426,
+       SR_TCTRL = 428, SR_STAT = 430, SR_CDL = 432, SR_EXTL = 436 };
+
+static uint16_t hw16(uint32_t a) {
+    uint16_t v = 0;
+    if ((a & 0xFFFFFC00u) == 0x1F801C00u) {
+        const MusashiCdSpuDevice *d = g_driver.devices ? g_driver.devices->cd_spu : NULL;
+        if (!d || !d->read16 || !d->read16(d->userdata, a, &v)) driver_stop("spu_read", a);
+        return v;
+    }
+    return rd16(a);
+}
+static void hw16w(uint32_t a, uint16_t v) {
+    if ((a & 0xFFFFFC00u) == 0x1F801C00u) {
+        const MusashiCdSpuDevice *d = g_driver.devices ? g_driver.devices->cd_spu : NULL;
+        if (!d || !d->write16 || !d->write16(d->userdata, a, v)) driver_stop("spu_write", a);
+        return;
+    }
+    wr16(a, v);
+}
+static uint32_t hw32(uint32_t a) {
+    uint32_t v = 0;
+    if ((a & 0xFFFFF000u) == 0x1F801000u) {
+        const MusashiCdRegisterDevice *d = cd_dev();
+        if (!d || !d->read32 || !d->read32(d->userdata, a, &v)) driver_stop("io_read32", a);
+        return v;
+    }
+    return rd32(a);
+}
+static void hw32w(uint32_t a, uint32_t v) {
+    if ((a & 0xFFFFF000u) == 0x1F801000u) {
+        const MusashiCdRegisterDevice *d = cd_dev();
+        if (!d || !d->write32 || !d->write32(d->userdata, a, v)) driver_stop("io_write32", a);
+        return;
+    }
+    wr32(a, v);
+}
+static uint16_t spu_r(unsigned off) { return hw16(rd32(SP_REGS) + off); }
+static void spu_w(unsigned off, uint16_t v) { hw16w(rd32(SP_REGS) + off, v); }
+
+static uint32_t hle_call(uint32_t pc, unsigned argc, uint32_t a0, uint32_t a1,
+                         uint32_t a2, uint32_t a3) {
+    uint32_t a[4] = {a0, a1, a2, a3};
+    return call_at(g_cd_sp, pc, argc, a);
+}
+
+static void spu_delay(void) {
+    /* 8003B0E4: a fixed 60-step multiply loop */
+    if (g_driver.ops && g_driver.ops->spend) (void)g_driver.ops->spend(g_driver.ops->user, 600u);
+}
+
+/* retail 3840-iteration register polls; the timeout message as retail */
+static int spu_poll(unsigned off, uint16_t mask, uint16_t want, const char *what) {
+    unsigned i;
+    for (i = 0; i <= 3840u; ++i) {
+        if ((spu_r(off) & mask) == want) return 1;
+        if (g_driver.ops && g_driver.ops->spend) (void)g_driver.ops->spend(g_driver.ops->user, 8u);
+    }
+    fprintf(stderr, "native_boot: SPU:T/O [%s]\n", what);
+    return 0;
+}
+
+static void spu_write_manual(uint32_t src, uint32_t size) {
+    /* 8003A84C: FIFO writes in 64-byte bursts */
+    uint16_t stat = spu_r(SR_STAT) & 0x7FFu;
+    spu_w(SR_TADDR, rd16(SP_TADDR));
+    spu_delay();
+    while (size) {
+        uint32_t n = size < 65u ? size : 64u, i;
+        for (i = 0; i < n; i += 2u, src += 2u) spu_w(SR_FIFO, rd16(src));
+        spu_w(SR_CNT, (uint16_t)((spu_r(SR_CNT) & 0xFFCFu) | 0x10u));
+        spu_delay();
+        (void)spu_poll(SR_STAT, 0x400u, 0, "wait (wrdy H -> L)");
+        spu_delay();
+        spu_delay();
+        size -= n;
+    }
+    spu_w(SR_CNT, spu_r(SR_CNT) & 0xFFCFu);
+    (void)spu_poll(SR_STAT, 0x7FFu, stat, "wait (dmaf clear/W)");
+}
+
+static void spu_init_hw(int mode) {
+    /* 8003A5B8 _spu_init */
+    unsigned v;
+    hw32w(rd32(SP_DPCR), hw32(rd32(SP_DPCR)) | 0xB0000u);
+    wr32(SP_DMAINIT, 0); wr32(SP_G56C, 0); wr16(SP_TADDR, 0);
+    spu_w(SR_MVOLL, 0); spu_w(SR_MVOLR, 0); spu_w(SR_CNT, 0);
+    spu_delay();
+    spu_w(SR_MVOLL, 0); spu_w(SR_MVOLR, 0);
+    (void)spu_poll(SR_STAT, 0x7FFu, 0, "wait (reset)");
+    wr32(SP_G570, 2); wr32(SP_SHIFT, 3); wr32(SP_G578, 8); wr32(SP_G57C, 7);
+    spu_w(SR_TCTRL, 4);
+    spu_w(SR_RVOLL, 0); spu_w(SR_RVOLR, 0);
+    spu_w(SR_KOFFL, 0xFFFFu); spu_w(SR_KOFFH, 0xFFFFu);
+    spu_w(SR_EONL, 0); spu_w(SR_EONH, 0);
+    for (v = 0; v < 10u; ++v) wr16(0x800A6410u + v * 2u, 0);
+    if (!mode) {
+        wr16(SP_TADDR, 0x200u);
+        for (v = 0; v < 4u; ++v) spu_w(SR_PMONL + v * 2u, 0);
+        for (v = 0; v < 4u; ++v) spu_w(SR_CDL + v * 2u, 0);
+        spu_write_manual(SP_ZERO16, 16u);
+        for (v = 0; v < 24u; ++v) {
+            spu_w(v * 16u + 0u, 0); spu_w(v * 16u + 2u, 0);
+            spu_w(v * 16u + 4u, 0x3FFFu); spu_w(v * 16u + 6u, 0x200u);
+            spu_w(v * 16u + 8u, 0); spu_w(v * 16u + 10u, 0);
+        }
+        spu_w(SR_KONL, 0xFFFFu); spu_w(SR_KONH, 0xFFu);
+        for (v = 0; v < 4u; ++v) spu_delay();
+        spu_w(SR_KOFFL, 0xFFFFu); spu_w(SR_KOFFH, 0xFFu);
+        for (v = 0; v < 4u; ++v) spu_delay();
+    }
+    wr32(SP_G580, 1);
+    spu_w(SR_CNT, 0xC000u);
+    wr32(SP_TCB, 0); wr32(SP_G588, 0);
+}
+
+static void spu_init_events(void) {
+    /* 8003A53C: the DMA4 completion event, once */
+    if (rd32(SP_EVINIT)) return;
+    wr32(SP_EVINIT, 1);
+    (void)hle_call(0x8005CF08u, 0, 0, 0, 0, 0);
+    (void)hle_call(0x800425E0u, 2, 4, SP_DMA_IRQ, 0, 0);
+    wr32(SP_EVENT, hle_call(0x8005CE78u, 4, 0xF0000009u, 0x20u, 0x2000u, 0));
+    (void)hle_call(0x8005CEB8u, 1, rd32(SP_EVENT), 0, 0, 0);
+    (void)hle_call(0x8005CF18u, 0, 0, 0, 0, 0);
+}
+
+static void spu_init(int mode) {
+    /* 8003A444 _SpuInit(mode) */
+    unsigned v;
+    (void)hle_call(0x80042580u, 0, 0, 0, 0, 0);
+    spu_init_hw(mode);
+    if (!mode) for (v = 0; v < 24u; ++v) wr16(SP_VOLTBL + v * 2u, 0xC000u);
+    spu_init_events();
+    wr32(SP_REVON, 0); wr32(SP_REVRSV, 0); wr32(SP_REVMODE, 0);
+    wr16(SP_DEPTHL, 0); wr16(SP_DEPTHR, 0); wr32(SP_DELAYV, 0); wr32(SP_FEEDBK, 0);
+    wr32(SP_REVADDR, rd32(SP_REVTOP));
+    spu_w(SR_MBASE, (uint16_t)rd32(SP_REVTOP));   /* 8003AF04(209, addr, 0) */
+    wr32(SP_MNUM, 0); wr32(SP_MCNT, 0); wr32(SP_MTBL, 0);
+    wr32(SP_G0E8, 0); wr32(SP_DMAINIT, 0); wr32(SP_G0E4, 0);
+    wr32(SP_VBITS, 0); wr32(SP_G10C, 0); wr32(SP_ENV, 0);
+}
+
+static int spu_overlap(uint32_t addr) {
+    /* 8003B3D0: does a SpuMalloc block lie at or above addr? */
+    uint32_t a = addr << rd32(SP_SHIFT), e = rd32(SP_MTBL);
+    if (!e) return 0;
+    for (;; e += 8u) {
+        uint32_t w = rd32(e), start;
+        if (w & 0x80000000u) continue;
+        if (w & 0x40000000u) return 0;
+        start = w & 0x0FFFFFFFu;
+        if (start >= a || a < start + rd32(e + 4u)) return 1;
+    }
+}
+
+static int32_t spu_transfer(int cmd, uint32_t a1, uint32_t a2) {
+    /* 8003AB84 _spu_t(cmd, ...) */
+    switch (cmd) {
+    case 2:
+        wr16(SP_TADDR, (uint16_t)(a1 >> rd32(SP_SHIFT)));
+        spu_w(SR_TADDR, rd16(SP_TADDR));
+        return 0;
+    case 1:
+    case 0:
+        wr32(SP_TMODE, cmd ? 0u : 1u);
+        if (!spu_poll(SR_TADDR, 0xFFFFu, rd16(SP_TADDR), "taddr")) return -2;
+        spu_w(SR_CNT, (uint16_t)(cmd ? (spu_r(SR_CNT) & 0xFFCFu) | 0x20u : spu_r(SR_CNT) | 0x30u));
+        return 0;
+    case 3: {
+        int rd = rd32(SP_TMODE) == 1u;
+        uint32_t d;
+        if (!spu_poll(SR_CNT, 0x30u, rd ? 0x30u : 0x20u, "dma mode")) return -2;
+        d = rd32(SP_DELAY);
+        hw32w(d, (hw32(d) & 0xF0FFFFFFu) | (rd ? 0x22000000u : 0x20000000u));
+        wr32(SP_TADR, a1);
+        wr32(SP_TBLK, (a2 >> 6) + ((a2 & 63u) != 0));
+        hw32w(rd32(SP_MADR), a1);
+        hw32w(rd32(SP_BCR), (rd32(SP_TBLK) << 16) | 0x10u);
+        hw32w(rd32(SP_CHCR), rd ? 0x01000200u : 0x01000201u);
+        return 0;
+    }
+    default:
+        return 0;
+    }
+}
+
+static int32_t bios_wait_event(int32_t h) {
+    /* B0:0A WaitEvent from native code: TestEvent until the event fires;
+     * the wait is an interrupt point */
+    unsigned long guard = 0;
+    for (;;) {
+        int32_t r = 0;
+        if (!g_driver.ops || !g_driver.ops->bios_event ||
+            !g_driver.ops->bios_event(g_driver.ops->user, 0x0Bu, (uint32_t)h, 0, 0, 0, &r))
+            driver_stop("TestEvent_refused", 0x8005CEA8u);
+        if (r || g_driver.quit) return 1;
+        driver_spin(CD_SPIN);
+        if (++guard > 20000000ul) { driver_stop("WaitEvent_never", 0x8005CE98u); return 0; }
+    }
+}
+
+static int32_t spu_clear_reverb(uint32_t mode) {
+    /* 8003C0A0 SpuClearReverbWorkArea */
+    uint32_t size, addr, saved_init, saved_cb = 0;
+    int restore = 0, more;
+    if (mode >= 10u || spu_overlap(rd32(SP_REVTOP + mode * 4u))) return -1;
+    if (!mode) {
+        size = 16u << rd32(SP_SHIFT);
+        addr = 0xFFF0u << rd32(SP_SHIFT);
+    } else {
+        uint32_t top = rd32(SP_REVTOP + mode * 4u);
+        size = (0x10000u - top) << rd32(SP_SHIFT);
+        addr = top << rd32(SP_SHIFT);
+    }
+    saved_init = rd32(SP_DMAINIT);
+    if (saved_init == 1u) { wr32(SP_DMAINIT, 0); restore = 1; }
+    if (rd32(SP_TCB)) { saved_cb = rd32(SP_TCB); wr32(SP_TCB, 0); }
+    do {
+        uint32_t n;
+        more = size > 1024u;
+        n = more ? 1024u : size;
+        (void)spu_transfer(2, addr, 0);
+        (void)spu_transfer(1, 0, 0);
+        (void)spu_transfer(3, SP_ZERO1K, n);
+        (void)bios_wait_event((int32_t)rd32(SP_EVENT));
+        size -= 1024u;
+        addr += 1024u;
+    } while (more && !g_driver.quit);
+    if (restore) wr32(SP_DMAINIT, saved_init);
+    if (saved_cb) wr32(SP_TCB, saved_cb);
+    return 0;
+}
+
+static uint32_t spu_voice_bits(uint32_t on, uint32_t bits, unsigned rlo, unsigned rhi) {
+    /* 8003BE98: set/clear a 24-bit voice mask register pair */
+    int queued = rd32(SP_ENV) & 1u;
+    uint32_t base = queued ? SP_SHADOW : rd32(SP_REGS), cur;
+    cur = ((uint32_t)(hw16(base + rhi * 2u) & 0xFFu) << 16) | hw16(base + rlo * 2u);
+    if (on == 0u || on == 1u) {
+        uint16_t lo = hw16(base + rlo * 2u), hi = hw16(base + rhi * 2u);
+        if (on) { lo |= (uint16_t)bits; hi |= (uint16_t)((bits >> 16) & 0xFFu); }
+        else { lo &= (uint16_t)~bits; hi &= (uint16_t)~((bits >> 16) & 0xFFu); }
+        hw16w(base + rlo * 2u, lo);
+        hw16w(base + rhi * 2u, hi);
+        if (queued) wr32(SP_VBITS, rd32(SP_VBITS) | (1u << ((rlo - 198u) >> 1)));
+        if (on) cur |= bits & 0xFFFFFFu;
+        else cur &= ~(bits & 0xFFFFFFu);
+    }
+    return cur & 0xFFFFFFu;
+}
+
+static void spu_set_reverb_regs(uint32_t p) {
+    /* 8003B954: the reverb register block 1DC0..1DFE under the mask */
+    uint32_t mask = rd32(p);
+    unsigned i;
+    for (i = 0; i < 32u; ++i)
+        if (!mask || (mask & (1u << i))) spu_w(448u + i * 2u, rd16(p + 4u + i * 2u));
+}
+
+static int32_t spu_set_reverb_mode_param(uint32_t attr, uint32_t buf) {
+    /* 8003B45C SpuSetReverbModeParam(attr{mask, mode, depth.l/r, delay,
+     * feedback}); buf is the 68-byte preset copy */
+    uint32_t mask = rd32(attr), mode, i;
+    int all = !mask, set_mode = 0, set_delay = 0, set_fb = 0, clear = 0, was_on = 0;
+    wr32(buf, 0);
+    if (all || (mask & 1u)) {
+        mode = rd32(attr + 4u);
+        if (mode & 0x100u) { mode &= ~0x100u; clear = 1; }
+        if (mode >= 10u || spu_overlap(rd32(SP_REVTOP + mode * 4u))) return -1;
+        set_mode = 1;
+        wr32(SP_REVMODE, mode);
+        wr32(SP_REVADDR, rd32(SP_REVTOP + mode * 4u));
+        for (i = 0; i < 68u; ++i) wr8(buf + i, rd8(SP_PRESET + mode * 68u + i));
+        if (mode == 7u) { wr32(SP_FEEDBK, 127); wr32(SP_DELAYV, 127); }
+        else if (mode == 8u) { wr32(SP_FEEDBK, 0); wr32(SP_DELAYV, 127); }
+        else { wr32(SP_FEEDBK, 0); wr32(SP_DELAYV, 0); }
+    }
+    mode = rd32(SP_REVMODE);
+    if ((all || (mask & 8u)) && mode >= 7u && mode <= 8u) {
+        int32_t delay, d13, d12;
+        set_delay = 1;
+        if (!set_mode) {
+            for (i = 0; i < 68u; ++i) wr8(buf + i, rd8(SP_PRESET + mode * 68u + i));
+            wr32(buf, 0x0C011C00u);
+        }
+        delay = (int32_t)rd32(attr + 12u);
+        wr32(SP_DELAYV, (uint32_t)delay);
+        d13 = (delay << 13) / 127;
+        d12 = (delay << 12) / 127;
+        wr16(buf + 24u, (uint16_t)(d13 - rd16(buf + 4u)));
+        wr16(buf + 26u, (uint16_t)(d12 - rd16(buf + 6u)));
+        wr16(buf + 36u, (uint16_t)(rd16(buf + 38u) + d12));
+        wr16(buf + 28u, (uint16_t)(rd16(buf + 30u) + d12));
+        wr16(buf + 58u, (uint16_t)(rd16(buf + 62u) + d12));
+        wr16(buf + 56u, (uint16_t)(rd16(buf + 60u) + d12));
+    }
+    if ((all || (mask & 0x10u)) && mode >= 7u && mode <= 8u) {
+        int32_t fb;
+        set_fb = 1;
+        if (!set_mode) {
+            if (!set_delay) {
+                for (i = 0; i < 68u; ++i) wr8(buf + i, rd8(SP_PRESET + mode * 68u + i));
+                wr32(buf, 0x80u);
+            } else {
+                wr32(buf, rd32(buf) | 0x80u);
+            }
+        }
+        fb = (int32_t)rd32(attr + 16u);
+        wr32(SP_FEEDBK, (uint32_t)fb);
+        wr16(buf + 18u, (uint16_t)((fb * 129 * 256) / 127));
+    }
+    if (set_mode) {
+        was_on = (spu_r(SR_CNT) >> 7) & 1u;
+        if (was_on) spu_w(SR_CNT, spu_r(SR_CNT) & 0xFF7Fu);
+        spu_w(SR_RVOLL, 0); spu_w(SR_RVOLR, 0);
+        wr16(SP_DEPTHL, 0); wr16(SP_DEPTHR, 0);
+    } else {
+        if (all || (mask & 2u)) { spu_w(SR_RVOLL, rd16(attr + 8u)); wr16(SP_DEPTHL, rd16(attr + 8u)); }
+        if (all || (mask & 4u)) { spu_w(SR_RVOLR, rd16(attr + 10u)); wr16(SP_DEPTHR, rd16(attr + 10u)); }
+    }
+    if (set_mode || set_delay || set_fb) spu_set_reverb_regs(buf);
+    if (clear) (void)spu_clear_reverb(rd32(SP_REVMODE));
+    if (set_mode) {
+        spu_w(SR_MBASE, (uint16_t)rd32(SP_REVADDR));
+        if (was_on) spu_w(SR_CNT, spu_r(SR_CNT) | 0x80u);
+    }
+    return 0;
+}
+
+static uint16_t spu_vol(uint32_t attr, unsigned voff, unsigned moff, int use_mode) {
+    /* volume word: raw, or a sweep mode (1..7 -> 8000..E000) with 0..127 */
+    int16_t mode = use_mode ? (int16_t)rd16(attr + moff) : 0;
+    int16_t v = (int16_t)rd16(attr + voff);
+    if (mode >= 1 && mode <= 7) {
+        int32_t c = v > 127 ? 127 : v < 0 ? 0 : v;
+        return (uint16_t)((0x8000u + (uint32_t)(mode - 1) * 0x1000u) | ((uint32_t)c & 0x7FFFu));
+    }
+    return (uint16_t)(rd16(attr + voff) & 0x7FFFu);
+}
+
+static void spu_set_common_attr(uint32_t attr) {
+    /* 8003C598 SpuSetCommonAttr */
+    uint32_t m = rd32(attr);
+    int all = !m;
+    if (all || (m & 1u)) spu_w(SR_MVOLL, spu_vol(attr, 4u, 8u, all || (m & 4u)));
+    if (all || (m & 2u)) spu_w(SR_MVOLR, spu_vol(attr, 6u, 10u, all || (m & 8u)));
+    if (all || (m & 0x40u)) spu_w(SR_CDL, rd16(attr + 16u));
+    if (all || (m & 0x80u)) spu_w(SR_CDL + 2u, rd16(attr + 18u));
+    if (all || (m & 0x400u)) spu_w(SR_EXTL, rd16(attr + 28u));
+    if (all || (m & 0x800u)) spu_w(SR_EXTL + 2u, rd16(attr + 30u));
+    if (all || (m & 0x100u)) spu_w(SR_CNT, rd32(attr + 20u) ? spu_r(SR_CNT) | 4u : spu_r(SR_CNT) & 0xFFFBu);
+    if (all || (m & 0x200u)) spu_w(SR_CNT, rd32(attr + 24u) ? spu_r(SR_CNT) | 1u : spu_r(SR_CNT) & 0xFFFEu);
+    if (all || (m & 0x1000u)) spu_w(SR_CNT, rd32(attr + 32u) ? spu_r(SR_CNT) | 8u : spu_r(SR_CNT) & 0xFFF7u);
+    if (all || (m & 0x2000u)) spu_w(SR_CNT, rd32(attr + 36u) ? spu_r(SR_CNT) | 2u : spu_r(SR_CNT) & 0xFFFDu);
+}
+
+/* libsnd voice manager */
+enum { SV_REC = 0x80079588u, SV_NVOICE = 0x800AE614u, SV_CUR = 0x800B9B3Au,
+       SV_KOFFL = 0x800C7F04u, SV_KOFFH = 0x800C7F06u, SV_KONL = 0x80078D8Cu,
+       SV_KONH = 0x80078D8Eu, SV_EONL = 0x80078D90u, SV_EONH = 0x80078D92u,
+       SV_DIRTY = 0x800A4620u, SV_REGBUF = 0x800B9B58u, SV_SLOTIDX = 0x800BA1B0u,
+       SV_SLOTS = 0x800C7EC0u, SV_NOFLUSH = 0x800BA100u, SV_CB1 = 0x800BA0D0u,
+       SV_CB2 = 0x800AE828u };
+
+static void snd_vm_keyoff_cur(void) {
+    /* 80040868: key off the voice in 800B9B3A */
+    uint32_t v = rd16(SV_CUR), lo = v < 16u ? 1u << v : 0, hi = v < 16u ? 0 : 1u << (v - 16u);
+    uint32_t r = SV_REC + v * 52u;
+    wr8(r + 27u, 0); wr16(r + 4u, 0); wr16(r, 0);
+    wr16(SV_KOFFL, (uint16_t)(rd16(SV_KOFFL) | lo));
+    wr16(SV_KONL, (uint16_t)(rd16(SV_KONL) & ~rd16(SV_KOFFL)));
+    wr16(SV_KOFFH, (uint16_t)(rd16(SV_KOFFH) | hi));
+    wr16(SV_KONH, (uint16_t)(rd16(SV_KONH) & ~rd16(SV_KOFFH)));
+}
+
+static void snd_vm_flush(void) {
+    /* 8003FA64 SpuVmFlush: envelope scan, dirty voice registers, key words */
+    uint32_t c = (rd32(SV_SLOTIDX) + 1u) & 15u, slot = SV_SLOTS + c * 4u, n = rd8(SV_NVOICE), v;
+    uint32_t regs = rd32(SV_REGS);
+    uint16_t koffl, koffh, konl, konh, eonl, eonh;
+    wr32(SV_SLOTIDX, c);
+    wr32(slot, 0);
+    for (v = 0; v < n; ++v) {
+        uint16_t env = hw16(regs + v * 16u + 12u);
+        wr16(SV_REC + v * 52u + 6u, env);
+        if (!env) wr32(slot, rd32(slot) | (1u << v));
+    }
+    if (!rd8(SV_NOFLUSH)) {
+        uint32_t idle = 0xFFFFFFFFu, i;
+        for (i = 0; i < 15u; ++i) idle &= rd32(SV_SLOTS + i * 4u);
+        for (v = 0; v < rd8(SV_NVOICE); ++v)
+            if (idle & (1u << v)) {
+                if (rd8(SV_REC + v * 52u + 27u) == 2u) (void)spu_voice_bits(0, 0xFFFFFFu, 202, 203);
+                wr8(SV_REC + v * 52u + 27u, 0);
+            }
+    }
+    wr16(SV_KONL, (uint16_t)(rd16(SV_KONL) & ~rd16(SV_KOFFL)));
+    wr16(SV_KONH, (uint16_t)(rd16(SV_KONH) & ~rd16(SV_KOFFH)));
+    for (v = 0; v < 24u; ++v) {
+        if ((int16_t)rd16(SV_REC + v * 52u + 28u)) (void)hle_call(rd32(SV_CB1), 1, v, 0, 0, 0);
+        if ((int16_t)rd16(SV_REC + v * 52u + 40u)) (void)hle_call(rd32(SV_CB2), 1, v, 0, 0, 0);
+    }
+    for (v = 0; v < 24u; ++v) {
+        uint8_t f = rd8(SV_DIRTY + v);
+        uint32_t hw = regs + v * 16u, src = SV_REGBUF + v * 16u;
+        if (f & 1u) { hw16w(hw, rd16(src)); hw16w(hw + 2u, rd16(src + 2u)); }
+        if (f & 4u) hw16w(hw + 4u, rd16(src + 4u));
+        if (f & 8u) hw16w(hw + 6u, rd16(src + 6u));
+        if (f & 0x10u) { hw16w(hw + 8u, rd16(src + 8u)); hw16w(hw + 10u, rd16(src + 10u)); }
+        wr8(SV_DIRTY + v, 0);
+    }
+    koffl = rd16(SV_KOFFL); koffh = rd16(SV_KOFFH); konl = rd16(SV_KONL);
+    konh = rd16(SV_KONH); eonl = rd16(SV_EONL); eonh = rd16(SV_EONH);
+    wr16(SV_KOFFL, 0); wr16(SV_KOFFH, 0); wr16(SV_KONL, 0); wr16(SV_KONH, 0);
+    hw16w(regs + SR_KOFFL, koffl); hw16w(regs + SR_KOFFH, koffh);
+    hw16w(regs + SR_KONL, konl); hw16w(regs + SR_KONH, konh);
+    hw16w(regs + SR_EONL, eonl); hw16w(regs + SR_EONH, eonh);
+}
+
+static void snd_vm_init(uint32_t nvoice) {
+    /* 8003FE3C _SsVmInit */
+    uint32_t i, n;
+    wr32(SP_G580, 1);                       /* 800401A0(0) */
+    wr16(0x800A5F60u, 0);
+    wr32(0x800762D0u, 0x40001010u);         /* 8004014C SpuInitMalloc(32, 800762D0) */
+    wr32(SP_MTBL, 0x800762D0u); wr32(SP_MCNT, 0); wr32(SP_MNUM, 32);
+    wr32(0x800762D4u, (0x10000u << rd32(SP_SHIFT)) - 0x1010u);
+    for (i = 0; i < 192u; ++i) wr16(SV_REGBUF + i * 2u, 0);
+    for (i = 0; i < 24u; ++i) wr8(SV_DIRTY + i, 0);
+    wr16(0x800C7CD8u, 0);
+    for (i = 0; i < 16u; ++i) wr8(0x800B9B40u + i, 0);
+    n = (nvoice & 0xFFu) < 24u ? (nvoice & 0xFFu) : 24u;
+    wr8(SV_NVOICE, (uint8_t)n);
+    for (i = 0; i < n; ++i) {
+        uint32_t r = SV_REC + i * 52u, hw = rd32(SV_REGS) + i * 16u;
+        static const uint8_t zero16[] = {4, 6, 8, 16, 18, 28, 30, 32, 34, 36, 40, 42, 44, 46, 48};
+        unsigned k;
+        wr16(r + 2u, 24); wr16(r + 14u, 0xFFFFu); wr16(r, 255); wr8(r + 27u, 0);
+        for (k = 0; k < sizeof zero16; ++k) wr16(r + zero16[k], 0);
+        wr16(r + 20u, 255); wr8(r + 10u, 64);
+        hw16w(hw + 6u, 512); hw16w(hw + 4u, 4096); hw16w(hw + 8u, 0x80FFu);
+        hw16w(hw, 0); hw16w(hw + 2u, 0); hw16w(hw + 10u, 0x4000u);
+        wr16(SV_CUR, (uint16_t)i);
+        snd_vm_keyoff_cur();
+    }
+    wr16(0x800A2B88u, 0x3FFFu); wr16(0x800A2B8Au, 0x3FFFu);
+    wr16(SV_KONL, 0); wr16(SV_KONH, 0); wr16(SV_KOFFL, 0); wr16(SV_EONL, 0); wr16(SV_EONH, 0);
+    wr32(0x800A2B80u, 0); wr32(0x800A2B84u, 0); wr8(SV_NOFLUSH, 0);
+    wr16(0x800A6434u, 0); wr16(0x800A6540u, 128);
+    snd_vm_flush();
+}
+
+static void snd_init_body(void) {
+    /* 8003D548 _SsInit */
+    uint32_t v, k;
+    for (v = 0; v < 24u; ++v)
+        for (k = 0; k < 8u; ++k) hw16w(0x1F801C00u + v * 16u + k * 2u, rd16(0x8006B8B4u + k * 2u));
+    for (k = 0; k < 16u; ++k) hw16w(0x1F801D80u + k * 2u, rd16(0x8006B8C4u + k * 2u));
+    snd_vm_init(24);
+    for (v = 0; v < 32u; ++v)
+        for (k = 0; k < 16u; ++k) wr32(0x800C7458u + v * 64u + k * 4u, 0);
+    wr32(0x800C6D30u, 60);
+    wr32(0x800AE818u, 0);
+    wr32(0x800A6510u, 0);
+}
+
+#define SPU_ENTRY(name) static int name(MusashiNativeLaneCall *call)
+SPU_ENTRY(hle_spu_init) { CD_SP(); spu_init(0); call->r[2] = 0; return 1; }           /* 8003A424 */
+SPU_ENTRY(hle_spu_init_mode) { CD_SP(); spu_init((int)call->r[4]); call->r[2] = 0; return 1; }
+SPU_ENTRY(hle_spu_init_hw) { CD_SP(); spu_init_hw((int)call->r[4]); call->r[2] = 0; return 1; }
+SPU_ENTRY(hle_spu_init_events) { CD_SP(); spu_init_events(); return 1; }
+SPU_ENTRY(hle_spu_write_manual) { CD_SP(); spu_write_manual(call->r[4], call->r[5]); return 1; }
+SPU_ENTRY(hle_spu_transfer) {
+    CD_SP();
+    call->r[2] = (uint32_t)spu_transfer((int)call->r[4], call->r[5], call->r[6]);
+    return 1;
+}
+SPU_ENTRY(hle_spu_delay) { (void)call; spu_delay(); return 1; }
+SPU_ENTRY(hle_spu_overlap) { call->r[2] = (uint32_t)spu_overlap(call->r[4]); return 1; }
+SPU_ENTRY(hle_spu_set_env) {
+    /* 8003B1EC SpuSetEnv(env{mask, queueing}) */
+    uint32_t m = rd32(call->r[4]);
+    if (!m || (m & 1u))
+        wr32(SP_ENV, rd32(call->r[4] + 4u) ? rd32(SP_ENV) | 1u : rd32(SP_ENV) & ~1u);
+    return 1;
+}
+SPU_ENTRY(hle_spu_set_reverb) {
+    /* 8003B280 SpuSetReverb(on) */
+    uint32_t on = call->r[4];
+    if (on == 0u) {
+        wr32(SP_REVON, 0);
+        spu_w(SR_CNT, spu_r(SR_CNT) & 0xFF7Fu);
+    } else if (on == 1u) {
+        if (rd32(SP_REVRSV) != 1u && spu_overlap(rd32(SP_REVADDR))) {
+            wr32(SP_REVON, 0);
+            spu_w(SR_CNT, spu_r(SR_CNT) & 0xFF7Fu);
+        } else {
+            wr32(SP_REVON, 1);
+            spu_w(SR_CNT, spu_r(SR_CNT) | 0x80u);
+        }
+    }
+    call->r[2] = rd32(SP_REVON);
+    return 1;
+}
+SPU_ENTRY(hle_spu_reserve_reverb) {
+    /* 8003BE24 SpuReserveReverbWorkArea(on) */
+    if (call->r[4] && !spu_overlap(rd32(SP_REVADDR))) {
+        wr32(SP_REVRSV, 1);
+        call->r[2] = 1;
+    } else {
+        wr32(SP_REVRSV, 0);
+        call->r[2] = 0;
+    }
+    return 1;
+}
+SPU_ENTRY(hle_spu_set_reverb_mode_param) {
+    g_cd_sp = call->r[29] - 0x100u;   /* below the preset copy */
+    call->r[2] = (uint32_t)spu_set_reverb_mode_param(call->r[4], call->r[29] - 0x80u);
+    return 1;
+}
+SPU_ENTRY(hle_spu_set_reverb_regs) { spu_set_reverb_regs(call->r[4]); return 1; }
+SPU_ENTRY(hle_spu_clear_reverb) { CD_SP(); call->r[2] = (uint32_t)spu_clear_reverb(call->r[4]); return 1; }
+SPU_ENTRY(hle_spu_set_reverb_voice) {   /* 8003BE74 */
+    call->r[2] = spu_voice_bits(call->r[4], call->r[5], 204, 205);
+    return 1;
+}
+SPU_ENTRY(hle_spu_set_noise_voice) {    /* 8003FE18 */
+    call->r[2] = spu_voice_bits(call->r[4], call->r[5], 202, 203);
+    return 1;
+}
+SPU_ENTRY(hle_spu_voice_bits) {         /* 8003BE98 */
+    call->r[2] = spu_voice_bits(call->r[4], call->r[5], call->r[6], call->r[7]);
+    return 1;
+}
+SPU_ENTRY(hle_spu_set_common_attr) { spu_set_common_attr(call->r[4]); return 1; }
+SPU_ENTRY(hle_spu_dma_irq) {
+    /* 8003AA18: DMA4 completion */
+    uint32_t saved = g_cd_sp;
+    CD_SP();
+    if (!rd32(SP_TMODE)) spu_delay();
+    spu_w(SR_CNT, spu_r(SR_CNT) & 0xFFCFu);
+    (void)spu_poll(SR_CNT, 0x30u, 0, "dma end");
+    if (rd32(SP_TCB)) (void)hle_call(rd32(SP_TCB), 0, 0, 0, 0, 0);
+    else if (!g_driver.ops || !g_driver.ops->deliver_event ||
+             !g_driver.ops->deliver_event(g_driver.ops->user, 0xF0000009u, 0x20u))
+        driver_stop("DeliverEvent_refused", 0x8005CE68u);
+    g_cd_sp = saved;
+    return 1;
+}
+SPU_ENTRY(hle_ss_init) {                /* 8003D518 SsInit */
+    CD_SP();
+    (void)hle_call(0x80042580u, 0, 0, 0, 0, 0);
+    spu_init(0);
+    snd_init_body();
+    return 1;
+}
+SPU_ENTRY(hle_ss_init_body) { CD_SP(); snd_init_body(); return 1; }
+SPU_ENTRY(hle_ss_vm_init) { CD_SP(); snd_vm_init(call->r[4]); return 1; }
+SPU_ENTRY(hle_ss_vm_flush) { CD_SP(); snd_vm_flush(); return 1; }
+SPU_ENTRY(hle_ss_vm_keyoff_cur) { (void)call; snd_vm_keyoff_cur(); return 1; }
+SPU_ENTRY(hle_spu_init_malloc) {
+    /* 8004014C SpuInitMalloc(num, top) */
+    uint32_t n = call->r[4], top = call->r[5];
+    if ((int32_t)n <= 0) { call->r[2] = 0; return 1; }
+    wr32(top, 0x40001010u);
+    wr32(SP_MTBL, top); wr32(SP_MCNT, 0); wr32(SP_MNUM, n);
+    wr32(top + 4u, (0x10000u << rd32(SP_SHIFT)) - 0x1010u);
+    call->r[2] = n;
+    return 1;
+}
+SPU_ENTRY(hle_spu_set_g580) { wr32(SP_G580, call->r[4] == 1u ? 0u : 1u); return 1; }  /* 800401A0 */
+
+/* B0 event services from native code */
+static int bios_event_entry(MusashiNativeLaneCall *call, unsigned fn, uint32_t pc) {
+    int32_t r = 0;
+    if (fn == 0x0Au) { call->r[2] = (uint32_t)bios_wait_event((int32_t)call->r[4]); return 1; }
+    if (!g_driver.ops || !g_driver.ops->bios_event ||
+        !g_driver.ops->bios_event(g_driver.ops->user, fn, call->r[4], call->r[5], call->r[6],
+                                  call->r[7], &r))
+        driver_stop("bios_event_refused", pc);
+    call->r[2] = (uint32_t)r;
+    return 1;
+}
+SPU_ENTRY(hle_b0_deliver_event) { return bios_event_entry(call, 0x07u, 0x8005CE68u); }
+SPU_ENTRY(hle_b0_open_event) { return bios_event_entry(call, 0x08u, 0x8005CE78u); }
+SPU_ENTRY(hle_b0_close_event) { return bios_event_entry(call, 0x09u, 0x8005CE88u); }
+SPU_ENTRY(hle_b0_wait_event) { return bios_event_entry(call, 0x0Au, 0x8005CE98u); }
+SPU_ENTRY(hle_b0_test_event) { return bios_event_entry(call, 0x0Bu, 0x8005CEA8u); }
+SPU_ENTRY(hle_b0_enable_event) { return bios_event_entry(call, 0x0Cu, 0x8005CEB8u); }
+SPU_ENTRY(hle_b0_disable_event) { return bios_event_entry(call, 0x0Du, 0x8005CEC8u); }
+
+static int hle_vsync(MusashiNativeLaneCall *call) {
+    /* 8004239C VSync(mode) from native code. mode < 0: the tick (v1: the
+     * root-counter latch word, as retail leaves it). 0: one field; 1: no
+     * wait; n > 1: n fields of guest time with interrupts delivered. */
+    int32_t mode = (int32_t)call->r[4];
+    if (mode < 0) return bfm_psyq_VSync(call->r);   /* the compat row's exact form */
+    driver_vsync_wait(mode == 0 ? 1u : mode == 1 ? 0u : (uint32_t)mode);
+    call->r[2] = 0;
+    return 1;
+}
 
 /* ---- libgpu / libcard startup ------------------------------------------- */
 
@@ -732,9 +2337,94 @@ static const MusashiNativeLaneEntry k_driver_entries[] = {
     {0x800429DCu, 0, hle_interrupt_callback, "InterruptCallback_body", 2, 1, 0},
     {0x80042D60u, 0, hle_vsync_callbacks, "VSyncCallbacks_body", 2, 1, 0},
     {0x80042F8Cu, 0, hle_dma_callback,    "DMACallback_body",    2, 1, 0},
+    {0x8003A424u, 0, hle_spu_init,        "SpuInit",             0, 1, 0},
+    {0x8003A444u, 0, hle_spu_init_mode,   "_SpuInit",            1, 1, 0},
+    {0x8003A53Cu, 0, hle_spu_init_events, "_spu_init_events",    0, 0, 0},
+    {0x8003A5B8u, 0, hle_spu_init_hw,     "_spu_init",           1, 1, 0},
+    {0x8003A84Cu, 0, hle_spu_write_manual,"_spu_writeByIO",      2, 0, 0},
+    {0x8003AA18u, 0, hle_spu_dma_irq,     "_spu_dma_irq",        0, 0, 0},
+    {0x8003AB84u, 0, hle_spu_transfer,    "_spu_t",              3, 1, 0},
+    {0x8003B0E4u, 0, hle_spu_delay,       "_spu_delay",          0, 0, 0},
+    {0x8003B1ECu, 0, hle_spu_set_env,     "SpuSetEnv",           1, 0, 0},
+    {0x8003B280u, 0, hle_spu_set_reverb,  "SpuSetReverb",        1, 1, 0},
+    {0x8003B3D0u, 0, hle_spu_overlap,     "_spu_rev_overlap",    1, 1, 0},
+    {0x8003B45Cu, 0, hle_spu_set_reverb_mode_param, "SpuSetReverbModeParam", 1, 1, 0},
+    {0x8003B954u, 0, hle_spu_set_reverb_regs, "_spu_setReverbAttr", 1, 0, 0},
+    {0x8003BE24u, 0, hle_spu_reserve_reverb, "SpuReserveReverbWorkArea", 1, 1, 0},
+    {0x8003BE74u, 0, hle_spu_set_reverb_voice, "SpuSetReverbVoice", 2, 1, 0},
+    {0x8003BE98u, 0, hle_spu_voice_bits,  "_spu_voice_bits",     4, 1, 0},
+    {0x8003C0A0u, 0, hle_spu_clear_reverb,"SpuClearReverbWorkArea", 1, 1, 0},
+    {0x8003C598u, 0, hle_spu_set_common_attr, "SpuSetCommonAttr", 1, 0, 0},
+    {0x8003D518u, 0, hle_ss_init,         "SsInit",              0, 0, 0},
+    {0x8003D548u, 0, hle_ss_init_body,    "_SsInit",             0, 0, 0},
+    {0x8003FA64u, 0, hle_ss_vm_flush,     "SpuVmFlush",          0, 0, 0},
+    {0x8003FE18u, 0, hle_spu_set_noise_voice, "SpuSetNoiseVoice", 2, 1, 0},
+    {0x8003FE3Cu, 0, hle_ss_vm_init,      "_SsVmInit",           1, 0, 0},
+    {0x8004014Cu, 0, hle_spu_init_malloc, "SpuInitMalloc",       2, 1, 0},
+    {0x800401A0u, 0, hle_spu_set_g580,    "_spu_set_g580",       1, 0, 0},
+    {0x80040868u, 0, hle_ss_vm_keyoff_cur,"SpuVmKeyOffCur",      0, 0, 0},
+    {0x8004239Cu, 0, hle_vsync,           "VSync",               1, 1, 0},
+    {0x80043078u, 0, hle_cd_get_cbe8,     "CdGetCbe8",           0, 1, 0},
+    {0x800430B8u, 0, hle_cd_get_toc,      "CdGetToc",            1, 1, 0},
+    {0x800430DCu, 0, hle_cd_get_toc2,     "CdGetToc_body",       2, 1, 0},
+    {0x80043300u, 0, hle_cd_init,         "CdInit",              0, 1, 0},
+    {0x80043398u, 0, hle_cd_cb_sync_default,  "CdSyncDeliver",   2, 0, 0},
+    {0x800433C0u, 0, hle_cd_cb_ready_default, "CdReadyDeliver",  2, 0, 0},
+    {0x800433E8u, 0, hle_cd_cb_ready_default, "CdReadDeliver",   2, 0, 0},
+    {0x80043410u, 0, hle_cd_status,       "CdStatus",            0, 1, 0},
+    {0x80043420u, 0, hle_cd_mode,         "CdMode",              0, 1, 0},
+    {0x80043430u, 0, hle_cd_lastcom,      "CdLastCom",           0, 1, 0},
+    {0x80043440u, 0, hle_cd_lastpos,      "CdLastPos",           0, 1, 0},
+    {0x80043450u, 0, hle_cd_reset,        "CdReset",             1, 1, 0},
+    {0x800434BCu, 0, hle_cd_flush,        "CdFlush",             0, 0, 0},
+    {0x800434DCu, 0, hle_cd_set_debug,    "CdSetDebug",          1, 1, 0},
+    {0x800434F4u, 0, hle_cd_comstr,       "CdComstr",            1, 1, 0},
+    {0x80043528u, 0, hle_cd_intstr,       "CdIntstr",            1, 1, 0},
+    {0x8004355Cu, 0, hle_cd_sync,         "CdSync",              2, 1, 0},
+    {0x8004357Cu, 0, hle_cd_ready,        "CdReady",             2, 1, 0},
+    {0x8004359Cu, 0, hle_cd_sync_callback,  "CdSyncCallback",    1, 1, 0},
+    {0x800435B4u, 0, hle_cd_ready_callback, "CdReadyCallback",   1, 1, 0},
+    {0x800435CCu, 0, hle_cd_control,      "CdControl",           3, 1, 0},
+    {0x80043704u, 0, hle_cd_control_f,    "CdControlF",          2, 1, 0},
+    {0x80043830u, 0, hle_cd_control_b,    "CdControlB",          3, 1, 0},
     {0x80043060u, 0, hle_exchange_cbe8,   "exchange_8006CBE8",   1, 1, 0},
     {0x80043974u, 0, hle_cd_mix,          "CdMix",               1, 1, 0},
+    {0x80043994u, 0, hle_cd_getsector,    "CdGetSector",         2, 1, 0},
+    {0x800439B4u, 0, hle_cd_getsector2,   "CdGetSector2",        2, 1, 0},
+    {0x800439D4u, 0, hle_cd_data_callback,"CdDataCallback",      1, 1, 0},
+    {0x800439F8u, 0, hle_cd_datasync,     "CdDataSync",          1, 1, 0},
+    {0x80043B9Cu, 0, hle_cd_getintr,      "CD_getintr",          0, 1, 0},
+    {0x80044124u, 0, hle_cd_sync,         "CD_sync",             2, 1, 0},
+    {0x800443A4u, 0, hle_cd_ready,        "CD_ready",            2, 1, 0},
+    {0x80044670u, 0, hle_cd_cw,           "CD_cw",               4, 1, 0},
+    {0x80044B14u, 0, hle_cd_flush,        "CD_flush",            0, 0, 0},
+    {0x80044BF4u, 0, hle_cd_initvol,      "CD_initvol",          0, 1, 0},
+    {0x80044CE8u, 0, hle_cd_initintr,     "CD_initintr",         0, 0, 0},
+    {0x80044D38u, 0, hle_cd_init_body,    "CD_init",             0, 1, 0},
+    {0x80044F24u, 0, hle_cd_datasync,     "CD_datasync",         1, 1, 0},
+    {0x80045090u, 0, hle_cd_getsector,    "CD_getsector",        2, 1, 0},
+    {0x80045190u, 0, hle_cd_getsector2,   "CD_getsector2",       2, 1, 0},
+    {0x80045290u, 0, hle_cd_irq,          "CD_irq",              0, 0, 0},
+    {0x80045374u, 0, hle_cd_search_file,  "CdSearchFile",        2, 1, 0},
+    {0x80045C94u, 0, hle_cd_read_lba,     "CD_read_lba",         3, 1, 0},
+    {0x80045D00u, 0, hle_cd_read_ready_cb,"CdRead_ready_cb",     2, 0, 0},
+    {0x80045FD0u, 0, hle_cd_read_dma_cb,  "CdRead_dma_cb",       0, 0, 0},
+    {0x800460CCu, 0, hle_cd_read_start,   "CdRead_start",        1, 1, 0},
+    {0x800462E0u, 0, hle_cd_read_break,   "CdReadBreak",         0, 0, 0},
+    {0x8004637Cu, 0, hle_cd_read,         "CdRead",              3, 1, 0},
+    {0x80046480u, 0, hle_cd_read_sync,    "CdReadSync",          2, 1, 0},
+    {0x8004654Cu, 0, hle_cd_read_callback,"CdReadCallback",      1, 1, 0},
+    {0x80046564u, 0, hle_cd_cb_cfd0,      "CdCallback_CFD0",     1, 1, 0},
+    {0x80046630u, 0, hle_cd_disk_ready,   "CdDiskReady",         1, 1, 0},
+    {0x8004674Cu, 0, hle_cd_disk_type,    "CdGetDiskType",       0, 1, 0},
     {0x8005CE18u, 0, hle_init_heap,       "InitHeap",            2, 0, 0},
+    {0x8005CE68u, 0, hle_b0_deliver_event,"DeliverEvent",        2, 1, 0},
+    {0x8005CE78u, 0, hle_b0_open_event,   "OpenEvent",           4, 1, 0},
+    {0x8005CE88u, 0, hle_b0_close_event,  "CloseEvent",          1, 1, 0},
+    {0x8005CE98u, 0, hle_b0_wait_event,   "WaitEvent",           1, 1, 0},
+    {0x8005CEA8u, 0, hle_b0_test_event,   "TestEvent",           1, 1, 0},
+    {0x8005CEB8u, 0, hle_b0_enable_event, "EnableEvent",         1, 1, 0},
+    {0x8005CEC8u, 0, hle_b0_disable_event,"DisableEvent",        1, 1, 0},
     {0x8005CF08u, 0, hle_enter_critical,  "EnterCriticalSection",0, 1, 0},
     {0x8005CF18u, 0, hle_exit_critical,   "ExitCriticalSection", 0, 0, 0},
     {0x80059234u, 0, hle_reset_graph,     "ResetGraph",          1, 1, 0},

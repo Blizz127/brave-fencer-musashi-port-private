@@ -57,6 +57,14 @@ typedef struct MusashiFrameDriverOps {
     /* The BIOS kernel's IRQ priority chains for `pending` (I_STAT & I_MASK),
      * run before libetc's custom exit. 0: refused. */
     int (*bios_irq)(void *user, uint16_t pending);
+    /* Spend `cycles` of guest time (a retail busy-wait iteration). 0: refused. */
+    int (*spend)(void *user, uint32_t cycles);
+    /* BIOS B0:07 DeliverEvent(class, spec). 0: refused. */
+    int (*deliver_event)(void *user, uint32_t class_word, uint32_t spec);
+    /* BIOS B0 event service `fn` (07 deliver, 08 open, 09 close, 0B test,
+     * 0C enable, 0D disable) with its arguments. 0: refused. */
+    int (*bios_event)(void *user, unsigned fn, uint32_t a0, uint32_t a1, uint32_t a2,
+                      uint32_t a3, int32_t *result);
 } MusashiFrameDriverOps;
 
 /* The driver's own lane entries: native replacements for the Sony library
@@ -68,6 +76,8 @@ typedef struct MusashiFrameDriverOps {
 /* The driver's interrupt point (strict builds): deliver a pending enabled
  * IRQ now. For host BIOS services that wait on interrupts (_bu_init). */
 void musashi_frame_driver_irq_point(void);
+/* Nonzero when an IRQ would be delivered now (enabled, not in a handler). */
+int musashi_frame_driver_irq_enabled(void);
 
 size_t musashi_frame_driver_lane_entries(MusashiNativeLaneEntry *out, size_t cap);
 

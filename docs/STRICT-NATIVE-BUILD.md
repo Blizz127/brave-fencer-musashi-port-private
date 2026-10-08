@@ -128,3 +128,12 @@ Until then every useful build stays hybrid and is disclosed as such.
   phis) or is a local alloca. Matched C uses volatile to pin gcc 2.7.2 store
   order or pad frames (80018FC8, 80015310); device registers and pointer
   cells stay refused. Strict admits 647 functions.
+
+## Native libcd and sound start-up (B26, 2026-10-07)
+
+See docs/NATIVE-FRAME-DRIVER.md (B26). Strict boot now runs CdInit, the
+CD interrupt path, CdRead/CdSearchFile and the libspu/libsnd start-up as
+native driver entries. Lane spin loops take interrupts through the strict
+checkpoint and a pending-IRQ deadline. First remaining stop:
+`not_in_lane func_80019AF8` (vendor-derived game code awaiting clean-room
+re-derivation). The hybrid lane table is unchanged.

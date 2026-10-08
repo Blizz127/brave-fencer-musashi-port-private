@@ -1950,6 +1950,10 @@ static int input_write8(void *userdata, uint32_t address, uint8_t value) {
 /* Strict builds: the frame driver delivers interrupts (no B0:19 scheduler
  * install), so the guest-clock VBlank source is live from its start. */
 static int g_driver_irq_source;
+#ifdef MUSASHI_STRICT_NATIVE
+int musashi_frame_driver_irq_enabled(void);
+void musashi_frame_driver_irq_point(void);
+#endif
 
 static int guest_clock_collect(NativeBoot *boot, MusashiIrqSourceBatch *batch) {
     static unsigned drain_countdown;
@@ -3220,6 +3224,13 @@ static int lane_deadline(void *userdata, uint64_t *cycles_until) {
     uint64_t now, due = 0;
     int enabled = 0;
     if (!boot->guest_clock || host_stop_signal) return 0;
+#ifdef MUSASHI_STRICT_NATIVE
+    if (g_driver_irq_source && (boot->irq.controller.status & boot->irq.controller.mask) &&
+        musashi_frame_driver_irq_enabled()) {
+        *cycles_until = 0;
+        return 1;
+    }
+#endif
     if (boot->irq.scheduler.installed && !boot->irq.scheduler.pumping &&
         !boot->irq.scheduler.delivering &&
         (boot->irq.controller.status & boot->irq.controller.mask) &&
@@ -5584,6 +5595,51 @@ static int driver_bios_irq(void *user, uint16_t pending) {
     return musashi_bios_kernel_dispatch_native_entry(&boot->bios, pending);
 }
 
+static int driver_spend(void *user, uint32_t cycles) {
+    NativeBoot *boot = user;
+    return boot->execution_clock.advance &&
+           boot->execution_clock.advance(boot->execution_clock.userdata, cycles);
+}
+
+static int driver_deliver_event(void *user, uint32_t class_word, uint32_t spec) {
+    /* B0:07 DeliverEvent: matching enabled records are marked; a callback
+     * record runs through the native BIOS event executor. */
+    NativeBoot *boot = user;
+    return musashi_bios_events_deliver(&boot->bios.events, class_word, spec,
+                                       execute_event, boot);
+}
+
+static int driver_bios_event(void *user, unsigned fn, uint32_t a0, uint32_t a1,
+                             uint32_t a2, uint32_t a3, int32_t *result) {
+    NativeBoot *boot = user;
+    MusashiBiosEvents *ev = &boot->bios.events;
+    *result = 0;
+    switch (fn) {
+    case 0x07u: *result = 1; return musashi_bios_events_deliver(ev, a0, a1, execute_event, boot);
+    case 0x08u: return musashi_bios_events_open(ev, a0, a1, a2, a3, result);
+    case 0x09u: return musashi_bios_events_close(ev, (int32_t)a0, result);
+    case 0x0Bu: return musashi_bios_events_test(ev, (int32_t)a0, result);
+    case 0x0Cu: return musashi_bios_events_enable(ev, (int32_t)a0, result);
+    case 0x0Du: return musashi_bios_events_disable(ev, (int32_t)a0, result);
+    default: return 0;
+    }
+}
+
+/* Strict lane checkpoint (the D-011 deadline guard inside native code): the
+ * frame driver's interrupt point, so a native busy-wait on an IRQ-set flag
+ * sees the interrupt arrive. */
+static int strict_checkpoint(void *userdata, const void *continuation) {
+    (void)userdata;
+    if (host_stop_signal && continuation) {
+        uint32_t *raw_cpu = (uint32_t *)(uintptr_t)continuation;
+        raw_cpu[34] = UINT_MAX;
+        raw_cpu[35] = UINT_MAX;
+        return 1;
+    }
+    musashi_frame_driver_irq_point();
+    return 1;
+}
+
 static MusashiResetGraphPrefixStatus strict_frame_driver_run(NativeBoot *boot) {
     static MusashiFrameDriverOps ops;
     ops.user = boot;
@@ -5594,6 +5650,10 @@ static MusashiResetGraphPrefixStatus strict_frame_driver_run(NativeBoot *boot) {
     ops.dma_irq = &boot->dma_irq;
     ops.bios_a0_72 = driver_bios_a0_72;
     ops.bios_irq = driver_bios_irq;
+    ops.spend = driver_spend;
+    ops.deliver_event = driver_deliver_event;
+    ops.bios_event = driver_bios_event;
+    boot->callback.checkpoint = strict_checkpoint;
     g_driver_irq_source = 1;
     return musashi_frame_driver_run(&boot->memory, &boot->startup_devices, &ops);
 }

@@ -342,6 +342,65 @@ CdControlB 80043830, CdControlF 80043704, CdRead 80046630, CdReadSync
 register device and IRQ 2 through the driver's interrupt point) is the next
 wall.
 
+## Native libcd, libspu/libsnd startup and BIOS events (B26, 2026-10-07)
+
+Strict builds now own the CD library, the sound start-up chain and the BIOS
+event services as driver lane entries (`k_driver_entries`, strict only; each
+replaces the compat row for its PC). All of it was written from the retail
+disassembly and runs on the existing devices:
+
+- libcd core (80043060..80046980): CdInit and the reset chain (80043300,
+  80043450, 80044D38, 80044670 CD_cw, 80044124 CdSync, 800443A4 CdReady,
+  80044B14 flush, 80044BF4 initvol, 80044CE8), the CD interrupt handler
+  80045290 and getintr 80043B9C, CdControl/F/B, CdGetSector/2, CdDataSync,
+  CdDataCallback, the callback exchanges, CdGetToc (800430B8/800430DC),
+  CdDiskReady 80046630, CdGetDiskType 8004674C, the CdRead machinery
+  (8004637C CdRead, 80046480 CdReadSync, 800460CC restart, 80045D00 sector
+  callback, 80045FD0 DMA form, 800462E0 CdReadBreak, 80045C94) and
+  CdSearchFile 80045374 (ISO 9660 path table and directory read through the
+  native CdRead into the library buffer 80078000; the compat row needed the
+  bfm_plat disc, which strict never opens). Registers go through the pointer
+  cells 8006CF4C..8006CF90 to `MusashiCdRegisterDevice`.
+- CD interrupts arrive through the B25 interrupt point: the libetc dispatcher
+  calls 80045290, which runs natively and calls the ready/sync callbacks.
+- Every native wait (CdSync, CdReady, CD_cw, CdReadSync, CdDataSync, the
+  FIFO/DMA polls, WaitEvent, VSync(n)) spends guest time with
+  `ops->spend` (`execution_clock.advance`) and then takes the interrupt
+  point. Lane code gets the same: `boot->callback.checkpoint` is a strict
+  checkpoint that calls `musashi_frame_driver_irq_point()`, and
+  `lane_deadline` returns 0 when an enabled IRQ is pending and the driver
+  would deliver it, so a lane busy-wait on an IRQ-set flag sees it.
+- VSync 8004239C: mode < 0 keeps the compat form; n >= 0 waits fields of
+  guest time with interrupts delivered.
+- libspu/libsnd start-up (8003A424 SpuInit, 8003A444, 8003A5B8, 8003A53C,
+  8003A84C, 8003AA18 DMA4 handler, 8003AB84 _spu_t, 8003B1EC SpuSetEnv,
+  8003B280 SpuSetReverb, 8003B3D0, 8003B45C SpuSetReverbModeParam, 8003B954,
+  8003BE24, 8003BE74, 8003BE98, 8003C0A0, 8003C598 SpuSetCommonAttr,
+  8003D518 SsInit, 8003D548, 8003FA64 SpuVmFlush, 8003FE18, 8003FE3C,
+  8004014C SpuInitMalloc, 800401A0, 80040868) over `MusashiCdSpuDevice`
+  and the DMA4 registers.
+- BIOS B0 events 8005CE68..8005CEC8 (Deliver/Open/Close/Wait/Test/Enable/
+  Disable) through `ops->bios_event` onto `musashi_bios_events_*`; WaitEvent
+  is a TestEvent loop with the interrupt point.
+- New ops: `spend`, `deliver_event`, `bios_event`.
+
+Result: strict boot passes CdInit, sound start-up and the CD file table
+(CdSearchFile for LIST.CD/MAIN.CD and the other 21 names, through native
+CdRead), 0 frames. The first remaining stop is `not_in_lane func_80019AF8`,
+the file-loader state machine called from 80019A24. Its registry C is
+vendor-derived (Druthulu), so the own-code strict lane leaves it out. It
+needs a clean-room re-derivation (the bfm-rederive pipeline), like the other
+25 vendor-derived main functions on main's static call graph (80015208,
+80015608, 80015760, 8001B0D4, 8001F9F8, 8002D034, 8002FF0C, 80030730,
+80030A14, 80030D80, 80030F80, 800314DC, 80032048, 800322A8, 800324A4,
+80032774, 80032A74, 800336A8, 8003388C, 80034DFC, 800363CC, 80036AF8,
+80037144, 800383A4, 80038698). Nearly all overlay code (village and
+attract scenes) is vendor-derived too. The per-frame sound library (SsStart
+8003D650, the tempo/sequencer 8003EDE8.., SsUtKeyOn/Off, SpuWrite/transfer
+8003C438..8003C4F0) and the libcd2 stream library (StSetRing 80043088,
+800469CC, 80046BFC) are the next PsyQ blocks; nothing on the boot path
+reaches them yet.
+
 ## Work order this implies
 
 1. Clean-room the 3 vendor direct callees (80015208, 800184F0, 8002D034) and
