@@ -262,3 +262,10 @@ Increment 13 (strict only):
 Increment 14 (strict only):
 - **Int-cast frame addresses:** `(s32)&local` passed to a callee counts as
   the local's address for retail-frame placement.
+
+Increment 16 (strict only):
+- **SCEV ranges:** an inttoptr operand whose LLVM-proved unsigned range
+  lies inside game RAM is admitted.
+- **Short calls:** a call with fewer arguments than the callee declares gets
+  the caller's own parameters only when the retail words leave those
+  a-registers intact up to every jal of that callee. Otherwise it is refused.

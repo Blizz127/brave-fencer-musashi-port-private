@@ -197,6 +197,21 @@ Increment 15 (driver HLE, strict only):
 - With RotMatrixZYX the boot passes 80049CAC. The next stop is
   `guest_pc=8012944c` (main_0012/sc02_0031 shared, `inttoptr`).
 
+Increment 16 (generator, strict only):
+- `scev_in_game_ram`: an inttoptr from an i64 value whose unsigned range,
+  as proved by LLVM scalar evolution (`opt -passes=print<scalar-evolution>`),
+  lies inside game RAM is admitted. 8012944C walks a two-entry table this
+  way.
+- `fix_short_calls`: a direct call that passes fewer arguments than the
+  callee declares (`((void (*)(void))f)()`) used to get a constant from the
+  optimizer, so 80136BC4 got a0 = 0 from 801336E8 and the host faulted. Now
+  the call gets the caller's own k-th parameter when a forward analysis of
+  the retail words (`entry_arg_at_calls`) shows a(k) untouched on every path
+  to every jal of that callee. Otherwise the caller is refused (`abi`).
+- The overlay lane is 2641/3269: fewer functions, but none of them now runs
+  with a wrong argument. First stop: `guest_pc=8013b83c` (sc02_0031, no
+  registry row yet).
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits

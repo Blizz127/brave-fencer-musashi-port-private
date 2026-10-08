@@ -88,6 +88,66 @@ SCRATCH_LO, SCRATCH_HI = 0x1F800000, 0x1F800400
 GAME_RAM = (0x80010000, 0x80200000)
 
 
+_SCEV_CACHE = {}
+
+
+def scev_unsigned_ranges(ir):
+    """Strict only (B28): {function: {value: (lo, hi)}} from LLVM's
+    scalar-evolution printer (`opt -passes=print<scalar-evolution>`): the
+    unsigned range `U: [lo,hi)` LLVM proves for each integer value. Empty
+    when opt is unavailable or fails."""
+    import hashlib
+    import tempfile
+    key = hashlib.sha1(ir.encode()).hexdigest()
+    if key in _SCEV_CACHE:
+        return _SCEV_CACHE[key]
+    res = {}
+    opt_bin = shutil.which("opt-19") or shutil.which("opt")
+    if opt_bin:
+        with tempfile.NamedTemporaryFile("w", suffix=".ll", delete=False) as f:
+            f.write(ir)
+            path = f.name
+        try:
+            r = subprocess.run([opt_bin, "-disable-output", "-passes=print<scalar-evolution>", path],
+                               capture_output=True, text=True, timeout=120)
+            text = r.stdout + r.stderr if r.returncode == 0 else ""
+        except (OSError, subprocess.SubprocessError):
+            text = ""
+        finally:
+            os.unlink(path)
+        fn, var = None, None
+        for line in text.splitlines():
+            m = re.match(r"Classifying expressions for: @([\w.$]+)", line)
+            if m:
+                fn, var = m.group(1), None
+                res.setdefault(fn, {})
+                continue
+            m = re.match(r"^  (%[\w.\"$]+) = ", line)
+            if m:
+                var = m.group(1)
+                continue
+            m = re.search(r"-->.*?\bU: \[(-?\d+),(-?\d+)\)", line)
+            if m and fn and var:
+                lo, hi = int(m.group(1)), int(m.group(2))
+                if 0 <= lo < hi:
+                    res[fn][var] = (lo, hi)
+                var = None
+    _SCEV_CACHE[key] = res
+    return res
+
+
+def scev_in_game_ram(ir, header, val):
+    """Strict only (B28): LLVM proves val's unsigned range inside game RAM
+    (with the same 16-byte slack as bounded_guest_affine), so the host
+    pointer equals the guest address (a struct walk over a fixed table with
+    a bounded trip count, 8012944C)."""
+    m = re.search(r"@([\w.$]+)\(", header)
+    if not m:
+        return False
+    rng = scev_unsigned_ranges(ir).get(m.group(1), {}).get(val)
+    return bool(rng) and GAME_RAM[0] <= rng[0] and rng[1] - 1 + 16 < GAME_RAM[1]
+
+
 def bounded_guest_affine(val, defs):
     """Strict only (B28): an inttoptr from `add nuw nsw i64 X, C` where C is a
     game-RAM address and X is provably small: a counted induction variable
@@ -987,6 +1047,125 @@ def llvm_type_layout(ty, types, ptr_bytes):
     return None
 
 
+def entry_arg_at_calls(words, vram, k):
+    """Strict only (B28): {call target: True when a(k) still holds the
+    function's entry value at every jal to it}, by a forward must-analysis
+    over the retail words (a write to a(k) or any earlier call kills it; a
+    jal's delay slot runs before the call). None when the control flow
+    cannot be followed (jr through a register other than ra)."""
+    n = len(words)
+    bit = 1 << k
+    state = [None] * (n + 1)
+    state[0] = True
+    sites = {}
+    work = [0]
+    while work:
+        i = work.pop()
+        if i >= n:
+            continue
+        cur = state[i]
+        x = _xfer(words[i], vram + 4 * i)
+        if x is None:
+            succ = [(i + 1, cur and not (_a_writes(words[i]) & bit))]
+        else:
+            kind, target = x
+            if kind == "jr":
+                return None
+            after = cur and not (_a_writes(words[i]) & bit)
+            if i + 1 >= n:
+                return None
+            slot = after and not (_a_writes(words[i + 1]) & bit)
+            succ = []
+            if kind in ("call", "icall"):
+                if kind == "call":
+                    sites[target] = sites.get(target, True) and slot
+                succ.append((i + 2, False))
+            elif kind == "b":
+                t = (target - vram) // 4
+                succ += [(i + 2, slot)] + ([(t, slot)] if 0 <= t < n else [])
+            elif kind == "j":
+                t = (target - vram) // 4
+                if 0 <= t < n:
+                    succ.append((t, slot))
+        for j, v in succ:
+            if j > n:
+                continue
+            old = state[j]
+            new = v if old is None else (old and v)
+            if new != old:
+                state[j] = new
+                work.append(j)
+    return sites
+
+
+def fix_short_calls(ir, words, vram):
+    """Strict only (B28): a direct call that passes fewer arguments than the
+    callee's declaration takes (`((void (*)(void))f)()` on an `f(s32)`).
+    The retail jal hands the callee whatever a0-a3 still hold; the optimizer
+    would fill the missing native argument with a constant (80136BC4 got
+    a0 = 0 from 801336E8 and faulted). When the retail words leave the
+    missing a(k) untouched on every path to every jal of that callee
+    (entry_arg_at_calls), the register still holds the caller's own k-th
+    argument there: the call gets the caller's parameter k. Any other short
+    call is refused (abi)."""
+    decls = {}
+    for m in re.finditer(r"^declare\b[^@]*@([\w.$]+)\((.*)\)[^(]*$", ir, flags=re.M):
+        if "..." not in m.group(2):
+            decls[m.group(1)] = [p.split()[0] for p in split_top(m.group(2)) if p]
+    dm = re.search(r"^define\b[^@]*@([\w.$]+)\((.*)\)[^(]*\{$", ir, flags=re.M)
+    own = []
+    if dm and "..." not in dm.group(2):
+        for p in split_top(dm.group(2)):
+            toks = p.split()
+            if toks and toks[-1].startswith("%"):
+                own.append((toks[0], toks[-1]))
+    out, n = [], 0
+    for line in ir.splitlines():
+        cm = re.search(r"\bcall ([^@]*)@([\w.$]+)\((.*)\)", line)
+        if not cm or cm.group(2) not in decls or cm.group(2).startswith("llvm."):
+            out.append(line)
+            continue
+        args = [a for a in split_top(cm.group(3)) if a]
+        want = decls[cm.group(2)]
+        if len(args) >= len(want):
+            out.append(line)
+            continue
+        why = None
+        if words is None:
+            why = "retail words unavailable"
+        elif not re.fullmatch(r"func_[0-9A-Fa-f]{8}", cm.group(2)):
+            why = "the callee has no retail address"
+        elif len(want) > 4 or len(own) < len(want):
+            why = "the caller does not receive the missing arguments"
+        if why is None:
+            ind = re.match(r"^\s*", line).group(0) or "  "
+            for k in range(len(args), len(want)):
+                live = entry_arg_at_calls(words, vram, k)
+                if not live or not live.get(int(cm.group(2)[5:], 16)):
+                    why = f"a{k} is not the caller's argument at every retail jal"
+                    break
+                (oty, oval), cty = own[k], want[k]
+                if oty == cty:
+                    args.append(f"{cty} {oval}")
+                elif oty == "ptr" and cty == "i32":
+                    out.append(f"{ind}%lane.ar{n} = ptrtoint ptr {oval} to i32")
+                    args.append(f"i32 %lane.ar{n}")
+                    n += 1
+                elif oty == "i32" and cty == "ptr":
+                    out.append(f"{ind}%lane.ar{n}.z = zext i32 {oval} to i64")
+                    out.append(f"{ind}%lane.ar{n} = inttoptr i64 %lane.ar{n}.z to ptr")
+                    args.append(f"ptr %lane.ar{n}")
+                    n += 1
+                else:
+                    why = f"argument {k} is {oty} in the caller, {cty} in the callee"
+                    break
+        if why is not None:
+            raise Reject("abi", f"calls {cm.group(2)} with {len([a for a in split_top(cm.group(3)) if a])} "
+                                f"of {len(want)} declared arguments ({why})")
+        out.append(line[:cm.start(3)] + ", ".join(args) + line[cm.end(3):])
+    return "\n".join(out) + "\n"
+
+
 def strip_symbol_binding_asm(ir):
     """Strict only (B28): drop file-scope asm that only binds a symbol to a
     retail address (`.globl memcpy` / `.set memcpy, 0x8005C324`). The vendor
@@ -1229,7 +1408,8 @@ def check_optimized(ir, module_internal):
                     d = defs.get(val, "")
                     if not (d.startswith("zext i32") or d.startswith("zext nneg i32") or
                             re.match(r"and i64 .*, 4294967295$", d) or
-                            (STRICT and bounded_guest_affine(val, defs))):
+                            (STRICT and bounded_guest_affine(val, defs)) or
+                            (STRICT and scev_in_game_ram(ir, header, val))):
                         raise Reject("inttoptr", f"integer->pointer from '{d[:40]}'")
                 elif re.fullmatch(r"-?\d+", val) and not const_addr_ok(int(val)):
                     raise Reject("inttoptr", f"constant address {int(val):x}")
@@ -2242,6 +2422,7 @@ def build_one(entry, out, symbols, hooks, clang, info=None):
         ir = o0.read_text()
         if STRICT:
             ir = strip_symbol_binding_asm(ir)
+            ir = fix_short_calls(ir, retail_words(vram, size, info), vram)
             ir, _ = narrow_aggregate_pointers(ir)
         check_layout(ir)
         words = retail_words(vram, size, info)
