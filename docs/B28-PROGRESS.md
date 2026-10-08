@@ -719,6 +719,24 @@ Increment 32 (generator, strict only):
   overlay 2937/3328; no lost functions.
 - Strict stop moves 80047E58 -> 80148AFC (overlay). Frame 1200, prims=0 draw=0.
 
+
+## Increment 52 (stop 80148AFC -> 80142978)
+
+- main_0012/sc02_0031 `func_80148AFC` (8015C128's turn-to-camera test) was
+  refused `ub` (undef/poison operand): with no matching case the `switch` fell
+  off the end, and the host `phi` took `undef`. In retail, that path returns
+  whatever gcc's case dispatch left in `$v0`: 0x41 when the byte is below
+  0x54, otherwise 0x73. Every caller tests `result & 0xFF`, so the value
+  matters. The C now spells out the dispatch, with `$v0` pinned as the return
+  variable (`v0 = 0x41; if (v1 == v0) ...; goto ret;`). It still produces
+  byte-identical objects for both members (cmpobj SAME; tools/verify_registry
+  2/2), and the host IR now returns `phi [65] [115] ...`.
+- Both copies are admitted with mapped acyclic cycles. Lanes: main 3648/4071,
+  overlay 2939/3328. regr LOST []. Gate: build=0, TABLE_IDENTICAL, ctest
+  37/37, m2c=0.
+- Strict stop moves to main_0012 80142978 (`calls`: indirect call). Frame
+  1200: prims=0 disp=1 draw=0.
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits
