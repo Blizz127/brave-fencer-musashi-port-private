@@ -149522,7 +149522,7 @@
       "size": 184,
       "region": "sc02_0031",
       "source": "src/overlays/sc02_0031/80150a70.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"

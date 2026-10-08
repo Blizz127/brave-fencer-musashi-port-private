@@ -594,6 +594,21 @@ Increment 32 (generator, strict only):
 - Strict stop moves to 80150A70. Frames reach 1200, prims=0 draw=0: no frame
   drawn yet.
 
+### Increment 44: 80150A70 as C with a noreorder switch-back call
+
+- 80150A70 (main_0012 and sc02_0031; sc02 recovery `assembly`) compares two
+  position triples, then calls 8014FA70 on the saved stack with a0 set in
+  the jal delay slot, then 80015978. Rewritten as C plus the switch-back
+  asm in `.set\tnoreorder` with `addu $4, %2, $zero` in the delay slot
+  (s pinned to $16 as in retail); byte-identical (verify bad 0).
+- Generator (strict-only): `SCRATCH_CALL_RE` accepts the noreorder form
+  only together with that delay-slot a0 move (otherwise the slot would run
+  an instruction before the call), and passes the operand as the argument.
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0. Lanes: main 3593/4066,
+  overlay 2891/3328. Nothing lost; 80150A70 gained in both members.
+- Strict stop moves to 801719A4. Frames reach 1200, prims=0 draw=0: no
+  frame drawn yet.
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits

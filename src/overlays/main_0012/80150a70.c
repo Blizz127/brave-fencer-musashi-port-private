@@ -4,62 +4,34 @@
  * UNVERIFIED draft, not an oracle match claim. */
 /* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-/* func_80150A70 - byte-exact against retail at -O2 (tools/register_match.py). */
-extern int D_8018424C;
 
-void func_80150A70(s32 a0)
-{
+extern s32 D_8018424C;
+extern void func_80015978(void *a0, void *a1);
 
-    extern s32 D_8018424C;
-    __asm__ __volatile__(
-        ".set\tnoreorder\n"
-        "addiu $sp, $sp, -24\n"
-        "sw    $s0, 16($sp)\n"
-        "addu  $s0, $a0, $zero\n"
-        "sw    $ra, 20($sp)\n"
-        "lh    $v1, 6($s0)\n"
-        "lh    $v0, 136($s0)\n"
-        "nop\n"
-        "bne   $v1, $v0, 1f\n"
-        "nop\n"
-        "lh    $v1, 10($s0)\n"
-        "lh    $v0, 138($s0)\n"
-        "nop\n"
-        "bne   $v1, $v0, 1f\n"
-        "nop\n"
-        "lh    $v1, 14($s0)\n"
-        "lh    $v0, 140($s0)\n"
-        "nop\n"
-        "beq   $v1, $v0, 3f\n"
-        "nop\n"
-    "1:\n"
-        "lw    $v0, 68($s0)\n"
-        "lui   $v1, 0x4\n"
-        "and   $v0, $v0, $v1\n"
-        "bnez  $v0, 2f\n"
-        "addiu $a0, $s0, 4\n"
-        "lui   $a2, 0x1f80\n"
-        "ori   $a2, $a2, 0x03fc\n"
-        "addu  $t0, $a2, $zero\n"
-        "lw    $t1, 0($t0)\n"
-        "nop\n"
-        "sw    $sp, 0($t1)\n"
-        "addiu $t1, $t1, -4\n"
-        "addu  $sp, $t1, $zero\n"
-        "jal   func_8014FA70\n"
-        "addu  $a0, $s0, $zero\n"
-        "lui   $at, %%hi(D_8018424C)\n"
-        "sw    $v0, %%lo(D_8018424C)($at)\n"
-        "addiu $sp, $sp, 4\n"
-        "lw    $sp, 0($sp)\n"
-        "addiu $a0, $s0, 4\n"
-    "2:\n"
-        "jal   func_80015978\n"
-        "addiu $a1, $s0, 136\n"
-    "3:\n"
-        "lw    $ra, 20($sp)\n"
-        "lw    $s0, 16($sp)\n"
-        "addiu $sp, $sp, 24\n"
-        ".set\treorder\n"
-        : : : "memory");
+/* B28: C plus the scratchpad switch-back asm; byte-identical (gcc-2.7.2-psx -O2). */
+void func_80150A70(u8 *a0) {
+    register u8 *s __asm__("$16") = a0;
+    if (*(s16 *)(s + 6) != *(s16 *)(s + 0x88) || *(s16 *)(s + 0xA) != *(s16 *)(s + 0x8A) ||
+        *(s16 *)(s + 0xE) != *(s16 *)(s + 0x8C)) {
+        if ((*(s32 *)(s + 0x44) & 0x40000) == 0) {
+            register s32 p __asm__("$6") = 0x1F8003FC;
+            __asm__ __volatile__(
+                ".set\tnoreorder\n"
+                "addu  $8, %0, $zero\n"
+                "lw    $9, 0($8)\n"
+                "nop\n"
+                "sw    $sp, 0($9)\n"
+                "addiu $9, $9, -4\n"
+                "addu  $sp, $9, $zero\n"
+                "jal   func_8014FA70\n"
+                "addu  $4, %2, $zero\n"
+                "lui   $at, %%hi(D_8018424C)\n"
+                "sw    $v0, %%lo(D_8018424C)($at)\n"
+                "addiu $sp, $sp, 4\n"
+                "lw    $sp, 0($sp)\n"
+                ".set\treorder\n"
+                : "=r"(p) : "0"(p), "r"(s) : "$4", "$8", "$9", "$31", "memory");
+        }
+        func_80015978(s + 4, s + 0x88);
+    }
 }

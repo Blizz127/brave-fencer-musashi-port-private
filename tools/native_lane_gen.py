@@ -1964,20 +1964,24 @@ LA_ASM_RE = re.compile(r'\b(?:__asm__|asm)\s*(?:volatile\s*|__volatile__\s*)?\(\
 # outer switch saved in the cell: `lw $9,0($8); nop; sw $sp,0($9);
 # addiu $9,$9,-4; addu $sp,$9,$zero`, so P = *(u32 *)C. Extra `"r"(x)`
 # inputs are register variables pinned to $4..$7 in order: the call's
-# arguments (a0.. stay live into the jal).
+# arguments (a0.. stay live into the jal). With `.set\tnoreorder` the jal
+# delay slot may set a0 from an input operand (80150A70): that operand is
+# the call's one argument.
 SCRATCH_CALL_RE = re.compile(
     r'\b(?:__asm__|asm)\s*(?:volatile\s*|__volatile__\s*)?\(\s*'
+    r'(?P<nr>"\.set\\tnoreorder\\n"\s*)?'
     r'"addu\s+\$8,\s*%0,\s*\$zero\\n"\s*'
     r'(?:(?P<ind>"lw\s+\$9,\s*0\(\$8\)\\n"\s*"nop\\n"\s*"sw\s+\$sp,\s*0\(\$9\)\\n"\s*'
     r'"addiu\s+\$9,\s*\$9,\s*-4\\n"\s*"addu\s+\$sp,\s*\$9,\s*\$zero\\n"\s*)'
     r'|"sw\s+\$sp,\s*0\(\$8\)\\n"\s*"addiu\s+\$8,\s*\$8,\s*-4\\n"\s*"addu\s+\$sp,\s*\$8,\s*\$zero\\n"\s*)'
     r'"jal\s+(?P<f>func_[0-9A-Fa-f]{8})\\n"\s*'
+    r'(?:"addu\s+\$4,\s*%(?P<dly>\d),\s*\$zero\\n"\s*)?'
     r'(?:"lui\s+\$at,\s*%%hi\((?P<sym>\w+)\)\\n"\s*"sw\s+\$v0,\s*%%lo\((?P=sym)\)\(\$at\)\\n"\s*)?'
     r'"addiu\s+\$sp,\s*\$sp,\s*4\\n"\s*'
-    r'"lw\s+\$sp,\s*0\(\$sp\)\\n"\s*:\s*'
+    r'"lw\s+\$sp,\s*0\(\$sp\)\\n"\s*(?P<r>"\.set\\treorder\\n"\s*)?:\s*'
     r'(?::\s*"r"\s*\(\s*(?P<p1>\w+)\s*\)|"=r"\s*\(\s*(?P<p2>\w+)\s*\)\s*:\s*"0"\s*\(\s*(?P=p2)\s*\))'
     r'(?P<args>(?:\s*,\s*"r"\s*\(\s*\w+\s*\))*)'
-    r'\s*:\s*"\$8"\s*,\s*(?:"\$9"\s*,\s*)?(?:"\$31"\s*,\s*)?"memory"\s*\)\s*;')
+    r'\s*:\s*(?:"\$4"\s*,\s*)?"\$8"\s*,\s*(?:"\$9"\s*,\s*)?(?:"\$31"\s*,\s*)?"memory"\s*\)\s*;')
 
 
 def scratch_call_host(text):
@@ -1994,7 +1998,16 @@ def scratch_call_host(text):
         args = re.findall(r'"r"\s*\(\s*(\w+)\s*\)', m.group("args"))
         if len(args) > 4:
             raise ValueError
-        for i, a in enumerate(args):
+        # noreorder (80150A70): the jal delay slot must be `addu $4, %n, $zero`
+        # (a0 for the call); anything else there would run before the call
+        if bool(m.group("nr")) != bool(m.group("dly")) or bool(m.group("nr")) != bool(m.group("r")):
+            raise ValueError
+        if m.group("dly"):
+            k = int(m.group("dly")) - (2 if m.group("p2") else 1)
+            if not 0 <= k < len(args):
+                raise ValueError
+            args = [args[k]]
+        for i, a in enumerate(args if not m.group("dly") else []):
             # pinned to $4+i (strict_mixed_ok sees the text with pins removed)
             am = re.search(r"\bregister\b[^;={}]*\b" + re.escape(a) +
                            r'\s*(?:(?:__asm__|asm)\s*\(\s*"\$(\d+)"\s*\)\s*)?=', text)
