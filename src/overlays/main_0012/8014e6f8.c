@@ -4,14 +4,15 @@
  * original declaration. */
 
 #include "psx_types.h"
-void func_8014E83C();
-void func_8014E790();
+s32 func_8014E83C();
+s32 func_8014E790();
 typedef struct {
     u8 pad[6]; s16 u6; u8 pad8[2]; s16 uA; u8 padC[2]; s16 uE;
     u8 pad10[0x78]; s16 u88, u8A, u8C;
     u8 pad8E[0xF2]; s32 u180;
 } T;
-void func_8014E6F8(T *p) {
+s32 func_8014E6F8(T *p) { /* v0 of the last call (callers read it) */
+    s32 lane_r;
     s16 x[4];
     s16 y[4];
     x[0] = p->u88;
@@ -23,8 +24,9 @@ void func_8014E6F8(T *p) {
     if (p->u180 == 0) {
         x[1] -= 0x54;
         y[1] -= 0x54;
-        func_8014E83C(p, x, y);
-        return;
+        lane_r = func_8014E83C(p, x, y);
+    } else {
+        lane_r = func_8014E790(p, x, y);
     }
-    func_8014E790(p, x, y);
+    return lane_r;
 }

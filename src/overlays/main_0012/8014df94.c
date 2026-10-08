@@ -14,7 +14,8 @@
 extern s32 func_8014E284(s32 a0, s16 *a1, s16 *a2);
 extern s32 func_8014E048(s32 a0, u16 *a1, u16 *a2);
 
-void func_8014DF94(s32 arg0) {
+s32 func_8014DF94(s32 arg0) {
+    s32 lane_r;
     s16 a[3];
     s16 b[3];
     register s32 u88 __asm__("$4");
@@ -43,8 +44,9 @@ void func_8014DF94(s32 arg0) {
     __asm__ __volatile__("" : : : "memory");
     b[2] = u8C;
     if (*(s32 *)(arg0 + 0x170) == 0) {
-        func_8014E284(arg0, a, b);
+        lane_r = func_8014E284(arg0, a, b);
     } else {
-        func_8014E048(arg0, a, b);
+        lane_r = func_8014E048(arg0, a, b);
     }
+    return lane_r; /* v0 of the last call (callers read it) */
 }

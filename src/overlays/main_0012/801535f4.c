@@ -11,7 +11,7 @@
  * (Druthulu, same SLUS-00726 build), split to an address-named file.
  * Values and locals are the loosest that reproduce the bytes; they
  * are not evidence of the original declaration. */
-extern void func_8014ED28();
+extern s32 func_8014ED28(s32);
 extern void func_80146D90(s32 a0);
 extern void func_8014CC28(s32 a0);
 extern void func_8014FA04(s32 a0);
@@ -22,7 +22,7 @@ s32 func_801535F4(void *arg0) {
     register u32 fcopy __asm__("$3");
     s32 ret;
     var_s1 = 0;
-    if (((s32 (*)(void))func_8014ED28)() != 0) {
+    if (func_8014ED28((s32)arg0) != 0) {
         func_80146D90((s32)arg0);
     }
     if ((*(s32 *)((u8 *)arg0 + 0x34) > 0) &&

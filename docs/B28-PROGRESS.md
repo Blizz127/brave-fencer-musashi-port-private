@@ -544,6 +544,20 @@ Increment 32 (generator, strict only):
 - Strict stop moves to 8014CD0C (the callee of 8014CCB4). Frames reach 1200,
   prims=0 draw=0: no frame drawn yet.
 
+### Increment 41: the switch-back callees return their v0 (byte-identical)
+
+- The wrappers of increment 40 store their callee's v0, so 8014CD0C,
+  8014D0A4, 8014D438, 8014D790, 8014DF94, 8014E48C and 8014E6F8 (each an
+  if/else of two calls) now return the result of whichever call ran
+  (`s32 lane_r; ... return lane_r;`, the form that keeps the retail branch
+  sense; script /workspace/scratch/c40/retfix.py, rebuilt and compared).
+  8014F3E8 returns its handlers' v0 and passes a0; 801535F4 passes a0 to
+  8014ED28. All byte-identical (verify bad 0).
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0. Lanes: main 3576/4046,
+  overlay 2874/3310. Nothing lost; 8 gained.
+- Strict stop moves to 80133784. Frames reach 1200, prims=0 draw=0: no
+  frame drawn yet.
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits
