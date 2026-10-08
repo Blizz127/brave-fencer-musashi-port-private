@@ -49,7 +49,7 @@ extern void func_80147078(s32 *a0, s16 a1);
 extern void func_80154150(s32 a0, s32 a1);
 extern s32 func_801725E0(u8 *a0);
 
-s32 func_8015CD20(s32 arg0) {
+void func_8015CD20(s32 arg0) {
     extern void (*D_8018730C[])(struct Ent_8015CD20 *);
     extern u8 D_801872C0;
     extern u8 D_801874B0;

@@ -26,7 +26,7 @@ extern void func_80131B14();
 extern s32 func_80131A34(s32, s32);
 extern void func_80131CA8(int a0, int a1);
 
-s32 func_8012FCC4(s32 param_1) {
+void func_8012FCC4(s32 param_1) {
     extern int D_80184FF8;
 
     int v1 = *(int *)(((int)param_1) + 0xC4);

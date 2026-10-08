@@ -49,7 +49,7 @@ extern s32 func_80161CD0(s32, s32);
 extern s32 func_80161208(s32 a0);
 extern s32 func_801725A4(u8*);
 
-s32 func_8015B950(s32 arg0)
+void func_8015B950(s32 arg0)
 {
 
     extern void (*D_8018730C[])(void *);

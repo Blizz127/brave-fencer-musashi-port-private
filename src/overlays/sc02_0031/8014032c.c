@@ -54,9 +54,9 @@ s32 func_8014032C(s32 param_1, s32 param_2) {
         switch ((*(s16*)&D_80115128)) {
         case 0:
             if (D_80186054[((short)param_2)]() == 0) {
-                ((short)param_2) = 5;
+                param_2 = 5;
             } else if (D_80186044[((short)param_2)]() != 0) {
-                ((short)param_2) = 4;
+                param_2 = 4;
             }
             result = D_80185DA0[((short)param_2)];
             break;

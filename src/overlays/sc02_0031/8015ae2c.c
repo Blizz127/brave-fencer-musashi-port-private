@@ -56,7 +56,7 @@ extern void func_8014E6A0(void);
 extern void func_8015CF8C(s32 *a0);
 extern s32 func_801725A4(u8 *a0);
 
-s32 func_8015AE2C(arg0)
+void func_8015AE2C(arg0)
 s32 arg0;
 {
     extern void (*D_8018730C[])(void *);

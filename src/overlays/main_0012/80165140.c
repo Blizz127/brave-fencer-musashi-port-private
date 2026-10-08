@@ -9,7 +9,7 @@ typedef struct { u8 d[4]; } __attribute__((packed, aligned(1))) B4;
 typedef struct { u8 d[8]; } __attribute__((packed, aligned(1))) B8_80165140;
 typedef struct { B8_80165140 a; B4 b; s32 used; } Slot;
 
-s32 func_80165140(s32 param_1) {
+void func_80165140(s32 param_1) {
     extern Slot D_80184398[8];
 
     int i;

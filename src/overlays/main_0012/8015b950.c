@@ -142,7 +142,7 @@ extern void (*D_80180A1C[])(void *);
  */
 
 
-s32 func_8015B950(s32 arg0)
+void func_8015B950(s32 arg0)
 {
     extern s32 D_801809B0;
 

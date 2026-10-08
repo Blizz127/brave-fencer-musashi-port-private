@@ -24,7 +24,7 @@ extern void func_80149374(s32 a0, s32 a1);
 extern s32 func_801619D0(void *a0);
 
 
-s32 func_8016DC20(s32 param_1) {
+void func_8016DC20(s32 param_1) {
 
     extern s32  D_8011D030;
     extern s16  D_80184EF0;

@@ -22,7 +22,7 @@ extern void func_801465C0(void);
 extern void func_80146C3C(void);
 extern void func_8012A568(void (*a0)(void));
 
-s32 func_8016C49C(s32 param_1_arg) {
+void func_8016C49C(s32 param_1_arg) {
     extern s32 func_80047E98(void *, void *);
     extern void func_8001CD9C(s32, void *);
     extern void func_8016CF04(s32, s32);

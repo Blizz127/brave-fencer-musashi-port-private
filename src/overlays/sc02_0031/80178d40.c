@@ -55,7 +55,7 @@ extern void func_8012E8E0(s32 a0, s32 a1);
 extern s32 D_801B70F0;
 extern short D_801B7B0C;
 
-s32 func_80178D40(s32 arg0, s32 arg1)
+void func_80178D40(s32 arg0, s32 arg1)
 {
     extern void func_80179B28(s32);
     extern s32 func_80137614(s32, s32, s32);

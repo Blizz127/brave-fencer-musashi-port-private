@@ -82,7 +82,7 @@ extern u8 D_800D4F8C[];
 extern s32 D_800D4A9C;
 extern s32 D_800D4B48;
 
-s32 func_8015AE2C(arg0)
+void func_8015AE2C(arg0)
 s32 arg0;
 {
     /* [T51] scoped in from file scope: a file-scope decl of these symbols constrains every

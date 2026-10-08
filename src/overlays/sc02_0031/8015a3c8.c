@@ -60,7 +60,7 @@ extern void func_80161C24(s32 a0, s32 a1);
 extern s32 func_80172608(u8 *a0);
 extern void func_801483E8(void);
 
-s32 func_8015A3C8(arg0)
+void func_8015A3C8(arg0)
 s32 arg0;
 {
 

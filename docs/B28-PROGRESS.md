@@ -661,6 +661,26 @@ Increment 32 (generator, strict only):
   overlay 2903/3328; no lost functions.
 - Strict stop moves 80012558 -> 8015C128 (overlay, rule compile). Frame 1200, prims=0 draw=0.
 
+### Increment 49 — void handlers, lvalue casts, multi-pin declarations
+
+- 20 overlay handlers (main_0012/sc02_0031) whose body never returns a value are now
+  `void`, which clears the clang `-Wreturn-mismatch` compile refusals: 8012FCC4, 801380E0,
+  8013EF88, 80155800, 8015A3C8, 8015AE2C, 8015B950, 8015C128, 8015CD20, 80165140,
+  8016AB6C, 8016C49C, 8016DC20 and 80178D40. 801508F8 and 8017CF3C change code as void,
+  so they stay as they were.
+- `func_8015C128` passes a0 to `func_80149FB0`. `func_8015BEC4(s32 a0)` passes a0 to
+  `func_8015AE2C`, which was lost for one run once 8015AE2C's signature became visible.
+- GCC lvalue casts were rewritten as plain assignments, with identical objects:
+  `((u8 *)b) = D_...` in 80131170 and `((short)param_2) = K` in 8014032C.
+- tools/native_lane_gen.py (strict only): `strip_multi_pins` drops every register pin
+  of a declaration that pins several declarators (`register s32 a __asm__("$2"),
+  b __asm__("$3");`). Before, REG_PIN_RE removed only the first one (8012A1BC).
+- All touched rows were re-verified with tools/verify_registry.py. Gate: build 0, lane
+  table identical, ctest 37/37, m2c 0. Lane: main 3633/4071, overlay 2925/3328; no lost
+  functions.
+- Strict stop moves 8015C128 -> 800128EC (main, cycle hold "retail cycle mapping
+  ambiguous"). Frame 1200, prims=0 draw=0.
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits

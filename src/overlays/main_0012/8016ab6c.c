@@ -32,7 +32,7 @@ typedef struct SVec_8016AB6C {
     s16 vx, vy, vz, pad;
 } SVec_8016AB6C;
 
-s32 func_8016AB6C(s32 arg0) {
+void func_8016AB6C(s32 arg0) {
     typedef struct Obj_8016AB6C {
         s32 unk0;
         s32 unk4;

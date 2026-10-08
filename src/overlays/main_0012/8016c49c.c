@@ -34,7 +34,7 @@ extern void func_80146C3C(u8*);
 
 
 
-s32 func_8016C49C(s32 param_1_arg) {
+void func_8016C49C(s32 param_1_arg) {
 
     extern s32 D_8011D030;
     extern s32 VectorNormalSS(void *, void *);

@@ -11,7 +11,7 @@ extern s16 D_8012752E;
 
 /* func_801380E0 — shared body (overlay slot 0x80128158, h_text 6e5fdbea). ONE source: instantiated by #include at each
  * member's site in address order; the members are recorded in config/dedup.us.yaml (Phase 35). */
-s32 func_801380E0(s32 arg0) {
+void func_801380E0(s32 arg0) {
     extern void func_8001931C(s32);
     extern void func_8001AAD0(s32, s32);
     extern s32 func_8001B22C(void);

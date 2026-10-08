@@ -2185,6 +2185,18 @@ def strip_macro_asm(text):
     return MACRO_ASM_RE.sub(sub, text)
 
 
+# Strict (B28): a declaration that pins several declarators
+# (`register s32 a __asm__("$2"), b __asm__("$3");`) keeps every pin after the
+# first one past REG_PIN_RE; the host drops them all (register pins only steer
+# the byte match).
+MULTI_PIN_DECL_RE = re.compile(r'\bregister\b[^;{}()]*(?:(?:__asm__|asm)\s*\(\s*"\$\w+"\s*\)[^;{}()]*){2,};')
+PIN_ONLY_RE = re.compile(r'\s*(?:__asm__|asm)\s*\(\s*"\$\w+"\s*\)')
+
+
+def strip_multi_pins(text):
+    return MULTI_PIN_DECL_RE.sub(lambda m: PIN_ONLY_RE.sub("", m.group(0)), text)
+
+
 GLOBAL_PIN_RE = re.compile(r'^register\s+([^;{}=]*?)\s*(?:__asm__|asm)\s*\(\s*"\$\w+"\s*\)\s*;', re.M)
 
 
@@ -2205,6 +2217,7 @@ def host_source(text):
             local = "".join(f" {d};" for d in decls)
             text = re.sub(r"^(\w[^;{}()]*\([^;{}]*\)\s*\{)", lambda m: m.group(1) + local,
                           text, flags=re.M)
+        text = strip_multi_pins(text)
         text = LA_ASM_RE.sub(lambda m: f"{m.group(2)} = (__typeof__({m.group(2)}))&{m.group(1)};",
                              text)
         text = scratch_call_host(text) or text
@@ -4062,7 +4075,7 @@ def strict_mixed_ok(m):
     src = ROOT / m["source"]
     if not src.exists():
         return False
-    text = REG_PIN_RE.sub(r"\1", src.read_text(errors="replace"))
+    text = REG_PIN_RE.sub(r"\1", strip_multi_pins(src.read_text(errors="replace")))
     text = LA_ASM_RE.sub("", text)
     text = MOVE_ASM_RE.sub("", text)
     text = load_asm_host(text)

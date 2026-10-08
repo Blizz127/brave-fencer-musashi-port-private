@@ -43,7 +43,7 @@ extern void func_80146C3C(void);
 extern void func_800D20C0(void *a0, void *a1, s32 a2);
 extern void func_8012A568(void (*a0)(void));
 
-s32 func_8016AB6C(s32 arg0) {
+void func_8016AB6C(s32 arg0) {
     extern s32 func_801783D0(s32 a0, s32 a1);
     extern s32 func_80024054(u8 *a0, u8 *a1);
     extern void func_8001CE28(Obj_8016AB6C *a0, u8 *a1);

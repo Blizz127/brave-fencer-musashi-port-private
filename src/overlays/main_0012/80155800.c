@@ -46,7 +46,7 @@ extern void func_80149B14(s32 *a0);
 extern void func_80154134(u8 *a0);
 extern void func_801599A4(void *a0);
 extern void func_80159B3C(void *a0);
-s32 func_80155800(s32 arg0) {
+void func_80155800(s32 arg0) {
     extern s32 D_8011F730;
     extern int func_80155A44(int);
     extern s32 func_80155F80();

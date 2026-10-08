@@ -12,7 +12,7 @@ typedef double f64;
 extern s32 func_80029178(s32);
 extern s16 D_8012752E;
 
-s32 func_801380E0(s32 arg0) {
+void func_801380E0(s32 arg0) {
     extern void func_8001931C(s32);
     extern void func_8001AAD0(s32, s32);
     extern s32 func_8001B22C(void);

@@ -5,8 +5,8 @@
 
 #include "psx_types.h"
 
-void func_8015AE2C();                                  /* static */
+void func_8015AE2C(s32);                                /* static */
 
-void func_8015BEC4(void) {
-    func_8015AE2C();
+void func_8015BEC4(s32 a0) {
+    func_8015AE2C(a0);
 }

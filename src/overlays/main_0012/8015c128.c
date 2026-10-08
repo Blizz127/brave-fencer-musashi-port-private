@@ -26,7 +26,7 @@ extern void func_8015C0C4(s32 a0);
 
 
 
-s32 func_8015C128(s32 param_1) {
+void func_8015C128(s32 param_1) {
 
     extern void (*D_80180A1C[])(void *);
 
@@ -38,7 +38,7 @@ s32 func_8015C128(s32 param_1) {
     int temp_s0;
     int temp_v0;
 
-    ((void(*)())func_80149FB0)();
+    ((void(*)(int))func_80149FB0)(((int)param_1));
     if (((int(*)(int))func_80148AFC)(((int)param_1)) & 0xFF) {
         sp10[0] = 0;
         sp10[1] = 0;

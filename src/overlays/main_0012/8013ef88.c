@@ -22,7 +22,7 @@ extern void func_8013FAF8(s16 a0, s16 a1);
 
 
 
-s32 func_8013EF88() {
+void func_8013EF88() {
 
     extern short D_800B9A02;
     extern unsigned short D_80115112;
