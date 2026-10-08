@@ -640,6 +640,27 @@ Increment 32 (generator, strict only):
   overlay 2900/3328; no lost functions.
 - Strict stop moves 8015126C -> 80012558 (main executable). Frame 1200, prims=0 draw=0.
 
+### Increment 48 — GTE rotation-matrix helpers run native (800123F0, 80012558, 800126C4)
+
+- New clean-room sources `src/main/80012558.c` (m = m * Ry) and `src/main/800126c4.c`
+  (m = m * Rx), byte-identical to retail at -O2 (80012558's row is 364 bytes: it
+  includes the alignment nop at 800126C0). `func_800123F0` (m = m * Rz) is rewritten
+  in the same form, still byte-identical. Each PsyQ matrix macro is now its own asm
+  statement: gte_SetRotMatrix(m), gte_ldclmv(col), gte_rtir, gte_stclmv(dst).
+- tools/native_lane_gen.py (strict only): `gte_matrix_host` turns those four exact
+  asm forms into C over two host globals, `musashi_lane_gte_rt[9]` and
+  `musashi_lane_gte_ir[3]` (defined in pc_port/mips_formatter.c). gte_rtir computes
+  IR = sat16((RT * IR) >> 12) with 64-bit sums (sf=1, lm=0). A pointer operand stays a
+  pointer (`_Generic`); an integer operand is a zero-extended guest address.
+  `strip_macro_asm` also drops a top-level `.include "gte_macros.inc"` (macro
+  definitions only).
+- `func_80135A4C` passes its four arguments through to `func_80135480`, and
+  `func_8016AA50` passes the table pointer in a0 to `func_80146C3C` (both members). The
+  objects are identical to the verified sources.
+- Gate: build 0, lane table identical, ctest 37/37, m2c 0. Lane: main 3611/4071,
+  overlay 2903/3328; no lost functions.
+- Strict stop moves 80012558 -> 8015C128 (overlay, rule compile). Frame 1200, prims=0 draw=0.
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits

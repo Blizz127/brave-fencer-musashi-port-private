@@ -1463,6 +1463,30 @@
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
+      "name": "func_80012558",
+      "vram": 2147558744,
+      "size": 364,
+      "region": "main",
+      "source": "src/main/80012558.c",
+      "optimization": "-O2",
+      "recovery": "mixed",
+      "extent": "function",
+      "status": "matched",
+      "origin": "owner re-derivation, clean room (Grok Bot box sandbox 2026-10-08, branch cursor/native-cleanroom-b28), clean input set (retail disassembly + owner headers)"
+    },
+    {
+      "name": "func_800126C4",
+      "vram": 2147559108,
+      "size": 360,
+      "region": "main",
+      "source": "src/main/800126c4.c",
+      "optimization": "-O2",
+      "recovery": "mixed",
+      "extent": "function",
+      "status": "matched",
+      "origin": "owner re-derivation, clean room (Grok Bot box sandbox 2026-10-08, branch cursor/native-cleanroom-b28), clean input set (retail disassembly + owner headers)"
+    },
+    {
       "name": "func_8001282C",
       "vram": 2147559468,
       "size": 136,

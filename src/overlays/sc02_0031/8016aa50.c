@@ -33,7 +33,7 @@ void func_8016AA50(s32 param_1, s32 param_2) {
     do {
         sVar2 = (u16)*psVar3;
         if (sVar2 == 0 || sVar2 == 3 || sVar2 == 9) {
-            ((void (*)(void))func_80146C3C)();
+            ((void (*)(short *))func_80146C3C)(psVar3);
             ((s32 (*)(s32, void *, s32, s32, s32, s32, s32))func_80146A6C)(
                 0x1d, (void *)param_1,
                 (s16)D_80126B5E, (s16)((u16)D_80126B62 - 0x20),

@@ -13589,6 +13589,11 @@ uint32_t musashi_lane_entry_sp;
 /* GTE MAC1-3 of a native body's `sqr` (strict native lane, B28): the
  * generated C computes them and stores them where the retail swc2 does. */
 int32_t musashi_lane_gte_mac[3];
+/* GTE rotation matrix RT (R11..R33) and IR1-3 of a native body's PsyQ matrix
+ * macros (gte_SetRotMatrix / gte_ldclmv / gte_rtir / gte_stclmv; strict
+ * native lane, B28): the generated C keeps them here between the macros. */
+int32_t musashi_lane_gte_rt[9];
+int32_t musashi_lane_gte_ir[3];
 static MusashiNativeLaneGuardStats g_guard;
 static int g_guard_strict = -1;
 

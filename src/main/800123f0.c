@@ -317,81 +317,56 @@ void func_800123F0(s32 param_1, s32 param_2)
 
     /* Build Z-rotation matrix on stack */
     v1 = -sin_val;
-    *(s16 *)((s32)matrix + 0x00) = cos_val;
-    *(s16 *)((s32)matrix + 0x08) = cos_val;
-    *(s16 *)((s32)matrix + 0x02) = v1;
-    *(s16 *)((s32)matrix + 0x04) = 0;
-    *(s16 *)((s32)matrix + 0x06) = sin_val;
-    *(s16 *)((s32)matrix + 0x0A) = 0;
-    *(s16 *)((s32)matrix + 0x0C) = 0;
-    *(s16 *)((s32)matrix + 0x0E) = 0;
-    *(s16 *)((s32)matrix + 0x10) = 0x1000;
+    matrix[0] = cos_val;
+    matrix[4] = cos_val;
+    matrix[1] = v1;
+    matrix[2] = 0;
+    matrix[3] = sin_val;
+    matrix[5] = 0;
+    matrix[6] = 0;
+    matrix[7] = 0;
+    matrix[8] = 0x1000;
 
-    __asm__ __volatile__ (
-        "lw $12, 0(%0);"
-        "lw $13, 4(%0);"
-        "ctc2 $12, $0;"
-        "ctc2 $13, $1;"
-        "lw $12, 8(%0);"
-        "lw $13, 12(%0);"
-        "lw $14, 16(%0);"
-        "ctc2 $12, $2;"
-        "ctc2 $13, $3;"
-        "ctc2 $14, $4;"
-        "addiu $2, $sp, 16;"
-        "lhu $12, 0($2);"
-        "lhu $13, 6($2);"
-        "lhu $14, 12($2);"
-        "mtc2 $12, $9;"
-        "mtc2 $13, $10;"
-        "mtc2 $14, $11;"
-        "nop;"
-        "nop;"
-        "mvmva 1, 0, 3, 3, 0;"
-        "mfc2 $12, $9;"
-        "mfc2 $13, $10;"
-        "mfc2 $14, $11;"
-        "sh $12, 0(%0);"
-        "sh $13, 6(%0);"
-        "sh $14, 12(%0);"
-        "addiu $2, $sp, 18;"
-        "lhu $12, 0($2);"
-        "lhu $13, 6($2);"
-        "lhu $14, 12($2);"
-        "mtc2 $12, $9;"
-        "mtc2 $13, $10;"
-        "mtc2 $14, $11;"
-        "nop;"
-        "nop;"
-        "mvmva 1, 0, 3, 3, 0;"
-        "addiu $2, %0, 2;"
-        "mfc2 $12, $9;"
-        "mfc2 $13, $10;"
-        "mfc2 $14, $11;"
-        "sh $12, 0($2);"
-        "sh $13, 6($2);"
-        "sh $14, 12($2);"
-        "addiu $2, $sp, 20;"
-        "lhu $12, 0($2);"
-        "lhu $13, 6($2);"
-        "lhu $14, 12($2);"
-        "mtc2 $12, $9;"
-        "mtc2 $13, $10;"
-        "mtc2 $14, $11;"
-        "nop;"
-        "nop;"
-        "mvmva 1, 0, 3, 3, 0;"
-        "addiu $2, %0, 4;"
-        "mfc2 $12, $9;"
-        "mfc2 $13, $10;"
-        "mfc2 $14, $11;"
-        "sh $12, 0($2);"
-        "sh $13, 6($2);"
-        "sh $14, 12($2)"
-        :
-        : "r"(s1)
-        : "$12", "$13", "$14", "$2"
-    );
+    __asm__ __volatile__("lw $12, 0(%0)\n" "lw $13, 4(%0)\n" "ctc2 $12, $0\n" "ctc2 $13, $1\n"
+                         "lw $12, 8(%0)\n" "lw $13, 12(%0)\n" "lw $14, 16(%0)\n"
+                         "ctc2 $12, $2\n" "ctc2 $13, $3\n" "ctc2 $14, $4\n"
+                         : : "r"(s1) : "$12", "$13", "$14");
+    {
+        register s16 *col __asm__("$2") = &matrix[0];
+        __asm__ __volatile__("lhu $12, 0(%0)\n" "lhu $13, 6(%0)\n" "lhu $14, 12(%0)\n"
+                             "mtc2 $12, $9\n" "mtc2 $13, $10\n" "mtc2 $14, $11\n"
+                             : : "r"(col) : "$12", "$13", "$14", "memory");
+    }
+    __asm__ __volatile__("nop\n" "nop\n" "mvmva 1, 0, 3, 3, 0\n");
+    __asm__ __volatile__("mfc2 $12, $9\n" "mfc2 $13, $10\n" "mfc2 $14, $11\n"
+                         "sh $12, 0(%0)\n" "sh $13, 6(%0)\n" "sh $14, 12(%0)\n"
+                         : : "r"(s1) : "$12", "$13", "$14", "memory");
+    {
+        register s16 *col __asm__("$2") = &matrix[1];
+        __asm__ __volatile__("lhu $12, 0(%0)\n" "lhu $13, 6(%0)\n" "lhu $14, 12(%0)\n"
+                             "mtc2 $12, $9\n" "mtc2 $13, $10\n" "mtc2 $14, $11\n"
+                             : : "r"(col) : "$12", "$13", "$14", "memory");
+    }
+    __asm__ __volatile__("nop\n" "nop\n" "mvmva 1, 0, 3, 3, 0\n");
+    {
+        register s32 dst __asm__("$2") = s1 + 2;
+        __asm__ __volatile__("mfc2 $12, $9\n" "mfc2 $13, $10\n" "mfc2 $14, $11\n"
+                             "sh $12, 0(%0)\n" "sh $13, 6(%0)\n" "sh $14, 12(%0)\n"
+                             : : "r"(dst) : "$12", "$13", "$14", "memory");
+    }
+    {
+        register s16 *col __asm__("$2") = &matrix[2];
+        __asm__ __volatile__("lhu $12, 0(%0)\n" "lhu $13, 6(%0)\n" "lhu $14, 12(%0)\n"
+                             "mtc2 $12, $9\n" "mtc2 $13, $10\n" "mtc2 $14, $11\n"
+                             : : "r"(col) : "$12", "$13", "$14", "memory");
+    }
+    __asm__ __volatile__("nop\n" "nop\n" "mvmva 1, 0, 3, 3, 0\n");
+    {
+        register s32 dst __asm__("$2") = s1 + 4;
+        __asm__ __volatile__("mfc2 $12, $9\n" "mfc2 $13, $10\n" "mfc2 $14, $11\n"
+                             "sh $12, 0(%0)\n" "sh $13, 6(%0)\n" "sh $14, 12(%0)\n"
+                             : : "r"(dst) : "$12", "$13", "$14", "memory");
+    }
 
     func_8001282C(s1);
 }

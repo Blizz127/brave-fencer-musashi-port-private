@@ -987,7 +987,8 @@ LANE_HELPERS = ("lane_sdiv32", "lane_srem32", "lane_udiv32", "lane_urem32")
 # has charged, a lost-state flag, the deadline budget and the guard's tick.
 LEDGER_SYMBOLS = ("musashi_lane_ledger", "musashi_lane_ledger_lost", "musashi_lane_budget",
                   "musashi_lane_seg_extra", "musashi_lane_resume_pc", "musashi_lane_sp_adj",
-                  "musashi_lane_entry_sp", "musashi_native_lane_tick", "musashi_lane_gte_mac")
+                  "musashi_lane_entry_sp", "musashi_native_lane_tick", "musashi_lane_gte_mac",
+                  "musashi_lane_gte_rt", "musashi_lane_gte_ir")
 LEDGER_SEGS = re.compile(r"lane_segs_" + QFUNC)
 
 
@@ -1001,7 +1002,7 @@ def rewrite_symbols(ir, symbols, member=None, member_code=()):
         decl_globals[m.group(1) or m.group(2)] = m.group(3)
     replace = {}
     for name, rest in decl_globals.items():
-        if STRICT and name in (SP_ADJ, GUEST_SP, GTE_MAC) and rest.startswith("external "):
+        if STRICT and name in (SP_ADJ, GUEST_SP, GTE_MAC, GTE_RT, GTE_IR) and rest.startswith("external "):
             continue  # the guest sp pair (scratch_call_host), a host global
         if rest.startswith("external "):
             addr = guest_address(name, symbols)
@@ -2087,6 +2088,63 @@ GTE_MAC_STORE_RE = re.compile(r'\b(?:__asm__|asm)\s*(?:volatile\s*|__volatile__\
 GTE_MAC = "musashi_lane_gte_mac"
 
 
+# Strict (B28): the PsyQ inline_c.h matrix macros written as one asm
+# statement each (800123F0, 80012558, 800126C4): gte_SetRotMatrix(m),
+# gte_ldclmv(v) (IR1-3 = the s16 column at v, v+6, v+12), gte_rtir
+# (`mvmva 1, 0, 3, 3, 0`: IR = sat16((RT * IR) >> 12), lm=0) and gte_stclmv(v).
+# The host keeps RT and IR in two host globals (musashi_lane_gte_rt/ir) and
+# computes the product in C; each form is only accepted with its exact clobbers.
+_ASM_HEAD = r'\b(?:__asm__|asm)\s*(?:volatile\s*|__volatile__\s*)?\(\s*'
+_ASM_ARG = r':\s*:\s*"r"\s*\(\s*([^()]+?(?:\([^()]*\)[^()]*?)*)\s*\)\s*'
+_T3 = r'"\$12"\s*,\s*"\$13"\s*,\s*"\$14"'
+GTE_SETRT_RE = re.compile(_ASM_HEAD +
+    r'"lw \$12, 0\(%0\)\\n"\s*"lw \$13, 4\(%0\)\\n"\s*"ctc2 \$12, \$0\\n"\s*"ctc2 \$13, \$1\\n"\s*'
+    r'"lw \$12, 8\(%0\)\\n"\s*"lw \$13, 12\(%0\)\\n"\s*"lw \$14, 16\(%0\)\\n"\s*'
+    r'"ctc2 \$12, \$2\\n"\s*"ctc2 \$13, \$3\\n"\s*"ctc2 \$14, \$4\\n"\s*' + _ASM_ARG + r':\s*' + _T3 + r'\s*\)\s*;')
+GTE_LDCLMV_RE = re.compile(_ASM_HEAD +
+    r'"lhu \$12, 0\(%0\)\\n"\s*"lhu \$13, 6\(%0\)\\n"\s*"lhu \$14, 12\(%0\)\\n"\s*'
+    r'"mtc2 \$12, \$9\\n"\s*"mtc2 \$13, \$10\\n"\s*"mtc2 \$14, \$11\\n"\s*' + _ASM_ARG +
+    r':\s*' + _T3 + r'\s*,\s*"memory"\s*\)\s*;')
+GTE_RTIR_RE = re.compile(_ASM_HEAD + r'"nop\\n"\s*"nop\\n"\s*"mvmva 1, 0, 3, 3, 0\\n"\s*\)\s*;')
+GTE_STCLMV_RE = re.compile(_ASM_HEAD +
+    r'"mfc2 \$12, \$9\\n"\s*"mfc2 \$13, \$10\\n"\s*"mfc2 \$14, \$11\\n"\s*'
+    r'"sh \$12, 0\(%0\)\\n"\s*"sh \$13, 6\(%0\)\\n"\s*"sh \$14, 12\(%0\)\\n"\s*' + _ASM_ARG +
+    r':\s*' + _T3 + r'\s*,\s*"memory"\s*\)\s*;')
+GTE_RT = "musashi_lane_gte_rt"
+GTE_IR = "musashi_lane_gte_ir"
+
+
+def _gte_ptr(expr, ty):
+    # A pointer operand (a local s16 matrix) stays a pointer; an integer one
+    # is a 32-bit guest address, zero-extended before the pointer cast.
+    return (f"_Generic(({expr}), short *: ({ty} *)({expr}), const short *: ({ty} *)({expr}),"
+            f" default: ({ty} *)(unsigned long)(unsigned int)(unsigned long)({expr}))")
+
+
+def gte_matrix_host(text):
+    if not (GTE_SETRT_RE.search(text) and GTE_LDCLMV_RE.search(text) and GTE_RTIR_RE.search(text)
+            and GTE_STCLMV_RE.search(text)):
+        return text
+    decl = f"extern int {GTE_RT}[9]; extern int {GTE_IR}[3];"
+    text = GTE_SETRT_RE.sub(lambda m: (
+        "{ %s const short *lane_gm = %s;" % (decl, _gte_ptr(m.group(1), "const short"))
+        + "".join(f" {GTE_RT}[{i}] = lane_gm[{i}];" for i in range(9)) + " }"), text)
+    text = GTE_LDCLMV_RE.sub(lambda m: (
+        "{ %s const short *lane_gv = %s;" % (decl, _gte_ptr(m.group(1), "const short"))
+        + "".join(f" {GTE_IR}[{i}] = lane_gv[{3 * i}];" for i in range(3)) + " }"), text)
+    rows = "".join(
+        f" long long lane_m{i} = ((long long){GTE_RT}[{3 * i}] * {GTE_IR}[0]"
+        f" + (long long){GTE_RT}[{3 * i + 1}] * {GTE_IR}[1]"
+        f" + (long long){GTE_RT}[{3 * i + 2}] * {GTE_IR}[2]) >> 12;"
+        for i in range(3))
+    sat = "".join(f" {GTE_IR}[{i}] = lane_m{i} < -32768 ? -32768 : lane_m{i} > 32767 ? 32767 : (int)lane_m{i};"
+                  for i in range(3))
+    text = GTE_RTIR_RE.sub(lambda m: "{ %s%s%s }" % (decl, rows, sat), text)
+    return GTE_STCLMV_RE.sub(lambda m: (
+        "{ %s short *lane_gs = %s;" % (decl, _gte_ptr(m.group(1), "short"))
+        + "".join(f" lane_gs[{3 * i}] = (short){GTE_IR}[{i}];" for i in range(3)) + " }"), text)
+
+
 def gte_host(text):
     if not (GTE_SQR_RE.search(text) and GTE_MAC_STORE_RE.search(text)):
         return text
@@ -2103,7 +2161,8 @@ def gte_host(text):
 
 
 # Strict (B28): top-level asm that only defines assembler macros (the GTE
-# mnemonics of gte_macros.inc) emits no code; the host TU drops it.
+# mnemonics of gte_macros.inc, inline or through `.include "gte_macros.inc"`)
+# emits no code; the host TU drops it.
 MACRO_ASM_RE = re.compile(r'^(?:__asm__|asm)\s*\(\s*((?:"(?:[^"\\]|\\.)*"\s*)+)\)\s*;', re.M)
 
 
@@ -2118,6 +2177,8 @@ def strip_macro_asm(text):
                 depth += 1
             elif t.startswith(".endm"):
                 depth -= 1
+            elif depth <= 0 and t == '.include \\"gte_macros.inc\\"':
+                continue  # include/gte_macros.inc: .macro definitions only
             elif depth <= 0:
                 return m.group(0)
         return "" if depth == 0 and lines else m.group(0)
@@ -2150,6 +2211,7 @@ def host_source(text):
         text = move_asm_host(text)
         text = load_asm_host(text)
         text = gte_host(text)
+        text = gte_matrix_host(text)
         text = strip_macro_asm(text)
     return REG_PIN_RE.sub(r"\1", text)
 
@@ -4005,6 +4067,7 @@ def strict_mixed_ok(m):
     text = MOVE_ASM_RE.sub("", text)
     text = load_asm_host(text)
     text = gte_host(text)
+    text = gte_matrix_host(text)
     text = strip_macro_asm(text)
     ss = scratch_call_host(text)
     text = SCRATCH_CALL_RE.sub("", ss) if ss is not None else text
