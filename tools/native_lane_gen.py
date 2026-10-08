@@ -1900,9 +1900,14 @@ def host_source(text):
         # binding, 800118AC) only pins a caller-saved MIPS register for the
         # byte match; no value survives a call or return in it. On the host
         # it becomes a plain local of every function body.
-        decls = GLOBAL_PIN_RE.findall(text)
+        # only file scope (brace depth 0): a register-pinned local written
+        # at column 0 inside a body stays a local (80177B5C)
+        hits = [m for m in GLOBAL_PIN_RE.finditer(text)
+                if text.count("{", 0, m.start()) == text.count("}", 0, m.start())]
+        decls = [m.group(1) for m in hits]
         if decls:
-            text = GLOBAL_PIN_RE.sub("", text)
+            for m in reversed(hits):
+                text = text[:m.start()] + text[m.end():]
             local = "".join(f" {d};" for d in decls)
             text = re.sub(r"^(\w[^;{}()]*\([^;{}]*\)\s*\{)", lambda m: m.group(1) + local,
                           text, flags=re.M)

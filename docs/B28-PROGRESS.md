@@ -337,6 +337,13 @@ Increment 26 (generator, strict only):
 - Main lane 3454/4011, overlay lane 2753/3275.
 - First stop: `guest_pc=80177b5c` (sc02_0031), frame ~1200, no host fault.
 
+Increment 27 (generator, strict only):
+- host_source treats a `register T x asm("$n");` line as a file-scope
+  global pin only at brace depth 0. A pinned local written at column 0
+  inside a function body (80177B5C) was being removed as a "global".
+- Main lane 3457/4011, overlay lane 2756/3275.
+- First stop: `guest_pc=80177940` (sc02_0031), frame ~1200, no host fault.
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits
