@@ -663,7 +663,7 @@ Increment 32 (generator, strict only):
 
 ### Increment 49 — void handlers, lvalue casts, multi-pin declarations
 
-- 20 overlay handlers (main_0012/sc02_0031) whose body never returns a value are now
+- 14 overlay handlers (23 files across main_0012/sc02_0031) whose body never returns a value are now
   `void`, which clears the clang `-Wreturn-mismatch` compile refusals: 8012FCC4, 801380E0,
   8013EF88, 80155800, 8015A3C8, 8015AE2C, 8015B950, 8015C128, 8015CD20, 80165140,
   8016AB6C, 8016C49C, 8016DC20 and 80178D40. 801508F8 and 8017CF3C change code as void,
@@ -680,6 +680,20 @@ Increment 32 (generator, strict only):
   functions.
 - Strict stop moves 8015C128 -> 800128EC (main, cycle hold "retail cycle mapping
   ambiguous"). Frame 1200, prims=0 draw=0.
+
+### Increment 50 — exact cycle mapping admits 800128EC
+
+- tools/lane_cycles.py (strict only): when a join block's every predecessor ends
+  with the same instruction word that writes `reg`, that word is the definer of
+  `reg` on every path. gcc fills a branch's delay slot with the next compare and
+  repeats it on the fall-through (800128EC: `slti v0,s0,18` in both). The retail
+  cycle mapping for 800128EC is then unique (status mapped, ledger charges).
+- tools/native_lane_gen.py (strict only): a DENY hold whose premise is "retail
+  cycle mapping ambiguous" is lifted once the mapping is exact, and re-checked
+  after the ledger instrumented build; otherwise the hold stays.
+- Gate: build 0, lane table identical, ctest 37/37, m2c 0. Lane: main 3634/4071
+  (800128EC admitted with an exact ledger), overlay 2925/3328; no lost functions.
+- Strict stop moves 800128EC -> 80047E58 (main). Frame 1200, prims=0 draw=0.
 
 ## Next
 

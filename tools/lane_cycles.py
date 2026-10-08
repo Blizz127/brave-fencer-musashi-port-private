@@ -38,6 +38,7 @@ G2  the product walk. To charge that cost from native code, every edge of
     is refused with a named reason (rule `cycles` in phase 2b). Phase 2a only
     reports; admission and the runtime charge are unchanged.
 """
+import os
 import re
 
 # ---------------------------------------------------------------- G1: retail
@@ -351,6 +352,16 @@ class Retail:
             return None
         preds = self.preds(start)
         if len(preds) != 1:
+            # Strict (B28): gcc fills a branch's delay slot with the compare
+            # the join block branches on and repeats it on the fall-through
+            # path (800128EC: `slti v0,s0,18` in both). When every
+            # predecessor's last instruction writes `reg` with the same
+            # instruction word, that word is the definer on every path.
+            if (os.environ.get("MUSASHI_LANE_STRICT") == "1" and len(preds) > 1
+                    and len({self.word(q) for q in preds}) == 1):
+                r = self._writes(self.word(preds[0]), reg)
+                if r and r != "unknown":
+                    return r
             return None
         last = preds[0]
         w = self.word(last)

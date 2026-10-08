@@ -2964,6 +2964,7 @@ def build_one(entry, out, symbols, hooks, clang, info=None):
     work = out / "ir"
     cycles = None
     denied = None
+    held = None
     try:
         # Strict builds have no interpreter to compare against or fall back
         # to: a hold-out for missing differential coverage does not apply
@@ -2981,7 +2982,13 @@ def build_one(entry, out, symbols, hooks, clang, info=None):
                 cycles = deny_cycle_analysis(entry, out, symbols, clang, info)
             except Exception as e:  # report only: never fail the build
                 cycles = dict(shape=None, status="refused", reason=f"analysis: {e}")
-            raise Reject("deny", denied)
+            # Strict (B28): a cycle hold whose premise is an ambiguous retail
+            # mapping no longer applies once the mapping is exact (status
+            # mapped: the ledger charges retail cycles); otherwise it stays.
+            if not (STRICT and denied.startswith("retail cycle mapping ambiguous")
+                    and cycles and cycles.get("status") == "mapped"):
+                raise Reject("deny", denied)
+            cycles, held = None, denied
         for pc, kind in hooks.items():
             if not vram <= pc < vram + size:
                 continue
@@ -3103,6 +3110,8 @@ def build_one(entry, out, symbols, hooks, clang, info=None):
             except (lane_cycles.Refuse, Reject) as e:
                 cycles.update(status="refused", reason=f"instrument: {getattr(e, 'reason', None) or e}")
                 ledger_rows = None
+        if held and not ledger:
+            raise Reject("deny", held)  # the exact mapping did not survive the build
         final = work / f"{tag}.lane.ll"
         final.write_text(optir)
         obj = work / f"{tag}.o"
