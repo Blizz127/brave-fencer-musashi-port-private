@@ -621,6 +621,15 @@ Increment 32 (generator, strict only):
 - Strict stop moves to 80159A20. Frames reach 1200, prims=0 draw=0: no frame
   drawn yet.
 
+### Increment 46 — 80159A20 passes a0 to 80150B28
+
+- `func_80159A20` (main_0012 and sc02_0031) now calls `func_80150B28((int)param_1)`
+  instead of a zero-argument cast; retail keeps a0 live across the `jal` (delay slot
+  `move s0,a0`). Object code is identical to the previously verified source.
+- Gate: build 0, lane table identical, ctest 37/37, m2c 0. Lane: main 3599/4066,
+  overlay 2894/3328; no lost functions (gained 80159A20 in both members).
+- Strict stop moves 80159A20 -> 8015126C. Frame 1200 reached, prims=0 draw=0 (no frame drawn).
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits
