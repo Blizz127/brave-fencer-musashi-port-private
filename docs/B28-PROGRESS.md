@@ -144,6 +144,11 @@ Increment 9:
 - First stop: `guest_pc=80128288`. The resident member is sc02_0031 (a scene
   overlay with vendor C), not main_0012. Next: `sc02_0031 all`.
 
+Increment 10:
+- Added `sc02_0031 all`. The overlay lane is now 2591/3269.
+- First stop: `guest_pc=80145cec`, sc02_0031 (resident, digest-checked from
+  the stop RAM), refused as `ub` (undef/poison operand).
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits

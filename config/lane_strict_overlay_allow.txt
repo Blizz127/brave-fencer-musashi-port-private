@@ -11,3 +11,4 @@ main_0010 all
 main_0004 all
 main_0003 all
 main_0012 all
+sc02_0031 all
