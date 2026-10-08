@@ -538,15 +538,17 @@
 # main region. Admitted by tools/native_lane_gen.py --own-code-only against the user's retail
 # extracts (2026-10-07). 800184F0 uses constant scratchpad addresses: it is listed in
 # musashi_native_lane_scratchpad_pcs[] and needs the 1F800000 host alias. Not yet run through
-# the eager-epoch native-vs-deny route proof (no runner reachable from the box).
+# the release runner's village/attract routes (not reachable from the box). Local route proof
+# 2026-10-07 (hybrid build, eager epoch, --headless boot to 600 in-game frames): the 22 below
+# and the B24 leaves 8002FAE0/80037CC8, all with a mapped D-011 charge, are DEVOBS-IDENTICAL native vs deny (1,846,364 records,
+# tools/devobs_route_compare.py). Held out: 800147B8, 80015908, 8001D1C4, 8003324C (fixed-charge,
+# unmapped cycle model): with them native, VSync reads land 30 cycles early from record 20513
+# and Timer1 reads then differ.
 8001455c
-800147b8
 8001513c
-80015908
 800184f0
 8001903c
 800191a8
-8001d1c4
 8002823c
 8002cc4c
 8002d320
@@ -558,7 +560,6 @@
 8002efd0
 8002f064
 8002f4e4
-8003324c
 8003350c
 800346d0
 8003491c
