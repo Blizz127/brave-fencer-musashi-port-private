@@ -160,6 +160,14 @@ Increment 11:
 - The overlay lane is now 2616/3269. First stop: `guest_pc=800553d8`
   (libgs6, GsLinkObject4). Next: a driver HLE for it.
 
+Increment 12 (driver HLE, strict only):
+- New HLEs from the retail disassembly: GsLinkObject5 (800553D8),
+  GsSetRefView2L (80054DCC), csqrt (80047B3C, with its hyperbolic CORDIC
+  helper 800479E8) and GsPresetObject (800553F4, the 16 TMD packet-template
+  cases from the jump table at 80073C20).
+- First stop: `guest_pc=80144b9c` at frame ~1200, refused as `layout`
+  (aggregate copy/fill sized with host pointer width).
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits

@@ -2663,6 +2663,184 @@ static int hle_gs_set_ref_view2(MusashiNativeLaneCall *call) {
     call->r[2] = gs_set_ref_view2(call->r[29], call->r[4]);
     return 1;
 }
+static int32_t gte_cordic_sqrt(int32_t a) {
+    /* 800479E8: six hyperbolic CORDIC steps (step 4 twice), seeded with
+     * a +/- 0x5D50AD; returns x[6] */
+    int32_t x[8], y[8], X, Y;
+    unsigned i;
+    x[0] = (int32_t)((uint32_t)a + 0x5D50ADu);
+    y[0] = (int32_t)((uint32_t)a - 0x5D50ADu);
+    for (i = 1; i < 7u; i++) {
+        if (i == 4u) {
+            X = x[3]; Y = y[3];
+            if (Y >= 0) { x[3] = (int32_t)((uint32_t)X - (uint32_t)(Y >> 4)); y[3] = (int32_t)((uint32_t)Y - (uint32_t)(X >> 4)); }
+            else        { x[3] = (int32_t)((uint32_t)X + (uint32_t)(Y >> 4)); y[3] = (int32_t)((uint32_t)Y + (uint32_t)(X >> 4)); }
+        }
+        X = x[i - 1u]; Y = y[i - 1u];
+        if (Y >= 0) { x[i] = (int32_t)((uint32_t)X - (uint32_t)(Y >> i)); y[i] = (int32_t)((uint32_t)Y - (uint32_t)(X >> i)); }
+        else        { x[i] = (int32_t)((uint32_t)X + (uint32_t)(Y >> i)); y[i] = (int32_t)((uint32_t)Y + (uint32_t)(X >> i)); }
+    }
+    return x[6];
+}
+
+static int32_t gte_csqrt(int32_t a) {                /* 80047B3C csqrt */
+    int32_t v, s, x, r;
+    if (a == 0) return 0;
+    v = 8 - (int32_t)gte_lzc((uint32_t)a);
+    if (v >= 0) {
+        s = v >> 1;
+        x = a >> ((uint32_t)(s * 2) & 31u);
+    } else {
+        s = (v >> 1) + 1;
+        x = (int32_t)((uint32_t)a << ((uint32_t)(-(s * 2)) & 31u));
+    }
+    s -= 6;
+    r = gte_cordic_sqrt(x);
+    return s < 0 ? r >> ((uint32_t)-s & 31u) : (int32_t)((uint32_t)r << ((uint32_t)s & 31u));
+}
+
+static uint32_t gs_divu(uint32_t n, uint32_t d, uint32_t pc) {
+    if (d == 0u) driver_stop("libgs_divu_trap", pc);
+    return d ? n / d : 0u;
+}
+
+static int32_t gs_ratio_l(int32_t diff, uint32_t sq, uint32_t total, int neg_when_nonneg,
+                          uint32_t pc) {
+    /* GsSetRefView2L helper (80054EA4-80054F80 pattern): the signed ratio
+     * diff/sqrt(total) in 4.12. sq = diff*diff. Small sq uses csqrt on a
+     * scaled quotient, large sq divides by SquareRoot0(total). */
+    int32_t sh = 12 - (int32_t)gte_lzc(sq), r;
+    if (sh < 0) {
+        int32_t len = gte_sqrt0((int32_t)total);
+        int32_t num = (int32_t)((uint32_t)diff << 12);
+        return gs_div(neg_when_nonneg ? (int32_t)(0u - (uint32_t)num) : num, len, pc);
+    }
+    r = gte_csqrt((int32_t)gs_divu(sq << (12 - sh), total >> sh, pc));
+    if (neg_when_nonneg) return diff >= 0 ? -r : r;
+    return diff >= 0 ? r : -r;
+}
+
+static uint32_t gs_set_ref_view2l(uint32_t caller_sp, uint32_t pv) {
+    /* 80054DCC GsSetRefView2L(pv): GsSetRefView2 without the view scaling;
+     * the angles come from csqrt of squared ratios when they fit */
+    const uint32_t ws = 0x800AE688u, sp = caller_sp - 184u;
+    const uint32_t m = sp + 48u, mt = sp + 80u, neg = sp + 144u;
+    int32_t dx, dy, dz, s, c;
+    uint32_t total, flat;
+    gte_copy_matrix(ws, 0x800AE7F0u);
+    gs_rot_z(sp - 64u, ws, -(int32_t)rd32(pv + 24u));
+    dx = (int32_t)(rd32(pv + 12u) - rd32(pv + 0u));
+    dy = (int32_t)(rd32(pv + 16u) - rd32(pv + 4u));
+    dz = (int32_t)(rd32(pv + 20u) - rd32(pv + 8u));
+    total = (uint32_t)dx * (uint32_t)dx + (uint32_t)dy * (uint32_t)dy + (uint32_t)dz * (uint32_t)dz;
+    if (total == 0u) return 1;
+    /* x rotation: sin from (p1 - p4), cos from the flat distance */
+    s = gs_ratio_l(-dy, (uint32_t)dy * (uint32_t)dy, total, 1, 0x80054EE4u);
+    flat = (uint32_t)dx * (uint32_t)dx + (uint32_t)dz * (uint32_t)dz;
+    if (12 - (int32_t)gte_lzc(flat) < 0) {
+        int32_t fl = gte_sqrt0((int32_t)flat), len = gte_sqrt0((int32_t)total);
+        c = gs_div((int32_t)((uint32_t)fl << 12), len, 0x80054FE8u);
+    } else {
+        int32_t sh = 12 - (int32_t)gte_lzc(flat);
+        c = gte_csqrt((int32_t)gs_divu(flat << (12 - sh), total >> sh, 0x80055024u));
+    }
+    gte_rot_axis(m, (int16_t)s, (int16_t)c, 'x');
+    gte_call(sp, 0x80048D9Cu, 2, ws, m, 0);
+    if (flat != 0u) {
+        s = gs_ratio_l(dx, (uint32_t)dx * (uint32_t)dx, flat, 1, 0x800550C8u);
+        c = gs_ratio_l(dz, (uint32_t)dz * (uint32_t)dz, flat, 0, 0x800551B4u);
+        gte_rot_axis(m, (int16_t)s, (int16_t)c, 'y');
+        gte_call(sp, 0x80048D9Cu, 2, ws, m, 0);
+    }
+    wr32(neg + 0u, (uint32_t)-(int32_t)rd32(pv + 0u));
+    wr32(neg + 4u, (uint32_t)-(int32_t)rd32(pv + 4u));
+    wr32(neg + 8u, (uint32_t)-(int32_t)rd32(pv + 8u));
+    gte_call(sp, 0x800484ECu, 3, ws, neg, ws + 20u);
+    if (rd32(pv + 28u) != 0u) {
+        gte_call(sp, 0x80054514u, 2, rd32(pv + 28u), m, 0);       /* GsGetLw */
+        gte_transpose(m, mt);
+        gte_call(sp, 0x800484ECu, 3, mt, m + 20u, neg);
+        wr32(mt + 20u, (uint32_t)-(int32_t)rd32(neg + 0u));
+        wr32(mt + 28u, (uint32_t)-(int32_t)rd32(neg + 8u));
+        wr32(mt + 24u, (uint32_t)-(int32_t)rd32(neg + 4u));
+        gs_comp_matrix(sp, ws, mt);
+        gte_copy_matrix(ws, mt);
+    }
+    gte_copy_matrix(0x800A5EB8u, ws);
+    return 0;
+}
+
+static int hle_gs_set_ref_view2l(MusashiNativeLaneCall *call) {
+    call->r[2] = gs_set_ref_view2l(call->r[29], call->r[4]);
+    return 1;
+}
+static int hle_csqrt(MusashiNativeLaneCall *call) { call->r[2] = (uint32_t)gte_csqrt((int32_t)call->r[4]); return 1; }
+
+/* 800553F4 GsPresetObject(objp, base): packet templates for a GsDOBJ5-style
+ * object. objp->packet (+12) = base; then, per TMD primitive (tmd at
+ * objp+8, primtop +16, nprim +20), two copies of the constant packet words
+ * go into the buffer, grouped into runs of equal (mode, light flag) with a
+ * two-word header {mode<<24 | flag<<28 | next & 0xFFFFFF, count}. The final
+ * header uses the previous primitive's flag and no address, as the retail
+ * code does. Returns the end of the written area. */
+#define PUT(v, adv) do { wr32(out, (v)); out += (adv); } while (0)
+#define W(k) rd32(prim + 4u * (k))
+static uint32_t gs_preset_object(uint32_t objp, uint32_t base, uint32_t t0_in) {
+    uint32_t tmd = rd32(objp + 8u), prim = rd32(tmd + 16u), count = rd32(tmd + 20u);
+    uint32_t out = base + 8u, hdr = base, run = 0, i = 0;
+    uint32_t code = 0, flag = 0, prev_flag = t0_in, h, prev;
+    wr32(objp + 12u, base);
+    if (count != 0u) {
+        do {
+            h = rd32(prim);
+            prev = code;
+            prev_flag = flag;
+            code = h >> 24;
+            flag = (h >> 16) & 4u;
+            if ((prev & 0xFFu) != 0u && (code != prev || flag != (prev_flag & 0xFFu))) {
+                wr32(hdr, (prev << 24) | (out & 0xFFFFFFu) | ((prev_flag & 0xFFu) ? 0x10000000u : 0u));
+                wr32(hdr + 4u, run);
+                run = 0;
+                hdr = out;
+                out += 8u;
+            }
+            out += 4u;
+            switch (code & 0xFDu) {
+        case 0x20: if (flag) { PUT(W(1) | 0x10000000u, 8); PUT(W(2), 8); PUT(W(3), 12); PUT(W(1) | 0x10000000u, 8); PUT(W(2), 8); PUT(W(3), 8); prim += 24u; break; } /* flag clear: the 0x21 path */
+        case 0x21: PUT(W(1), 20); PUT(W(1), 16); prim += 16u; break;
+        case 0x24: PUT((W(0) & 0xFF000000u) | 0x808080u, 8); PUT(W(1), 8); PUT(W(2), 8); PUT(W(3), 8); PUT((W(0) & 0xFF000000u) | 0x808080u, 8); PUT(W(1), 8); PUT(W(2), 8); PUT(W(3), 4); prim += 24u; break;
+        case 0x25: PUT((W(0) & 0xFE000000u) | W(4), 8); PUT(W(1), 8); PUT(W(2), 8); PUT(W(3), 8); PUT((W(0) & 0xFE000000u) | W(4), 8); PUT(W(1), 8); PUT(W(2), 8); PUT(W(3), 4); prim += 28u; break;
+        case 0x28: PUT(W(1), 24); PUT(W(1), 20); prim += 20u; break;
+        case 0x29: PUT(W(1), 24); PUT(W(1), 20); prim += 16u; break;
+        case 0x2c: PUT((W(0) & 0xFF000000u) | 0x808080u, 8); PUT(W(1), 8); PUT(W(2), 8); PUT(W(3), 8); PUT(W(4), 8); PUT((W(0) & 0xFF000000u) | 0x808080u, 8); PUT(W(1), 8); PUT(W(2), 8); PUT(W(3), 8); PUT(W(4), 4); prim += 32u; break;
+        case 0x2d: PUT((W(0) & 0xFE000000u) | W(5), 8); PUT(W(1), 8); PUT(W(2), 8); PUT(W(3), 8); PUT(W(4), 8); PUT((W(0) & 0xFE000000u) | W(5), 8); PUT(W(1), 8); PUT(W(2), 8); PUT(W(3), 8); PUT(W(4), 4); prim += 32u; break;
+        case 0x30: if (flag) { PUT(W(1) | 0x10000000u, 8); PUT(W(2), 8); PUT(W(3), 12); PUT(W(1) | 0x10000000u, 8); PUT(W(2), 8); PUT(W(3), 8); prim += 28u; } else { PUT(W(1), 8); PUT(W(1), 8); PUT(W(1), 12); PUT(W(1), 8); PUT(W(1), 8); PUT(W(1), 8); prim += 20u; } break;
+        case 0x31: PUT(W(1), 8); PUT(W(2), 8); PUT(W(3), 12); PUT(W(1), 8); PUT(W(2), 8); PUT(W(3), 8); prim += 24u; break;
+        case 0x34: PUT((W(0) & 0xFF000000u) | 0x808080u, 8); PUT(W(1), 4); PUT(0x808080u, 8); PUT(W(2), 4); PUT(0x808080u, 8); PUT(W(3), 8); PUT((W(0) & 0xFF000000u) | 0x808080u, 8); PUT(W(1), 4); PUT(0x808080u, 8); PUT(W(2), 4); PUT(0x808080u, 8); PUT(W(3), 4); prim += 28u; break;
+        case 0x35: PUT((W(0) & 0xFE000000u) | W(4), 8); PUT(W(1), 4); PUT(W(5), 8); PUT(W(2), 4); PUT(W(6), 8); PUT(W(3), 8); PUT((W(0) & 0xFE000000u) | W(4), 8); PUT(W(1), 4); PUT(W(5), 8); PUT(W(2), 4); PUT(W(6), 8); PUT(W(3), 4); prim += 36u; break;
+        case 0x38: PUT(W(1), 8); PUT(W(1), 8); PUT(W(1), 8); PUT(W(1), 12); PUT(W(1), 8); PUT(W(1), 8); PUT(W(1), 8); PUT(W(1), 8); prim += 24u; break;
+        case 0x39: PUT(W(1), 8); PUT(W(2), 8); PUT(W(3), 8); PUT(W(4), 12); PUT(W(1), 8); PUT(W(2), 8); PUT(W(3), 8); PUT(W(4), 8); prim += 28u; break;
+        case 0x3c: PUT((W(0) & 0xFF000000u) | 0x808080u, 8); PUT(W(1), 4); PUT(0x808080u, 8); PUT(W(2), 4); PUT(0x808080u, 8); PUT(W(3), 4); PUT(0x808080u, 8); PUT(W(4), 8); PUT((W(0) & 0xFF000000u) | 0x808080u, 8); PUT(W(1), 4); PUT(0x808080u, 8); PUT(W(2), 4); PUT(0x808080u, 8); PUT(W(3), 4); PUT(0x808080u, 8); PUT(W(4), 4); prim += 36u; break;
+        case 0x3d: PUT((W(0) & 0xFE000000u) | W(5), 8); PUT(W(1), 4); PUT(W(6), 8); PUT(W(2), 4); PUT(W(7), 8); PUT(W(3), 4); PUT(W(8), 8); PUT(W(4), 8); PUT((W(0) & 0xFE000000u) | W(5), 8); PUT(W(1), 4); PUT(W(6), 8); PUT(W(2), 4); PUT(W(7), 8); PUT(W(3), 4); PUT(W(8), 8); PUT(W(4), 4); prim += 44u; break;
+        default:
+                fprintf(stderr, "GPU CODE %02xH not assigned.\n", (unsigned)rd8(prim));
+                break;
+            }
+            i++;
+            run++;
+        } while (i < count);
+    }
+    wr32(hdr, (code << 24) | ((prev_flag & 0xFFu) ? 0x10000000u : 0u));
+    wr32(hdr + 4u, run);
+    return out;
+}
+#undef W
+#undef PUT
+
+static int hle_gs_preset_object(MusashiNativeLaneCall *call) {
+    call->r[2] = gs_preset_object(call->r[4], call->r[5], call->r[8]);
+    return 1;
+}
 static int hle_rcos(MusashiNativeLaneCall *call) { call->r[2] = (uint32_t)gte_rcos((int32_t)call->r[4]); return 1; }
 static int hle_rsin(MusashiNativeLaneCall *call) { call->r[2] = (uint32_t)gte_rsin((int32_t)call->r[4]); return 1; }
 static int hle_sqrt0(MusashiNativeLaneCall *call) { call->r[2] = (uint32_t)gte_sqrt0((int32_t)call->r[4]); return 1; }
@@ -3408,6 +3586,13 @@ SPU_ENTRY(hle_st_set_ring) {
 }
 SPU_ENTRY(hle_st_clear_ring) { st_clear_ring(); return 1; }
 SPU_ENTRY(hle_st_clear_slots) { st_clear_slots(call->r[4], call->r[5]); return 1; }
+SPU_ENTRY(hle_gs_link_object5) {
+    /* 800553D8 GsLinkObject5(objtable, dobj, n): dobj->tmd = objtable +
+     * n * 28 (one 7-word object entry), dobj->attribute = 0 */
+    wr32(call->r[5] + 8u, call->r[4] + call->r[6] * 28u);
+    wr32(call->r[5], 0);
+    return 1;
+}
 SPU_ENTRY(hle_ss_set_serial_attr) {
     /* 8003D650 SsSetSerialAttr(s_num, attr, mode): s_num 0 = CD, 1 = EXT;
      * attr 0 = mix, 1 = reverb. Builds a one-field SpuCommonAttr in the retail
@@ -3731,6 +3916,9 @@ static const MusashiNativeLaneEntry k_driver_entries[] = {
     {0x80058A4Cu, 0, hle_set_def_draw_env,"SetDefDrawEnv",       4, 1, 0},
     {0x80059888u, 0, hle_clear_image,     "ClearImage",          4, 1, 0},
     {0x80053F6Cu, 0, hle_gs_set_ref_view2,"GsSetRefView2",       1, 1, 0},
+    {0x80054DCCu, 0, hle_gs_set_ref_view2l,"GsSetRefView2L",     1, 1, 0},
+    {0x800553F4u, 0, hle_gs_preset_object,"GsPresetObject",      2, 1, 0},
+    {0x80047B3Cu, 0, hle_csqrt,          "csqrt",               1, 1, 0},
     {0x80047948u, 0, hle_rcos,            "rcos",                1, 1, 0},
     {0x8004787Cu, 0, hle_rsin,            "rsin",                1, 1, 0},
     {0x80047D3Cu, 0, hle_sqrt0,           "SquareRoot0",         1, 1, 0},
@@ -3764,6 +3952,7 @@ static const MusashiNativeLaneEntry k_driver_entries[] = {
     {0x80046ABCu, 0, hle_st_set_stream,  "StSetStream",         5, 0, 0},
     {0x8004657Cu, 0, hle_cd_read2,       "CdRead2",             1, 1, 0},
     {0x800468FCu, 0, hle_st_unset_ring,  "StUnSetRing",         0, 0, 0},
+    {0x800553D8u, 0, hle_gs_link_object5, "GsLinkObject5",      3, 0, 0},
     {0x8004162Cu, 0, hle_spu_free,        "SpuFree",             1, 0, 0},
     {0x800415A8u, 0, hle_ss_vab_close,    "SsVabClose",          1, 0, 0},
     {0x800419B0u, 0, hle_ss_vab_trans_start, "SsVabTransBody(start)", 1, 1, 0},
