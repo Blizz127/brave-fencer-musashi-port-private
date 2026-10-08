@@ -519,7 +519,16 @@ def switch_tables_internal(info, vram, size):
     cannot change the behaviour. Returns False on any doubt."""
     off = vram - info["vram"] + info["start"]
     words = [int.from_bytes(info["data"][off + i:off + i + 4], "little") for i in range(0, size, 4)]
-    found = False
+    return bool(switch_table_targets(words, vram, info))
+
+
+def switch_table_targets(words, vram, info=None):
+    """The switch idioms of switch_tables_internal over retail words:
+    {index of the jr: [case targets]} for every `jr rs` (rs != ra), {} when
+    there is none, None on any doubt. info None reads the tables from the
+    main EXE."""
+    size = 4 * len(words)
+    found = {}
     for k, w in enumerate(words):
         if not (w >> 26 == 0 and w & 0x3F == 0x08 and (w >> 21) & 31 != 31):
             continue
@@ -528,13 +537,13 @@ def switch_tables_internal(info, vram, size):
         lw = next((j for j in range(k - 1, max(k - 4, -1), -1)
                    if words[j] >> 26 == 0x23 and (words[j] >> 16) & 31 == rs), None)
         if lw is None or lw < 2:
-            return False
+            return None
         base = (words[lw] >> 21) & 31
         lo = words[lw] & 0xFFFF
         lo = lo - 0x10000 if lo & 0x8000 else lo
         addu, lui = words[lw - 1], words[lw - 2]
         if not (addu >> 26 == 0 and addu & 0x3F == 0x21 and (addu >> 11) & 31 == base):
-            return False
+            return None
         if lui >> 26 == 0x0F and (lui >> 16) & 31 == base:
             table = (((lui & 0xFFFF) << 16) + lo) & 0xFFFFFFFF
         else:
@@ -546,7 +555,7 @@ def switch_tables_internal(info, vram, size):
             if not (lo == 0 and addiu >> 26 == 0x09 and (addiu >> 21) & 31 == rb and
                     rb in ((addu >> 21) & 31, (addu >> 16) & 31) and
                     lui >> 26 == 0x0F and (lui >> 16) & 31 == rb):
-                return False
+                return None
             alo = addiu & 0xFFFF
             alo = alo - 0x10000 if alo & 0x8000 else alo
             table = (((lui & 0xFFFF) << 16) + alo) & 0xFFFFFFFF
@@ -556,12 +565,12 @@ def switch_tables_internal(info, vram, size):
                 bound = words[j] & 0xFFFF
                 break
         if not bound or bound > 256:
-            return False
+            return None
         for n in range(bound):
             t = guest_word(table + 4 * n, info)
             if t is None or t & 3 or not vram <= t < vram + size:
-                return False
-        found = True
+                return None
+        found[k] = [guest_word(table + 4 * n, info) for n in range(bound)]
     return found
 
 
@@ -2002,7 +2011,7 @@ def _step(w, regs, slots):
     return True
 
 
-def retail_call_args(words, vram, frame):
+def retail_call_args(words, vram, frame, jtargets=None):
     """Forward dataflow over the retail words. Returns (sites, saved) where
     sites = [(jal pc, target, {argument index: sp offset})] lists, for every
     jal, the arguments proven to be retail sp + offset (a0-a3, and stack
@@ -2054,6 +2063,16 @@ def retail_call_args(words, vram, frame):
             merge(i + 1, regs, slots)
             continue
         kind, target = br
+        if kind == "bad" and jtargets and i in jtargets:
+            # Strict (B28): a switch `jr` through a proven in-function table
+            # (switch_table_targets) continues at every case target.
+            if _branch_info(at(i + 1), pc + 4) is not None:
+                raise Reject("escape", f"transfer in a delay slot at {pc + 4:08x}")
+            if not _step(at(i + 1), regs, slots):
+                raise Reject("escape", f"sp changes at {pc + 4:08x}")
+            for t in jtargets[i]:
+                merge((t - vram) // 4, regs, slots)
+            continue
         if kind == "bad":
             raise Reject("escape", f"retail control flow at {pc:08x} is not followed")
         if _branch_info(at(i + 1), pc + 4) is not None:
@@ -2286,7 +2305,7 @@ def pointer_slot_sources(lines):
     return {s: next(iter(v)) for s, v in stores.items() if len(v) == 1 and s not in bad}
 
 
-def place_guest_locals(ir, fname, words, vram, frame):
+def place_guest_locals(ir, fname, words, vram, frame, info=None):
     """Move every alloca of fname whose address reaches a guest callee
     (lane_call_* / lane_* call argument, through constant GEPs) into the
     retail frame. Returns (ir, [(alloca, sp offset, size)]); the IR is
@@ -2344,7 +2363,8 @@ def place_guest_locals(ir, fname, words, vram, frame):
         return ir, []
     if words is None or not frame:
         raise Reject("escape", "local passed to a callee, retail frame unknown")
-    sites, saved = retail_call_args(words, vram, frame)
+    sites, saved = retail_call_args(
+        words, vram, frame, (switch_table_targets(words, vram, info) or None) if STRICT else None)
     by_target = {}
     for pc, target, args in sites:
         by_target.setdefault(target, []).append((pc, args))
@@ -2514,7 +2534,7 @@ def build_one(entry, out, symbols, hooks, clang, info=None):
         # before narrow_pointer_cells, which then treats them as guest memory.
         rewritten, guest_locals = place_guest_locals(
             rewrite_symbols(ir, symbols, member, info["code"] if info else ()),
-            "lane_" + qualify(member, name), words, vram, frame)
+            "lane_" + qualify(member, name), words, vram, frame, info)
         rewritten = lower_arith(narrow_pointer_cells(rewritten))
         if words is not None:
             rewritten = add_frame_adjust(rewritten, "lane_" + qualify(member, name), frame)

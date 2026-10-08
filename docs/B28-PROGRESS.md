@@ -275,6 +275,17 @@ Increment 20 (generator, strict only):
 - 8013CF68 (main_0012 and sc02_0031) is admitted. Overlay lane: 2730/3275.
 - First stop: `guest_pc=800363cc` (main EXE), frame ~1200, no host fault.
 
+Increment 21 (generator, strict only):
+- `switch_table_targets(words, vram, info)` returns the case targets of each
+  gcc switch `jr` (the idioms switch_tables_internal accepts; main EXE tables
+  are read from the EXE). switch_tables_internal now uses it (same result).
+- The retail dataflow behind guest-frame locals (`retail_call_args`, rule
+  `escape`) follows such a `jr` into every case target instead of refusing.
+  800363CC (switch on 8006B100 through table 800733B8) is admitted.
+- Main lane 3431/4011 (was 3421), overlay lane 2733/3275.
+- First stop: `guest_pc=8002d904` (main, `abi`: calls func_8002EE64 with 0 of
+  4 declared arguments), frame ~1200, no host fault.
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits
