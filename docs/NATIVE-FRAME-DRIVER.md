@@ -521,3 +521,13 @@ All rows below were written from the retail disassembly:
     the same PC; no allowed member collides today.
 - **libcd streaming:** StSetRing 80043088, StClearRing 8004689C, and the
   slot clear at 80046BFC.
+
+### B28 increment 6: stream set-up and CdRead2 (2026-10-08)
+
+- StSetStream 80046ABC (fifth argument read from the caller's sp+16), and its
+  parameter store 80046CFC.
+- CdRead2 8004657C: CdlSetmode with the mode byte in the retail frame. For
+  streaming modes it installs the stream data/ready callbacks 800469CC and
+  80046610, then issues CdlReadS.
+- StUnSetRing 800468FC: drops the callbacks in a critical section and zeroes
+  the two CD registers named by the cells 8006CFE8/8006CFF4.

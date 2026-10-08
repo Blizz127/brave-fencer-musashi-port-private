@@ -3335,6 +3335,70 @@ static void st_clear_ring(void) {
     wr16(0x800A2B94u, 0);
     wr32(0x80078E38u, 0);
 }
+static void st_set_param(uint32_t a, uint32_t start, uint32_t end) {
+    /* 80046CFC */
+    wr32(0x800C7C8Cu, a);
+    wr32(0x800A642Cu, start);
+    wr32(0x800C7C84u, end);
+}
+SPU_ENTRY(hle_st_set_param) { st_set_param(call->r[4], call->r[5], call->r[6]); return 1; }
+SPU_ENTRY(hle_st_set_stream) {
+    /* 80046ABC StSetStream(mode, start_frame, end_frame, func1, func2):
+     * func2 is the fifth argument, at the caller's sp+16 */
+    uint32_t func2 = rd32(call->r[29] + 16u);
+    st_set_param(1u, call->r[5], call->r[6]);
+    wr32(0x800C7C78u, 0);
+    wr32(0x800A5E80u, call->r[7]);
+    wr32(0x800A2B9Cu, call->r[4] & 1u);
+    wr32(0x800A6608u, 0);
+    wr32(0x800A6424u, 0);
+    wr16(0x800A2B94u, 0);
+    wr32(0x80078E38u, 0);
+    wr32(0x800A5E84u, func2);
+    return 1;
+}
+SPU_ENTRY(hle_cd_read2) {
+    /* 8004657C CdRead2(mode): CdlSetmode with the mode byte (retail frame
+     * sp-32+16); for a streaming mode (0x100), the stream flag 800A2BA4 is
+     * set (cleared when mode has 0x20), and the stream data (800469CC) and
+     * ready (80046610) callbacks are installed; then CdlReadS. Returns what
+     * the last CdControl returns, as retail (v0 left untouched). */
+    uint32_t mode = call->r[4], buf = call->r[29] - 32u + 16u;
+    CD_SP();
+    wr8(buf, (uint8_t)mode);
+    (void)hle_call(0x800435CCu, 3, 14u, buf, 0, 0);
+    if (mode & 0x100u) {
+        wr32(0x800A2BA4u, (mode & 0x20u) ? 0u : 1u);
+        (void)hle_call(0x800439D4u, 1, 0x800469CCu, 0, 0, 0);
+        (void)hle_call(0x800435B4u, 1, 0x80046610u, 0, 0, 0);
+    }
+    call->r[2] = hle_call(0x800435CCu, 3, 27u, 0, 0, 0);
+    return 1;
+}
+static void cd_w8_cell(uint32_t cell, uint8_t v) {
+    const MusashiCdRegisterDevice *d = cd_dev();
+    if (!d || !d->write8 || !d->write8(d->userdata, rd32(cell), v))
+        driver_stop("cd_register_write_refused", cell);
+}
+SPU_ENTRY(hle_st_unset_ring) {
+    /* 800468FC StUnSetRing: in a critical section, drop the stream callbacks
+     * (DMA mode 8006CCA8 == 1: DMACallback(3, 0) and the swap cell 800B9B54;
+     * else CdDataCallback(0) and CdReadyCallback(0)), then zero the two CD
+     * registers named by the cells 8006CFE8 and 8006CFF4. */
+    CD_SP();
+    (void)hle_call(0x8005CF08u, 0, 0, 0, 0, 0);
+    if (rd32(0x8006CCA8u) == 1u) {
+        (void)hle_call(0x800425E0u, 2, 3u, 0, 0, 0);
+        wr32(0x800B9B54u, 0);
+    } else {
+        (void)hle_call(0x800439D4u, 1, 0, 0, 0, 0);
+        (void)hle_call(0x800435B4u, 1, 0, 0, 0, 0);
+    }
+    cd_w8_cell(0x8006CFE8u, 0);
+    cd_w8_cell(0x8006CFF4u, 0);
+    (void)hle_call(0x8005CF18u, 0, 0, 0, 0, 0);
+    return 1;
+}
 SPU_ENTRY(hle_st_set_ring) {
     /* 80043088 StSetRing(ring, size) */
     wr32(ST_RING, call->r[4]);
@@ -3696,6 +3760,10 @@ static const MusashiNativeLaneEntry k_driver_entries[] = {
     {0x80043088u, 0, hle_st_set_ring,    "StSetRing",           2, 0, 0},
     {0x8004689Cu, 0, hle_st_clear_ring,  "StClearRing",         0, 0, 0},
     {0x80046BFCu, 0, hle_st_clear_slots, "StClearSlots",        2, 0, 0},
+    {0x80046CFCu, 0, hle_st_set_param,   "StSetParam",          3, 0, 0},
+    {0x80046ABCu, 0, hle_st_set_stream,  "StSetStream",         5, 0, 0},
+    {0x8004657Cu, 0, hle_cd_read2,       "CdRead2",             1, 1, 0},
+    {0x800468FCu, 0, hle_st_unset_ring,  "StUnSetRing",         0, 0, 0},
     {0x8004162Cu, 0, hle_spu_free,        "SpuFree",             1, 0, 0},
     {0x800415A8u, 0, hle_ss_vab_close,    "SsVabClose",          1, 0, 0},
     {0x800419B0u, 0, hle_ss_vab_trans_start, "SsVabTransBody(start)", 1, 1, 0},

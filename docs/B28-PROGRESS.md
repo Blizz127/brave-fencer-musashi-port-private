@@ -94,6 +94,17 @@ Increment 5:
   functions (StSetStream, StGetNext, StFreeRing, StUnSetRing 800468FC and the
   ring-filling ready callback), then the MDEC decode path.
 
+Increment 6:
+- libcd streaming and CD read HLE: StSetStream 80046ABC, 80046CFC,
+  CdRead2 8004657C (installs the stream callbacks 800469CC/80046610),
+  StUnSetRing 800468FC.
+- GsSetRefView2 80053F6C and its callees (80053B20, 80054340, SquareRoot0
+  80047D3C) have been native driver code since increment 1.
+- The movie call 800D1E9C returns, and the overlay reaches state 3. First
+  stop: `guest_pc=800cfc1c` (main_0003 vendor C, refused under `escape`: a
+  frame local is passed through a pointer variable). The movie most likely
+  ends early. Check whether frames decode once the stream callbacks run.
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits
