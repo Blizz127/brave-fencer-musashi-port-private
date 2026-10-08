@@ -122187,7 +122187,7 @@
       "size": 148,
       "region": "sc02_0031",
       "source": "src/overlays/sc02_0031/801285e4.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
@@ -136251,7 +136251,7 @@
       "size": 172,
       "region": "sc02_0031",
       "source": "src/overlays/sc02_0031/8014607c.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"

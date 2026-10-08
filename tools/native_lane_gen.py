@@ -1441,6 +1441,21 @@ def narrow_aggregate_pointers(ir):
     typed.update(re.findall(r"^(@[\w.$\"]+) = (?:external |internal |private |dso_local |common )*global (%[\w.\"$]+)\b", ir, flags=re.M))
     copy_lines = []
     for line in ir.splitlines():
+        # a zero fill of a whole local of one named pointer-bearing type
+        # (clang's auto-init before `T local = G;`, 800D18DC) is sized with
+        # the host layout; zero is zero in any layout, so it gets the guest
+        # size of the narrowed local (B28)
+        zm = re.search(r"call void @llvm\.memset[\w.]*\(ptr (?:align \d+ )?(%[\w.\"$]+), i8 0, "
+                       r"i64 (\d+), i1 false\)", line)
+        if zm and alloca_types.get(zm.group(1)) in types and type_has_ptr(alloca_types[zm.group(1)], types):
+            host = llvm_type_layout(alloca_types[zm.group(1)], types, 8)
+            guest = llvm_type_layout(alloca_types[zm.group(1)], types, 4)
+            if host and guest and host[0] == int(zm.group(2)):
+                line = (line[:zm.start()] +
+                        f"call void @llvm.memset.p0.i64(ptr align 1 {zm.group(1)}, i8 0, "
+                        f"i64 {guest[0]}, i1 false)" + line[zm.end():] + " ; strict-struct-assign")
+                copy_lines.append(line)
+                continue
         cm = re.search(r"call void @llvm\.mem(?:cpy|move)[\w.]*\(ptr (?:align \d+ )?([%@][\w.\"$]+), "
                        r"ptr (?:align \d+ )?([%@][\w.\"$]+), i64 (\d+), i1 false\)", line)
         if not cm:
@@ -1913,32 +1928,41 @@ LA_ASM_RE = re.compile(r'\b(?:__asm__|asm)\s*(?:volatile\s*|__volatile__\s*)?\(\
 # adds the 4 back), then reloads sp. In the lane the guest sp of a body is
 # musashi_lane_entry_sp - musashi_lane_sp_adj, so the host copy stores that
 # value at P, gives the call entry sp P, and restores both afterwards.
+# Optionally the call's v0 is stored to a global before sp is reloaded
+# (`lui $at,%%hi(SYM); sw $v0,%%lo(SYM)($at)`, 801285E4): host `SYM = f()`.
+# The operand may also be in/out (`"=r"(p) : "0"(p)`) with $31 clobbered,
+# so GCC rematerialises P for the next switch and saves ra (8014607C).
 SCRATCH_CALL_RE = re.compile(
     r'\b(?:__asm__|asm)\s*(?:volatile\s*|__volatile__\s*)?\(\s*'
     r'"addu\s+\$8,\s*%0,\s*\$zero\\n"\s*"sw\s+\$sp,\s*0\(\$8\)\\n"\s*'
     r'"addiu\s+\$8,\s*\$8,\s*-4\\n"\s*"addu\s+\$sp,\s*\$8,\s*\$zero\\n"\s*'
-    r'"jal\s+(func_[0-9A-Fa-f]{8})\\n"\s*"addiu\s+\$sp,\s*\$sp,\s*4\\n"\s*'
-    r'"lw\s+\$sp,\s*0\(\$sp\)\\n"\s*:\s*:\s*"r"\s*\(\s*(\w+)\s*\)\s*:\s*"\$8"\s*,\s*"memory"\s*\)\s*;')
+    r'"jal\s+(func_[0-9A-Fa-f]{8})\\n"\s*'
+    r'(?:"lui\s+\$at,\s*%%hi\((\w+)\)\\n"\s*"sw\s+\$v0,\s*%%lo\(\2\)\(\$at\)\\n"\s*)?'
+    r'"addiu\s+\$sp,\s*\$sp,\s*4\\n"\s*'
+    r'"lw\s+\$sp,\s*0\(\$sp\)\\n"\s*:\s*'
+    r'(?::\s*"r"\s*\(\s*(\w+)\s*\)|"=r"\s*\(\s*(\w+)\s*\)\s*:\s*"0"\s*\(\s*\4\s*\))'
+    r'\s*:\s*"\$8"\s*,\s*(?:"\$31"\s*,\s*)?"memory"\s*\)\s*;')
 
 
 def scratch_call_host(text):
     """Rewrite SCRATCH_CALL_RE asm when its operand is a register variable
     initialised with a scratchpad constant; None when it does not apply."""
     def sub(m):
-        init = re.search(r"\bregister\b[^;={}]*\b" + re.escape(m.group(2)) +
+        init = re.search(r"\bregister\b[^;={}]*\b" + re.escape(m.group(3) or m.group(4)) +
                          r'\s*(?:(?:__asm__|asm)\s*\(\s*"\$\w+"\s*\)\s*)?=\s*(0x[0-9A-Fa-f]+)\s*;', text)
         if not init:
             raise ValueError
         c = int(init.group(1), 16)
         if not (0x1F800000 <= c < 0x1F800400) or c & 3:
             raise ValueError
-        f = m.group(1)
-        return ("{ extern void %s(); extern unsigned int musashi_lane_entry_sp, musashi_lane_sp_adj;"
+        f, sym = m.group(1), m.group(2)
+        call = ("%s = (__typeof__(%s))%s()" % (sym, sym, f)) if sym else ("%s()" % f)
+        return ("{ extern %s %s(); extern unsigned int musashi_lane_entry_sp, musashi_lane_sp_adj;"
                 " unsigned int lane_ss_e = musashi_lane_entry_sp, lane_ss_a = musashi_lane_sp_adj;"
                 " *(unsigned int *)0x%08X = lane_ss_e - lane_ss_a;"
-                " musashi_lane_entry_sp = 0x%08Xu; musashi_lane_sp_adj = 0; %s();"
+                " musashi_lane_entry_sp = 0x%08Xu; musashi_lane_sp_adj = 0; %s;"
                 " musashi_lane_entry_sp = lane_ss_e; musashi_lane_sp_adj = lane_ss_a; }"
-                % (f, c, c, f))
+                % ("int" if sym else "void", f, c, c, call))
     try:
         return SCRATCH_CALL_RE.sub(sub, text)
     except ValueError:

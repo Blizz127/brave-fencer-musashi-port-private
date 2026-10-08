@@ -421,6 +421,30 @@ Increment 32 (generator, strict only):
 - Strict stop moves to 801285E4 (not_in_lane). Frames reach 1200, prims=0
   draw=0: no frame drawn yet.
 
+### Increment 34: scratchpad stack-switch storing v0, layout zero fill, 801285E4 cluster as C
+
+- Stop 801285E4 (resident sc02_0031, recovery `assembly`) and its callees
+  were whole-asm bodies. Rewritten as C plus the scratchpad stack-switch asm
+  idiom, byte-identical against retail (verify: bad 0) for both main_0012
+  and sc02_0031: 801285E4, 8014607C (16-byte outgoing-argument local and
+  in/out operand with $31 clobbered give the retail frame and the
+  rematerialised 0x1F8003FC). Registry rows for sc02_0031 801285E4 and
+  8014607C move from `assembly` to `mixed`.
+- 801287B8: the retail call to func_8013BC7C has a0 = &D_801B7AA0 (main:
+  &D_80185C10) live and the callee reads it; the C now passes it
+  (byte-identical). 8016E95C returns nothing, so it is `void` (byte-identical).
+- Generator (strict-only): `SCRATCH_CALL_RE` also accepts a v0 store to a
+  global between the `jal` and the sp reload (host `SYM = f()`), and the
+  in/out operand form with a `$31` clobber. `narrow_aggregate_pointers`
+  resizes the auto-init zero memset of a whole pointer-bearing local to
+  its guest size.
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0. Lanes: main 3528/4016,
+  overlay 2826/3280. Nothing lost; 801285E4, 801287B8, 8014607C, 8016E95C
+  (both members), 801466F0, 80146AB4, 8014C010 gained.
+- Strict stop moves to 800D18DC (main_0010, now refused as escape
+  "non-constant offset into local": the indexed load from the copied
+  function table). Frames reach 1200, prims=0 draw=0: no frame drawn yet.
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits

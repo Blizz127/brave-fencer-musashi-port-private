@@ -14,7 +14,7 @@ struct Entry {
 extern s32 D_80115218;
 typedef void (*Handler)(struct Entry *);
 
-s32 func_8016E95C() {
+void func_8016E95C(void) {
 
     extern s32 D_80115218;
     extern Handler D_8018174C[];

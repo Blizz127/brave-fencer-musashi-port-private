@@ -34,7 +34,7 @@ extern void func_800190AC(void);
 extern void func_8012956C(void);
 extern s32 func_8016E95C();
 extern void func_801754A8(void);
-extern void func_8013BC7C();
+extern void func_8013BC7C(void *);
 extern void func_8013BCDC(void);
 extern void func_801379FC(void);
 extern void func_8001212C(void);
@@ -65,7 +65,7 @@ void func_801287B8(void) {
 
         register volatile s32 *p __asm__("$4") = &D_80185C10;
         if (*p == 0) {
-            func_8013BC7C();
+            func_8013BC7C((void *)p); /* a0 already holds p (retail) */
         }
     }
     func_8013BCDC();
