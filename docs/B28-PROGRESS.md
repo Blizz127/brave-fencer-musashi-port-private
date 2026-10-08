@@ -309,6 +309,15 @@ Increment 23 (generator, strict only):
 - Main lane 3435/4011, overlay lane 2736/3275.
 - First stop: `guest_pc=80176d94` (sc02_0031), frame ~1200, no host fault.
 
+Increment 24 (generator, strict only):
+- `retail_dead_args` also covers callees inside the caller's own overlay
+  member (the member a direct call is already bound to). 80176D94 calls
+  func_80177784 (4 declared, a3 never read) with 3 arguments: a3 is padded.
+- Main lane 3444/4011, overlay lane 2745/3275.
+- Stop unchanged at `guest_pc=80176d94`; its next refusal is
+  `unprototyped func_801777BC with 7 arguments` (stack arguments through a
+  K&R call).
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits

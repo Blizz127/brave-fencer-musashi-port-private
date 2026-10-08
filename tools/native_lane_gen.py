@@ -1179,7 +1179,7 @@ def entry_arg_at_calls(words, vram, k):
     return sites
 
 
-def fix_short_calls(ir, words, vram, src_dir=None):
+def fix_short_calls(ir, words, vram, src_dir=None, info=None):
     """Strict only (B28): a direct call that passes fewer arguments than the
     callee's declaration takes (`((void (*)(void))f)()` on an `f(s32)`).
     The retail jal hands the callee whatever a0-a3 still hold; the optimizer
@@ -1228,7 +1228,7 @@ def fix_short_calls(ir, words, vram, src_dir=None):
             why = "the caller does not receive the missing arguments"
         if why is None:
             ind = re.match(r"^\s*", line).group(0) or "  "
-            dead = retail_dead_args(int(cm.group(2)[5:], 16))
+            dead = retail_dead_args(int(cm.group(2)[5:], 16), info)
             for k in range(len(args), len(want)):
                 if dead >> k & 1:
                     # nothing reachable from the callee reads a(k): any
@@ -1274,25 +1274,28 @@ def fix_short_calls(ir, words, vram, src_dir=None):
 _DEAD_ARGS = {}
 
 
-def retail_dead_args(target):
-    """Strict only (B28): bits of a0-a3 that nothing reachable from the main
-    EXE function at target reads (ArgLiveness over the retail words). A
-    `jalr` is not a read: strict builds have no interpreter, so an indirect
-    call from native code passes exactly the arguments of its C call, never
-    a register left over from the caller. 0 (nothing proven dead) when the
-    walk meets unknown words, an unresolved `jr reg`, or code outside the
-    main EXE."""
-    if target in _DEAD_ARGS:
-        return _DEAD_ARGS[target]
+def retail_dead_args(target, info=None):
+    """Strict only (B28): bits of a0-a3 that nothing reachable from the
+    function at target reads (ArgLiveness over the retail words: the main
+    EXE, or the caller's own overlay member when target lies in its code,
+    the same member a direct call is bound to). A `jalr` is not a read:
+    strict builds have no interpreter, so an indirect call from native code
+    passes exactly the arguments of its C call, never a register left over
+    from the caller. 0 (nothing proven dead) when the walk meets unknown
+    words or an unresolved `jr reg`."""
+    member = info["member"] if info and any(lo <= target < hi for lo, hi in info["code"]) else None
+    key = (member, target)
+    if key in _DEAD_ARGS:
+        return _DEAD_ARGS[key]
     bits = 0
-    if guest_word(target) is not None and 0x80010000 <= target < 0x80800000:
-        al = make_arg_liveness({}, strict=False)
-        summary = al.analyse([(None, target)])
+    if member or (guest_word(target) is not None and 0x80010000 <= target < 0x80800000):
+        al = make_arg_liveness({member: info} if member else {}, strict=False)
+        summary = al.analyse([key])
         clean = all(n[0] != "unknown" and (n[0] != "jr" or pc in ext)
                     for nodes, ext in al.cfg.values() for pc, n in nodes.items())
         if clean:
-            bits = A_MASK & ~summary.get((None, target), A_MASK)
-    _DEAD_ARGS[target] = bits
+            bits = A_MASK & ~summary.get(key, A_MASK)
+    _DEAD_ARGS[key] = bits
     return bits
 
 
@@ -2629,7 +2632,7 @@ def build_one(entry, out, symbols, hooks, clang, info=None):
         ir = o0.read_text()
         if STRICT:
             ir = strip_symbol_binding_asm(ir)
-            ir = fix_short_calls(ir, retail_words(vram, size, info), vram, src.parent)
+            ir = fix_short_calls(ir, retail_words(vram, size, info), vram, src.parent, info)
             ir, _ = narrow_aggregate_pointers(ir)
         check_layout(ir)
         words = retail_words(vram, size, info)
