@@ -405,6 +405,22 @@ Increment 32 (generator, strict only):
 - Main lane 3511/4012, overlay lane 2809/3276, no function lost.
 - First stop: `guest_pc=8012c588` (overlay), frame ~1200, no host fault.
 
+### Increment 33: i32 pointer slots in guest-frame placement
+
+- Stop 8012C588 (main_0012) was refused as "host address converted to
+  integer": `q = (s32)&sp[0]` stores a ptrtoint of the local array into an
+  `alloca i32` slot, and the reload is passed to func_8012C890.
+- `pointer_slot_sources` now tracks `alloca i32` slots (i32 stores/loads and
+  the `store i32 0` auto-init) alongside ptr slots, and `place_guest_locals`
+  follows `load i32` reloads, so the array is placed in the guest frame.
+  Strict-only.
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0. Lanes: main 3517/4012,
+  overlay 2815/3276. No admitted function lost, 6 overlay functions gained
+  (8012AE00, 8012C588, 8012CE2C, 80148094, 801523F4 main_0012 and 801523F4
+  sc02_0031).
+- Strict stop moves to 801285E4 (not_in_lane). Frames reach 1200, prims=0
+  draw=0: no frame drawn yet.
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits

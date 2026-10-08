@@ -2491,7 +2491,8 @@ def pointer_slot_sources(lines):
     slots, stores, bad = set(), {}, set()
     for line in lines:
         dm = DEF_RE.match(line)
-        if dm and re.fullmatch(r"alloca ptr, align \d+", dm.group(2).strip()):
+        if dm and re.fullmatch(r"alloca (?:ptr|i32), align \d+", dm.group(2).strip()):
+            # (B28) an i32 local too: `q = (s32)&sp[0]; f(q)` (8012C588)
             slots.add(dm.group(1))
     if not slots:
         return {}
@@ -2499,14 +2500,14 @@ def pointer_slot_sources(lines):
         dm = DEF_RE.match(line)
         if dm and dm.group(1) in slots:
             continue
-        if re.match(r"\s*store ptr null, ptr %[\w.\"$]+, align \d+, !annotation !\d+\s*$", line):
+        if re.match(r"\s*store (?:ptr null|i32 0), ptr %[\w.\"$]+, align \d+, !annotation !\d+\s*$", line):
             continue  # the compiler's auto-init of the declaration, not a value
-        sm = re.match(r"\s*store ptr (%[\w.\"$]+), ptr (%[\w.\"$]+)(?:, align \d+)?(?:, ![\w.]+ !\d+)*\s*$", line)
+        sm = re.match(r"\s*store (?:ptr|i32) (%[\w.\"$]+), ptr (%[\w.\"$]+)(?:, align \d+)?(?:, ![\w.]+ !\d+)*\s*$", line)
         if sm and sm.group(2) in slots:
             stores.setdefault(sm.group(2), set()).add(sm.group(1))
             rest = [sm.group(1)]
         else:
-            lm = re.match(r"\s*%[\w.\"$]+ = load ptr, ptr (%[\w.\"$]+)(?:, align \d+)?(?:, ![\w.]+ !\d+)*\s*$", line)
+            lm = re.match(r"\s*%[\w.\"$]+ = load (?:ptr|i32), ptr (%[\w.\"$]+)(?:, align \d+)?(?:, ![\w.]+ !\d+)*\s*$", line)
             rest = [] if lm and lm.group(1) in slots else [line]
         for text in rest:
             for t in re.findall(r"%[\w.\"$]+", text):
@@ -2533,7 +2534,7 @@ def place_guest_locals(ir, fname, words, vram, frame, info=None):
         dm = DEF_RE.match(line)
         if dm:
             name, rhs = dm.group(1), dm.group(2)
-            lm = re.fullmatch(r"load ptr, ptr (%[\w.\"$]+)(?:, align \d+)?", rhs.strip())
+            lm = re.fullmatch(r"load (?:ptr|i32), ptr (%[\w.\"$]+)(?:, align \d+)?", rhs.strip())
             if lm and slot_src.get(lm.group(1)) in derived:
                 derived[name] = derived[slot_src[lm.group(1)]]
                 continue
