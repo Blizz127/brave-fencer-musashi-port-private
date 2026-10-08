@@ -87,3 +87,29 @@ candidate. What the zero-fallback slice still needs, in order:
    timing and save artifacts the owner standard names.
 
 Until then every useful build stays hybrid and is disclosed as such.
+
+## Generator strict mode and scratchpad constants (B24, 2026-10-07)
+
+- **`--strict`.** A `MUSASHI_STRICT_NATIVE` configure passes `--strict` to
+  `tools/native_lane_gen.py`. With no interpreter, nothing observes a guest
+  PC, so three interpreter-only rules are dropped:
+  - the `hooks` rule (port-referenced PCs inside a body, `ALWAYS_HOOKED`);
+  - the caller-pinned GTE rule;
+  - the PsyQ hooked hold-back (`musashi_native_lane_hooked_psyq` is emitted
+    empty).
+
+  Non-strict builds are unchanged.
+- **Scratchpad constants.** Constant addresses in 1F800000..1F8003FF now pass
+  the `inttoptr` rule. `musashi_native_lane_map_guest` maps the scratchpad page
+  at host 1F800000 from the same memfd as `MusashiBootMemory.scratchpad`.
+  - Bodies that use such constants are listed in
+    `musashi_native_lane_scratchpad_pcs[]`; today that is 800184F0.
+  - When the alias cannot be mapped, native_boot leaves those bodies to the
+    interpreter. A strict build aborts instead (`seam=native_lane
+    routine=scratchpad_alias`).
+- **ctest in a strict build.** Tests that drive the interpreter (for example
+  entry_cpu_boundary, nested_source_call_cpu, native_startup_boundary and the
+  lane differentials) abort at their first `STRICT_INTERPRETER_ENTRY`, by
+  design. The hybrid build of the same tree passes all 37 tests against the
+  retail extracts.
+

@@ -31,6 +31,7 @@
 #include "musashi_cd_controller.h"
 #include "musashi_audio_sdl.h"
 #include "musashi_native_lane.h"
+#include "musashi_strict.h"
 /* Ordered PsyCross shutdown (pc_port/psyx_shutdown.cpp). */
 void musashi_psyx_shutdown(void);
 
@@ -5058,6 +5059,7 @@ static void hold_window(NativeBoot *boot) {
 #include <stddef.h>
 #include <sys/mman.h>
 #include "musashi_native_lane.h"
+#include "musashi_strict.h"
 #include "musashi_native_lane_psyq.h"
 #include "psyq/bfm_psyq_libpad.h"
 #ifdef MUSASHI_STRICT_NATIVE
@@ -5070,6 +5072,8 @@ extern const MusashiNativeLaneEntry musashi_native_lane_generated[];
 extern const size_t musashi_native_lane_generated_count;
 extern const MusashiNativeLaneOverlayEntry musashi_native_lane_overlay[];
 extern const size_t musashi_native_lane_overlay_count;
+extern const uint32_t musashi_native_lane_scratchpad_pcs[];
+extern const size_t musashi_native_lane_scratchpad_count;
 
 static void lane_overlay_report(void) {
     MusashiNativeLaneOverlayStats st;
@@ -5125,9 +5129,9 @@ static void lane_fault(int sig, siginfo_t *info, void *context) {
 static NativeBoot *native_boot_owner(NativeBoot *fallback) {
     const char *value = getenv("MUSASHI_NATIVE_LANE");
     void *window;
+    int aliased = 0;
     if (value && value[0] == '0') return fallback;
     {
-        int aliased = 0;
         window = musashi_native_lane_map_guest(sizeof(NativeBoot), &aliased);
         if (!window) {
             fprintf(stderr, "native_boot: NATIVE_LANE window unavailable; interpreter only\n");
@@ -5191,6 +5195,42 @@ static NativeBoot *native_boot_owner(NativeBoot *fallback) {
             count = n;
         }
 #endif
+        if (!aliased && musashi_native_lane_scratchpad_count) {
+            /* Without the 1F800000 alias, bodies that dereference constant
+             * scratchpad addresses would fault: keep them interpreted. */
+            MusashiNativeLaneEntry *kept;
+#ifdef MUSASHI_STRICT_NATIVE
+            musashi_strict_abort("native_lane", "scratchpad_alias",
+                                 musashi_native_lane_scratchpad_pcs[0]);
+#endif
+            kept = malloc(sizeof *kept * (count ? count : 1));
+            size_t i, j, n = 0;
+            if (!kept) {
+                fputs("native_boot: NATIVE_LANE scratchpad filter: out of memory\n", stderr);
+                exit(2);
+            }
+            for (i = 0; i < count; ++i) {
+                for (j = 0; j < musashi_native_lane_scratchpad_count &&
+                            musashi_native_lane_scratchpad_pcs[j] != table[i].guest_pc; ++j) {}
+                if (j == musashi_native_lane_scratchpad_count) kept[n++] = table[i];
+            }
+            fprintf(stderr, "native_boot: NATIVE_LANE no scratchpad alias: %u scratchpad bodies "
+                    "left to the interpreter\n", (unsigned)(count - n));
+            table = kept;
+            count = n;
+        }
+        {
+            /* MUSASHI_LANE_DUMP=<path>: one guest PC per line, for call-graph
+             * coverage reports (tools, not the runtime, read it). */
+            const char *dump = getenv("MUSASHI_LANE_DUMP");
+            FILE *f = dump && dump[0] ? fopen(dump, "w") : NULL;
+            size_t i;
+            if (f) {
+                for (i = 0; i < count; ++i) fprintf(f, "%08x %s\n", table[i].guest_pc,
+                                                    table[i].name ? table[i].name : "");
+                fclose(f);
+            }
+        }
         installed = musashi_native_lane_install(table, count);
         if (installed < 0) {
             fprintf(stderr, "native_boot: NATIVE_LANE table rejected; interpreter only\n");
@@ -5232,6 +5272,7 @@ static NativeBoot *native_boot_owner(NativeBoot *fallback) { return fallback; }
 #include "bfm_plat.h"
 #include "bfm_plat_events.h"
 #include "musashi_native_lane.h"
+#include "musashi_strict.h"
 
 static const uint32_t *g_plat_hook_regs;
 

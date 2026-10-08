@@ -23,7 +23,7 @@ Rules (each rejection names the first rule that failed, in report.json):
   escape  : no host stack or host data address reaches guest memory, a
             guest callee, an integer, or the return value
   inttoptr: integer->pointer only from zero-extended 32-bit values or
-            constants inside game RAM
+            constants inside game RAM or the scratchpad (host alias)
   calls   : only direct calls to prototyped guest functions (lane_func_*),
             module-internal functions and memory intrinsics; no inline asm
   arith   : no variable or trapping divisors (x86 traps where MIPS does not),
@@ -77,6 +77,24 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import lane_cycles  # noqa: E402  (D-011 retail cycle model, report only)
 RAM_LO, RAM_HI = 0x80010000, 0x80200000
+# The 1 KiB scratchpad. musashi_native_lane_map_guest maps it a second time at
+# host 0x1F800000 (the same page as MusashiBootMemory.scratchpad), so constant
+# scratchpad addresses are admitted. Such functions are listed in
+# musashi_native_lane_scratchpad_pcs[] and native_boot drops them when that
+# alias could not be mapped.
+SCRATCH_LO, SCRATCH_HI = 0x1F800000, 0x1F800400
+
+
+def const_addr_ok(val):
+    return RAM_LO <= val < RAM_HI or SCRATCH_LO <= val < SCRATCH_HI
+
+
+def uses_scratchpad(ir):
+    for v in re.findall(r"inttoptr \(i64 (-?\d+) to ptr\)|inttoptr i64 (-?\d+) to ptr", ir):
+        n = int(v[0] or v[1])
+        if SCRATCH_LO <= n < SCRATCH_HI:
+            return True
+    return False
 HOST_TARGET = "x86_64-unknown-linux-gnu"
 def host_long(text):
     """PS1 `long` is 32-bit: rewrite lone `long` / `long int` to `int` for the
@@ -484,6 +502,9 @@ def hooked_pcs():
 
 
 _PINNED_ENTRIES = None
+# --strict (MUSASHI_STRICT_NATIVE): no interpreter observes any guest PC.
+# Carried in the environment so worker processes see it whatever the start method.
+STRICT = os.environ.get("MUSASHI_LANE_STRICT") == "1"
 
 
 def caller_pinned_entries():
@@ -860,10 +881,10 @@ def check_optimized(ir, module_internal):
                     if not (d.startswith("zext i32") or d.startswith("zext nneg i32") or
                             re.match(r"and i64 .*, 4294967295$", d)):
                         raise Reject("inttoptr", f"integer->pointer from '{d[:40]}'")
-                elif re.fullmatch(r"-?\d+", val) and not RAM_LO <= int(val) < RAM_HI:
+                elif re.fullmatch(r"-?\d+", val) and not const_addr_ok(int(val)):
                     raise Reject("inttoptr", f"constant address {int(val):x}")
             for const in re.findall(r"inttoptr \(i64 (-?\d+) to ptr\)", rhs):
-                if not RAM_LO <= int(const) < RAM_HI:
+                if not const_addr_ok(int(const)):
                     raise Reject("inttoptr", f"constant address {int(const) & 0xffffffffffffffff:x}")
             dm = re.match(r"(sdiv|udiv|srem|urem)(?: exact)? (i\d+) (.*)$", rhs)
             if dm:
@@ -1722,7 +1743,7 @@ def build_one(entry, out, symbols, hooks, clang, info=None):
         optir, stubs = resolve_calls(optir)
         for callee, _, _, _ in stubs.values():
             addr = int(callee.split("func_")[-1], 16)
-            if addr in caller_pinned_entries():
+            if not STRICT and addr in caller_pinned_entries():
                 raise Reject("hooks", f"calls {addr:08x}, whose GTE sites admit only a jal caller")
         mapping = cycles.pop("_mapping", None) if cycles else None
         ledger, ledger_rows = False, None
@@ -1779,7 +1800,7 @@ def build_one(entry, out, symbols, hooks, clang, info=None):
         return dict(name=name, qname=qualify(member, name), member=member, vram=vram, size=size,
                     source=entry["source"], admitted=True, obj=str(obj), defs=sigs, stubs=stubs,
                     icalls=icalls, digest=digest, cycles=cycles, ledger=ledger,
-                    ledger_rows=ledger_rows, frame=frame,
+                    ledger_rows=ledger_rows, frame=frame, scratchpad=uses_scratchpad(optir),
                     guest_locals=[dict(off=o, size=n) for _, o, n in guest_locals])
     except Reject as e:
         return dict(name=name, qname=qualify(member, name), member=member, vram=vram, size=size,
@@ -2652,6 +2673,14 @@ def emit_table(admitted, out, entry_sites=frozenset(), passthrough=frozenset()):
     lines.append("};")
     lines.append(f"const size_t musashi_native_lane_overlay_count = {len(ovl_entries)}u;")
     lines.append("")
+    lines.append("/* Main entries that dereference constant scratchpad addresses: they need")
+    lines.append(" * the host alias at 1F800000 (musashi_native_lane_map_guest). */")
+    sp = sorted(a["vram"] for a in admitted if a.get("scratchpad") and not a.get("member"))
+    lines.append("const uint32_t musashi_native_lane_scratchpad_pcs[] = {")
+    lines.append("    " + (", ".join(f"0x{v:08x}u" for v in sp) if sp else "0u") + ",")
+    lines.append("};")
+    lines.append(f"const size_t musashi_native_lane_scratchpad_count = {len(sp)}u;")
+    lines.append("")
     lines.append("/* Guest-frame locals (place_guest_locals): guest RAM at the body's retail")
     lines.append(" * sp + off holds them, where the retail code keeps them. The probes compare")
     lines.append(" * these bytes, which sit inside the frame band they otherwise skip. */")
@@ -2817,6 +2846,10 @@ def main():
     ap.add_argument("--overlay-allow", type=Path,
                     help="file of '<member> <vram>' overlay functions to compile (release); "
                          "the overlay candidates are exactly these, checked strictly")
+    ap.add_argument("--strict", action="store_true",
+                    help="MUSASHI_STRICT_NATIVE build: there is no interpreter, so no PC is "
+                         "observed by formatter_step or a checkpoint; the hooks rule, the "
+                         "caller-pinned GTE rule and the PsyQ hooked hold-back do not apply")
     ap.add_argument("--overlay-members", default="",
                     help="comma-separated overlay members to compile (e.g. main_0003); each needs "
                          "config/overlay_<m>.yaml and its extracted member file for the digests")
@@ -2829,7 +2862,11 @@ def main():
     only = pcs(args.only) if args.only else None
     exclude = pcs(args.exclude) if args.exclude else set()
     symbols = load_symbol_addrs()
-    hooks = hooked_pcs()
+    global STRICT
+    STRICT = args.strict
+    if STRICT:
+        os.environ["MUSASHI_LANE_STRICT"] = "1"
+    hooks = {} if STRICT else hooked_pcs()
     psyq_excluded = []
     todo = [m for m in candidates(only, psyq_excluded) if m["vram"] not in exclude]
     if args.own_code_only:
@@ -2894,7 +2931,7 @@ def main():
     direct, thunk, hook_thunk, pass_thunk = emit_table(
         admitted, out, frozenset(plat_hook_sites()),
         frozenset("lane_" + a["qname"] for a in admitted if a.get("passthrough")))
-    blocked = psyq_hooked(hooks)
+    blocked = [] if STRICT else psyq_hooked(hooks)
     with open(out / "native_lane_table.c", "a") as table:
         table.write("\n/* PsyQ compat entries whose body holds a port-sequenced PC. */\n")
         table.write("const uint32_t musashi_native_lane_hooked_psyq[] = {\n")

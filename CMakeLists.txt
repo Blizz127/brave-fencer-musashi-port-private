@@ -695,6 +695,13 @@ if(MUSASHI_BUILD_PC_PORT)
                 ${CMAKE_CURRENT_SOURCE_DIR}/config/lane_own_code_allow.txt
                 ${MUSASHI_LANE_OVERLAY_ALLOW})
         endif()
+        # Strict builds have no interpreter: no PC is observed, so the
+        # generator drops the interpreter-only hook rules (tools/native_lane_gen.py).
+        if(MUSASHI_STRICT_NATIVE)
+            set(MUSASHI_LANE_STRICT_FLAG --strict)
+        else()
+            set(MUSASHI_LANE_STRICT_FLAG)
+        endif()
         add_custom_command(
             OUTPUT ${MUSASHI_LANE_DIR}/native_lane_table.c
                    ${MUSASHI_LANE_DIR}/libmusashi_native_lane.a
@@ -702,6 +709,7 @@ if(MUSASHI_BUILD_PC_PORT)
                     --out ${MUSASHI_LANE_DIR} --clang ${MUSASHI_CLANG} --ar ${CMAKE_AR} --jobs 4
                     ${MUSASHI_LANE_MEMBERS_FLAG}
                     ${MUSASHI_LANE_OWN_CODE_FLAG}
+                    ${MUSASHI_LANE_STRICT_FLAG}
             DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/tools/native_lane_gen.py
                     ${CMAKE_CURRENT_SOURCE_DIR}/tools/lane_cycles.py
                     ${CMAKE_CURRENT_SOURCE_DIR}/provenance/matches.json

@@ -227,10 +227,20 @@ hybrid build changes:
   1, 2 and 6, and PadInfoMode term 2), not from retail words.
 
 **Still open:**
-- **crt0 (80010000..8001009F).** Not in the registry. The driver assumes
-  that the BSS clear is redundant on fresh zeroed guest RAM, and that the
-  stack top is the PsyQ default 0x801FFFF0 (`MAIN_SP` = top - 56). Both must
-  be checked against the retail words once a disc is on the box.
+- **crt0 (80010000..8001009F)** was checked against the retail words once
+  the disc was on the box, and the driver's `crt0()` now does what it does.
+  The PSX-EXE header gives pc0 80010000, t_addr 80010000, t_size 0x64800, no
+  b_addr/b_size, and s_addr 801FFFF0. crt0 ignores s_addr:
+  - It clears 80074750..800C7F08. The start is gp, and it overlaps the last
+    0xB0 bytes of the loaded image; those bytes are zero in retail, but the
+    clear is still done.
+  - It sets sp = (*800629BC - 8) | 0x80000000 = 801FFFF8. The retail
+    _ramsize is 0x200000 and _stacksize is 0xC00.
+  - It stores heap base 800C7F08 at 8006299C, and heap size
+    `ramsize - 8 - stacksize - 0xC7F08` (0x1374F0) at 800629A0.
+  - It saves ra at gp[0] and calls main.
+
+  So main runs at sp 801FFFF8 - 56 = 801FFFC0, not the provisional 801FFFB8.
 - **IRQ delivery.** Item 7 above. The clock charge at VSync can make IRQs
   deliverable, and their handlers are still the `cd_irq`, `bios_event` and
   `source_call` seams.
@@ -239,6 +249,53 @@ hybrid build changes:
 - **Lane admission.** Every callee still has to be admitted (allow list plus
   retail-proved frames). Until then a strict run stops at the first callee
   that is not admitted, by design.
+
+## First strict run against the retail disc (B24, 2026-10-07)
+
+The command was:
+`MUSASHI_DRIVER_FRAMES=600 MUSASHI_PSYQ_LANE=all MUSASHI_GPU=bfm_plat MUSASHI_GUEST_CLOCK=1`.
+It still stops inside `main_init`, so no frame has run yet. The stops,
+in order, and what fixed each one:
+
+1. **80043060.** Port-sequenced PsyQ. Fixed by `hle_exchange_cbe8`, which
+   uses the same decomp-owned exchange the interpreter uses.
+2. **800141F0.** Vendor-derived, and the non-strict generator always hooks
+   it. Fixed by a clean room, plus the generator's `--strict` mode.
+3. **80059234 (ResetGraph).** This is the current stop (`seam=lane_guest_call
+   routine=not_in_lane`). ResetGraph calls ResetCallback (80042580), which
+   reaches libetc's callback initializer 80042718. The port runs that
+   initializer only on the interpreter:
+   - `musashi_boot_run_callback_init_prefix` steps the retail words;
+   - B0:19 HookEntryInt is a device hook;
+   - the 80042C90 and 80042DB8 installers run through the decomp-owned
+     800429DC registration.
+
+   The next step is a native libetc core:
+   - ResetCallback state;
+   - InterruptCallback and DMACallback registration in the guest slot table;
+   - a host IRQ dispatcher that the driver calls at VBlank, which runs the
+     registered callbacks through the lane.
+
+   This is the "native interrupt handlers" item.
+
+Static walk of main's call graph from the driver's call list (jal only;
+indirect calls are not followed): 179 functions are reachable, and 128 of them
+are not yet in the lane. Of those:
+- 17 are game code. The ones that still need a clean room are 80015208,
+  8002D034, 80015608 and 80015760. 80015310 and 80018FC8 are refused for
+  volatile device-register access.
+- The rest are PsyQ library code:
+  - libgpu: ResetGraph, SetGraphDebug;
+  - libetc callbacks;
+  - libcard: InitCARD/StartCARD (8005FC68/8005FCB8). They map 1:1 onto the CD
+    and event devices: B0:5B/4A/4B, A0:70, eight OpenEvent/EnableEvent/TestEvent
+    calls whose handlers 800617CC..80061858 `musashi_boot_execute_bios_event`
+    already runs, and InterruptCallback(7, 800616D0);
+  - libcd: CdInit 80043300, CdGetToc, the CdSearchFile internals;
+  - libspu/libsnd: SpuInit, SsInit, SpuSetCommonAttr, the transfer and key
+    setup that 8002C8F4 calls.
+
+  Each of these needs a native HLE against the port's device owners.
 
 ## Work order this implies
 

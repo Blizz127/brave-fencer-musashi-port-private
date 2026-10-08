@@ -36,11 +36,21 @@ enum {
     OT2_AREA            = 0x800BA0D8u, /* + idx * 16, 4 entries */
     OT2B_AREA           = 0x800BA0E4u, /* + idx * 16 */
     SCRATCH_SP          = 0x1F8003FCu, /* main's scratchpad stack */
-    /* main's own frame (56 bytes) below crt0's stack top. Provisional:
-     * crt0 (80010000) is not in the registry, so the top is the PsyQ
-     * default 0x801FFFF0 until it is checked against the retail words. */
-    MAIN_SP             = 0x801FFFF0u - 56u
+    /* crt0 (80010000..8001009F), checked against the retail words: it
+     * clears [BSS_LO, BSS_HI) (BSS_LO is also gp), sets
+     * sp = (RAM_SIZE_VAR - 8) | 0x80000000 (the EXE header's s_addr
+     * 0x801FFFF0 is overridden), stores the heap base BSS_HI and the heap
+     * size (RAM_SIZE_VAR - 8 - STACK_SIZE_VAR - (BSS_HI & 0x1FFFFFFF)),
+     * saves ra at gp[0] and calls main (80010178), whose frame is 56. */
+    BSS_LO              = 0x80074750u,
+    BSS_HI              = 0x800C7F08u,
+    HEAP_BASE_VAR       = 0x8006299Cu,
+    HEAP_SIZE_VAR       = 0x800629A0u,
+    RAM_SIZE_VAR        = 0x800629BCu, /* 0x00200000 in the retail EXE */
+    STACK_SIZE_VAR      = 0x800629C0u, /* 0x00000C00 in the retail EXE */
+    MAIN_FRAME          = 56u
 };
+#define MAIN_SP (g_driver.main_sp)
 
 /* main's state block offsets */
 enum {
@@ -98,6 +108,7 @@ typedef struct Driver {
     const MusashiFrameDriverOps *ops;
     uint32_t pad_buf[2];   /* PadInitDirect's receive buffers (0: none) */
     unsigned long frames, frame_limit;
+    uint32_t main_sp; /* crt0 stack top - main's 56-byte frame */
     int quit;
 } Driver;
 
@@ -310,7 +321,19 @@ static int hle_pad_set_act(MusashiNativeLaneCall *call) {
     return 1;
 }
 
+static int hle_exchange_cbe8(MusashiNativeLaneCall *call) {
+    /* 80043060: v0 = *(s32 *)8006CBE8; *(s32 *)8006CBE8 = a0 (main calls it
+     * with 0). The interpreter answers it with the same decomp-owned
+     * exchange (musashi_boot_call_80043060). */
+    int32_t previous = 0;
+    if (!musashi_boot_call_80043060(g_driver.memory, (int32_t)call->r[4], &previous))
+        driver_stop("exchange_8006CBE8_refused", 0x80043060u);
+    call->r[2] = (uint32_t)previous;
+    return 1;
+}
+
 static const MusashiNativeLaneEntry k_driver_entries[] = {
+    {0x80043060u, 0, hle_exchange_cbe8,   "exchange_8006CBE8",   1, 1, 0},
     {0x80043974u, 0, hle_cd_mix,          "CdMix",               1, 1, 0},
     {0x8005CE18u, 0, hle_init_heap,       "InitHeap",            2, 0, 0},
     {0x8005CF08u, 0, hle_enter_critical,  "EnterCriticalSection",0, 1, 0},
@@ -423,6 +446,18 @@ static void main_frame(void) {
     ++g_driver.frames;
 }
 
+/* crt0 (80010000): the BSS clear, stack and heap globals, then main. */
+static void crt0(void) {
+    uint32_t a, top;
+    for (a = BSS_LO; a < BSS_HI; a += 4u) wr32(a, 0u);
+    top = rd32(RAM_SIZE_VAR) - 8u;
+    wr32(HEAP_SIZE_VAR, top - rd32(STACK_SIZE_VAR) - (BSS_HI & 0x1FFFFFFFu));
+    wr32(HEAP_BASE_VAR, (BSS_HI & 0x1FFFFFFFu) | 0x80000000u);
+    /* gp[0] keeps the BIOS return address; the host is the caller here. */
+    wr32(BSS_LO, 0u);
+    g_driver.main_sp = (top | 0x80000000u) - MAIN_FRAME;
+}
+
 static void main_init(void) {
     /* 800100A0 (__main): sets its flag once; the constructor table is
      * empty in this executable (count 0), so nothing else runs. */
@@ -452,6 +487,7 @@ MusashiResetGraphPrefixStatus musashi_frame_driver_run(MusashiBootMemory *memory
     g_driver.frame_limit = limit && limit[0] ? strtoul(limit, NULL, 0) : 0;
     fprintf(stderr, "native_boot: FRAME_DRIVER start (main 80010178, no interpreter)%s%s\n",
             g_driver.frame_limit ? " frames=" : "", g_driver.frame_limit ? limit : "");
+    crt0();
     main_init();
     while (!g_driver.quit) {
         (void)call0(F_SESSION);
