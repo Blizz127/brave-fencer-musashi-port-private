@@ -212,6 +212,17 @@ Increment 16 (generator, strict only):
   with a wrong argument. First stop: `guest_pc=8013b83c` (sc02_0031, no
   registry row yet).
 
+Increment 17 (registry + generator, strict only):
+- 14 sc02_0031 sources that had no registry row now have one. Each was
+  byte-matched against the member file (`build_candidate`, -O2 or -O0, with
+  the jump-table rodata base where there is one): 8012A094, 8012AD3C,
+  8012BC60, 8013B83C, 8013D9B0, 80144B9C, 80146128, 80146FC4, 8014C860,
+  801504D8, 80161208, 80163408, 801634D8 and 801821F4.
+- `switch_tables_internal` also accepts gcc's -O0 switch form
+  (`lui; addiu; addu; lw 0(rX); jr`).
+- With these the boot passes 8013B83C. The overlay lane is 2651/3273. First
+  stop: `guest_pc=8013d53c` (sc02_0031, `layout`, a 9-byte struct copy).
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits

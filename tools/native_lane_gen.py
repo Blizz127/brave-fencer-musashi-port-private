@@ -535,9 +535,21 @@ def switch_tables_internal(info, vram, size):
         addu, lui = words[lw - 1], words[lw - 2]
         if not (addu >> 26 == 0 and addu & 0x3F == 0x21 and (addu >> 11) & 31 == base):
             return False
-        if not (lui >> 26 == 0x0F and (lui >> 16) & 31 == base):
-            return False
-        table = (((lui & 0xFFFF) << 16) + lo) & 0xFFFFFFFF
+        if lui >> 26 == 0x0F and (lui >> 16) & 31 == base:
+            table = (((lui & 0xFFFF) << 16) + lo) & 0xFFFFFFFF
+        else:
+            # -O0 form: `lui rB, hi; addiu rB, rB, lo; addu rX, rT, rB;
+            # lw rs, 0(rX)` (8013B83C)
+            addiu = words[lw - 2]
+            lui = words[lw - 3] if lw >= 3 else 0
+            rb = (addiu >> 16) & 31
+            if not (lo == 0 and addiu >> 26 == 0x09 and (addiu >> 21) & 31 == rb and
+                    rb in ((addu >> 21) & 31, (addu >> 16) & 31) and
+                    lui >> 26 == 0x0F and (lui >> 16) & 31 == rb):
+                return False
+            alo = addiu & 0xFFFF
+            alo = alo - 0x10000 if alo & 0x8000 else alo
+            table = (((lui & 0xFFFF) << 16) + alo) & 0xFFFFFFFF
         bound = None
         for j in range(lw - 3, max(lw - 12, -1), -1):
             if words[j] >> 26 == 0x0B:  # sltiu
