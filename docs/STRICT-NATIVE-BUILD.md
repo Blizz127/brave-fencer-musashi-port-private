@@ -249,3 +249,12 @@ Increment 11 (strict only):
   the call's result, and the function address appears in no aligned data
   word (member or main EXE). Callers that test the result keep the `ub`
   refusal (800CFD68 was fixed in clean-room C instead).
+
+Increment 13 (strict only):
+- **Struct assignment:** a mem copy whose global/local end has one named
+  pointer-bearing type and whose constant length is that type's host size
+  gets the guest-layout size. Other host-sized copies and fills are still
+  refused.
+- **Symbol-binding asm:** file-scope `.globl`/`.set` asm that binds a symbol
+  to a retail address is dropped when the IR never names that symbol. Other
+  module asm is refused.

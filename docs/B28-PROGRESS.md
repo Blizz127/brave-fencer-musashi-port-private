@@ -168,6 +168,18 @@ Increment 12 (driver HLE, strict only):
 - First stop: `guest_pc=80144b9c` at frame ~1200, refused as `layout`
   (aggregate copy/fill sized with host pointer width).
 
+Increment 13 (generator, strict only):
+- Struct assignment: an llvm.memcpy/memmove whose global or local end has one
+  named pointer-bearing type, with a constant length equal to that type's
+  host size, is resized to the guest-layout size (`llvm_type_layout`).
+  80144B9C (`D_80078E50 = *ent`, 48 -> 36 bytes) is the first case.
+- `strip_symbol_binding_asm` drops file-scope `.globl X` / `.set X, 0x...`
+  asm that only bound gcc's memcpy library call to the retail address. Left
+  in, it made host `memcpy` an absolute symbol and broke the link. Any other
+  module asm, or a direct call to the bound symbol, is refused (`symbols`).
+- The overlay lane is now 2617/3269. First stop: `guest_pc=801814e4`
+  (sc02_0031), refused as `escape` (`(s32)&local` passed as an int).
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits

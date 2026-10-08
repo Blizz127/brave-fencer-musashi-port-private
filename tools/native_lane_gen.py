@@ -951,6 +951,70 @@ def narrow_pointer_cells(ir):
     return "\n".join(out) + "\n"
 
 
+
+def llvm_type_layout(ty, types, ptr_bytes):
+    """(size, align) of an LLVM type under the x86-64 data layout, with
+    `ptr` taken as ptr_bytes wide (8 on the host, 4 for guest layout).
+    None when the type is not understood."""
+    ty = ty.strip()
+    if ty == "ptr":
+        return ptr_bytes, ptr_bytes
+    m = re.fullmatch(r"i(\d+)", ty)
+    if m:
+        bits = int(m.group(1))
+        size = {1: 1, 8: 1, 16: 2, 32: 4, 64: 8}.get(bits)
+        return (size, size) if size else None
+    if ty in ("float", "double"):
+        return (4, 4) if ty == "float" else (8, 8)
+    m = re.fullmatch(r"\[(\d+) x (.*)\]", ty)
+    if m:
+        el = llvm_type_layout(m.group(2), types, ptr_bytes)
+        return (int(m.group(1)) * el[0], el[1]) if el else None
+    if ty in types:
+        return llvm_type_layout(types[ty], types, ptr_bytes)
+    packed = ty.startswith("<{") and ty.endswith("}>")
+    if packed or (ty.startswith("{") and ty.endswith("}")):
+        inner = ty[2:-2] if packed else ty[1:-1]
+        off, align = 0, 1
+        for field in split_top(inner):
+            fl = llvm_type_layout(field, types, ptr_bytes)
+            if fl is None:
+                return None
+            fa = 1 if packed else fl[1]
+            off = (off + fa - 1) // fa * fa + fl[0]
+            align = max(align, fa)
+        return (off + align - 1) // align * align, align
+    return None
+
+
+def strip_symbol_binding_asm(ir):
+    """Strict only (B28): drop file-scope asm that only binds a symbol to a
+    retail address (`.globl memcpy` / `.set memcpy, 0x8005C324`). The vendor
+    C uses it so gcc-2.7.2's struct-copy library call lands on the retail
+    memcpy; the lane's struct copy is an llvm.memcpy intrinsic, and an
+    absolute host `memcpy` would break the link. Any other module asm, or a
+    direct call to the bound symbol, is refused."""
+    names = set()
+    out = []
+    for line in ir.splitlines():
+        m = re.match(r'^module asm "(.*)"$', line)
+        if not m:
+            out.append(line)
+            continue
+        text = m.group(1).strip()
+        g = re.fullmatch(r"\.globl\s+([A-Za-z_][\w$]*)", text)
+        st = re.fullmatch(r"\.set\s+([A-Za-z_][\w$]*)\s*,\s*0x[0-9A-Fa-f]+", text)
+        if not (g or st) and text:
+            raise Reject("symbols", f"module asm {text[:60]}")
+        if g or st:
+            names.add((g or st).group(1))
+    body = "\n".join(out)
+    for n in names:
+        if re.search(r"@" + re.escape(n) + r"\b", body):
+            raise Reject("symbols", f"direct use of asm-bound symbol {n}")
+    return body + "\n"
+
+
 def narrow_aggregate_pointers(ir):
     """Strict only (B28): give pointer-bearing aggregates their guest layout.
     Guest pointers are 32-bit, so in every named type and array type a `ptr`
@@ -968,6 +1032,32 @@ def narrow_aggregate_pointers(ir):
     # auto-init of a local) is sized the same on host and guest
     alloca_types = dict(re.findall(r"^\s*(%[\w.\"$]+) = alloca (.*?), align \d+", ir, flags=re.M))
     plain = {n for n, t in alloca_types.items() if not type_has_ptr(t, types)}
+    # a copy whose end is a global or local of one named pointer-bearing
+    # type and whose constant length is that type's host size is a whole
+    # struct assignment: it gets the guest-layout size (B28)
+    typed = dict(alloca_types)
+    typed.update(re.findall(r"^(@[\w.$\"]+) = (?:external |internal |private |dso_local |common )*global (%[\w.\"$]+)\b", ir, flags=re.M))
+    copy_lines = []
+    for line in ir.splitlines():
+        cm = re.search(r"call void @llvm\.mem(?:cpy|move)[\w.]*\(ptr (?:align \d+ )?([%@][\w.\"$]+), "
+                       r"ptr (?:align \d+ )?([%@][\w.\"$]+), i64 (\d+), i1 false\)", line)
+        if not cm:
+            copy_lines.append(line)
+            continue
+        ends = {typed[n] for n in (cm.group(1), cm.group(2)) if n in typed}
+        ty = next(iter(ends)) if len(ends) == 1 else None
+        if ty and ty in types and type_has_ptr(ty, types):
+            host = llvm_type_layout(ty, types, 8)
+            guest = llvm_type_layout(ty, types, 4)
+            if host and guest and host[0] == int(cm.group(3)):
+                line = (line[:cm.start()] +
+                        f"call void @llvm.memcpy.p0.p0.i64(ptr align 1 {cm.group(1)}, "
+                        f"ptr align 1 {cm.group(2)}, i64 {guest[0]}, i1 false)" + line[cm.end():])
+                if "memmove" in cm.group(0):
+                    line = line.replace("@llvm.memcpy.p0.p0.i64", "@llvm.memmove.p0.p0.i64", 1)
+                line += " ; strict-struct-assign"
+        copy_lines.append(line)
+    ir = "\n".join(copy_lines) + "\n"
     out = []
     for line in ir.splitlines():
         if re.match(r"^%[\w.\"$]+ = type ", line):
@@ -985,6 +1075,8 @@ def narrow_aggregate_pointers(ir):
         if re.search(r"call .*@llvm\.mem(?:cpy|move|set)", line):
             ms = re.search(r"@llvm\.memset[\w.]*\(ptr (?:align \d+ )?(%[\w.\"$]+),", line)
             if ms and ms.group(1) in plain:
+                continue
+            if line.endswith("; strict-struct-assign"):
                 continue
             raise Reject("layout", "aggregate copy/fill sized with host pointer width")
     return ir, True
@@ -2143,6 +2235,7 @@ def build_one(entry, out, symbols, hooks, clang, info=None):
             raise Reject("compile", (r.stderr.strip().splitlines() or ["?"])[0][:160])
         ir = o0.read_text()
         if STRICT:
+            ir = strip_symbol_binding_asm(ir)
             ir, _ = narrow_aggregate_pointers(ir)
         check_layout(ir)
         words = retail_words(vram, size, info)
