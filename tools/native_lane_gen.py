@@ -900,6 +900,10 @@ def narrow_aggregate_pointers(ir):
     if not any(type_has_ptr(t, types) for t in types.values()) and \
             not re.search(r"\[\d+ x ptr\]|getelementptr (?:inbounds |nuw |nusw )*ptr,", ir):
         return ir, False
+    # allocas whose type holds no pointer: a memset of one (the zero
+    # auto-init of a local) is sized the same on host and guest
+    alloca_types = dict(re.findall(r"^\s*(%[\w.\"$]+) = alloca (.*?), align \d+", ir, flags=re.M))
+    plain = {n for n, t in alloca_types.items() if not type_has_ptr(t, types)}
     out = []
     for line in ir.splitlines():
         if re.match(r"^%[\w.\"$]+ = type ", line):
@@ -913,8 +917,12 @@ def narrow_aggregate_pointers(ir):
             line = re.sub(r"getelementptr ((?:inbounds |nuw |nusw )*)ptr,", r"getelementptr \1i32,", line)
         out.append(line)
     ir = "\n".join(out) + "\n"
-    if re.search(r"@llvm\.mem(?:cpy|move|set)", ir):
-        raise Reject("layout", "aggregate copy/fill sized with host pointer width")
+    for line in ir.splitlines():
+        if re.search(r"call .*@llvm\.mem(?:cpy|move|set)", line):
+            ms = re.search(r"@llvm\.memset[\w.]*\(ptr (?:align \d+ )?(%[\w.\"$]+),", line)
+            if ms and ms.group(1) in plain:
+                continue
+            raise Reject("layout", "aggregate copy/fill sized with host pointer width")
     return ir, True
 
 

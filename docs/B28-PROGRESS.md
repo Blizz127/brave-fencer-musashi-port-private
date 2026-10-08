@@ -32,6 +32,20 @@ Increment 1:
   draw reaches the display area (OT draw / DrawOTag path, fade, or display
   origin).
 
+Increment 2:
+- DMA4 completion IRQ (strict), sliced guest time, and libsnd/libspu VAB HLE
+  (see the NATIVE-FRAME-DRIVER.md B28 increment 2 section).
+- The logo overlay main_0001 finishes. State 6 draws 32 prims around frame 500.
+- main_0004 loads about 50 frames later. First stop:
+  `guest_pc=800ceec8`, the main_0004 state dispatcher (table 800D3598 on
+  u16 800B99E4). It is called every frame from 80010F80.
+- main_0004 has no C in the repo (only word exports) and nothing upstream.
+  Its functions need clean-room C under `src/overlays/main_0004/` and a
+  `main_0004` line in `config/lane_strict_overlay_allow.txt`.
+- Disassemble overlays with `/tmp/cr/disov.py VRAM LEN extracted/overlays/main/0004.bin 800ce5f8`.
+  This is dis2.py with a member file and base argument; rebuild it from
+  dis2.py if /tmp is gone.
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits

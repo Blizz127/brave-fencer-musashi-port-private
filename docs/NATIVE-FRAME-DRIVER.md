@@ -470,3 +470,31 @@ All rows below were written from the retail disassembly:
     SpuWrite 8003C438, SpuSetTransferStartAddr 8003C498.
   - SpuIsTransferCompleted 8003C4F0: with flag 1 it waits through
     `bios_wait_event`, which is an interrupt point.
+
+### B28 increment 2: logo load completes (2026-10-07)
+
+- **DMA4 completion (strict only):** the SPU DMA CHCR write in
+  `native_boot.c` now raises the DMA4 completion interrupt after clearing the
+  busy bit. Before this, the loader callback 8002FC64 saw
+  `SpuIsTransferCompleted(0)` fail, aborted the read and restarted it, so the
+  logo overlay looped at state 5.
+- **Guest time slicing:** when the clock provides `spend`, `vsync_point` now
+  advances guest time in 16-line slices (2146 cycles per line, 263 lines per
+  field) and polls IRQs after each slice. Without `spend` it falls back to the
+  old `vblank` path.
+- **libsnd/libspu VAB HLE (from disassembly):**
+  - Memory: _spu_gcSPU 800416A8, SpuMalloc 80041E8C, SpuFree 8004162C.
+  - VAB open and close: SsVabOpenHead 80041A20 (core 80041AB0), the sticky
+    variants 80041A50/80041A80, SsVabClose 800415A8, and 800419B0.
+  - VAB transfer: SsVabTransBodyPartly 80042154, SpuSetTransferMode 800422B4,
+    SpuWritePartly 800422E8, SsVabTransCompleted 80042374.
+  - Queries: _SsVmSetVab 800414E4, SsUtGetVagAtr 8003F144, SsUtGetVagAddr
+    8003F380.
+- **Traces:**
+  - `MUSASHI_DRIVER_TRACE=N` prints a FRAME_TRACE line every N frames
+    (overlay state, prims, loader and CD stream state).
+  - `MUSASHI_CD_SECTOR_TRACE=1` logs each sector read.
+- **Result:** the logo overlay reaches state 6 (32 prims) around frame 500. The
+  next member, main_0004, is loaded about 50 frames later. Strict then stops at
+  its dispatcher 800CEEC8, which has no C yet (the repo holds a word export
+  only).

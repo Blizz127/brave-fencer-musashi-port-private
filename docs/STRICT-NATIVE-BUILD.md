@@ -207,3 +207,12 @@ hybrid lane table stays byte-identical, and the hybrid ctest and guards pass.
 
 Result: 950 or more main functions plus 267 overlay functions are admitted. Strict boot
 runs 2400 driver frames with no strict stop (see docs/B28-PROGRESS.md).
+
+Increment 2 (strict only):
+- **Aggregate pointers:** `narrow_aggregate_pointers` now accepts a `memset`
+  whose destination is an alloca of a pointer-free type (the compiler's
+  auto-initialisation, 80030730). Every other `mem*` call on such an aggregate
+  is still refused as "aggregate copy/fill sized with host pointer width".
+- **DMA4:** the SPU DMA now raises its completion interrupt (see
+  NATIVE-FRAME-DRIVER.md). The boot gets through the logo load and stops in
+  main_0004 at 800CEEC8.

@@ -1138,6 +1138,13 @@ static int cd_write32(void *userdata, uint32_t address, uint32_t value) {
                 fprintf(stderr, "native_boot: SPU_DMA FAILED src=%p madr=%08x words=%u\n", (void*)src, madr, total_words);
             }
             boot->spu_dma_chcr &= ~0x01000000u;
+#ifdef MUSASHI_STRICT_NATIVE
+            /* Strict (B28): the transfer finished, so raise the DMA4
+             * completion (DICR flag, I_STAT bit 3) as the hardware does;
+             * libspu's _spu_dma_irq then delivers the transfer event that
+             * SpuIsTransferCompleted tests. */
+            (void)musashi_dma_controller_complete(&boot->dma, 4u);
+#endif
         }
     } else if (!musashi_cd_dma3_write32(boot->cd_dma,address,value)) {
         MusashiCdDma3State state;

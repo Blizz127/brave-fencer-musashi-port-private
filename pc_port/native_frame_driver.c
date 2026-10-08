@@ -1001,6 +1001,12 @@ static int32_t cd_getsector(uint32_t madr, uint32_t size) {
     cd_w32(CD_C_BCR, size | 0x10000u);
     (void)cd_wait_fifo_then(0x11000000u, 1);
     cd_w32(CD_C_COMDELAY, 0x1325u);
+    if (getenv("MUSASHI_CD_SECTOR_TRACE") && size == 3u)
+        fprintf(stderr, "native_boot: CD_SECTOR hdr=%08x want=%d frame=%lu mode=%d rs=%d pac=%u/%u "
+                "remain=%d busy=%d lst=%d dsz=%d\n", rd32(madr),
+                (int)rd32(0x800AE7ACu), (unsigned long)g_driver.frames, (int)rd32(0x800AE6F8u),
+                (int)rd32(0x800AE74Cu), rd8(0x80079A74u), rd8(0x80079A75u), (int)rd32(0x800AE748u),
+                (int)rd32(0x800AE720u), (int)rd32(0x800AE6F0u), (int)rd32(0x800AE7A8u));
     return 0;
 }
 
@@ -2813,22 +2819,415 @@ SPU_ENTRY(hle_spu_set_transfer_start_addr) {
     }
     return 1;
 }
-SPU_ENTRY(hle_spu_is_transfer_completed) {
+static int32_t spu_is_transfer_completed(int32_t flag) {
     /* 8003C4F0 SpuIsTransferCompleted(flag): I/O mode or no pending DMA -> 1;
      * else TestEvent on the transfer event (flag 1 waits for it) */
-    int32_t r;
-    if (rd32(SP_G0E8) == 1u || rd32(SP_G580) == 1u) { call->r[2] = 1; return 1; }
-    if ((int32_t)call->r[4] == 1) {
+    int32_t r = 0;
+    if (rd32(SP_G0E8) == 1u || rd32(SP_G580) == 1u) return 1;
+    if (flag == 1) {
         (void)bios_wait_event((int32_t)rd32(SP_EVENT));
         wr32(SP_G580, 1);
-        call->r[2] = 1;
         return 1;
     }
     if (!g_driver.ops || !g_driver.ops->bios_event ||
         !g_driver.ops->bios_event(g_driver.ops->user, 0x0Bu, rd32(SP_EVENT), 0, 0, 0, &r))
         driver_stop("TestEvent_refused", 0x8003C4F0u);
     if (r == 1) wr32(SP_G580, 1);
-    call->r[2] = (uint32_t)r;
+    return r;
+}
+SPU_ENTRY(hle_spu_is_transfer_completed) {
+    call->r[2] = (uint32_t)spu_is_transfer_completed((int32_t)call->r[4]);
+    return 1;
+}
+
+/* ---- libspu SPU-RAM allocator and libsnd VAB header open (retail 800416A8,
+ * 80041E8C, 80041A20..80041E88), written from the retail disassembly (B28).
+ * Table 8006B5B0: 8-byte entries {addr | flags, size}; bit 31 free, bit 30
+ * the tail, 0x2FFFFFFF an empty slot; 8006B5AC the tail index, 8006B5A8
+ * the table size. */
+#define MT_E(i) (rd32(SP_MTBL) + (uint32_t)(i) * 8u)
+static void spu_gc(void) {
+    /* 800416A8 _spu_gcSPU */
+    int32_t t1, a2, cnt;
+    uint32_t a3, a1, v1;
+    if ((int32_t)rd32(SP_MCNT) >= 0) {           /* merge adjacent free blocks */
+        t1 = 0;
+        a3 = rd32(SP_MTBL);
+        while (!((int32_t)rd32(SP_MCNT) < t1)) {
+            if (rd32(a3) & 0x80000000u) {
+                a2 = t1 + 1;
+                while (rd32(MT_E(a2)) == 0x2FFFFFFFu) ++a2;
+                a1 = MT_E(a2);
+                v1 = rd32(a1);
+                if ((v1 & 0x80000000u) &&
+                    (v1 & 0x0FFFFFFFu) == (rd32(a3) & 0x0FFFFFFFu) + rd32(a3 + 4u)) {
+                    wr32(a1, 0x2FFFFFFFu);
+                    wr32(a3 + 4u, rd32(a3 + 4u) + rd32(a1 + 4u));
+                    continue;                    /* same entry again */
+                }
+            }
+            a3 += 8u;
+            ++t1;
+        }
+    }
+    cnt = (int32_t)rd32(SP_MCNT);
+    if (cnt >= 0) {                              /* empty sizes become empty slots */
+        uint32_t e = rd32(SP_MTBL);
+        for (t1 = 0; t1 <= cnt; ++t1, e += 8u)
+            if (rd32(e + 4u) == 0) wr32(e, 0x2FFFFFFFu);
+    }
+    cnt = (int32_t)rd32(SP_MCNT);
+    if (cnt >= 0) {                              /* sort by address up to the tail */
+        uint32_t tb = rd32(SP_MTBL), t2 = tb;
+        t1 = 0;
+        for (;;) {
+            if (rd32(t2) & 0x40000000u) break;
+            a2 = t1 + 1;
+            if (!(cnt < a2)) {
+                int32_t t3 = (int32_t)rd32(SP_MCNT);
+                uint32_t a0 = tb + (uint32_t)a2 * 8u;
+                do {
+                    uint32_t w = rd32(a0), a3w;
+                    if (w & 0x40000000u) break;
+                    a3w = rd32(t2);
+                    if ((w & 0x0FFFFFFFu) < (a3w & 0x0FFFFFFFu)) {
+                        uint32_t s0 = rd32(a0 + 4u), s1 = rd32(t2 + 4u);
+                        wr32(t2, w); wr32(t2 + 4u, s0);
+                        wr32(a0, a3w); wr32(a0 + 4u, s1);
+                    }
+                    ++a2;
+                    a0 += 8u;
+                } while (!(t3 < a2));
+            }
+            cnt = (int32_t)rd32(SP_MCNT);
+            ++t1;
+            t2 += 8u;
+            if (cnt < t1) break;
+        }
+    }
+    cnt = (int32_t)rd32(SP_MCNT);
+    if (cnt >= 0) {                              /* move the tail into the first empty slot */
+        uint32_t tb = rd32(SP_MTBL), e = tb;
+        for (t1 = 0;; ++t1, e += 8u) {
+            uint32_t w = rd32(e);
+            if (w & 0x40000000u) break;
+            if (w == 0x2FFFFFFFu) {
+                uint32_t src = tb + (uint32_t)cnt * 8u;
+                wr32(e, rd32(src));
+                wr32(SP_MCNT, (uint32_t)t1);
+                wr32(e + 4u, rd32(src + 4u));
+                break;
+            }
+            cnt = (int32_t)rd32(SP_MCNT);
+            if (cnt < t1 + 1) break;
+        }
+    }
+    t1 = (int32_t)rd32(SP_MCNT) - 1;             /* free blocks before the tail join it */
+    if (t1 >= 0) {
+        uint32_t tb = rd32(SP_MTBL), e = tb + (uint32_t)t1 * 8u;
+        do {
+            uint32_t w = rd32(e), tail;
+            if (!(w & 0x80000000u)) break;
+            tail = rd32(SP_MCNT);
+            wr32(e, (w & 0x0FFFFFFFu) | 0x40000000u);
+            wr32(SP_MCNT, (uint32_t)t1);
+            wr32(e + 4u, rd32(e + 4u) + rd32(tb + tail * 8u + 4u));
+            --t1;
+            e -= 8u;
+        } while (t1 >= 0);
+    }
+}
+
+static int32_t spu_malloc(uint32_t size) {
+    /* 80041E8C SpuMalloc */
+    uint32_t s1 = size, s3 = 0, g = rd32(SP_G57C), sh = rd32(SP_SHIFT) & 31u, a0, w;
+    int32_t s2 = -1, s0, n;
+    if (rd32(SP_REVRSV)) s3 = (0x10000u - rd32(SP_REVADDR)) << sh;
+    a0 = (s1 & ~g) ? s1 + g : s1;
+    s1 = (uint32_t)(((int32_t)a0 >> sh) << sh);
+    if (rd32(rd32(SP_MTBL)) & 0x40000000u) {
+        s2 = 0;
+    } else {
+        spu_gc();
+        n = (int32_t)rd32(SP_MNUM);
+        for (s0 = 0; s0 < n; ++s0) {
+            w = rd32(MT_E(s0));
+            if ((w & 0x40000000u) || ((w & 0x80000000u) && !(rd32(MT_E(s0) + 4u) < s1))) {
+                s2 = s0;
+                break;
+            }
+        }
+    }
+    if (s2 == -1) return -1;
+    {
+        uint32_t e = MT_E(s2), v1 = rd32(e);
+        if (v1 & 0x40000000u) {
+            uint32_t nx;
+            if (!(s2 < (int32_t)rd32(SP_MNUM))) return -1;
+            if (rd32(e + 4u) - s3 < s1) return -1;
+            nx = MT_E(s2 + 1);
+            wr32(nx, ((rd32(e) & 0x0FFFFFFFu) + s1) | 0x40000000u);
+            wr32(nx + 4u, rd32(e + 4u) - s1);
+            v1 = rd32(e);
+            wr32(SP_MCNT, (uint32_t)(s2 + 1));
+            wr32(e + 4u, s1);
+            wr32(e, v1 & 0x0FFFFFFFu);
+        } else {
+            uint32_t t0 = rd32(e + 4u);
+            if (s1 < t0) {
+                int32_t tail = (int32_t)rd32(SP_MCNT);
+                if (tail < (int32_t)rd32(SP_MNUM)) {
+                    uint32_t te = MT_E(tail), a1 = rd32(te), a0w = rd32(te + 4u);
+                    wr32(te, (v1 + s1) | 0x80000000u);
+                    wr32(te + 4u, t0 - s1);
+                    wr32(SP_MCNT, (uint32_t)(tail + 1));
+                    wr32(te + 8u, a1);
+                    wr32(te + 12u, a0w);
+                }
+            }
+            e = MT_E(s2);
+            v1 = rd32(e);
+            wr32(e + 4u, s1);
+            wr32(e, v1 & 0x0FFFFFFFu);
+        }
+        spu_gc();
+        return (int32_t)rd32(MT_E(s2));
+    }
+}
+
+enum { VAB_SLOT = 0x800B9B40u, VAB_COUNT = 0x800C7CD8u, VAB_HDR = 0x800A5F20u,
+       VAB_PROG = 0x800A5ED8u, VAB_TONE = 0x800A60B0u, VAB_SPU = 0x800C7CE0u,
+       VAB_SIZE = 0x800C7C98u, VAB_MAXPROG = 0x800A6540u };
+
+static int32_t ss_vab_open_head(uint32_t addr, int32_t vabid, uint32_t mode, uint32_t sbaddr) {
+    /* 80041AB0 _SsVabOpenHeadWithMode(addr, vabid, mode, sbaddr) */
+    int32_t s1 = 16, id, i, maxprog, vs, ps;
+    uint32_t sizes[256], a1, prog, tone, vagoff, total, base;
+    if (rd32(SP_G580) != 1u) return -1;
+    wr32(SP_G580, 0);                            /* 800401A0(1) */
+    id = (int16_t)vabid;
+    if (id < 16) {
+        int found = 0;
+        if (id == -1) {
+            for (i = 0; i < 16; ++i)
+                if (!rd8(VAB_SLOT + (uint32_t)i)) { found = 1; s1 = i; break; }
+        } else if (!rd8(VAB_SLOT + (uint32_t)id)) {
+            found = 1;
+            s1 = (int16_t)vabid;
+        }
+        if (found) {
+            wr8(VAB_SLOT + (uint32_t)s1, 1);
+            wr16(VAB_COUNT, (uint16_t)(rd16(VAB_COUNT) + 1u));
+        }
+    }
+    s1 = (int16_t)s1;
+    if (s1 >= 16) { wr32(SP_G580, 1); return -1; }   /* 800401A0(0) */
+    wr32(VAB_HDR + (uint32_t)s1 * 4u, addr);
+    a1 = rd32(addr);
+    if ((a1 >> 8) != 0x564142u) {                /* "VAB" */
+        wr8(VAB_SLOT + (uint32_t)s1, 0);
+        goto fail_count;
+    }
+    wr16(VAB_MAXPROG, ((a1 & 0xFFu) == 112u && (int32_t)rd32(addr + 4u) >= 5) ? 128 : 64);
+    maxprog = (int16_t)rd16(VAB_MAXPROG);
+    if (maxprog < (int32_t)rd16(addr + 18u)) goto fail_slot;
+    prog = addr + 32u;
+    wr32(VAB_PROG + (uint32_t)s1 * 4u, prog);
+    tone = prog + (uint32_t)maxprog * 16u;
+    {
+        uint32_t n = 0;
+        for (i = 0; i < maxprog; ++i) {
+            uint32_t p = prog + (uint32_t)i * 16u;
+            wr32(p + 8u, n);
+            if (rd8(p)) ++n;
+        }
+    }
+    wr32(VAB_TONE + (uint32_t)s1 * 4u, tone);
+    ps = rd16(addr + 18u);
+    vs = rd8(addr + 22u);
+    vagoff = tone + (uint32_t)ps * 512u;
+    total = 0;
+    for (i = 0; i < 256; ++i, vagoff += 2u) {
+        if (i <= vs) {
+            uint32_t v = rd16(vagoff);
+            sizes[i] = (int32_t)rd32(addr + 4u) >= 5 ? v << 3 : v << 2;
+            total += sizes[i];
+        }
+    }
+    if ((mode & 0xFFFFu) == 0) {
+        int32_t m = spu_malloc(total);
+        if (m == -1) goto fail_slot;
+        base = (uint32_t)m;
+    } else {
+        base = sbaddr;
+    }
+    if (0x80000u < base + total) goto fail_slot;
+    wr32(VAB_SPU + (uint32_t)s1 * 4u, base);
+    total = 0;
+    for (i = 0; i <= vs; ++i) {
+        total += sizes[i];
+        wr16(prog + (uint32_t)(i / 2) * 16u + ((i & 1) ? 14u : 12u), (uint16_t)((base + total) >> 3));
+    }
+    wr32(VAB_SIZE + (uint32_t)s1 * 4u, total);
+    wr8(VAB_SLOT + (uint32_t)s1, 2);
+    return s1;
+fail_slot:
+    wr8(VAB_SLOT + (uint32_t)s1, 0);
+fail_count:
+    wr32(SP_G580, 1);                            /* 800401A0(0) */
+    wr16(VAB_COUNT, (uint16_t)(rd16(VAB_COUNT) - 1u));
+    return -1;
+}
+static void spu_free(uint32_t addr) {
+    /* 8004162C SpuFree(addr): mark the block free, then _spu_gcSPU */
+    int32_t i;
+    for (i = 0; i < (int32_t)rd32(SP_MNUM); ++i) {
+        uint32_t w = rd32(MT_E(i));
+        if (w & 0x40000000u) break;
+        if (w == addr) { wr32(MT_E(i), addr | 0x80000000u); break; }
+    }
+    spu_gc();
+}
+static uint32_t spu_write_partly(uint32_t src, uint32_t size) {
+    /* 800422E8 SpuWritePartly(addr, size) */
+    uint32_t addr;
+    if (size > 0x7EFF0u) size = 0x7EFF0u;
+    addr = (uint32_t)rd16(SP_TADDR) << (rd32(SP_SHIFT) & 31u);
+    (void)spu_write_data(src, size);
+    wr16(SP_TADDR, (uint16_t)spu_fset_rxx(-1, addr + size));
+    if (!rd32(SP_TCB)) wr32(SP_G580, 0);
+    return size;
+}
+enum { VAB_TRANS_LEFT = 0x8006BA84u, VAB_TRANS_ID = 0x8006BA88u };
+SPU_ENTRY(hle_spu_free) { spu_free(call->r[4]); return 1; }
+SPU_ENTRY(hle_spu_write_partly) { CD_SP(); call->r[2] = spu_write_partly(call->r[4], call->r[5]); return 1; }
+SPU_ENTRY(hle_spu_set_transfer_mode) {
+    /* 800422B4 SpuSetTransferMode(mode) */
+    wr32(SP_G0E8, call->r[4]);
+    wr32(SP_DMAINIT, call->r[4] == 1u ? 1u : 0u);
+    return 1;
+}
+SPU_ENTRY(hle_ss_vab_close) {
+    /* 800415A8 SsVabClose(id) */
+    int16_t n = (int16_t)call->r[4];
+    if ((uint16_t)n < 16u && rd8(VAB_SLOT + (uint32_t)(int32_t)n) == 1u) {
+        spu_free(rd32(VAB_SPU + (uint32_t)(int32_t)n * 4u));
+        wr8(VAB_SLOT + (uint32_t)(int32_t)n, 0);
+        wr16(VAB_COUNT, (uint16_t)(rd16(VAB_COUNT) - 1u));
+    }
+    return 1;
+}
+SPU_ENTRY(hle_ss_vab_trans_start) {
+    /* 800419B0 (id): a header-open VAB (state 2) becomes loaded (1) */
+    int16_t n = (int16_t)call->r[4];
+    if ((uint16_t)n <= 16u && rd8(VAB_SLOT + (uint32_t)(int32_t)n) == 2u) {
+        wr32(SP_G580, 1);                        /* 800401A0(0) */
+        wr8(VAB_SLOT + (uint32_t)(int32_t)n, 1);
+        call->r[2] = (uint32_t)(int32_t)n;
+    } else {
+        call->r[2] = (uint32_t)-1;
+    }
+    return 1;
+}
+SPU_ENTRY(hle_ss_vab_trans_body_partly) {
+    /* 80042154 SsVabTransBodyPartly(addr, size, id) */
+    uint32_t src = call->r[4], n = call->r[5];
+    int16_t vab = (int16_t)call->r[6], cur;
+    CD_SP();
+    if ((uint16_t)call->r[6] > 16u || rd8(VAB_SLOT + (uint32_t)(int32_t)vab) != 2u) {
+        wr32(SP_G580, 1);
+        call->r[2] = (uint32_t)-1;
+        return 1;
+    }
+    if (!rd32(VAB_TRANS_LEFT)) {
+        wr16(VAB_TRANS_ID, (uint16_t)vab);
+        wr32(VAB_TRANS_LEFT, rd32(VAB_SIZE + (uint32_t)(int32_t)vab * 4u));
+        wr32(SP_G0E8, 0); wr32(SP_DMAINIT, 0);   /* SpuSetTransferMode(0) */
+        {
+            uint32_t a = rd32(VAB_SPU + (uint32_t)(int32_t)vab * 4u);
+            if (a - 0x1010u <= 0x7EFE8u) wr16(SP_TADDR, (uint16_t)spu_fset_rxx(-1, a));
+        }
+    }
+    cur = (int16_t)rd16(VAB_TRANS_ID);
+    if (cur != vab) {
+        wr32(SP_G580, 1);
+        call->r[2] = (uint32_t)-1;
+        return 1;
+    }
+    if (rd32(VAB_TRANS_LEFT) < n) n = rd32(VAB_TRANS_LEFT);
+    wr32(SP_G580, 0);                            /* 800401A0(1) */
+    (void)spu_write_partly(src, n);
+    wr32(VAB_TRANS_LEFT, rd32(VAB_TRANS_LEFT) - n);
+    if (rd32(VAB_TRANS_LEFT)) { call->r[2] = (uint32_t)-2; return 1; }
+    wr16(VAB_TRANS_ID, 0xFFFFu);
+    wr32(VAB_TRANS_LEFT, 0);
+    wr8(VAB_SLOT + (uint32_t)(int32_t)cur, 1);
+    call->r[2] = (uint32_t)(int32_t)cur;
+    return 1;
+}
+SPU_ENTRY(hle_ss_vab_trans_completed) {
+    /* 80042374 SsVabTransCompleted(flag) */
+    call->r[2] = (uint32_t)(int32_t)(int16_t)spu_is_transfer_completed((int16_t)call->r[4]);
+    return 1;
+}
+static int32_t ss_vm_set_vab(uint32_t a0, uint32_t a1) {
+    /* 800414E4 (vab, prog): select the VAB's header, program and tone
+     * tables and the program's first tone index for the libsnd voice code */
+    int32_t id, prog;
+    uint32_t hdr, pt, tt;
+    if ((a0 & 0xFFFFu) >= 16u) return -1;
+    id = (int16_t)a0;
+    if (rd8(VAB_SLOT + (uint32_t)id) != 1u) return -1;
+    prog = (int16_t)a1;
+    if (!(prog < (int16_t)rd16(VAB_MAXPROG))) return -1;
+    hdr = rd32(VAB_HDR + (uint32_t)id * 4u);
+    pt = rd32(VAB_PROG + (uint32_t)id * 4u);
+    tt = rd32(VAB_TONE + (uint32_t)id * 4u);
+    wr8(0x800B9B21u, (uint8_t)a0);
+    wr8(0x800B9B26u, (uint8_t)a1);
+    wr32(0x800A6580u, hdr);
+    wr32(0x800A6578u, pt);
+    wr32(0x800A6584u, tt);
+    wr8(0x800B9B27u, (uint8_t)rd32(pt + (uint32_t)prog * 16u + 8u));
+    return 0;
+}
+SPU_ENTRY(hle_ss_vm_set_vab) { call->r[2] = (uint32_t)ss_vm_set_vab(call->r[4], call->r[5]); return 1; }
+SPU_ENTRY(hle_ss_ut_get_vag_addr) {
+    /* 8003F380 SsUtGetVagAddr(vab, vag): the VAG's SPU address that
+     * SsVabOpenHead stored in program-table slot (vag-1)/2 (+12 odd, +14 even) */
+    int32_t n;
+    if (ss_vm_set_vab((uint32_t)(int32_t)(int16_t)call->r[4], 0) == -1) { call->r[2] = (uint32_t)-1; return 1; }
+    n = ((int32_t)(int16_t)call->r[5] - 1) / 2;
+    call->r[2] = (uint32_t)rd16(rd32(0x800A6578u) + (uint32_t)n * 16u + ((call->r[5] & 1u) ? 12u : 14u)) << 3;
+    return 1;
+}
+SPU_ENTRY(hle_ss_ut_get_vag_atr) {
+    /* 8003F144 SsUtGetVagAtr(vab, prog, tone, attr): copy the tone's
+     * attribute bytes 0..13 and halfwords 16..22 */
+    int32_t id = (int16_t)call->r[4];
+    uint32_t dst = call->r[7], src, k;
+    if (rd8(VAB_SLOT + (uint32_t)id) != 1u) { call->r[2] = (uint32_t)-1; return 1; }
+    (void)ss_vm_set_vab((uint32_t)id, (uint32_t)(int32_t)(int16_t)call->r[5]);
+    src = rd32(0x800A6584u) +
+          (uint32_t)((int32_t)(int16_t)(call->r[6] + (uint32_t)rd8(0x800B9B27u) * 16u) * 32);
+    for (k = 0; k < 14u; ++k) wr8(dst + k, rd8(src + k));
+    for (k = 16u; k < 24u; k += 2u) wr16(dst + k, rd16(src + k));
+    call->r[2] = 0;
+    return 1;
+}
+SPU_ENTRY(hle_spu_gc) { (void)call; spu_gc(); return 1; }
+SPU_ENTRY(hle_spu_malloc) { call->r[2] = (uint32_t)spu_malloc(call->r[4]); return 1; }
+SPU_ENTRY(hle_ss_vab_open_head_mode) {
+    call->r[2] = (uint32_t)ss_vab_open_head(call->r[4], (int32_t)call->r[5], call->r[6], call->r[7]);
+    return 1;
+}
+SPU_ENTRY(hle_ss_vab_open_head) {       /* 80041A20 SsVabOpenHead(addr, id) */
+    call->r[2] = (uint32_t)(int32_t)(int16_t)ss_vab_open_head(call->r[4], (int16_t)call->r[5], 0, 0);
+    return 1;
+}
+SPU_ENTRY(hle_ss_vab_open_head_sticky) { /* 80041A50 / 80041A80 (addr, id, sbaddr) */
+    call->r[2] = (uint32_t)(int32_t)(int16_t)ss_vab_open_head(call->r[4], (int16_t)call->r[5], 1,
+                                                              call->r[6]);
     return 1;
 }
 
@@ -3093,6 +3492,22 @@ static const MusashiNativeLaneEntry k_driver_entries[] = {
     {0x800538BCu, 0, hle_set_color_matrix,"SetColorMatrix",      1, 0, 0},
     {0x800595FCu, 0, hle_draw_sync_callback,"DrawSyncCallback",  1, 1, 0},
     {0x8003D25Cu, 0, hle_spu_get_all_keys_status,"SpuGetAllKeysStatus", 3, 1, 0},
+    {0x800416A8u, 0, hle_spu_gc,          "_spu_gcSPU",          0, 0, 0},
+    {0x800414E4u, 0, hle_ss_vm_set_vab,   "_SsVmSetVab",         2, 1, 0},
+    {0x8003F144u, 0, hle_ss_ut_get_vag_atr, "SsUtGetVagAtr",     4, 1, 0},
+    {0x8003F380u, 0, hle_ss_ut_get_vag_addr, "SsUtGetVagAddr",   2, 1, 0},
+    {0x8004162Cu, 0, hle_spu_free,        "SpuFree",             1, 0, 0},
+    {0x800415A8u, 0, hle_ss_vab_close,    "SsVabClose",          1, 0, 0},
+    {0x800419B0u, 0, hle_ss_vab_trans_start, "SsVabTransBody(start)", 1, 1, 0},
+    {0x80042154u, 0, hle_ss_vab_trans_body_partly, "SsVabTransBodyPartly", 3, 1, 0},
+    {0x800422B4u, 0, hle_spu_set_transfer_mode, "SpuSetTransferMode", 1, 0, 0},
+    {0x800422E8u, 0, hle_spu_write_partly, "SpuWritePartly",     2, 1, 0},
+    {0x80042374u, 0, hle_ss_vab_trans_completed, "SsVabTransCompleted", 1, 1, 0},
+    {0x80041E8Cu, 0, hle_spu_malloc,      "SpuMalloc",           1, 1, 0},
+    {0x80041AB0u, 0, hle_ss_vab_open_head_mode, "_SsVabOpenHeadWithMode", 4, 1, 0},
+    {0x80041A20u, 0, hle_ss_vab_open_head, "SsVabOpenHead",      2, 1, 0},
+    {0x80041A50u, 0, hle_ss_vab_open_head_sticky, "SsVabOpenHeadSticky", 3, 1, 0},
+    {0x80041A80u, 0, hle_ss_vab_open_head_sticky, "SsVabFakeHead",   3, 1, 0},
     {0x8003AE14u, 0, hle_spu_write_data,  "_spu_write",          2, 1, 0},
     {0x8003AF4Cu, 0, hle_spu_fset_rxx,    "_spu_FsetRXX",        2, 1, 0},
     {0x8003C438u, 0, hle_spu_write,       "SpuWrite",            2, 1, 0},
@@ -3133,9 +3548,26 @@ static void vsync_point(void) {
     if (g_driver.ops && g_driver.ops->frame_end &&
         g_driver.ops->frame_end(g_driver.ops->user, fields))
         g_driver.quit = 1;
-    if (fields && g_driver.ops && g_driver.ops->vblank &&
-        !g_driver.ops->vblank(g_driver.ops->user, fields))
+    /* Guest time for the waited fields moves in 16-line slices with an
+     * interrupt point after each, so per-sector CD interrupts (2x speed: one
+     * every ~105 lines) are serviced before the next sector replaces the
+     * buffer, as the retail VSync busy-wait allows (B28; whole-field steps
+     * dropped sectors and the loader retried forever). */
+    if (fields && g_driver.ops && g_driver.ops->spend) {
+        while (fields--) {
+            unsigned lines = 263u;
+            while (lines) {
+                unsigned n = lines < 16u ? lines : 16u;
+                if (!g_driver.ops->spend(g_driver.ops->user, 2146u * n))
+                    driver_stop("vblank_refused", F_VSYNC);
+                lines -= n;
+                driver_irq_poll();
+            }
+        }
+    } else if (fields && g_driver.ops && g_driver.ops->vblank &&
+               !g_driver.ops->vblank(g_driver.ops->user, fields)) {
         driver_stop("vblank_refused", F_VSYNC);
+    }
     driver_irq_poll();
 }
 
@@ -3208,6 +3640,22 @@ static void main_frame(void) {
     (void)call0(F_8001AF34);
     (void)call0(F_8001513C);
     ++g_driver.frames;
+    {
+        /* MUSASHI_DRIVER_TRACE=N: one progress line every N frames */
+        static long every = -1;
+        if (every < 0) { const char *e = getenv("MUSASHI_DRIVER_TRACE"); every = e ? atol(e) : 0; }
+        if (every > 0 && g_driver.frames % (unsigned long)every == 0)
+            fprintf(stderr, "native_boot: FRAME_TRACE frame=%lu alt=%u ovl_state=%u prims=%u "
+                    "disp=%u draw=%u st3b4=%04x ld=%u ld_n=%u ovl_flag=%u cdq=%u/%u cderr=%u cdst=%02x strm=%08x/%u lst=%d sync=%d rd=%d want=%d hdr=%08x %08x %08x\n", (unsigned long)g_driver.frames,
+                    rd8(MAIN_STATE + ST_ALT_FRAME), rd16(0x800B99E4u),
+                    rd32(PRIM_CURSOR) - (PRIM_AREA + buffer_index() * 80000u),
+                    rd16(MAIN_STATE + ST_DISP_CUR), rd16(MAIN_STATE + ST_DRAW_CUR),
+                    rd16(MAIN_STATE + 0xA3B4u), rd32(0x800BA1B4u), rd32(0x800C7C60u),
+                    rd32(0x800D3C0Cu), rd32(0x8006AEF8u), rd32(0x8006AEFCu), rd8(0x80076214u),
+                    rd8(0x8007620Cu), rd32(0x800AE708u), rd32(0x800AE7B0u),
+                    (int)rd32(0x800AE6F0u), (int)rd32(0x800AE6E8u), (int)rd32(0x800AE734u + 0x18u),
+                    (int)rd32(0x800AE7ACu), rd32(0x80078E40u), rd32(0x80078E44u), rd32(0x80078E48u));
+    }
 }
 
 /* crt0 (80010000): the BSS clear, stack and heap globals, then main. */
