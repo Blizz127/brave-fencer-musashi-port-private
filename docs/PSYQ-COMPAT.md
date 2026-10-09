@@ -9,12 +9,12 @@ and every `asm/overlays/*/*.s`); 63200 `jal`/`j` call sites into the Psy-Q range
 
 | Status | Entry points | Call sites |
 |---|---|---|
-| psycross | 33 (15.6%) | 19691 (31.2%) |
+| psycross | 34 (16.0%) | 19693 (31.2%) |
 | hle | 52 (24.5%) | 29895 (47.3%) |
-| stub-TBD | 127 (59.9%) | 13614 (21.5%) |
-| **covered (psycross + hle)** | **85 / 212 (40.1%)** | **49586 / 63200 (78.5%)** |
+| stub-TBD | 126 (59.4%) | 13612 (21.5%) |
+| **covered (psycross + hle)** | **86 / 212 (40.6%)** | **49588 / 63200 (78.5%)** |
 
-Named: 135 / 212 entry points (vendor symbols, libgte instruction shape, or 28 inferred
+Named: 136 / 212 entry points (vendor symbols, libgte instruction shape, or 29 inferred
 from call context: see `INFERRED` in tools/psyq_compat_status.py). The rest are listed
 by address and Psy-Q object for later naming.
 
@@ -143,7 +143,7 @@ by address and Psy-Q object for later naming.
 | `0x800527C4` | GsInitGraph2 | libgs8 |  | 2 | 2 | stub-TBD | display/draw init over libgs globals and libgpu: low call count |
 | `0x80052D90` | GsInitCoordinate2 | libgs4 |  | 158 | 137 | hle | guest GsCOORDINATE2 fields |
 | `0x80052E38` | GsSetLsMatrix | libgs4 |  | 163 | 136 | psycross | GTE bridge: SetRotMatrix + SetTransMatrix |
-| `0x80052F04` | *unnamed* | libgs4 |  | 2 | 1 | stub-TBD | libgs internal (TMD object sort/preset, BG and clip setup): large or rarely called; guest code for now |
+| `0x80052F04` | GsSetLightMatrix | libgs4 |  | 2 | 1 | psycross | GTE bridge: MulMatrix2(GsLIGHTWSMATRIX, mp) + SetLightMatrix(mp) |
 | `0x80053178` | *unnamed* | libgs4 | GS_107.o | 1 | 1 | stub-TBD | libgs internal (TMD object sort/preset, BG and clip setup): large or rarely called; guest code for now |
 | `0x80053218` | *unnamed* | libgs4 | GS_107.o | 4 | 2 | stub-TBD | libgs internal (TMD object sort/preset, BG and clip setup): large or rarely called; guest code for now |
 | `0x80053290` | GsMapModelingData | libgs4 |  | 10 | 4 | hle | relocates a TMD object table in guest RAM once |

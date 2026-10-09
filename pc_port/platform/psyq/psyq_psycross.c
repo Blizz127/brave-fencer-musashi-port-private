@@ -585,6 +585,26 @@ int bfm_psyq_MulMatrix2(uint32_t *r) {
     return 1;
 }
 
+/* 80052F04 GsSetLightMatrix(mp) (libgs4): retail is
+ * SetLightMatrix(MulMatrix2(&GsLIGHTWSMATRIX, mp)) with GsLIGHTWSMATRIX at
+ * D_800A63F0, so mp's rotation becomes LIGHTWS * mp (t kept, pad = the sign
+ * extension of m[2][2], as MulMatrix2 stores it), the GTE rotation matrix is
+ * left at LIGHTWS (MulMatrix2's ctc2 $0..$4) and the light matrix (ctc2
+ * $8..$12) is the product. v0 stays mp. */
+#define GS_LIGHTWSMATRIX 0x800A63F0u
+int bfm_psyq_GsSetLightMatrix(uint32_t *r) {
+    uint32_t mp = A(0);
+    MATRIX *lw = (MATRIX *)P(GS_LIGHTWSMATRIX, sizeof(MATRIX));
+    MATRIX *m = (MATRIX *)P(mp, sizeof(MATRIX));
+    if (!lw || !m) return 0;
+    GTE_BEGIN();
+    mul_rot_only(m, lw, m, 1);
+    SetLightMatrix(m);
+    GTE_END(3);
+    r[2] = mp;
+    return 1;
+}
+
 /* ---- PushMatrix / PopMatrix on the retail guest-RAM stack ----
  * func_8004867C / func_8004871C: byte offset at D_8006DC18, 20 x 32-byte
  * slots at D_8006DC1C; a slot holds cop2 control 0..7 (rotation + translation)

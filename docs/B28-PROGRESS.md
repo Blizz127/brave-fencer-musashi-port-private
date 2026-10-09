@@ -1017,6 +1017,20 @@ Increment 32 (generator, strict only):
 - Gate: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0. regr LOST [], GAINED main 80020598.
 - Strict stop moves 80020598 -> 80052F04 (not_in_lane). Frame 1200: prims=0 disp=1 draw=0.
 
+## Increment 70 — PsyQ GsSetLightMatrix (80052F04) as a native PsyCross wrapper
+
+- Stop 80052F04 is libgs4 (PsyQ range, never in the lane; compat row was a STUB). Retail body:
+  `SetLightMatrix(MulMatrix2(&D_800A63F0 /* GsLIGHTWSMATRIX */, mp))`.
+- `bfm_psyq_GsSetLightMatrix` (psyq_psycross.c): MulMatrix2 via the existing retail-exact
+  `mul_rot_only` (t kept, pad = sign of m[2][2]; leaves RT = LIGHTWS like retail's ctc2 $0..$4), then
+  PsyCross SetLightMatrix; v0 = mp. Native C under the GTE lease, no interpretation.
+- Compat table / status / calls.json / PSYQ-COMPAT.md updated by hand (vendor tree and local asm are
+  not on the box, so tools/psyq_callsites.py cannot regenerate): psycross 34, stub-TBD 126, covered
+  86 / 212, call sites 49588 / 63200; GsSetLightMatrix is the 29th inferred name.
+- Gate: build=0, TABLE_IDENTICAL, ctest 37/37 (incl. psyq table consistency), m2c=0. regr LOST [],
+  GAINED [].
+- Strict stop moves 80052F04 -> 80027BF0 (not_in_lane). Frame 1200: prims=0 disp=1 draw=0.
+
 ## Next
 
 - Admit or reshape sc02_0031 `func_801831B4` (currently `abi`). Likely next

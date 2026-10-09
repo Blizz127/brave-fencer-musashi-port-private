@@ -1240,9 +1240,9 @@
   },
   {
    "addr": "0x80052F04",
-   "name": "func_80052F04",
-   "name_source": "unnamed",
-   "evidence": null,
+   "name": "GsSetLightMatrix",
+   "name_source": "inferred",
+   "evidence": "SetLightMatrix(MulMatrix2(&D_800A63F0, mp)) (repo src/main/80052f04.c; GsLIGHTWSMATRIX)",
    "segment": "libgs4",
    "object": null,
    "callsites": 2,
