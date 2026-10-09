@@ -1542,6 +1542,14 @@ Increment 32 (generator, strict only):
 - Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [],
   27 entries gained. Run: 3000 frames, no stop.
 
+### Inc 108: sc02_0035 8017CD9C..8017D05C (11 vendor imports)
+
+- The probe stopped at sc02_0035 8017CD9C, which is in ov_SC02_035_jr_8017BEBC.c
+  but below the range inc 106 imported. Rerunning that TU over the full member
+  gave 11 more byte-identical functions.
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [].
+  Run: 3000 frames, no stop.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for
