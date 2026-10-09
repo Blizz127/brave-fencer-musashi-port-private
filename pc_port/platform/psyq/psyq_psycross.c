@@ -12,6 +12,9 @@
  * those go through host temporaries and are stored back as 32-bit words. */
 #include "bfm_psyq_compat.h"
 #include "../bfm_plat_mods.h"
+#ifdef MUSASHI_STRICT_NATIVE
+#include "../../include/musashi_strict.h"
+#endif
 
 #include <psx/types.h>
 #include <psx/libgte.h>
@@ -307,6 +310,15 @@ int bfm_psyq_RotTransPers4(uint32_t *r) {
  * MATCH C in overlays embeds PsyQ inline_c.h as asm. The lane rewrites those
  * #defines to these helpers, which run the same MTC2/doCOP2/MFC2 sequence on
  * the shared gteRegs bank under the psyq GTE bridge (same lease as libgte). */
+/* Fail closed: without the GTE lease a helper must not silently skip its
+ * COP2 work (the lane would continue on stale registers). */
+static int lane_gte_lease(void) {
+    if (bfm_psyq_gte_begin()) return 1;
+#ifdef MUSASHI_STRICT_NATIVE
+    musashi_strict_abort("psyq_refused", "lane_gte_inline", 0);
+#endif
+    return 0;
+}
 static void lane_gte_ldv_slot(int slot, const void *p) {
     const uint16_t *s = (const uint16_t *)p;
     uint32_t xy = (uint32_t)s[0] | ((uint32_t)s[1] << 16);
@@ -319,12 +331,12 @@ static void lane_gte_store32(void *p, uint32_t v) {
     b[2] = (uint8_t)(v >> 16); b[3] = (uint8_t)(v >> 24);
 }
 void musashi_lane_gte_ldv0(const void *r0) {
-    if (!bfm_psyq_gte_begin()) return;
+    if (!lane_gte_lease()) return;
     lane_gte_ldv_slot(0, r0);
     bfm_psyq_gte_end(0);
 }
 void musashi_lane_gte_ldv3(const void *r0, const void *r1, const void *r2) {
-    if (!bfm_psyq_gte_begin()) return;
+    if (!lane_gte_lease()) return;
     lane_gte_ldv_slot(0, r0);
     lane_gte_ldv_slot(1, r1);
     lane_gte_ldv_slot(2, r2);
@@ -332,34 +344,34 @@ void musashi_lane_gte_ldv3(const void *r0, const void *r1, const void *r2) {
 }
 void musashi_lane_gte_ldv3c(const void *r0) {
     const uint8_t *b = (const uint8_t *)r0;
-    if (!bfm_psyq_gte_begin()) return;
+    if (!lane_gte_lease()) return;
     lane_gte_ldv_slot(0, b + 0);
     lane_gte_ldv_slot(1, b + 8);
     lane_gte_ldv_slot(2, b + 16);
     bfm_psyq_gte_end(0);
 }
 void musashi_lane_gte_rtps(void) {
-    if (!bfm_psyq_gte_begin()) return;
+    if (!lane_gte_lease()) return;
     doCOP2(0x0180001);
     bfm_psyq_gte_end(1);
 }
 void musashi_lane_gte_rtpt(void) {
-    if (!bfm_psyq_gte_begin()) return;
+    if (!lane_gte_lease()) return;
     doCOP2(0x0280030);
     bfm_psyq_gte_end(1);
 }
 void musashi_lane_gte_nclip(void) {
-    if (!bfm_psyq_gte_begin()) return;
+    if (!lane_gte_lease()) return;
     doCOP2(0x01400006);
     bfm_psyq_gte_end(1);
 }
 void musashi_lane_gte_stsxy(void *r0) {
-    if (!bfm_psyq_gte_begin()) return;
+    if (!lane_gte_lease()) return;
     lane_gte_store32(r0, MFC2(14));
     bfm_psyq_gte_end(0);
 }
 void musashi_lane_gte_stsxy3(void *r0, void *r1, void *r2) {
-    if (!bfm_psyq_gte_begin()) return;
+    if (!lane_gte_lease()) return;
     lane_gte_store32(r0, MFC2(12));
     lane_gte_store32(r1, MFC2(13));
     lane_gte_store32(r2, MFC2(14));
@@ -367,21 +379,21 @@ void musashi_lane_gte_stsxy3(void *r0, void *r1, void *r2) {
 }
 void musashi_lane_gte_stsxy3c(void *r0) {
     uint8_t *b = (uint8_t *)r0;
-    if (!bfm_psyq_gte_begin()) return;
+    if (!lane_gte_lease()) return;
     lane_gte_store32(b + 0, MFC2(12));
     lane_gte_store32(b + 4, MFC2(13));
     lane_gte_store32(b + 8, MFC2(14));
     bfm_psyq_gte_end(0);
 }
 void musashi_lane_gte_stsz3(void *r0, void *r1, void *r2) {
-    if (!bfm_psyq_gte_begin()) return;
+    if (!lane_gte_lease()) return;
     lane_gte_store32(r0, MFC2(17));
     lane_gte_store32(r1, MFC2(18));
     lane_gte_store32(r2, MFC2(19));
     bfm_psyq_gte_end(0);
 }
 void musashi_lane_gte_stsz4(void *r0, void *r1, void *r2, void *r3) {
-    if (!bfm_psyq_gte_begin()) return;
+    if (!lane_gte_lease()) return;
     lane_gte_store32(r0, MFC2(16));
     lane_gte_store32(r1, MFC2(17));
     lane_gte_store32(r2, MFC2(18));
@@ -389,17 +401,17 @@ void musashi_lane_gte_stsz4(void *r0, void *r1, void *r2, void *r3) {
     bfm_psyq_gte_end(0);
 }
 void musashi_lane_gte_stszotz(void *r0) {
-    if (!bfm_psyq_gte_begin()) return;
+    if (!lane_gte_lease()) return;
     lane_gte_store32(r0, (uint32_t)((int32_t)(MFC2(19) & 0xFFFFu) >> 2));
     bfm_psyq_gte_end(0);
 }
 void musashi_lane_gte_stflg(void *r0) {
-    if (!bfm_psyq_gte_begin()) return;
+    if (!lane_gte_lease()) return;
     lane_gte_store32(r0, CFC2(31));
     bfm_psyq_gte_end(0);
 }
 void musashi_lane_gte_stopz(void *r0) {
-    if (!bfm_psyq_gte_begin()) return;
+    if (!lane_gte_lease()) return;
     lane_gte_store32(r0, MFC2(24));
     bfm_psyq_gte_end(0);
 }

@@ -347,6 +347,37 @@ def split_operands(text):
     return out
 
 
+def dead_block_local(text, start, semi, name):
+    """Strict (B28): an empty asm's untied output is dead when it names a
+    local declared in the asm's innermost block and the asm is that block's
+    last statement (only comments/whitespace before the closing brace). The
+    MIPS template emits nothing and no later code reads the variable, so
+    dropping the statement changes no observable value (80149374's
+    `__asm__("" : "=r"(q));` register-kill barrier)."""
+    if not re.fullmatch(r"[A-Za-z_]\w*", name):
+        return False
+    tail = re.sub(r"/\*.*?\*/|//[^\n]*", " ", text[semi + 1:semi + 400], flags=re.S).lstrip()
+    if not tail.startswith("}"):
+        return False
+    depth, k = 0, start - 1
+    while k >= 0:
+        c = text[k]
+        if c == "}":
+            depth += 1
+        elif c == "{":
+            if depth == 0:
+                break
+            depth -= 1
+        k -= 1
+    if k < 0:
+        return False
+    body = re.sub(r"/\*.*?\*/|//[^\n]*", " ", text[k + 1:start], flags=re.S)
+    if "{" in body:
+        return False  # keep it simple: no nested blocks before the asm
+    return re.search(r"(?:^|[;{])\s*(?:[A-Za-z_]\w*[\s*]+)+" + re.escape(name) +
+                     r"\s*(?:=|;|,|\[)", body) is not None
+
+
 def strip_empty_asm(text, orig=None):
     """Drop empty-template asm statements that are identities on the host:
     no outputs, or every output tied to an input ("N") with the same
@@ -395,7 +426,8 @@ def strip_empty_asm(text, orig=None):
                 # so the shared register carries it): `out = (in);`.
                 moves.append((expr.strip(), tied[0].strip()))
                 continue
-            if not (STRICT and not tied and expr.strip() in pinned):
+            if not (STRICT and not tied and (expr.strip() in pinned or
+                                             dead_block_local(text, m.start(), j, expr.strip()))):
                 return None
         pieces.append(text[pos:m.start()])
         # A comment marker breaks when the asm text sits inside a comment

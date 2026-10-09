@@ -915,7 +915,7 @@ Increment 32 (generator, strict only):
 - Gate: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0. regr LOST [], GAINED [].
 - Strict stop moves 800CC290 -> 80149374 (not_in_lane). Frame 1200: prims=0 disp=1 draw=0.
 
-## Increment 63 — strict strip_empty_asm drops untied MATCH barriers
+## Increment 63 — strict strip_empty_asm drops untied MATCH barriers (REVERTED, see 65)
 
 - Stop 80149374 (main_0012 / sc02 cover) was rejected `calls: empty asm with an
   untied output`. The MATCH body keeps `__asm__ __volatile__("" : "=r"(q));` as a
@@ -945,6 +945,24 @@ Increment 32 (generator, strict only):
 - Gate: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0.
 - Strict stop moves 8017F5B4 -> 801831B4 (not_in_lane; sc02 abi reject).
   Frame 1200: prims=0 disp=1 draw=0. want=41267 (main_0034 still CD-pending).
+
+## Increment 65 — revert 63's broad empty-asm rule; narrow dead-block-local rule; GTE helpers fail closed
+
+- Increment 63 (5fe09db6) is reverted by a normal revert commit: it dropped every empty asm with an
+  untied output on a simple local, assuming the local keeps its prior value, which nothing verified.
+- Replacement (strict only), `dead_block_local`: an untied output is dropped only when it names a
+  local declared in the asm's innermost block (no nested block before it) and the asm is that block's
+  last statement, so no later code reads it. The MIPS template emits nothing, so this is exact.
+  80149374's `__asm__("" : "=r"(q));` qualifies. A byte-identical source fix was tried first: gcc
+  2.7.2 rejects "+r", and the tied forms change the retail bytes.
+- Increment 64's PsyQ inline-GTE helpers were re-tested under the narrow rule and kept: native host
+  C over the PsyCross GTE register bank (MTC2/doCOP2/MFC2, same lease as libgte), not interpretation;
+  command words and register numbers match inline_c.h (rtps 0x0180001, rtpt 0x0280030, nclip
+  0x1400006, SXY 12-14, SZ 16-19, MAC0 24, FLAG c31, stszotz SZ3>>2). Hardened: a helper without the GTE
+  lease now aborts strict (`psyq_refused` / lane_gte_inline) instead of silently skipping its COP2 work.
+- Gate: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0; no new warnings. regr vs the narrow-rule
+  build: LOST [], GAINED sc02_0031 8017F5B4. No psyq_refused / HOST_FAULT in the run.
+- Strict stop 801831B4 (not_in_lane), as 64 reported. Frame 1200: prims=0 disp=1 draw=0.
 
 ## Next
 
