@@ -349,6 +349,49 @@ void musashi_lane_gte_ldlv0(const void *r0) {
     MTC2(lane_gte_load32(b + 8), 1);
     bfm_psyq_gte_end(0);
 }
+/* gte_ldclmv: IR1..IR3 = the u16 column at +0, +6, +12 of a MATRIX. */
+void musashi_lane_gte_ldclmv(const void *r0) {
+    const uint8_t *b = (const uint8_t *)r0;
+    if (!lane_gte_lease()) return;
+    MTC2((uint32_t)(b[0] | (b[1] << 8)), 9);
+    MTC2((uint32_t)(b[6] | (b[7] << 8)), 10);
+    MTC2((uint32_t)(b[12] | (b[13] << 8)), 11);
+    bfm_psyq_gte_end(0);
+}
+/* gte_rtir: mvmva sf=1 mx=RT v=IR cv=none lm=0 (cop2 0x049E012). */
+void musashi_lane_gte_rtir(void) {
+    if (!lane_gte_lease()) return;
+    doCOP2(0x049E012);
+    bfm_psyq_gte_end(1);
+}
+/* gte_rt: mvmva sf=1 mx=RT v=V0 cv=TR lm=0 (cop2 0x0480012). */
+void musashi_lane_gte_rtv0(void) {
+    if (!lane_gte_lease()) return;
+    doCOP2(0x0480012);
+    bfm_psyq_gte_end(1);
+}
+static void lane_gte_store16(void *p, uint32_t v) {
+    uint8_t *b = (uint8_t *)p;
+    b[0] = (uint8_t)v; b[1] = (uint8_t)(v >> 8);
+}
+/* gte_stclmv: the MATRIX column at +0, +6, +12 = IR1..IR3 (sh). */
+void musashi_lane_gte_stclmv(void *r0) {
+    uint8_t *b = (uint8_t *)r0;
+    if (!lane_gte_lease()) return;
+    lane_gte_store16(b + 0, MFC2(9));
+    lane_gte_store16(b + 6, MFC2(10));
+    lane_gte_store16(b + 12, MFC2(11));
+    bfm_psyq_gte_end(0);
+}
+/* gte_stlvnl: MAC1..MAC3 (swc2 $25..$27) to a long VECTOR. */
+void musashi_lane_gte_stlvnl(void *r0) {
+    uint8_t *b = (uint8_t *)r0;
+    if (!lane_gte_lease()) return;
+    lane_gte_store32(b + 0, MFC2(25));
+    lane_gte_store32(b + 4, MFC2(26));
+    lane_gte_store32(b + 8, MFC2(27));
+    bfm_psyq_gte_end(0);
+}
 /* gte_SetRotMatrix: CTC2 $0..$4 from the MATRIX words +0..+16. */
 void musashi_lane_gte_SetRotMatrix(const void *r0) {
     const uint8_t *b = (const uint8_t *)r0;

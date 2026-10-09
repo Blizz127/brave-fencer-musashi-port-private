@@ -1003,6 +1003,20 @@ Increment 32 (generator, strict only):
   sc02 80184A9C. No HOST_FAULT / psyq_refused.
 - Strict stop moves 80021174 -> 80020598 (not_in_lane). Frame 1200: prims=0 disp=1 draw=0.
 
+## Increment 69 — main 80020598 on the PsyQ GTE helpers (ldclmv / rtir / rt / stclmv / stlvnl)
+
+- 80020598 (1168 bytes, vendor-derived) failed to compile for the host: its GTE macros had file-local
+  names (SRM_/STM_/LDCLMV_/RTIR_/STCLMV_/LDLVL_/RT_/STLVNL_80020598) that the lane did not map.
+  Renamed to their inline_c.h names (identical asm; object byte-identical, registry re-verified).
+- New native helpers over the PsyCross GTE bank (fail closed): `musashi_lane_gte_ldclmv`, `_rtir`
+  (cop2 0x049E012), `_rtv0` for gte_rt (cop2 0x0480012; `musashi_lane_gte_rt` is already the
+  lane-private RT array), `_stclmv`, `_stlvnl`. Command words checked against the retail words.
+- Note: 800123F0 / 80012558 / 800126C4 still use the older lane-private RT/IR model
+  (musashi_lane_gte_rt/ir), which does not sync the PsyCross bank. Fine while each body sets its own
+  RT; worth unifying if a later body relies on RT left by another.
+- Gate: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0. regr LOST [], GAINED main 80020598.
+- Strict stop moves 80020598 -> 80052F04 (not_in_lane). Frame 1200: prims=0 disp=1 draw=0.
+
 ## Next
 
 - Admit or reshape sc02_0031 `func_801831B4` (currently `abi`). Likely next
