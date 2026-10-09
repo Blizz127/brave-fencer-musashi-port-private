@@ -905,6 +905,16 @@ Increment 32 (generator, strict only):
   so main_0034 is not resident yet. It must arrive through the game's own CD/overlay path; a
   host-side raw copy of the member into RAM is not used. Frame 1200: prims=0 disp=1 draw=0.
 
+## Increment 62 — 801627E8 passes a0 (&D_8011F750) to its D_80187814 handler
+
+- Root cause of stop 800CC290: retail `func_801627E8` jalr's D_80187814[idx] with a0 still
+  &D_8011F750, and `func_80162834` indexes D_80187818 by that object's byte 1. The C called the
+  handler with no argument, so 80162834 read a stale a0 (index 0xBC, past the 9-entry table,
+  landing on a main_0034 address that is not resident). Both copies (sc02_0031, main_0012) now
+  pass p; byte-identical, registry re-verified.
+- Gate: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0. regr LOST [], GAINED [].
+- Strict stop moves 800CC290 -> 80149374 (not_in_lane). Frame 1200: prims=0 disp=1 draw=0.
+
 ## Next
 
 - Admit or HLE main 80020F34 (exported GTE bank leaf; interpreter has

@@ -11,7 +11,7 @@ void func_801627E8(void)
 {
 
     extern s32 D_8011F750;                
-    extern void (*D_80180F24[])(void);    
+    extern void (*D_80180F24[])(u8 *);    
     register u8 *p __asm__("$4") = (u8 *)&D_8011F750;
     s32 idx;
 
@@ -19,6 +19,6 @@ void func_801627E8(void)
     idx = *p;
     if (idx != 0) {
         idx = idx - 1;
-        D_80180F24[idx]();
+        D_80180F24[idx](p);   /* retail jalr keeps a0 = &D_8011F750 */
     }
 }
