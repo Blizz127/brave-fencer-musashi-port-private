@@ -915,13 +915,30 @@ Increment 32 (generator, strict only):
 - Gate: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0. regr LOST [], GAINED [].
 - Strict stop moves 800CC290 -> 80149374 (not_in_lane). Frame 1200: prims=0 disp=1 draw=0.
 
+## Increment 63 — strict strip_empty_asm drops untied MATCH barriers
+
+- Stop 80149374 (main_0012 / sc02 cover) was rejected `calls: empty asm with an
+  untied output`. The MATCH body keeps `__asm__ __volatile__("" : "=r"(q));` as a
+  0-byte gcc-2.7.2 CSE kill; `+r` / `"=r"(q) : "0"(q)` either fail PsyQ cc1 or
+  grow the object past 92 bytes.
+- Strict-only: `strip_empty_asm` drops empty-template asms whose untied outputs
+  are simple locals (same keep-prior-value idea as pinned-register outputs). The
+  host compile never sees the undefining asm.
+- Lanes: main 3880 -> 3882/4095, overlay 3165 -> 3167/3350. regr LOST [],
+  GAINED main_0012 80149374 and 801571C4.
+- Gate: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0.
+- Strict stop moves 80149374 -> 8017F5B4 (not_in_lane; sc02_0031 mixed recovery,
+  6044-byte GTE draw path). Frame 1200: prims=0 disp=1 draw=0. want=41267
+  (main_0034 still not resident via CD).
+
 ## Next
 
-- Admit or HLE main 80020F34 (exported GTE bank leaf; interpreter has
-  gte_20f34_site / gte_20f34_caller). No provenance match between 80020DA4 and
-  80021008 today.
-- Display path for the logo: compare the GPU packets the strict path submits
-  with what the overlay's draw loop queues.
-- Keep walking toward attract mode and the village (main_0012 is already in
-  the overlay allow list through the release list; add more members to
-  `config/lane_strict_overlay_allow.txt` as the boot loads them).
+- Admit sc02_0031 `func_8017F5B4` (large mixed GTE mesh/transform). Remaining
+  host blockers after existing gte_* transforms: `gte_rtps`/`gte_rtpt`/
+  `gte_nclip` macros that expand to `"nop;nop;rtps"`-style asm. Extend
+  `gte_host` / `strict_mixed_ok` so the row becomes lane_recovery, then land
+  the admit.
+- Display path for the logo: this stop is on the draw route; first non-black
+  frame likely follows once 8017F5B4 (or its callees) run natively.
+- Keep walking toward attract mode and the village; main_0034 still waits on
+  the game's CD/overlay path (want=41267).
