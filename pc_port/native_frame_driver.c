@@ -3274,6 +3274,33 @@ SPU_ENTRY(hle_spu_note2pitch) {
     call->r[2] = spu_note2pitch(call->r[4], call->r[5], call->r[6], call->r[7]);
     return 1;
 }
+SPU_ENTRY(hle_spu_set_key) {
+    /* 8003C23C SpuSetKey(on_off, voice_bits): key on/off now, or, with a
+     * queued SpuSetEnv (8006B544 bit 0), into the 800A6410 on / 800A6414 off
+     * shadow (cancelling the opposite request) for the next transfer */
+    uint32_t on = call->r[4], bits = call->r[5] & 0xFFFFFFu, hi = bits >> 16;
+    const uint32_t kon = 0x800A6410u, koff = 0x800A6414u;
+    uint32_t set = on ? kon : koff, clr = on ? koff : kon;
+    if (on > 1u) return 1;
+    if (rd32(SP_ENV) & 1u) {
+        wr16(set, (uint16_t)bits);
+        wr16(set + 2u, (uint16_t)hi);
+        wr32(SP_VBITS, rd32(SP_VBITS) | 1u);
+        wr32(SP_G10C, on ? (rd32(SP_G10C) | bits) : (rd32(SP_G10C) & ~bits));
+        if (rd16(clr) & bits) wr16(clr, (uint16_t)(rd16(clr) & ~bits));
+        if (rd16(clr + 2u) & hi) wr16(clr + 2u, (uint16_t)(rd16(clr + 2u) & ~hi));
+    } else if (on) {
+        uint32_t g = rd32(SP_G0E4) | bits;
+        spu_w(SR_KONL, (uint16_t)bits);
+        spu_w(SR_KONH, (uint16_t)hi);
+        wr32(SP_G0E4, g);
+    } else {
+        spu_w(SR_KOFFL, (uint16_t)bits);
+        spu_w(SR_KOFFH, (uint16_t)hi);
+        wr32(SP_G0E4, rd32(SP_G0E4) & ~bits);
+    }
+    return 1;
+}
 SPU_ENTRY(hle_spu_fset_rxx) { call->r[2] = spu_fset_rxx((int32_t)call->r[4], call->r[5]); return 1; }
 SPU_ENTRY(hle_spu_write_data) { CD_SP(); call->r[2] = spu_write_data(call->r[4], call->r[5]); return 1; }
 SPU_ENTRY(hle_spu_write) {
@@ -4276,6 +4303,7 @@ static const MusashiNativeLaneEntry k_driver_entries[] = {
     {0x8003B250u, 0, hle_spu_n_set_voice_attr, "SpuNSetVoiceAttr", 2, 1, 0},
     {0x8003C92Cu, 0, hle_spu_set_voice_attr_range, "_SpuSetVoiceAttr", 4, 1, 0},
     {0x8003CFF8u, 0, hle_spu_note2pitch,  "_spu_note2pitch",     4, 1, 0},
+    {0x8003C23Cu, 0, hle_spu_set_key,     "SpuSetKey",           2, 0, 0},
     {0x8003C438u, 0, hle_spu_write,       "SpuWrite",            2, 1, 0},
     {0x8003C498u, 0, hle_spu_set_transfer_start_addr, "SpuSetTransferStartAddr", 1, 1, 0},
     {0x8003C4F0u, 0, hle_spu_is_transfer_completed, "SpuIsTransferCompleted", 1, 1, 0},

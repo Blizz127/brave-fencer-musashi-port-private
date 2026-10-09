@@ -1278,6 +1278,17 @@ Increment 32 (generator, strict only):
 - Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [].
 - New stop: `guest_pc=8003c23c`; frame 1200, prims=32 at two frames, draw=0.
 
+### Increment 89: native SpuSetKey (frame driver); stop 8003388C
+
+- Stop was `guest_pc=8003c23c` (libspu SpuSetKey, def row stub-TBD).
+- HLE from retail 8003C23C: voice bits masked to 24; on=1 writes KON L/H and ORs 8006B0E4, on=0 writes KOFF L/H and
+  clears them; with a queued SpuSetEnv (8006B544 bit 0) the bits go to the 800A6410 (on) / 800A6414 (off) shadow
+  instead, 8006B110 |= 1, 8006B10C gets the bits set/cleared and the opposite shadow request is cancelled. Other
+  on_off values do nothing.
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [].
+- New stop: `guest_pc=8003388c` (game code, refused: host address converted to integer); frame 1200, prims=32 at two
+  frames, draw=0.
+
 ## Next
 
 - Admit or reshape sc02_0031 `func_801831B4` (currently `abi`). Likely next
