@@ -1469,6 +1469,15 @@ Increment 32 (generator, strict only):
 - Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [].
   Run: 3000 frames, no stop.
 
+### Inc 103: main 80024448 (TMD mesh dispatcher) admitted
+
+- src/main/80024448.c: the two handwritten-asm shaded emitters
+  (80026514, 800268D0; 8 arguments, packet pointer in v0) are prototyped and
+  called directly, replacing the no-proto function-pointer casts.
+  Byte-identical (rv.py).
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [],
+  GAINED main 80024448. Run: 3000 frames, no stop.
+
 ## Next
 
 - Admit or reshape sc02_0031 `func_801831B4` (currently `abi`). Likely next
