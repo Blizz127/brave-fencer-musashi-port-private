@@ -2731,6 +2731,35 @@ def _call_use_index():
     return used
 
 
+def covered_switch_defaults(optir, own_source):
+    """Strict only: LLVM names a switch default `default.unreachable` when it
+    proves the cases cover every value the operand can take (80135480:
+    `(p & 0x60000000) >> 29`, with all four values listed as cases). That
+    block's `unreachable` is an optimiser fact, not UB in the C. Point the
+    default at the first case target and drop the block, which keeps the
+    semantics. Not applied when the source asks for unreachable itself."""
+    src = ROOT / own_source
+    if not src.exists() or "__builtin_unreachable" in src.read_text(errors="replace"):
+        return optir
+    blk = re.compile(r"^(default\.unreachable[\w.]*):[^\n]*\n\s*unreachable\s*\n", re.M)
+    for m in list(blk.finditer(optir))[::-1]:
+        label = m.group(1)
+        sw = re.search(r"switch (i\d+) (%[\w.\"$]+), label %" + re.escape(label) +
+                       r" \[\s*\n\s*i\d+ -?\d+, label (%[\w.\"$]+)", optir)
+        if not sw or optir.count("%" + label) != 1:
+            continue
+        first = sw.group(3)
+        # the first case target gains an edge from the switch block: its
+        # phis need an incoming entry for that block when it has phis
+        tgt = first[1:]
+        tb = re.search(r"^" + re.escape(tgt) + r":[^\n]*\n((?:\s*%[^\n]*= phi[^\n]*\n)*)", optir, re.M)
+        if tb is None or tb.group(1):
+            continue
+        optir = optir[:m.start()] + optir[m.end():]
+        optir = optir.replace("label %" + label + " [", "label " + first + " [", 1)
+    return optir
+
+
 def void_result_returns(optir, fname, name, info, own_source):
     """Strict only: a body whose every return is `ret iN undef` (the matched C
     falls off the end of a function declared to return a value) returns 0
@@ -3083,6 +3112,7 @@ def build_one(entry, out, symbols, hooks, clang, info=None):
             raise Reject("compile", "optimize: " + (r.stderr.strip().splitlines() or ["?"])[0][:160])
         optir, icalls = rewrite_indirect_calls(opt.read_text())
         if STRICT:
+            optir = covered_switch_defaults(optir, entry["source"])
             optir = void_result_returns(optir, f"lane_{qualify(member, name)}", name, info,
                                         entry["source"])
         internal = set(re.findall(r"^define internal [^@]*@([\w.$]+)\(", optir, flags=re.M))

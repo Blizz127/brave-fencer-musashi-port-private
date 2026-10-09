@@ -758,6 +758,32 @@ Increment 32 (generator, strict only):
 - Strict stop moves to 80135480 (main_0012/sc02_0031, `ub`: unreachable).
   Frame 1200: prims=0 disp=1 draw=0.
 
+
+## Increment 54 (stop 80135480 -> 8001382C -> 80135EB0)
+
+- Strict only: tools/native_lane_gen.py `covered_switch_defaults`. When LLVM
+  proves that a switch's cases cover every value its operand can take, it
+  names the default `default.unreachable` and gives it a bare `unreachable`
+  (80135480: `(p & 0x60000000) >> 29`, with all four values present as
+  cases). That is an optimiser fact, not UB in the C, so the default now
+  points at the first case target and the block is dropped. This applies
+  only when that target has no phis and the source has no
+  `__builtin_unreachable`. main_0012/sc02_0031 80135480 are admitted (fixed
+  charge: the acyclic mapping is refused).
+- main_0012/sc02_0031 80148E54 (the angle sibling of 80148AFC) now uses the
+  same dispatch spelling with `$v0` pinned: the fallthrough returns 0x41/0x73,
+  and the handler call passes the angle that is still in a0 at the jalr. Both
+  members are byte-identical (cmpobj SAME, verify_registry 2/2).
+- New clean-room main function src/main/8001382c.c (`func_8001382C(angle,
+  in, out)`, 412 bytes). It sets up a local matrix (80013F3C), multiplies it
+  in place by Ry(angle) through the GTE macros (as in 80012558), calls
+  8001282C, then ApplyMatrixLV(m, in, out). The registry row is in
+  provenance/matches.json with the same clean-room origin as 80012558, and
+  verify_registry passes 1/1.
+- Lanes: main 3844 -> 3847/4072, overlay 3135 -> 3137/3328. regr LOST [].
+  Gate: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0.
+- Strict stop: 80135EB0. Frame 1200: prims=0 disp=1 draw=0.
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits

@@ -1475,6 +1475,18 @@
       "origin": "owner re-derivation, clean room (Grok Bot box sandbox 2026-10-08, branch cursor/native-cleanroom-b28), clean input set (retail disassembly + owner headers)"
     },
     {
+      "name": "func_8001382C",
+      "vram": 2147563564,
+      "size": 412,
+      "region": "main",
+      "source": "src/main/8001382c.c",
+      "optimization": "-O2",
+      "recovery": "mixed",
+      "extent": "function",
+      "status": "matched",
+      "origin": "owner re-derivation, clean room (Grok Bot box sandbox 2026-10-08, branch cursor/native-cleanroom-b28), clean input set (retail disassembly + owner headers)"
+    },
+    {
       "name": "func_800126C4",
       "vram": 2147559108,
       "size": 360,
