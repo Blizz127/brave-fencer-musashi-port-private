@@ -1382,6 +1382,23 @@ Increment 32 (generator, strict only):
   frame 1250 on. draw is still 0 everywhere.
 - New stop: `guest_pc=80128714`.
 
+### Inc 98: main_0012 80128714 canonical scratch-call form; stop 8014FA04 (sc02_0031)
+
+- src/overlays/main_0012/80128714.c: the hand asm becomes C with two
+  canonical scratch-call blocks (the first stores v0 to D_801840B4) and a
+  plain if/else on D_801840B4. Byte-identical to retail at -O2 (rv.py).
+- pc_port/native_boot.c: diagnostic only. The MUSASHI_DUMP_VRAM display dump
+  now prints RENDER_STATS (bfm_plat renderer prims/envs, PsyQ DrawOTag
+  packets/prims, last PutDispEnv area). The HLE DrawOTag/PutDispEnv path goes
+  straight to the renderer, so the GP1 display/clip the dump reports (0,0,0,0)
+  are not what the game set.
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [],
+  GAINED main_0012 80128714.
+- Run: frame 1250 (prims=10060, ld=3 ld_n=19). The game has left the
+  main_0012 path and is loading SC02.CD: the stop is not_in_lane at 8014FA04,
+  where the resident bytes are sc02_0031's (same code as main_0012's, global
+  D_801B6404 instead of D_8018424C). sc02_0031's copy was still hand asm.
+
 ## Next
 
 - Admit or reshape sc02_0031 `func_801831B4` (currently `abi`). Likely next

@@ -93,6 +93,7 @@ static int log_sample(uint64_t *counter, uint64_t first, uint64_t stride) {
 #include "musashi_plat_audio_sink.h"
 #include "bfm_plat_font.h"
 #include "bfm_plat_image.h"
+#include "psyq/bfm_psyq_compat.h"
 #include "musashi_dev_menu.h"
 /* MUSASHI_GPU=bfm_plat: GP0/GP1 are teed into the bfm_plat GPU bridge and
  * drawn by the bfm_plat renderer (MUSASHI_RENDERER, default psycross); the
@@ -4971,6 +4972,24 @@ static void dump_display_vram(NativeBoot *boot) {
             (int)((boot->gpu.drawing_area_start >> 10) & 511u),
             (int)(boot->gpu.drawing_area_end & 1023u),
             (int)((boot->gpu.drawing_area_end >> 10) & 511u));
+    {
+        /* The PsyQ HLE path (DrawOTag/PutDispEnv) goes straight to the
+         * renderer, not through GP1: report what it actually received. */
+        BfmPlatRendererStats rs;
+        BfmPsyqStats ps;
+        BfmPlatDispEnv de;
+        bfm_plat_renderer_stats(&rs);
+        bfm_psyq_stats(&ps);
+        bfm_plat_renderer_last_disp_env(&de);
+        fprintf(stderr, "native_boot: RENDER_STATS frames=%llu prims=%llu uploads=%llu "
+                "draw_envs=%llu disp_envs=%llu psyq_ot=%llu psyq_prims=%llu "
+                "psyq_unknown=%llu/%02x disp=%d,%d,%d,%d\n",
+                (unsigned long long)rs.frames, (unsigned long long)rs.prims,
+                (unsigned long long)rs.uploads, (unsigned long long)rs.draw_envs,
+                (unsigned long long)rs.disp_envs, (unsigned long long)ps.ot_packets,
+                (unsigned long long)ps.prims, (unsigned long long)ps.unknown_commands,
+                ps.last_unknown_code, de.disp.x, de.disp.y, de.disp.w, de.disp.h);
+    }
 #endif
     if (!dump_read_vram(boot, x, y, width, height, pixels)) {
         fprintf(stderr, "native_boot: VRAM_DUMP readable=0 x=%u y=%u %ux%u\n",
