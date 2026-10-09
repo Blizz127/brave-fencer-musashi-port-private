@@ -49,7 +49,9 @@ extern void func_8004917C();
 void func_8001E094(s32 arg0);
 void func_8001E378(s32 param_1);
 s32 func_8001E668();
-#define SETROT_DA34(r0) __asm__ volatile (               \
+/* GTE inline macros under their PsyQ inline_c.h names (the strict lane maps
+ * them to host helpers; bytes unchanged). */
+#define gte_SetRotMatrix(r0) __asm__ volatile (               \
     "lw $12, 0( %0 );"                                   \
     "lw $13, 4( %0 );"                                   \
     "ctc2 $12, $0;"                                      \
@@ -61,7 +63,7 @@ s32 func_8001E668();
     "ctc2 $13, $3;"                                      \
     "ctc2 $14, $4"                                       \
     : : "r"( r0 ) : "$12", "$13", "$14" )
-#define LDCLMV_DA34(r0) __asm__ volatile (               \
+#define gte_ldclmv(r0) __asm__ volatile (               \
     "lhu $12, 0( %0 );"                                  \
     "lhu $13, 6( %0 );"                                  \
     "lhu $14, 12( %0 );"                                 \
@@ -69,8 +71,8 @@ s32 func_8001E668();
     "mtc2 $13, $10;"                                     \
     "mtc2 $14, $11"                                      \
     : : "r"( r0 ) : "$12", "$13", "$14" )
-#define RTIR_DA34() __asm__ volatile ("nop;nop;mvmva 1, 0, 3, 3, 0")
-#define STCLMV_DA34(r0) __asm__ volatile (               \
+#define gte_rtir() __asm__ volatile ("nop;nop;mvmva 1, 0, 3, 3, 0")
+#define gte_stclmv(r0) __asm__ volatile (               \
     "mfc2 $12, $9;"                                      \
     "mfc2 $13, $10;"                                     \
     "mfc2 $14, $11;"                                     \
@@ -78,10 +80,10 @@ s32 func_8001E668();
     "sh $13, 6( %0 );"                                   \
     "sh $14, 12( %0 )"                                   \
     : : "r"( r0 ) : "$12", "$13", "$14", "memory" )
-#define LDV0_DA34(r0)  __asm__ volatile ("lwc2 $0, 0( %0 );lwc2 $1, 4( %0 )" : : "r"( r0 ) : "memory")
-#define LDRGB_DA34(r0) __asm__ volatile ("lwc2 $6, 0( %0 )" : : "r"( r0 ) : "memory")
-#define NCCS_DA34()    __asm__ volatile ("nop;nop;nccs")
-#define STRGB_DA34(r0) __asm__ volatile ("swc2 $22, 0( %0 )" : : "r"( r0 ) : "memory")
+#define gte_ldv0(r0)  __asm__ volatile ("lwc2 $0, 0( %0 );lwc2 $1, 4( %0 )" : : "r"( r0 ) : "memory")
+#define gte_ldrgb(r0) __asm__ volatile ("lwc2 $6, 0( %0 )" : : "r"( r0 ) : "memory")
+#define gte_nccs()    __asm__ volatile ("nop;nop;nccs")
+#define gte_strgb(r0) __asm__ volatile ("swc2 $22, 0( %0 )" : : "r"( r0 ) : "memory")
 
 void func_8001DA34(s32 param_1)
 {
@@ -129,18 +131,18 @@ void func_8001DA34(s32 param_1)
         if (src != 0) {
             mtx[1] = *src;
             pa = &mtx[1].m[0][0];
-            SETROT_DA34(&D_800A63F0);
-            LDCLMV_DA34(pa);     RTIR_DA34(); STCLMV_DA34(pa);
-            LDCLMV_DA34(pa + 1); RTIR_DA34(); STCLMV_DA34(pa + 1);
-            LDCLMV_DA34(pa + 2); RTIR_DA34(); STCLMV_DA34(pa + 2);
+            gte_SetRotMatrix(&D_800A63F0);
+            gte_ldclmv(pa);     gte_rtir(); gte_stclmv(pa);
+            gte_ldclmv(pa + 1); gte_rtir(); gte_stclmv(pa + 1);
+            gte_ldclmv(pa + 2); gte_rtir(); gte_stclmv(pa + 2);
             func_8004917C(pa);
         } else {
             pb = &mtx[1].m[0][0];
             func_8004978C((s16 *)(param_1 + 0x10), pb);
-            SETROT_DA34(&D_800A63F0);
-            LDCLMV_DA34(pb);     RTIR_DA34(); STCLMV_DA34(pb);
-            LDCLMV_DA34(pb + 1); RTIR_DA34(); STCLMV_DA34(pb + 1);
-            LDCLMV_DA34(pb + 2); RTIR_DA34(); STCLMV_DA34(pb + 2);
+            gte_SetRotMatrix(&D_800A63F0);
+            gte_ldclmv(pb);     gte_rtir(); gte_stclmv(pb);
+            gte_ldclmv(pb + 1); gte_rtir(); gte_stclmv(pb + 1);
+            gte_ldclmv(pb + 2); gte_rtir(); gte_stclmv(pb + 2);
             func_8004917C(pb);
         }
     }
@@ -219,10 +221,10 @@ void func_8001DA34(s32 param_1)
             cin[0].r = *(u8 *)(param_1 + 0x24);
             cin[0].g = *(u8 *)(param_1 + 0x25);
             cin[0].b = *(u8 *)(param_1 + 0x26);
-            LDV0_DA34(&nrm);
-            LDRGB_DA34(&cin[0]);
-            NCCS_DA34();
-            STRGB_DA34(&cout[0]);
+            gte_ldv0(&nrm);
+            gte_ldrgb(&cin[0]);
+            gte_nccs();
+            gte_strgb(&cout[0]);
             prim[4] = cout[0].r;
             prim[5] = cout[0].g;
             prim[6] = cout[0].b;

@@ -1179,6 +1179,15 @@ Increment 32 (generator, strict only):
   8001DA34 (not in lane). Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0,
   regr LOST [].
 
+### Increment 82: func_8001DA34 into the strict lane; stop 8001E094
+
+- src/main/8001da34.c's local GTE macros (SETROT/LDCLMV/RTIR/STCLMV/LDV0/LDRGB/
+  NCCS/STRGB_DA34) renamed to their inline_c.h names; bytes unchanged
+  (build_candidate cmp identical, verify_registry re-verified).
+- Run: frame 1200 (prims=32 at two frames, draw=0); regr GAINED 8001DA34.
+  New stop: guest call to 8001E094 (not in lane). Gates: build=0,
+  TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [].
+
 ## Next
 
 - Admit or reshape sc02_0031 `func_801831B4` (currently `abi`). Likely next
