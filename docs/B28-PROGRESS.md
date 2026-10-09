@@ -1233,6 +1233,21 @@ Increment 32 (generator, strict only):
   New stop: guest call to 800215F4. Gates: build=0, TABLE_IDENTICAL,
   ctest 37/37, m2c=0, regr LOST [].
 
+### Increment 86: local element pointers passed to GTE stand-ins; 4 routines into the lane; stop 800226C0
+
+- tools/native_lane_gen.py (strict only): a variable-index element address of
+  a local (`&out[k]`) may now be an argument to an inline_c.h host stand-in
+  (GTE_INLINE_HELPERS). Those helpers only load/store through the host
+  pointer, and no guest call sees the address. Any other use still trips the
+  escape rule.
+- Byte-identical source fixes (cmp + verify_registry): 800215F4 / 80021D38
+  compute the OT base as D_800A6610 + index instead of integer address
+  arithmetic, and 80013CFC addresses `rot` through a byte pointer instead of a
+  (s32) cast.
+- Lane: GAINED 80013CFC, 800215F4, 80021D38, 800221A8.
+- Run: frame 1200 (prims=32 at two frames, draw=0). New stop: guest call to
+  800226C0. Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [].
+
 ## Next
 
 - Admit or reshape sc02_0031 `func_801831B4` (currently `abi`). Likely next

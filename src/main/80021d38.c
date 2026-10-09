@@ -154,7 +154,7 @@ void func_80021D38(Obj_80021D38 *p)
     u32           t;
 
     base  = D_800AF630;
-    ot    = (u8 *)((D_800B9A02 << 14) + (u32)D_800A6610);
+    ot    = D_800A6610 + (D_800B9A02 << 14);
     flags = p->flags;
     pts   = p->pts;
 

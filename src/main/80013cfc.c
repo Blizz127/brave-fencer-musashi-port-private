@@ -236,17 +236,17 @@ void func_80013CFC(short param_1, void *param_2, void *param_3)
 
     v1 = -sin_val;
     __asm__ __volatile__("" ::: "memory");
-    *(s16 *)((s32)rot + 0x00) = cos_val;
-    *(s16 *)((s32)rot + 0x08) = cos_val;
-    *(s16 *)((s32)rot + 0x10) = 0x1000;
+    *(s16 *)((u8 *)rot + 0x00) = cos_val;
+    *(s16 *)((u8 *)rot + 0x08) = cos_val;
+    *(s16 *)((u8 *)rot + 0x10) = 0x1000;
     rotp = rot;
-    *(s16 *)((s32)rot + 0x06) = sin_val;
+    *(s16 *)((u8 *)rot + 0x06) = sin_val;
     matp = matrix;
-    *(s16 *)((s32)rot + 0x02) = v1;
-    *(s16 *)((s32)rot + 0x04) = 0;
-    *(s16 *)((s32)rot + 0x0A) = 0;
-    *(s16 *)((s32)rot + 0x0C) = 0;
-    *(s16 *)((s32)rot + 0x0E) = 0;
+    *(s16 *)((u8 *)rot + 0x02) = v1;
+    *(s16 *)((u8 *)rot + 0x04) = 0;
+    *(s16 *)((u8 *)rot + 0x0A) = 0;
+    *(s16 *)((u8 *)rot + 0x0C) = 0;
+    *(s16 *)((u8 *)rot + 0x0E) = 0;
 
     gte_SetRotMatrix(matp);
     gte_ldclmv(rotp);

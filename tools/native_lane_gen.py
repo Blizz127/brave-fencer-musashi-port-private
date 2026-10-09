@@ -3135,6 +3135,11 @@ def place_guest_locals(ir, fname, words, vram, frame, info=None):
             dm = DEF_RE.match(line)
             if dm and dm.group(1) in dynamic:
                 continue  # the GEP itself
+            hm = re.search(r"\bcall [^@]*@([\w.$]+)\(", line)
+            if hm and hm.group(1) in GTE_INLINE_HELPERS:
+                # inline_c.h stand-ins only load/store through their pointer
+                # arguments on the host (no guest call sees the address)
+                continue
             lm = re.match(r"\s*%[\w.\"$]+ = load [^,]+, ptr (%[\w.\"$]+)(?:, align \d+)?(?:, ![\w.]+ !\d+)*\s*$", line)
             sm = re.match(r"\s*store [^,]+, ptr (%[\w.\"$]+)(?:, align \d+)?(?:, ![\w.]+ !\d+)*\s*$", line)
             text = line

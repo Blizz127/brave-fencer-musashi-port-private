@@ -170,7 +170,7 @@ void func_800215F4(Obj_215F4 *obj)
     s32 *pz;
     u32 t, c;
 
-    ot = (u32 *)(D_800B9A02 * 0x4000 + (u32)D_800A6610);
+    ot = (u32 *)(D_800A6610 + D_800B9A02 * 0x4000);
     vp = obj->unk20;
     if (obj->unk34 != 0) {
         func_8001E094((s32)obj);
