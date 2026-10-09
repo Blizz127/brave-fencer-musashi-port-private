@@ -1003,6 +1003,15 @@ def parse_signature(header_or_decl, name):
 MEMORY_FNS = ("memset", "memcpy", "memmove")
 # Guarded division helpers (mips_formatter.c) that lower_arith() calls.
 LANE_HELPERS = ("lane_sdiv32", "lane_srem32", "lane_udiv32", "lane_urem32")
+# Strict (B28): host stand-ins for PsyQ inline_c.h GTE macros (see
+# include/musashi_lane_gte_inline.h and psyq_psycross.c).
+GTE_INLINE_HELPERS = (
+    "musashi_lane_gte_ldv0", "musashi_lane_gte_ldv3", "musashi_lane_gte_ldv3c",
+    "musashi_lane_gte_rtps", "musashi_lane_gte_rtpt", "musashi_lane_gte_nclip",
+    "musashi_lane_gte_stsxy", "musashi_lane_gte_stsxy3", "musashi_lane_gte_stsxy3c",
+    "musashi_lane_gte_stsz3", "musashi_lane_gte_stsz4", "musashi_lane_gte_stszotz",
+    "musashi_lane_gte_stflg", "musashi_lane_gte_stopz",
+)
 # D-011 ledger (pc_port/mips_formatter.c): the cycles a mapped native body
 # has charged, a lost-state flag, the deadline budget and the guard's tick.
 LEDGER_SYMBOLS = ("musashi_lane_ledger", "musashi_lane_ledger_lost", "musashi_lane_budget",
@@ -1039,7 +1048,7 @@ def rewrite_symbols(ir, symbols, member=None, member_code=()):
     declared = set(re.findall(r"^declare [^@]*@([\w.$]+)\(", ir, flags=re.M))
     guest = set()
     for fname in defined | declared:
-        if fname.startswith("llvm.") or fname in MEMORY_FNS:
+        if fname.startswith("llvm.") or fname in MEMORY_FNS or fname in GTE_INLINE_HELPERS:
             continue
         addr = guest_address(fname, symbols)
         if addr is None:
@@ -1729,7 +1738,7 @@ def check_optimized(ir, module_internal):
                                     r"sadd|uadd|ssub|usub|vector\.reduce)", name):
                         raise Reject("calls", f"intrinsic {name}")
                     continue
-                if name in ("memset", "memcpy", "memmove") or name in LANE_HELPERS or name in LEDGER_SYMBOLS:
+                if name in ("memset", "memcpy", "memmove") or name in LANE_HELPERS or name in LEDGER_SYMBOLS or name in GTE_INLINE_HELPERS:
                     continue
                 if name in module_internal:
                     continue
@@ -2221,6 +2230,44 @@ def gte_scale_host(text):
     return GTE_SCALE_RE.sub(sub, text)
 
 
+
+# Strict (B28): replace a TU's PsyQ inline_c.h-style `#define gte_*` asm
+# macros with musashi_lane_gte_inline.h (host helpers over the shared gteRegs
+# bank). The MATCH source keeps the asm; only the lane host copy changes.
+GTE_INLINE_NAMES = (
+    "ldv0", "ldv3", "ldv3c", "rtps", "rtpt", "nclip",
+    "stsxy", "stsxy3", "stsxy3c", "stsz3", "stsz4", "stszotz", "stflg", "stopz",
+)
+GTE_INLINE_DEFINE_HEAD = re.compile(
+    r'^#define\s+gte_(?:' + '|'.join(GTE_INLINE_NAMES) + r')\b')
+
+
+def gte_inline_macros_host(text):
+    lines = text.splitlines(keepends=True)
+    out, i, hit = [], 0, False
+    while i < len(lines):
+        if GTE_INLINE_DEFINE_HEAD.match(lines[i]):
+            hit = True
+            while i < len(lines) and lines[i].rstrip("\r\n").endswith("\\"):
+                i += 1
+            i += 1
+            continue
+        out.append(lines[i])
+        i += 1
+    if not hit:
+        return text
+    text = "".join(out)
+    if '#include "musashi_lane_gte_inline.h"' not in text:
+        m = list(re.finditer(r'^#include[^\n]*\n', text, re.M))
+        ins = '#include "musashi_lane_gte_inline.h"\n'
+        if m:
+            j = m[-1].end()
+            text = text[:j] + ins + text[j:]
+        else:
+            text = ins + text
+    return text
+
+
 def gte_host(text):
     if not (GTE_SQR_RE.search(text) and GTE_MAC_STORE_RE.search(text)):
         return text
@@ -2299,6 +2346,7 @@ def host_source(text):
         text = scratch_call_host(text) or text
         text = move_asm_host(text)
         text = load_asm_host(text)
+        text = gte_inline_macros_host(text)
         text = gte_host(text)
         text = gte_matrix_host(text)
         text = gte_scale_host(text)
@@ -3300,6 +3348,7 @@ def build_one(entry, out, symbols, hooks, clang, info=None):
             if u != "U" and not re.fullmatch(r"lane_(?:call_)?" + QFUNC + r"(?:__\w+)?", u) \
                     and not u.startswith("lane_icall__") \
                     and u not in MEMORY_FNS and u not in LANE_HELPERS and u not in LEDGER_SYMBOLS \
+                    and u not in GTE_INLINE_HELPERS \
                     and not LEDGER_SEGS.fullmatch(u):
                 raise Reject("symbols", f"object still references {u}")
         digest = member_digest(info, vram, size) if info else None
@@ -4265,6 +4314,7 @@ def strict_mixed_ok(m):
     text = LA_ASM_RE.sub("", text)
     text = MOVE_ASM_RE.sub("", text)
     text = load_asm_host(text)
+    text = gte_inline_macros_host(text)
     text = gte_host(text)
     text = gte_matrix_host(text)
     text = gte_scale_host(text)

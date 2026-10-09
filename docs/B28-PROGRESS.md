@@ -931,14 +931,26 @@ Increment 32 (generator, strict only):
   6044-byte GTE draw path). Frame 1200: prims=0 disp=1 draw=0. want=41267
   (main_0034 still not resident via CD).
 
+## Increment 64 — host PsyQ inline GTE macros; admit sc02 8017F5B4
+
+- Stop 8017F5B4 (6044-byte mixed mesh/transform) failed `lane_recovery`: its
+  `#define gte_*` asm (ldv/rtps/rtpt/nclip/stsxy/stsz/stflg/stopz) kept
+  `strict_mixed_ok` false.
+- Strict-only: `gte_inline_macros_host` rewrites those `#define`s to
+  `include/musashi_lane_gte_inline.h`; helpers in `psyq_psycross.c` run the
+  same MTC2/doCOP2/MFC2 sequence on the shared gteRegs bank under the psyq
+  GTE bridge. `GTE_INLINE_HELPERS` are allowed lane externals.
+- Lanes: main 3882 -> 3883/4099, overlay 3167 -> 3168/3352. regr LOST [],
+  GAINED sc02_0031 8017F5B4.
+- Gate: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0.
+- Strict stop moves 8017F5B4 -> 801831B4 (not_in_lane; sc02 abi reject).
+  Frame 1200: prims=0 disp=1 draw=0. want=41267 (main_0034 still CD-pending).
+
 ## Next
 
-- Admit sc02_0031 `func_8017F5B4` (large mixed GTE mesh/transform). Remaining
-  host blockers after existing gte_* transforms: `gte_rtps`/`gte_rtpt`/
-  `gte_nclip` macros that expand to `"nop;nop;rtps"`-style asm. Extend
-  `gte_host` / `strict_mixed_ok` so the row becomes lane_recovery, then land
-  the admit.
-- Display path for the logo: this stop is on the draw route; first non-black
-  frame likely follows once 8017F5B4 (or its callees) run natively.
+- Admit or reshape sc02_0031 `func_801831B4` (currently `abi`). Likely next
+  on the draw/dispatch path after 8017F5B4.
+- Display path for the logo: logo-state still draws 32 prims around frames
+  350/500; attract/mesh path has not yet lit draw=1.
 - Keep walking toward attract mode and the village; main_0034 still waits on
   the game's CD/overlay path (want=41267).
