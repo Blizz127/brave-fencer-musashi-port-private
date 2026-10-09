@@ -1624,6 +1624,42 @@ Increment 32 (generator, strict only):
 - Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [], gained.
   Run: 3000 frames, no stop.
 
+
+### Inc 114: black-framebuffer trace (PsyCross handoff), display dump at 0,240
+
+Traced the first busy DrawOTag (strict call 2475, 437 packets; `MUSASHI_TRACE_DRAWOTAG=N`
+logs draw env, GTE control state, E1-E6 words and the first prims). Findings:
+
+- Draw env is sane: clip 0,10 320x220, ofs 160,120, dfe=1, isbg=1, double-buffered
+  against PutDispEnv 0,240 (and 0,250/160,360 on the other page). GTE OFX/OFY 0, H 500.
+- Prim coordinates match the hybrid build to within 1 px at the same OT, so GTE/projection
+  and the OT decoder are not the cause.
+- At 640x480 title time (calls up to ~2000) the OT is a single empty packet; the title
+  is not drawn through DrawOTag.
+- The cause is the PsyCross backend handoff:
+  1. `pc_present` only ended the scene when `in_scene` latched. PsyCross's DrawPrim opens
+     scenes itself, so in strict `in_scene` never latched, PsyX_EndScene never ran, and
+     the backbuffer was never stored into VRAM. Fixed: always PsyX_EndScene (a no-op with
+     no scene open).
+  2. isbg: strict hands PsyCross DRAWENV.isbg=1; the GPU bridge (hybrid) never does (its
+     fills don't reach PsyCross). PsyCross's isbg/ClearImage (glClear + forced framebuffer
+     readback) blacks the frame. With `MUSASHI_PC_NOBG=1` (diagnostic) the strict frame
+     reaches VRAM: 67,059/76,800 non-black at 0,240.
+  3. Still open: that frame is 1-bit (pure 0x7FFF white plus black seams that trace the
+     cave geometry), identical across frames. White rectangles also land in texture areas
+     (x 384-512 and 640-736, y 256-470), so PsyCross's framebuffer->VRAM readback
+     (g_PreviousFramebuffer/PBO) is writing to the wrong places and textured prims sample
+     corrupted VRAM. Tried and reverted (no effect or worse): mapping PsyCross's display
+     rect to the draw page; tw 256->0; isbg delivered as ClearImage or as a full-clip TILE
+     (both black).
+- Display dump now reads the PsyQ PutDispEnv rect (0,240 320x240) once the renderer has
+  received one, instead of the stale GP1 display.
+- New diagnostics: `MUSASHI_TRACE_PSYCROSS=N` / `_EVERY=K` / `_ENVS=1` (backend env,
+  present, thread/GL context, post-EndScene page readback).
+
+Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []. The strict run reaches
+frame 3000 (chain cap) with no stop; the last known stop is still 80135A4C at frame 3289.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for

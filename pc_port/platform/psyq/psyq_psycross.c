@@ -1547,3 +1547,20 @@ int bfm_psyq_grd_f4_l0(uint32_t *r) { return grd_run(&kGrdF4l0, r); }
 int bfm_psyq_grd_f4_l2(uint32_t *r) { return grd_run(&kGrdF4l2, r); }
 int bfm_psyq_grd_g4_l0(uint32_t *r) { return grd_run(&kGrdG4l0, r); }
 int bfm_psyq_grd_g4_l2(uint32_t *r) { return grd_run(&kGrdG4l2, r); }
+
+#include <stdio.h>
+
+/* MUSASHI_TRACE_DRAWOTAG helper: the GTE control state at the traced OT
+ * (rotation, translation, OFX/OFY, H). Diagnostic only. */
+void bfm_psyq_gte_trace(void) {
+    int i;
+    uint32_t c[32];
+    if (!bfm_psyq_gte_begin()) return;
+    for (i = 0; i < 32; i++) c[i] = CFC2(i);
+    bfm_psyq_gte_end(0);
+    fprintf(stderr, "native_boot: OT_TRACE gte rt=%08x %08x %08x %08x %08x tr=%d,%d,%d "
+            "ofx=%d ofy=%d h=%u dqa=%d dqb=%d zsf3=%d zsf4=%d flag=%08x\n",
+            c[0], c[1], c[2], c[3], c[4], (int32_t)c[5], (int32_t)c[6], (int32_t)c[7],
+            (int32_t)c[24] >> 16, (int32_t)c[25] >> 16, c[26] & 0xFFFFu,
+            (int16_t)c[27], (int32_t)c[28], (int16_t)c[29], (int16_t)c[30], c[31]);
+}

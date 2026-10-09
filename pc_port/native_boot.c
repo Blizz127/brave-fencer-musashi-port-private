@@ -4993,6 +4993,18 @@ static void dump_display_vram(NativeBoot *boot) {
                 (unsigned long long)rs.disp_envs, (unsigned long long)ps.ot_packets,
                 (unsigned long long)ps.prims, (unsigned long long)ps.unknown_commands,
                 ps.last_unknown_code, de.disp.x, de.disp.y, de.disp.w, de.disp.h);
+        /* Once PutDispEnv reached the renderer, that is the display the game
+         * set (BFM: 0,240 320x240); boot->gpu.display is the stale GP1 one. */
+        if (rs.disp_envs && de.disp.w > 0 && de.disp.h > 0 && de.disp.x >= 0 && de.disp.y >= 0 &&
+            de.disp.x + de.disp.w <= 1024 && de.disp.y + de.disp.h <= 512) {
+            uint16_t *np;
+            x = (unsigned)de.disp.x; y = (unsigned)de.disp.y;
+            width = (unsigned)de.disp.w; height = (unsigned)de.disp.h;
+            count = width * height;
+            np = realloc(pixels, (size_t)count * sizeof(*pixels));
+            if (!np) { free(pixels); return; }
+            pixels = np;
+        }
     }
 #endif
     if (!dump_read_vram(boot, x, y, width, height, pixels)) {

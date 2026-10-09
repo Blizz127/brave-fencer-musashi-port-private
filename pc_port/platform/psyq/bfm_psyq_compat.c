@@ -3,6 +3,7 @@
  * behaviour; no Psy-Q code. See bfm_psyq_compat.h. */
 #include "bfm_psyq_compat.h"
 #include "../bfm_plat.h"
+#include "../bfm_plat_widescreen.h"
 #ifdef MUSASHI_STRICT_NATIVE
 #include "../../include/musashi_strict.h"
 #endif
@@ -352,6 +353,19 @@ int bfm_psyq_MoveImage(uint32_t *r) {
 int bfm_psyq_DrawSync(uint32_t *r) { RET(0); return 1; }
 int bfm_psyq_SetDispMask(uint32_t *r) { (void)r; return 1; }
 
+/* MUSASHI_TRACE_DRAWOTAG=N: log the Nth DrawOTag call (draw env in effect,
+ * GP0 env words E1-E6 met in the OT, first prims' coordinates) and the
+ * PutDrawEnv/PutDispEnv calls around it (N-2..N+1). Diagnostic only. */
+static long g_ot_trace_at = -2, g_ot_calls;
+static BfmPlatDrawEnv g_last_draw_env;
+static int ot_trace_on(long call) {
+    if (g_ot_trace_at == -2) {
+        const char *e = getenv("MUSASHI_TRACE_DRAWOTAG");
+        g_ot_trace_at = e ? atol(e) : -1;
+    }
+    return g_ot_trace_at > 0 && call >= g_ot_trace_at - 2 && call <= g_ot_trace_at + 1;
+}
+
 /* DRAWENV: RECT clip, short ofs[2], RECT tw, u16 tpage, u8 dtd, dfe, isbg, r0, g0, b0, DR_ENV */
 int bfm_psyq_PutDrawEnv(uint32_t *r) {
     uint8_t *e = (uint8_t *)bfm_psyq_ptr(A(0), 28);
@@ -364,6 +378,13 @@ int bfm_psyq_PutDrawEnv(uint32_t *r) {
     d.tpage = (uint16_t)rd16s(e + 20);
     d.dither = e[22]; d.draw_on_display = e[23]; d.clear_bg = e[24];
     d.bg_r = e[25]; d.bg_g = e[26]; d.bg_b = e[27];
+    if (ot_trace_on(g_ot_calls + 1))
+        fprintf(stderr, "native_boot: OT_TRACE PutDrawEnv before_call=%ld clip=%d,%d,%d,%d ofs=%d,%d "
+                "tw=%d,%d,%d,%d tpage=%04x dtd=%u dfe=%u isbg=%u bg=%u,%u,%u\n", g_ot_calls + 1,
+                d.clip.x, d.clip.y, d.clip.w, d.clip.h, d.offset_x, d.offset_y,
+                d.texture_window.x, d.texture_window.y, d.texture_window.w, d.texture_window.h,
+                d.tpage, d.dither, d.draw_on_display, d.clear_bg, d.bg_r, d.bg_g, d.bg_b);
+    g_last_draw_env = d;
     bfm_plat_renderer_set_draw_env(&d);
     RET(A(0));
     return 1;
@@ -378,6 +399,10 @@ int bfm_psyq_PutDispEnv(uint32_t *r) {
     d.screen.x = rd16s(e + 8); d.screen.y = rd16s(e + 10);
     d.screen.w = rd16s(e + 12); d.screen.h = rd16s(e + 14);
     d.interlaced = e[16]; d.rgb24 = e[17];
+    if (ot_trace_on(g_ot_calls + 1))
+        fprintf(stderr, "native_boot: OT_TRACE PutDispEnv before_call=%ld disp=%d,%d,%d,%d screen=%d,%d,%d,%d\n",
+                g_ot_calls + 1, d.disp.x, d.disp.y, d.disp.w, d.disp.h,
+                d.screen.x, d.screen.y, d.screen.w, d.screen.h);
     bfm_plat_renderer_set_disp_env(&d);
     RET(A(0));
     return 1;
@@ -532,6 +557,51 @@ size_t bfm_psyq_decode_packet(const uint32_t *w, size_t n, uint16_t *tpage,
     return count;
 }
 
+/* Read-only re-walk of one OT for MUSASHI_TRACE_DRAWOTAG. */
+static void ot_trace_walk(uint32_t ot, long call, unsigned pkts) {
+    uint32_t addr = ot & 0x00FFFFFFu, tag, w[256];
+    unsigned guard = 0, idx = 0, shown = 0, k;
+    BfmPlatPrim one[64];
+    uint16_t tp = 0;
+    BfmPlatProjection pj;
+    bfm_plat_projection_get(&pj);
+    fprintf(stderr, "native_boot: OT_TRACE DrawOTag call=%ld ot=%08x packets=%u\n", call, ot, pkts);
+    fprintf(stderr, "native_boot: OT_TRACE drawenv clip=%d,%d,%d,%d ofs=%d,%d dfe=%u dtd=%u isbg=%u; "
+            "gte h=%d ofx=%d ofy=%d updates=%u\n",
+            g_last_draw_env.clip.x, g_last_draw_env.clip.y, g_last_draw_env.clip.w, g_last_draw_env.clip.h,
+            g_last_draw_env.offset_x, g_last_draw_env.offset_y, g_last_draw_env.draw_on_display,
+            g_last_draw_env.dither, g_last_draw_env.clear_bg, pj.h, pj.ofx, pj.ofy, pj.updates);
+    {
+        extern void bfm_psyq_gte_trace(void) __attribute__((weak));
+        if (bfm_psyq_gte_trace) bfm_psyq_gte_trace();
+    }
+    while (addr != 0x00FFFFFFu && guard++ < 0x40000u) {
+        uint32_t len;
+        if (!rd32(0x80000000u | addr, &tag)) break;
+        len = tag >> 24;
+        if (len) {
+            size_t np;
+            idx++;
+            if (len > 256) len = 256;
+            for (k = 0; k < len; k++) rd32(0x80000000u | (addr + 4u + 4u * k), &w[k]);
+            for (k = 0; k < len; k++) {
+                uint8_t c = (uint8_t)(w[k] >> 24);
+                if (c >= 0xE1 && c <= 0xE6)
+                    fprintf(stderr, "native_boot: OT_TRACE env pkt=%u word=%08x\n", idx, w[k]);
+            }
+            np = bfm_psyq_decode_packet(w, len, &tp, one, 64);
+            if (shown < 40 && np) {
+                shown++;
+                fprintf(stderr, "native_boot: OT_TRACE pkt=%u kind=%u v0=%d,%d v1=%d,%d v2=%d,%d v3=%d,%d wh=%u,%u tpage=%04x clut=%04x rgb=%u,%u,%u\n",
+                        idx, one[0].kind, one[0].v[0].x, one[0].v[0].y, one[0].v[1].x, one[0].v[1].y,
+                        one[0].v[2].x, one[0].v[2].y, one[0].v[3].x, one[0].v[3].y, one[0].w, one[0].h,
+                        one[0].tpage, one[0].clut, one[0].v[0].r, one[0].v[0].g, one[0].v[0].b);
+            }
+        }
+        addr = tag & 0x00FFFFFFu;
+    }
+}
+
 /* DrawOTag(p): walk tags from p until the 0xFFFFFF terminator */
 int bfm_psyq_DrawOTag(uint32_t *r) {
     BfmPlatPrim prims[128];
@@ -539,6 +609,9 @@ int bfm_psyq_DrawOTag(uint32_t *r) {
     uint16_t tpage = 0;
     unsigned guard = 0;
     size_t n = 0;
+    long call = ++g_ot_calls;
+    unsigned pkts = 0;
+    (void)ot_trace_on(call);
     while (addr != 0x00FFFFFFu && guard++ < 0x40000u) {
         uint32_t len, k;
         if (!rd32(0x80000000u | addr, &tag)) return n ? 1 : 0;
@@ -547,12 +620,17 @@ int bfm_psyq_DrawOTag(uint32_t *r) {
             stats.ot_packets++;
             if (len > 256) len = 256;
             for (k = 0; k < len; k++) rd32(0x80000000u | (addr + 4u + 4u * k), &words[k]);
+            pkts++;
             if (n + 64 > 128) { bfm_plat_renderer_submit(prims, n); stats.prims += n; n = 0; }
             n += bfm_psyq_decode_packet(words, len, &tpage, prims + n, 128 - n);
         }
         addr = tag & 0x00FFFFFFu;
     }
     if (n) { bfm_plat_renderer_submit(prims, n); stats.prims += n; }
+    if (g_ot_trace_at > 0 && call >= g_ot_trace_at && pkts >= 50u) {
+        g_ot_trace_at = -1; /* once */
+        ot_trace_walk(A(0), call, pkts);
+    }
     return 1;
 }
 

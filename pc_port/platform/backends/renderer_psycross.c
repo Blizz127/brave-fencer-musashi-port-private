@@ -21,6 +21,8 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
+#include <SDL.h>
 
 typedef struct PsyCrossRenderer {
     int in_scene;
@@ -80,9 +82,35 @@ static void to_rect(RECT16 *d, const BfmPlatRect *r) {
     d->x = r->x; d->y = r->y; d->w = r->w; d->h = r->h;
 }
 
+/* MUSASHI_TRACE_PSYCROSS=N: log backend env/present calls (and a VRAM
+ * readback of both 320x240 pages after PsyX_EndScene) for frames N..N+2;
+ * MUSASHI_TRACE_PSYCROSS_EVERY=K: every K-th frame; MUSASHI_TRACE_PSYCROSS_ENVS=1:
+ * each distinct draw/disp env. Diagnostic only. */
+static unsigned long pc_frames, pc_submits;
+static int pc_trace(void) {
+    static long at = -2, every = -2;
+    if (at == -2) { const char *e = getenv("MUSASHI_TRACE_PSYCROSS"); at = e ? atol(e) : -1; }
+    if (every == -2) { const char *e = getenv("MUSASHI_TRACE_PSYCROSS_EVERY"); every = e ? atol(e) : 0; }
+    if (every > 0 && pc_frames % (unsigned long)every == 0) return 1;
+    return at >= 0 && pc_frames >= (unsigned long)at && pc_frames <= (unsigned long)at + 2;
+}
+
 static int pc_draw_env(void *self, const BfmPlatDrawEnv *e) {
     DRAWENV env;
-    (void)self;
+    if (getenv("MUSASHI_TRACE_PSYCROSS_ENVS")) {
+        static BfmPlatDrawEnv last; static int n;
+        if (n < 40 && memcmp(&last, e, sizeof last)) {
+            n++; last = *e;
+            fprintf(stderr, "PC_ENV f=%lu draw clip=%d,%d,%d,%d ofs=%d,%d dfe=%u isbg=%u tw=%d,%d,%d,%d\n",
+                    pc_frames, e->clip.x, e->clip.y, e->clip.w, e->clip.h, e->offset_x, e->offset_y,
+                    e->draw_on_display, e->clear_bg, e->texture_window.x, e->texture_window.y,
+                    e->texture_window.w, e->texture_window.h);
+        }
+    }
+    if (pc_trace())
+        fprintf(stderr, "PC_TRACE f=%lu draw clip=%d,%d,%d,%d ofs=%d,%d dfe=%u isbg=%u tp=%04x submits=%lu\n",
+                pc_frames, e->clip.x, e->clip.y, e->clip.w, e->clip.h, e->offset_x, e->offset_y,
+                e->draw_on_display, e->clear_bg, e->tpage, pc_submits);
     memset(&env, 0, sizeof env);
     to_rect(&env.clip, &e->clip);
     env.ofs[0] = e->offset_x;
@@ -91,7 +119,9 @@ static int pc_draw_env(void *self, const BfmPlatDrawEnv *e) {
     env.tpage = e->tpage;
     env.dtd = e->dither;
     env.dfe = e->draw_on_display;
-    env.isbg = e->clear_bg;
+    /* MUSASHI_PC_NOBG=1 (diagnostic): drop isbg. With it the strict frame
+     * reaches VRAM (B28 inc 114); PsyCross's isbg/ClearImage path blacks it. */
+    env.isbg = getenv("MUSASHI_PC_NOBG") ? 0 : e->clear_bg;
     env.r0 = e->bg_r; env.g0 = e->bg_g; env.b0 = e->bg_b;
     PutDrawEnv(&env);
     ((PsyCrossRenderer *)self)->tpage = e->tpage;
@@ -101,6 +131,17 @@ static int pc_draw_env(void *self, const BfmPlatDrawEnv *e) {
 static int pc_disp_env(void *self, const BfmPlatDispEnv *e) {
     DISPENV env;
     (void)self;
+    if (getenv("MUSASHI_TRACE_PSYCROSS_ENVS")) {
+        static BfmPlatDispEnv last; static int n;
+        if (n < 40 && memcmp(&last, e, sizeof last)) {
+            n++; last = *e;
+            fprintf(stderr, "PC_ENV f=%lu disp=%d,%d,%d,%d screen=%d,%d,%d,%d\n", pc_frames,
+                    e->disp.x, e->disp.y, e->disp.w, e->disp.h, e->screen.x, e->screen.y, e->screen.w, e->screen.h);
+        }
+    }
+    if (pc_trace())
+        fprintf(stderr, "PC_TRACE f=%lu disp=%d,%d,%d,%d submits=%lu\n", pc_frames,
+                e->disp.x, e->disp.y, e->disp.w, e->disp.h, pc_submits);
     memset(&env, 0, sizeof env);
     to_rect(&env.disp, &e->disp);
     to_rect(&env.screen, &e->screen);
@@ -199,6 +240,7 @@ static void draw_one(const BfmPlatPrim *q) {
 static int pc_submit(void *self, const BfmPlatPrim *p, size_t n) {
     size_t i;
     (void)self;
+    pc_submits += n;
     for (i = 0; i < n; i++) draw_one(&p[i]);
     return BFM_PLAT_OK;
 }
@@ -226,10 +268,33 @@ static int pc_present(void *self) {
     PsyCrossRenderer *s = (PsyCrossRenderer *)self;
     /* DrawPrim only queues: DrawSync draws the queued splits (and reads the
      * framebuffer back into PsyCross's VRAM) before the scene is shown */
+    if (pc_trace())
+        fprintf(stderr, "PC_TRACE f=%lu present in_scene=%d submits=%lu thread=%lu glctx=%p\n", pc_frames,
+                s->in_scene, pc_submits, (unsigned long)SDL_ThreadID(), (void *)SDL_GL_GetCurrentContext());
+    pc_frames++;
     DrawSync(0);
-    if (s->in_scene) {
-        PsyX_EndScene();
-        s->in_scene = 0;
+    /* Always end: PsyCross's DrawPrim/DrawOTag open a scene themselves, so a
+     * prim drawn before pc_begin (the native PsyQ path draws from the frame
+     * driver) leaves begin_scene_flag set, pc_begin's PsyX_BeginScene then
+     * answers 0 every frame and in_scene never latches. Skipping the end
+     * here meant no PsyX_EndScene, so the backbuffer was never stored into
+     * VRAM (strict: black framebuffers). PsyX_EndScene is a no-op with no
+     * scene open. */
+    PsyX_EndScene();
+    s->in_scene = 0;
+    if (pc_trace()) {
+        static u_short px[320 * 240];
+        RECT16 rr;
+        unsigned k, nz = 0;
+        rr.x = 0; rr.y = 0; rr.w = 320; rr.h = 480 / 2;
+        for (k = 0; k < 2; k++) {
+            unsigned j; nz = 0;
+            rr.y = (short)(k * 240);
+            DrawSync(0);
+            StoreImage(&rr, (u_long *)px);
+            for (j = 0; j < 320u * 240u; j++) nz += (px[j] & 0x7FFFu) != 0;
+            fprintf(stderr, "PC_TRACE after_end page_y=%u nonblack=%u\n", k * 240, nz);
+        }
     }
     return BFM_PLAT_OK;
 }
