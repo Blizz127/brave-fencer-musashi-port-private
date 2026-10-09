@@ -351,9 +351,8 @@ def strip_empty_asm(text, orig=None):
     """Drop empty-template asm statements that are identities on the host:
     no outputs, or every output tied to an input ("N") with the same
     expression; clobbers (incl. "memory") only steer MIPS scheduling. Returns
-    (text, dropped) or None when a non-strict empty asm has an untied output.
-    Strict also drops untied outputs on simple locals (MATCH scheduling
-    barriers): removing them keeps the prior C value instead of undefining it."""
+    (text, dropped) or None when an empty asm has an untied output (its value
+    would be whatever the MIPS register held)."""
     pat = re.compile(r'\b(?:__asm__|__asm|asm)\s*(?:__volatile__|volatile)?\s*\(\s*""\s*')
     pos, pieces, dropped = 0, [], 0
     # Strict (B28): an untied output naming a register-pinned local is an
@@ -396,14 +395,7 @@ def strip_empty_asm(text, orig=None):
                 # so the shared register carries it): `out = (in);`.
                 moves.append((expr.strip(), tied[0].strip()))
                 continue
-            # Strict: drop empty-asm untied outputs. On MIPS they are
-            # scheduling barriers (0 bytes); compiling them on the host would
-            # undefine the local. Removing the asm keeps the prior C value
-            # (pinned register locals already worked this way).
-            name = expr.strip()
-            if STRICT and not tied and re.fullmatch(r'[A-Za-z_]\w*', name):
-                continue
-            if not (STRICT and not tied and name in pinned):
+            if not (STRICT and not tied and expr.strip() in pinned):
                 return None
         pieces.append(text[pos:m.start()])
         # A comment marker breaks when the asm text sits inside a comment
