@@ -340,6 +340,24 @@ def amount_max(val, defs, depth=0):
     return None
 
 
+def nontrapping_const_divisor(divisor, defs):
+    """Strict (B28): a divisor clang merged from constant divisors of
+    separate C expressions (SimplifyCFG sinks `x % 0x60` of two switch arms
+    into one srem by a phi, 8017DD34). Every value it can take is an
+    integer constant other than 0 and -1, so it can neither trap on the host
+    nor differ from MIPS; anything else stays refused."""
+    d = defs.get(divisor, "")
+    m = re.match(r"phi i\d+ (.*)$", d)
+    if m:
+        vals = [re.match(r"\[\s*(\S+)\s*,", v.strip()) for v in split_top(m.group(1))]
+        vals = [v.group(1) if v else None for v in vals]
+    else:
+        m = re.match(r"select i1 \S+, i\d+ (\S+), i\d+ (\S+)$", d)
+        vals = [m.group(1), m.group(2)] if m else []
+    return bool(vals) and all(v is not None and re.fullmatch(r"-?\d+", v) and int(v) not in (0, -1)
+                              for v in vals)
+
+
 def lower_arith(ir):
     """MIPS semantics for i32 shifts and divisions with a variable operand:
     shift counts are masked to 5 bits (SLLV/SRLV/SRAV use the low 5 bits;
@@ -1810,7 +1828,8 @@ def check_optimized(ir, module_internal):
             if dm:
                 divisor = split_top(dm.group(3))[1]
                 if not re.fullmatch(r"-?\d+", divisor) or int(divisor) in (0, -1):
-                    raise Reject("arith", f"{dm.group(1)} by {divisor}")
+                    if not (STRICT and nontrapping_const_divisor(divisor, defs)):
+                        raise Reject("arith", f"{dm.group(1)} by {divisor}")
             sm = re.match(r"(shl|lshr|ashr)(?: nuw| nsw| exact)* (i\d+) (.*)$", rhs)
             if sm:
                 amount = split_top(sm.group(3))[1]

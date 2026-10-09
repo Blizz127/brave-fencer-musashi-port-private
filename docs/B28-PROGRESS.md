@@ -1601,6 +1601,20 @@ Increment 32 (generator, strict only):
 - Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [],
   86 gained incl. 80183F98. Run: 3000 frames, no stop.
 
+### Inc 112: strict divisor rule accepts a phi of non-trapping constants
+
+- The probe stopped at sc02_0035 8017DD34, refused by rule arith
+  ("srem by %.sink81"). The C divides by constants (rand() % 0x60 in two switch
+  arms); clang sank both into one srem by phi [32, 96]. New strict-only
+  nontrapping_const_divisor() accepts a phi/select divisor whose incoming
+  values are all integer constants other than 0 and -1 (cannot trap on the
+  host or differ from MIPS). Anything else is still refused.
+- Readout from inc 111's run (renderer psycross, so the VRAM download is real):
+  frames 1200-3200 submit ~260 prims/frame via PsyQ DrawOTag, but both
+  framebuffers stay black. Open question for the next increments.
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [].
+  Run: 3000 frames, no stop.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for
