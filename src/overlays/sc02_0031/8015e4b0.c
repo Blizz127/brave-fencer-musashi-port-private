@@ -13,7 +13,7 @@ extern u16 D_801875D4;
 extern u16 D_801875D6;
 extern u16 D_801875D8;
 extern s32 D_801875DC;
-extern void func_80149350(s32 arg0);
+extern void func_80149350(s32 arg0, s32 a1, s32 a2);
 extern void func_80013E94(void *a0, void *a1);
 extern s32 func_80146A6C(s32 a0, void *a1, s32 a2, s32 a3, s32 a4, s32 a5, s32 a6);
 

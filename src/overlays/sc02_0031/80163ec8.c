@@ -11,7 +11,7 @@ typedef double f64;
 
 typedef struct { u8 b[8]; } Blk8;
 extern s32 func_8014CA00(s32 a0);
-extern void func_80149350(s32 arg0);
+extern void func_80149350(s32 arg0, s32 a1, s32 a2);
 extern s32 func_80146994(s32 a0, s32 a1, s32 a2, s32 a3);
 extern u16 func_80148800(s32 *a0);
 extern void func_80146CA0(void *a0);

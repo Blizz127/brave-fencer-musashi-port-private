@@ -9,7 +9,7 @@ typedef double f64;
 #define NULL ((void *)0)
 #endif
 
-extern void func_80149350(s32 arg0);
+extern void func_80149350(s32 arg0, s32 a1, s32 a2);
 extern void func_80015954(s32 a0, s32 a1);
 extern s32 func_8016C374(s32 a0, s32 a1, s32 a2, s32 a3);
 extern void func_80146C3C(void);

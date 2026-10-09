@@ -24,7 +24,7 @@ typedef struct {
     /* 0x58 */ u8 m1[0x20];
     /* 0x78 */ u8 m2[0x20];
 } Fr_801670E4;
-extern void func_80149350(s32);
+extern void func_80149350(s32 arg0, s32 a1, s32 a2);
 extern void func_800D20C0(void *a0, void *a1, s32 a2);
 extern void func_80017E68(void *a0, void *a1);
 extern void func_800D23D0(void *a0);

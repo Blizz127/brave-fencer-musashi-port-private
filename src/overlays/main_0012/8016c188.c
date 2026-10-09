@@ -7,7 +7,7 @@
 #include "psx_types.h"
 
 extern void func_801465C0(void);
-extern void func_80149350(s32 arg0);
+extern void func_80149350(s32 arg0, s32 a1, s32 a2);
 
 void func_8016C188(s32 param)
 {

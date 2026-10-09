@@ -11,9 +11,9 @@
  * (Druthulu, same SLUS-00726 build), split to an address-named file.
  * Values and locals are the loosest that reproduce the bytes; they
  * are not evidence of the original declaration. */
-extern void func_80149350(s32 arg0);
+extern void func_80149350(s32 arg0, s32 a1, s32 a2);
 
-void func_80149290(s32 a0) {
+void func_80149290(s32 a0, s32 a1, s32 a2) {
     volatile s32 a;
     volatile s32 b;
     volatile s32 c;
@@ -23,7 +23,7 @@ void func_80149290(s32 a0) {
     *(s32 *)(*(s32 *)(a0 + 0x20) + 0x48) = *(s16 *)(a0 + 6);
     *(s32 *)(*(s32 *)(a0 + 0x20) + 0x4C) = *(s16 *)(a0 + 0xA);
     *(s32 *)(*(s32 *)(a0 + 0x20) + 0x50) = *(s16 *)(a0 + 0xE);
-    func_80149350(a0);
+    func_80149350(a0, a1, a2); /* a1/a2 pass through untouched in retail */
     *(s32 *)(*(s32 *)(a0 + 0x20) + 0x48) = a;
     *(s32 *)(*(s32 *)(a0 + 0x20) + 0x4C) = b;
     *(s32 *)(*(s32 *)(a0 + 0x20) + 0x50) = c;

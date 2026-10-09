@@ -12,7 +12,7 @@
  * Values and locals are the loosest that reproduce the bytes; they
  * are not evidence of the original declaration. */
 extern void func_801484B0(s32 a0, s32 a1);
-extern void func_80149350(s32 arg0);
+extern void func_80149350(s32 arg0, s32 a1, s32 a2);
 extern void func_80015954(s32 a0, s32 a1);
 extern s32 func_801399F0(s32 a0);
 extern void func_80139914(s32 a0);

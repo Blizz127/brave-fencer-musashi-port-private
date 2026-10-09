@@ -22,7 +22,7 @@ struct Fr_8016A290 {
     u32  code;                            /* 0x90 -> sp+0xA0 */
 };
 extern u16  D_800B99DA;
-extern void func_80149350(s32 arg0);
+extern void func_80149350(s32 arg0, s32 a1, s32 a2);
 extern void func_80017E68(void *a0, void *a1);
 extern s32 D_801269A4;
 extern s32 D_801269A8;

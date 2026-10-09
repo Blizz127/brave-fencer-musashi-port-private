@@ -14,6 +14,7 @@ typedef double f64;
 
 extern void func_8012F14C(s32 a0, s32 a1, s32 a2);
 
-void func_80149350(s32 arg0) {
-    ((void (*)())func_8012F14C)(*(s32 *)(arg0 + 0x20) + 0x34);
+void func_80149350(s32 arg0, s32 a1, s32 a2) {
+    /* a1/a2 pass straight through (retail leaves them in place for the jal) */
+    func_8012F14C(*(s32 *)(arg0 + 0x20) + 0x34, a1, a2);
 }

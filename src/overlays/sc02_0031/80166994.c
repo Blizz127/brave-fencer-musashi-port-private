@@ -11,7 +11,7 @@ typedef double f64;
 
 typedef struct { s16 f0, f1, f2, f3, f4, f5; } TrailEntry;
 typedef struct { u8 flag, idx, count, timer; TrailEntry e[16]; } Trail;
-extern void func_80149350(s32 arg0);
+extern void func_80149350(s32 arg0, s32 a1, s32 a2);
 extern void func_801484B0(s32 a0, s32 a1);
 extern s32 func_80165FA4(s32 a0, s32 a1, s32 a2);
 extern void func_80148534(s32 a0, s32 a1);

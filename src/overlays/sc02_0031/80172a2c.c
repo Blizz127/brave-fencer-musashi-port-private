@@ -18,7 +18,7 @@ typedef double f64;
 
 extern void func_8012A568(void (*a0)(void));
 extern void func_80147060(u8 *a0);
-extern void func_80149350(s32 arg0);
+extern void func_80149350(s32 arg0, s32 a1, s32 a2);
 extern void func_80171A1C(u8 *a0);
 extern void func_80172A8C(void *a0);
 extern s16 D_80126B30;

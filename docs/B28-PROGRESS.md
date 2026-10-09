@@ -864,6 +864,17 @@ Increment 32 (generator, strict only):
 - Strict stop: main_0012 80149350. Frame 1200: prims=0 disp=1 draw=0. This run
   did not hit the intermittent 80135D20 host fault from increment 56.
 
+## Increment 58 — 80149350 three-argument pass-through (both overlay members)
+
+- `func_80149350` (main_0012, sc02_0031) rewritten as `(obj, a1, a2)` forwarding to
+  `func_8012F14C(*(obj+0x20)+0x34, a1, a2)`; retail leaves a1/a2 untouched, so the
+  generator now sees a 3-argument callee. `func_80149290` forwards (a0, a1, a2) likewise.
+- Caller extern prototypes updated to 3 args (declaration-only) in both members so
+  apply_passthrough no longer refuses them ("passes 1 of 3"). All 28 files cmpobj SAME.
+- Gate: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0. regr LOST [], GAINED 4 (main_0012).
+- Strict stop moves 80149350 -> 800D20C0 (not_in_lane). Frame 1200: prims=0 disp=1 draw=0.
+- The 80135D20 / sc02 80135EB0 intermittent host fault (inc 56) did not recur this run; still open.
+
 ## Next
 
 - Admit or HLE main 80020F34 (exported GTE bank leaf; interpreter has

@@ -18,7 +18,7 @@ extern void func_8012A568(void (*a0)(void));
 
 extern void func_801484B0(s32 a0, s32 a1);
 extern void func_80148534(s32 a0, s32 a1);
-extern void func_80149350(s32 arg0);
+extern void func_80149350(s32 arg0, s32 a1, s32 a2);
 extern s32 func_80165FA4(s32 a0, s32 a1, s32 a2);
 
 /* func_80166994 — trail/afterimage ring recorder (0xC4-stride Trail records at D_80184418).
