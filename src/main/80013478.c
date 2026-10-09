@@ -186,9 +186,7 @@ typedef struct {
 /* GTE command mnemonics (mvmva, rtpt, ...) come from include/gte_macros.inc. */
 __asm__(".include \"gte_macros.inc\"\n");
 
-s32 func_80013478(void) {
-    register s16 *a0 __asm__("$4");
-    register s16 *a1 __asm__("$5");
+s32 func_80013478(s16 *a0, s16 *a1) {
     volatile s32 diff[3];
     s32 result[3];
 
@@ -196,9 +194,17 @@ s32 func_80013478(void) {
     diff[1] = a0[3] - a1[1];
     diff[2] = a0[5] - a1[2];
 
-    __asm__ volatile("lwc2 $9, 0(%0)\n\tlwc2 $10, 4(%0)\n\tlwc2 $11, 8(%0)" : : "r"(diff));
-    __asm__ volatile("nop\n\tnop\n\tsqr 0");
-    __asm__ volatile("swc2 $25, 0(%0)\n\tswc2 $26, 4(%0)\n\tswc2 $27, 8(%0)" : : "r"(result) : "memory");
+    __asm__ volatile("lwc2 $9, 0(%0)\n"
+                     "lwc2 $10, 4(%0)\n"
+                     "lwc2 $11, 8(%0)\n"
+                     "nop\n"
+                     "nop\n"
+                     "sqr 0\n"
+                     : : "r"(diff) : "$9", "$10", "$11", "memory");
+    __asm__ volatile("swc2 $25, 0(%0)\n"
+                     "swc2 $26, 4(%0)\n"
+                     "swc2 $27, 8(%0)\n"
+                     : : "r"(result) : "memory");
 
     return result[0] + result[1] + result[2];
 }

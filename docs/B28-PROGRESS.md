@@ -1303,6 +1303,21 @@ Increment 32 (generator, strict only):
 - Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [] (gained 8003388C).
 - New stop: `guest_pc=80013478`; frame 1200, prims=32 at two frames, draw=0.
 
+### Increment 91: native 80013478 (GTE sqr distance) and strict pass-through callers; stop 8014EA4C
+
+- Stop was `guest_pc=80013478` (not a candidate: `register` pins of a0/a1 under a `(void)` prototype plus split GTE asm).
+- Source (byte-identical, gcc 2.7.2 -O2 object unchanged, registry re-verified vs retail): 80013478 takes
+  `(s16 *a0, s16 *a1)` and its asm is the `lwc2 IR1-3 / nop nop sqr 0` + `swc2 MAC1-3` form that `gte_host` already
+  lowers (MAC = (s16)diff^2).
+- 80013450 (`s32 f(void)` around `jal 80013478`) stays as is, so the hybrid table is unchanged. Generator (strict
+  only): a call missing arguments the caller does not declare may pass the caller's entry a(k) when retail proves a(k)
+  is still the entry value at every jal to the callee. The caller is flagged pass-through (only entered through
+  lane_try with the guest registers set), so the body reads them at entry via the new
+  `musashi_lane_guest_reg(r)` (mips_formatter.c).
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; gained 80013478 plus 36 other main/main_0003/
+  main_0012/sc02_0031 functions unlocked by the same padding.
+- New stop: `guest_pc=8014ea4c`; frame 1200, prims=32 at two frames, draw=0.
+
 ## Next
 
 - Admit or reshape sc02_0031 `func_801831B4` (currently `abi`). Likely next

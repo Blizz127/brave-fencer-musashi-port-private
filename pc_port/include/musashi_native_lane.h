@@ -162,6 +162,8 @@ void musashi_native_lane_overlay_stats(uint64_t *verified, uint64_t *refused);
 
 /* Argument n (0-based) under the o32 register ABI. */
 uint32_t musashi_native_lane_arg(const MusashiNativeLaneCall *call, unsigned n);
+/* Strict pass-through callers (B28): guest register r of the active lane call. */
+uint32_t musashi_lane_guest_reg(uint32_t r);
 
 /* Install one sorted-or-unsorted table (copied into an index; entries and
  * names must outlive the lane). Replaces any previous table. Returns the

@@ -1026,7 +1026,9 @@ def parse_signature(header_or_decl, name):
 
 MEMORY_FNS = ("memset", "memcpy", "memmove")
 # Guarded division helpers (mips_formatter.c) that lower_arith() calls.
-LANE_HELPERS = ("lane_sdiv32", "lane_srem32", "lane_udiv32", "lane_urem32")
+LANE_HELPERS = ("lane_sdiv32", "lane_srem32", "lane_udiv32", "lane_urem32",
+                # strict pass-through callers: the guest a0-a3 at entry (B28)
+                "musashi_lane_guest_reg")
 # Strict (B28): host stand-ins for PsyQ inline_c.h GTE macros (see
 # include/musashi_lane_gte_inline.h and psyq_psycross.c).
 GTE_INLINE_HELPERS = (
@@ -1081,7 +1083,8 @@ def rewrite_symbols(ir, symbols, member=None, member_code=()):
     declared = set(re.findall(r"^declare [^@]*@([\w.$]+)\(", ir, flags=re.M))
     guest = set()
     for fname in defined | declared:
-        if fname.startswith("llvm.") or fname in MEMORY_FNS or fname in GTE_INLINE_HELPERS:
+        if fname.startswith("llvm.") or fname in MEMORY_FNS or fname in GTE_INLINE_HELPERS or \
+                fname == "musashi_lane_guest_reg":
             continue
         addr = guest_address(fname, symbols)
         if addr is None:
@@ -1315,7 +1318,10 @@ def fix_short_calls(ir, words, vram, src_dir=None, info=None):
             if toks and toks[-1].startswith("%"):
                 own.append((toks[0], toks[-1]))
     out, n = [], 0
+    entry_regs, cur_def = {}, None
     for line in ir.splitlines():
+        if re.match(r"^define\b", line):
+            cur_def = len(out)
         cm = re.search(r"\bcall ([^@]*)@([\w.$]+)\((.*)\)", line)
         if not cm or cm.group(2) not in decls or cm.group(2).startswith("llvm."):
             out.append(line)
@@ -1345,8 +1351,26 @@ def fix_short_calls(ir, words, vram, src_dir=None, info=None):
                     args.append("ptr null" if want[k] == "ptr" else f"{want[k]} 0")
                     continue
                 if k >= len(own):
-                    why = "the caller does not receive the missing arguments"
-                    break
+                    # Strict (B28): a caller that declares fewer parameters
+                    # than it passes through (80013450 `s32 f(void)` around
+                    # `jal 80013478`, which reads a0/a1) is flagged
+                    # pass-through, so it is only ever entered through
+                    # lane_try with the guest registers set; its entry a(k)
+                    # is read from them when retail proves a(k) is still the
+                    # entry value at every jal to the callee.
+                    live = entry_arg_at_calls(words, vram, k) if STRICT and k < 4 else None
+                    if not live or not live.get(int(cm.group(2)[5:], 16)):
+                        why = "the caller does not receive the missing arguments"
+                        break
+                    entry_regs.setdefault(cur_def, set()).add(k)
+                    if want[k] == "i32":
+                        args.append(f"i32 %lane.ea{k}")
+                    else:
+                        out.append(f"{ind}%lane.ar{n}.z = zext i32 %lane.ea{k} to i64")
+                        out.append(f"{ind}%lane.ar{n} = inttoptr i64 %lane.ar{n}.z to ptr")
+                        args.append(f"ptr %lane.ar{n}")
+                        n += 1
+                    continue
                 live = entry_arg_at_calls(words, vram, k)
                 if not live or not live.get(int(cm.group(2)[5:], 16)):
                     why = f"a{k} is not the caller's argument at every retail jal"
@@ -1374,6 +1398,14 @@ def fix_short_calls(ir, words, vram, src_dir=None, info=None):
             fixed = re.sub(r" \([^()]*\.\.\.\) @" + re.escape(cm.group(2)) + r"\(",
                            " @" + cm.group(2) + "(", fixed, count=1)
         out.append(fixed)
+    if entry_regs:
+        # the entry values, read before anything can change the guest a0-a3
+        if None in entry_regs:
+            raise Reject("abi", "pass-through argument outside a function body")
+        for i in sorted(entry_regs, reverse=True):
+            out[i + 1:i + 1] = [f"  %lane.ea{k} = call i32 @musashi_lane_guest_reg(i32 {4 + k})"
+                                for k in sorted(entry_regs[i])]
+        out.append("declare i32 @musashi_lane_guest_reg(i32)")
     text = "\n".join(out) + "\n"
     for name in widen:
         text = re.sub(r"^(declare\b[^@]*@" + re.escape(name) + r")\([^()]*\)",

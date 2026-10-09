@@ -13560,6 +13560,14 @@ uint32_t musashi_native_lane_arg(const MusashiNativeLaneCall *call, unsigned n) 
     return value;
 }
 
+/* Strict pass-through callers (B28): a native body whose C declares fewer
+ * parameters than its retail words pass on reads the guest a(k) it was
+ * entered with (it is only ever entered through lane_try). */
+uint32_t musashi_lane_guest_reg(uint32_t r) {
+    if (!g_lane_active || r >= 32u) return 0;
+    return g_lane_active->cpu->r[r];
+}
+
 uint64_t musashi_lane_ledger;
 uint32_t musashi_lane_ledger_lost;
 uint32_t musashi_lane_fixed;
