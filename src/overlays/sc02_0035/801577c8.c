@@ -1,0 +1,17 @@
+/* SC02.CD member35 [801577C8,80157808): twin of main_0012 801577C8 (src/overlays/main_0012/801577c8.c); only the
+ * global addresses differ. Byte-identical to the sc02_0035 retail words
+ * (gcc-2.7.2 -O2, B28 inc 104 twin port). */
+/* Decompiled by m2c from main.s, then verified byte-exact
+ * against retail by tools/match_function.py. Types and signatures are
+ * whatever reproduces the bytes; they are not evidence of the
+ * original declaration. */
+
+#include "psx_types.h"
+extern s32 D_801BD768;
+void func_80147078();
+void func_80157808();
+void func_801577C8(void *p) {
+    D_801BD768 = 300;
+    func_80147078(p, 7);
+    func_80157808(p);
+}

@@ -1,0 +1,55 @@
+/* SC02.CD member35 [8015A2D8,8015A3C8): twin of main_0012 8015A2D8 (src/overlays/main_0012/8015a2d8.c); only the
+ * global addresses differ. Byte-identical to the sc02_0035 retail words
+ * (gcc-2.7.2 -O2, B28 inc 104 twin port). */
+/* Overlay range [8015A2D8,8015A3C8) from MAIN.CD member 0012.
+ * SHA256(span)=56a36af8e5635d5495c8ace7b247856135bbde3829c2cb3e3c159f6a6966f681.
+ * Word export for the native seam; the body below is an
+ * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+#include "psx_types.h"
+/* func_8015A2D8 - byte-exact against retail at -O2 (tools/register_match.py). */
+extern void func_80146CA0(void *a0);
+extern void func_80146DB8(s32 *a0, s32 *a1);
+extern void func_8014C010(s32 a0, s32 a1);
+extern void func_80154A74(s32 a0, s32 a1);
+extern void func_80154150(s32 a0, s32 a1);
+extern void func_801553A8(s32 *a0);
+extern void func_80154A74(int, int);
+extern s32 func_80172608(u8 *a0);
+
+void func_8015A2D8(s32 param_1)
+{
+
+    extern int D_80186AE0;
+    unsigned char bVar1;
+
+    ((void (*)(int, int *))func_80146DB8)(param_1, &D_80186AE0);
+    if ((*(unsigned int *)(param_1 + 0x44) & 0x200) != 0) {
+        func_80154150(param_1, 10);
+        func_80154A74(param_1, 0x1c);
+        *(int *)(param_1 + 0x2c) = 0xfffc0000;
+        goto LAB_8015a38c;
+    }
+    bVar1 = *(unsigned char *)(param_1 + 0xa9);
+    switch (bVar1) {
+    case 0x41:
+        func_80154150(param_1, 7);
+        break;
+    case 0x53:
+    case 0x73:
+        func_80154150(param_1, 6);
+        break;
+    default:
+        *(int *)(param_1 + 0x23c) = 0;
+        goto LAB_8015a390;
+    }
+    func_80154A74(param_1, 0x21);
+LAB_8015a38c:
+    *(int *)(param_1 + 0x23c) = 0;
+LAB_8015a390:
+    func_8014C010(param_1, 2);
+    ((void (*)(int))func_801553A8)(param_1);
+    ((void (*)(int))func_80172608)(param_1);
+    ((void (*)(int))func_80146CA0)(param_1);
+    return;
+}

@@ -1478,6 +1478,25 @@ Increment 32 (generator, strict only):
 - Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [],
   GAINED main 80024448. Run: 3000 frames, no stop.
 
+### Inc 104: sc02_0035 upper half, 331 twin ports
+
+- A 6000-frame run stopped not_in_lane at 801659DC in sc02_0035. The
+  sc02_0035 registry (935 rows) ends at 8014CB0C, but its code runs to
+  80184484. In that uncovered range, 1070 functions are byte-identical to a
+  sibling's registry entry (already native through the per-call digest
+  check), 364 differ only in instruction immediates (global addresses), and
+  328 differ more.
+- New tools/twin_port.py. For each immediate-only twin it maps the sibling's
+  global addresses to sc02_0035's from the hi/lo pairs, renames the D_ symbols
+  in the sibling's C, compiles with gcc-2.7.2, and keeps the result only if it
+  is byte-identical to the sc02_0035 retail words. 332/364 passed (all from
+  main_0012). 80177DA8 was left out: its file also defines 80177EA4, which has
+  no sc02_0035 row (an exact twin). That leaves 331 new
+  src/overlays/sc02_0035 files and registry rows (recovery and origin copied
+  from the main_0012 row).
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [],
+  312 sc02_0035 entries gained. Run: 3000 frames, no stop.
+
 ## Next
 
 - Admit or reshape sc02_0031 `func_801831B4` (currently `abi`). Likely next
