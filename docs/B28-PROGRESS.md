@@ -883,6 +883,15 @@ Increment 32 (generator, strict only):
 - Gate: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0. regr LOST [], GAINED 2 (main_0010).
 - Strict stop moves 800D20C0 -> 80017778 (not_in_lane). Frame 1200: prims=0 disp=1 draw=0.
 
+## Increment 60 — strict retail_call_args tracks stack arguments 4..15
+
+- main `func_80017778` (POLY_G4 builder) was rejected "escape: locals at arguments [8, 9],
+  retail sp offsets at []": it passes RotTransPers4 (8004961C) ten arguments, the last two
+  frame locals at sp+0x28/0x2C, and the retail dataflow only read stack slots for args 4..7.
+  Strict-only: slots sp+0x10.. are read for arguments up to 16 (the guest-call limit).
+- Gate: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0. regr LOST [], GAINED 2 (main 80017778, 80017394).
+- Strict stop moves 80017778 -> 800CC290 (not_in_lane). Frame 1200: prims=0 disp=1 draw=0.
+
 ## Next
 
 - Admit or HLE main 80020F34 (exported GTE bank leaf; interpreter has

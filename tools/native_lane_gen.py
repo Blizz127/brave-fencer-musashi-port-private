@@ -2635,7 +2635,9 @@ def retail_call_args(words, vram, frame, jtargets=None):
             raise Reject("escape", f"sp changes at {pc + 4:08x}")
         if kind == "call":
             args = {k: regs[4 + k] for k in range(4) if 4 + k in regs}
-            for k in range(4, 8):
+            # Strict (B28): up to 16 arguments, the guest-call limit
+            # (80017778 passes RotTransPers4 ten, two of them frame locals).
+            for k in range(4, 16 if STRICT else 8):
                 if 0x10 + 4 * (k - 4) in slots:
                     args[k] = slots[0x10 + 4 * (k - 4)]
             sites[pc] = (target, args)
