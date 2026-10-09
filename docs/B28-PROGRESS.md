@@ -737,6 +737,27 @@ Increment 32 (generator, strict only):
 - Strict stop moves to main_0012 80142978 (`calls`: indirect call). Frame
   1200: prims=0 disp=1 draw=0.
 
+
+## Increment 53 (stop 80142978 -> 80135480)
+
+- Strict only: tools/native_lane_gen.py `ICALL_KR_RE`. A call through an
+  unprototyped (K&R) function pointer carries its varargs type in the IR
+  (`call void (ptr, ...) %fp(ptr %p)`, `call signext i16 (...) %fp()`).
+  ICALL_RE skipped those calls, so rule `calls` refused them as "indirect
+  call". Now they go to the same `lane_icall__<sig>` stub as prototyped
+  calls, with the signature taken from the actual arguments (the o32 guest
+  call is the same either way). ArgLiveness already treats a strict icall as
+  reading all of a0-a3, so pass-through registers are still covered. The
+  hybrid is unchanged (TABLE_IDENTICAL).
+- main_0012/sc02_0031 80142978: in retail, a0 still holds the object at the
+  handler `jalr`, and 8014292C calls the same table with it. The C now passes
+  it (`D_8017F9B4[p[1]](p)`). Both members are byte-identical (cmpobj SAME,
+  verify_registry 2/2).
+- Lanes: main 3648 -> 3842/4071, overlay 2939 -> 3133/3328. regr LOST [].
+  Gate: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0.
+- Strict stop moves to 80135480 (main_0012/sc02_0031, `ub`: unreachable).
+  Frame 1200: prims=0 disp=1 draw=0.
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits

@@ -1751,6 +1751,17 @@ def loop_walks_memory(body):
 ICALL_RE = re.compile(r"^(\s*(?:%[\w.\"$]+ = )?)((?:tail |musttail |notail )?call )"
                       r"((?:[\w]+ )*?)(void|i8|i16|i32|ptr) (%[\w.\"$]+)\((.*)\)(\s*#\d+)?\s*$")
 ARG_TYPES = ("i8", "i16", "i32", "ptr")
+# Strict (B28): a call through an unprototyped (K&R) function pointer
+# (`void (*)()` called as `fp(p)`) spells its function type in the IR
+# (`call void (ptr, ...) %fp(ptr %p)`). The o32 guest call is the same as a
+# prototyped one with the actual arguments (a0-a3 in order), so the stub's
+# signature comes from the arguments; the varargs type annotation only
+# matters to the host ABI, which the stub call replaces. Upward-exposed
+# a-registers at the jalr are already ArgLiveness's (strict: an icall reads
+# all of a0-a3).
+ICALL_KR_RE = re.compile(r"^(\s*(?:%[\w.\"$]+ = )?)((?:tail |musttail |notail )?call )"
+                         r"((?:[\w]+ )*?)(void|i8|i16|i32|ptr) \((?:(?:i8|i16|i32|ptr), )*\.\.\.\) "
+                         r"(%[\w.\"$]+)\((.*)\)(\s*#\d+)?\s*$")
 
 
 def rewrite_indirect_calls(ir):
@@ -1765,7 +1776,7 @@ def rewrite_indirect_calls(ir):
     refuses it as before."""
     out, icalls, n = [], {}, 0
     for line in ir.splitlines():
-        m = ICALL_RE.match(line)
+        m = ICALL_RE.match(line) or (ICALL_KR_RE.match(line) if STRICT else None)
         if not m or " asm " in line:
             out.append(line)
             continue
