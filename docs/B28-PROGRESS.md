@@ -1369,6 +1369,19 @@ Increment 32 (generator, strict only):
 - Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [] (gained main_0012 801541D8).
 - New stop: `guest_pc=8014fa04`; frame 1250, prims=10060 at one frame, draw=0.
 
+### Increment 97: main_0012 8014FA04 in canonical indirect scratch-call form; stop 80128714
+
+- Stop was `guest_pc=8014fa04` (not a candidate: one hand asm block). If `a0->0x44 & 0x40000` it returns 0. Otherwise it
+  switches to the stack whose sp the outer switch saved at 0x1F8003FC, calls 8014FA70, and returns the result through
+  D_8018424C.
+- Source rewritten byte-identically (gcc 2.7.2 -O2 object unchanged, registry re-verified vs retail): early-return C
+  plus the canonical indirect switch asm of its siblings 8014E934/8014FBC0 in its own block, lowered on the host by
+  `scratch_call_host`. It now returns s32, as the retail words do.
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [] (gained main_0012 8014FA04).
+- The run goes much further: FRAME_TRACE reaches frame 2500, with 6464..10128 prims per traced frame from about
+  frame 1250 on. draw is still 0 everywhere.
+- New stop: `guest_pc=80128714`.
+
 ## Next
 
 - Admit or reshape sc02_0031 `func_801831B4` (currently `abi`). Likely next
