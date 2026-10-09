@@ -1041,6 +1041,18 @@ Increment 32 (generator, strict only):
 - New stop: 80027D20 (`STRICT_INTERPRETER_ENTRY seam=lane_guest_call routine=not_in_lane`).
   Frame 1200, prims=0, disp=1, draw=0.
 
+### Increment 72 — 80027D20 (POLY_G3 face loop) GTE inline helpers
+
+- Stop 80027D20: not a lane candidate because strict_mixed_ok refused its non-empty GTE asm
+  (gte_ldrgb, gte_ncct, gte_stsxy3_g3, gte_strgb3_g3 had no host helper).
+- Added native helpers over the PsyCross gteRegs bank in psyq_psycross.c (fail-closed lease):
+  ldrgb (RGBC reg 6 = word), ncct (cop2 0x118043F, the same as gte_macros.inc `cop2op 0x11,0x3F,lm=1`),
+  stsxy3_g3 (SXY0-2 -> +8/+16/+24), strgb3_g3 (RGB0-2 -> +4/+12/+20); these mirror the matched
+  source's macros exactly. Declared in musashi_lane_gte_inline.h. The generator's GTE_INLINE_NAMES/HELPERS
+  were extended (strict-only path). MATCH source untouched.
+- Checks: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [] (gained 80027D20).
+- New stop: 80027F4C (not_in_lane). Frame 1200, prims=0, disp=1, draw=0.
+
 ## Next
 
 - Admit or reshape sc02_0031 `func_801831B4` (currently `abi`). Likely next

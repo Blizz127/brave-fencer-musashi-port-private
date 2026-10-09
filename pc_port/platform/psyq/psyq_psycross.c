@@ -489,6 +489,36 @@ void musashi_lane_gte_stopz(void *r0) {
     bfm_psyq_gte_end(0);
 }
 
+/* inline_c.h gte_ldrgb: RGBC (data reg 6) = the word at r0. */
+void musashi_lane_gte_ldrgb(const void *r0) {
+    if (!lane_gte_lease()) return;
+    MTC2(lane_gte_load32(r0), 6);
+    bfm_psyq_gte_end(0);
+}
+/* gte_ncct: normal colour colour, triple (cop2 0x118043F). */
+void musashi_lane_gte_ncct(void) {
+    if (!lane_gte_lease()) return;
+    doCOP2(0x118043F);
+    bfm_psyq_gte_end(1);
+}
+/* POLY_G3 stores: SXY0-2 to +8/+16/+24, RGB0-2 to +4/+12/+20. */
+void musashi_lane_gte_stsxy3_g3(void *r0) {
+    uint8_t *b = (uint8_t *)r0;
+    if (!lane_gte_lease()) return;
+    lane_gte_store32(b + 8, MFC2(12));
+    lane_gte_store32(b + 16, MFC2(13));
+    lane_gte_store32(b + 24, MFC2(14));
+    bfm_psyq_gte_end(0);
+}
+void musashi_lane_gte_strgb3_g3(void *r0) {
+    uint8_t *b = (uint8_t *)r0;
+    if (!lane_gte_lease()) return;
+    lane_gte_store32(b + 4, MFC2(20));
+    lane_gte_store32(b + 12, MFC2(21));
+    lane_gte_store32(b + 20, MFC2(22));
+    bfm_psyq_gte_end(0);
+}
+
 /* ---- libgs wrappers over the GTE (bridge) ---- */
 
 /* GsSetLsMatrix(m) = SetRotMatrix(m); SetTransMatrix(m) */

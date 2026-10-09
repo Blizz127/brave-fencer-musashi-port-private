@@ -30,6 +30,10 @@ void musashi_lane_gte_stsz4(void *r0, void *r1, void *r2, void *r3);
 void musashi_lane_gte_stszotz(void *r0);
 void musashi_lane_gte_stflg(void *r0);
 void musashi_lane_gte_stopz(void *r0);
+void musashi_lane_gte_ldrgb(const void *r0);
+void musashi_lane_gte_ncct(void);
+void musashi_lane_gte_stsxy3_g3(void *r0);
+void musashi_lane_gte_strgb3_g3(void *r0);
 
 #define gte_ldv0(r0) musashi_lane_gte_ldv0((const void *)(r0))
 #define gte_ldlv0(r0) musashi_lane_gte_ldlv0((const void *)(r0))
@@ -53,6 +57,10 @@ void musashi_lane_gte_stopz(void *r0);
 #define gte_stszotz(r0) musashi_lane_gte_stszotz((void *)(r0))
 #define gte_stflg(r0) musashi_lane_gte_stflg((void *)(r0))
 #define gte_stopz(r0) musashi_lane_gte_stopz((void *)(r0))
+#define gte_ldrgb(r0) musashi_lane_gte_ldrgb((const void *)(r0))
+#define gte_ncct() musashi_lane_gte_ncct()
+#define gte_stsxy3_g3(r0) musashi_lane_gte_stsxy3_g3((void *)(r0))
+#define gte_strgb3_g3(r0) musashi_lane_gte_strgb3_g3((void *)(r0))
 
 #ifdef __cplusplus
 }
