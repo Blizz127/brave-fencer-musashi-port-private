@@ -1529,7 +1529,24 @@ Increment 32 (generator, strict only):
   refused by lane rules, e.g. expanded GTE inline asm). Run: 3000 frames,
   no stop.
 
+### Inc 107: sc02_0035 lower-half gaps (21 twins with rodata base, 766 vendor imports)
+
+- The probe stopped at sc02_0035 8013B83C, a gap in the lower half. Its
+  main_0012 twin is -O0 with a switch table, so tools/twin_port.py now
+  derives the target's rodata_base from the address map (--rodata-base) and
+  records it in the row. 21 more twins ported (80177DA8 still held out).
+- tools/vendor_split_import.py run over the other ov_SC02_035 TUs:
+  766 byte-identical functions at vrams with no sc02_0035 row, installed
+  (deduplicated by vram). Most are exact twins of already-native entries;
+  their rows only add covers.
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [],
+  27 entries gained. Run: 3000 frames, no stop.
+
 ## Next
+
+- Blizz rule for later launcher builds (design the BFM platform layer for
+  it): SDL gamepad working immediately under Steam/Gamescope; borderless or
+  fullscreen with no white border; an on-screen keyboard for text fields.
 
 - Admit or reshape sc02_0031 `func_801831B4` (currently `abi`). Likely next
   on the draw/dispatch path after 8017F5B4.

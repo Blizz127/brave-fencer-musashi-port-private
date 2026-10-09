@@ -1,0 +1,114 @@
+/* SC02.CD member35: func_80171384 from Druthulu/BFM-decomp
+ * src/ov_SC02_035/ov_SC02_035_jr_8016AB6C.c (preprocessed; only the declarations it uses),
+ * byte-identical to the sc02_0035 retail words (gcc-2.7.2 -O2). */
+typedef unsigned char u8;
+typedef unsigned short u16;
+typedef signed char s8;
+typedef short s16;
+typedef int s32;
+extern void func_80147060(u8 * a0);
+extern void func_80148634(void *a0);
+extern void func_801511A8(u8 *a0);
+extern u8 D_800B9A17;
+extern u8 D_800B9A17;
+extern void func_8017196C(s32 *a0, s8 a1);
+extern void func_80147060(u8 *a0);
+extern void func_801511A8(u8 *a0);
+extern void func_80148634(void *a0);
+void aF8016F0E4(u8 *p) {
+    extern s16 D_80078EB4;
+    extern u8 D_800B9A17;
+    *(s32 *)(p + 0x1F8) = 0;
+    *(s32 *)(p + 0x1FC) = 0;
+    func_8017196C((s32 *)p, 0);
+    func_80147060(p);
+    func_801511A8(p);
+    if (*(u16 *)&D_80078EB4 != 0) {
+        D_800B9A17 = 1;
+    }
+    func_80148634(p);
+}
+extern void func_80148634(void *a0);
+extern void func_80171928(void *a0);
+extern void *D_8011F738;
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void func_80147060(u8 *a0);
+extern void func_80171928(void *a0);
+extern void func_80148634(void *a0);
+extern void func_80171928(void *a0);
+extern void func_80148634(void *a0);
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void func_80171928(void *);
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void *D_8011F738;
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void *D_8011F738;
+extern void *D_8011F738;
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void *D_8011F738;
+extern void func_80171928(void *a0);
+extern void *D_8011F738;
+extern void func_80171928(void *a0);
+extern void *D_8011F738;
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void func_8012A568(void (*a0)(void));
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void *D_8011F738;
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void *D_8011F738;
+extern void *D_8011F738;
+extern void *D_8011F738;
+extern void *D_8011F738;
+extern void *D_8011F738;
+extern void *D_8011F738;
+extern void func_80147060(u8 *a0);
+extern void func_80171928(void *a0);
+extern void func_80147060(u8 *a0);
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void *D_8011F738;
+extern void func_80171928(void *a0);
+extern void *D_8011F738;
+extern void func_80171928(void *a0);
+extern s32 func_80012F74(s32 a0, s32 a1, s32 a2, s32 a3);
+void func_80171928(void * a0);
+void func_8017196C(s32 *a0, s8 a1);
+
+void func_80171384(void *a0) {
+    u8 *p = D_8011F738;
+    s32 last;
+    s32 sum;
+    p[0xC] = func_80012F74(p[0xC], 0, 0xA, 1);
+    p[0xD] = func_80012F74(p[0xD], 0, 0xA, 1);
+    p[0xE] = func_80012F74(p[0xE], 0, 0xA, 1);
+    p[0x1C] = func_80012F74(p[0x1C], 0, 0xA, 1);
+    p[0x1D] = func_80012F74(p[0x1D], 0, 0xA, 1);
+    p[0x1E] = func_80012F74(p[0x1E], 0, 0xA, 1);
+    p[0x2C] = func_80012F74(p[0x2C], 0, 0xA, 1);
+    p[0x2D] = func_80012F74(p[0x2D], 0, 0xA, 1);
+    last = func_80012F74(p[0x2E], 0, 0xA, 1);
+    p[0x2E] = last;
+    sum = p[0xC] + p[0xD] + p[0xE] + p[0x1C] + p[0x1D] + p[0x1E] + p[0x2C] + p[0x2D] + (last & 0xff);
+    if (sum == 0) {
+        func_80171928(a0);
+    }
+}

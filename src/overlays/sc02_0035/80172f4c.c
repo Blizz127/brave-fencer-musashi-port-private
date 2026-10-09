@@ -1,0 +1,45 @@
+/* SC02.CD member35: func_80172F4C from Druthulu/BFM-decomp
+ * src/ov_SC02_035/ov_SC02_035_jr_80171B4C.c (preprocessed; only the declarations it uses),
+ * byte-identical to the sc02_0035 retail words (gcc-2.7.2 -O2). */
+typedef unsigned char u8;
+typedef short s16;
+typedef int s32;
+extern s32 D_80126B58;
+extern void func_80154A74(s32 a0, s32 a1);
+extern void func_80154A74(int, int);
+extern void func_8012A568(void (*a0)(void));
+extern s32 func_80174650(s32);
+extern s32 func_80174650(s32);
+extern s16 D_80126B30;
+extern s32 func_80174650(s32);
+extern s16 D_80126B30;
+extern s32 func_80174650(s32);
+extern s16 D_80126B30;
+extern s16 D_80126B30;
+extern s16 D_80126B30;
+extern s32 func_80174650(s32);
+extern s32 func_80174650(s32);
+extern s32 func_80174650(s32);
+extern s16 D_80126B30;
+extern s32 func_80174650(s32);
+extern s32 D_80126B58;
+extern s16 D_80126B30;
+extern void func_8017303C(void *);
+extern s32 func_80174650(s32);
+extern void func_8017303C(void *);
+extern void func_8017303C(void *);
+extern void func_8017303C(void *);
+extern void func_8017303C(void *);
+extern void func_80154A74(s32 a0, s32 a1);
+extern s32 func_80174650(s32);
+extern u8 D_800D47F4[];
+extern s32 D_80126B58;
+extern s16 D_80126B30;
+void func_8017303C(void * a0);
+
+void func_80172F4C(void) {
+    func_8017303C(D_800D47F4);
+    func_80154A74((s32)&D_80126B58, 0x13);
+    D_80126B30 = 0;
+    func_80174650((s32)&D_80126B58);
+}

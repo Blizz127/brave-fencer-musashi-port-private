@@ -43,10 +43,14 @@ for v,(k,src,size,nd,rec) in sorted(twins.items()):
         if len(ds)==1: return 'D_%08X'%((X+ds.pop())&0xFFFFFFFF)
         return mo.group(0)
     new=re.sub(r'\bD_([0-9A-Fa-f]{8})\b',rep,text)
+    rb=None
+    if m.get('rodata_base'):
+        X=m['rodata_base']; ds={t-s for s,t in mp.items() if X<=s<X+0x800}
+        rb=(X+ds.pop())&0xFFFFFFFF if len(ds)==1 else X
     fn='%s/%08x.c'%(out,V)
     open(fn,'w').write(new)
     binf=fn+'.bin'
-    r=subprocess.run(['python3','tools/build_candidate.py','--symbol','func_%08X'%V,'--toolchain','gcc-2.7.2-psx','--optimization='+m.get('optimization','-O2'),'--include','include','--include','src/overlays/'+TGT,'--include','src/overlays/'+src,'--link-base','0x%08X'%V,'--output',binf,fn],capture_output=True,text=True)
+    r=subprocess.run(['python3','tools/build_candidate.py','--symbol','func_%08X'%V,'--toolchain','gcc-2.7.2-psx','--optimization='+m.get('optimization','-O2'),'--include','include','--include','src/overlays/'+TGT,'--include','src/overlays/'+src,'--link-base','0x%08X'%V,'--output',binf]+(['--rodata-base','0x%08X'%rb] if rb else [])+[fn],capture_output=True,text=True)
     good=r.returncode==0 and os.path.exists(binf) and open(binf,'rb').read()==struct.pack('<%dI'%len(a),*a)
-    (ok if good else bad).append((v,src))
+    (ok if good else bad).append((v,src,rb))
 print('OK',len(ok),'BAD',len(bad)); json.dump({'ok':ok,'bad':bad},open(out+'/result.json','w'))

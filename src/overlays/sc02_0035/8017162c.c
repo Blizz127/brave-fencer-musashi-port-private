@@ -1,0 +1,76 @@
+/* SC02.CD member35: func_8017162C from Druthulu/BFM-decomp
+ * src/ov_SC02_035/ov_SC02_035_jr_8016AB6C.c (preprocessed; only the declarations it uses),
+ * byte-identical to the sc02_0035 retail words (gcc-2.7.2 -O2). */
+typedef int s32;
+extern void func_80171928(void *a0);
+extern void *D_8011F738;
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void func_80171928(void *);
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void *D_8011F738;
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void *D_8011F738;
+extern void *D_8011F738;
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void *D_8011F738;
+extern void func_80171928(void *a0);
+extern void *D_8011F738;
+extern void func_80171928(void *a0);
+extern void *D_8011F738;
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void func_8012A568(void (*a0)(void));
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void *D_8011F738;
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void *D_8011F738;
+extern void *D_8011F738;
+extern void *D_8011F738;
+extern void *D_8011F738;
+extern void *D_8011F738;
+extern void *D_8011F738;
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void func_80171928(void *a0);
+extern void *D_8011F738;
+extern void func_80171928(void *a0);
+extern void *D_8011F738;
+extern void func_80171928(void *a0);
+extern s32 func_801716AC(s32 a0, void *a1, s32 *a2);
+extern void func_80171928(void *a0);
+s32 func_801716AC(s32 a0, void * a1, s32 * a2);
+void func_80171928(void * a0);
+
+void func_8017162C(void *a0) {
+    void *s1 = a0;
+    void *s0 = D_8011F738;
+    s32 local;
+    local = 0;
+    func_801716AC(0, s0, &local);
+    func_801716AC(1, s0, &local);
+    func_801716AC(2, s0, &local);
+    if (local == 0) {
+        func_80171928(s1);
+    }
+}
