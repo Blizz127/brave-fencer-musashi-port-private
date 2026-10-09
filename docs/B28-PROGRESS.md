@@ -1265,6 +1265,19 @@ Increment 32 (generator, strict only):
 - Run: frame 1200 (prims=32 at two frames, draw=0). New stop: guest call to
   8003B250. Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0.
 
+### Increment 88: native SpuNSetVoiceAttr / _SpuSetVoiceAttr / _spu_note2pitch (frame driver); stop 8003C23C
+
+- Stop was `guest_pc=8003b250` (libspu SpuNSetVoiceAttr, def row stub-TBD; callers 80037F3C, 8002D320, 80037FC4).
+- Frame-driver HLE written from the retail disassembly: 8003B250 -> `_SpuSetVoiceAttr(attr, v, v, 0)` (8003C92C):
+  voice range clamp (-3 on bad range), per-voice mask (bitmask honoured only for a range), attr mask 0 = all;
+  pitch, center note (0x8006B114 table), note->pitch, ADSR1/2, L/R volume (mode 1..7 -> 0x8000..0xE000 sweep, tables
+  0x800734D4/0x800734F4), loop/start address via `_spu_FsetRXX`, AR/DR/SL/SR/RR with the retail mode bits, then the
+  8003B0E4 delay unless arg3. `_spu_note2pitch` (8003CFF8): 1536-per-octave shift plus 32-step 4155/4096 interpolation.
+- Fix: `SP_VOLTBL` (center-note table that _SpuInit fills with 0xC000) is 0x8006B114..0x8006B142 per retail 8003A464;
+  the driver had it 2 bytes low.
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [].
+- New stop: `guest_pc=8003c23c`; frame 1200, prims=32 at two frames, draw=0.
+
 ## Next
 
 - Admit or reshape sc02_0031 `func_801831B4` (currently `abi`). Likely next

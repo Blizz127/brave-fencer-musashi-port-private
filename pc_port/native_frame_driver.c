@@ -1625,7 +1625,7 @@ enum {
     SP_REVRSV = 0x8006B0F0u, SP_REVADDR = 0x8006B0F4u, SP_REVMODE = 0x8006B0FCu,
     SP_DEPTHL = 0x8006B100u, SP_DEPTHR = 0x8006B102u, SP_DELAYV = 0x8006B104u,
     SP_FEEDBK = 0x8006B108u, SP_G10C = 0x8006B10Cu, SP_VBITS = 0x8006B110u,
-    SP_VOLTBL = 0x8006B112u, SP_ZERO1K = 0x8006B144u, SP_PRESET = 0x8006B604u,
+    SP_VOLTBL = 0x8006B114u, SP_ZERO1K = 0x8006B144u, SP_PRESET = 0x8006B604u,
     SP_SHADOW = 0x800A6288u, SP_DMA_IRQ = 0x8003AA18u, SV_REGS = 0x8006B8FCu
 };
 enum { SR_MVOLL = 384, SR_MVOLR = 386, SR_RVOLL = 388, SR_RVOLR = 390,
@@ -3154,6 +3154,126 @@ static uint32_t spu_write_data(uint32_t src, uint32_t size) {
     }
     return size;
 }
+static uint16_t spu_note2pitch(uint32_t cn, uint32_t cf, uint32_t nn, uint32_t nf) {
+    /* 8003CFF8 _spu_note2pitch(center note/fine, note/fine): octave by
+     * 1536 (12 notes * 128), then 32 linear steps of 2^(1/12)/32 (4155/4096) */
+    int32_t d = (int32_t)((((nn & 0xFFFFu) << 7) + (nf & 0xFFFFu)) -
+                          (((cn & 0xFFFFu) << 7) + (cf & 0xFFFFu)));
+    int32_t ad = d < 0 ? -d : d;
+    int32_t q = ad / 1536, r = ad - q * 1536;
+    uint32_t base, a0 = 4155u, a3, sp8, cnt, frac, v, i;
+    if (d >= 0) {
+        base = 0x1000u << (q & 31);
+    } else {
+        if (r) { ++q; r = 1536 - r; }
+        base = (uint32_t)((int32_t)0x1000 >> (q & 31));
+    }
+    base &= 0xFFFFu;
+    if (r < 0) r = -r;
+    a3 = base << 12;
+    sp8 = base * 4155u;
+    cnt = (uint32_t)r >> 5;
+    frac = (uint32_t)r & 31u;
+    for (i = 0; i < cnt; ++i) {
+        a3 = base * a0;
+        a0 = (a0 * 4155u) >> 12;
+        sp8 = base * a0;
+    }
+    v = (a3 + ((sp8 - a3) >> 5) * frac) >> 12;
+    if (v >= 0x4000u) v = 0x3FFFu;
+    return (uint16_t)v;
+}
+static uint16_t spu_vol_word(uint32_t attr, unsigned off, int full, uint32_t mask,
+                             uint32_t modebit) {
+    /* 8003CAD4/8003CBA4: volume mode 1..7 -> 0x8000..0xE000 sweep with a
+     * 0..127 rate (jump tables 0x800734D4/0x800734F4); mode 0 or out of
+     * range -> fixed volume */
+    int16_t mode = (int16_t)rd16(attr + off + 4u);
+    uint16_t hi = 0;
+    if ((full || (mask & modebit)) && (uint16_t)mode < 8u && mode)
+        hi = (uint16_t)(0x8000u + ((unsigned)mode - 1u) * 0x1000u);
+    if (!hi) return (uint16_t)(rd16(attr + off) & 0x7FFFu);
+    {
+        int16_t v = (int16_t)rd16(attr + off);
+        int32_t c = v >= 128 ? 127 : (v < 0 ? 0 : v);
+        return (uint16_t)(((uint32_t)c & 0x7FFFu) | hi);
+    }
+}
+static int32_t spu_set_voice_attr(uint32_t attr, int32_t lo, int32_t hi, uint32_t nodelay) {
+    /* 8003C92C _SpuSetVoiceAttr(attr, lo, hi, nodelay): mask 0 sets all */
+    uint32_t vmask = rd32(attr), mask = rd32(attr + 4u);
+    int single = lo == hi, full = mask == 0;
+    int32_t v;
+    if (lo < 0) lo = 0;
+    if (lo >= 24) return -3;
+    if (hi >= 24) hi = 23;
+    if (hi < 0 || hi < lo) return -3;
+    for (v = lo; v <= hi; ++v) {
+        uint32_t reg = rd32(SP_REGS) + (uint32_t)v * 16u;
+        uint32_t ctr = 0x8006B114u + (uint32_t)v * 2u;
+        int32_t a2;
+        uint32_t c;
+        if (!single && !(vmask & (1u << v))) continue;
+        if (full || (mask & 0x10u)) hw16w(reg + 4u, rd16(attr + 20u));
+        if (full || (mask & 0x40u)) wr16(ctr, rd16(attr + 24u));
+        if (full || (mask & 0x20u)) {
+            uint16_t cn = rd16(ctr), note = rd16(attr + 22u);
+            hw16w(reg + 4u, spu_note2pitch(cn >> 8, cn & 0xFFu, note >> 8, note & 0xFFu));
+        }
+        if (full || (mask & 0x20000u)) hw16w(reg + 8u, rd16(attr + 58u));
+        if (full || (mask & 0x40000u)) hw16w(reg + 10u, rd16(attr + 60u));
+        if (full || (mask & 1u)) hw16w(reg + 0u, spu_vol_word(attr, 8u, full, mask, 4u));
+        if (full || (mask & 2u)) hw16w(reg + 2u, spu_vol_word(attr, 10u, full, mask, 8u));
+        if (full || (mask & 0x10000u)) (void)spu_fset_rxx(v * 8 + 7, rd32(attr + 32u));
+        if (full || (mask & 0x80u)) (void)spu_fset_rxx(v * 8 + 3, rd32(attr + 28u));
+        if (full || (mask & 0x800u)) {
+            a2 = 0;
+            if ((full || (mask & 0x100u)) && rd32(attr + 36u) == 5u) a2 = 0x80;
+            c = rd16(attr + 48u); if (c >= 128u) c = 127u;
+            hw16w(reg + 8u, (uint16_t)((hw16(reg + 8u) & 0xFFu) | ((c | (uint32_t)a2) << 8)));
+        }
+        if (full || (mask & 0x1000u)) {
+            c = rd16(attr + 50u); if (c >= 16u) c = 15u;
+            hw16w(reg + 8u, (uint16_t)((hw16(reg + 8u) & 0xFF0Fu) | (c << 4)));
+        }
+        if (full || (mask & 0x8000u)) {
+            c = rd16(attr + 56u); if (c >= 16u) c = 15u;
+            hw16w(reg + 8u, (uint16_t)((hw16(reg + 8u) & 0xFFF0u) | c));
+        }
+        if (full || (mask & 0x2000u)) {
+            a2 = 0;
+            if (full || (mask & 0x200u)) {
+                int32_t m = (int32_t)rd32(attr + 40u);
+                a2 = m == 1 ? 0 : m == 5 ? 0x200 : m == 7 ? 0x300 : 0x100;
+            }
+            c = rd16(attr + 52u); if (c >= 128u) c = 127u;
+            hw16w(reg + 10u, (uint16_t)((hw16(reg + 10u) & 0x3Fu) | ((c | (uint32_t)a2) << 6)));
+        }
+        if (full || (mask & 0x4000u)) {
+            a2 = 0;
+            if ((full || (mask & 0x400u)) && rd32(attr + 44u) == 7u) a2 = 0x20;
+            c = rd16(attr + 54u); if (c >= 32u) c = 31u;
+            hw16w(reg + 10u, (uint16_t)((hw16(reg + 10u) & 0xFFC0u) | c | (uint32_t)a2));
+        }
+    }
+    if (!nodelay) spu_delay();
+    return 0;
+}
+SPU_ENTRY(hle_spu_set_voice_attr_range) {
+    call->r[2] = (uint32_t)spu_set_voice_attr(call->r[4], (int32_t)call->r[5],
+                                              (int32_t)call->r[6], call->r[7]);
+    return 1;
+}
+SPU_ENTRY(hle_spu_n_set_voice_attr) {
+    /* 8003B250 SpuNSetVoiceAttr(vNum, attr) */
+    call->r[2] = (uint32_t)spu_set_voice_attr(call->r[5], (int32_t)call->r[4],
+                                              (int32_t)call->r[4], 0);
+    return 1;
+}
+SPU_ENTRY(hle_spu_note2pitch) {
+    call->r[2] = spu_note2pitch(call->r[4], call->r[5], call->r[6], call->r[7]);
+    return 1;
+}
 SPU_ENTRY(hle_spu_fset_rxx) { call->r[2] = spu_fset_rxx((int32_t)call->r[4], call->r[5]); return 1; }
 SPU_ENTRY(hle_spu_write_data) { CD_SP(); call->r[2] = spu_write_data(call->r[4], call->r[5]); return 1; }
 SPU_ENTRY(hle_spu_write) {
@@ -4153,6 +4273,9 @@ static const MusashiNativeLaneEntry k_driver_entries[] = {
     {0x80041A80u, 0, hle_ss_vab_open_head_sticky, "SsVabFakeHead",   3, 1, 0},
     {0x8003AE14u, 0, hle_spu_write_data,  "_spu_write",          2, 1, 0},
     {0x8003AF4Cu, 0, hle_spu_fset_rxx,    "_spu_FsetRXX",        2, 1, 0},
+    {0x8003B250u, 0, hle_spu_n_set_voice_attr, "SpuNSetVoiceAttr", 2, 1, 0},
+    {0x8003C92Cu, 0, hle_spu_set_voice_attr_range, "_SpuSetVoiceAttr", 4, 1, 0},
+    {0x8003CFF8u, 0, hle_spu_note2pitch,  "_spu_note2pitch",     4, 1, 0},
     {0x8003C438u, 0, hle_spu_write,       "SpuWrite",            2, 1, 0},
     {0x8003C498u, 0, hle_spu_set_transfer_start_addr, "SpuSetTransferStartAddr", 1, 1, 0},
     {0x8003C4F0u, 0, hle_spu_is_transfer_completed, "SpuIsTransferCompleted", 1, 1, 0},
