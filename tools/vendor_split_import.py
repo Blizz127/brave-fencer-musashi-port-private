@@ -35,7 +35,9 @@ while i<n:
             k=src.find(';',j); nl=src.find('\n',j)
             # struct/typedef ends with ; after }, function ends at }
             rest=src[j:j+200].lstrip()
-            if rest.startswith(';') or re.match(r'^[\w\s\*,\[\]]+;',rest):
+            head=src[start:src.index('{',start)] if '{' in src[start:i] else ''
+            aggregate=re.search(r'\b(typedef|struct|union|enum)\b|=',head) is not None
+            if rest.startswith(';') or (aggregate and re.match(r'^[\w\s\*,\[\]]+;',rest)):
                 i=src.index(';',j)
             chunks.append(src[start:i+1]); start=i+1
     elif c==';' and depth==0:
@@ -52,7 +54,7 @@ for c in chunks:
             c=''.join(merged[k:])+c; del merged[k:]
     merged.append(c)
 chunks=merged
-FN=re.compile(r'^\s*(?:static\s+)?[\w\s\*]+?\b(func_[0-9A-Fa-f]{8})\s*\(([^;{]*)\)[^{]*\{',re.S)
+FN=re.compile(r'^\s*(?:static\s+)?[\w\s\*]+?\b(func_[0-9A-Fa-f]{8}\w*)\s*\(([^;{]*)\)[^{]*\{',re.S)
 ID=re.compile(r'\b[A-Za-z_]\w*\b')
 info=[]
 for c in chunks:
@@ -78,10 +80,13 @@ for line in open(V+'/config/symbols.us.txt'):
     if m and not re.match(r'^(func|D)_[0-9A-Fa-f]{8}$',m.group(1)) and len(m.group(1))>2:
         SYMS[m.group(1)]=(int(m.group(2),16),'func' in m.group(3))
 have={m['vram'] for m in reg if m['region']==TGT}
+# VIMPORT_REDO=<vram hex>,...: regenerate these even though they have rows
+have-={int(x,16) for x in os.environ.get('VIMPORT_REDO','').split(',') if x}
 tinfo=g.member_info(TGT)
-res=[]
+res=[]; RODATA={}
 for idx,(k,name,c) in enumerate(info):
     if k!='fn': continue
+    if not re.fullmatch(r'func_[0-9A-Fa-f]{8}',name): continue
     v=int(name[5:],16)
     if not(lo<=v<hi) or v in have: continue
     need=set(ID.findall(c))-{name}
@@ -96,6 +101,19 @@ for idx,(k,name,c) in enumerate(info):
                 else:
                     hdr=info[j][2][:info[j][2].index('{')]
                     need|=set(ID.findall(hdr))
+    # A D_ symbol the definition uses but no kept (earlier) chunk or the body
+    # itself declares: take the first TU-scope decl of it, wherever it is.
+    declared_here=set().union(*[decl_names[j] for j in keep]) if keep else set()
+    body_decl=set(re.findall(r'\b(D_[0-9A-Fa-f]{8})\b[^;()]*;',c[c.index('{'):])) if '{' in c else set()
+    for sym in sorted(set(re.findall(r'\bD_[0-9A-Fa-f]{8}\b',c))-declared_here):
+        if re.search(r'extern[^;]*\b'+sym+r'\b',c): continue
+        for j in range(len(info)):
+            if info[j][0]=='decl' and sym in decl_names[j]:
+                keep.add(j)
+                more=set(ID.findall(info[j][2]))
+                for k2 in range(min(j,idx)):
+                    if info[k2][0]=='decl' and decl_names[k2]&more: keep.add(k2)
+                break
     parts=[]
     for j in sorted(keep):
         kk,nm,cc=info[j]
@@ -111,11 +129,38 @@ for idx,(k,name,c) in enumerate(info):
         if re.search(r'\b'+nm2+r'\b',body):
             body=re.sub(r'\b'+nm2+r'\b',('func_%08X' if isf else 'D_%08X')%a2,body)
     fn='%s/%08x.c'%(out,v); open(fn,'w').write(body)
-    r=subprocess.run(['python3',R+'/tools/build_candidate.py','--symbol',name,'--toolchain','gcc-2.7.2-psx','--optimization=-O2','--include',R+'/include','--link-base','0x%08X'%v,'--output',fn+'.bin',fn],capture_output=True,text=True,cwd=R)
-    ok=False
-    if r.returncode==0 and os.path.exists(fn+'.bin'):
-        b=open(fn+'.bin','rb').read(); w=g.retail_words(v,len(b),tinfo)
-        ok= w is not None and struct.pack('<%dI'%len(w),*w)==b
-    res.append((hex(v),ok,len(open(fn+'.bin','rb').read()) if os.path.exists(fn+'.bin') else 0, '' if r.returncode==0 else r.stderr[-300:]))
+    def build(link, rb):
+        cmd=['python3',R+'/tools/build_candidate.py','--symbol',name,'--toolchain','gcc-2.7.2-psx','--optimization=-O2','--include',R+'/include','--link-base','0x%08X'%link,'--output',fn+'.bin']
+        if rb is not None: cmd+=['--rodata-base','0x%08X'%rb]
+        return subprocess.run(cmd+[fn],capture_output=True,text=True,cwd=R)
+    def sx(x): return x-0x10000 if x&0x8000 else x
+    def his(w):
+        hi={}; out=[]
+        for x in w:
+            op=x>>26; rs=(x>>21)&31; rt=(x>>16)&31
+            if op==0x0F: hi[rt]=(x&0xFFFF)<<16; out.append(None); continue
+            out.append((hi[rs]+sx(x&0xFFFF))&0xFFFFFFFF if op in (0x09,0x23,0x21,0x25,0x24,0x20,0x2B) and rs in hi else None)
+        return out
+    link,rb=v,None; ok=False; r=None; tries=[]
+    for attempt in range(4):
+        r=build(link,rb)
+        if r.returncode!=0 or not os.path.exists(fn+'.bin'): break
+        b=open(fn+'.bin','rb').read(); cw=struct.unpack('<%dI'%(len(b)//4),b); w=g.retail_words(v,len(b),tinfo)
+        if w is None: break
+        if list(w)==list(cw): ok=True; break
+        diff=[i for i,(x,y) in enumerate(zip(w,cw)) if x!=y]
+        jd={((cw[i]&0x3FFFFFF)-(w[i]&0x3FFFFFF))*4 for i in diff if (w[i]>>26)==2 and (cw[i]>>26)==2}
+        if jd and len(jd)==1 and all((w[i]>>26)==2 for i in diff) is not None and link==v:
+            link=v-jd.pop(); tries.append('link'); continue
+        hw,hc=his(w),his(cw)
+        pairs={(hc[i],hw[i]) for i in range(len(w)) if hw[i] is not None and hc[i] is not None and hw[i]!=hc[i]}
+        if pairs and rb is None:
+            ca,ra=min(pairs)
+            # candidate rodata starts at the first rodata address it references
+            cstart=min(p[0] for p in pairs)
+            rb=ra-(ca-cstart); tries.append('rodata'); continue
+        break
+    if ok and rb is not None: RODATA[v]=rb
+    res.append((hex(v),ok,len(open(fn+'.bin','rb').read()) if os.path.exists(fn+'.bin') else 0, '' if r.returncode==0 else r.stderr[-300:], RODATA.get(v), link-v if ok else None))
 json.dump(res,open(out+'/res.json','w'),indent=1)
 print('ok',sum(1 for x in res if x[1]),'of',len(res))

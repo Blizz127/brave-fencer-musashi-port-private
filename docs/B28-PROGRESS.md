@@ -1577,6 +1577,30 @@ Increment 32 (generator, strict only):
     the PsyQ PutDispEnv area: a dump-side gap, noted for the next increment.
 - Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [].
 
+### Inc 111: vendor importer fixes; 41 more sc02_0035 functions; 80183F98 admitted
+
+- tools/vendor_split_import.py fixes, found from the 42 jr_8017BEBC /
+  jr_80183FD4 functions that compiled but did not match:
+  - A simple declaration after a function's closing brace was glued onto
+    the function chunk (taken for a struct's trailing declarator), so its
+    symbol went missing. Only aggregates/initializers glue now.
+  - Definitions named func_XXXXXXXX_<suffix> with an __asm__ alias were kept
+    as code, emitting the helper ahead of the target (the "j off by 0xD0"
+    misses). They become prototypes now. Only exact func_XXXXXXXX names are
+    import targets.
+  - A D_ symbol whose only TU-scope declaration is later in the TU is pulled in.
+  - Switch tables: a retry derives --rodata-base from the retail table
+    address; rows record rodata_base (3 functions).
+  - VIMPORT_REDO=<vrams> regenerates functions that already have rows.
+- 41 of 42 recovered and installed (8017BEBC still fails: GTE opcodes
+  rtps/nclip rejected by the assembler step).
+- The probe stop 80183F98 was imported in inc 106 but refused by rule escape:
+  its file embedded the _def helper body (local arrays passed as integers).
+  It and 33 other inc 106 files with embedded _def bodies were regenerated
+  (prototype only) and are byte-identical.
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [],
+  86 gained incl. 80183F98. Run: 3000 frames, no stop.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for
