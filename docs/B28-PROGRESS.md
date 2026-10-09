@@ -1221,6 +1221,18 @@ Increment 32 (generator, strict only):
 - Run: frame 1200 (prims=32 at two frames, draw=0). New stop: guest call to
   8001E378. Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [].
 
+### Increment 85: clean-room func_8001E378 (object world matrix); stop 800215F4
+
+- New src/main/8001e378.c: clean-room C from the retail disassembly, written
+  with the inline_c.h GTE macros. It does RotMatrix(angles) * diag(scale),
+  sets translation = position, pre-multiplies by the camera matrix
+  D_800AF648, and sets the GTE rotation/translation. Byte-exact against retail
+  at -O2 on the first build (188 words). Added to provenance/matches.json
+  (verify_registry re-verified).
+- Run: frame 1200 (prims=32 at two frames, draw=0); regr GAINED 8001E378.
+  New stop: guest call to 800215F4. Gates: build=0, TABLE_IDENTICAL,
+  ctest 37/37, m2c=0, regr LOST [].
+
 ## Next
 
 - Admit or reshape sc02_0031 `func_801831B4` (currently `abi`). Likely next

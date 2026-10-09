@@ -4372,6 +4372,18 @@
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
+      "name": "func_8001E378",
+      "vram": 2147607416,
+      "size": 752,
+      "region": "main",
+      "source": "src/main/8001e378.c",
+      "optimization": "-O2",
+      "recovery": "mixed",
+      "extent": "function",
+      "status": "matched",
+      "origin": "owner re-derivation, clean room (Grok Bot box sandbox 2026-10-09, branch cursor/native-cleanroom-b28), clean input set (retail disassembly + owner headers)"
+    },
+    {
       "name": "func_8001E668",
       "vram": 2147608168,
       "size": 376,
