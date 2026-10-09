@@ -2507,6 +2507,20 @@ OVERLAY_DENY = {
 KUSEG_NORMALIZE = {("main_0012", 0x8012DEB8)}
 
 
+def fold_ram_mirror_consts(ir):
+    """Strict (B28): a constant KSEG0 address in 0x80200000..0x807FFFFF is the
+    2 MB main RAM mirrored four times (retail console, 8 MB RAM-size window):
+    80011EB4's dev-kit demo buffer 0x80700000 is RAM 0x100000 there. Fold it
+    onto 0x80000000 | (a & 0x1FFFFF)."""
+    def fold(m):
+        n = int(m.group(2)) & 0xFFFFFFFF
+        if 0x80200000 <= n < 0x80800000:
+            n = 0x80000000 | (n & 0x1FFFFF)
+            return f"{m.group(1)}{n}"
+        return m.group(0)
+    return re.sub(r"(inttoptr \(i64 |inttoptr i64 )(-?\d+)", fold, ir)
+
+
 def kuseg_normalize(ir):
     out = []
     for line in ir.splitlines():
@@ -3613,6 +3627,8 @@ def build_one(entry, out, symbols, hooks, clang, info=None):
         rewritten = lower_arith(narrow_pointer_cells(rewritten))
         if STRICT and (member, vram) in KUSEG_NORMALIZE:
             rewritten = kuseg_normalize(rewritten)
+        if STRICT:
+            rewritten = fold_ram_mirror_consts(rewritten)
         # Host ABI: widen casted narrow returns before optimize (80135D20).
         rewritten = fix_cast_return_abi(rewritten)
         if words is not None:

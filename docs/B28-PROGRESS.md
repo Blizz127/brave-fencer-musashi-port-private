@@ -1339,6 +1339,15 @@ Increment 32 (generator, strict only):
 - The run now goes further: FRAME_TRACE reaches frame 1250 and one frame has prims=10060 (draw=0).
 - New stop: `guest_pc=80011eb4`.
 
+### Increment 94: strict RAM-mirror constant folding; 80011EB4 into the lane; stop 80128678
+
+- Stop was `guest_pc=80011eb4` (refused: inttoptr constant address 80700000). This is the demo-input recorder/player.
+  Its buffer is the dev-kit 8 MB address 0x80700000, which a retail 2 MB console mirrors onto RAM 0x100000.
+- Generator (strict only): `fold_ram_mirror_consts` folds constant guest addresses 0x80200000..0x807FFFFF onto
+  0x80000000 | (a & 0x1FFFFF), as the hardware mirror does. This only affects functions that were refused for it.
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [] (gained 80011EB4).
+- New stop: `guest_pc=80128678`; frame 1250, prims=10060 at one frame, draw=0.
+
 ## Next
 
 - Admit or reshape sc02_0031 `func_801831B4` (currently `abi`). Likely next
