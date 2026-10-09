@@ -152,3 +152,153 @@ int bfm_psyq_GsSetLightMode(uint32_t *r) {
     bfm_plat_mods_log("libgs", 1, "GsSetLightMode: unknown mode");
     return 1;
 }
+
+/* ---- GsSortObject5 (libgs PRESET2.o, 0x80055D40) -------------------------
+ *
+ * GsSortObject5(GsDOBJ5 *obj, GsOT *ot, int shift, u_long *scratch) walks the
+ * preset packet blocks of a GsDOBJ5 and hands each block to the per-type
+ * libgs sort routine named by libgs's GsFCALL5-style function-pointer tables
+ * in guest RAM (0x800A2CF0..0x800A2E04). Those routines are guest code
+ * (entered through the lane; a routine that is not a lane entry is the strict
+ * lane_guest_call stop), so this wrapper only re-does the dispatcher.
+ * Reconstructed from the retail control flow (not from Psy-Q source):
+ *
+ *   obj  +0 attribute, +8 TMD object (+0 vert_top, +8 normal_top,
+ *        +0x10 primitive_top), +0xC first preset block
+ *   block +0 next (low 24 bits; 0 ends), +4 count n, +8.. packet area
+ *   attribute: bit 31 skip; 3-4 -> 0x80079580, 5 -> 0x800A2B74,
+ *        6 -> 0x8007957C, 9-11 (division) -> 0x800C7D28, 30 -> 0x800C6D24
+ *   light = bit6 ? 2 : ((!bit5 && GsLIGHT_MODE == 1) || (bit5 && bits3-4 == 1)) ? 1 : 0
+ *
+ * Three loops: division (packets appended at GsOUT_PACKET_P, the routine's
+ * return value becomes the new GsOUT_PACKET_P), preset buffer 0 (block + 8)
+ * and preset buffer 1 when the game's buffer index D_800C7C74 == 1 (a
+ * per-type offset into the block). The primitive pointer advances by a
+ * per-type size times n. Codes are the TMD mode byte with bit 1 masked. */
+#define GS5_FN(off) (0x800A2C00u + (off))
+typedef struct Gs5Type {
+    uint16_t fn;        /* table offset from 0x800A2C00 */
+    uint8_t lit;        /* lit (normals; light-indexed table) */
+    uint8_t size;       /* TMD primitive bytes */
+    uint8_t buf1;       /* preset buffer 1 offset into the block */
+    uint16_t grd_fn;    /* 0: none; buffers 0/1 use this light-indexed table when flag bit 2 is set */
+    uint8_t grd_size;
+    uint8_t grd_buf1;
+} Gs5Type;
+static const Gs5Type kGs5Types[30] = {
+    [0x00] = {0x0F0, 1, 16, 0x1C, 0x1F0, 24, 0x24},
+    [0x01] = {0x108, 0, 16, 0x1C, 0, 0, 0},
+    [0x04] = {0x130, 1, 24, 0x28, 0, 0, 0},
+    [0x05] = {0x148, 0, 28, 0x28, 0, 0, 0},
+    [0x08] = {0x170, 1, 20, 0x20, 0, 0, 0},
+    [0x09] = {0x188, 0, 16, 0x20, 0, 0, 0},
+    [0x0C] = {0x1B0, 1, 32, 0x30, 0, 0, 0},
+    [0x0D] = {0x1C8, 0, 32, 0x30, 0, 0, 0},
+    [0x10] = {0x110, 1, 20, 0x24, 0x1FC, 28, 0x24},
+    [0x11] = {0x128, 0, 24, 0x24, 0, 0, 0},
+    [0x14] = {0x150, 1, 28, 0x30, 0, 0, 0},
+    [0x15] = {0x168, 0, 36, 0x30, 0, 0, 0},
+    [0x18] = {0x190, 1, 24, 0x2C, 0, 0, 0},
+    [0x19] = {0x1A8, 0, 28, 0x2C, 0, 0, 0},
+    [0x1C] = {0x1D0, 1, 36, 0x3C, 0, 0, 0},
+    [0x1D] = {0x1E8, 0, 44, 0x3C, 0, 0, 0},
+};
+
+uint32_t musashi_native_guest_call(uint32_t target, unsigned argc,
+                                   const uint32_t *args, uint32_t *v1);
+
+int bfm_psyq_GsSortObject5(uint32_t *r) {
+    const uint32_t obj = A(0), ot = A(1), shift = A(2), scratch = A(3);
+    uint32_t attr, tmd, blk, prim, vert, norm, lmode, b5, b6, div, lightmode = 0, w;
+    uint32_t light, loop, tmp;
+    uint16_t bufidx = 0;
+    uint8_t *p;
+    if (!get32(obj, &attr)) return 0;
+    if ((int32_t)attr < 0) return 1;
+    lmode = (attr >> 3) & 3u;
+    b5 = (attr >> 5) & 1u;
+    b6 = (attr >> 6) & 1u;
+    div = (attr >> 9) & 7u;
+    if (!put32(0x80079580u, lmode) || !put32(0x800A2B74u, b5) || !put32(0x8007957Cu, b6) ||
+        !put32(0x800C7D28u, div) || !put32(0x800C6D24u, (attr >> 30) & 1u)) return 0;
+    if (div) {
+        uint32_t s1v, s2v;
+        if (!get32(0x800AE618u, &s1v) || !get32(0x800AE61Cu, &s2v)) return 0;
+        if (!put32(scratch, div) || !put32(scratch + 4u, s1v) || !put32(scratch + 8u, s2v)) return 0;
+    }
+    if (b6 == 1u) light = 2u;
+    else {
+        if (!b5 && !get32(GS_LIGHT_MODE, &lightmode)) return 0;
+        light = ((!b5 && lightmode == 1u) || (b5 == 1u && lmode == 1u)) ? 1u : 0u;
+    }
+    if (!get32(obj + 8u, &tmd) || !get32(obj + 12u, &blk)) return 0;
+    if (!get32(tmd + 16u, &prim) || !get32(tmd, &vert) || !get32(tmd + 8u, &norm)) return 0;
+    if (div) loop = 0u;
+    else {
+        if (!(p = g(0x800C7C74u, 2))) return 0;
+        bufidx = u16at(p);
+        loop = bufidx == 1u ? 2u : 1u;
+    }
+    for (;;) {
+        uint32_t n, code, fn = 0, args[8], argc, ret;
+        uint16_t flag;
+        const Gs5Type *t;
+        int grd;
+        if (!(p = g(prim, 4))) return 0;
+        code = p[3] & 0xFDu;
+        flag = u16at(p + 2);
+        if (!get32(blk + 4u, &n)) return 0;
+        t = (code >= 0x20u && code < 0x3Eu) ? &kGs5Types[code - 0x20u] : NULL;
+        if (!t || !t->fn) {
+            fprintf(stderr, loop ? "non suppported code %x %x\n" : "non supported code %x %x\n",
+                    (unsigned)code, (unsigned)blk);
+        } else {
+            grd = t->grd_fn && (flag & 4u);
+            if (loop == 0u) {                       /* division: append at GsOUT_PACKET_P */
+                uint32_t pk;
+                if (grd) {
+                    fprintf(stderr, "Notsupported yet!!\n");
+                    prim += t->grd_size * n;
+                    goto next;
+                }
+                if (!get32(GS_OUT_PACKET_P, &pk)) return 0;
+                if (t->lit) {
+                    if (!get32(GS5_FN(t->fn) + 12u + light * 4u, &fn)) return 0;
+                    args[0] = prim; args[1] = vert; args[2] = norm; args[3] = pk;
+                    args[4] = n; args[5] = shift; args[6] = ot; args[7] = scratch; argc = 8u;
+                } else {
+                    if (!get32(GS5_FN(t->fn) + 4u, &fn)) return 0;
+                    args[0] = prim; args[1] = vert; args[2] = pk; args[3] = n;
+                    args[4] = shift; args[5] = ot; args[6] = scratch; argc = 7u;
+                }
+                ret = musashi_native_guest_call(fn, argc, args, NULL);
+                if (!put32(GS_OUT_PACKET_P, ret)) return 0;
+            } else {                                /* preset buffer 0 / 1 */
+                uint32_t pkt;
+                if (grd) {
+                    pkt = blk + (loop == 2u ? t->grd_buf1 : 8u);
+                    if (!get32(GS5_FN(t->grd_fn) + light * 4u, &fn)) return 0;
+                } else {
+                    pkt = blk + (loop == 2u ? t->buf1 : 8u);
+                    if (!get32(GS5_FN(t->fn) + (t->lit ? light * 4u : 0u), &fn)) return 0;
+                }
+                if (t->lit) {
+                    args[0] = prim; args[1] = vert; args[2] = norm; args[3] = pkt;
+                    args[4] = n; args[5] = shift; args[6] = ot; argc = 7u;
+                } else {
+                    args[0] = prim; args[1] = vert; args[2] = pkt; args[3] = n;
+                    args[4] = shift; args[5] = ot; argc = 6u;
+                }
+                (void)musashi_native_guest_call(fn, argc, args, NULL);
+            }
+            prim += (grd ? t->grd_size : t->size) * n;
+        }
+    next:
+        if (!get32(blk, &w)) return 0;
+        tmp = w & 0x00FFFFFFu;
+        if (!tmp) break;
+        blk = tmp;
+    }
+    (void)bufidx;
+    return 1;
+}

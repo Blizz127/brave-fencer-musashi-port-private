@@ -1420,9 +1420,9 @@
   },
   {
    "addr": "0x80055D40",
-   "name": "func_80055D40",
-   "name_source": "unnamed",
-   "evidence": null,
+   "name": "GsSortObject5",
+   "name_source": "inferred",
+   "evidence": "dispatches GsDOBJ5 preset blocks through the GsFCALL5-style tables at 0x800A2CF0 with (obj, ot, shift, scratch); libgs object PRESET2.o; the game calls it after two full model builds (repo src/main/8001fc08.c)",
    "segment": "libgs6",
    "object": "PRESET2.o",
    "callsites": 1,

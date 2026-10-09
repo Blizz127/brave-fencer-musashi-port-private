@@ -87,6 +87,9 @@ static const struct { uint32_t pc; const char *why; } kHeldBack[] = {
     {0x80047E58u, "VectorNormalS HLE is strict-only (B28)"},
     {0x80047E6Cu, "VectorNormal HLE is strict-only (B28)"},
     {0x80047E98u, "VectorNormalSS HLE is strict-only (B28)"},
+    /* GsSortObject5: new HLE (B28 inc 74); its guest calls would thunk into
+     * the interpreter in the hybrid, so it is strict-only like the above. */
+    {0x80055D40u, "GsSortObject5 HLE is strict-only (B28)"},
 #endif
     {0u, NULL},
 };

@@ -1062,6 +1062,24 @@ Increment 32 (generator, strict only):
 - Checks: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [].
 - New stop: 80055D40 (not_in_lane). Frame 1200, prims=0, disp=1, draw=0.
 
+### Increment 74 — GsSortObject5 (80055D40, libgs PRESET2.o) native dispatcher
+
+- Stop 80055D40 is in the PsyQ libgs6 range, so it needs a compat wrapper rather than lane C. 8001FC08 calls it in mode 1
+  after the first two frames, which use the game's own 80027BF0 path.
+- Added the native `bfm_psyq_GsSortObject5` (bfm_psyq_libgs.c, HLE), reconstructed from the retail control flow.
+  A small symbolic pass over the disassembly (scratch c73/sym.py) gave per-type function-table slots, argument forms,
+  primitive strides and buffer-1 offsets for all 16 TMD codes in each of the three loops (division / preset buf 0 / buf 1).
+  - It decodes the attribute globals and the light index.
+  - It walks the 24-bit preset block chain.
+  - It calls the per-type routines through the guest function tables at 0x800A2CF0, via `musashi_native_guest_call`,
+    so the routines themselves must be lane entries.
+- The compat def, status, calls.json and PSYQ-COMPAT (counts) were updated by hand, as before. The row is held back
+  outside strict, like VectorNormal, so hybrid stays unchanged.
+- Checks: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [].
+- New stop: 8004A660, the first per-type preset sorter (light-0 F3) from the table the game fills at runtime.
+  The tables also hold 8004A53C, 8004B078/AF5C, 8004BBF0/BACC, 8004C658/C53C, 8004AB68/AA18, 8004B614/B4C8,
+  8004C128/BFD8 and 8004CC24/CAD8 (libgte12 range). Frame 1200, prims=0, disp=1, draw=0.
+
 ## Next
 
 - Admit or reshape sc02_0031 `func_801831B4` (currently `abi`). Likely next

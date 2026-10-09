@@ -10,11 +10,11 @@ and every `asm/overlays/*/*.s`); 63200 `jal`/`j` call sites into the Psy-Q range
 | Status | Entry points | Call sites |
 |---|---|---|
 | psycross | 34 (16.0%) | 19693 (31.2%) |
-| hle | 52 (24.5%) | 29895 (47.3%) |
-| stub-TBD | 126 (59.4%) | 13612 (21.5%) |
-| **covered (psycross + hle)** | **86 / 212 (40.6%)** | **49588 / 63200 (78.5%)** |
+| hle | 53 (25.0%) | 29896 (47.3%) |
+| stub-TBD | 125 (59.0%) | 13611 (21.5%) |
+| **covered (psycross + hle)** | **87 / 212 (41.0%)** | **49589 / 63200 (78.5%)** |
 
-Named: 136 / 212 entry points (vendor symbols, libgte instruction shape, or 29 inferred
+Named: 137 / 212 entry points (vendor symbols, libgte instruction shape, or 30 inferred
 from call context: see `INFERRED` in tools/psyq_compat_status.py). The rest are listed
 by address and Psy-Q object for later naming.
 
@@ -161,7 +161,7 @@ by address and Psy-Q object for later naming.
 | `0x80054DCC` | GsSetRefView2L | libgs6 |  | 136 | 136 | stub-TBD | view matrix from GsRVIEW2 (ratan2, rsin/rcos, matrix products): large |
 | `0x800553D8` | GsLinkObject5 | libgs6 |  | 2 | 1 | stub-TBD | TMD object packet preset (GsDOBJ5): large; 2 call sites |
 | `0x800553F4` | GsPresetObject | libgs6 |  | 2 | 1 | stub-TBD | TMD object packet preset: large; 2 call sites |
-| `0x80055D40` | *unnamed* | libgs6 | PRESET2.o | 1 | 1 | stub-TBD | libgs internal (TMD object sort/preset, BG and clip setup): large or rarely called; guest code for now |
+| `0x80055D40` | GsSortObject5 | libgs6 | PRESET2.o | 1 | 1 | hle | preset-block dispatcher over guest GsDOBJ5; the per-type sort routines it selects run as lane entries |
 | `0x80056F18` | *unnamed* | libgs6 | OBJT.o | 2 | 1 | stub-TBD | libgs internal (TMD object sort/preset, BG and clip setup): large or rarely called; guest code for now |
 | `0x80057094` | *unnamed* | libgs6 | OBJT2.o | 2 | 1 | stub-TBD | libgs internal (TMD object sort/preset, BG and clip setup): large or rarely called; guest code for now |
 | `0x80058890` | *unnamed* | libgpu | EXT.o | 1 | 1 | stub-TBD | libgpu internal |
