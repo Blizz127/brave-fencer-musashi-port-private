@@ -26,3 +26,32 @@ BFM_PSYQ(0x8004C53C, func_8004C53C, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_gs5_gt3_nl
 BFM_PSYQ(0x8004C658, func_8004C658, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_gs5_gt3_l)
 BFM_PSYQ(0x8004CAD8, func_8004CAD8, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_gs5_gt4_nl)
 BFM_PSYQ(0x8004CC24, func_8004CC24, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_gs5_gt4_l)
+
+/* func_80057094 (libgs OBJT2.o) per-type sorters: the light-0, light-2 and
+ * no-light slots of the tables at 0x800A2BC0 (no division), wrappers in
+ * psyq_psycross.c (ot2_run; same-input differential vs retail in a scratch
+ * probe: RAM, GTE bank and command counts agree). */
+BFM_PSYQ(0x8004D6BC, func_8004D6BC, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_ot2_f3_nl)
+BFM_PSYQ(0x8004D7F8, func_8004D7F8, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_ot2_f3_l2)
+BFM_PSYQ(0x8004D938, func_8004D938, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_ot2_f3_l0)
+BFM_PSYQ(0x8004DBCC, func_8004DBCC, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_ot2_f4_nl)
+BFM_PSYQ(0x8004DD34, func_8004DD34, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_ot2_f4_l2)
+BFM_PSYQ(0x8004DEA0, func_8004DEA0, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_ot2_f4_l0)
+BFM_PSYQ(0x8004E19C, func_8004E19C, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_ot2_g3_nl)
+BFM_PSYQ(0x8004E2E4, func_8004E2E4, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_ot2_g3_l2)
+BFM_PSYQ(0x8004E424, func_8004E424, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_ot2_g3_l0)
+BFM_PSYQ(0x8004E74C, func_8004E74C, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_ot2_g4_nl)
+BFM_PSYQ(0x8004E8CC, func_8004E8CC, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_ot2_g4_l2)
+BFM_PSYQ(0x8004EA40, func_8004EA40, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_ot2_g4_l0)
+BFM_PSYQ(0x8004EE0C, func_8004EE0C, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_ot2_ft3_nl)
+BFM_PSYQ(0x8004EF78, func_8004EF78, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_ot2_ft3_l2)
+BFM_PSYQ(0x8004F0DC, func_8004F0DC, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_ot2_ft3_l0)
+BFM_PSYQ(0x8004F3BC, func_8004F3BC, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_ot2_ft4_nl)
+BFM_PSYQ(0x8004F55C, func_8004F55C, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_ot2_ft4_l2)
+BFM_PSYQ(0x8004F6F8, func_8004F6F8, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_ot2_ft4_l0)
+BFM_PSYQ(0x8004FA5C, func_8004FA5C, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_ot2_gt3_nl)
+BFM_PSYQ(0x8004FBD4, func_8004FBD4, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_ot2_gt3_l2)
+BFM_PSYQ(0x8004FD30, func_8004FD30, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_ot2_gt3_l0)
+BFM_PSYQ(0x8005009C, func_8005009C, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_ot2_gt4_nl)
+BFM_PSYQ(0x80050258, func_80050258, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_ot2_gt4_l2)
+BFM_PSYQ(0x800503F0, func_800503F0, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_ot2_gt4_l0)

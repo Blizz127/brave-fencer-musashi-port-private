@@ -1112,3 +1112,240 @@ int bfm_psyq_gs5_gt3_nl(uint32_t *r) { return gs5_run(&bfm_psyq_gs5_gt3_nl_d, r)
 int bfm_psyq_gs5_gt3_l(uint32_t *r) { return gs5_run(&bfm_psyq_gs5_gt3_l_d, r); }
 int bfm_psyq_gs5_gt4_nl(uint32_t *r) { return gs5_run(&bfm_psyq_gs5_gt4_nl_d, r); }
 int bfm_psyq_gs5_gt4_l(uint32_t *r) { return gs5_run(&bfm_psyq_gs5_gt4_l_d, r); }
+
+/* ---- libgs OBJT2 sorters (0x8004D6BC..0x800505B8, func_80057094's
+ * per-type routines) ----------------------------------------------------------
+ *
+ * Called by func_80057094 through the guest tables at 0x800A2BC0 as
+ *   fn(prim, vert_top, normal_top, packet, n, shift, ot, scratch)   (lit slots)
+ *   fn(prim, vert_top, packet, n, shift, ot, scratch)               (no-light slots)
+ * They build fresh GPU packets at `packet` (one per visible primitive) from n
+ * TMD primitives, link them into the OT and return the new packet pointer.
+ * Each routine is described as the retail sequence of GTE loads/commands,
+ * cull tests (FLAG bit 31 after RTPT/RTPS, NCLIP MAC0 <= 0) and packet
+ * stores, so writes made before a cull (and the cop2 bank) end up exactly as
+ * retail leaves them. Colour/command words:
+ *   RAWABE  word | ABE << 25                (ABE = the libgs word at 0x800C6D24)
+ *   NLTEX   (word & 0xFFFFFF) | ((mode | ABE << 1) & 0xFE) << 24  (mode = TMD byte 3, sign-extended)
+ *   TEX     (mode | ABE << 1) << 24 | 0x808080
+ *   GT3L2   ((mode & 2) | ABE << 1) << 24 | 0x25808080   (light-2 GT3 -> POLY_FT3)
+ *   GT4L2   ((mode & 2) | ABE << 1) << 24 | 0x2D808080   (light-2 GT4 -> POLY_FT4)
+ * Link: slot = ot->org + (((OTZ - ot->offset) >> shift) & 0xFFFF) * 4;
+ *   tag = len << 24 | (old & 0xFFFFFF); slot = (old & 0xFF000000) | (pkt & 0xFFFFFF).
+ * Reconstructed from the retail instruction stream; no Psy-Q source. */
+enum { OT2_LDV = 1, OT2_LDN, OT2_CMD, OT2_FLAG, OT2_MAC0, OT2_MTC2, OT2_PKW, OT2_ST, OT2_LINK, OT2_END };
+enum { OT2_RAW, OT2_RAWABE, OT2_NLTEX, OT2_TEX, OT2_GT3L2, OT2_GT4L2 };
+typedef struct Ot2Op { uint8_t op, a, kind, b; uint32_t w; } Ot2Op;
+typedef struct Ot2Prim { uint8_t lit, step; const Ot2Op *ops; } Ot2Prim;
+
+#define LV(s, o) {OT2_LDV, s, 0, o, 0}
+#define LN(s, o) {OT2_LDN, s, 0, o, 0}
+#define RTPT {OT2_CMD, 0, 0, 0, 0x0280030u}
+#define RTPS {OT2_CMD, 0, 0, 0, 0x0180001u}
+#define NCLIP {OT2_CMD, 0, 0, 0, 0x1400006u}
+#define AVSZ3 {OT2_CMD, 0, 0, 0, 0x158002Du}
+#define AVSZ4 {OT2_CMD, 0, 0, 0, 0x168002Eu}
+#define NCCS {OT2_CMD, 0, 0, 0, 0x108041Bu}
+#define NCCT {OT2_CMD, 0, 0, 0, 0x118043Fu}
+#define FLAG {OT2_FLAG, 0, 0, 0, 0}
+#define MAC0 {OT2_MAC0, 0, 0, 0, 0}
+#define MT(r, k, o) {OT2_MTC2, r, OT2_##k, o, 0}
+#define PW(p, k, o) {OT2_PKW, p, OT2_##k, o, 0}
+#define ST(p, r) {OT2_ST, p, 0, r, 0}
+#define LINK(n) {OT2_LINK, n, 0, 0, 0}
+#define END(n) {OT2_END, n, 0, 0, 0}
+#define SXY3(a, b, c) ST(a, 12), ST(b, 13), ST(c, 14)
+
+static const Ot2Op kOt2F3nl[] = {LV(0, 8), LV(1, 10), LV(2, 12), RTPT, MT(22, RAWABE, 4), FLAG, NCLIP, MAC0, AVSZ3,
+    LINK(4), ST(4, 22), SXY3(8, 12, 16), END(20)};
+static const Ot2Op kOt2F3l2[] = {LV(0, 10), LV(1, 12), LV(2, 14), RTPT, MT(22, RAWABE, 4), FLAG, NCLIP, MAC0, AVSZ3,
+    LINK(4), ST(4, 22), SXY3(8, 12, 16), END(20)};
+static const Ot2Op kOt2F3l0[] = {LV(0, 10), LV(1, 12), LV(2, 14), RTPT, MT(6, RAWABE, 4), FLAG, NCLIP, MAC0, AVSZ3,
+    LN(0, 8), NCCS, LINK(4), SXY3(8, 12, 16), ST(4, 22), END(20)};
+static const Ot2Op kOt2F4nl[] = {LV(0, 8), LV(1, 10), LV(2, 12), RTPT, MT(22, RAWABE, 4), FLAG, NCLIP, LV(0, 14), MAC0,
+    ST(4, 22), SXY3(8, 12, 16), RTPS, FLAG, AVSZ4, ST(20, 14), LINK(5), END(24)};
+static const Ot2Op kOt2F4l2[] = {LV(0, 10), LV(1, 12), LV(2, 14), RTPT, MT(22, RAWABE, 4), FLAG, NCLIP, LV(0, 16), MAC0,
+    ST(4, 22), SXY3(8, 12, 16), RTPS, FLAG, AVSZ4, ST(20, 14), LINK(5), END(24)};
+static const Ot2Op kOt2F4l0[] = {LV(0, 10), LV(1, 12), LV(2, 14), RTPT, MT(6, RAWABE, 4), FLAG, NCLIP, LV(0, 16), MAC0,
+    SXY3(8, 12, 16), RTPS, FLAG, AVSZ4, LN(0, 8), NCCS, LINK(5), ST(20, 14), ST(4, 22), END(24)};
+static const Ot2Op kOt2G3nl[] = {LV(0, 16), LV(1, 18), LV(2, 20), RTPT, MT(20, RAWABE, 4), MT(21, RAW, 8), MT(22, RAW, 12),
+    FLAG, NCLIP, MAC0, AVSZ3, ST(4, 20), ST(12, 21), ST(20, 22), SXY3(8, 16, 24), LINK(6), END(28)};
+static const Ot2Op kOt2G3l2[] = {LV(0, 10), LV(1, 14), LV(2, 18), RTPT, MT(20, RAWABE, 4), FLAG, NCLIP, MAC0, AVSZ3,
+    LINK(6), ST(4, 20), ST(12, 20), ST(20, 20), SXY3(8, 16, 24), END(28)};
+static const Ot2Op kOt2G3l0[] = {LV(0, 10), LV(1, 14), LV(2, 18), RTPT, FLAG, NCLIP, MT(6, RAWABE, 4), MAC0, AVSZ3,
+    LN(0, 8), LN(1, 12), LN(2, 16), NCCT, LINK(6), SXY3(8, 16, 24), ST(4, 20), ST(12, 21), ST(20, 22), END(28)};
+static const Ot2Op kOt2G4nl[] = {LV(0, 20), LV(1, 22), LV(2, 24), RTPT, FLAG, NCLIP, LV(0, 26), MAC0, SXY3(8, 16, 24),
+    RTPS, PW(4, RAWABE, 4), PW(12, RAW, 8), PW(20, RAW, 12), FLAG, AVSZ4, PW(28, RAW, 16), ST(32, 14), LINK(8), END(36)};
+static const Ot2Op kOt2G4l2[] = {LV(0, 10), LV(1, 14), LV(2, 18), RTPT, MT(20, RAWABE, 4), FLAG, NCLIP, LV(0, 22), MAC0,
+    SXY3(8, 16, 24), RTPS, FLAG, AVSZ4, LINK(8), ST(4, 20), ST(12, 20), ST(20, 20), ST(28, 20), ST(32, 14), END(36)};
+static const Ot2Op kOt2G4l0[] = {LV(0, 10), LV(1, 14), LV(2, 18), RTPT, FLAG, NCLIP, LV(0, 22), MAC0, SXY3(8, 16, 24),
+    RTPS, MT(6, RAWABE, 4), LN(1, 12), LN(2, 16), FLAG, AVSZ4, LN(0, 20), NCCS, ST(28, 22), LN(0, 8), NCCT, LINK(8),
+    ST(32, 14), ST(4, 20), ST(12, 21), ST(20, 22), END(36)};
+static const Ot2Op kOt2Ft3nl[] = {LV(0, 20), LV(1, 22), LV(2, 24), RTPT, MT(22, NLTEX, 16), PW(12, RAW, 4), PW(20, RAW, 8),
+    PW(28, RAW, 12), FLAG, NCLIP, MAC0, AVSZ3, LINK(7), ST(4, 22), SXY3(8, 16, 24), END(32)};
+static const Ot2Op kOt2Ft3l2[] = {LV(0, 18), LV(1, 20), LV(2, 22), RTPT, PW(12, RAW, 4), PW(20, RAW, 8), PW(28, RAW, 12),
+    PW(4, TEX, 0), FLAG, NCLIP, MAC0, AVSZ3, LINK(7), SXY3(8, 16, 24), END(32)};
+static const Ot2Op kOt2Ft3l0[] = {LV(0, 18), LV(1, 20), LV(2, 22), RTPT, MT(6, TEX, 0), PW(12, RAW, 4), PW(20, RAW, 8),
+    PW(28, RAW, 12), FLAG, NCLIP, MAC0, AVSZ3, LN(0, 16), NCCS, LINK(7), SXY3(8, 16, 24), ST(4, 22), END(32)};
+static const Ot2Op kOt2Ft4nl[] = {LV(0, 24), LV(1, 26), LV(2, 28), RTPT, PW(4, NLTEX, 20), FLAG, NCLIP, LV(0, 30), MAC0,
+    SXY3(8, 16, 24), RTPS, PW(12, RAW, 4), PW(20, RAW, 8), PW(28, RAW, 12), PW(36, RAW, 16), FLAG, AVSZ4, ST(32, 14),
+    LINK(9), END(40)};
+static const Ot2Op kOt2Ft4l2[] = {LV(0, 22), LV(1, 24), LV(2, 26), RTPT, FLAG, NCLIP, LV(0, 28), MAC0, SXY3(8, 16, 24),
+    RTPS, PW(12, RAW, 4), PW(20, RAW, 8), PW(28, RAW, 12), PW(36, RAW, 16), PW(4, TEX, 0), FLAG, AVSZ4, ST(32, 14),
+    LINK(9), END(40)};
+static const Ot2Op kOt2Ft4l0[] = {LV(0, 22), LV(1, 24), LV(2, 26), RTPT, MT(6, TEX, 0), FLAG, NCLIP, LV(0, 28), MAC0,
+    SXY3(8, 16, 24), RTPS, PW(12, RAW, 4), PW(20, RAW, 8), PW(28, RAW, 12), PW(36, RAW, 16), FLAG, AVSZ4, LN(0, 20),
+    NCCS, LINK(9), ST(32, 14), ST(4, 22), END(40)};
+static const Ot2Op kOt2Gt3nl[] = {LV(0, 28), LV(1, 30), LV(2, 32), RTPT, MT(20, NLTEX, 16), MT(21, RAW, 20),
+    MT(22, RAW, 24), PW(12, RAW, 4), PW(24, RAW, 8), PW(36, RAW, 12), FLAG, NCLIP, MAC0, AVSZ3, SXY3(8, 20, 32),
+    ST(4, 20), ST(16, 21), ST(28, 22), LINK(9), END(40)};
+static const Ot2Op kOt2Gt3l2[] = {LV(0, 18), LV(1, 22), LV(2, 26), RTPT, MT(20, RAW, 4), MT(21, RAW, 8), MT(22, RAW, 12),
+    PW(4, GT3L2, 0), FLAG, NCLIP, MAC0, AVSZ3, ST(12, 20), ST(20, 21), ST(28, 22), SXY3(8, 16, 24), LINK(7), END(32)};
+static const Ot2Op kOt2Gt3l0[] = {LV(0, 18), LV(1, 22), LV(2, 26), RTPT, MT(6, TEX, 0), FLAG, NCLIP, MAC0, AVSZ3,
+    LN(0, 16), LN(1, 20), LN(2, 24), NCCT, LINK(9), PW(12, RAW, 4), PW(24, RAW, 8), PW(36, RAW, 12), SXY3(8, 20, 32),
+    ST(4, 20), ST(16, 21), ST(28, 22), END(40)};
+static const Ot2Op kOt2Gt4nl[] = {LV(0, 36), LV(1, 38), LV(2, 40), RTPT, MT(20, NLTEX, 20), MT(21, RAW, 24),
+    MT(22, RAW, 28), MT(6, RAW, 32), FLAG, NCLIP, LV(0, 42), MAC0, SXY3(8, 20, 32), RTPS, FLAG, AVSZ4, PW(12, RAW, 4),
+    PW(24, RAW, 8), PW(36, RAW, 12), PW(48, RAW, 16), ST(44, 14), ST(4, 20), ST(16, 21), ST(28, 22), ST(40, 6),
+    LINK(12), END(52)};
+static const Ot2Op kOt2Gt4l2[] = {LV(0, 22), LV(1, 26), LV(2, 30), RTPT, FLAG, NCLIP, LV(0, 34), MAC0, SXY3(8, 16, 24),
+    RTPS, PW(4, GT4L2, 0), FLAG, AVSZ4, PW(12, RAW, 4), PW(20, RAW, 8), PW(28, RAW, 12), PW(36, RAW, 16), ST(32, 14),
+    LINK(9), END(40)};
+static const Ot2Op kOt2Gt4l0[] = {LV(0, 22), LV(1, 26), LV(2, 30), RTPT, MT(6, TEX, 0), FLAG, NCLIP, LV(0, 34), MAC0,
+    SXY3(8, 20, 32), RTPS, LN(1, 24), LN(2, 28), FLAG, AVSZ4, LN(0, 32), NCCS, PW(12, RAW, 4), PW(24, RAW, 8),
+    PW(36, RAW, 12), PW(48, RAW, 16), ST(40, 22), LN(0, 20), NCCT, LINK(12), ST(44, 14), ST(4, 20), ST(16, 21),
+    ST(28, 22), END(52)};
+
+static int ot2_word(uint8_t kind, uint32_t prim, uint8_t off, uint32_t abe, uint32_t *out) {
+    const uint8_t *p;
+    uint32_t w = 0, mode;
+    if (!(p = (const uint8_t *)P(prim, 4u))) return 0;
+    mode = (uint32_t)(int32_t)(int8_t)p[3];
+    if (kind == OT2_RAW || kind == OT2_RAWABE || kind == OT2_NLTEX) {
+        const uint8_t *q = (const uint8_t *)P(prim + off, 4u);
+        if (!q) return 0;
+        w = (uint32_t)q[0] | ((uint32_t)q[1] << 8) | ((uint32_t)q[2] << 16) | ((uint32_t)q[3] << 24);
+    }
+    switch (kind) {
+    case OT2_RAW: *out = w; break;
+    case OT2_RAWABE: *out = w | (abe << 25); break;
+    case OT2_NLTEX: *out = (w & 0x00FFFFFFu) | (((mode | (abe << 1)) >> 1) << 25); break;
+    case OT2_TEX: *out = ((mode | (abe << 1)) << 24) | 0x00808080u; break;
+    case OT2_GT3L2: *out = (((mode & 2u) | (abe << 1)) << 24) | 0x25808080u; break;
+    default: *out = (((mode & 2u) | (abe << 1)) << 24) | 0x2D808080u; break;
+    }
+    return 1;
+}
+
+static int ot2_run(const Ot2Prim *d, uint32_t *r) {
+    const uint32_t lit = d->lit;
+    uint32_t prim = A(0), vert = A(1), norm = lit ? A(2) : 0u, pk = A(lit ? 3 : 2);
+    uint32_t n = A(lit ? 4 : 3), shift = A(lit ? 5 : 4), ot = A(lit ? 6 : 5);
+    uint32_t org, ofsw, abe, cmds = 0, i;
+    if (n == 0) { r[2] = pk; return 1; }
+    {
+        const uint8_t *o = (const uint8_t *)P(ot + 4u, 8);
+        const uint8_t *g = (const uint8_t *)P(0x800C6D24u, 4);
+        if (!o || !g) return 0;
+        org = (uint32_t)o[0] | ((uint32_t)o[1] << 8) | ((uint32_t)o[2] << 16) | ((uint32_t)o[3] << 24);
+        ofsw = (uint32_t)o[4] | ((uint32_t)o[5] << 8) | ((uint32_t)o[6] << 16) | ((uint32_t)o[7] << 24);
+        abe = (uint32_t)g[0] | ((uint32_t)g[1] << 8) | ((uint32_t)g[2] << 16) | ((uint32_t)g[3] << 24);
+    }
+    if (!P(prim, (uint32_t)d->step * n)) return 0;
+    GTE_BEGIN();
+#define OT2_FAIL() do { GTE_END(cmds); return 0; } while (0)
+    for (i = 0; i < n; ++i, prim += d->step) {
+        const Ot2Op *op;
+        uint8_t *pp = NULL;
+        for (op = d->ops;; ++op) {
+            uint32_t w;
+            if (op->op == OT2_PKW || op->op == OT2_ST || op->op == OT2_LINK) {
+                if (!pp && !(pp = (uint8_t *)P(pk, 52u))) OT2_FAIL();
+            }
+            switch (op->op) {
+            case OT2_LDV:
+            case OT2_LDN:
+                if (!gs5_ldv(op->a, op->op == OT2_LDV ? vert : norm, gs5_u16(prim + op->b))) OT2_FAIL();
+                continue;
+            case OT2_CMD: doCOP2(op->w); cmds++; continue;
+            case OT2_FLAG: if ((int32_t)CFC2(31) < 0) break; continue;
+            case OT2_MAC0: if ((int32_t)MFC2(24) <= 0) break; continue;
+            case OT2_MTC2:
+                if (!ot2_word(op->kind, prim, op->b, abe, &w)) OT2_FAIL();
+                MTC2(w, op->a);
+                continue;
+            case OT2_PKW:
+                if (!ot2_word(op->kind, prim, op->b, abe, &w)) OT2_FAIL();
+                lane_gte_store32(pp + op->a, w);
+                continue;
+            case OT2_ST: lane_gte_store32(pp + op->a, MFC2(op->b)); continue;
+            case OT2_LINK: {
+                uint32_t slot = org + (((MFC2(7) - ofsw) >> (shift & 31u)) & 0xFFFFu) * 4u, old;
+                uint8_t *sp = (uint8_t *)P(slot, 4);
+                if (!sp) OT2_FAIL();
+                old = (uint32_t)sp[0] | ((uint32_t)sp[1] << 8) | ((uint32_t)sp[2] << 16) | ((uint32_t)sp[3] << 24);
+                lane_gte_store32(pp, ((uint32_t)op->a << 24) | (old & 0x00FFFFFFu));
+                lane_gte_store32(sp, (old & 0xFF000000u) | (pk & 0x00FFFFFFu));
+                continue;
+            }
+            default: pk += op->a; break;   /* OT2_END */
+            }
+            break;
+        }
+    }
+#undef OT2_FAIL
+    GTE_END(cmds);
+    r[2] = pk;
+    return 1;
+}
+
+static const Ot2Prim kOt2PF3nl = {0, 16, kOt2F3nl}, kOt2PF3l2 = {1, 16, kOt2F3l2}, kOt2PF3l0 = {1, 16, kOt2F3l0};
+static const Ot2Prim kOt2PF4nl = {0, 16, kOt2F4nl}, kOt2PF4l2 = {1, 20, kOt2F4l2}, kOt2PF4l0 = {1, 20, kOt2F4l0};
+static const Ot2Prim kOt2PG3nl = {0, 24, kOt2G3nl}, kOt2PG3l2 = {1, 20, kOt2G3l2}, kOt2PG3l0 = {1, 20, kOt2G3l0};
+static const Ot2Prim kOt2PG4nl = {0, 28, kOt2G4nl}, kOt2PG4l2 = {1, 24, kOt2G4l2}, kOt2PG4l0 = {1, 24, kOt2G4l0};
+static const Ot2Prim kOt2PFt3nl = {0, 28, kOt2Ft3nl}, kOt2PFt3l2 = {1, 24, kOt2Ft3l2}, kOt2PFt3l0 = {1, 24, kOt2Ft3l0};
+static const Ot2Prim kOt2PFt4nl = {0, 32, kOt2Ft4nl}, kOt2PFt4l2 = {1, 32, kOt2Ft4l2}, kOt2PFt4l0 = {1, 32, kOt2Ft4l0};
+static const Ot2Prim kOt2PGt3nl = {0, 36, kOt2Gt3nl}, kOt2PGt3l2 = {1, 28, kOt2Gt3l2}, kOt2PGt3l0 = {1, 28, kOt2Gt3l0};
+static const Ot2Prim kOt2PGt4nl = {0, 44, kOt2Gt4nl}, kOt2PGt4l2 = {1, 36, kOt2Gt4l2}, kOt2PGt4l0 = {1, 36, kOt2Gt4l0};
+#undef LV
+#undef LN
+#undef RTPT
+#undef RTPS
+#undef NCLIP
+#undef AVSZ3
+#undef AVSZ4
+#undef NCCS
+#undef NCCT
+#undef FLAG
+#undef MAC0
+#undef MT
+#undef PW
+#undef ST
+#undef LINK
+#undef END
+#undef SXY3
+
+int bfm_psyq_ot2_f3_nl(uint32_t *r) { return ot2_run(&kOt2PF3nl, r); }
+int bfm_psyq_ot2_f3_l2(uint32_t *r) { return ot2_run(&kOt2PF3l2, r); }
+int bfm_psyq_ot2_f3_l0(uint32_t *r) { return ot2_run(&kOt2PF3l0, r); }
+int bfm_psyq_ot2_f4_nl(uint32_t *r) { return ot2_run(&kOt2PF4nl, r); }
+int bfm_psyq_ot2_f4_l2(uint32_t *r) { return ot2_run(&kOt2PF4l2, r); }
+int bfm_psyq_ot2_f4_l0(uint32_t *r) { return ot2_run(&kOt2PF4l0, r); }
+int bfm_psyq_ot2_g3_nl(uint32_t *r) { return ot2_run(&kOt2PG3nl, r); }
+int bfm_psyq_ot2_g3_l2(uint32_t *r) { return ot2_run(&kOt2PG3l2, r); }
+int bfm_psyq_ot2_g3_l0(uint32_t *r) { return ot2_run(&kOt2PG3l0, r); }
+int bfm_psyq_ot2_g4_nl(uint32_t *r) { return ot2_run(&kOt2PG4nl, r); }
+int bfm_psyq_ot2_g4_l2(uint32_t *r) { return ot2_run(&kOt2PG4l2, r); }
+int bfm_psyq_ot2_g4_l0(uint32_t *r) { return ot2_run(&kOt2PG4l0, r); }
+int bfm_psyq_ot2_ft3_nl(uint32_t *r) { return ot2_run(&kOt2PFt3nl, r); }
+int bfm_psyq_ot2_ft3_l2(uint32_t *r) { return ot2_run(&kOt2PFt3l2, r); }
+int bfm_psyq_ot2_ft3_l0(uint32_t *r) { return ot2_run(&kOt2PFt3l0, r); }
+int bfm_psyq_ot2_ft4_nl(uint32_t *r) { return ot2_run(&kOt2PFt4nl, r); }
+int bfm_psyq_ot2_ft4_l2(uint32_t *r) { return ot2_run(&kOt2PFt4l2, r); }
+int bfm_psyq_ot2_ft4_l0(uint32_t *r) { return ot2_run(&kOt2PFt4l0, r); }
+int bfm_psyq_ot2_gt3_nl(uint32_t *r) { return ot2_run(&kOt2PGt3nl, r); }
+int bfm_psyq_ot2_gt3_l2(uint32_t *r) { return ot2_run(&kOt2PGt3l2, r); }
+int bfm_psyq_ot2_gt3_l0(uint32_t *r) { return ot2_run(&kOt2PGt3l0, r); }
+int bfm_psyq_ot2_gt4_nl(uint32_t *r) { return ot2_run(&kOt2PGt4nl, r); }
+int bfm_psyq_ot2_gt4_l2(uint32_t *r) { return ot2_run(&kOt2PGt4l2, r); }
+int bfm_psyq_ot2_gt4_l0(uint32_t *r) { return ot2_run(&kOt2PGt4l0, r); }

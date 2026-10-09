@@ -1131,6 +1131,21 @@ Increment 32 (generator, strict only):
 - The run now gets further: FRAME_TRACE shows prims=32 at frames 350/500 and a new load phase (ld_n=87) before the stop.
 - New stop: `guest_pc=8004f3bc` (OBJT2 FT4 no-light sort routine, table 0x800A2C98); frame 1200, prims=0, draw=0.
 
+### Increment 79: native OBJT2 per-type sorters (24); stop 8001EFE0
+
+- func_80057094 dispatches non-preset OBJT2 primitives through per-type tables
+  at 0x800A2C60.. to 24 hand-written GTE sorters (F3/F4/G3/G4/FT3/FT4/GT3/GT4 x
+  no-light / light-2 / light-0, 0x8004D6BC..0x800503F0). These are now native
+  (`psyq_psycross.c`, a small op-script engine `ot2_run` plus 24 wrappers) and
+  registered strict-only in `bfm_psyq_compat_strict.def` (no jal sites: they
+  are reached only through the libgs tables).
+- Same-input differential against the retail code (scratch probe driving retail
+  80057094 with the guest-call hook pointed at the native wrappers): all 24
+  routines identical on 7200 random cases (RAM, GTE state, return value).
+- Run: frames to 1200, prims=32 at two frames, draw=0. New stop: guest call to
+  8001EFE0 (not in lane). Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0,
+  regr LOST [].
+
 ## Next
 
 - Admit or reshape sc02_0031 `func_801831B4` (currently `abi`). Likely next
