@@ -1550,6 +1550,14 @@ Increment 32 (generator, strict only):
 - Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [].
   Run: 3000 frames, no stop.
 
+### Inc 109: sc02_0031/sc02_0035 80132144 typed void
+
+- The probe stopped at sc02_0035 80132144, refused by rule ub (undef
+  operand): the sc02 C was `s32` with no return. Both sc02_0031 and sc02_0035
+  are now `void` (as main_0012's is), byte-identical (rv.py).
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [], both
+  gained. Run: 3000 frames, no stop.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for

@@ -20,7 +20,7 @@ extern void func_8012C1B8(void);
 extern void func_8012CAE4(void *a0);
 extern void func_8001C214(int, int);
 
-s32 func_80132144(s32 param_1)
+void func_80132144(s32 param_1)
 {
     extern int D_801851B0;
 
