@@ -48,6 +48,13 @@ int bfm_psyq_call(uint32_t pc, uint32_t *r);
 
 void bfm_psyq_set_ram(void *phys0, size_t size);
 void bfm_psyq_set_scratchpad(void *base);
+/* Guest calls from a wrapper (GsSortObject5's per-type routines): the host
+ * installs its native call path (musashi_native_guest_call); without one,
+ * bfm_psyq_guest_call returns 0 and the wrapper refuses. */
+typedef uint32_t (*BfmPsyqGuestCallFn)(uint32_t target, unsigned argc, const uint32_t *args,
+                                       uint32_t *v1);
+void bfm_psyq_set_guest_call(BfmPsyqGuestCallFn fn);
+int bfm_psyq_guest_call(uint32_t target, unsigned argc, const uint32_t *args, uint32_t *v0);
 
 /* o32 argument n (0-based; n >= 4 from the guest stack). */
 uint32_t bfm_psyq_arg(const uint32_t *r, unsigned n);
@@ -114,6 +121,7 @@ int bfm_psyq_stub(uint32_t *r);
 /* HLE / PsyCross wrappers (declared for the table). */
 #define BFM_PSYQ(pc, name, status, argc, returns, wrapper) int wrapper(uint32_t *r);
 #include "bfm_psyq_compat.def"
+#include "bfm_psyq_compat_strict.def"
 #undef BFM_PSYQ
 
 #endif

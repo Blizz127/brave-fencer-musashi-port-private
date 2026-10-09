@@ -1,0 +1,28 @@
+/* Strict-only PsyQ lane entries (hand-maintained; not generated).
+ *
+ * Same BFM_PSYQ(pc, name, status, argc, returns, wrapper) rows as
+ * bfm_psyq_compat.def, for Psy-Q routines that no game code calls directly:
+ * they are reached only through libgs's own function tables, so they have no
+ * jal call sites and no place in the generated table or bfm_psyq_calls.json.
+ * native_lane_psyq.c installs them only in MUSASHI_STRICT_NATIVE builds, so
+ * the hybrid lane (and its hooked-PC list) is unchanged.
+ *
+ * GsSortObject5 (0x80055D40) preset sorters: the light-0 (NCCS/NCCT) and
+ * light-2 (no lighting) slots of the tables at 0x800A2CF0, wrappers in
+ * psyq_psycross.c (gs5_run over the gteRegs bank). */
+BFM_PSYQ(0x8004A53C, func_8004A53C, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_gs5_f3_nl)
+BFM_PSYQ(0x8004A660, func_8004A660, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_gs5_f3_l)
+BFM_PSYQ(0x8004AA18, func_8004AA18, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_gs5_f4_nl)
+BFM_PSYQ(0x8004AB68, func_8004AB68, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_gs5_f4_l)
+BFM_PSYQ(0x8004AF5C, func_8004AF5C, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_gs5_g3_nl)
+BFM_PSYQ(0x8004B078, func_8004B078, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_gs5_g3_l)
+BFM_PSYQ(0x8004B4C8, func_8004B4C8, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_gs5_g4_nl)
+BFM_PSYQ(0x8004B614, func_8004B614, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_gs5_g4_l)
+BFM_PSYQ(0x8004BACC, func_8004BACC, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_gs5_ft3_nl)
+BFM_PSYQ(0x8004BBF0, func_8004BBF0, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_gs5_ft3_l)
+BFM_PSYQ(0x8004BFD8, func_8004BFD8, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_gs5_ft4_nl)
+BFM_PSYQ(0x8004C128, func_8004C128, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_gs5_ft4_l)
+BFM_PSYQ(0x8004C53C, func_8004C53C, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_gs5_gt3_nl)
+BFM_PSYQ(0x8004C658, func_8004C658, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_gs5_gt3_l)
+BFM_PSYQ(0x8004CAD8, func_8004CAD8, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_gs5_gt4_nl)
+BFM_PSYQ(0x8004CC24, func_8004CC24, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_gs5_gt4_l)

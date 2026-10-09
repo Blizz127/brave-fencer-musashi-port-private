@@ -934,3 +934,174 @@ int bfm_psyq_GsSortSprite(uint32_t *r) {
     }
     return 1;
 }
+
+/* ---- libgs preset sorters (0x8004A414..0x8004CFEC, GsSortObject5's
+ * per-type routines) --------------------------------------------------------
+ *
+ * Called by GsSortObject5 through the guest tables at 0x800A2CF0 as
+ *   fn(prim, vert_top, normal_top, packet, n, shift, ot)        (lit slots)
+ * and return prim + n * prim_size. Per primitive they transform the TMD
+ * vertices (RTPT, plus RTPS for the 4th of a quad), cull on FLAG bit 31 and
+ * NCLIP <= 0, take the OT index from AVSZ3/AVSZ4, run NCCS/NCCT for the lit
+ * (light 0) slot, rewrite the preset packet's XY (and RGB) words and link it:
+ *   slot = ot->org + (((OTZ - ot->offset_word) >> shift) & 0xFFFF) * 4
+ *   tag  = len << 24 | (old & 0xFFFFFF); slot = (old & 0xFF000000) | (pkt & 0xFFFFFF)
+ * The packet pointer moves by the double-buffered packet stride. GTE
+ * commands and register loads keep the retail order (including where RGBC
+ * is loaded and the 4th vertex goes into V0 ahead of the NCLIP test), so the
+ * cop2 bank ends in the same state. Reconstructed from the retail
+ * instruction stream; no Psy-Q source. */
+enum { GS5_RGBC_AFTER_RTPT, GS5_RGBC_AFTER_NCLIP, GS5_RGBC_AFTER_RTPS, GS5_RGBC_BEFORE_NCC };
+typedef struct Gs5Prim {
+    uint8_t quad, gouraud, lit, textured, rgbc_at;
+    uint8_t rtps_flag;  /* quads: the RTPS FLAG really is tested (see below) */
+    uint8_t psize, pstride, taglen;
+    uint8_t vofs[4];    /* u16 vertex index offsets in the TMD primitive */
+    uint8_t nofs[4];    /* u16 normal index offsets (lit) */
+    uint8_t xy[4];      /* packet XY word offsets */
+    uint8_t rgb[4];     /* packet RGB word offsets (lit) */
+} Gs5Prim;
+
+static int gs5_ldv(int slot, uint32_t base, uint32_t idx) {
+    const void *p = P(base + idx * 8u, 8);
+    if (!p) return 0;
+    lane_gte_ldv_slot(slot, p);
+    return 1;
+}
+static uint32_t gs5_u16(uint32_t a) {
+    const uint8_t *p = (const uint8_t *)P(a, 2);
+    return p ? (uint32_t)(p[0] | (p[1] << 8)) : 0u;
+}
+static int gs5_rgbc(const Gs5Prim *d, uint32_t prim) {
+    if (d->textured) {
+        const uint8_t *c = (const uint8_t *)P(prim + 3u, 1);
+        if (!c) return 0;
+        MTC2(0x00808080u | ((uint32_t)c[0] << 24), 6);
+    } else {
+        const uint8_t *c = (const uint8_t *)P(prim + 4u, 4);
+        if (!c) return 0;
+        MTC2((uint32_t)c[0] | ((uint32_t)c[1] << 8) | ((uint32_t)c[2] << 16) | ((uint32_t)c[3] << 24), 6);
+    }
+    return 1;
+}
+
+static int gs5_run(const Gs5Prim *d, uint32_t *r) {
+    uint32_t prim = A(0), vert = A(1), norm = A(2), pkt = A(3);
+    uint32_t n = A(4), shift = A(5), ot = A(6);
+    uint32_t org, ofsw, cmds = 0, i;
+    /* The light-2 (no lighting) routines sit in the same lit slots and take
+     * the same arguments; they just never read normal_top. */
+    if (n == 0) { r[2] = prim; return 1; }
+    {
+        const uint8_t *o = (const uint8_t *)P(ot + 4u, 8);
+        if (!o) return 0;
+        org = (uint32_t)o[0] | ((uint32_t)o[1] << 8) | ((uint32_t)o[2] << 16) | ((uint32_t)o[3] << 24);
+        ofsw = (uint32_t)o[4] | ((uint32_t)o[5] << 8) | ((uint32_t)o[6] << 16) | ((uint32_t)o[7] << 24);
+    }
+    if (!P(prim, (uint32_t)d->psize * n)) return 0;
+    GTE_BEGIN();
+#define GS5_FAIL() do { GTE_END(cmds); return 0; } while (0)
+    for (i = 0; i < n; ++i, prim += d->psize, pkt += d->pstride) {
+        uint32_t otz, slot, old, k;
+        uint8_t *sp, *pp;
+        for (k = 0; k < 3u; ++k)
+            if (!gs5_ldv((int)k, vert, gs5_u16(prim + d->vofs[k]))) GS5_FAIL();
+        doCOP2(0x0280030); cmds++;                                    /* RTPT */
+        if (d->lit && d->rgbc_at == GS5_RGBC_AFTER_RTPT && !gs5_rgbc(d, prim)) GS5_FAIL();
+        if ((int32_t)CFC2(31) < 0) continue;
+        doCOP2(0x1400006); cmds++;                                    /* NCLIP */
+        if (d->lit && d->rgbc_at == GS5_RGBC_AFTER_NCLIP && !gs5_rgbc(d, prim)) GS5_FAIL();
+        if (d->quad && !gs5_ldv(0, vert, gs5_u16(prim + d->vofs[3]))) GS5_FAIL();
+        if ((int32_t)MFC2(24) <= 0) continue;
+        if (!(pp = (uint8_t *)P(pkt, (uint32_t)d->taglen * 4u + 4u))) GS5_FAIL();
+        if (d->quad) {
+            for (k = 0; k < 3u; ++k) lane_gte_store32(pp + d->xy[k], MFC2(12 + k));
+            doCOP2(0x0180001); cmds++;                                /* RTPS */
+            if (d->lit && d->rgbc_at == GS5_RGBC_AFTER_RTPS && !gs5_rgbc(d, prim)) GS5_FAIL();
+            if (d->lit && d->gouraud) {
+                if (!gs5_ldv(1, norm, gs5_u16(prim + d->nofs[1])) ||
+                    !gs5_ldv(2, norm, gs5_u16(prim + d->nofs[2]))) GS5_FAIL();
+            }
+            /* G4/GT4 light-0 read FLAG with CFC2 straight into the BLTZ's
+             * load-delay slot, so the branch tests the earlier (non-negative)
+             * RTPT FLAG: the RTPS result is never culled there. */
+            if (d->rtps_flag && (int32_t)CFC2(31) < 0) continue;
+            doCOP2(0x168002E); cmds++;                                /* AVSZ4 */
+        } else {
+            doCOP2(0x158002D); cmds++;                                /* AVSZ3 */
+        }
+        if (d->lit) {
+            if (d->gouraud && !d->quad) {
+                for (k = 0; k < 3u; ++k)
+                    if (!gs5_ldv((int)k, norm, gs5_u16(prim + d->nofs[k]))) GS5_FAIL();
+            } else {
+                if (!gs5_ldv(0, norm, gs5_u16(prim + d->nofs[d->gouraud ? 3 : 0]))) GS5_FAIL();
+                if (d->rgbc_at == GS5_RGBC_BEFORE_NCC && !gs5_rgbc(d, prim)) GS5_FAIL();
+            }
+        }
+        otz = MFC2(7);
+        if (d->lit) {
+            if (d->gouraud && !d->quad) {
+                doCOP2(0x118043F); cmds++;                            /* NCCT */
+            } else {
+                doCOP2(0x108041B); cmds++;                            /* NCCS */
+                if (d->gouraud) {                                     /* quad: 4th colour, then NCCT */
+                    lane_gte_store32(pp + d->rgb[3], MFC2(22));
+                    if (!gs5_ldv(0, norm, gs5_u16(prim + d->nofs[0]))) GS5_FAIL();
+                    doCOP2(0x118043F); cmds++;
+                }
+            }
+        }
+        slot = org + (((otz - ofsw) >> (shift & 31u)) & 0xFFFFu) * 4u;
+        if (!(sp = (uint8_t *)P(slot, 4))) GS5_FAIL();
+        old = (uint32_t)sp[0] | ((uint32_t)sp[1] << 8) | ((uint32_t)sp[2] << 16) | ((uint32_t)sp[3] << 24);
+        lane_gte_store32(pp, ((uint32_t)d->taglen << 24) | (old & 0x00FFFFFFu));
+        lane_gte_store32(sp, (old & 0xFF000000u) | (pkt & 0x00FFFFFFu));
+        if (d->quad) lane_gte_store32(pp + d->xy[3], MFC2(14));
+        else for (k = 0; k < 3u; ++k) lane_gte_store32(pp + d->xy[k], MFC2(12 + k));
+        if (d->lit) {
+            if (d->gouraud) for (k = 0; k < 3u; ++k) lane_gte_store32(pp + d->rgb[k], MFC2(20 + k));
+            else lane_gte_store32(pp + d->rgb[0], MFC2(22));
+        }
+    }
+#undef GS5_FAIL
+    GTE_END(cmds);
+    r[2] = prim;
+    return 1;
+}
+
+/* Gs5Prim: quad, gouraud, lit, textured, rgbc_at, rtps_flag, psize, packet stride, tag len,
+ *         vertex idx offsets, normal idx offsets, packet XY offsets, packet RGB offsets */
+static const Gs5Prim bfm_psyq_gs5_f3_nl_d = {0, 0, 0, 0, 0, 0,                    16, 40,  4, {10, 12, 14, 0},  {0},              {8, 12, 16, 0},   {0}};
+static const Gs5Prim bfm_psyq_gs5_f3_l_d = {0, 0, 1, 0, GS5_RGBC_AFTER_RTPT, 0,  16, 40,  4, {10, 12, 14, 0},  {8, 0, 0, 0},     {8, 12, 16, 0},   {4, 0, 0, 0}};
+static const Gs5Prim bfm_psyq_gs5_f4_nl_d = {1, 0, 0, 0, 0, 1,                    20, 48,  5, {10, 12, 14, 16}, {0},              {8, 12, 16, 20},  {0}};
+static const Gs5Prim bfm_psyq_gs5_f4_l_d = {1, 0, 1, 0, GS5_RGBC_AFTER_RTPT, 1,  20, 48,  5, {10, 12, 14, 16}, {8, 0, 0, 0},     {8, 12, 16, 20},  {4, 0, 0, 0}};
+static const Gs5Prim bfm_psyq_gs5_g3_nl_d = {0, 1, 0, 0, 0, 0,                    20, 56,  6, {10, 14, 18, 0},  {0},              {8, 16, 24, 0},   {0}};
+static const Gs5Prim bfm_psyq_gs5_g3_l_d = {0, 1, 1, 0, GS5_RGBC_AFTER_NCLIP, 0, 20, 56,  6, {10, 14, 18, 0},  {8, 12, 16, 0},   {8, 16, 24, 0},   {4, 12, 20, 0}};
+static const Gs5Prim bfm_psyq_gs5_g4_nl_d = {1, 1, 0, 0, 0, 1,                    24, 72,  8, {10, 14, 18, 22}, {0},              {8, 16, 24, 32},  {0}};
+static const Gs5Prim bfm_psyq_gs5_g4_l_d = {1, 1, 1, 0, GS5_RGBC_BEFORE_NCC, 0,  24, 72,  8, {10, 14, 18, 22}, {8, 12, 16, 20},  {8, 16, 24, 32},  {4, 12, 20, 28}};
+static const Gs5Prim bfm_psyq_gs5_ft3_nl_d = {0, 0, 0, 1, 0, 0,                    24, 64,  7, {18, 20, 22, 0},  {0},              {8, 16, 24, 0},   {0}};
+static const Gs5Prim bfm_psyq_gs5_ft3_l_d = {0, 0, 1, 1, GS5_RGBC_AFTER_RTPT, 0,  24, 64,  7, {18, 20, 22, 0},  {16, 0, 0, 0},    {8, 16, 24, 0},   {4, 0, 0, 0}};
+static const Gs5Prim bfm_psyq_gs5_ft4_nl_d = {1, 0, 0, 1, 0, 1,                    32, 80,  9, {22, 24, 26, 28}, {0},              {8, 16, 24, 32},  {0}};
+static const Gs5Prim bfm_psyq_gs5_ft4_l_d = {1, 0, 1, 1, GS5_RGBC_AFTER_RTPS, 1,  32, 80,  9, {22, 24, 26, 28}, {20, 0, 0, 0},    {8, 16, 24, 32},  {4, 0, 0, 0}};
+static const Gs5Prim bfm_psyq_gs5_gt3_nl_d = {0, 1, 0, 1, 0, 0,                    28, 80,  9, {18, 22, 26, 0},  {0},              {8, 20, 32, 0},   {0}};
+static const Gs5Prim bfm_psyq_gs5_gt3_l_d = {0, 1, 1, 1, GS5_RGBC_AFTER_RTPT, 0,  28, 80,  9, {18, 22, 26, 0},  {16, 20, 24, 0},  {8, 20, 32, 0},   {4, 16, 28, 0}};
+static const Gs5Prim bfm_psyq_gs5_gt4_nl_d = {1, 1, 0, 1, 0, 1,                    36, 104, 12, {22, 26, 30, 34}, {0},             {8, 20, 32, 44},  {0}};
+static const Gs5Prim bfm_psyq_gs5_gt4_l_d = {1, 1, 1, 1, GS5_RGBC_AFTER_RTPT, 0,  36, 104, 12, {22, 26, 30, 34}, {20, 24, 28, 32}, {8, 20, 32, 44},  {4, 16, 28, 40}};
+
+int bfm_psyq_gs5_f3_nl(uint32_t *r) { return gs5_run(&bfm_psyq_gs5_f3_nl_d, r); }
+int bfm_psyq_gs5_f3_l(uint32_t *r) { return gs5_run(&bfm_psyq_gs5_f3_l_d, r); }
+int bfm_psyq_gs5_f4_nl(uint32_t *r) { return gs5_run(&bfm_psyq_gs5_f4_nl_d, r); }
+int bfm_psyq_gs5_f4_l(uint32_t *r) { return gs5_run(&bfm_psyq_gs5_f4_l_d, r); }
+int bfm_psyq_gs5_g3_nl(uint32_t *r) { return gs5_run(&bfm_psyq_gs5_g3_nl_d, r); }
+int bfm_psyq_gs5_g3_l(uint32_t *r) { return gs5_run(&bfm_psyq_gs5_g3_l_d, r); }
+int bfm_psyq_gs5_g4_nl(uint32_t *r) { return gs5_run(&bfm_psyq_gs5_g4_nl_d, r); }
+int bfm_psyq_gs5_g4_l(uint32_t *r) { return gs5_run(&bfm_psyq_gs5_g4_l_d, r); }
+int bfm_psyq_gs5_ft3_nl(uint32_t *r) { return gs5_run(&bfm_psyq_gs5_ft3_nl_d, r); }
+int bfm_psyq_gs5_ft3_l(uint32_t *r) { return gs5_run(&bfm_psyq_gs5_ft3_l_d, r); }
+int bfm_psyq_gs5_ft4_nl(uint32_t *r) { return gs5_run(&bfm_psyq_gs5_ft4_nl_d, r); }
+int bfm_psyq_gs5_ft4_l(uint32_t *r) { return gs5_run(&bfm_psyq_gs5_ft4_l_d, r); }
+int bfm_psyq_gs5_gt3_nl(uint32_t *r) { return gs5_run(&bfm_psyq_gs5_gt3_nl_d, r); }
+int bfm_psyq_gs5_gt3_l(uint32_t *r) { return gs5_run(&bfm_psyq_gs5_gt3_l_d, r); }
+int bfm_psyq_gs5_gt4_nl(uint32_t *r) { return gs5_run(&bfm_psyq_gs5_gt4_nl_d, r); }
+int bfm_psyq_gs5_gt4_l(uint32_t *r) { return gs5_run(&bfm_psyq_gs5_gt4_l_d, r); }

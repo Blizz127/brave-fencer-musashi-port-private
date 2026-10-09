@@ -1080,6 +1080,31 @@ Increment 32 (generator, strict only):
   The tables also hold 8004A53C, 8004B078/AF5C, 8004BBF0/BACC, 8004C658/C53C, 8004AB68/AA18, 8004B614/B4C8,
   8004C128/BFD8 and 8004CC24/CAD8 (libgte12 range). Frame 1200, prims=0, disp=1, draw=0.
 
+### Increment 75 — GsSortObject5 preset sorters (16 native routines); stop 80020248
+
+- Stop 8004A660 was the first per-type preset sorter called through libgs's tables at 0x800A2CF0. The game fills the
+  light-0 slot (NCCS/NCCT lighting) and the light-2 slot (no lighting) for F3, F4, G3, G4, FT3, FT4, GT3 and GT4.
+- Added `gs5_run` plus 16 descriptor wrappers (psyq_psycross.c, over the gteRegs bank behind the GTE lease), rebuilt from
+  the retail instruction streams. Per primitive the routine:
+  - runs RTPT, NCLIP, then AVSZ3 or RTPS+AVSZ4, then NCCS/NCCT;
+  - rewrites the preset packet's XY and RGB words;
+  - links the packet into the OT, with tag = len<<24 | old&0xFFFFFF.
+  Loads keep the retail order, including when RGBC is loaded per variant and the 4th vertex going into V0 before the
+  NCLIP test.
+  Retail quirk kept: in the G4 and GT4 light-0 routines, the RTPS FLAG check reads CFC2 inside the branch's load-delay
+  slot, so it tests the old RTPT FLAG and never culls. The port's own interpreter notes say the same (mips_formatter.c,
+  libgs_prim_delayed_branch).
+- These routines have no jal call sites, so they go in a new hand-kept `bfm_psyq_compat_strict.def`. It is installed
+  only under MUSASHI_STRICT_NATIVE, which keeps the hybrid table and its hooked-PC list byte-identical. Putting them in
+  the generated def changed the hybrid hooked list: the port observes 8004A660, B078 and C658, so the table stopped
+  matching.
+- GsSortObject5 now reaches guest code through a `bfm_psyq_set_guest_call` hook (installed by native_lane_psyq.c), so
+  bfm_plat links without the formatter again. That fixes the tests/test_bfm_plat.py link error introduced in inc 74.
+  PSYQ-COMPAT.md counts were corrected to match the def (hle 56 / stub 122; they were already stale before this
+  session), and test_psyq_table_consistency passes.
+- Checks: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [].
+- New stop: 80020248 (main, not_in_lane). Frame 1200, prims=0, disp=1, draw=0.
+
 ## Next
 
 - Admit or reshape sc02_0031 `func_801831B4` (currently `abi`). Likely next

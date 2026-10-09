@@ -204,9 +204,6 @@ static const Gs5Type kGs5Types[30] = {
     [0x1D] = {0x1E8, 0, 44, 0x3C, 0, 0, 0},
 };
 
-uint32_t musashi_native_guest_call(uint32_t target, unsigned argc,
-                                   const uint32_t *args, uint32_t *v1);
-
 int bfm_psyq_GsSortObject5(uint32_t *r) {
     const uint32_t obj = A(0), ot = A(1), shift = A(2), scratch = A(3);
     uint32_t attr, tmd, blk, prim, vert, norm, lmode, b5, b6, div, lightmode = 0, w;
@@ -271,7 +268,7 @@ int bfm_psyq_GsSortObject5(uint32_t *r) {
                     args[0] = prim; args[1] = vert; args[2] = pk; args[3] = n;
                     args[4] = shift; args[5] = ot; args[6] = scratch; argc = 7u;
                 }
-                ret = musashi_native_guest_call(fn, argc, args, NULL);
+                if (!bfm_psyq_guest_call(fn, argc, args, &ret)) return 0;
                 if (!put32(GS_OUT_PACKET_P, ret)) return 0;
             } else {                                /* preset buffer 0 / 1 */
                 uint32_t pkt;
@@ -289,7 +286,7 @@ int bfm_psyq_GsSortObject5(uint32_t *r) {
                     args[0] = prim; args[1] = vert; args[2] = pkt; args[3] = n;
                     args[4] = shift; args[5] = ot; argc = 6u;
                 }
-                (void)musashi_native_guest_call(fn, argc, args, NULL);
+                if (!bfm_psyq_guest_call(fn, argc, args, NULL)) return 0;
             }
             prim += (grd ? t->grd_size : t->size) * n;
         }

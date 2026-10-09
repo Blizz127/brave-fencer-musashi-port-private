@@ -54,6 +54,9 @@ static int device_sync(const char *name, int *is_device) {
         return device_sync(#n, &is_device) && w(c->r); \
     }
 #include "psyq/bfm_psyq_compat.def"
+#ifdef MUSASHI_STRICT_NATIVE
+#include "psyq/bfm_psyq_compat_strict.def"
+#endif
 #undef BFM_PSYQ
 
 typedef struct PsyqRow {
@@ -64,6 +67,9 @@ typedef struct PsyqRow {
 #define BFM_PSYQ(pc, n, st, ac, ret, w) {{pc, 2u * 8u, lane_psyq_##n, #n, ac, ret, 0u}, st},
 static const PsyqRow kPsyqRows[] = {
 #include "psyq/bfm_psyq_compat.def"
+#ifdef MUSASHI_STRICT_NATIVE
+#include "psyq/bfm_psyq_compat_strict.def"
+#endif
 };
 #undef BFM_PSYQ
 
@@ -188,11 +194,13 @@ static void bridge_end(void *user, uint32_t commands) {
 void musashi_native_lane_psyq_bind(MusashiBootMemory *memory, MusashiGteOwner *gte) {
     if (!memory) {
         bfm_psyq_set_gte_bridge(NULL);
+        bfm_psyq_set_guest_call(NULL);
         return;
     }
     /* Lane design (a): guest physical 0 is host 0x80000000 (memory->bytes). */
     bfm_psyq_set_ram(memory->bytes, MUSASHI_RAM_SIZE);
     bfm_psyq_set_scratchpad(memory->scratchpad);
+    bfm_psyq_set_guest_call(musashi_native_guest_call);
     if (gte) {
         const BfmPsyqGteBridge bridge = {bridge_begin, bridge_end, gte, bridge_lzc};
         bfm_psyq_set_gte_bridge(&bridge);

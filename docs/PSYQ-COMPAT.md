@@ -10,9 +10,9 @@ and every `asm/overlays/*/*.s`); 63200 `jal`/`j` call sites into the Psy-Q range
 | Status | Entry points | Call sites |
 |---|---|---|
 | psycross | 34 (16.0%) | 19693 (31.2%) |
-| hle | 53 (25.0%) | 29896 (47.3%) |
-| stub-TBD | 125 (59.0%) | 13611 (21.5%) |
-| **covered (psycross + hle)** | **87 / 212 (41.0%)** | **49589 / 63200 (78.5%)** |
+| hle | 56 (26.4%) | 31193 (49.4%) |
+| stub-TBD | 122 (57.5%) | 12314 (19.5%) |
+| **covered (psycross + hle)** | **90 / 212 (42.5%)** | **50886 / 63200 (80.5%)** |
 
 Named: 137 / 212 entry points (vendor symbols, libgte instruction shape, or 30 inferred
 from call context: see `INFERRED` in tools/psyq_compat_status.py). The rest are listed

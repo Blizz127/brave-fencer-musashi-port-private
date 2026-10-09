@@ -114,6 +114,16 @@ void bfm_psyq_set_ram(void *phys0, size_t size) {
 
 void bfm_psyq_set_scratchpad(void *base) { scratch = (uint8_t *)base; }
 
+static BfmPsyqGuestCallFn guest_call_fn;
+void bfm_psyq_set_guest_call(BfmPsyqGuestCallFn fn) { guest_call_fn = fn; }
+int bfm_psyq_guest_call(uint32_t target, unsigned argc, const uint32_t *args, uint32_t *v0) {
+    uint32_t ret;
+    if (!guest_call_fn) return 0;
+    ret = guest_call_fn(target, argc, args, NULL);
+    if (v0) *v0 = ret;
+    return 1;
+}
+
 void *bfm_psyq_ptr(uint32_t addr, uint32_t len) {
     uint32_t phys = addr & 0x1FFFFFFFu;
     if (phys >= 0x1F800000u && phys < 0x1F800400u) {
