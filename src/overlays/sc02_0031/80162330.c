@@ -15,8 +15,8 @@ typedef double f64;
 #define NULL ((void *)0)
 #endif
 
-extern void (*D_801877D0[])(void);
+extern void (*D_801877D0[])(void *);
 
 void func_80162330(void *a0) {
-    D_801877D0[*(u8 *)((s32)a0 + 0x15)]();
+    D_801877D0[*(u8 *)((s32)a0 + 0x15)](a0); /* retail jalr keeps a0 */
 }

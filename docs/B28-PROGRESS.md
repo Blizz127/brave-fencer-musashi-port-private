@@ -892,6 +892,19 @@ Increment 32 (generator, strict only):
 - Gate: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0. regr LOST [], GAINED 2 (main 80017778, 80017394).
 - Strict stop moves 80017778 -> 800CC290 (not_in_lane). Frame 1200: prims=0 disp=1 draw=0.
 
+## Increment 61 — main_0034 in the strict overlay list; sc02 dispatchers pass a0
+
+- Stop 800CC290 is a main_0034 function (sc02 `func_80162834` jalr through D_80187818).
+  `main_0034 all` added to config/lane_strict_overlay_allow.txt (28 matched functions admitted;
+  each still runs only while the resident bytes hash to the member).
+- sc02_0031 `func_80162834` / `func_80162330` now pass a0 to their handler (retail jalr keeps a0),
+  as the main_0012 copies already do. Both cmpobj SAME, registry re-verified.
+- Built in a separate worktree (/workspace/bfm-b28-wt) to avoid colliding with another session.
+- Gate: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0. regr LOST [], GAINED main_0034 x28.
+- Stop unchanged at 800CC290: guest RAM there is still zero at the call (want=41267, ld_n=19),
+  so main_0034 is not resident yet. It must arrive through the game's own CD/overlay path; a
+  host-side raw copy of the member into RAM is not used. Frame 1200: prims=0 disp=1 draw=0.
+
 ## Next
 
 - Admit or HLE main 80020F34 (exported GTE bank leaf; interpreter has
