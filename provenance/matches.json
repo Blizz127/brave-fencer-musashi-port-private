@@ -122272,7 +122272,7 @@
       "size": 156,
       "region": "sc02_0031",
       "source": "src/overlays/sc02_0031/80128678.c",
-      "recovery": "assembly",
+      "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
@@ -122283,7 +122283,7 @@
       "size": 164,
       "region": "sc02_0031",
       "source": "src/overlays/sc02_0031/80128714.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
@@ -149341,7 +149341,7 @@
       "size": 108,
       "region": "sc02_0031",
       "source": "src/overlays/sc02_0031/8014fa04.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"

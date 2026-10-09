@@ -1399,6 +1399,23 @@ Increment 32 (generator, strict only):
   where the resident bytes are sc02_0031's (same code as main_0012's, global
   D_801B6404 instead of D_8018424C). sc02_0031's copy was still hand asm.
 
+### Inc 99: sc02_0031 80128678 / 80128714 / 8014FA04 canonical forms; stop HOST_FAULT 8015D01C
+
+- The three SC02.CD member31 twins of the main_0012 functions converted in
+  incs 96-98 were still hand asm. They get the same C bodies, differing only in
+  the globals (D_801B626C, D_801B6404). All three are byte-identical to the
+  sc02_0031 retail words (direct compare and rv.py).
+- provenance/matches.json: their rows go from recovery "assembly" to "c" /
+  "mixed" / "mixed", matching the main_0012 rows. Without this the strict
+  overlay allow ("sc02_0031 all") never makes them candidates.
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [],
+  GAINED sc02_0031 80128714 and 8014FA04 (80128678 has the same bytes as
+  main_0012's and was already covered by its entry).
+- Run note: the path into SC02 varies between runs. One run stopped at
+  main_0012 80128714 at frame 2500 (before the SC02 load); this one reaches
+  frame 1400 and stops on HOST_FAULT addr=0x20 at lane_pc 8015D01C
+  (sc02_0031 native code).
+
 ## Next
 
 - Admit or reshape sc02_0031 `func_801831B4` (currently `abi`). Likely next
