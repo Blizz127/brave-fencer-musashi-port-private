@@ -10,9 +10,9 @@ and every `asm/overlays/*/*.s`); 63200 `jal`/`j` call sites into the Psy-Q range
 | Status | Entry points | Call sites |
 |---|---|---|
 | psycross | 34 (16.0%) | 19693 (31.2%) |
-| hle | 57 (26.9%) | 31195 (49.4%) |
-| stub-TBD | 121 (57.1%) | 12312 (19.5%) |
-| **covered (psycross + hle)** | **91 / 212 (42.9%)** | **50888 / 63200 (80.5%)** |
+| hle | 58 (27.4%) | 31197 (49.4%) |
+| stub-TBD | 120 (56.6%) | 12310 (19.5%) |
+| **covered (psycross + hle)** | **92 / 212 (43.4%)** | **50890 / 63200 (80.5%)** |
 
 Named: 137 / 212 entry points (vendor symbols, libgte instruction shape, or 30 inferred
 from call context: see `INFERRED` in tools/psyq_compat_status.py). The rest are listed
@@ -163,7 +163,7 @@ by address and Psy-Q object for later naming.
 | `0x800553F4` | GsPresetObject | libgs6 |  | 2 | 1 | stub-TBD | TMD object packet preset: large; 2 call sites |
 | `0x80055D40` | GsSortObject5 | libgs6 | PRESET2.o | 1 | 1 | hle | preset-block dispatcher over guest GsDOBJ5; the per-type sort routines it selects run as lane entries |
 | `0x80056F18` | *unnamed* | libgs6 | OBJT.o | 2 | 1 | hle | links a GsDOBJ5 to TMD object n and stamps same-mode/flag primitive run lengths over the TMD headers; guest RAM only |
-| `0x80057094` | *unnamed* | libgs6 | OBJT2.o | 2 | 1 | stub-TBD | libgs internal (TMD object sort/preset, BG and clip setup): large or rarely called; guest code for now |
+| `0x80057094` | *unnamed* | libgs6 | OBJT2.o | 2 | 1 | hle | non-preset GsDOBJ5 sort: per-run dispatch to the guest sort routines in the 0x800A2BC0 tables |
 | `0x80058890` | *unnamed* | libgpu | EXT.o | 1 | 1 | stub-TBD | libgpu internal |
 | `0x80058A4C` | *unnamed* | libgpu | EXT.o | 2 | 1 | stub-TBD | libgpu internal |
 | `0x80058B04` | SetDefDispEnv | libgpu |  | 4 | 2 | hle | fills a guest DISPENV; returns the guest pointer; 5th arg from guest stack |

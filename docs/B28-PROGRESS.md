@@ -1122,6 +1122,15 @@ Increment 32 (generator, strict only):
 - Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [].
 - New stop: `guest_pc=80057094` (libgs OBJT2.o); frame 1200, prims=0, draw=0.
 
+### Inc 78 — native func_80057094 (libgs OBJT2.o non-preset GsDOBJ5 sort) HLE, strict-only
+
+- Stop was `guest_pc=80057094`.
+- `bfm_psyq_func_80057094(obj, ot, shift, scratch)`: same attribute decode as GsSortObject5 (plus attr&7 -> 0x800A5E7C), light = bit6 ? 2 : ((!bit5 && GsLIGHT_MODE&1) || (bit5 && lmode&1)) ? 1 : 0. Walks obj->tmd primitives by run (run length = halfword stamped by func_80056F18) and calls the per-type routine from the tables at 0x800A2BC0 (lit: base + div*12 + light*4, gradation-flag lit types use 0x800A2CC0.. + light*4; nolit: base + div*4); return value -> GsOUT_PACKET_P. Types/sizes from retail jump table 0x80073F08. Unassigned code / zero run (retail spins forever) refuse.
+- Held back outside strict; docs counts hle 58, stub 120, covered 92/212, sites 50890/63200.
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [].
+- The run now gets further: FRAME_TRACE shows prims=32 at frames 350/500 and a new load phase (ld_n=87) before the stop.
+- New stop: `guest_pc=8004f3bc` (OBJT2 FT4 no-light sort routine, table 0x800A2C98); frame 1200, prims=0, draw=0.
+
 ## Next
 
 - Admit or reshape sc02_0031 `func_801831B4` (currently `abi`). Likely next

@@ -353,3 +353,111 @@ int bfm_psyq_func_80056F18(uint32_t *r) {
     if (nprim) r[2] = 0;
     return put16(head, (uint16_t)run);
 }
+
+/* ---- func_80057094 (libgs OBJT2.o) ------------------------------------------
+ *
+ * (GsDOBJ5 *obj, GsOT *ot, int shift, u_long *scratch): the non-preset sibling
+ * of GsSortObject5. Same attribute decode into the libgs globals (and the
+ * division scratch words), then walks obj->tmd's primitives directly: each
+ * run (length = the halfword func_80056F18 stamped over the run's first
+ * header) goes to one per-type sort routine from the function tables at
+ * 0x800A2BC0..0x800A2CEC, whose return value becomes GsOUT_PACKET_P.
+ *   lit:    fn = *(base + div*12 + light*4), (prim, vert, norm, PK, n, shift, ot, scratch)
+ *   gouraud-flag (flag bit 2) lit types use *(grd + light*4) instead
+ *   nolit:  fn = *(base + div*4),            (prim, vert, PK, n, shift, ot, scratch)
+ * light = bit6 ? 2 : ((!bit5 && (GsLIGHT_MODE & 1)) || (bit5 == 1 && (bits3-4 & 1))) ? 1 : 0;
+ * div = attribute bits 9-11 != 0. Reconstructed from the retail control flow
+ * (jump table 0x80073F08). An unassigned code prints "non supported code"
+ * and retail then spins on the same primitive forever; this refuses instead. */
+typedef struct ObjT2Type {
+    uint32_t fn;        /* table base */
+    uint8_t lit;
+    uint8_t size;
+    uint32_t grd_fn;    /* 0: none */
+    uint8_t grd_size;
+} ObjT2Type;
+static const ObjT2Type kObjT2Types[30] = {
+    [0x00] = {0x800A2BC0u, 1, 16, 0x800A2CC0u, 24},
+    [0x01] = {0x800A2BD8u, 0, 16, 0, 0},
+    [0x04] = {0x800A2C00u, 1, 24, 0, 0},
+    [0x05] = {0x800A2C18u, 0, 28, 0, 0},
+    [0x08] = {0x800A2C40u, 1, 20, 0x800A2CD8u, 32},
+    [0x09] = {0x800A2C58u, 0, 16, 0, 0},
+    [0x0C] = {0x800A2C80u, 1, 32, 0, 0},
+    [0x0D] = {0x800A2C98u, 0, 32, 0, 0},
+    [0x10] = {0x800A2BE0u, 1, 20, 0x800A2CCCu, 28},
+    [0x11] = {0x800A2BF8u, 0, 24, 0, 0},
+    [0x14] = {0x800A2C20u, 1, 28, 0, 0},
+    [0x15] = {0x800A2C38u, 0, 36, 0, 0},
+    [0x18] = {0x800A2C60u, 1, 24, 0x800A2CE4u, 36},
+    [0x19] = {0x800A2C78u, 0, 28, 0, 0},
+    [0x1C] = {0x800A2CA0u, 1, 36, 0, 0},
+    [0x1D] = {0x800A2CB8u, 0, 44, 0, 0},
+};
+
+int bfm_psyq_func_80057094(uint32_t *r) {
+    const uint32_t obj = A(0), ot = A(1), shift = A(2), scratch = A(3);
+    uint32_t attr, lmode, b5, b6, div, d, light, w, tmd, prim, nprim, vert, norm;
+    if (!get32(obj, &attr)) return 0;
+    if ((int32_t)attr < 0) return 1;
+    lmode = (attr >> 3) & 3u;
+    b5 = (attr >> 5) & 1u;
+    b6 = (attr >> 6) & 1u;
+    div = (attr >> 9) & 7u;
+    if (!put32(0x800A5E7Cu, attr & 7u) || !put32(0x80079580u, lmode) || !put32(0x800A2B74u, b5) ||
+        !put32(0x8007957Cu, b6) || !put32(0x800C7D28u, div) ||
+        !put32(0x800C6D24u, (attr >> 30) & 1u)) return 0;
+    d = div ? 1u : 0u;
+    if (div) {
+        uint32_t s1v, s2v;
+        if (!get32(0x800AE618u, &s1v) || !get32(0x800AE61Cu, &s2v)) return 0;
+        if (!put32(scratch, div) || !put32(scratch + 4u, s1v) || !put32(scratch + 8u, s2v)) return 0;
+    }
+    if (b6 == 1u) light = 2u;
+    else if (b5 == 0u) {
+        if (!get32(GS_LIGHT_MODE, &w)) return 0;
+        light = (w & 1u) ? 1u : 0u;
+    } else light = (b5 == 1u && (lmode & 1u)) ? 1u : 0u;
+    if (!get32(obj + 8u, &tmd)) return 0;
+    if (!get32(tmd + 16u, &prim) || !get32(tmd + 20u, &nprim) ||
+        !get32(tmd, &vert) || !get32(tmd + 8u, &norm)) return 0;
+    while (nprim) {
+        uint32_t code, fn, args[8], argc, pk, ret, n, size;
+        const ObjT2Type *t;
+        uint8_t *p = g(prim, 4);
+        if (!p) return 0;
+        code = p[3] & 0xFDu;
+        t = (code >= 0x20u && code < 0x3Eu) ? &kObjT2Types[code - 0x20u] : NULL;
+        if (!t || !t->fn) {
+            fprintf(stderr, "non supported code %x %x\n", (unsigned)code, (unsigned)prim);
+            return 0;   /* retail spins here forever (no step, no count) */
+        }
+        n = u16at(p);
+        if (n == 0u) {      /* retail would re-sort this run forever */
+            fprintf(stderr, "func_80057094: zero run at %x\n", (unsigned)prim);
+            return 0;
+        }
+        if (!get32(GS_OUT_PACKET_P, &pk)) return 0;
+        if (t->lit) {
+            if (t->grd_fn && (u16at(p + 2) & 4u)) {
+                if (!get32(t->grd_fn + light * 4u, &fn)) return 0;
+                size = t->grd_size;
+            } else {
+                if (!get32(t->fn + d * 12u + light * 4u, &fn)) return 0;
+                size = t->size;
+            }
+            args[0] = prim; args[1] = vert; args[2] = norm; args[3] = pk;
+            args[4] = n; args[5] = shift; args[6] = ot; args[7] = scratch; argc = 8u;
+        } else {
+            if (!get32(t->fn + d * 4u, &fn)) return 0;
+            size = t->size;
+            args[0] = prim; args[1] = vert; args[2] = pk; args[3] = n;
+            args[4] = shift; args[5] = ot; args[6] = scratch; argc = 7u;
+        }
+        if (!bfm_psyq_guest_call(fn, argc, args, &ret)) return 0;
+        if (!put32(GS_OUT_PACKET_P, ret)) return 0;
+        nprim -= n;
+        prim += size * n;
+    }
+    return 1;
+}
