@@ -1360,6 +1360,15 @@ Increment 32 (generator, strict only):
 - Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [] (gained main_0012 80128678).
 - New stop: `guest_pc=801541d8`; frame 1250, prims=10060 at one frame, draw=0.
 
+### Increment 96: main_0012 801541D8 declares the a2 it passes through; stop 8014FA04
+
+- Stop was `guest_pc=801541d8` (abi: passes 2 of 3 arguments to 80154218). Retail leaves the caller's a2 untouched
+  into the jal, and its callers already declare 3 arguments.
+- Source (byte-identical, gcc 2.7.2 -O2 object unchanged, registry re-verified vs retail):
+  `func_801541D8(T *p, s32 a1, s32 a2)` passes a2 on.
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [] (gained main_0012 801541D8).
+- New stop: `guest_pc=8014fa04`; frame 1250, prims=10060 at one frame, draw=0.
+
 ## Next
 
 - Admit or reshape sc02_0031 `func_801831B4` (currently `abi`). Likely next
