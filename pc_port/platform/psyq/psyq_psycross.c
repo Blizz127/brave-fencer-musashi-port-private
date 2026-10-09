@@ -501,6 +501,19 @@ void musashi_lane_gte_ncct(void) {
     doCOP2(0x118043F);
     bfm_psyq_gte_end(1);
 }
+/* gte_nccs: normal colour colour, single (cop2 0x108041B, gte_macros.inc
+ * `cop2op 0x10,0x1B,lm=1`). */
+void musashi_lane_gte_nccs(void) {
+    if (!lane_gte_lease()) return;
+    doCOP2(0x108041B);
+    bfm_psyq_gte_end(1);
+}
+/* gte_strgb: the word at r0 = RGB2 (data reg 22). */
+void musashi_lane_gte_strgb(void *r0) {
+    if (!lane_gte_lease()) return;
+    lane_gte_store32(r0, MFC2(22));
+    bfm_psyq_gte_end(0);
+}
 /* POLY_G3 stores: SXY0-2 to +8/+16/+24, RGB0-2 to +4/+12/+20. */
 void musashi_lane_gte_stsxy3_g3(void *r0) {
     uint8_t *b = (uint8_t *)r0;

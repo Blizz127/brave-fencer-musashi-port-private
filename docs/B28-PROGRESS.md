@@ -1053,6 +1053,15 @@ Increment 32 (generator, strict only):
 - Checks: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [] (gained 80027D20).
 - New stop: 80027F4C (not_in_lane). Frame 1200, prims=0, disp=1, draw=0.
 
+### Increment 73 — 80027F4C (POLY_G4 face loop) GTE inline helpers
+
+- Stop 80027F4C: same cause as 80027D20; helpers were missing for gte_nccs, gte_strgb, gte_stsxy3_g4 and gte_strgb3_g4.
+- Added native nccs (cop2 0x108041B, matching the TU's `cop2op 0x10,0x1B,lm=1`) and strgb (RGB2 reg 22).
+  The _g4 forms use the same offsets as _g3 in the matched source (+8/+16/+24, +4/+12/+20), so the header maps them to those helpers.
+  Generator lists extended (strict-only).
+- Checks: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [].
+- New stop: 80055D40 (not_in_lane). Frame 1200, prims=0, disp=1, draw=0.
+
 ## Next
 
 - Admit or reshape sc02_0031 `func_801831B4` (currently `abi`). Likely next

@@ -34,6 +34,8 @@ void musashi_lane_gte_ldrgb(const void *r0);
 void musashi_lane_gte_ncct(void);
 void musashi_lane_gte_stsxy3_g3(void *r0);
 void musashi_lane_gte_strgb3_g3(void *r0);
+void musashi_lane_gte_nccs(void);
+void musashi_lane_gte_strgb(void *r0);
 
 #define gte_ldv0(r0) musashi_lane_gte_ldv0((const void *)(r0))
 #define gte_ldlv0(r0) musashi_lane_gte_ldlv0((const void *)(r0))
@@ -61,6 +63,12 @@ void musashi_lane_gte_strgb3_g3(void *r0);
 #define gte_ncct() musashi_lane_gte_ncct()
 #define gte_stsxy3_g3(r0) musashi_lane_gte_stsxy3_g3((void *)(r0))
 #define gte_strgb3_g3(r0) musashi_lane_gte_strgb3_g3((void *)(r0))
+#define gte_nccs() musashi_lane_gte_nccs()
+#define gte_strgb(r0) musashi_lane_gte_strgb((void *)(r0))
+/* inline_c.h's _g4 forms store the first three vertices at the same offsets
+ * as the _g3 forms (SXY +8/+16/+24, RGB +4/+12/+20). */
+#define gte_stsxy3_g4(r0) musashi_lane_gte_stsxy3_g3((void *)(r0))
+#define gte_strgb3_g4(r0) musashi_lane_gte_strgb3_g3((void *)(r0))
 
 #ifdef __cplusplus
 }

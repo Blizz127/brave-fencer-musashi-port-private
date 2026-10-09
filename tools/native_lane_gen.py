@@ -1039,7 +1039,7 @@ GTE_INLINE_HELPERS = (
     "musashi_lane_gte_stsz3", "musashi_lane_gte_stsz4", "musashi_lane_gte_stszotz",
     "musashi_lane_gte_stflg", "musashi_lane_gte_stopz",
     "musashi_lane_gte_ldrgb", "musashi_lane_gte_ncct", "musashi_lane_gte_stsxy3_g3",
-    "musashi_lane_gte_strgb3_g3",
+    "musashi_lane_gte_strgb3_g3", "musashi_lane_gte_nccs", "musashi_lane_gte_strgb",
 )
 # D-011 ledger (pc_port/mips_formatter.c): the cycles a mapped native body
 # has charged, a lost-state flag, the deadline budget and the guard's tick.
@@ -2268,6 +2268,7 @@ GTE_INLINE_NAMES = (
     "ldv0", "ldv3", "ldv3c", "rtps", "rtpt", "nclip",
     "stsxy", "stsxy3", "stsxy3c", "stsz3", "stsz4", "stszotz", "stflg", "stopz",
     "ldrgb", "ncct", "stsxy3_g3", "strgb3_g3",
+    "nccs", "strgb", "stsxy3_g4", "strgb3_g4",
 )
 GTE_INLINE_DEFINE_HEAD = re.compile(
     r'^#define\s+gte_(?:' + '|'.join(GTE_INLINE_NAMES) + r')\b')
