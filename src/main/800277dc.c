@@ -54,7 +54,7 @@ __asm__(
     :                                            \
     : "r"( r0 )                                  \
     : "memory" )
-#define gte_stsxy3_gt3(r0) __asm__ volatile (    \
+#define gte_stsxy3_g3(r0) __asm__ volatile (    \
     "swc2 $12, 8( %0 );"                         \
     "swc2 $13, 16( %0 );"                        \
     "swc2 $14, 24( %0 )"                         \
@@ -139,7 +139,7 @@ void *func_800277DC(void *a0, SVECTOR800277DC *a1, void *a2, u8 *a3,
             gte_nclip();
             gte_stopz(potz);
             if (st[1] > 0) {
-                gte_stsxy3_gt3(a3);
+                gte_stsxy3_g3(a3);
 
                 if (D_80078D88[0] & 0x8000) {
                     gte_stsz3(psz0, psz1, &st[4]);

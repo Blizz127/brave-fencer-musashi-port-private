@@ -187,7 +187,7 @@ typedef struct {
 /* GTE command mnemonics (mvmva, rtpt, ...) come from include/gte_macros.inc. */
 __asm__(".include \"gte_macros.inc\"\n");
 
-#define gte_SetRotMatrixX(r0) __asm__ __volatile__ ( \
+#define gte_SetRotMatrix(r0) __asm__ __volatile__ ( \
     "lw $12, 0(%0);" \
     "lw $13, 4(%0);" \
     "ctc2 $12, $0;" \
@@ -200,7 +200,7 @@ __asm__(".include \"gte_macros.inc\"\n");
     "ctc2 $14, $4" \
     : : "r"(r0) : "$12", "$13", "$14")
 
-#define gte_ldclmvX(r0) __asm__ __volatile__ ( \
+#define gte_ldclmv(r0) __asm__ __volatile__ ( \
     "lhu $12, 0(%0);" \
     "lhu $13, 6(%0);" \
     "lhu $14, 12(%0);" \
@@ -209,9 +209,9 @@ __asm__(".include \"gte_macros.inc\"\n");
     "mtc2 $14, $11" \
     : : "r"(r0) : "$12", "$13", "$14")
 
-#define gte_rtirX() __asm__ __volatile__ ("nop; nop; mvmva 1, 0, 3, 3, 0")
+#define gte_rtir() __asm__ __volatile__ ("nop; nop; mvmva 1, 0, 3, 3, 0")
 
-#define gte_stclmvX(r0) __asm__ __volatile__ ( \
+#define gte_stclmv(r0) __asm__ __volatile__ ( \
     "mfc2 $12, $9;" \
     "mfc2 $13, $10;" \
     "mfc2 $14, $11;" \
@@ -248,16 +248,16 @@ void func_80013CFC(short param_1, void *param_2, void *param_3)
     *(s16 *)((s32)rot + 0x0C) = 0;
     *(s16 *)((s32)rot + 0x0E) = 0;
 
-    gte_SetRotMatrixX(matp);
-    gte_ldclmvX(rotp);
-    gte_rtirX();
-    gte_stclmvX(matp);
-    gte_ldclmvX(rotp + 1);
-    gte_rtirX();
-    gte_stclmvX(matp + 1);
-    gte_ldclmvX(rotp + 2);
-    gte_rtirX();
-    gte_stclmvX(matp + 2);
+    gte_SetRotMatrix(matp);
+    gte_ldclmv(rotp);
+    gte_rtir();
+    gte_stclmv(matp);
+    gte_ldclmv(rotp + 1);
+    gte_rtir();
+    gte_stclmv(matp + 1);
+    gte_ldclmv(rotp + 2);
+    gte_rtir();
+    gte_stclmv(matp + 2);
 
     func_8001282C(matp);
     func_80048FBC(matp, param_2, param_3);

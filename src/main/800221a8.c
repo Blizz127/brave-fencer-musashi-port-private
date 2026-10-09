@@ -257,7 +257,7 @@ typedef struct {
     /* 0x78 */ void *unk78;
 } Obj221A8;
 
-#define SRM221A8(r0) __asm__ volatile (                  \
+#define gte_SetRotMatrix(r0) __asm__ volatile (                  \
     "lw $12, 0( %0 );"  "lw $13, 4( %0 );"               \
     "ctc2 $12, $0;"     "ctc2 $13, $1;"                  \
     "lw $12, 8( %0 );"  "lw $13, 12( %0 );"              \
@@ -265,41 +265,41 @@ typedef struct {
     "ctc2 $12, $2;"     "ctc2 $13, $3;" "ctc2 $14, $4"   \
     : : "r"( r0 ) : "$12", "$13", "$14" )
 
-#define STM221A8(r0) __asm__ volatile (                  \
+#define gte_SetTransMatrix(r0) __asm__ volatile (                  \
     "lw $12, 20( %0 );" "lw $13, 24( %0 );"              \
     "ctc2 $12, $5;"     "lw $14, 28( %0 );"              \
     "ctc2 $13, $6;"     "ctc2 $14, $7"                   \
     : : "r"( r0 ) : "$12", "$13", "$14" )
 
-#define LDV0221A8(r0) __asm__ volatile (                 \
+#define gte_ldv0(r0) __asm__ volatile (                 \
     "lwc2 $0, 0( %0 );" "lwc2 $1, 4( %0 )" : : "r"( r0 ) )
 
-#define LDV3221A8(r0, r1, r2) __asm__ volatile (         \
+#define gte_ldv3(r0, r1, r2) __asm__ volatile (         \
     "lwc2 $0, 0( %0 );" "lwc2 $1, 4( %0 );"              \
     "lwc2 $2, 0( %1 );" "lwc2 $3, 4( %1 );"              \
     "lwc2 $4, 0( %2 );" "lwc2 $5, 4( %2 )"               \
     : : "r"( r0 ), "r"( r1 ), "r"( r2 ) )
 
-#define RTPS221A8() __asm__ volatile ("nop;nop;rtps")
-#define RTPT221A8() __asm__ volatile ("nop;nop;rtpt")
+#define gte_rtps() __asm__ volatile ("nop;nop;rtps")
+#define gte_rtpt() __asm__ volatile ("nop;nop;rtpt")
 
-#define STSXY221A8(r0) __asm__ volatile (                \
+#define gte_stsxy(r0) __asm__ volatile (                \
     "swc2 $14, 0( %0 )" : : "r"( r0 ) : "memory" )
 
-#define STSXY3221A8(r0, r1, r2) __asm__ volatile (       \
+#define gte_stsxy3(r0, r1, r2) __asm__ volatile (       \
     "swc2 $12, 0( %0 );" "swc2 $13, 0( %1 );"            \
     "swc2 $14, 0( %2 )"                                  \
     : : "r"( r0 ), "r"( r1 ), "r"( r2 ) : "memory" )
 
-#define STFLG221A8(r0) __asm__ volatile (                \
+#define gte_stflg(r0) __asm__ volatile (                \
     "cfc2 $12, $31;nop;sw $12, 0( %0 )"                  \
     : : "r"( r0 ) : "$12", "memory" )
 
-#define STSZOTZ221A8(r0) __asm__ volatile (              \
+#define gte_stszotz(r0) __asm__ volatile (              \
     "mfc2 $12, $19;nop;sra $12, $12, 2;sw $12, 0( %0 )"  \
     : : "r"( r0 ) : "$12", "memory" )
 
-#define STSZ221A8(r0) __asm__ volatile (                 \
+#define gte_stsz(r0) __asm__ volatile (                 \
     "swc2 $19, 0( %0 )" : : "r"( r0 ) : "memory" )
 
 extern u8 D_800AF630[];
@@ -358,18 +358,18 @@ void func_800221A8(Obj221A8 *o) {
     s = o->unk20;
     if (s != 0 && func_80021174(o->unk28, (s32)cd.workm.t) != 0) {
         ot = (u8 *)((*(u16 *)(p + 0xA3D2) << 14) + (u32)D_800A6610);
-        SRM221A8(mp);
-        STM221A8(mp);
+        gte_SetRotMatrix(mp);
+        gte_SetTransMatrix(mp);
         sv0.vz = 0;
         sv0.vy = 0;
         sv0.vx = 0;
-        LDV0221A8(&sv0);
-        RTPS221A8();
-        STSXY221A8(&sxy[0]);
-        STFLG221A8(&flag);
-        STSZOTZ221A8(&otz);
+        gte_ldv0(&sv0);
+        gte_rtps();
+        gte_stsxy(&sxy[0]);
+        gte_stflg(&flag);
+        gte_stszotz(&otz);
         if ((flag & ~0x1000) == 0) {
-            STSZ221A8(&sz);
+            gte_stsz(&sz);
             z = otz + 1;
             if (o->unk2E & 0xC000) {
                 if ((o->unk2E & 0xC000) == 0xC000) {
@@ -394,15 +394,15 @@ void func_800221A8(Obj221A8 *o) {
                 m2.t[2] = 0;
                 m2.t[1] = 0;
                 m2.t[0] = 0;
-                SRM221A8(&m2);
-                STM221A8(&m2);
+                gte_SetRotMatrix(&m2);
+                gte_SetTransMatrix(&m2);
                 if (o->unk74 != 0) {
                     sv0.vx = *(u16 *)&o->unk74;
                     sv0.vy = *((u16 *)&o->unk74 + 1);
                     sv0.vz = sz;
-                    LDV0221A8(&sv0);
-                    RTPS221A8();
-                    STSXY221A8(&sxy2[0]);
+                    gte_ldv0(&sv0);
+                    gte_rtps();
+                    gte_stsxy(&sxy2[0]);
                     sxy[0].x += sxy2[0].x;
                     sxy[0].y += sxy2[0].y;
                 }
@@ -417,9 +417,9 @@ void func_800221A8(Obj221A8 *o) {
                     sv2.vx = s->pt[i + 2].x;
                     sv2.vy = s->pt[i + 2].y;
                     sv2.vz = sz;
-                    LDV3221A8(&sv0, &sv1, &sv2);
-                    RTPT221A8();
-                    STSXY3221A8(&sxy[i + 1], &sxy[i + 2], &sxy[i + 3]);
+                    gte_ldv3(&sv0, &sv1, &sv2);
+                    gte_rtpt();
+                    gte_stsxy3(&sxy[i + 1], &sxy[i + 2], &sxy[i + 3]);
                     sxy[i + 1].x += sxy[0].x;
                     sxy[i + 1].y += sxy[0].y;
                     sxy[i + 2].x += sxy[0].x;

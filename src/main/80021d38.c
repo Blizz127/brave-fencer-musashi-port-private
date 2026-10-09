@@ -53,7 +53,7 @@ extern u8  D_800AF630[];
 extern u8  D_800A6610[];
 extern u16 D_800B9A02;
 extern void func_800226C0(Obj_80021D38 *, u8 *, DVec_80021D38 *, u8 *);
-#define gte_SetRotMatrix_21D38(r0) __asm__ volatile (   \
+#define gte_SetRotMatrix(r0) __asm__ volatile (   \
     "lw $12, 0( %0 );"                                  \
     "lw $13, 4( %0 );"                                  \
     "ctc2 $12, $0;"                                     \
@@ -67,7 +67,7 @@ extern void func_800226C0(Obj_80021D38 *, u8 *, DVec_80021D38 *, u8 *);
     :                                                   \
     : "r"( r0 )                                         \
     : "$12", "$13", "$14" )
-#define gte_SetTransMatrix_21D38(r0) __asm__ volatile ( \
+#define gte_SetTransMatrix(r0) __asm__ volatile ( \
     "lw $12, 20( %0 );"                                 \
     "lw $13, 24( %0 );"                                 \
     "ctc2 $12, $5;"                                     \
@@ -77,12 +77,12 @@ extern void func_800226C0(Obj_80021D38 *, u8 *, DVec_80021D38 *, u8 *);
     :                                                   \
     : "r"( r0 )                                         \
     : "$12", "$13", "$14" )
-#define gte_ldv0_21D38(r0) __asm__ volatile (           \
+#define gte_ldv0(r0) __asm__ volatile (           \
     "lwc2 $0, 0( %0 );"                                 \
     "lwc2 $1, 4( %0 )"                                  \
     :                                                   \
     : "r"( r0 ) )
-#define gte_ldv3_21D38(r0, r1, r2) __asm__ volatile (   \
+#define gte_ldv3(r0, r1, r2) __asm__ volatile (   \
     "lwc2 $0, 0( %0 );"                                 \
     "lwc2 $1, 4( %0 );"                                 \
     "lwc2 $2, 0( %1 );"                                 \
@@ -91,41 +91,41 @@ extern void func_800226C0(Obj_80021D38 *, u8 *, DVec_80021D38 *, u8 *);
     "lwc2 $5, 4( %2 )"                                  \
     :                                                   \
     : "r"( r0 ), "r"( r1 ), "r"( r2 ) )
-#define gte_rtps_21D38() __asm__ volatile ("nop;nop;rtps")
-#define gte_rtpt_21D38() __asm__ volatile ("nop;nop;rtpt")
-#define gte_rt_21D38()   __asm__ volatile ("nop;nop;mvmva 1, 0, 0, 0, 0")
-#define gte_stsxy_21D38(r0) __asm__ volatile (          \
+#define gte_rtps() __asm__ volatile ("nop;nop;rtps")
+#define gte_rtpt() __asm__ volatile ("nop;nop;rtpt")
+#define gte_rt()   __asm__ volatile ("nop;nop;mvmva 1, 0, 0, 0, 0")
+#define gte_stsxy(r0) __asm__ volatile (          \
     "swc2 $14, 0( %0 )"                                 \
     :                                                   \
     : "r"( r0 )                                         \
     : "memory" )
-#define gte_stsxy3_21D38(r0, r1, r2) __asm__ volatile ( \
+#define gte_stsxy3(r0, r1, r2) __asm__ volatile ( \
     "swc2 $12, 0( %0 );"                                \
     "swc2 $13, 0( %1 );"                                \
     "swc2 $14, 0( %2 )"                                 \
     :                                                   \
     : "r"( r0 ), "r"( r1 ), "r"( r2 )                   \
     : "memory" )
-#define gte_stlvnl_21D38(r0) __asm__ volatile (         \
+#define gte_stlvnl(r0) __asm__ volatile (         \
     "swc2 $25, 0( %0 );"                                \
     "swc2 $26, 4( %0 );"                                \
     "swc2 $27, 8( %0 )"                                 \
     :                                                   \
     : "r"( r0 )                                         \
     : "memory" )
-#define gte_stflg_21D38(r0) __asm__ volatile (          \
+#define gte_stflg(r0) __asm__ volatile (          \
     "cfc2 $12, $31;"                                    \
     "nop;"                                              \
     "sw $12, 0( %0 )"                                   \
     :                                                   \
     : "r"( r0 )                                         \
     : "$12", "memory" )
-#define gte_stsz_21D38(r0) __asm__ volatile (           \
+#define gte_stsz(r0) __asm__ volatile (           \
     "swc2 $19, 0( %0 )"                                 \
     :                                                   \
     : "r"( r0 )                                         \
     : "memory" )
-#define gte_stszotz_21D38(r0) __asm__ volatile (        \
+#define gte_stszotz(r0) __asm__ volatile (        \
     "mfc2 $12, $19;"                                    \
     "nop;"                                              \
     "sra $12, $12, 2;"                                  \
@@ -163,17 +163,17 @@ void func_80021D38(Obj_80021D38 *p)
         otz = p->pos.vz;
         sz  = p->pos.vz << 2;
     } else {
-        gte_SetRotMatrix_21D38(base + 0x18);
-        gte_SetTransMatrix_21D38(base + 0x18);
-        gte_ldv0_21D38(&p->pos);
-        gte_rtps_21D38();
-        gte_stsxy_21D38(&out[0]);
-        gte_stflg_21D38(&flag);
-        gte_stszotz_21D38(&otz);
+        gte_SetRotMatrix(base + 0x18);
+        gte_SetTransMatrix(base + 0x18);
+        gte_ldv0(&p->pos);
+        gte_rtps();
+        gte_stsxy(&out[0]);
+        gte_stflg(&flag);
+        gte_stszotz(&otz);
         if (flag & ~0x1000) {
             return;
         }
-        gte_stsz_21D38(&sz);
+        gte_stsz(&sz);
     }
 
     d = otz + 1;
@@ -206,8 +206,8 @@ void func_80021D38(Obj_80021D38 *p)
     mtx.m[2][1] = 0;
     mtx.m[2][2] = 0x1000;
     mtx.t[0] = mtx.t[1] = mtx.t[2] = 0;
-    gte_SetRotMatrix_21D38(&mtx);
-    gte_SetTransMatrix_21D38(&mtx);
+    gte_SetRotMatrix(&mtx);
+    gte_SetTransMatrix(&mtx);
 
     for (i = 0; i < 12; i += 3) {
         sv[0].vx = *(u16 *)(pts + (i << 2) + 0x10);
@@ -223,30 +223,30 @@ void func_80021D38(Obj_80021D38 *p)
         sv[2].vz = sz;
 
         if (flags & 0x40000) {
-            gte_ldv0_21D38(&sv[0]);
-            gte_rt_21D38();
-            gte_stlvnl_21D38(vec);
-            gte_stflg_21D38(&flag);
+            gte_ldv0(&sv[0]);
+            gte_rt();
+            gte_stlvnl(vec);
+            gte_stflg(&flag);
             out[j].vx = vec[0];
             out[j].vy = vec[1];
 
-            gte_ldv0_21D38(&sv[1]);
-            gte_rt_21D38();
-            gte_stlvnl_21D38(vec);
-            gte_stflg_21D38(&flag);
+            gte_ldv0(&sv[1]);
+            gte_rt();
+            gte_stlvnl(vec);
+            gte_stflg(&flag);
             out[k].vx = vec[0];
             out[k].vy = vec[1];
 
-            gte_ldv0_21D38(&sv[2]);
-            gte_rt_21D38();
-            gte_stlvnl_21D38(vec);
-            gte_stflg_21D38(&flag);
+            gte_ldv0(&sv[2]);
+            gte_rt();
+            gte_stlvnl(vec);
+            gte_stflg(&flag);
             out[i + 3].vx = vec[0];
             out[i + 3].vy = vec[1];
         } else {
-            gte_ldv3_21D38(&sv[0], &sv[1], &sv[2]);
-            gte_rtpt_21D38();
-            gte_stsxy3_21D38(&out[i + 1], &out[i + 2], &out[i + 3]);
+            gte_ldv3(&sv[0], &sv[1], &sv[2]);
+            gte_rtpt();
+            gte_stsxy3(&out[i + 1], &out[i + 2], &out[i + 3]);
         }
 
         out[i + 1].vx += out[0].vx;

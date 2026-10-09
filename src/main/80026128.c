@@ -85,7 +85,7 @@ extern u32 D_80063884;
     :                                             \
     : "r"( r0 )                                   \
     : "memory" )
-#define gte_strgb3_gt3(r0, r1, r2) __asm__ volatile ( \
+#define gte_strgb3(r0, r1, r2) __asm__ volatile ( \
     "swc2 $20, 0( %0 );"                          \
     "swc2 $21, 0( %1 );"                          \
     "swc2 $22, 0( %2 )"                           \
@@ -127,7 +127,7 @@ PktGT3 *func_80026128(FaceGT3 *face, SVEC8_80026128 *vtx, SVEC8_80026128 *nrm, P
                 gte_ncct();
                 otp = &ot[otz >> shift];
                 pkt->tag = (*otp & 0x00FFFFFF) | 0x09000000;
-                gte_strgb3_gt3(&pkt->rgb0, &pkt->rgb1, &pkt->rgb2);
+                gte_strgb3(&pkt->rgb0, &pkt->rgb1, &pkt->rgb2);
                 *otp = (u32)pkt & 0x00FFFFFF;
                 pkt++;
             }

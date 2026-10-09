@@ -96,7 +96,7 @@ __asm__(
     "swc2 $19, 0( %3 )"                           \
     :                                             \
     : "r"( r0 ), "r"( r1 ), "r"( r2 ), "r"( r3 ) )
-#define gte_strgb2(r0) __asm__ volatile (         \
+#define gte_strgb(r0) __asm__ volatile (         \
     "swc2 $22, 0( %0 )"                           \
     :                                             \
     : "r"( r0 )                                   \
@@ -173,7 +173,7 @@ u32 *func_80025EB8(Prim20 *prim, SVEC8_80025EB8 *verts, SVEC8_80025EB8 *norms, F
                     }
                     gte_ldv0(&norms[prim->n0]);
                     gte_nccs();
-                    gte_strgb2(&pkt->rgb);
+                    gte_strgb(&pkt->rgb);
                     otp = &ot[g.otz >> shift];
                     pkt->tag = (*otp & 0xFFFFFF) | 0x09000000;
                     *otp = (u32)pkt & 0xFFFFFF;

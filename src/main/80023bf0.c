@@ -282,12 +282,12 @@ typedef struct { s16 vx, vy, vz, pad; } SVEC_80023BF0;
 
 typedef struct { u32 addr : 24; u32 len : 8; } PTag_80023BF0;
 
-#define SetRot_80023BF0(m) __asm__ volatile ( \
+#define gte_SetRotMatrix(m) __asm__ volatile ( \
     "lw $12, 0(%0);"  "lw $13, 4(%0);"  "ctc2 $12, $0;"  "ctc2 $13, $1;" \
     "lw $12, 8(%0);"  "lw $13, 12(%0);" "lw $14, 16(%0);" \
     "ctc2 $12, $2;"   "ctc2 $13, $3;"   "ctc2 $14, $4" \
     : : "r"(m) : "$12", "$13", "$14")
-#define SetTrans_80023BF0(m) __asm__ volatile ( \
+#define gte_SetTransMatrix(m) __asm__ volatile ( \
     "lw $12, 20(%0);" "lw $13, 24(%0);" "ctc2 $12, $5;" \
     "lw $14, 28(%0);" "ctc2 $13, $6;"   "ctc2 $14, $7" \
     : : "r"(m) : "$12", "$13", "$14")
@@ -321,8 +321,8 @@ void func_80023BF0(s32 arg0)
 
     if (flags & 0x4000000) {
         u8 *m = mat + 0x18;
-        SetRot_80023BF0(m);
-        SetTrans_80023BF0(m);
+        gte_SetRotMatrix(m);
+        gte_SetTransMatrix(m);
         v.vx = *(u16 *)(arg0 + 8) + *(u16 *)(arg0 + 0x2E);
         v.vy = *(u16 *)(arg0 + 0xA) + *(u16 *)(arg0 + 0x30);
         v.vz = *(u16 *)(arg0 + 0xC) + *(u16 *)(arg0 + 0x32);

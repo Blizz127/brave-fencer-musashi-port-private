@@ -29,7 +29,7 @@ typedef double f64;
 #define gte_stopz(r0) __asm__ volatile("swc2 $24, 0(%0)" : : "r"(r0) : "memory")
 #define gte_stotz(r0) __asm__ volatile("swc2 $7, 0(%0)" : : "r"(r0) : "memory")
 #define gte_stsxy2(r0) __asm__ volatile("swc2 $14, 0(%0)" : : "r"(r0) : "memory")
-#define gte_strgb2(r0) __asm__ volatile("swc2 $22, 0(%0)" : : "r"(r0) : "memory")
+#define gte_strgb(r0) __asm__ volatile("swc2 $22, 0(%0)" : : "r"(r0) : "memory")
 #define gte_stsxy3_g4(r0) __asm__ volatile(                                 \
     "swc2 $12, 8(%0);swc2 $13, 16(%0);swc2 $14, 24(%0)" : : "r"(r0) : "memory")
 #define gte_strgb3_g4(r0) __asm__ volatile(                                 \
@@ -124,7 +124,7 @@ void *func_80025504(GFace *prim, GVec8 *vtx, GVec8 *nrm, GPolyG4 *poly, s32 n, s
             gte_strgb3_g4(poly);
             gte_ldv0(&nrm[fp->n3]);
             gte_nccs();
-            gte_strgb2(&poly->rgb3);
+            gte_strgb(&poly->rgb3);
 
             op = &ot[p >> shift];
             poly->tag = (*op & 0xffffff) | 0x08000000;

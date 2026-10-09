@@ -1205,6 +1205,22 @@ Increment 32 (generator, strict only):
   New stop: guest call to 8001EA14. Gates: build=0, TABLE_IDENTICAL,
   ctest 37/37, m2c=0.
 
+### Increment 84: suffixed GTE macro sets renamed to inline_c.h names (10 files); stop 8001E378
+
+- Local GTE macros renamed to the inline_c.h names, bytes unchanged in all 10
+  files (build_candidate cmp, verify_registry 10/10): 800139C8, 80013CFC,
+  8001EA14, 80021D38, 800221A8, 80023BF0 (suffixed SetRotMatrix/ldclmv/... sets),
+  80025504 and 80025EB8 (gte_strgb2 -> gte_strgb), 80026128 (gte_strgb3_gt3 ->
+  gte_strgb3, same 3-pointer body) and 800277DC (its 8/16/24 "gte_stsxy3_gt3" ->
+  gte_stsxy3_g3, the matching inline_c.h body). In 8001EA14 the combined
+  ldv0+rtv0+stlvnl block is split into the three macros, and gte_ldv3 keeps
+  the retail two-operand body (its only call passes r2 == r1).
+- Lane: GAINED 800139C8, 8001EA14, 80025504, 80025EB8, 800277DC. 80013CFC,
+  80021D38 and 800221A8 are still refused by the escape rule. 80026128 and
+  80023BF0 still have other asm (a swc2 $8 store and a top-level block).
+- Run: frame 1200 (prims=32 at two frames, draw=0). New stop: guest call to
+  8001E378. Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [].
+
 ## Next
 
 - Admit or reshape sc02_0031 `func_801831B4` (currently `abi`). Likely next

@@ -187,7 +187,7 @@ typedef struct {
 /* GTE command mnemonics (mvmva, rtpt, ...) come from include/gte_macros.inc. */
 __asm__(".include \"gte_macros.inc\"\n");
 
-#define gte_SetRotMatrix_139C8(r0) __asm__ volatile (    \
+#define gte_SetRotMatrix(r0) __asm__ volatile (    \
     "lw $12, 0( %0 );"                                   \
     "lw $13, 4( %0 );"                                   \
     "ctc2 $12, $0;"                                      \
@@ -202,7 +202,7 @@ __asm__(".include \"gte_macros.inc\"\n");
     : "r"( r0 )                                          \
     : "$12", "$13", "$14" )
 
-#define gte_ldclmv_139C8(r0) __asm__ volatile (          \
+#define gte_ldclmv(r0) __asm__ volatile (          \
     "lhu $12, 0( %0 );"                                  \
     "lhu $13, 6( %0 );"                                  \
     "lhu $14, 12( %0 );"                                 \
@@ -213,9 +213,9 @@ __asm__(".include \"gte_macros.inc\"\n");
     : "r"( r0 )                                          \
     : "$12", "$13", "$14" )
 
-#define gte_rtir_139C8() __asm__ volatile ("nop;nop;mvmva 1, 0, 3, 3, 0")
+#define gte_rtir() __asm__ volatile ("nop;nop;mvmva 1, 0, 3, 3, 0")
 
-#define gte_stclmv_139C8(r0) __asm__ volatile (          \
+#define gte_stclmv(r0) __asm__ volatile (          \
     "mfc2 $12, $9;"                                      \
     "mfc2 $13, $10;"                                     \
     "mfc2 $14, $11;"                                     \
@@ -259,16 +259,16 @@ void func_800139C8(s16 param_1, void *param_2, void *param_3)
     rotm.m[1][2] = 0;
     rotm.m[2][1] = 0;
 
-    gte_SetRotMatrix_139C8(ip);
-    gte_ldclmv_139C8(rp);
-    gte_rtir_139C8();
-    gte_stclmv_139C8(ip);
-    gte_ldclmv_139C8(rp + 1);
-    gte_rtir_139C8();
-    gte_stclmv_139C8(ip + 1);
-    gte_ldclmv_139C8(rp + 2);
-    gte_rtir_139C8();
-    gte_stclmv_139C8(ip + 2);
+    gte_SetRotMatrix(ip);
+    gte_ldclmv(rp);
+    gte_rtir();
+    gte_stclmv(ip);
+    gte_ldclmv(rp + 1);
+    gte_rtir();
+    gte_stclmv(ip + 1);
+    gte_ldclmv(rp + 2);
+    gte_rtir();
+    gte_stclmv(ip + 2);
 
     func_8001282C(ip);
     func_80048FBC(ip, param_2, param_3);
