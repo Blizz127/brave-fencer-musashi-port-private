@@ -1510,6 +1510,25 @@ Increment 32 (generator, strict only):
 - Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [],
   GAINED both. Run: 3000 frames, no stop.
 
+### Inc 106: sc02_0035 scene code, 92 vendor functions imported
+
+- The probe stopped next at sc02_0035 8017D130. The member's scene-specific
+  code (8017D05C-80184484) is mostly unique: tools/shift_twin_scan.py found
+  same-shape siblings for only 10 of 122 functions. Druthulu/BFM-decomp has
+  it as C in src/ov_SC02_035/ov_SC02_035_jr_8017BEBC.c and
+  ov_SC02_035_jr_80183FD4.c, never imported here.
+- New tools/vendor_split_import.py. It preprocesses the vendor TU, emits one
+  standalone file per missing function (only the declarations it uses;
+  vendor symbol names such as rand become address names), and compiles each
+  with gcc-2.7.2. 92 of 133 are byte-identical to the sc02_0035 retail words
+  (the rest compile but differ, likely the vendor's per-TU build options) and
+  are added as src/overlays/sc02_0035 files plus registry rows
+  (recovery "c", vendor-derived).
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37 (incl. the no-retail-data
+  check), m2c=0, regr LOST [], 57 sc02_0035 entries gained (the others are
+  refused by lane rules, e.g. expanded GTE inline asm). Run: 3000 frames,
+  no stop.
+
 ## Next
 
 - Admit or reshape sc02_0031 `func_801831B4` (currently `abi`). Likely next
