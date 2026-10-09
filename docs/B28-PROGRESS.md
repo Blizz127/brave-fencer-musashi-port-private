@@ -976,6 +976,17 @@ Increment 32 (generator, strict only):
 - Gate: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0. regr LOST [], GAINED sc02 801831B4.
 - Strict stop moves 801831B4 -> 8001FC08 (not_in_lane). Frame 1200: prims=0 disp=1 draw=0.
 
+## Increment 67 — strict retail_call_args: a save is a store of the entry value
+
+- main `func_8001FC08` was rejected "escape: local %3 sp+0x18+176 overlaps a saved register": the
+  retail `sw s7,0x18(sp)` at 8001FE58 stores a value loaded at 8001FC40 (`lw s7,4(s0)`) into the
+  frame local, but every `sw s*/ra, (sp)` counted as a register save.
+- Strict-only: a store counts as a save only when no word before it (linear order) writes that
+  register (`_gpr_dest`), i.e. the prologue's entry-value saves.
+- Gate: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0. regr LOST [], GAINED main 8001FC08, 80021008,
+  80038458 and main_0012 801498E0, 80149954.
+- Strict stop moves 8001FC08 -> 80021174 (not_in_lane). Frame 1200: prims=0 disp=1 draw=0.
+
 ## Next
 
 - Admit or reshape sc02_0031 `func_801831B4` (currently `abi`). Likely next

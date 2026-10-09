@@ -2628,6 +2628,28 @@ def _step(w, regs, slots):
     return True
 
 
+def _gpr_dest(w):
+    """The general register a MIPS I word writes (None for none / r0)."""
+    op = w >> 26
+    rs, rt, rd = (w >> 21) & 31, (w >> 16) & 31, (w >> 11) & 31
+    r = None
+    if op == 0:
+        f = w & 63
+        if f in (0x08, 0x0C, 0x0D, 0x11, 0x13, 0x18, 0x19, 0x1A, 0x1B):
+            r = None             # jr, syscall, break, mthi/mtlo, mult/div
+        else:
+            r = rd               # shifts, alu, mfhi/mflo, jalr rd
+    elif op == 1:
+        r = 31 if rt in (0x10, 0x11) else None   # bltzal / bgezal
+    elif op == 3:
+        r = 31                   # jal
+    elif 0x08 <= op <= 0x0F or 0x20 <= op <= 0x26:
+        r = rt                   # alu immediate, lui, loads
+    elif op in (0x10, 0x12) and rs in (0, 2):
+        r = rt                   # mfc0/cfc0, mfc2/cfc2
+    return r or None
+
+
 def retail_call_args(words, vram, frame, jtargets=None):
     """Forward dataflow over the retail words. Returns (sites, saved) where
     sites = [(jal pc, target, {argument index: sp offset})] lists, for every
@@ -2660,6 +2682,12 @@ def retail_call_args(words, vram, frame, jtargets=None):
     def at(i):
         return words[i] if i < n else 0
 
+    first_write = {}
+    if STRICT:
+        for k, x in enumerate(words):
+            r = _gpr_dest(x)
+            if r is not None:
+                first_write.setdefault(r, k)
     guard = 0
     while work:
         guard += 1
@@ -2675,7 +2703,11 @@ def retail_call_args(words, vram, frame, jtargets=None):
             if not _step(w, regs, slots):
                 raise Reject("escape", f"sp changes at {pc:08x}")
             if w >> 26 == 0x2B and (w >> 21) & 31 == 29 and ((w >> 16) & 31) in \
-                    (16, 17, 18, 19, 20, 21, 22, 23, 30, 31):
+                    (16, 17, 18, 19, 20, 21, 22, 23, 30, 31) and \
+                    not (STRICT and first_write.get((w >> 16) & 31, n) < i):
+                # Strict (B28): only a store of the register's entry value is a
+                # save; `sw s7,0x18(sp)` after `lw s7,4(s0)` (8001FC08) stores
+                # a value into a frame local.
                 saved.add((w & 0xFFFF) - 0x10000 if w & 0x8000 else w & 0xFFFF)
             merge(i + 1, regs, slots)
             continue
