@@ -174083,6 +174083,17 @@
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
+      "name": "func_8015D380",
+      "vram": 2148914048,
+      "size": 148,
+      "region": "sc02_0031",
+      "source": "src/overlays/sc02_0031/8015d380.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
       "name": "func_8015D414",
       "vram": 2148914196,
       "size": 108,

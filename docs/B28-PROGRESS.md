@@ -1431,6 +1431,22 @@ Increment 32 (generator, strict only):
   load starts (ld_n 19 -> 87, ovl_state 0 -> 4) and the trace shows prims=0
   through frame 3000.
 
+### Inc 101: sc02_0031 8015D380 (registry gap filled)
+
+- A 4000-frame run stopped not_in_lane at 8015D380 on the SC02 member31 route
+  (frame ~1400; the route varies between runs). sc02_0031 had no registry row
+  or source for [8015D380,8015D414), though main_0012 and sc02_0004/0015/0039
+  have C rows there. The words differ from main_0012's only in the %lo of
+  one global (D_8018753C vs D_80180C4C).
+- New src/overlays/sc02_0031/8015d380.c (main_0012's C with that global),
+  byte-identical to the sc02_0031 retail words. New registry row
+  (recovery "c").
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [],
+  GAINED sc02_0031 8015D380. Run: 3000 frames, no stop.
+- sc02_0031 still has 13 registry gaps (8012E5CC, 8012F274, 8012F568,
+  80130D48, 8013A530, 801431E8, 80153800, 801539F8, 80156600, 80159464,
+  80163328, 8016380C, 8016BCC0). They will be filled as the route reaches them.
+
 ## Next
 
 - Admit or reshape sc02_0031 `func_801831B4` (currently `abi`). Likely next
