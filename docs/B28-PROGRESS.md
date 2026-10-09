@@ -987,6 +987,22 @@ Increment 32 (generator, strict only):
   80038458 and main_0012 801498E0, 80149954.
 - Strict stop moves 8001FC08 -> 80021174 (not_in_lane). Frame 1200: prims=0 disp=1 draw=0.
 
+## Increment 68 — clean-room main 80021174 (GTE screen-bounds test) + ldlv0 / SetRot / SetTrans helpers
+
+- Stop 80021174 had no source. New clean-room `src/main/80021174.c` (retail disassembly only):
+  `s32 func_80021174(s32 half, s32 *v)` returns 1 for 0x7FFF7FFF, else loads the matrix at
+  D_800AE688 (inline_c.h gte_SetRotMatrix / gte_SetTransMatrix), gte_ldlv0(v), rtps, stsxy / stflg /
+  stszotz, and returns 0 on a GTE error flag or a projected point outside [-w,w] x [-h,h]. Byte-exact
+  (272 bytes) at -O2 with the result pinned to $v0 (retail allocation). Registry row added (clean
+  room); verify_registry re-verified.
+- Strict GTE host helpers extended (native C over the PsyCross GTE bank, fail closed without the
+  lease): `musashi_lane_gte_ldlv0`, `_SetRotMatrix` (CTC2 0..4), `_SetTransMatrix` (CTC2 5..7);
+  added to GTE_INLINE_NAMES / GTE_INLINE_HELPERS. Overlay TUs defining the same macros (identical
+  asm) now use them too.
+- Gate: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0. regr LOST [], GAINED main 80021174 and
+  sc02 80184A9C. No HOST_FAULT / psyq_refused.
+- Strict stop moves 80021174 -> 80020598 (not_in_lane). Frame 1200: prims=0 disp=1 draw=0.
+
 ## Next
 
 - Admit or reshape sc02_0031 `func_801831B4` (currently `abi`). Likely next

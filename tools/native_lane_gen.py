@@ -1030,6 +1030,7 @@ LANE_HELPERS = ("lane_sdiv32", "lane_srem32", "lane_udiv32", "lane_urem32")
 # Strict (B28): host stand-ins for PsyQ inline_c.h GTE macros (see
 # include/musashi_lane_gte_inline.h and psyq_psycross.c).
 GTE_INLINE_HELPERS = (
+    "musashi_lane_gte_ldlv0", "musashi_lane_gte_SetRotMatrix", "musashi_lane_gte_SetTransMatrix",
     "musashi_lane_gte_ldv0", "musashi_lane_gte_ldv3", "musashi_lane_gte_ldv3c",
     "musashi_lane_gte_rtps", "musashi_lane_gte_rtpt", "musashi_lane_gte_nclip",
     "musashi_lane_gte_stsxy", "musashi_lane_gte_stsxy3", "musashi_lane_gte_stsxy3c",
@@ -2259,6 +2260,7 @@ def gte_scale_host(text):
 # macros with musashi_lane_gte_inline.h (host helpers over the shared gteRegs
 # bank). The MATCH source keeps the asm; only the lane host copy changes.
 GTE_INLINE_NAMES = (
+    "ldlv0", "SetRotMatrix", "SetTransMatrix",
     "ldv0", "ldv3", "ldv3c", "rtps", "rtpt", "nclip",
     "stsxy", "stsxy3", "stsxy3c", "stsz3", "stsz4", "stszotz", "stflg", "stopz",
 )

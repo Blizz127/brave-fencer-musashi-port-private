@@ -335,6 +335,36 @@ void musashi_lane_gte_ldv0(const void *r0) {
     lane_gte_ldv_slot(0, r0);
     bfm_psyq_gte_end(0);
 }
+static uint32_t lane_gte_load32(const void *p) {
+    const uint8_t *b = (const uint8_t *)p;
+    return (uint32_t)b[0] | ((uint32_t)b[1] << 8) | ((uint32_t)b[2] << 16) | ((uint32_t)b[3] << 24);
+}
+/* inline_c.h gte_ldlv0: VXY0 = (u16)v[0] | (u16)v[1] << 16 from a long
+ * VECTOR's low halves (+0, +4), VZ0 = the word at +8 (lwc2 $1). */
+void musashi_lane_gte_ldlv0(const void *r0) {
+    const uint8_t *b = (const uint8_t *)r0;
+    uint32_t xy = (uint32_t)(b[0] | (b[1] << 8)) | ((uint32_t)(b[4] | (b[5] << 8)) << 16);
+    if (!lane_gte_lease()) return;
+    MTC2(xy, 0);
+    MTC2(lane_gte_load32(b + 8), 1);
+    bfm_psyq_gte_end(0);
+}
+/* gte_SetRotMatrix: CTC2 $0..$4 from the MATRIX words +0..+16. */
+void musashi_lane_gte_SetRotMatrix(const void *r0) {
+    const uint8_t *b = (const uint8_t *)r0;
+    int k;
+    if (!lane_gte_lease()) return;
+    for (k = 0; k < 5; ++k) CTC2(lane_gte_load32(b + 4 * k), k);
+    bfm_psyq_gte_end(0);
+}
+/* gte_SetTransMatrix: CTC2 $5..$7 from the MATRIX words +20..+28. */
+void musashi_lane_gte_SetTransMatrix(const void *r0) {
+    const uint8_t *b = (const uint8_t *)r0;
+    int k;
+    if (!lane_gte_lease()) return;
+    for (k = 0; k < 3; ++k) CTC2(lane_gte_load32(b + 20 + 4 * k), 5 + k);
+    bfm_psyq_gte_end(0);
+}
 void musashi_lane_gte_ldv3(const void *r0, const void *r1, const void *r2) {
     if (!lane_gte_lease()) return;
     lane_gte_ldv_slot(0, r0);

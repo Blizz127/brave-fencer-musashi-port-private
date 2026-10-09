@@ -9,6 +9,9 @@ extern "C" {
 #endif
 
 void musashi_lane_gte_ldv0(const void *r0);
+void musashi_lane_gte_ldlv0(const void *r0);
+void musashi_lane_gte_SetRotMatrix(const void *r0);
+void musashi_lane_gte_SetTransMatrix(const void *r0);
 void musashi_lane_gte_ldv3(const void *r0, const void *r1, const void *r2);
 void musashi_lane_gte_ldv3c(const void *r0);
 void musashi_lane_gte_rtps(void);
@@ -24,6 +27,9 @@ void musashi_lane_gte_stflg(void *r0);
 void musashi_lane_gte_stopz(void *r0);
 
 #define gte_ldv0(r0) musashi_lane_gte_ldv0((const void *)(r0))
+#define gte_ldlv0(r0) musashi_lane_gte_ldlv0((const void *)(r0))
+#define gte_SetRotMatrix(r0) musashi_lane_gte_SetRotMatrix((const void *)(r0))
+#define gte_SetTransMatrix(r0) musashi_lane_gte_SetTransMatrix((const void *)(r0))
 #define gte_ldv3(r0, r1, r2) musashi_lane_gte_ldv3((const void *)(r0), (const void *)(r1), (const void *)(r2))
 #define gte_ldv3c(r0) musashi_lane_gte_ldv3c((const void *)(r0))
 #define gte_rtps() musashi_lane_gte_rtps()
