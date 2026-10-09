@@ -3135,7 +3135,63 @@ def int_ptr_add_to_gep(ir):
     return "\n".join(l for n, l in enumerate(lines) if n not in drop)
 
 
+def escaped_locals(lines, derived):
+    """Strict only (O0 IR): allocas whose address reaches a ptrtoint or a
+    pointer store to non-local memory, directly or through pointer variables (`alloca ptr` slots it is stored to, values
+    reloaded from them and GEPs off those). Such an address can be stored to
+    guest memory, so the local must be guest addressable."""
+    maybe = {n: v[0] for n, v in derived.items()}
+    slots = {}
+    changed = True
+    while changed:
+        changed = False
+        for line in lines:
+            sm = re.match(r"\s*store ptr (%[\w.\"$]+), ptr (%[\w.\"$]+)(?:, align \d+)?(?:, ![\w.]+ !\d+)*\s*$", line)
+            if sm and sm.group(1) in maybe and derived.get(sm.group(2)) == (sm.group(2), 0) \
+                    and sm.group(2) != maybe[sm.group(1)] and sm.group(2) not in slots:
+                slots[sm.group(2)] = maybe[sm.group(1)]
+                changed = True
+            dm = DEF_RE.match(line)
+            if not dm or dm.group(1) in maybe:
+                continue
+            name, rhs = dm.group(1), dm.group(2).strip()
+            lm = re.fullmatch(r"load ptr, ptr (%[\w.\"$]+)(?:, align \d+)?", rhs)
+            if lm and lm.group(1) in slots:
+                maybe[name] = slots[lm.group(1)]
+                changed = True
+                continue
+            gm = GEP_RE.match(rhs)
+            if gm and rhs.startswith("getelementptr"):
+                parts = split_top(gm.group(1))
+                if len(parts) >= 2 and parts[1].startswith("ptr ") and parts[1].split()[-1] in maybe:
+                    maybe[name] = maybe[parts[1].split()[-1]]
+                    changed = True
+    out = set()
+    for line in lines:
+        sm = re.match(r"\s*store ptr (%[\w.\"$]+), ptr (%[\w.\"$]+)(?:, align \d+)?(?:, ![\w.]+ !\d+)*\s*$", line)
+        if sm and sm.group(1) in maybe and sm.group(2) not in maybe and sm.group(2) not in derived:
+            out.add(maybe[sm.group(1)])  # stored to memory that is not a local
+        dm = DEF_RE.match(line)
+        if dm:
+            pm = re.fullmatch(r"ptrtoint ptr (%[\w.\"$]+) to i(?:32|64)", dm.group(2).strip())
+            if pm and pm.group(1) in maybe:
+                out.add(maybe[pm.group(1)])
+    return out
+
+
 def place_guest_locals(ir, fname, words, vram, frame, info=None):
+    # escaped-only placement (no local reaches a callee) is best effort: if
+    # the retail frame cannot place it, the IR is left as it was
+    state = {"best_effort": False}
+    try:
+        return _place_guest_locals(ir, fname, words, vram, frame, info, state)
+    except Reject:
+        if state["best_effort"]:
+            return ir, []
+        raise
+
+
+def _place_guest_locals(ir, fname, words, vram, frame, info=None, _state=None):
     """Move every alloca of fname whose address reaches a guest callee
     (lane_call_* / lane_* call argument, through constant GEPs) into the
     retail frame. Returns (ir, [(alloca, sp offset, size)]); the IR is
@@ -3250,9 +3306,14 @@ def place_guest_locals(ir, fname, words, vram, frame, info=None):
             for t in re.findall(r"%[\w.\"$]+", text):
                 if t in dynamic:
                     raise Reject("escape", f"non-constant offset into local {dynamic[t]}")
-    if not any(t for _, t, _ in calls):
+    escaped = escaped_locals(lines, derived) if STRICT else set()
+    if not any(t for _, t, _ in calls) and not escaped:
         return ir, []
+    if _state is not None:
+        _state["best_effort"] = not any(t for _, t, _ in calls)
     if words is None or not frame:
+        if not any(t for _, t, _ in calls):
+            return ir, []
         raise Reject("escape", "local passed to a callee, retail frame unknown")
     sites, saved = retail_call_args(
         words, vram, frame, (switch_table_targets(words, vram, info) or None) if STRICT else None)
@@ -3289,6 +3350,21 @@ def place_guest_locals(ir, fname, words, vram, frame, info=None):
         if target not in ir_by_target and any(a for _, a in rsites):
             # a frame address the retail words pass where the C passes none
             raise Reject("escape", f"retail jal {target:08x} passes an sp address the C does not")
+    escaped -= set(base)
+    if escaped:
+        # Strict (B28): a local whose address leaves as an integer (stored to
+        # guest memory through a pointer variable, 8003388C's `cmd = &rec`)
+        # goes to the retail frame too. Its offset is the one retail sp
+        # address (`addiu rX, sp, imm`) no jal argument accounts for; with
+        # more than one candidate either way nothing is placed.
+        arg_offs = {o for _, _, a in sites for o in a.values()}
+        left = sorted({(w & 0xFFFF) - ((w & 0x8000) << 1) for w in words
+                       if (w >> 26) == 0x09 and ((w >> 21) & 31) == 29
+                       and ((w >> 16) & 31) not in (0, 29)} - arg_offs - set(base.values()))
+        if len(escaped) == 1 and len(left) == 1:
+            base[next(iter(escaped))] = left[0]
+        elif not base:
+            return ir, []
     placed = []
     max_args = max([argc for _, _, argc in calls] + [4])
     out_area = 0x10 + 4 * (max_args - 4)

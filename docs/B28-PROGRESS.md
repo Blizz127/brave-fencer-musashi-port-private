@@ -1289,6 +1289,20 @@ Increment 32 (generator, strict only):
 - New stop: `guest_pc=8003388c` (game code, refused: host address converted to integer); frame 1200, prims=32 at two
   frames, draw=0.
 
+### Increment 90: locals whose address escapes to guest memory go to the retail frame; 8003388C into the lane; stop 80013478
+
+- Stop was `guest_pc=8003388c` (refused: host address converted to integer). `cmd = &rec` (a 20-byte local command
+  record) or the guest script pointer merge into one pointer; the `cmd++; e->unk0C = cmd` path stores it to guest
+  memory. Retail only takes that path for the guest pointer, but the host IR cannot prove it.
+- Generator (strict only): new `escaped_locals` finds allocas whose address reaches a ptrtoint or a pointer store to
+  non-local memory, directly or through `alloca ptr` variables (reloads, GEPs). `place_guest_locals` moves such a
+  local into the retail frame at the single retail sp address (`addiu rX, sp, imm`) not used by any jal argument
+  (8003388C: `addiu s4, sp, 16` -> rec at sp+0x10; `sp28` stays at sp+0x28 from the 8003F144 call). If it is
+  ambiguous (several candidates either way) or the frame cannot be followed, nothing is placed and the old escape
+  rejection stands. Placement with no local passed to a callee is best effort (never a new reject).
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [] (gained 8003388C).
+- New stop: `guest_pc=80013478`; frame 1200, prims=32 at two frames, draw=0.
+
 ## Next
 
 - Admit or reshape sc02_0031 `func_801831B4` (currently `abi`). Likely next
