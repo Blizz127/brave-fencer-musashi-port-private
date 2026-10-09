@@ -268275,7 +268275,7 @@
       "size": 148,
       "region": "sc02_0035",
       "source": "src/overlays/sc02_0035/801285e4.c",
-      "recovery": "c",
+      "recovery": "mixed",
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"

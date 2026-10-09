@@ -1615,6 +1615,15 @@ Increment 32 (generator, strict only):
 - Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [].
   Run: 3000 frames, no stop.
 
+### Inc 113: sc02_0035 801285E4 canonical scratch-call form
+
+- The probe stopped at sc02_0035 801285E4, refused by rule calls (inline asm).
+  Its vendor C used a non-canonical asm block. It now takes main_0012's
+  canonical scratch-call C with this member's D_801BD59C, byte-identical
+  (rv.py). Registry recovery "mixed", as main_0012's.
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [], gained.
+  Run: 3000 frames, no stop.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for
