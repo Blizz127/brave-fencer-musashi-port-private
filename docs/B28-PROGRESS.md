@@ -1497,6 +1497,19 @@ Increment 32 (generator, strict only):
 - Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [],
   312 sc02_0035 entries gained. Run: 3000 frames, no stop.
 
+### Inc 105: sc02_0035 8017D05C / 8017D0F4 (shifted twins of sc01_0000)
+
+- The 6000-frame probe stopped not_in_lane at sc02_0035 8017D05C. Here the
+  sc02_0035 layout diverges from main_0012 (8017D05C is mid-function there).
+  New tools/shift_twin_scan.py finds the same instruction shape at shifted
+  addresses: sc01_0000 8017D024 (and sc02_0015 / sc07_0008).
+- src/overlays/sc02_0035/8017d05c.c (scene init: sc01_0000's C with this
+  scene's values 500 / 0x600 and its callback) and 8017d0f4.c (the
+  D_80187F34[p[4]](p) dispatch, twin of sc01_0000 8017D1B4). Both are
+  byte-identical to the sc02_0035 retail words. New registry rows.
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [],
+  GAINED both. Run: 3000 frames, no stop.
+
 ## Next
 
 - Admit or reshape sc02_0031 `func_801831B4` (currently `abi`). Likely next
