@@ -328,8 +328,8 @@ typedef struct {                                                 /* 0x50 */
 typedef struct { u16 x, y, z, w; } COL_8001EFE0;                 /* align 2 -> lwl/lwr (§48-C2) */
 typedef struct { u16 vx, vy; } XY_8001EFE0;                      /* 0x04 */
 
-/* ---- GTE inline macros (house spelling, suffixed to avoid TU collisions) ---- */
-#define SRM_8001EFE0(r0) __asm__ volatile (      \
+/* ---- GTE inline macros (PsyQ inline_c.h names; the strict lane maps them to host helpers) ---- */
+#define gte_SetRotMatrix(r0) __asm__ volatile (      \
     "lw $12, 0( %0 );"  "lw $13, 4( %0 );"       \
     "ctc2 $12, $0;"     "ctc2 $13, $1;"          \
     "lw $12, 8( %0 );"  "lw $13, 12( %0 );"      \
@@ -337,18 +337,18 @@ typedef struct { u16 vx, vy; } XY_8001EFE0;                      /* 0x04 */
     "ctc2 $12, $2;"     "ctc2 $13, $3;" "ctc2 $14, $4"   \
     : : "r"( r0 ) : "$12", "$13", "$14" )
 
-#define STM_8001EFE0(r0) __asm__ volatile (      \
+#define gte_SetTransMatrix(r0) __asm__ volatile (      \
     "lw $12, 20( %0 );" "lw $13, 24( %0 );"      \
     "ctc2 $12, $5;"     "lw $14, 28( %0 );"      \
     "ctc2 $13, $6;"     "ctc2 $14, $7"           \
     : : "r"( r0 ) : "$12", "$13", "$14" )
 
-#define ldv0_8001EFE0(r0) __asm__ volatile (     \
+#define gte_ldv0(r0) __asm__ volatile (     \
     "lwc2 $0, 0( %0 );"                          \
     "lwc2 $1, 4( %0 )"                           \
     : : "r"( r0 ) )
 
-#define ldv3_8001EFE0(r0, r1, r2) __asm__ volatile ( \
+#define gte_ldv3(r0, r1, r2) __asm__ volatile ( \
     "lwc2 $0, 0( %0 );"                          \
     "lwc2 $1, 4( %0 );"                          \
     "lwc2 $2, 0( %1 );"                          \
@@ -357,32 +357,32 @@ typedef struct { u16 vx, vy; } XY_8001EFE0;                      /* 0x04 */
     "lwc2 $5, 4( %2 )"                           \
     : : "r"( r0 ), "r"( r1 ), "r"( r2 ) )
 
-#define rtps_8001EFE0()  __asm__ volatile ("nop;nop;rtps")
-#define rtpt_8001EFE0()  __asm__ volatile ("nop;nop;rtpt")
+#define gte_rtps()  __asm__ volatile ("nop;nop;rtps")
+#define gte_rtpt()  __asm__ volatile ("nop;nop;rtpt")
 
-#define stsxy_8001EFE0(r0) __asm__ volatile (    \
+#define gte_stsxy(r0) __asm__ volatile (    \
     "swc2 $14, 0( %0 )"                          \
     : : "r"( r0 ) : "memory" )
 
-#define stsxy0_8001EFE0(r0) __asm__ volatile (   \
+#define gte_stsxy0(r0) __asm__ volatile (   \
     "swc2 $12, 0( %0 )"                          \
     : : "r"( r0 ) : "memory" )
 
-#define stsxy1_8001EFE0(r0) __asm__ volatile (   \
+#define gte_stsxy1(r0) __asm__ volatile (   \
     "swc2 $13, 0( %0 )"                          \
     : : "r"( r0 ) : "memory" )
 
-#define stflg_8001EFE0(r0) __asm__ volatile (    \
+#define gte_stflg(r0) __asm__ volatile (    \
     "cfc2 $12, $31;"                             \
     "nop;"                                       \
     "sw $12, 0( %0 )"                            \
     : : "r"( r0 ) : "$12", "memory" )
 
-#define stsz_8001EFE0(r0) __asm__ volatile (     \
+#define gte_stsz(r0) __asm__ volatile (     \
     "swc2 $19, 0( %0 )"                          \
     : : "r"( r0 ) : "memory" )
 
-#define stszotz_8001EFE0(r0) __asm__ volatile (  \
+#define gte_stszotz(r0) __asm__ volatile (  \
     "mfc2 $12, $19;"                             \
     "nop;"                                       \
     "sra $12, $12, 2;"                           \
@@ -468,15 +468,15 @@ void func_8001EFE0(s32 arg0)
 
     p = *(u8 **)(arg0 + 0x20);
     if (p != NULL && func_80021174(*(s32 *)(arg0 + 0x28), (s32)&c2.workm.t[0]) != 0) {
-        SRM_8001EFE0(mp);
-        STM_8001EFE0(mp);
+        gte_SetRotMatrix(mp);
+        gte_SetTransMatrix(mp);
         sv.vx = sv.vy = sv.vz = 0;
-        ldv0_8001EFE0(&sv);
-        rtps_8001EFE0();
-        stsxy_8001EFE0(&sv);
-        stflg_8001EFE0(&flag);
-        stsz_8001EFE0(&sz);
-        stszotz_8001EFE0(&otz);
+        gte_ldv0(&sv);
+        gte_rtps();
+        gte_stsxy(&sv);
+        gte_stflg(&flag);
+        gte_stsz(&sz);
+        gte_stszotz(&otz);
         if ((flag & ~0x1000) == 0) {
             d = otz + 1;
             otbase = (u32 *)&D_800A6610[*(u16 *)(base + 0xA3D2) << 14];
@@ -512,8 +512,8 @@ void func_8001EFE0(s32 arg0)
                 um.t[0] = 0;
                 shift = 2 - mode;
                 abr = (attr >> 28) & 3;
-                SRM_8001EFE0(&um);
-                STM_8001EFE0(&um);
+                gte_SetRotMatrix(&um);
+                gte_SetTransMatrix(&um);
                 tpA = ((u8)mode << 9) | ((u8)abr << 7);
                 tpB = ((u8)mode << 7) | ((u8)abr << 5);
                 tpAb = ((u8)mode << 9) | 0x80;
@@ -581,10 +581,10 @@ void func_8001EFE0(s32 arg0)
                         v1.vy = vh;
                         v1.vz = sz;
                         __asm__("" : : "r"(vh), "r"(vv2), "r"(vw));
-                        ldv3_8001EFE0(&v0, &v1, &v1);
-                        rtpt_8001EFE0();
-                        stsxy0_8001EFE0(&xy0);
-                        stsxy1_8001EFE0(&xy1);
+                        gte_ldv3(&v0, &v1, &v1);
+                        gte_rtpt();
+                        gte_stsxy0(&xy0);
+                        gte_stsxy1(&xy1);
                         *(u16 *)(q + 8) = *(u16 *)&xy0 + sv.vx;
                         *(u16 *)(q + 0xA) = *((u16 *)&xy0 + 1) + sv.vy;
                         *(u16 *)(q + 0x10) = *(u16 *)(q + 8) + *(u16 *)&xy1;

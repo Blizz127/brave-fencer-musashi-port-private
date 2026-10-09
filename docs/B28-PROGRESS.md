@@ -1146,6 +1146,19 @@ Increment 32 (generator, strict only):
   8001EFE0 (not in lane). Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0,
   regr LOST [].
 
+### Increment 80: func_8001EFE0 into the strict lane; stop at frame-driver scratchpad write
+
+- src/main/8001efe0.c's local GTE asm macros now use the PsyQ inline_c.h
+  names (gte_SetRotMatrix, gte_ldv0, gte_ldv3, gte_rtps, gte_rtpt, gte_stsxy,
+  gte_stsxy0/1, gte_stflg, gte_stsz, gte_stszotz); bytes unchanged
+  (build_candidate cmp identical; verify_registry re-verified vs retail).
+- New strict host helpers gte_stsxy0 / gte_stsxy1 / gte_stsz
+  (include/musashi_lane_gte_inline.h, psyq_psycross.c; generator name lists).
+- Run: frame 1237 (prims=32 at two frames, draw=0); regr GAINED 8001EFE0.
+  New stop: seam=frame_driver guest_write 1F8002DC (the driver's
+  RotMatrixZYX HLE writing a scratchpad matrix). Gates: build=0,
+  TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [].
+
 ## Next
 
 - Admit or reshape sc02_0031 `func_801831B4` (currently `abi`). Likely next

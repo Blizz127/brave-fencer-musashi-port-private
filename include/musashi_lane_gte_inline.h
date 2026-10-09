@@ -27,6 +27,9 @@ void musashi_lane_gte_stsxy(void *r0);
 void musashi_lane_gte_stsxy3(void *r0, void *r1, void *r2);
 void musashi_lane_gte_stsxy3c(void *r0);
 void musashi_lane_gte_stsz3(void *r0, void *r1, void *r2);
+void musashi_lane_gte_stsxy0(void *r0);
+void musashi_lane_gte_stsxy1(void *r0);
+void musashi_lane_gte_stsz(void *r0);
 void musashi_lane_gte_stsz4(void *r0, void *r1, void *r2, void *r3);
 void musashi_lane_gte_stszotz(void *r0);
 void musashi_lane_gte_stflg(void *r0);
@@ -58,6 +61,9 @@ void musashi_lane_gte_strgb(void *r0);
 #define gte_stsxy3c(r0) musashi_lane_gte_stsxy3c((void *)(r0))
 #define gte_stsz3(r0, r1, r2) musashi_lane_gte_stsz3((void *)(r0), (void *)(r1), (void *)(r2))
 #define gte_stsz4(r0, r1, r2, r3) musashi_lane_gte_stsz4((void *)(r0), (void *)(r1), (void *)(r2), (void *)(r3))
+#define gte_stsxy0(r0) musashi_lane_gte_stsxy0((void *)(r0))
+#define gte_stsxy1(r0) musashi_lane_gte_stsxy1((void *)(r0))
+#define gte_stsz(r0) musashi_lane_gte_stsz((void *)(r0))
 #define gte_stszotz(r0) musashi_lane_gte_stszotz((void *)(r0))
 #define gte_stflg(r0) musashi_lane_gte_stflg((void *)(r0))
 #define gte_stopz(r0) musashi_lane_gte_stopz((void *)(r0))

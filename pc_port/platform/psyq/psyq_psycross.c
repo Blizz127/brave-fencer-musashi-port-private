@@ -480,6 +480,21 @@ void musashi_lane_gte_stsz4(void *r0, void *r1, void *r2, void *r3) {
     lane_gte_store32(r3, MFC2(19));
     bfm_psyq_gte_end(0);
 }
+void musashi_lane_gte_stsxy0(void *r0) {
+    if (!lane_gte_lease()) return;
+    lane_gte_store32(r0, MFC2(12));
+    bfm_psyq_gte_end(0);
+}
+void musashi_lane_gte_stsxy1(void *r0) {
+    if (!lane_gte_lease()) return;
+    lane_gte_store32(r0, MFC2(13));
+    bfm_psyq_gte_end(0);
+}
+void musashi_lane_gte_stsz(void *r0) {
+    if (!lane_gte_lease()) return;
+    lane_gte_store32(r0, MFC2(19));
+    bfm_psyq_gte_end(0);
+}
 void musashi_lane_gte_stszotz(void *r0) {
     if (!lane_gte_lease()) return;
     lane_gte_store32(r0, (uint32_t)((int32_t)(MFC2(19) & 0xFFFFu) >> 2));
