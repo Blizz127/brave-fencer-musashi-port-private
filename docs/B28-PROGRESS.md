@@ -1660,6 +1660,21 @@ logs draw env, GTE control state, E1-E6 words and the first prims). Findings:
 Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []. The strict run reaches
 frame 3000 (chain cap) with no stop; the last known stop is still 80135A4C at frame 3289.
 
+
+### Inc 115: first drawn strict frames (PsyCross scene order matches hybrid)
+
+The backend call sequences differ. Hybrid (GPU bridge) runs present, then begin, then env and
+submits, all inside a scene pc_begin owns (in_scene=1). Strict runs env, submits, begin, then
+present: DrawPrim opened the scene lazily, so in_scene never latched, and the frame came out
+black or 1-bit white. pc_present now reopens the scene right after PsyX_EndScene, the same way
+the bridge does (MUSASHI_PC_LAZY_SCENE=1 restores the old order for diagnosis). isbg is passed
+through to PsyCross, which clears the backbuffer (= the draw page) at scene begin.
+
+Result: real, changing frames at the PsyQ display rect. Frame 1200 shows "NOW LOADING...";
+frames 1900-2000 show Musashi in the attract cave with the logo. The cave background geometry
+is still missing (hybrid draws it). PNGs are in /workspace/bfm-frames/.
+Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [] (no generator change).
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for

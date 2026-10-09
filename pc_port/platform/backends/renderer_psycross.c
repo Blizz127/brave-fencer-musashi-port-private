@@ -72,16 +72,6 @@ static int pc_output(void *self, const BfmPlatOutput *o) {
     return BFM_PLAT_OK;
 }
 
-static int pc_begin(void *self) {
-    PsyCrossRenderer *s = (PsyCrossRenderer *)self;
-    if (!s->in_scene) s->in_scene = PsyX_BeginScene() != 0;
-    return BFM_PLAT_OK;
-}
-
-static void to_rect(RECT16 *d, const BfmPlatRect *r) {
-    d->x = r->x; d->y = r->y; d->w = r->w; d->h = r->h;
-}
-
 /* MUSASHI_TRACE_PSYCROSS=N: log backend env/present calls (and a VRAM
  * readback of both 320x240 pages after PsyX_EndScene) for frames N..N+2;
  * MUSASHI_TRACE_PSYCROSS_EVERY=K: every K-th frame; MUSASHI_TRACE_PSYCROSS_ENVS=1:
@@ -93,6 +83,17 @@ static int pc_trace(void) {
     if (every == -2) { const char *e = getenv("MUSASHI_TRACE_PSYCROSS_EVERY"); every = e ? atol(e) : 0; }
     if (every > 0 && pc_frames % (unsigned long)every == 0) return 1;
     return at >= 0 && pc_frames >= (unsigned long)at && pc_frames <= (unsigned long)at + 2;
+}
+
+static int pc_begin(void *self) {
+    PsyCrossRenderer *s = (PsyCrossRenderer *)self;
+    if (!s->in_scene) s->in_scene = PsyX_BeginScene() != 0;
+    if (pc_trace()) fprintf(stderr, "PC_SEQ f=%lu begin in_scene=%d\n", pc_frames, s->in_scene);
+    return BFM_PLAT_OK;
+}
+
+static void to_rect(RECT16 *d, const BfmPlatRect *r) {
+    d->x = r->x; d->y = r->y; d->w = r->w; d->h = r->h;
 }
 
 static int pc_draw_env(void *self, const BfmPlatDrawEnv *e) {
@@ -240,6 +241,7 @@ static void draw_one(const BfmPlatPrim *q) {
 static int pc_submit(void *self, const BfmPlatPrim *p, size_t n) {
     size_t i;
     (void)self;
+    if (pc_trace()) fprintf(stderr, "PC_SEQ f=%lu submit n=%zu k0=%u\n", pc_frames, n, n ? p[0].kind : 0);
     pc_submits += n;
     for (i = 0; i < n; i++) draw_one(&p[i]);
     return BFM_PLAT_OK;
@@ -249,6 +251,7 @@ static int pc_upload(void *self, const BfmPlatRect *r, const uint16_t *px) {
     RECT16 rr;
     (void)self;
     to_rect(&rr, r);
+    if (pc_trace()) fprintf(stderr, "PC_SEQ f=%lu upload %d,%d,%d,%d\n", pc_frames, r->x, r->y, r->w, r->h);
     LoadImage(&rr, (u_long *)(uintptr_t)px);
     DrawSync(0);
     return BFM_PLAT_OK;
@@ -258,6 +261,7 @@ static int pc_download(void *self, const BfmPlatRect *r, uint16_t *px) {
     RECT16 rr;
     (void)self;
     to_rect(&rr, r);
+    if (pc_trace()) fprintf(stderr, "PC_SEQ f=%lu download %d,%d,%d,%d\n", pc_frames, r->x, r->y, r->w, r->h);
     DrawSync(0);   /* queued draws first, so the read sees them */
     StoreImage(&rr, (u_long *)px);
     DrawSync(0);
@@ -282,6 +286,10 @@ static int pc_present(void *self) {
      * scene open. */
     PsyX_EndScene();
     s->in_scene = 0;
+    /* Reopen at once, as the GPU bridge does (present, then begin_frame):
+     * the native PsyQ path's draws for the next frame then land in a scene
+     * pc_begin owns, not one DrawPrim opened lazily mid-frame. */
+    if (!getenv("MUSASHI_PC_LAZY_SCENE")) s->in_scene = PsyX_BeginScene() != 0;
     if (pc_trace()) {
         static u_short px[320 * 240];
         RECT16 rr;
