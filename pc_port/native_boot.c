@@ -4953,6 +4953,9 @@ static int dump_read_vram(NativeBoot *boot, unsigned x, unsigned y,
                                          width, height, pixels, width * height);
 }
 
+static const char *g_dump_tag = ""; /* file-name suffix of the next dump */
+static NativeBoot *g_dump_boot;      /* for dumps outside main's exit path */
+
 static void dump_display_vram(NativeBoot *boot) {
     unsigned x = boot->gpu.display.x, y = boot->gpu.display.y;
     unsigned width = boot->gpu.display.width ? boot->gpu.display.width : 320u;
@@ -5017,7 +5020,10 @@ static void dump_display_vram(NativeBoot *boot) {
             free(alt_pixels);
         }
     }
-    out = fopen("native_vram_display.ppm", "wb");
+    char ppm_name[96], png_name[96], full_name[512];
+    snprintf(ppm_name, sizeof ppm_name, "native_vram_display%s.ppm", g_dump_tag);
+    snprintf(png_name, sizeof png_name, "native_vram_display%s.png", g_dump_tag);
+    out = fopen(ppm_name, "wb");
     if (out) {
         fprintf(out, "P6\n%u %u\n255\n", width, height);
         for (i = 0; i < count; ++i) {
@@ -5030,12 +5036,12 @@ static void dump_display_vram(NativeBoot *boot) {
         }
         fclose(out);
     }
-    fprintf(stderr, "native_boot: VRAM_DUMP path=native_vram_display.ppm "
-            "x=%u y=%u %ux%u nonblack=%llu/%u\n",
+    fprintf(stderr, "native_boot: VRAM_DUMP path=%s "
+            "x=%u y=%u %ux%u nonblack=%llu/%u\n", ppm_name,
             x, y, width, height, (unsigned long long)nonblack, count);
-    if (write_png_rgb555("native_vram_display.png", width, height, pixels)) {
-        fprintf(stderr, "native_boot: VRAM_DUMP path=native_vram_display.png "
-                "x=%u y=%u %ux%u nonblack=%llu/%u\n",
+    if (write_png_rgb555(png_name, width, height, pixels)) {
+        fprintf(stderr, "native_boot: VRAM_DUMP path=%s "
+                "x=%u y=%u %ux%u nonblack=%llu/%u\n", png_name,
                 x, y, width, height, (unsigned long long)nonblack, count);
     }
     free(pixels);
@@ -5044,7 +5050,17 @@ static void dump_display_vram(NativeBoot *boot) {
         uint64_t full_nonblack = 0, full_checked = 0;
         /* Opt-in whole-VRAM image: shows every page the guest drew into,
          * not only the one the GP1 display origin selects. */
-        const char *full_path = getenv("MUSASHI_DUMP_VRAM_FULL");
+        const char *full_env = getenv("MUSASHI_DUMP_VRAM_FULL");
+        const char *full_path = NULL;
+        if (full_env) {
+            /* tagged dumps: <base>.<tag>.png beside the exit dump's path */
+            if (g_dump_tag[0]) {
+                const char *dot = strrchr(full_env, '.');
+                int n = dot ? (int)(dot - full_env) : (int)strlen(full_env);
+                snprintf(full_name, sizeof full_name, "%.*s%s.png", n, full_env, g_dump_tag);
+            } else snprintf(full_name, sizeof full_name, "%s", full_env);
+            full_path = full_name;
+        }
         uint16_t *full = full_path ? malloc(1024u * 512u * sizeof(*full)) : NULL;
         int ok = 1;
         unsigned yy, xx;
@@ -5065,6 +5081,20 @@ static void dump_display_vram(NativeBoot *boot) {
         free(full);
     }
 }
+
+/* MUSASHI_DUMP_VRAM=1 diagnostics outside the exit path: the strict stop
+ * (tag "_stop") and MUSASHI_DUMP_VRAM_AT=<frame>[,<frame>...] (tag "_f<N>",
+ * called by the frame driver). Each prints RENDER_STATS and writes the
+ * display (and, with MUSASHI_DUMP_VRAM_FULL, whole-VRAM) image. */
+void musashi_native_dump_vram_tagged(const char *tag) {
+    if (!g_dump_boot) return;
+    g_dump_tag = tag ? tag : "";
+    fprintf(stderr, "native_boot: VRAM_DUMP_TAG %s\n", g_dump_tag);
+    dump_display_vram(g_dump_boot);
+    g_dump_tag = "";
+}
+
+static void strict_stop_dump(void) { musashi_native_dump_vram_tagged("_stop"); }
 
 static void host_window_inspect(SDL_Window *window) {
     int width = 0, height = 0;
@@ -5748,6 +5778,13 @@ int main(int argc, char **argv) {
     static NativeBoot boot_storage; /* One stable, zero-initialized owner. */
     NativeBoot *const boot_owner = native_boot_owner(&boot_storage);
 #define boot (*boot_owner)
+    {
+        const char *dv = getenv("MUSASHI_DUMP_VRAM");
+        if (dv && dv[0] == '1') {
+            g_dump_boot = boot_owner;
+            musashi_strict_pre_abort = strict_stop_dump;
+        }
+    }
     MusashiEntryRunStop entry_stop = {0};
     MusashiResetGraphPrefixStop stop = {0};
     MusashiResetGraphPrefixStatus status;

@@ -13,8 +13,11 @@
 #include <execinfo.h>
 #endif
 
+void (*musashi_strict_pre_abort)(void);
+
 void musashi_strict_abort(const char *seam, const char *routine, uint32_t guest_pc)
 {
+    static int aborting;
     fflush(stdout);
     fprintf(stderr,
             "native_boot: STRICT_INTERPRETER_ENTRY seam=%s routine=%s guest_pc=%08x\n"
@@ -31,6 +34,12 @@ void musashi_strict_abort(const char *seam, const char *routine, uint32_t guest_
         }
     }
 #endif
+    /* Diagnostics registered by the boot (render stats + VRAM dump at the
+     * stop, MUSASHI_DUMP_VRAM=1); run once, never recursively. */
+    if (musashi_strict_pre_abort && !aborting) {
+        aborting = 1;
+        musashi_strict_pre_abort();
+    }
     fflush(stderr);
     abort();
 }

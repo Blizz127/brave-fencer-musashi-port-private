@@ -1558,6 +1558,25 @@ Increment 32 (generator, strict only):
 - Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [], both
   gained. Run: 3000 frames, no stop.
 
+### Inc 110: render stats + VRAM dumps before the stop and at chosen frames
+
+- musashi_strict_abort runs an optional hook (musashi_strict_pre_abort)
+  once before abort(). With MUSASHI_DUMP_VRAM=1, native_boot registers its
+  RENDER_STATS + display/whole-VRAM dump there (tag _stop).
+  MUSASHI_DUMP_VRAM_AT=N[,N...] does the same at those frames (tag _f<N>;
+  files native_vram_display_<tag>.png and <MUSASHI_DUMP_VRAM_FULL base>_<tag>.png).
+- First readout (strict, 6000-frame cap, stop at 80183F98, frame 3288):
+  - f600: title texture pages uploaded intact (logo, PUSH START, (c) 1998 SQUARE).
+  - f1200..f2400: the renderer receives ~260 prims/frame from PsyQ DrawOTag
+    (prims 5198 -> 316262, uploads stay at 698, psyq_unknown 0, last
+    PutDispEnv 0,240 320x240). Both framebuffers (x 0-320, y 0-480) stay
+    black in the whole-VRAM image, and several uploaded pages above x=320
+    look like noise. So frames 1800-2400 submit prims but draw nothing
+    visible.
+  - The display dump reads boot->gpu.display (GP1, stale 0,0 256x240), not
+    the PsyQ PutDispEnv area: a dump-side gap, noted for the next increment.
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [].
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for

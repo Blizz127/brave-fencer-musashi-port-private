@@ -12,6 +12,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+__attribute__((weak)) void musashi_native_dump_vram_tagged(const char *tag); /* native_boot.c; absent in tests */
 #include <string.h>
 #include <stdint.h>
 
@@ -4434,6 +4435,27 @@ static void main_frame(void) {
     (void)call0(F_8001AF34);
     (void)call0(F_8001513C);
     ++g_driver.frames;
+    {
+        /* MUSASHI_DUMP_VRAM_AT=N[,N...]: render stats + VRAM dump at those
+         * frames (needs MUSASHI_DUMP_VRAM=1; files tagged _f<N>). */
+        static const char *at = (const char *)-1;
+        if (at == (const char *)-1) at = getenv("MUSASHI_DUMP_VRAM_AT");
+        if (at) {
+            const char *q = at;
+            while (*q) {
+                char *end;
+                unsigned long f = strtoul(q, &end, 10);
+                if (end == q) break;
+                if (f == g_driver.frames) {
+                    char tag[32];
+                    snprintf(tag, sizeof tag, "_f%lu", f);
+                    if (musashi_native_dump_vram_tagged) musashi_native_dump_vram_tagged(tag);
+                }
+                q = (*end == ',') ? end + 1 : end;
+                if (!*end) break;
+            }
+        }
+    }
     {
         /* MUSASHI_DRIVER_TRACE=N: one progress line every N frames */
         static long every = -1;

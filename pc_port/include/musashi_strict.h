@@ -32,6 +32,10 @@ __attribute__((noreturn))
 #endif
 void musashi_strict_abort(const char *seam, const char *routine, uint32_t guest_pc);
 
+/* Optional diagnostics hook, run once by musashi_strict_abort just before
+ * abort() (native_boot registers its render stats + VRAM dump here). */
+extern void (*musashi_strict_pre_abort)(void);
+
 #ifdef __cplusplus
 }
 #endif
