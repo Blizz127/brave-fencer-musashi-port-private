@@ -59,7 +59,7 @@ void func_8001BC6C(s32 a0, s32 a1)
     c2 = c | tag;
     color = c2 | a1;
     idx = D_800B9A02 << 14;
-    ot = (u32 *)(idx + (u32)D_800A6610);
+    ot = (u32 *)(D_800A6610 + idx);
 
     if (t0 >= 0x80) {
         t0 -= 0x80;

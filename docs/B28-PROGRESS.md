@@ -1248,6 +1248,23 @@ Increment 32 (generator, strict only):
 - Run: frame 1200 (prims=32 at two frames, draw=0). New stop: guest call to
   800226C0. Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [].
 
+### Increment 87: local-address integer arithmetic as GEP; 800226C0, 8001BBBC, 8001BC6C into the lane; stop 8003B250
+
+- tools/native_lane_gen.py (strict only), two changes:
+  - int_ptr_add_to_gep: `(T *)((u32)local + n)` (ptrtoint/add/zext/inttoptr,
+    each value used once, on an alloca or a GEP off one) becomes a byte GEP off
+    the local. The old path truncated a 64-bit host stack address. Guest
+    pointers keep the existing i32 path; restricting to locals avoided a first
+    draft that lost 8002374C.
+  - The dynamic-element escape check now follows an element address parked in
+    a local pointer slot (`zp = &work[k]` at -O0) and checks the reloaded
+    values like the address itself.
+- Byte-identical source fixes (cmp + verify_registry): 8001BBBC / 8001BC6C
+  compute the OT base as D_800A6610 + index (pointer arithmetic).
+- Lane: GAINED 8001BBBC, 8001BC6C, 800226C0; LOST [].
+- Run: frame 1200 (prims=32 at two frames, draw=0). New stop: guest call to
+  8003B250. Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0.
+
 ## Next
 
 - Admit or reshape sc02_0031 `func_801831B4` (currently `abi`). Likely next

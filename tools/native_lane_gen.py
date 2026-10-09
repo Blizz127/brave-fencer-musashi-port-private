@@ -3066,6 +3066,75 @@ def pointer_slot_sources(lines):
     return {s: next(iter(v)) for s, v in stores.items() if len(v) == 1 and s not in bad}
 
 
+# Strict (B28): `(T *)((u32)ptr + n)` / `(T *)(n + (u32)ptr)` -- address
+# arithmetic spelled through a 32-bit integer for the byte match (800226C0's
+# `(h << 2) + (u32)work`) -- reaches the host as ptrtoint/add/zext/inttoptr,
+# which truncates a 64-bit host address. When each intermediate has that one
+# use and ptr is a local (alloca / GEP off one), it is the same address as a
+# byte GEP off ptr; rewrite it so the host pointer keeps its provenance. Guest
+# pointers keep the i32 path; anything else is left for the escape/inttoptr
+# rules.
+INT_PTR_ADD_RE = re.compile(r"^(\s*)(%[\w.\"$]+) = ptrtoint ptr (%[\w.\"$]+) to i32\s*$")
+
+
+def int_ptr_add_to_gep(ir):
+    lines = ir.split("\n")
+    uses = {}
+    for line in lines:
+        dm = DEF_RE.match(line)
+        rest = dm.group(2) if dm else line
+        for t in re.findall(r"%[\w.\"$]+", rest):
+            uses[t] = uses.get(t, 0) + 1
+    defs = {}
+    for k, line in enumerate(lines):
+        dm = DEF_RE.match(line)
+        if dm:
+            defs[dm.group(1)] = k
+    def local_addr(v, depth=0):
+        # an alloca, or a GEP chain off one (guest pointers keep the i32 path)
+        if v not in defs or depth > 8:
+            return False
+        rhs = DEF_RE.match(lines[defs[v]]).group(2).strip()
+        if rhs.startswith("alloca "):
+            return True
+        gm = GEP_RE.match(rhs)
+        if gm and rhs.startswith("getelementptr"):
+            parts = split_top(gm.group(1))
+            return len(parts) >= 2 and parts[1].startswith("ptr ") and local_addr(parts[1].split()[-1], depth + 1)
+        return False
+
+    drop = set()
+    for k, line in enumerate(lines):
+        m = INT_PTR_ADD_RE.match(line)
+        if not m or uses.get(m.group(2)) != 1 or not local_addr(m.group(3)):
+            continue
+        b, ptr = m.group(2), m.group(3)
+        add = None
+        for j in range(k + 1, min(k + 8, len(lines))):
+            am = re.match(r"^\s*(%[\w.\"$]+) = add (?:nuw |nsw )*i32 (%[\w.\"$]+|-?\d+), (%[\w.\"$]+|-?\d+)\s*$", lines[j])
+            if am and b in (am.group(2), am.group(3)) and am.group(2) != am.group(3):
+                add = (j, am.group(1), am.group(3) if am.group(2) == b else am.group(2))
+                break
+        if not add or uses.get(add[1]) != 1:
+            continue
+        j, c, x = add
+        zx = None
+        for i in range(j + 1, min(j + 4, len(lines))):
+            zm = re.match(r"^\s*(%[\w.\"$]+) = zext i32 " + re.escape(c) + r" to i64\s*$", lines[i])
+            if zm:
+                zx = (i, zm.group(1))
+                break
+        if not zx or uses.get(zx[1]) != 1:
+            continue
+        for i in range(zx[0] + 1, min(zx[0] + 4, len(lines))):
+            im = re.match(r"^(\s*)(%[\w.\"$]+) = inttoptr i64 " + re.escape(zx[1]) + r" to ptr\s*$", lines[i])
+            if im:
+                lines[i] = f"{im.group(1)}{im.group(2)} = getelementptr i8, ptr {ptr}, i32 {x}"
+                drop.update({k, j, zx[0]})
+                break
+    return "\n".join(l for n, l in enumerate(lines) if n not in drop)
+
+
 def place_guest_locals(ir, fname, words, vram, frame, info=None):
     """Move every alloca of fname whose address reaches a guest callee
     (lane_call_* / lane_* call argument, through constant GEPs) into the
@@ -3130,11 +3199,42 @@ def place_guest_locals(ir, fname, words, vram, frame, info=None):
                     tainted[i] = derived[op]
             fm = re.search(r"func_([0-9A-Fa-f]{8})$", ca[0])
             calls.append((int(fm.group(1), 16), tainted, len(ca[1])))
+    dyn_slots = set()
     if dynamic:
+        # Strict (B28): `p = &work[k]` at -O0 parks the element address in a
+        # local pointer slot; values reloaded from such a slot (and GEPs off
+        # them) are the same dynamic element address, checked like it.
+        changed = True
+        while changed:
+            changed = False
+            for line in lines:
+                sm = re.match(r"\s*store ptr (%[\w.\"$]+), ptr (%[\w.\"$]+)(?:, align \d+)?\s*$", line)
+                if sm and sm.group(1) in dynamic and sm.group(2) in allocas \
+                        and allocas[sm.group(2)][0] == "ptr" and sm.group(2) not in dyn_slots:
+                    dyn_slots.add(sm.group(2))
+                    changed = True
+                dm = DEF_RE.match(line)
+                if not dm or dm.group(1) in dynamic:
+                    continue
+                name, rhs = dm.group(1), dm.group(2).strip()
+                lm = re.fullmatch(r"load ptr, ptr (%[\w.\"$]+)(?:, align \d+)?", rhs)
+                if lm and lm.group(1) in dyn_slots:
+                    dynamic[name] = lm.group(1)
+                    changed = True
+                    continue
+                gm = GEP_RE.match(rhs)
+                if gm and rhs.startswith("getelementptr"):
+                    parts = split_top(gm.group(1))
+                    if len(parts) >= 2 and parts[1].startswith("ptr ") and parts[1].split()[-1] in dynamic:
+                        dynamic[name] = parts[1].split()[-1]
+                        changed = True
         for line in lines:
             dm = DEF_RE.match(line)
             if dm and dm.group(1) in dynamic:
                 continue  # the GEP itself
+            sm = re.match(r"\s*store ptr (%[\w.\"$]+), ptr (%[\w.\"$]+)(?:, align \d+)?\s*$", line)
+            if sm and sm.group(2) in dyn_slots:
+                continue  # parked in a local pointer slot (followed above)
             hm = re.search(r"\bcall [^@]*@([\w.$]+)\(", line)
             if hm and hm.group(1) in GTE_INLINE_HELPERS:
                 # inline_c.h stand-ins only load/store through their pointer
@@ -3326,6 +3426,7 @@ def build_one(entry, out, symbols, hooks, clang, info=None):
             ir = strip_symbol_binding_asm(ir)
             ir = fix_short_calls(ir, retail_words(vram, size, info), vram, src.parent, info)
             ir, _ = narrow_aggregate_pointers(ir)
+            ir = int_ptr_add_to_gep(ir)
         check_layout(ir)
         words = retail_words(vram, size, info)
         frame = retail_frame(words) if words is not None else 0

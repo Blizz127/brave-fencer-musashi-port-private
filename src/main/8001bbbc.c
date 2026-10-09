@@ -83,8 +83,7 @@ void func_8001BBBC(s32 a0, s32 a1, u8 a2)
     *(u16 *)(p + 18) = 8;
 
     val = *(u32 *)p;
-    tblAddr = (tblAddr << 14) + (u32)&D_800A6610;
-    tbl = (u32 *)tblAddr;
+    tbl = (u32 *)(D_800A6610 + (tblAddr << 14));
 
     *(u16 *)(p + 12) = (u16)a0;
     *(u32 *)(p + 4) = tag0;
