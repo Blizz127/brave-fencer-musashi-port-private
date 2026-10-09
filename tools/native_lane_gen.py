@@ -289,6 +289,8 @@ def masked_amount(val, defs, seen=None):
     mm = re.match(r"and i\d+ (?:%[\w.\"$]+, (\d+)|(\d+), %[\w.\"$]+)$", d)
     if mm:
         return int(mm.group(1) or mm.group(2)) <= 31
+    if re.match(r"zext (?:nneg )?i1 ", d):
+        return True  # 0 or 1: `if (c) v >>= 1` folded to `lshr v, zext c` (80032048)
     if d.startswith("phi "):
         vals = re.findall(r"\[\s*(.+?),\s*%[\w.\"$]+\s*\]", d)
         return bool(vals) and all(masked_amount(x, defs, seen) for x in vals)
@@ -2737,6 +2739,56 @@ def _call_use_index():
     return used
 
 
+
+def fix_cast_return_abi(ir):
+    """When MATCH C casts an s16/s8-returning callee to a wider integer return
+    (`((s32 (*)(...))f)()`), Clang emits `call i32 @f` against
+    `declare signext i16 @f`. On x86-64 the callee only writes ax; the caller
+    reading eax as i32 sees dirty high bits (80135D20's switch then takes its
+    default, leaves p null, and 80135EB0 faults at +4). Call the declared
+    type and extend to the call site's width."""
+    decls = {}
+    for m in re.finditer(r"^declare\b([^@]*)@([\w.$]+)\(", ir, flags=re.M):
+        pre, name = m.group(1), m.group(2)
+        rm = re.search(r"\b(zeroext|signext)\s+(i\d+)\b|\b(i\d+)\b", pre)
+        if not rm:
+            continue
+        if rm.group(2):
+            decls[name] = (rm.group(2), rm.group(1) == "signext", rm.group(1) == "zeroext")
+        else:
+            decls[name] = (rm.group(3), False, False)
+    out, n = [], 0
+    call_re = re.compile(
+        r"^(\s*)(%[\w.\"$]+)\s*=\s*((?:tail |musttail |notail )?call )"
+        r"(?:[^@]*\s)?(i\d+)\s+(@[\w.$]+)\((.*)\)(.*)$")
+    for line in ir.splitlines():
+        cm = call_re.match(line)
+        if not cm:
+            out.append(line)
+            continue
+        ind, dest, callkw, want_ty, target, args, rest = cm.groups()
+        name = target[1:]
+        if name not in decls or name.startswith("llvm."):
+            out.append(line)
+            continue
+        have_ty, sext, zext = decls[name]
+        want_w, have_w = int(want_ty[1:]), int(have_ty[1:])
+        if have_w >= want_w or have_w not in (8, 16) or want_w not in (16, 32, 64):
+            out.append(line)
+            continue
+        if not (sext or zext):
+            # narrow integer returns without an ext attr still only define the
+            # low bits on the SysV ABI; treat as signext (C integer promotions)
+            sext = True
+        n += 1
+        tmp = f"%lane.abi.r{n}"
+        ext = "sext" if sext else "zext"
+        attr = "signext " if sext else "zeroext "
+        out.append(f"{ind}{tmp} = {callkw}{attr}{have_ty} {target}({args}){rest}")
+        out.append(f"{ind}{dest} = {ext} {have_ty} {tmp} to {want_ty}")
+    return "\n".join(out) + ("\n" if ir.endswith("\n") or not ir else "")
+
+
 def covered_switch_defaults(optir, own_source):
     """Strict only: LLVM names a switch default `default.unreachable` when it
     proves the cases cover every value the operand can take (80135480:
@@ -3101,6 +3153,8 @@ def build_one(entry, out, symbols, hooks, clang, info=None):
             rewrite_symbols(ir, symbols, member, info["code"] if info else ()),
             "lane_" + qualify(member, name), words, vram, frame, info)
         rewritten = lower_arith(narrow_pointer_cells(rewritten))
+        # Host ABI: widen casted narrow returns before optimize (80135D20).
+        rewritten = fix_cast_return_abi(rewritten)
         if words is not None:
             rewritten = add_frame_adjust(rewritten, "lane_" + qualify(member, name), frame)
         if guest_locals and "%lane.spa.e1 =" not in rewritten:

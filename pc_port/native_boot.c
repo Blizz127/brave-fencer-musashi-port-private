@@ -5120,6 +5120,7 @@ static void hold_window(NativeBoot *boot) {
 #ifdef MUSASHI_NATIVE_LANE_TABLE
 #include <stddef.h>
 #include <sys/mman.h>
+#include <ucontext.h>
 #include "musashi_native_lane.h"
 #include "musashi_strict.h"
 #include "musashi_native_lane_psyq.h"
@@ -5176,12 +5177,22 @@ static void lane_fault(int sig, siginfo_t *info, void *context) {
     uint32_t pc = musashi_native_lane_current();
     int i, n = 0;
     const char *head = "native_boot: HOST_FAULT addr=";
-    (void)context;
     while (*head) buf[n++] = *head++;
     for (i = 60; i >= 0; i -= 4) buf[n++] = hex[(addr >> i) & 15u];
     head = " lane_pc=";
     while (*head) buf[n++] = *head++;
     for (i = 28; i >= 0; i -= 4) buf[n++] = hex[(pc >> i) & 15u];
+#if defined(__linux__) && defined(__x86_64__)
+    if (context) {
+        /* host instruction address, for addr2line/nm against the binary */
+        uint64_t rip = (uint64_t)((ucontext_t *)context)->uc_mcontext.gregs[16]; /* REG_RIP (glibc x86_64), named only under _GNU_SOURCE */
+        head = " host_pc=";
+        while (*head) buf[n++] = *head++;
+        for (i = 60; i >= 0; i -= 4) buf[n++] = hex[(rip >> i) & 15u];
+    }
+#else
+    (void)context;
+#endif
     buf[n++] = '\n';
     (void)!write(2, buf, (size_t)n);
     signal(sig, SIG_DFL);

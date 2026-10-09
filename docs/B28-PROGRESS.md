@@ -801,8 +801,31 @@ Increment 32 (generator, strict only):
   ctest 37/37, m2c=0.
 - Strict stop: main 80032048. Frame 1200: prims=0 disp=1 draw=0.
 
+## Increment 56 (stop 80032048 -> 80020F34)
+
+- Strict/host ABI, tools/native_lane_gen.py `fix_cast_return_abi`: MATCH C that
+  casts an s16-returning callee to s32 (`((s32 (*)(...))func_80135480)()` in
+  80135D20) makes Clang emit `call i32 @f` against `declare signext i16 @f`.
+  On x86-64 the callee only writes ax; the caller reading eax as i32 saw dirty
+  high bits, so 80135D20's switch took its default (p left null) and
+  80135EB0 faulted at +4 (`HOST_FAULT addr=4 lane_pc=80135d20`). The IR now
+  calls the declared narrow type and sext/zext to the call site's width.
+- Strict only, tools/native_lane_gen.py `masked_amount`: treat
+  `zext (?:nneg )?i1` as a masked shift amount (`if (c) v >>= 1` folded to
+  `lshr v, zext c`). Admits main 80032048 (acyclic+call, mapped).
+- pc_port/native_boot.c HOST_FAULT: print `host_pc=` (RIP) via ucontext for
+  addr2line against the binary.
+- Lanes: main 3852 -> 3854/4073, overlay 3141 -> 3142/3329. regr LOST [].
+  Gate: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, retail main 0 data /
+  2 known jtbl build failures.
+- Strict stop: main 80020F34 (GTE bank leaf [80020F34,80021008); no matched C
+  yet; lane_call stubs still guest_call). Frame 1200: prims=0 disp=1 draw=0.
+
 ## Next
 
+- Admit or HLE main 80020F34 (exported GTE bank leaf; interpreter has
+  gte_20f34_site / gte_20f34_caller). No provenance match between 80020DA4 and
+  80021008 today.
 - Display path for the logo: compare the GPU packets the strict path submits
   with what the overlay's draw loop queues.
 - Keep walking toward attract mode and the village (main_0012 is already in
