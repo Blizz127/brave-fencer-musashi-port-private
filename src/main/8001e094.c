@@ -188,12 +188,44 @@ __asm__(".include \"gte_macros.inc\"\n");
 
 extern u8 D_800AF648;
 
+/* PsyQ inline_c.h GTE macros (bodies as in the retail-matched asm blocks; the
+ * strict lane maps the names to host helpers). */
+#define gte_SetRotMatrix(r0) __asm__ __volatile__(                 \
+    "lw $12, 0(%0)\n" "lw $13, 4(%0)\n"                           \
+    "ctc2 $12, $0\n" "ctc2 $13, $1\n"                             \
+    "lw $12, 8(%0)\n" "lw $13, 12(%0)\n" "lw $14, 16(%0)\n"       \
+    "ctc2 $12, $2\n" "ctc2 $13, $3\n" "ctc2 $14, $4\n"            \
+    : : "r"(r0) : "$12", "$13", "$14", "memory")
+#define gte_SetTransMatrix(r0) __asm__ __volatile__(               \
+    "lw $12, 20(%0)\n" "lw $13, 24(%0)\n"                         \
+    "ctc2 $12, $5\n" "lw $14, 28(%0)\n"                           \
+    "ctc2 $13, $6\n" "ctc2 $14, $7\n"                             \
+    : : "r"(r0) : "$12", "$13", "$14", "memory")
+#define gte_ldclmv(r0) __asm__ __volatile__(                       \
+    "lhu $12, 0(%0)\n" "lhu $13, 6(%0)\n" "lhu $14, 12(%0)\n"     \
+    "mtc2 $12, $9\n" "mtc2 $13, $10\n" "mtc2 $14, $11\n"          \
+    : : "r"(r0) : "$12", "$13", "$14", "memory")
+#define gte_rtir() __asm__ __volatile__("nop\n" "nop\n" "mvmva 1, 0, 3, 3, 0\n")
+#define gte_stclmv(r0) __asm__ __volatile__(                       \
+    "mfc2 $12, $9\n" "mfc2 $13, $10\n" "mfc2 $14, $11\n"          \
+    "sh $12, 0(%0)\n" "sh $13, 6(%0)\n" "sh $14, 12(%0)\n"        \
+    : : "r"(r0) : "$12", "$13", "$14", "memory")
+#define gte_ldlv0(r0) __asm__ __volatile__(                        \
+    "lhu $13, 4(%0)\n" "lhu $12, 0(%0)\n"                         \
+    "sll $13, $13, 16\n" "or $12, $12, $13\n"                     \
+    "mtc2 $12, $0\n" "lwc2 $1, 8(%0)\n"                           \
+    : : "r"(r0) : "$12", "$13", "memory")
+#define gte_rt() __asm__ __volatile__("nop\n" "nop\n" "mvmva 1, 0, 0, 0, 0\n")
+#define gte_stlvnl(r0) __asm__ __volatile__(                       \
+    "swc2 $25, 0(%0)\n" "swc2 $26, 4(%0)\n" "swc2 $27, 8(%0)\n"   \
+    : : "r"(r0) : "memory")
+
 void func_8001E094(s32 arg0)
 {
     s16 sc[16];
     s16 res[16];
-    s32 g;
-    s32 t;
+    u8 *g;
+    u8 *t;
 
     sc[0] = *(u16 *)(arg0 + 0x18);
     sc[1] = 0;
@@ -205,117 +237,52 @@ void func_8001E094(s32 arg0)
     sc[7] = 0;
     sc[8] = *(u16 *)(arg0 + 0x1C);
 
-    g = (s32)&D_800AF648;
+    g = &D_800AF648;
 
     /* gte_SetRotMatrix(obj->mat) */
-    __asm__ __volatile__(
-        "lw $12, 0(%0)\n" "lw $13, 4(%0)\n"
-        "ctc2 $12, $0\n" "ctc2 $13, $1\n"
-        "lw $12, 8(%0)\n" "lw $13, 12(%0)\n" "lw $14, 16(%0)\n"
-        "ctc2 $12, $2\n" "ctc2 $13, $3\n" "ctc2 $14, $4\n"
-        : : "r"(*(s32 *)(arg0 + 0x34)) : "$12", "$13", "$14", "memory");
+    gte_SetRotMatrix(*(s32 *)(arg0 + 0x34));
 
     /* res = obj->mat * sc, column by column */
-    __asm__ __volatile__(
-        "lhu $12, 0(%0)\n" "lhu $13, 6(%0)\n" "lhu $14, 12(%0)\n"
-        "mtc2 $12, $9\n" "mtc2 $13, $10\n" "mtc2 $14, $11\n"
-        "nop\n" "nop\n" "mvmva 1, 0, 3, 3, 0\n"
-        : : "r"((s32)sc) : "$12", "$13", "$14", "memory");
-    __asm__ __volatile__(
-        "mfc2 $12, $9\n" "mfc2 $13, $10\n" "mfc2 $14, $11\n"
-        "sh $12, 0(%0)\n" "sh $13, 6(%0)\n" "sh $14, 12(%0)\n"
-        : : "r"((s32)res) : "$12", "$13", "$14", "memory");
+    gte_ldclmv(sc);
+    gte_rtir();
+    gte_stclmv(res);
 
-    __asm__ __volatile__(
-        "lhu $12, 0(%0)\n" "lhu $13, 6(%0)\n" "lhu $14, 12(%0)\n"
-        "mtc2 $12, $9\n" "mtc2 $13, $10\n" "mtc2 $14, $11\n"
-        "nop\n" "nop\n" "mvmva 1, 0, 3, 3, 0\n"
-        : : "r"((s32)sc + 2) : "$12", "$13", "$14", "memory");
-    __asm__ __volatile__(
-        "mfc2 $12, $9\n" "mfc2 $13, $10\n" "mfc2 $14, $11\n"
-        "sh $12, 0(%0)\n" "sh $13, 6(%0)\n" "sh $14, 12(%0)\n"
-        : : "r"((s32)res + 2) : "$12", "$13", "$14", "memory");
+    gte_ldclmv((u8 *)sc + 2);
+    gte_rtir();
+    gte_stclmv((u8 *)res + 2);
 
-    __asm__ __volatile__(
-        "lhu $12, 0(%0)\n" "lhu $13, 6(%0)\n" "lhu $14, 12(%0)\n"
-        "mtc2 $12, $9\n" "mtc2 $13, $10\n" "mtc2 $14, $11\n"
-        "nop\n" "nop\n" "mvmva 1, 0, 3, 3, 0\n"
-        : : "r"((s32)sc + 4) : "$12", "$13", "$14", "memory");
-    __asm__ __volatile__(
-        "mfc2 $12, $9\n" "mfc2 $13, $10\n" "mfc2 $14, $11\n"
-        "sh $12, 0(%0)\n" "sh $13, 6(%0)\n" "sh $14, 12(%0)\n"
-        : : "r"((s32)res + 4) : "$12", "$13", "$14", "memory");
+    gte_ldclmv((u8 *)sc + 4);
+    gte_rtir();
+    gte_stclmv((u8 *)res + 4);
 
     *(s32 *)((u8 *)res + 0x14) = *(s32 *)(*(s32 *)(arg0 + 0x34) + 0x14);
     *(s32 *)((u8 *)res + 0x18) = *(s32 *)(*(s32 *)(arg0 + 0x34) + 0x18);
     *(s32 *)((u8 *)res + 0x1C) = *(s32 *)(*(s32 *)(arg0 + 0x34) + 0x1C);
 
     /* gte_SetRotMatrix(&D_800AF648) */
-    __asm__ __volatile__(
-        "lw $12, 0(%0)\n" "lw $13, 4(%0)\n"
-        "ctc2 $12, $0\n" "ctc2 $13, $1\n"
-        "lw $12, 8(%0)\n" "lw $13, 12(%0)\n" "lw $14, 16(%0)\n"
-        "ctc2 $12, $2\n" "ctc2 $13, $3\n" "ctc2 $14, $4\n"
-        : : "r"(g) : "$12", "$13", "$14", "memory");
+    gte_SetRotMatrix(g);
 
-    __asm__ __volatile__(
-        "lhu $12, 0(%0)\n" "lhu $13, 6(%0)\n" "lhu $14, 12(%0)\n"
-        "mtc2 $12, $9\n" "mtc2 $13, $10\n" "mtc2 $14, $11\n"
-        "nop\n" "nop\n" "mvmva 1, 0, 3, 3, 0\n"
-        : : "r"((s32)res) : "$12", "$13", "$14", "memory");
-    __asm__ __volatile__(
-        "mfc2 $12, $9\n" "mfc2 $13, $10\n" "mfc2 $14, $11\n"
-        "sh $12, 0(%0)\n" "sh $13, 6(%0)\n" "sh $14, 12(%0)\n"
-        : : "r"((s32)res) : "$12", "$13", "$14", "memory");
+    gte_ldclmv(res);
+    gte_rtir();
+    gte_stclmv(res);
 
-    __asm__ __volatile__(
-        "lhu $12, 0(%0)\n" "lhu $13, 6(%0)\n" "lhu $14, 12(%0)\n"
-        "mtc2 $12, $9\n" "mtc2 $13, $10\n" "mtc2 $14, $11\n"
-        "nop\n" "nop\n" "mvmva 1, 0, 3, 3, 0\n"
-        : : "r"((s32)res + 2) : "$12", "$13", "$14", "memory");
-    __asm__ __volatile__(
-        "mfc2 $12, $9\n" "mfc2 $13, $10\n" "mfc2 $14, $11\n"
-        "sh $12, 0(%0)\n" "sh $13, 6(%0)\n" "sh $14, 12(%0)\n"
-        : : "r"((s32)res + 2) : "$12", "$13", "$14", "memory");
+    gte_ldclmv((u8 *)res + 2);
+    gte_rtir();
+    gte_stclmv((u8 *)res + 2);
 
-    __asm__ __volatile__(
-        "lhu $12, 0(%0)\n" "lhu $13, 6(%0)\n" "lhu $14, 12(%0)\n"
-        "mtc2 $12, $9\n" "mtc2 $13, $10\n" "mtc2 $14, $11\n"
-        "nop\n" "nop\n" "mvmva 1, 0, 3, 3, 0\n"
-        : : "r"((s32)res + 4) : "$12", "$13", "$14", "memory");
-    __asm__ __volatile__(
-        "mfc2 $12, $9\n" "mfc2 $13, $10\n" "mfc2 $14, $11\n"
-        "sh $12, 0(%0)\n" "sh $13, 6(%0)\n" "sh $14, 12(%0)\n"
-        : : "r"((s32)res + 4) : "$12", "$13", "$14", "memory");
+    gte_ldclmv((u8 *)res + 4);
+    gte_rtir();
+    gte_stclmv((u8 *)res + 4);
 
     /* gte_SetTransMatrix(&D_800AF648) */
-    __asm__ __volatile__(
-        "lw $12, 20(%0)\n" "lw $13, 24(%0)\n"
-        "ctc2 $12, $5\n" "lw $14, 28(%0)\n"
-        "ctc2 $13, $6\n" "ctc2 $14, $7\n"
-        : : "r"(g) : "$12", "$13", "$14", "memory");
+    gte_SetTransMatrix(g);
 
-    t = (s32)res + 0x14;
-    __asm__ __volatile__(
-        "lhu $13, 4(%0)\n" "lhu $12, 0(%0)\n"
-        "sll $13, $13, 16\n" "or $12, $12, $13\n"
-        "mtc2 $12, $0\n" "lwc2 $1, 8(%0)\n"
-        "nop\n" "nop\n" "mvmva 1, 0, 0, 0, 0\n"
-        : : "r"(t) : "$12", "$13", "memory");
-    __asm__ __volatile__(
-        "swc2 $25, 0(%0)\n" "swc2 $26, 4(%0)\n" "swc2 $27, 8(%0)\n"
-        : : "r"(t) : "memory");
+    t = (u8 *)res + 0x14;
+    gte_ldlv0(t);
+    gte_rt();
+    gte_stlvnl(t);
 
     /* gte_SetRotMatrix(res) ; gte_SetTransMatrix(res) */
-    __asm__ __volatile__(
-        "lw $12, 0(%0)\n" "lw $13, 4(%0)\n"
-        "ctc2 $12, $0\n" "ctc2 $13, $1\n"
-        "lw $12, 8(%0)\n" "lw $13, 12(%0)\n" "lw $14, 16(%0)\n"
-        "ctc2 $12, $2\n" "ctc2 $13, $3\n" "ctc2 $14, $4\n"
-        : : "r"((s32)res) : "$12", "$13", "$14", "memory");
-    __asm__ __volatile__(
-        "lw $12, 20(%0)\n" "lw $13, 24(%0)\n"
-        "ctc2 $12, $5\n" "lw $14, 28(%0)\n"
-        "ctc2 $13, $6\n" "ctc2 $14, $7\n"
-        : : "r"((s32)res) : "$12", "$13", "$14", "memory");
+    gte_SetRotMatrix(res);
+    gte_SetTransMatrix(res);
 }

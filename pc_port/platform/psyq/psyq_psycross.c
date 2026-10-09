@@ -545,6 +545,44 @@ void musashi_lane_gte_stsxy3_g3(void *r0) {
     lane_gte_store32(b + 24, MFC2(14));
     bfm_psyq_gte_end(0);
 }
+void musashi_lane_gte_avsz3(void) {
+    if (!lane_gte_lease()) return;
+    doCOP2(0x158002D);
+    bfm_psyq_gte_end(1);
+}
+void musashi_lane_gte_avsz4(void) {
+    if (!lane_gte_lease()) return;
+    doCOP2(0x168002E);
+    bfm_psyq_gte_end(1);
+}
+void musashi_lane_gte_stotz(void *r0) {        /* swc2 $7 */
+    if (!lane_gte_lease()) return;
+    lane_gte_store32(r0, MFC2(7));
+    bfm_psyq_gte_end(0);
+}
+void musashi_lane_gte_stsxy2(void *r0) {       /* swc2 $14 */
+    if (!lane_gte_lease()) return;
+    lane_gte_store32(r0, MFC2(14));
+    bfm_psyq_gte_end(0);
+}
+static void lane_gte_stsxy3_at(void *r0, unsigned a, unsigned b, unsigned c) {
+    uint8_t *p = (uint8_t *)r0;
+    if (!lane_gte_lease()) return;
+    lane_gte_store32(p + a, MFC2(12));
+    lane_gte_store32(p + b, MFC2(13));
+    lane_gte_store32(p + c, MFC2(14));
+    bfm_psyq_gte_end(0);
+}
+void musashi_lane_gte_stsxy3_f4(void *r0) { lane_gte_stsxy3_at(r0, 8, 12, 16); }
+void musashi_lane_gte_stsxy3_ft4(void *r0) { lane_gte_stsxy3_at(r0, 8, 16, 24); }
+void musashi_lane_gte_stsxy3_gt4(void *r0) { lane_gte_stsxy3_at(r0, 8, 20, 32); }
+void musashi_lane_gte_strgb3(void *r0, void *r1, void *r2) {
+    if (!lane_gte_lease()) return;
+    lane_gte_store32(r0, MFC2(20));
+    lane_gte_store32(r1, MFC2(21));
+    lane_gte_store32(r2, MFC2(22));
+    bfm_psyq_gte_end(0);
+}
 void musashi_lane_gte_strgb3_g3(void *r0) {
     uint8_t *b = (uint8_t *)r0;
     if (!lane_gte_lease()) return;

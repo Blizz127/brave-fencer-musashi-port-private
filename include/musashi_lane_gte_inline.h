@@ -40,6 +40,14 @@ void musashi_lane_gte_stsxy3_g3(void *r0);
 void musashi_lane_gte_strgb3_g3(void *r0);
 void musashi_lane_gte_nccs(void);
 void musashi_lane_gte_strgb(void *r0);
+void musashi_lane_gte_avsz3(void);
+void musashi_lane_gte_avsz4(void);
+void musashi_lane_gte_stotz(void *r0);
+void musashi_lane_gte_stsxy2(void *r0);
+void musashi_lane_gte_stsxy3_f4(void *r0);
+void musashi_lane_gte_stsxy3_ft4(void *r0);
+void musashi_lane_gte_stsxy3_gt4(void *r0);
+void musashi_lane_gte_strgb3(void *r0, void *r1, void *r2);
 
 #define gte_ldv0(r0) musashi_lane_gte_ldv0((const void *)(r0))
 #define gte_ldlv0(r0) musashi_lane_gte_ldlv0((const void *)(r0))
@@ -73,6 +81,14 @@ void musashi_lane_gte_strgb(void *r0);
 #define gte_strgb3_g3(r0) musashi_lane_gte_strgb3_g3((void *)(r0))
 #define gte_nccs() musashi_lane_gte_nccs()
 #define gte_strgb(r0) musashi_lane_gte_strgb((void *)(r0))
+#define gte_avsz3() musashi_lane_gte_avsz3()
+#define gte_avsz4() musashi_lane_gte_avsz4()
+#define gte_stotz(r0) musashi_lane_gte_stotz((void *)(r0))
+#define gte_stsxy2(r0) musashi_lane_gte_stsxy2((void *)(r0))
+#define gte_stsxy3_f4(r0) musashi_lane_gte_stsxy3_f4((void *)(r0))
+#define gte_stsxy3_ft4(r0) musashi_lane_gte_stsxy3_ft4((void *)(r0))
+#define gte_stsxy3_gt4(r0) musashi_lane_gte_stsxy3_gt4((void *)(r0))
+#define gte_strgb3(r0, r1, r2) musashi_lane_gte_strgb3((void *)(r0), (void *)(r1), (void *)(r2))
 /* inline_c.h's _g4 forms store the first three vertices at the same offsets
  * as the _g3 forms (SXY +8/+16/+24, RGB +4/+12/+20). */
 #define gte_stsxy3_g4(r0) musashi_lane_gte_stsxy3_g3((void *)(r0))

@@ -1188,6 +1188,23 @@ Increment 32 (generator, strict only):
   New stop: guest call to 8001E094 (not in lane). Gates: build=0,
   TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [].
 
+### Increment 83: func_8001E094 + 14 GTE render routines into the strict lane; stop 8001EA14
+
+- src/main/8001e094.c: its open-coded GTE asm blocks become local macros under
+  the inline_c.h names (SetRotMatrix, SetTransMatrix, ldclmv, rtir, stclmv,
+  ldlv0, rt, stlvnl) and its address-to-s32 casts become byte pointers; bytes
+  unchanged (cmp identical, verify_registry re-verified).
+- New strict host helpers gte_avsz3, gte_avsz4, gte_stotz, gte_stsxy2,
+  gte_stsxy3_f4 (8/12/16), gte_stsxy3_ft4 (8/16/24), gte_stsxy3_gt4 (8/20/32),
+  gte_strgb3. Every local definition of those names in src/main was checked
+  against the inline_c.h body before adding the name. That admits 14
+  already-matched render routines (80016C28, 80016F18, 80017930, 8001E668,
+  80024BC0, 80024DE8, 80025000, 8002528C, 80025818, 80025A30, 800262D8,
+  800273F4, 800275BC, 800279AC).
+- Run: frame 1200 (prims=32 at two frames, draw=0); regr GAINED 15, LOST [].
+  New stop: guest call to 8001EA14. Gates: build=0, TABLE_IDENTICAL,
+  ctest 37/37, m2c=0.
+
 ## Next
 
 - Admit or reshape sc02_0031 `func_801831B4` (currently `abi`). Likely next
