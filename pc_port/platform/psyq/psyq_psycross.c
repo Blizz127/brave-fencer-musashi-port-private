@@ -370,6 +370,13 @@ void musashi_lane_gte_rtv0(void) {
     doCOP2(0x0480012);
     bfm_psyq_gte_end(1);
 }
+
+/* inline_c.h gte_rtv0: mvmva sf=1 mx=RT v=V0 cv=none (no translation). */
+void musashi_lane_gte_rtv0_notr(void) {
+    if (!lane_gte_lease()) return;
+    doCOP2(0x0486012);
+    bfm_psyq_gte_end(1);
+}
 static void lane_gte_store16(void *p, uint32_t v) {
     uint8_t *b = (uint8_t *)p;
     b[0] = (uint8_t)v; b[1] = (uint8_t)(v >> 8);

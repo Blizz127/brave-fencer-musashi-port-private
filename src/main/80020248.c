@@ -34,7 +34,7 @@ extern MTX_80020248 D_80075018[];
 
 extern void func_80020DA4(s32 a0, s32 a1);
 
-#define SRM_80020248(r0) __asm__ volatile (              \
+#define gte_SetRotMatrix(r0) __asm__ volatile (              \
     "lw $12, 0( %0 );"                                   \
     "lw $13, 4( %0 );"                                   \
     "ctc2 $12, $0;"                                      \
@@ -49,7 +49,7 @@ extern void func_80020DA4(s32 a0, s32 a1);
     : "r"( r0 )                                          \
     : "$12", "$13", "$14" )
 
-#define STM_80020248(r0) __asm__ volatile (              \
+#define gte_SetTransMatrix(r0) __asm__ volatile (              \
     "lw $12, 20( %0 );"                                  \
     "lw $13, 24( %0 );"                                  \
     "ctc2 $12, $5;"                                      \
@@ -60,7 +60,7 @@ extern void func_80020DA4(s32 a0, s32 a1);
     : "r"( r0 )                                          \
     : "$12", "$13", "$14" )
 
-#define LDCLMV_80020248(r0) __asm__ volatile (           \
+#define gte_ldclmv(r0) __asm__ volatile (           \
     "lhu $12, 0( %0 );"                                  \
     "lhu $13, 6( %0 );"                                  \
     "lhu $14, 12( %0 );"                                 \
@@ -71,13 +71,13 @@ extern void func_80020DA4(s32 a0, s32 a1);
     : "r"( r0 )                                          \
     : "$12", "$13", "$14" )
 
-#define RTIR_80020248() __asm__ volatile (               \
+#define gte_rtir() __asm__ volatile (               \
     "nop;"                                               \
     "nop;"                                               \
     "mvmva 1, 0, 3, 3, 0"                                \
     : : : "memory" )
 
-#define STCLMV_80020248(r0) __asm__ volatile (           \
+#define gte_stclmv(r0) __asm__ volatile (           \
     "mfc2 $12, $9;"                                      \
     "mfc2 $13, $10;"                                     \
     "mfc2 $14, $11;"                                     \
@@ -88,7 +88,7 @@ extern void func_80020DA4(s32 a0, s32 a1);
     : "r"( r0 )                                          \
     : "$12", "$13", "$14", "memory" )
 
-#define LDLVL_80020248(r0) __asm__ volatile (            \
+#define gte_ldlv0(r0) __asm__ volatile (            \
     "lhu $13, 4( %0 );"                                  \
     "lhu $12, 0( %0 );"                                  \
     "sll $13, $13, 16;"                                  \
@@ -99,19 +99,22 @@ extern void func_80020DA4(s32 a0, s32 a1);
     : "r"( r0 )                                          \
     : "$12", "$13" )
 
-#define RT_80020248() __asm__ volatile (                 \
+#define gte_rt() __asm__ volatile (                 \
     "nop;"                                               \
     "nop;"                                               \
     "mvmva 1, 0, 0, 0, 0"                                \
     : : : "memory" )
 
-#define STLVNL_80020248(r0) __asm__ volatile (           \
+#define gte_stlvnl(r0) __asm__ volatile (           \
     "swc2 $25, 0( %0 );"                                 \
     "swc2 $26, 4( %0 );"                                 \
     "swc2 $27, 8( %0 )"                                  \
     :                                                    \
     : "r"( r0 )                                          \
     : "memory" )
+
+/* 80020a28.c tests SRM_80020248 to know it shares this TU (vendor src/800.c). */
+#define SRM_80020248(r0) gte_SetRotMatrix(r0)
 
 s32 func_80020248(s32 *a0, OBJ_80020248 *a1, MTX_80020248 *a2, MTX_80020248 *a3, s32 a4)
 {
@@ -146,34 +149,34 @@ s32 func_80020248(s32 *a0, OBJ_80020248 *a1, MTX_80020248 *a2, MTX_80020248 *a3,
         lm.t[2] = a1->z;
 
         if (a4 == 0) {
-            SRM_80020248(a2);
-            LDCLMV_80020248(&lm.m[0][0]);
-            RTIR_80020248();
-            STCLMV_80020248(&rm->m[0][0]);
-            LDCLMV_80020248(&lm.m[0][1]);
-            RTIR_80020248();
-            STCLMV_80020248(&rm->m[0][1]);
-            LDCLMV_80020248(&lm.m[0][2]);
-            RTIR_80020248();
-            STCLMV_80020248(&rm->m[0][2]);
+            gte_SetRotMatrix(a2);
+            gte_ldclmv(&lm.m[0][0]);
+            gte_rtir();
+            gte_stclmv(&rm->m[0][0]);
+            gte_ldclmv(&lm.m[0][1]);
+            gte_rtir();
+            gte_stclmv(&rm->m[0][1]);
+            gte_ldclmv(&lm.m[0][2]);
+            gte_rtir();
+            gte_stclmv(&rm->m[0][2]);
             rm++;
         }
 
-        SRM_80020248(a3);
-        LDCLMV_80020248(&lm.m[0][0]);
-        RTIR_80020248();
-        STCLMV_80020248(&om->m[0][0]);
-        LDCLMV_80020248(&lm.m[0][1]);
-        RTIR_80020248();
-        STCLMV_80020248(&om->m[0][1]);
-        LDCLMV_80020248(&lm.m[0][2]);
-        RTIR_80020248();
-        STCLMV_80020248(&om->m[0][2]);
+        gte_SetRotMatrix(a3);
+        gte_ldclmv(&lm.m[0][0]);
+        gte_rtir();
+        gte_stclmv(&om->m[0][0]);
+        gte_ldclmv(&lm.m[0][1]);
+        gte_rtir();
+        gte_stclmv(&om->m[0][1]);
+        gte_ldclmv(&lm.m[0][2]);
+        gte_rtir();
+        gte_stclmv(&om->m[0][2]);
 
-        STM_80020248(a3);
-        LDLVL_80020248(&lm.t[0]);
-        RT_80020248();
-        STLVNL_80020248(&om->t[0]);
+        gte_SetTransMatrix(a3);
+        gte_ldlv0(&lm.t[0]);
+        gte_rt();
+        gte_stlvnl(&om->t[0]);
 
         om++;
         a1++;

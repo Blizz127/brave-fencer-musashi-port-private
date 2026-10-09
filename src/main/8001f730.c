@@ -26,7 +26,7 @@ __asm__(
 );
 
 extern void func_80020DA4(s32 a0, s32 a1);
-#define SRM_8001F730(r0) __asm__ volatile (              \
+#define gte_SetRotMatrix(r0) __asm__ volatile (              \
     "lw $12, 0( %0 );"                                   \
     "lw $13, 4( %0 );"                                   \
     "ctc2 $12, $0;"                                      \
@@ -40,18 +40,18 @@ extern void func_80020DA4(s32 a0, s32 a1);
     :                                                    \
     : "r"( r0 )                                          \
     : "$12", "$13", "$14" )
-#define LDV0_8001F730(r0) __asm__ volatile (             \
+#define gte_ldv0(r0) __asm__ volatile (             \
     "lwc2 $0, 0( %0 );"                                  \
     "lwc2 $1, 4( %0 )"                                   \
     :                                                    \
     : "r"( r0 )                                          \
     : "memory" )
-#define RTV0_8001F730() __asm__ volatile (               \
+#define gte_rtv0() __asm__ volatile (               \
     "nop;"                                               \
     "nop;"                                               \
     "mvmva 1, 0, 0, 3, 0"                                \
     : : : "memory" )
-#define STLVNL_8001F730(r0) __asm__ volatile (           \
+#define gte_stlvnl(r0) __asm__ volatile (           \
     "swc2 $25, 0( %0 );"                                 \
     "swc2 $26, 4( %0 );"                                 \
     "swc2 $27, 8( %0 )"                                  \
@@ -68,7 +68,7 @@ void func_8001F730(s32 a0, void *a1, void *a2)
     u8  *p = (u8 *)a2;
 
     func_80020DA4(a0, (s32)matrix);
-    SRM_8001F730(matrix);
+    gte_SetRotMatrix(matrix);
 
     sv[0][0] = *(u16 *)(p + 0x08) - c[0];
     sv[0][1] = *(u16 *)(p + 0x0A) - c[1];
@@ -83,21 +83,21 @@ void func_8001F730(s32 a0, void *a1, void *a2)
     sv[3][1] = *(u16 *)(p + 0x22) - c[1];
     sv[3][2] = 0;
 
-    LDV0_8001F730(sv[0]);
-    RTV0_8001F730();
-    STLVNL_8001F730(out[0]);
+    gte_ldv0(sv[0]);
+    gte_rtv0();
+    gte_stlvnl(out[0]);
 
-    LDV0_8001F730(sv[1]);
-    RTV0_8001F730();
-    STLVNL_8001F730(out[1]);
+    gte_ldv0(sv[1]);
+    gte_rtv0();
+    gte_stlvnl(out[1]);
 
-    LDV0_8001F730(sv[2]);
-    RTV0_8001F730();
-    STLVNL_8001F730(out[2]);
+    gte_ldv0(sv[2]);
+    gte_rtv0();
+    gte_stlvnl(out[2]);
 
-    LDV0_8001F730(sv[3]);
-    RTV0_8001F730();
-    STLVNL_8001F730(out[3]);
+    gte_ldv0(sv[3]);
+    gte_rtv0();
+    gte_stlvnl(out[3]);
 
     *(u16 *)(p + 0x08) = c[0] + out[0][0];
     *(u16 *)(p + 0x0A) = c[1] + out[0][1];

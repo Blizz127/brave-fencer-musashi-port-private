@@ -1031,7 +1031,7 @@ LANE_HELPERS = ("lane_sdiv32", "lane_srem32", "lane_udiv32", "lane_urem32")
 # include/musashi_lane_gte_inline.h and psyq_psycross.c).
 GTE_INLINE_HELPERS = (
     "musashi_lane_gte_ldlv0", "musashi_lane_gte_SetRotMatrix", "musashi_lane_gte_SetTransMatrix",
-    "musashi_lane_gte_ldclmv", "musashi_lane_gte_rtir", "musashi_lane_gte_rtv0",
+    "musashi_lane_gte_ldclmv", "musashi_lane_gte_rtir", "musashi_lane_gte_rtv0", "musashi_lane_gte_rtv0_notr",
     "musashi_lane_gte_stclmv", "musashi_lane_gte_stlvnl",
     "musashi_lane_gte_ldv0", "musashi_lane_gte_ldv3", "musashi_lane_gte_ldv3c",
     "musashi_lane_gte_rtps", "musashi_lane_gte_rtpt", "musashi_lane_gte_nclip",
@@ -2268,7 +2268,7 @@ GTE_INLINE_NAMES = (
     "ldv0", "ldv3", "ldv3c", "rtps", "rtpt", "nclip",
     "stsxy", "stsxy3", "stsxy3c", "stsz3", "stsz4", "stszotz", "stflg", "stopz",
     "ldrgb", "ncct", "stsxy3_g3", "strgb3_g3",
-    "nccs", "strgb", "stsxy3_g4", "strgb3_g4",
+    "nccs", "strgb", "stsxy3_g4", "strgb3_g4", "rtv0",
 )
 GTE_INLINE_DEFINE_HEAD = re.compile(
     r'^#define\s+gte_(?:' + '|'.join(GTE_INLINE_NAMES) + r')\b')

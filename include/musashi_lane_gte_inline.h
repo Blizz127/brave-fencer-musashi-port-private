@@ -13,6 +13,7 @@ void musashi_lane_gte_ldlv0(const void *r0);
 void musashi_lane_gte_ldclmv(const void *r0);
 void musashi_lane_gte_rtir(void);
 void musashi_lane_gte_rtv0(void);
+void musashi_lane_gte_rtv0_notr(void);
 void musashi_lane_gte_stclmv(void *r0);
 void musashi_lane_gte_stlvnl(void *r0);
 void musashi_lane_gte_SetRotMatrix(const void *r0);
@@ -42,6 +43,7 @@ void musashi_lane_gte_strgb(void *r0);
 #define gte_ldclmv(r0) musashi_lane_gte_ldclmv((const void *)(r0))
 #define gte_rtir() musashi_lane_gte_rtir()
 #define gte_rt() musashi_lane_gte_rtv0()
+#define gte_rtv0() musashi_lane_gte_rtv0_notr()
 #define gte_stclmv(r0) musashi_lane_gte_stclmv((void *)(r0))
 #define gte_stlvnl(r0) musashi_lane_gte_stlvnl((void *)(r0))
 #define gte_SetRotMatrix(r0) musashi_lane_gte_SetRotMatrix((const void *)(r0))

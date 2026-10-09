@@ -1105,6 +1105,15 @@ Increment 32 (generator, strict only):
 - Checks: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [].
 - New stop: 80020248 (main, not_in_lane). Frame 1200, prims=0, disp=1, draw=0.
 
+### Inc 76 — func_80020248 / func_8001F730 GTE macros renamed to inline_c.h names
+
+- Stop was `STRICT_INTERPRETER_ENTRY ... guest_pc=80020248` (rejected: local `SRM_/LDCLMV_/RTIR_/...` asm macros, `unknown register name '$12'` on host).
+- Renamed the file-local GTE asm macros to the libgte `inline_c.h` names (`gte_SetRotMatrix`, `gte_SetTransMatrix`, `gte_ldclmv`, `gte_rtir`, `gte_stclmv`, `gte_ldlv0`, `gte_rt`, `gte_stlvnl`) so the strict generator swaps them for the native helpers. Same for 8001F730 (`gte_SetRotMatrix`, `gte_ldv0`, `gte_rtv0`, `gte_stlvnl`).
+- New helper `musashi_lane_gte_rtv0_notr` (cop2 0x0486012, inline_c.h `gte_rtv0`: RT·V0 with no translation); `rtv0` added to GTE_INLINE_NAMES.
+- Byte-identical: gcc-2.7.2 -O2 objects unchanged for both TUs; registry re-verified vs retail. `SRM_80020248` kept as an alias for 80020a28.c's shared-TU guard.
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [] (gained 8001F730, 80020248).
+- New stop: `guest_pc=80056f18`; frame 1200, prims=0, disp=1, draw=0.
+
 ## Next
 
 - Admit or reshape sc02_0031 `func_801831B4` (currently `abi`). Likely next
