@@ -1364,3 +1364,148 @@ int bfm_psyq_ot2_gt3_l0(uint32_t *r) { return ot2_run(&kOt2PGt3l0, r); }
 int bfm_psyq_ot2_gt4_nl(uint32_t *r) { return ot2_run(&kOt2PGt4nl, r); }
 int bfm_psyq_ot2_gt4_l2(uint32_t *r) { return ot2_run(&kOt2PGt4l2, r); }
 int bfm_psyq_ot2_gt4_l0(uint32_t *r) { return ot2_run(&kOt2PGt4l0, r); }
+
+/* ---- libgs OBJT2 gradation sorters (0x80057928..0x80058890) ---------------
+ *
+ * func_80057094 sends lit F3/G3/F4/G4 primitives with flag bit 2 (per-vertex
+ * colours in the TMD) to the light-indexed tables at 0x800A2CC0/CCC/CD8/CE4:
+ *   fn(prim, vert_top, normal_top, packet, n, shift, ot, scratch)
+ * These are compiled C, not hand-written GTE code: they keep their state in
+ * the scratch block (+12 shift, +16 ot->org, +24 MAC0 then OTZ, FLAG at +36
+ * (triangles) / +40 (quads), the OT slot pointer at +52 / +56, and for the
+ * flat light-0 versions the first colour at +0), take the OT index as
+ * (OTZ >> shift) without the OT offset word, and store the slot as
+ * (packet & 0xFFFFFF). Light 0 runs NCCS once per vertex colour (RGBC from the
+ * TMD, the matching normal into V0); light 2 copies the TMD colours. Output is
+ * POLY_G3 / POLY_G4. Reconstructed from the retail instruction stream;
+ * same-input differential vs retail in a scratch probe. */
+typedef struct GrdPrim {
+    uint8_t quad, lit0, flat, step;
+    uint8_t vofs[4], nofs[4];
+} GrdPrim;
+
+static int grd_get32(uint32_t a, uint32_t *v) {
+    const uint8_t *p = (const uint8_t *)P(a, 4);
+    if (!p) return 0;
+    *v = (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
+    return 1;
+}
+static int grd_put32(uint32_t a, uint32_t v) {
+    uint8_t *p = (uint8_t *)P(a, 4);
+    if (!p) return 0;
+    lane_gte_store32(p, v);
+    return 1;
+}
+static int grd_put8(uint32_t a, uint8_t v) {
+    uint8_t *p = (uint8_t *)P(a, 1);
+    if (!p) return 0;
+    *p = v;
+    return 1;
+}
+
+static int grd_run(const GrdPrim *d, uint32_t *r) {
+    uint32_t prim = A(0), vert = A(1), norm = A(2), pk = A(3);
+    const int32_t n = (int32_t)A(4);
+    const uint32_t shift = A(5), ot = A(6), scr = A(7);
+    const uint32_t fofs = d->quad ? 40u : 36u, sofs = d->quad ? 56u : 52u, len = d->quad ? 8u : 6u;
+    uint32_t org, cmds = 0, w, v, k;
+    int32_t i;
+    if (!grd_get32(ot + 4u, &org) || !grd_put32(scr + 12u, shift) || !grd_put32(scr + 16u, org)) return 0;
+    if (n <= 0) { r[2] = pk; return 1; }
+    GTE_BEGIN();
+#define GRD_FAIL() do { GTE_END(cmds); return 0; } while (0)
+#define GRD(x) do { if (!(x)) GRD_FAIL(); } while (0)
+    for (i = 0; i < n; ++i, prim += d->step) {
+        uint32_t slot, sh, mode;
+        const uint8_t *hp;
+        for (k = 0; k < 3u; ++k) GRD(gs5_ldv((int)k, vert, gs5_u16(prim + d->vofs[k])));
+        doCOP2(0x0280030); cmds++;                                    /* RTPT */
+        GRD(hp = (const uint8_t *)P(prim, 4));
+        mode = hp[3];
+        if (d->lit0) {
+            if (d->flat) {
+                GRD(grd_get32(prim + 4u, &w) && grd_put32(scr, w) && grd_put8(scr + 3u, (uint8_t)(mode | 0x10u)));
+            }
+        } else {
+            GRD(grd_get32(prim + 4u, &w));
+            if (d->flat) GRD(grd_put32(pk + 4u, w & 0x00FFFFFFu) && grd_put8(pk + 7u, (uint8_t)(mode | 0x10u)));
+            else GRD(grd_put32(pk + 4u, w));
+        }
+        v = CFC2(31);
+        GRD(grd_put32(scr + fofs, v));
+        if (v & 0x80000000u) continue;
+        doCOP2(0x1400006); cmds++;                                    /* NCLIP */
+        if (!d->lit0) GRD(grd_get32(prim + 8u, &w) && grd_put32(pk + 12u, w));
+        v = MFC2(24);
+        GRD(grd_put32(scr + 24u, v));
+        if ((int32_t)v <= 0) continue;
+        GRD(grd_put32(pk + 8u, MFC2(12)) && grd_put32(pk + 16u, MFC2(13)) && grd_put32(pk + 24u, MFC2(14)));
+        if (d->quad) {
+            GRD(gs5_ldv(0, vert, gs5_u16(prim + d->vofs[3])));
+            doCOP2(0x0180001); cmds++;                                /* RTPS */
+            if (!d->lit0) GRD(grd_get32(prim + 12u, &w) && grd_put32(pk + 20u, w));
+            v = CFC2(31);
+            GRD(grd_put32(scr + fofs, v));
+            if (v & 0x80000000u) continue;
+            GRD(grd_put32(pk + 32u, MFC2(14)));
+            doCOP2(0x168002E); cmds++;                                /* AVSZ4 */
+            if (!d->lit0) GRD(grd_get32(prim + 16u, &w) && grd_put32(pk + 28u, w));
+        } else {
+            doCOP2(0x158002D); cmds++;                                /* AVSZ3 */
+            if (!d->lit0) GRD(grd_get32(prim + 12u, &w) && grd_put32(pk + 20u, w));
+        }
+        GRD(grd_put32(scr + 24u, MFC2(7)));
+        if (d->lit0) {
+            static const uint8_t kOut[4] = {4, 12, 20, 28};
+            for (k = 0; k < (d->quad ? 4u : 3u); ++k) {
+                if (k == 0 && d->flat) GRD(grd_get32(scr, &w));
+                else GRD(grd_get32(prim + 4u + k * 4u, &w));
+                MTC2(w, 6);
+                GRD(gs5_ldv(0, norm, gs5_u16(prim + d->nofs[k])));
+                doCOP2(0x108041B); cmds++;                            /* NCCS */
+                if (k == 0) {
+                    GRD(grd_get32(scr + 24u, &v) && grd_get32(scr + 12u, &sh) && grd_get32(scr + 16u, &org));
+                    slot = org + (uint32_t)((int32_t)v >> (sh & 31u)) * 4u;
+                    GRD(grd_put32(scr + sofs, slot));
+                } else if (k == 1) {
+                    GRD(grd_get32(scr + sofs, &slot) && grd_get32(slot, &w));
+                    GRD(grd_put32(pk, (w & 0x00FFFFFFu) | (len << 24)));
+                } else if (k == 2) {
+                    GRD(grd_get32(scr + sofs, &slot) && grd_put32(slot, pk & 0x00FFFFFFu));
+                }
+                GRD(grd_put32(pk + kOut[k], MFC2(22)));
+            }
+        } else {
+            GRD(grd_get32(scr + 24u, &v) && grd_get32(scr + 12u, &sh) && grd_get32(scr + 16u, &org));
+            slot = org + (uint32_t)((int32_t)v >> (sh & 31u)) * 4u;
+            GRD(grd_put32(scr + sofs, slot) && grd_get32(slot, &w));
+            GRD(grd_put32(pk, (w & 0x00FFFFFFu) | (len << 24)));
+            GRD(grd_get32(scr + sofs, &slot) && grd_put32(slot, pk & 0x00FFFFFFu));
+        }
+        pk += d->quad ? 36u : 28u;
+    }
+#undef GRD
+#undef GRD_FAIL
+    GTE_END(cmds);
+    r[2] = pk;
+    return 1;
+}
+
+/* quad, lit0, flat, step, vertex offsets, normal offsets (per colour) */
+static const GrdPrim kGrdG3l0 = {0, 1, 0, 28, {18, 22, 26, 0}, {16, 20, 24, 0}};
+static const GrdPrim kGrdG3l2 = {0, 0, 0, 28, {18, 22, 26, 0}, {0}};
+static const GrdPrim kGrdF3l0 = {0, 1, 1, 24, {18, 20, 22, 0}, {16, 16, 16, 0}};
+static const GrdPrim kGrdF3l2 = {0, 0, 1, 24, {18, 20, 22, 0}, {0}};
+static const GrdPrim kGrdF4l0 = {1, 1, 1, 32, {22, 24, 26, 28}, {20, 20, 20, 20}};
+static const GrdPrim kGrdF4l2 = {1, 0, 1, 32, {22, 24, 26, 28}, {0}};
+static const GrdPrim kGrdG4l0 = {1, 1, 0, 36, {22, 26, 30, 34}, {20, 24, 28, 32}};
+static const GrdPrim kGrdG4l2 = {1, 0, 0, 36, {22, 26, 30, 34}, {0}};
+
+int bfm_psyq_grd_g3_l0(uint32_t *r) { return grd_run(&kGrdG3l0, r); }
+int bfm_psyq_grd_g3_l2(uint32_t *r) { return grd_run(&kGrdG3l2, r); }
+int bfm_psyq_grd_f3_l0(uint32_t *r) { return grd_run(&kGrdF3l0, r); }
+int bfm_psyq_grd_f3_l2(uint32_t *r) { return grd_run(&kGrdF3l2, r); }
+int bfm_psyq_grd_f4_l0(uint32_t *r) { return grd_run(&kGrdF4l0, r); }
+int bfm_psyq_grd_f4_l2(uint32_t *r) { return grd_run(&kGrdF4l2, r); }
+int bfm_psyq_grd_g4_l0(uint32_t *r) { return grd_run(&kGrdG4l0, r); }
+int bfm_psyq_grd_g4_l2(uint32_t *r) { return grd_run(&kGrdG4l2, r); }

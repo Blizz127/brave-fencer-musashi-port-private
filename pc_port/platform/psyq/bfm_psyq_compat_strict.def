@@ -55,3 +55,15 @@ BFM_PSYQ(0x8004FD30, func_8004FD30, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_ot2_gt3_l0
 BFM_PSYQ(0x8005009C, func_8005009C, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_ot2_gt4_nl)
 BFM_PSYQ(0x80050258, func_80050258, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_ot2_gt4_l2)
 BFM_PSYQ(0x800503F0, func_800503F0, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_ot2_gt4_l0)
+
+/* func_80057094 gradation sorters (flag bit 2: per-vertex TMD colours): the
+ * light-0 and light-2 slots of the tables at 0x800A2CC0/CCC/CD8/CE4 (light 1
+ * is 0 in retail), wrappers in psyq_psycross.c (grd_run). */
+BFM_PSYQ(0x80057928, func_80057928, BFM_PSYQ_PSYCROSS, 8, 1, bfm_psyq_grd_g3_l0)
+BFM_PSYQ(0x80057B14, func_80057B14, BFM_PSYQ_PSYCROSS, 8, 1, bfm_psyq_grd_g3_l2)
+BFM_PSYQ(0x80057C7C, func_80057C7C, BFM_PSYQ_PSYCROSS, 8, 1, bfm_psyq_grd_f3_l0)
+BFM_PSYQ(0x80057E80, func_80057E80, BFM_PSYQ_PSYCROSS, 8, 1, bfm_psyq_grd_f3_l2)
+BFM_PSYQ(0x80057FFC, func_80057FFC, BFM_PSYQ_PSYCROSS, 8, 1, bfm_psyq_grd_f4_l0)
+BFM_PSYQ(0x80058284, func_80058284, BFM_PSYQ_PSYCROSS, 8, 1, bfm_psyq_grd_f4_l2)
+BFM_PSYQ(0x8005845C, func_8005845C, BFM_PSYQ_PSYCROSS, 8, 1, bfm_psyq_grd_g4_l0)
+BFM_PSYQ(0x800586CC, func_800586CC, BFM_PSYQ_PSYCROSS, 8, 1, bfm_psyq_grd_g4_l2)

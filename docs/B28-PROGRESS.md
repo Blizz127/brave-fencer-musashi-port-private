@@ -1159,6 +1159,26 @@ Increment 32 (generator, strict only):
   RotMatrixZYX HLE writing a scratchpad matrix). Gates: build=0,
   TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [].
 
+### Increment 81: frame-driver scratchpad access + native OBJT2 gradation sorters; stop 8001DA34
+
+- pc_port/native_frame_driver.c: the driver's guest RAM helpers (rd/wr 8/16/32,
+  used by its libgte HLE such as RotMatrixZYX) now also reach the 1 KiB data
+  scratchpad at 1F800000, as the retail code does (main keeps work matrices
+  there). driver_stop is marked noreturn.
+- psyq_psycross.c `grd_run` + 8 wrappers: the func_80057094 gradation sorters
+  (flag bit 2, per-vertex TMD colours) for F3/G3/F4/G4 at light 0 (NCCS per
+  colour) and light 2 (colour copy): 0x80057928..0x800586CC, registered
+  strict-only (tables 0x800A2CC0/CCC/CD8/CE4; light-1 slots are 0 in retail).
+  These are compiled C that keep state in the caller's scratch block (shift,
+  ot->org, MAC0/OTZ, FLAG, slot pointer); OT index is (OTZ >> shift) with no
+  offset word and the slot is stored as packet & 0xFFFFFF.
+- Same-input differential vs retail (scratch probe through retail 80057094,
+  scratch block in compared RAM): all 8 identical on 800 sane + 800 random-GTE
+  cases.
+- Run: frame 1200 (prims=32 at two frames, draw=0). New stop: guest call to
+  8001DA34 (not in lane). Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0,
+  regr LOST [].
+
 ## Next
 
 - Admit or reshape sc02_0031 `func_801831B4` (currently `abi`). Likely next

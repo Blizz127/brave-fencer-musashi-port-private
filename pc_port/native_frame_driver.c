@@ -120,7 +120,7 @@ static Driver g_driver;
 
 /* ---- guest RAM ------------------------------------------------------------ */
 static unsigned long g_irq_dispatches;
-static void driver_stop(const char *what, uint32_t pc) {
+__attribute__((noreturn)) static void driver_stop(const char *what, uint32_t pc) {
     uint32_t tick = 0;
     if (g_driver.memory) (void)musashi_boot_read32(g_driver.memory, 0x8006CBB8u, &tick);
     fprintf(stderr, "native_boot: FRAME_DRIVER stop frames=%lu vblank_tick=%u irq_dispatches=%lu\n",
@@ -128,30 +128,49 @@ static void driver_stop(const char *what, uint32_t pc) {
     musashi_strict_abort("frame_driver", what, pc);
 }
 
+/* The data cache scratchpad (1F800000..1F8003FF) is ordinary data memory to
+ * the game: libgte/libgs HLE called with a scratchpad pointer (main keeps its
+ * stack and work matrices there) must reach it like RAM. Little-endian host. */
+static uint8_t *scratch_span(uint32_t a, uint32_t n) {
+    if (a < 0x1F800000u || a - 0x1F800000u > MUSASHI_SCRATCHPAD_SIZE - n) return NULL;
+    return g_driver.memory->scratchpad + (a - 0x1F800000u);
+}
 static uint32_t rd32(uint32_t a) {
     uint32_t v;
-    if (!musashi_boot_read32(g_driver.memory, a, &v)) driver_stop("guest_read", a);
+    uint8_t *s;
+    if (musashi_boot_read32(g_driver.memory, a, &v)) return v;
+    if ((a & 3u) || !(s = scratch_span(a, 4))) driver_stop("guest_read", a);
+    memcpy(&v, s, 4);
     return v;
 }
 static uint16_t rd16(uint32_t a) {
     uint16_t v;
-    if (!musashi_boot_read16(g_driver.memory, a, &v)) driver_stop("guest_read", a);
+    uint8_t *s;
+    if (musashi_boot_read16(g_driver.memory, a, &v)) return v;
+    if ((a & 1u) || !(s = scratch_span(a, 2))) driver_stop("guest_read", a);
+    memcpy(&v, s, 2);
     return v;
 }
 static uint8_t rd8(uint32_t a) {
     uint8_t *p = musashi_boot_ram_span(g_driver.memory, a, 1);
-    if (!p) driver_stop("guest_read", a);
+    if (!p && !(p = scratch_span(a, 1))) driver_stop("guest_read", a);
     return *p;
 }
 static void wr32(uint32_t a, uint32_t v) {
-    if (!musashi_boot_write32(g_driver.memory, a, v)) driver_stop("guest_write", a);
+    uint8_t *s;
+    if (musashi_boot_write32(g_driver.memory, a, v)) return;
+    if ((a & 3u) || !(s = scratch_span(a, 4))) driver_stop("guest_write", a);
+    memcpy(s, &v, 4);
 }
 static void wr16(uint32_t a, uint16_t v) {
-    if (!musashi_boot_write16(g_driver.memory, a, v)) driver_stop("guest_write", a);
+    uint8_t *s;
+    if (musashi_boot_write16(g_driver.memory, a, v)) return;
+    if ((a & 1u) || !(s = scratch_span(a, 2))) driver_stop("guest_write", a);
+    memcpy(s, &v, 2);
 }
 static void wr8(uint32_t a, uint8_t v) {
     uint8_t *p = musashi_boot_ram_span(g_driver.memory, a, 1);
-    if (!p) driver_stop("guest_write", a);
+    if (!p && !(p = scratch_span(a, 1))) driver_stop("guest_write", a);
     *p = v;
 }
 
