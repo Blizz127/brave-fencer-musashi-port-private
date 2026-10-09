@@ -821,6 +821,31 @@ Increment 32 (generator, strict only):
 - Strict stop: main 80020F34 (GTE bank leaf [80020F34,80021008); no matched C
   yet; lane_call stubs still guest_call). Frame 1200: prims=0 disp=1 draw=0.
 
+
+## Increment 56 (stop 80032048 -> 80020F34; intermittent host fault open)
+
+- Strict only: in masked_amount, a `zext i1` shift amount (0 or 1) counts as
+  masked. LLVM folds `if (c) v >>= 1` into `lshr v, zext c` (80032048), which
+  rule `arith` refused as an "unmasked variable shift". main 80032048 and
+  main_0012 8014B5D8 are admitted. regr LOST []. Gate: build=0,
+  TABLE_IDENTICAL, ctest 37/37, m2c=0 (run 21:59, and again 22:48 with the
+  native_boot.c change).
+- pc_port/native_boot.c: on Linux x86_64, the lane fault handler now also
+  prints `host_pc=` (RIP from the signal context). Run under
+  `setarch x86_64 -R`, the PIE base is 0x555555554000, so addr2line resolves
+  the faulting lane function.
+- Strict stop (22:51 run, with MUSASHI_STRICT_STOP_RAM): 80020F34. Frame 1200:
+  prims=0 disp=1 draw=0.
+- OPEN: the 21:55 chain run and two diagnostic runs (22:15, 22:34; no
+  STOP_RAM, ASLR off) instead ended in `HOST_FAULT addr=4 lane_pc=80135d20`.
+  host_pc resolves to lane_sc02_0031__func_80135EB0 reading arg0+4 with
+  arg0 == NULL. In sc02 80135D20 the only null `p` is the `switch` default
+  (80135480 returning a value outside 0..4), which the native 80135480 cannot
+  produce, so the run-to-run difference still needs a cause. Candidates: a
+  host-state or uninitialised-guest-frame dependence on the
+  80135D20 -> 80135480 path. Next: compare the two run modes, and hold out
+  sc02/main 80135D20 (OVERLAY_DENY) if the cause stays unknown.
+
 ## Next
 
 - Admit or HLE main 80020F34 (exported GTE bank leaf; interpreter has
