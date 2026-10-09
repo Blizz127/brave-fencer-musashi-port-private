@@ -784,6 +784,23 @@ Increment 32 (generator, strict only):
   Gate: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0.
 - Strict stop: 80135EB0. Frame 1200: prims=0 disp=1 draw=0.
 
+
+## Increment 55 (stop 80135EB0 -> 80032048)
+
+- Strict only, tools/native_lane_gen.py:
+  - strip_empty_asm now skips asm text that is quoted inside a comment.
+    80135EB0's notes cite `__asm__ __volatile__("")` mid-sentence, which made
+    the whole TU "empty asm with an untied output". This also clears main_0012
+    80135D20 and 80140958.
+  - strict_mixed_ok also accepts whitespace-only asm templates (80135EB0's
+    `" "` cross-jump fence emits nothing; empty_asm_identity already strips
+    it). With that, sc02_0031 80135EB0, the copy actually resident at the
+    stop, is a candidate and is admitted.
+- Lanes: main 3851 -> 3852/4073, overlay 3140 -> 3141/3329. regr LOST []
+  (including the comment fix, run 21:32). Gate: build=0, TABLE_IDENTICAL,
+  ctest 37/37, m2c=0.
+- Strict stop: main 80032048. Frame 1200: prims=0 disp=1 draw=0.
+
 ## Next
 
 - Display path for the logo: compare the GPU packets the strict path submits

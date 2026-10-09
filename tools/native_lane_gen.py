@@ -355,8 +355,14 @@ def strip_empty_asm(text, orig=None):
     # register (the variable itself) keeps its value.
     pinned = set(re.findall(r'\bregister\b[^;={}]*?\b(\w+)\s*(?:__asm__|asm)\s*\(\s*"\$\w+"\s*\)',
                             orig or text)) if STRICT else set()
+    # Strict (B28): asm text quoted inside a comment (80135EB0's notes cite
+    # `__asm__ __volatile__("")` mid-sentence) is not a statement.
+    comments = [c.span() for c in re.finditer(r'/\*.*?\*/|//[^\n]*|"(?:\\.|[^"\\\n])*"', text, re.S)
+                if not c.group(0).startswith('"')] if STRICT else []
     for m in pat.finditer(text):
         if m.start() < pos:
+            continue
+        if any(a <= m.start() < b for a, b in comments):
             continue
         depth, i = 1, text.index("(", m.start()) + 1
         while i < len(text) and depth:
@@ -4152,7 +4158,9 @@ def strict_mixed_ok(m):
     ss = scratch_call_host(text)
     text = SCRATCH_CALL_RE.sub("", ss) if ss is not None else text
     asms = re.findall(r'(?:__asm__|\basm)\s*(?:volatile\s*|__volatile__\s*)?\(\s*("[^"]*")', text)
-    return all(a == '""' for a in asms)
+    # A whitespace-only template (80135EB0's `" "` cross-jump fence) emits
+    # nothing either; the IR check (empty_asm_identity) strips it the same way.
+    return all(not a[1:-1].strip() for a in asms)
 
 
 def lane_recovery(m):
