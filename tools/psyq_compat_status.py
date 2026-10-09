@@ -139,6 +139,7 @@ TABLE: dict[str, Status] = {
     "VectorNormalSS": Status(H, 2, 1, "bfm_psyq_VectorNormalSS", "exact port of func_80047E98 over D_8006DA80"),
     "SquareRoot12": Status(S, 0, 0, None, "stateless but not in PsyCross"),
     # GTE state through the bridge: PsyCross works on the gteRegs bank gte_owner leases
+    "func_80056F18": Status(H, 3, 0, "bfm_psyq_func_80056F18", "libgs OBJT.o: obj->tmd = objtable + n*28, then stamps each same-mode/same-flag primitive run length over the run's first TMD header; guest RAM only"),
     "func_80049440": Status(H, 1, 1, "bfm_psyq_LZC", "GTE-bank access under the gte_owner lease; no device I/O, no guest RAM: MTC2 LZCS=a0, v0 = MFC2 LZCR (leading sign bits, 1..32); leaves LZCS/LZCR and the owner's data read/write counters as retail does; same-input differential vs retail func_80049440 in tests/psyq_lzc_probe.c"),
     "InitGeom": Status(P, 0, 0, "bfm_psyq_InitGeom", "GTE bridge (gte_owner lease)"),
     "SetGeomOffset": Status(P, 2, 0, "bfm_psyq_SetGeomOffset", "GTE bridge (gte_owner lease); the hook site also records the projection"),

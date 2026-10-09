@@ -1114,6 +1114,14 @@ Increment 32 (generator, strict only):
 - Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [] (gained 8001F730, 80020248).
 - New stop: `guest_pc=80056f18`; frame 1200, prims=0, disp=1, draw=0.
 
+### Inc 77 — native func_80056F18 (libgs OBJT.o) HLE, strict-only
+
+- Stop was `guest_pc=80056f18` (PsyQ stub row).
+- `bfm_psyq_func_80056F18(objtable, obj, n)`: obj+8 = objtable + n*28, then walks n_primitive TMD primitives from primitive_top; runs of equal mode byte + flag byte get their length stored as a halfword over the run's first header. Step per `mode & 0xFD` from retail jump table 0x80073E70 (flag bit 2 picks the gradation size); unassigned codes print `GPU CODE %02xH not assigned.` and do not step.
+- Def row HLE (3 args), held back outside strict (kHeldBack) so the hybrid table stays identical; status/docs counts: hle 57, stub 121, covered 91/212, sites 50888/63200.
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [].
+- New stop: `guest_pc=80057094` (libgs OBJT2.o); frame 1200, prims=0, draw=0.
+
 ## Next
 
 - Admit or reshape sc02_0031 `func_801831B4` (currently `abi`). Likely next

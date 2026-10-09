@@ -299,3 +299,57 @@ int bfm_psyq_GsSortObject5(uint32_t *r) {
     (void)bufidx;
     return 1;
 }
+
+/* ---- func_80056F18 (libgs OBJT.o) -------------------------------------------
+ *
+ * (objtable, GsDOBJ5 *obj, n): obj->tmd (obj + 8) = objtable + n * 28 (the TMD
+ * object entry), then walks that object's n_primitive (+0x14) primitives from
+ * primitive_top (+0x10). Runs of primitives with the same mode byte and the
+ * same flag byte are counted, and each run's count is stored as a halfword
+ * over the first header of the run (its olen/ilen). The step per primitive is
+ * by mode & 0xFD (flag bit 2 = gradation picks the larger size); an
+ * unassigned code prints "GPU CODE %02xH not assigned." and does not step.
+ * Reconstructed from the retail control flow (jump table 0x80073E70). */
+static const uint8_t kObjtStep[30][2] = {   /* [code-0x20] = {size, size with flag bit 2} */
+    [0x00] = {16, 24}, [0x01] = {16, 16}, [0x04] = {24, 24}, [0x05] = {28, 28},
+    [0x08] = {20, 32}, [0x09] = {16, 16}, [0x0C] = {32, 32}, [0x0D] = {32, 32},
+    [0x10] = {20, 28}, [0x11] = {24, 24}, [0x14] = {28, 28}, [0x15] = {36, 36},
+    [0x18] = {24, 36}, [0x19] = {28, 28}, [0x1C] = {36, 36}, [0x1D] = {44, 44},
+};
+
+static int put16(uint32_t a, uint16_t v) {
+    uint8_t *p = g(a, 2);
+    if (!p) return 0;
+    p[0] = (uint8_t)v; p[1] = (uint8_t)(v >> 8);
+    return 1;
+}
+
+int bfm_psyq_func_80056F18(uint32_t *r) {
+    const uint32_t ent = A(0) + A(2) * 28u, obj = A(1);
+    uint32_t prim, nprim, i, run = 0, head, mode = 0, flag = 0, w;
+    if (!put32(obj + 8u, ent)) return 0;
+    if (!get32(ent + 16u, &prim) || !get32(ent + 20u, &nprim)) return 0;
+    head = prim;
+    r[2] = A(2) * 28u;
+    for (i = 0; i < nprim; ++i, ++run) {
+        uint32_t pmode = mode, pflag = flag, code;
+        const uint8_t *st;
+        if (!get32(prim, &w)) return 0;
+        mode = w >> 24;
+        flag = w >> 16;
+        if (pmode && (mode != pmode || (flag & 0xFFu) != (pflag & 0xFFu))) {
+            if (!put16(head, (uint16_t)run)) return 0;
+            run = 0;
+            head = prim;
+        }
+        code = (mode & 0xFDu) - 0x20u;
+        st = code < 30u ? kObjtStep[code] : NULL;
+        if (!st || !st[0]) {
+            fprintf(stderr, "GPU CODE %02xH not assigned.\n", (unsigned)mode);
+            continue;
+        }
+        prim += (flag & 4u) ? st[1] : st[0];
+    }
+    if (nprim) r[2] = 0;
+    return put16(head, (uint16_t)run);
+}
