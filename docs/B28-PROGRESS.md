@@ -1327,6 +1327,18 @@ Increment 32 (generator, strict only):
 - Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [] (gained main_0012 8014EA4C, 8014EE14).
 - New stop: `guest_pc=8012deb8`; frame 1200, prims=32 at two frames, draw=0.
 
+### Increment 93: strict KUSEG normalisation; main_0012 8012DEB8 into the lane; stop 80011EB4
+
+- Stop was `guest_pc=8012deb8` (OVERLAY_DENY since B18: on the attract route it reads
+  `*(u16 *)(*(int *)(o + 0x20) + 0x12)` through a null object pointer; retail reads RAM[0x12] via the KUSEG mirror,
+  natively page 0 faults; host mmap_min_addr forbids mapping it).
+- Generator (strict only): `KUSEG_NORMALIZE` (keyed member, vram) runs `kuseg_normalize` on the substituted IR:
+  every dynamic `inttoptr (zext i32 a)` becomes `a < 0x00800000 ? 0x80000000 | (a & 0x1FFFFF) : a` (the PSX main-RAM
+  mirror). 8012DEB8 is listed; its OVERLAY_DENY row stays for non-strict builds.
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [] (gained main_0012 8012DEB8 and 1 more).
+- The run now goes further: FRAME_TRACE reaches frame 1250 and one frame has prims=10060 (draw=0).
+- New stop: `guest_pc=80011eb4`.
+
 ## Next
 
 - Admit or reshape sc02_0031 `func_801831B4` (currently `abi`). Likely next

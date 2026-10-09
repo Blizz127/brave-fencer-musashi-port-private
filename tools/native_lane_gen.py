@@ -2495,10 +2495,37 @@ OVERLAY_DENY = {
     # main_0012 8012DEB8 (B18): on the attract route it reads through a null
     # object pointer (+0x12), which retail reads harmlessly from the low-RAM
     # mirror; natively it faults the host (D-013 (4), job
-    # 20261002-170002-bfm-b18route2). Held out until the lane normalises
-    # KUSEG/null guest pointers.
+    # 20261002-170002-bfm-b18route2). Strict builds normalise its KUSEG
+    # addresses (KUSEG_NORMALIZE) and admit it; other builds still hold it out.
     ("main_0012", 0x8012DEB8): "reads through a null guest pointer on the attract route (KUSEG gap, host fault)",
 }
+
+# Strict (B28): functions whose retail code reads guest memory through a
+# KUSEG address (a null object pointer + offset): every dynamic guest address
+# below 0x00800000 is taken as the main-RAM mirror, 0x80000000 | (a & 0x1FFFFF),
+# as the PSX memory map does. Keyed (member, vram).
+KUSEG_NORMALIZE = {("main_0012", 0x8012DEB8)}
+
+
+def kuseg_normalize(ir):
+    out = []
+    for line in ir.splitlines():
+        m = re.match(r"^(\s*)(%[\w.\"$]+) = inttoptr i64 (%[\w.\"$]+) to ptr\s*$", line)
+        if m:
+            ind, x, z = m.groups()
+            zd = next((l for l in out if re.match(r"^\s*" + re.escape(z) + r" = zext (?:nneg )?i32 ", l)), None)
+            if zd:
+                v = re.match(r"^\s*%[\w.\"$]+ = zext (?:nneg )?i32 (%[\w.\"$]+|-?\d+) to i64", zd).group(1)
+                t = x.lstrip("%").replace('"', "")
+                out += [f"{ind}%ku.lo.{t} = icmp ult i32 {v}, 8388608",
+                        f"{ind}%ku.m.{t} = and i32 {v}, 2097151",
+                        f"{ind}%ku.o.{t} = or i32 %ku.m.{t}, -2147483648",
+                        f"{ind}%ku.v.{t} = select i1 %ku.lo.{t}, i32 %ku.o.{t}, i32 {v}",
+                        f"{ind}%ku.z.{t} = zext i32 %ku.v.{t} to i64",
+                        f"{ind}{x} = inttoptr i64 %ku.z.{t} to ptr"]
+                continue
+        out.append(line)
+    return "\n".join(out) + "\n"
 
 
 def retail_words(vram, size, info=None):
@@ -3517,7 +3544,8 @@ def build_one(entry, out, symbols, hooks, clang, info=None):
         if vram in DENY and not info and not (
                 STRICT and DENY[vram].startswith("no comparable differential case")):
             denied = DENY[vram]
-        if info and (info["member"], vram) in OVERLAY_DENY:
+        if info and (info["member"], vram) in OVERLAY_DENY and not (
+                STRICT and (info["member"], vram) in KUSEG_NORMALIZE):
             denied = OVERLAY_DENY[(info["member"], vram)]
         if denied:
             # Still analysed for the cycle report (a held-out function's
@@ -3583,6 +3611,8 @@ def build_one(entry, out, symbols, hooks, clang, info=None):
             rewrite_symbols(ir, symbols, member, info["code"] if info else ()),
             "lane_" + qualify(member, name), words, vram, frame, info)
         rewritten = lower_arith(narrow_pointer_cells(rewritten))
+        if STRICT and (member, vram) in KUSEG_NORMALIZE:
+            rewritten = kuseg_normalize(rewritten)
         # Host ABI: widen casted narrow returns before optimize (80135D20).
         rewritten = fix_cast_return_abi(rewritten)
         if words is not None:
