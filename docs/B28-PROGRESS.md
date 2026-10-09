@@ -1031,6 +1031,16 @@ Increment 32 (generator, strict only):
   GAINED [].
 - Strict stop moves 80052F04 -> 80027BF0 (not_in_lane). Frame 1200: prims=0 disp=1 draw=0.
 
+### Increment 71 — 80027BF0 pass-through arity
+
+- Stop 80027BF0: lane rejected it ("abi calls func_80027C10 with 0 of 3 declared arguments").
+  Retail is a pure tail pass-through (jal 80027C10, a0-a2 untouched); the m2c source declared
+  it void(void). Rewrote as `func_80027BF0(s32 a0, s32 a1, s32 a2) { func_80027C10(a0, a1, a2); }`.
+  Byte-identical vs HEAD object (build_candidate cmp SAME), registry re-verified 1/1.
+- Checks: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [].
+- New stop: 80027D20 (`STRICT_INTERPRETER_ENTRY seam=lane_guest_call routine=not_in_lane`).
+  Frame 1200, prims=0, disp=1, draw=0.
+
 ## Next
 
 - Admit or reshape sc02_0031 `func_801831B4` (currently `abi`). Likely next

@@ -9,8 +9,10 @@
  * whatever reproduces the bytes; they are not evidence of the
  * original declaration. */
 
-void func_80027C10();                                  /* static */
+void func_80027C10(s32 a0, s32 a1, s32 a2);            /* static */
 
-void func_80027BF0(void) {
-    func_80027C10();
+/* Retail forwards a0-a2 untouched (jal with no argument setup); the only
+ * caller (8001FC08) passes three. */
+void func_80027BF0(s32 a0, s32 a1, s32 a2) {
+    func_80027C10(a0, a1, a2);
 }
