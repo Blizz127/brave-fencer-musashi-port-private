@@ -20,15 +20,16 @@
 extern u8 *D_800A5E60;
 extern s32 D_80078D88[];
 
-/* Callees: every one is DEFINED later in src/800.c; these are spelled to be compatible with
- * those definitions (verbatim where the types are spellable here, no-proto otherwise). */
+/* Callees: every one is DEFINED later in src/800.c. In this split tree each is its own file,
+ * so the emitters are prototyped with 32-bit parameters (the same registers and bytes as the
+ * old no-proto calls; re-verified byte-identical), as the lane's ABI rule requires. */
 extern long *func_800249F0(char *f, s32 verts, s32 norms, long *prim, s32 count, s32 shift, s32 ot);
-extern u8 *func_80024DE8();
-extern u8 *func_8002528C();
-extern void *func_80025504();
+extern u8 *func_80024DE8(void *prim, u32 vtx, u32 nrm, u8 *pkt, s32 n, u32 shift, u32 *ot);
+extern u8 *func_8002528C(void *prim, u32 vtx, u32 nrm, u8 *pkt, s32 n, u32 shift, u32 *ot);
+extern u8 *func_80025504(void *prim, u32 vtx, u32 nrm, u8 *pkt, s32 n, u32 shift, u32 *ot);
 extern u8 *func_80025A30(u8 *prim, u8 *vtx, u8 *nrm, u8 *pkt, s32 n, s32 shift, u32 *ot);
 extern void *func_80025CBC(void *prims, void *scr, void *cols, void *packets, s32 count, s32 otshift, u32 *ot);
-extern u32 *func_80025EB8();
+extern u8 *func_80025EB8(void *prim, u32 vtx, u32 nrm, u8 *pkt, s32 n, u32 shift, u32 *ot);
 /* Handwritten-asm stubs, defined `void f()` in the TU; the packet pointer they leave in $v0
  * is consumed here through a no-proto function-pointer cast (§378: folds to a direct jal). */
 extern void func_80026514();
@@ -51,11 +52,11 @@ void func_80024448(int param_1, int param_2, u32 param_3)
      * at the later definition). Block-scope externs live in gcc-2.7.2's limbo instead: the
      * later definition draws only a "type mismatch with previous external decl" warning,
      * and the emitted bytes are identical (measured on a synthetic TU, S72m_1). */
-    extern u8 *func_80024BC0();
-    extern u8 *func_80025000();
-    extern u8 *func_80025818();
-    extern u8 *func_80026128();
-    extern u8 *func_800262D8();
+    extern u8 *func_80024BC0(void *prim, u32 vtx, u32 nrm, u8 *pkt, s32 n, u32 shift, u32 *ot);
+    extern u8 *func_80025000(void *prim, u32 vtx, u32 nrm, u8 *pkt, s32 n, u32 shift, u32 *ot);
+    extern u8 *func_80025818(void *prim, u32 vtx, u32 nrm, u8 *pkt, s32 n, u32 shift, u32 *ot);
+    extern u8 *func_80026128(void *prim, u32 vtx, u32 nrm, u8 *pkt, s32 n, u32 shift, u32 *ot);
+    extern u8 *func_800262D8(void *prim, u32 vtx, u32 nrm, u8 *pkt, s32 n, u32 shift, u32 *ot);
 
     v0 = *(u32 **)(param_1 + 8);
     s0 = (u32 *)v0[4];
@@ -107,11 +108,11 @@ void func_80024448(int param_1, int param_2, u32 param_3)
                 s0 = (u32 *)((u8 *)s0 + CNT * 28);
             } else {
                 if (D_80078D88[0] & 0x10000) {
-                    D_800A5E60 = ((u8 *(*)())func_80026514)(s0, vtx, nrm, D_800A5E60, CNT, param_3, OT, 0);
+                    D_800A5E60 = ((u8 *(*)(void *, u32, u32, u8 *, s32, u32, u32 *, s32))func_80026514)(s0, vtx, nrm, D_800A5E60, CNT, param_3, OT, 0);
                     iVar -= CNT;
                     s0 = (u32 *)((u8 *)s0 + CNT * 20);
                 } else if (D_80078D88[0] & 0x20000) {
-                    D_800A5E60 = ((u8 *(*)())func_80026514)(s0, vtx, nrm, D_800A5E60, CNT, param_3, OT, 1);
+                    D_800A5E60 = ((u8 *(*)(void *, u32, u32, u8 *, s32, u32, u32 *, s32))func_80026514)(s0, vtx, nrm, D_800A5E60, CNT, param_3, OT, 1);
                     iVar -= CNT;
                     s0 = (u32 *)((u8 *)s0 + CNT * 20);
                 } else {
@@ -127,11 +128,11 @@ void func_80024448(int param_1, int param_2, u32 param_3)
                 iVar -= CNT;
                 s0 = (u32 *)((u8 *)s0 + CNT * 36);
             } else if (D_80078D88[0] & 0x10000) {
-                D_800A5E60 = ((u8 *(*)())func_800268D0)(s0, vtx, nrm, D_800A5E60, CNT, param_3, OT, 0);
+                D_800A5E60 = ((u8 *(*)(void *, u32, u32, u8 *, s32, u32, u32 *, s32))func_800268D0)(s0, vtx, nrm, D_800A5E60, CNT, param_3, OT, 0);
                 iVar -= CNT;
                 s0 = (u32 *)((u8 *)s0 + CNT * 24);
             } else if (D_80078D88[0] & 0x20000) {
-                D_800A5E60 = ((u8 *(*)())func_800268D0)(s0, vtx, nrm, D_800A5E60, CNT, param_3, OT, 1);
+                D_800A5E60 = ((u8 *(*)(void *, u32, u32, u8 *, s32, u32, u32 *, s32))func_800268D0)(s0, vtx, nrm, D_800A5E60, CNT, param_3, OT, 1);
                 iVar -= CNT;
                 s0 = (u32 *)((u8 *)s0 + CNT * 24);
             } else {

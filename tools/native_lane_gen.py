@@ -2432,8 +2432,32 @@ def strip_multi_pins(text):
 GLOBAL_PIN_RE = re.compile(r'^register\s+([^;{}=]*?)\s*(?:__asm__|asm)\s*\(\s*"\$\w+"\s*\)\s*;', re.M)
 
 
+# Strict (B28): void-typed functions whose retail words return their final
+# call's result in v0, read by a retail caller in a member only the strict
+# build loads (so the hybrid table keeps the void signature). Keyed by
+# function -> that final callee. Evidence per entry: the same C typed s32
+# with `return callee(...)` compiles byte-identical to retail (gcc-2.7.2 -O2).
+#   func_8012D624 (main_0012/sc02_0031/sc02_0035): sc02_0035 reads v0 at
+#   8017E79C, 80182110, 801821B0 (B28 inc 102).
+STRICT_TAIL_RESULT = {"func_8012D624": "func_8012D664"}
+
+
+def strict_tail_result(text):
+    for f, callee in STRICT_TAIL_RESULT.items():
+        if not re.search(r"\bvoid\s+" + f + r"\s*\([^;]*\)\s*\{", text):
+            continue
+        new = re.sub(r"\bvoid(\s+" + callee + r"\s*\([^;{]*\)\s*;)", r"int\1", text)
+        new = re.sub(r"\bvoid(\s+" + f + r"\s*\([^;]*\)\s*\{)", r"int\1", new)
+        new, n = re.subn(r"(\n\s*)(" + callee + r"\s*\([^;]*\);)(\s*\}\s*)$", r"\1return \2\3", new)
+        if n != 1:
+            raise BuildError(f"STRICT_TAIL_RESULT {f}: final call to {callee} not found")
+        text = new
+    return text
+
+
 def host_source(text):
     if STRICT:
+        text = strict_tail_result(text)
         # Strict (B28): a file-scope register variable (GCC global register
         # binding, 800118AC) only pins a caller-saved MIPS register for the
         # byte match; no value survives a call or return in it. On the host

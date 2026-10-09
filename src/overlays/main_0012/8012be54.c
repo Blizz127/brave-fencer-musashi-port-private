@@ -20,14 +20,14 @@ struct triple_8012BE54 {
     u16 unk4;
 };
 
-void func_8012BE98(void *arg0, struct triple_8012BE54 *arg1);
+s32 func_8012BE98(void *arg0, struct triple_8012BE54 *arg1);
 
-void func_8012BE54(void *arg0) {
+s32 func_8012BE54(void *arg0) {
     struct triple_8012BE54 t;
 
     t.unk0 = D_80126B5E;
     t.unk2 = D_80126B62;
     t.unk4 = D_80126B66;
-    func_8012BE98(arg0, &t);
+    return func_8012BE98(arg0, &t);
 }
 

@@ -9,5 +9,5 @@
  * original declaration. */
 
 #include "psx_types.h"
-void func_8012C658();
-void func_80143C74(void *p, void *q) { func_8012C658(0x205, q, p); }
+s32 func_8012C658();
+s32 func_80143C74(void *p, void *q) { return func_8012C658(0x205, q, p); }

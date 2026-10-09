@@ -1447,6 +1447,28 @@ Increment 32 (generator, strict only):
   80130D48, 8013A530, 801431E8, 80153800, 801539F8, 80156600, 80159464,
   80163328, 8016380C, 8016BCC0). They will be filled as the route reaches them.
 
+### Inc 102: strict overlay allow sc02_0035; v0 results for shared main_0012 entries
+
+- A 4000-frame run stopped not_in_lane at 80128288 (frame ~3200) after the
+  ld_n=87 load: SC02.CD member35 (sc02_0035) is resident. config/
+  lane_strict_overlay_allow.txt gets `sc02_0035 all` (935 vendor-derived rows,
+  907 c / 28 mixed). 152 sc02_0035 entries are gained, plus covers on shared
+  digests.
+- That made the abi rule refuse three shared main_0012 entries
+  (8012BE54, 8012D624, 80143C74). sc02_0035 callers read v0 after them, and
+  each is a void-typed wrapper whose retail words return the final call's
+  result. 8012be54.c and 80143c74.c are now s32 with `return callee(...)`,
+  byte-identical to retail. 8012D624 is in the hybrid table, where that
+  signature change made TABLE_DIFFERS, so its source stays void.
+  tools/native_lane_gen.py has a new strict-only STRICT_TAIL_RESULT
+  (host_source) that applies the same verified s32/return form to it in
+  strict builds only.
+- src/main/80024448.c: the TMD emitters it calls are prototyped with 32-bit
+  parameters, replacing the no-proto declarations; byte-identical (rv.py). It
+  is still refused (abi: the 8-argument asm stubs 80026514/800268D0).
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [].
+  Run: 3000 frames, no stop.
+
 ## Next
 
 - Admit or reshape sc02_0031 `func_801831B4` (currently `abi`). Likely next
