@@ -3803,9 +3803,20 @@ class ArgLiveness:
             elif lui is not None and op == 0x0B:
                 count = x & 0xFFFF
                 break
-        if lw is None or lui is None:
+        if (lw is None or lui is None) and STRICT:
+            # Strict (B28): the -O0 form `lui rT,%hi(T); addiu rT,rT,%lo(T);
+            # addu rB,rI,rT; lw rJ,0(rB); jr rJ` (8013C0F8). Without it the
+            # jr fell back to "any pc of the function", so mid-sequence pcs
+            # looked like entries reading registers the sequence had set.
+            alt = self._jump_table_o0(key, pc, rj)
+            if alt is not None:
+                lw, lui, count = (None, 0), alt[0], alt[1]
+        if lw is None and lui is not None:
+            table = lui & 0xFFFFFFFF
+        elif lw is None or lui is None:
             return None
-        table = (lui + lw[1]) & 0xFFFFFFFF
+        else:
+            table = (lui + lw[1]) & 0xFFFFFFFF
         out = []
         for i in range(count if count else 512):
             t = self.word_at(key, table + 4 * i)
@@ -3815,6 +3826,43 @@ class ArgLiveness:
                 break
             out.append(t)
         return sorted(set(out)) or None
+
+    def _jump_table_o0(self, key, pc, rj):
+        """(table address, sltiu bound or None) for the -O0 switch dispatch
+        `lui rT,hi; addiu rT,rT,lo; addu rB,rX,rY; lw rJ,0(rB); jr rJ`
+        within 16 words before pc, else None."""
+        base = cands = None
+        lo = {}
+        hi = {}
+        count = None
+        for back in range(1, 16):
+            x = self.word_at(key, pc - 4 * back)
+            if x is None:
+                return None
+            op, rs, rt, rd = x >> 26, (x >> 21) & 31, (x >> 16) & 31, (x >> 11) & 31
+            simm = (x & 0xFFFF) - 0x10000 if x & 0x8000 else x & 0xFFFF
+            if base is None:
+                if op == 0x23 and rt == rj:
+                    if simm != 0:
+                        return None
+                    base = rs
+                elif op == 0x23 or (op == 0 and rd == rj):
+                    return None
+                continue
+            if cands is None:
+                if op == 0 and (x & 63) == 0x21 and rd == base:
+                    cands = {rs, rt}
+                continue
+            if op == 0x09 and rs == rt and rt in cands and rt not in lo:
+                lo[rt] = simm
+            elif op == 0x0F and rt in cands and rt in lo and rt not in hi:
+                hi[rt] = (x & 0xFFFF) << 16
+            elif op == 0x0B and hi:
+                count = x & 0xFFFF
+                break
+        for r in hi:
+            return ((hi[r] + lo[r]) & 0xFFFFFFFF, count)
+        return None
 
     def _callee(self, fn, target):
         return (self.key_of(fn[0], target), target)

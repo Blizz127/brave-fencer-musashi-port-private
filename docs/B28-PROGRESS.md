@@ -964,6 +964,18 @@ Increment 32 (generator, strict only):
   build: LOST [], GAINED sc02_0031 8017F5B4. No psyq_refused / HOST_FAULT in the run.
 - Strict stop 801831B4 (not_in_lane), as 64 reported. Frame 1200: prims=0 disp=1 draw=0.
 
+## Increment 66 — strict arg liveness recognizes -O0 switch jump tables
+
+- sc02 `func_801831B4` was rejected "abi: passes 1 argument to 8013C0F8, which reads a1 through".
+  8013C0F8 (-O0 C) dispatches with `lui a0,%hi(T); addiu a0,a0,%lo(T); addu v0,v1,a0; lw v1,0(v0);
+  jr v1`; `_jump_table` only knew the -O2 `lui at / addu / lw %lo(at)` form, so its `jr` fell back to
+  "every pc of the function". The mid-sequence pc after `lui a1,0xff` then looked like an entry
+  reading a1 (false pass-through).
+- Strict-only `_jump_table_o0`: recovers the table (and its sltiu bound) from the -O0 form; table
+  words must still all land inside the function. 8013C0F8 no longer reads a1.
+- Gate: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0. regr LOST [], GAINED sc02 801831B4.
+- Strict stop moves 801831B4 -> 8001FC08 (not_in_lane). Frame 1200: prims=0 disp=1 draw=0.
+
 ## Next
 
 - Admit or reshape sc02_0031 `func_801831B4` (currently `abi`). Likely next
