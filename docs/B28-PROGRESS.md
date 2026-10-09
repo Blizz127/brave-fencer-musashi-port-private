@@ -1348,6 +1348,18 @@ Increment 32 (generator, strict only):
 - Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [] (gained 80011EB4).
 - New stop: `guest_pc=80128678`; frame 1250, prims=10060 at one frame, draw=0.
 
+### Increment 95: main_0012 80128678 (scratchpad-stack call wrapper) in canonical form; stop 801541D8
+
+- Stop was `guest_pc=80128678` (refused: inline asm). Its body was one hand asm block. It switches the guest stack to
+  the scratchpad (sp saved at 0x1F8003FC) around jals to 80029444, 801287B8 and 800D1754, and calls 8014607C on the
+  normal stack.
+- Source rewritten byte-identically (gcc 2.7.2 -O2 object unchanged, registry re-verified vs retail) in the canonical
+  form of its sibling 801285E4: a `register s32 p __asm__("$2") = 0x1F8003FC` per switch, one switch asm per call, and
+  the middle one in/out (`"=r"(q) : "0"(q)`) so gcc rematerialises the constant. The existing strict
+  `scratch_call_host` lowers each to the guest-stack switch on the host.
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [] (gained main_0012 80128678).
+- New stop: `guest_pc=801541d8`; frame 1250, prims=10060 at one frame, draw=0.
+
 ## Next
 
 - Admit or reshape sc02_0031 `func_801831B4` (currently `abi`). Likely next

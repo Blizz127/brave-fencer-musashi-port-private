@@ -17,40 +17,39 @@ extern void func_801287B8(void);
 extern void func_800D1754(void);
 
 void func_80128678(void) {
+    register s32 p __asm__("$2") = 0x1F8003FC;
     __asm__ __volatile__(
-        ".set noreorder\n"
-        "addiu $sp, $sp, -24\n"
-        "sw    $ra, 16($sp)\n"
-        "lui   $v0, 0x1f80\n"
-        "ori   $v0, $v0, 0x03fc\n"
-        "addu  $t0, $v0, $zero\n"
-        "sw    $sp, 0($t0)\n"
-        "addiu $t0, $t0, -4\n"
-        "addu  $sp, $t0, $zero\n"
+        "addu  $8, %0, $zero\n"
+        "sw    $sp, 0($8)\n"
+        "addiu $8, $8, -4\n"
+        "addu  $sp, $8, $zero\n"
         "jal   func_80029444\n"
         "addiu $sp, $sp, 4\n"
         "lw    $sp, 0($sp)\n"
-        "jal   func_8014607C\n"
-        "lui   $v0, 0x1f80\n"
-        "ori   $v0, $v0, 0x03fc\n"
-        "addu  $t0, $v0, $zero\n"
-        "sw    $sp, 0($t0)\n"
-        "addiu $t0, $t0, -4\n"
-        "addu  $sp, $t0, $zero\n"
-        "jal   func_801287B8\n"
-        "addiu $sp, $sp, 4\n"
-        "lw    $sp, 0($sp)\n"
-        "lui   $v0, 0x1f80\n"
-        "ori   $v0, $v0, 0x03fc\n"
-        "addu  $t0, $v0, $zero\n"
-        "sw    $sp, 0($t0)\n"
-        "addiu $t0, $t0, -4\n"
-        "addu  $sp, $t0, $zero\n"
-        "jal   func_800D1754\n"
-        "addiu $sp, $sp, 4\n"
-        "lw    $sp, 0($sp)\n"
-        "nop\n"
-        "lw    $ra, 16($sp)\n"
-        "addiu $sp, $sp, 24\n"
-        : : : "memory");
+        : : "r"(p) : "$8", "memory");
+    func_8014607C();
+    {
+        register s32 q __asm__("$2") = 0x1F8003FC;
+        __asm__ __volatile__(
+            "addu  $8, %0, $zero\n"
+            "sw    $sp, 0($8)\n"
+            "addiu $8, $8, -4\n"
+            "addu  $sp, $8, $zero\n"
+            "jal   func_801287B8\n"
+            "addiu $sp, $sp, 4\n"
+            "lw    $sp, 0($sp)\n"
+            : "=r"(q) : "0"(q) : "$8", "memory");
+    }
+    {
+        register s32 r __asm__("$2") = 0x1F8003FC;
+        __asm__ __volatile__(
+            "addu  $8, %0, $zero\n"
+            "sw    $sp, 0($8)\n"
+            "addiu $8, $8, -4\n"
+            "addu  $sp, $8, $zero\n"
+            "jal   func_800D1754\n"
+            "addiu $sp, $sp, 4\n"
+            "lw    $sp, 0($sp)\n"
+            : : "r"(r) : "$8", "memory");
+    }
 }
