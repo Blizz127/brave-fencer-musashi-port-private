@@ -846,6 +846,24 @@ Increment 32 (generator, strict only):
   80135D20 -> 80135480 path. Next: compare the two run modes, and hold out
   sc02/main 80135D20 (OVERLAY_DENY) if the cause stays unknown.
 
+
+## Increment 57 (stop 80020F34 -> 80149350)
+
+- New clean-room main function src/main/80020f34.c: `func_80020F34(s16 *m,
+  s16 *s)` (212 bytes) scales the three columns of an s16 3x3 matrix by
+  s[k], using one GTE `gpf 1` per column. The retail words are
+  hand-scheduled GTE code with no frame, so the body is a single asm
+  statement on `%0`/`%1`. The registry row in provenance/matches.json has
+  the clean-room origin, and verify_registry passes 1/1.
+- Strict only: tools/native_lane_gen.py `gte_scale_host` (GTE_SCALE_RE). It
+  matches that exact asm statement and replaces it with host C in the same
+  order: column k (and s[k]) is loaded before column k-1 is stored, and each
+  element becomes `sat16((s[k] * m) >> 12)` (GPF sf=1, lm=0). It is applied in
+  host_source and strict_mixed_ok.
+- regr LOST []. Gate: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0.
+- Strict stop: main_0012 80149350. Frame 1200: prims=0 disp=1 draw=0. This run
+  did not hit the intermittent 80135D20 host fault from increment 56.
+
 ## Next
 
 - Admit or HLE main 80020F34 (exported GTE bank leaf; interpreter has

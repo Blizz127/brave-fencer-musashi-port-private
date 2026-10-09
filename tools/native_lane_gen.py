@@ -2165,6 +2165,51 @@ def gte_matrix_host(text):
         + "".join(f" lane_gs[{3 * i}] = (short){GTE_IR}[{i}];" for i in range(3)) + " }"), text)
 
 
+# Strict (B28): the GTE column scale written as one asm statement on the
+# argument registers (80020F34; gcc's function body is already noreorder): per column k, IR0 = s[k] and
+# IR1-3 = m[k], m[k+3], m[k+6] (lh, s16), `gpf 1` (IR = sat16((IR0 * IRn)
+# >> 12), lm=0), then the column goes back with mfc2/sh, scheduled after
+# the next column's loads. The host does the same in C, in the same order
+# (column k is loaded before column k-1 is stored).
+def _gte_scale_lines():
+    out = []
+    for k in range(3):
+        o = 2 * k
+        out += [f"lh $8, {o}(%1)", f"lh $9, {o}(%0)", f"lh $10, {o + 6}(%0)", f"lh $11, {o + 12}(%0)"]
+        if k:
+            po = 2 * (k - 1)
+            out += ["mfc2 $12, $9", "mfc2 $13, $10", "mfc2 $14, $11",
+                    f"sh $12, {po}(%0)", f"sh $13, {po + 6}(%0)", f"sh $14, {po + 12}(%0)"]
+        out += ["mtc2 $8, $8", "mtc2 $9, $9", "mtc2 $10, $10", "mtc2 $11, $11", "nop", "nop", "gpf 1"]
+    out += ["mfc2 $12, $9", "mfc2 $13, $10", "mfc2 $14, $11", "sh $12, 4(%0)", "sh $13, 10(%0)", "sh $14, 16(%0)"]
+    return out
+
+
+GTE_SCALE_RE = re.compile(
+    _ASM_HEAD
+    + "".join(r'"' + re.escape(l) + r'\\n"\s*' for l in _gte_scale_lines())
+    + r':\s*:\s*"r"\s*\(\s*(\w+)\s*\)\s*,\s*"r"\s*\(\s*(\w+)\s*\)\s*'
+    r':\s*"\$8"\s*,\s*"\$9"\s*,\s*"\$10"\s*,\s*"\$11"\s*,\s*' + _T3 + r'\s*,\s*"memory"\s*\)\s*;')
+
+
+def gte_scale_host(text):
+    def sub(m):
+        mm, ss = _gte_ptr(m.group(1), "short"), _gte_ptr(m.group(2), "const short")
+        body = [f"short *lane_sm = {mm}; const short *lane_ss = {ss};",
+                "int lane_i0, lane_c[3], lane_o[3], lane_k, lane_i;"]
+        body.append("for (lane_k = 0; lane_k < 3; ++lane_k) {"
+                    " lane_i0 = lane_ss[lane_k];"
+                    " for (lane_i = 0; lane_i < 3; ++lane_i) lane_c[lane_i] = lane_sm[lane_k + 3 * lane_i];"
+                    " if (lane_k) for (lane_i = 0; lane_i < 3; ++lane_i)"
+                    " lane_sm[lane_k - 1 + 3 * lane_i] = (short)lane_o[lane_i];"
+                    " for (lane_i = 0; lane_i < 3; ++lane_i) {"
+                    " int lane_v = (lane_i0 * lane_c[lane_i]) >> 12;"
+                    " lane_o[lane_i] = lane_v < -32768 ? -32768 : lane_v > 32767 ? 32767 : lane_v; } }")
+        body.append("for (lane_i = 0; lane_i < 3; ++lane_i) lane_sm[2 + 3 * lane_i] = (short)lane_o[lane_i];")
+        return "{ " + " ".join(body) + " }"
+    return GTE_SCALE_RE.sub(sub, text)
+
+
 def gte_host(text):
     if not (GTE_SQR_RE.search(text) and GTE_MAC_STORE_RE.search(text)):
         return text
@@ -2245,6 +2290,7 @@ def host_source(text):
         text = load_asm_host(text)
         text = gte_host(text)
         text = gte_matrix_host(text)
+        text = gte_scale_host(text)
         text = strip_macro_asm(text)
     return REG_PIN_RE.sub(r"\1", text)
 
@@ -4208,6 +4254,7 @@ def strict_mixed_ok(m):
     text = load_asm_host(text)
     text = gte_host(text)
     text = gte_matrix_host(text)
+    text = gte_scale_host(text)
     text = strip_macro_asm(text)
     ss = scratch_call_host(text)
     text = SCRATCH_CALL_RE.sub("", ss) if ss is not None else text
