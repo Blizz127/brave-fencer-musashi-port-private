@@ -1318,6 +1318,15 @@ Increment 32 (generator, strict only):
   main_0012/sc02_0031 functions unlocked by the same padding.
 - New stop: `guest_pc=8014ea4c`; frame 1200, prims=32 at two frames, draw=0.
 
+### Increment 92: width-aware variable-shift bound; 8014EA4C, 8014EE14 (main_0012) into the lane; stop 8012DEB8
+
+- Stop was `guest_pc=8014ea4c` (refused: unmasked variable shift). The C has no variable shift. clang turned its
+  3-way `switch (mode)` into a bitmap lookup, `lshr i64 C, zext ((x & 3) << 4)`, which shifts by at most 48 on an i64.
+- Generator (strict only): new `amount_max` bounds a shift amount through constants, `and`-with-constant, zext,
+  `shl` by a constant and phi/select. A shift whose bound is below its own bit width is accepted.
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [] (gained main_0012 8014EA4C, 8014EE14).
+- New stop: `guest_pc=8012deb8`; frame 1200, prims=32 at two frames, draw=0.
+
 ## Next
 
 - Admit or reshape sc02_0031 `func_801831B4` (currently `abi`). Likely next

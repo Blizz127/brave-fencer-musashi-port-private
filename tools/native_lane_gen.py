@@ -303,6 +303,43 @@ def masked_amount(val, defs, seen=None):
     return False
 
 
+def amount_max(val, defs, depth=0):
+    """Strict only (B28): an upper bound of a non-negative shift amount built
+    from constants, `and` with a constant, zext, `shl` by a constant and
+    phi/select, or None. The optimizer's switch-to-bitmap lookup shifts an
+    i64 constant by `zext ((x & 3) << 4)` (8014EA4C): at most 48 < 64."""
+    v = val.strip()
+    if re.fullmatch(r"\d+", v):
+        return int(v)
+    if depth > 8:
+        return None
+    d = defs.get(v, "")
+    mm = re.match(r"and i\d+ (?:%[\w.\"$]+, (\d+)|(\d+), %[\w.\"$]+)$", d)
+    if mm:
+        return int(mm.group(1) or mm.group(2))
+    zm = re.match(r"zext (?:nneg )?i(\d+) (%[\w.\"$]+|\d+) to ", d)
+    if zm:
+        m = amount_max(zm.group(2), defs, depth + 1)
+        return min(m, (1 << int(zm.group(1))) - 1) if m is not None else (1 << int(zm.group(1))) - 1
+    sm = re.match(r"shl (?:nuw |nsw )*i(\d+) (%[\w.\"$]+), (\d+)$", d)
+    if sm:
+        m = amount_max(sm.group(2), defs, depth + 1)
+        if m is None or (m << int(sm.group(3))) >= (1 << int(sm.group(1))):
+            return None
+        return m << int(sm.group(3))
+    if d.startswith("phi "):
+        vals = re.findall(r"\[\s*(.+?),\s*%[\w.\"$]+\s*\]", d)
+        ms = [amount_max(x, defs, depth + 1) for x in vals if x.strip() != v]
+        return max(ms) if ms and None not in ms else None
+    if d.startswith("select "):
+        parts = split_top(d[len("select"):])
+        if len(parts) != 3:
+            return None
+        ms = [amount_max(x.split()[-1], defs, depth + 1) for x in parts[1:]]
+        return max(ms) if None not in ms else None
+    return None
+
+
 def lower_arith(ir):
     """MIPS semantics for i32 shifts and divisions with a variable operand:
     shift counts are masked to 5 bits (SLLV/SRLV/SRAV use the low 5 bits;
@@ -1781,7 +1818,9 @@ def check_optimized(ir, module_internal):
                     d = defs.get(amount, "")
                     mm = re.match(r"and i\d+ (?:%[\w.\"$]+, (\d+)|(\d+), %[\w.\"$]+)$", d)
                     mask = int(mm.group(1) or mm.group(2)) if mm else None
-                    if (mask is None or mask > 31) and not (STRICT and masked_amount(amount, defs)):
+                    am_max = amount_max(amount, defs) if STRICT else None
+                    if (mask is None or mask > 31) and not (STRICT and masked_amount(amount, defs)) and \
+                            not (am_max is not None and am_max < int(sm.group(2)[1:])):
                         raise Reject("arith", "unmasked variable shift")
                 elif int(amount) >= int(sm.group(2)[1:]):
                     raise Reject("arith", "oversized constant shift")
