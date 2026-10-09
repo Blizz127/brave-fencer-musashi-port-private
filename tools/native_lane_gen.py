@@ -291,6 +291,9 @@ def masked_amount(val, defs, seen=None):
         return int(mm.group(1) or mm.group(2)) <= 31
     if re.match(r"zext (?:nneg )?i1 ", d):
         return True  # 0 or 1: `if (c) v >>= 1` folded to `lshr v, zext c` (80032048)
+    zm = re.match(r"zext (?:nneg )?i\d+ (%[\w.\"$]+|\d+) to ", d)
+    if zm:
+        return masked_amount(zm.group(1), defs, seen)  # zext of a <=31 value (800D20C0's s16 count)
     if d.startswith("phi "):
         vals = re.findall(r"\[\s*(.+?),\s*%[\w.\"$]+\s*\]", d)
         return bool(vals) and all(masked_amount(x, defs, seen) for x in vals)

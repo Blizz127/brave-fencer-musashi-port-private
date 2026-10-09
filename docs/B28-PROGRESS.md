@@ -875,6 +875,14 @@ Increment 32 (generator, strict only):
 - Strict stop moves 80149350 -> 800D20C0 (not_in_lane). Frame 1200: prims=0 disp=1 draw=0.
 - The 80135D20 / sc02 80135EB0 intermittent host fault (inc 56) did not recur this run; still open.
 
+## Increment 59 — strict masked_amount accepts zext of a masked count
+
+- main_0010 `func_800D20C0` was rejected "arith unmasked variable shift": the optimizer narrowed
+  lower_arith's 5-bit mask to `and i16 %c, 31` and widened it with `zext nneg i16`.
+  Strict-only: masked_amount now recurses through `zext iN`, which preserves the <=31 value.
+- Gate: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0. regr LOST [], GAINED 2 (main_0010).
+- Strict stop moves 800D20C0 -> 80017778 (not_in_lane). Frame 1200: prims=0 disp=1 draw=0.
+
 ## Next
 
 - Admit or HLE main 80020F34 (exported GTE bank leaf; interpreter has
