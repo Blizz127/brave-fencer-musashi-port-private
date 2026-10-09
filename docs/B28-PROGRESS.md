@@ -1416,6 +1416,21 @@ Increment 32 (generator, strict only):
   frame 1400 and stops on HOST_FAULT addr=0x20 at lane_pc 8015D01C
   (sc02_0031 native code).
 
+### Inc 100: KUSEG_NORMALIZE sc02_0031 8015D01C; no strict stop in 3000 frames
+
+- HOST_FAULT addr=0x20 at sc02_0031 8015D01C. The fault handler now prints
+  the host registers (HOST_FAULT_REGS) and writes guest RAM to
+  MUSASHI_STRICT_STOP_RAM. Those show p=0x80126B58 with p+0x180 (the target
+  object) null: the function reads 0x00000020 and then +0x12 of that word.
+  Retail reads both from the low-RAM mirror (RAM[0x20]=0, so 0x80000012).
+- tools/native_lane_gen.py (strict only): ("sc02_0031", 0x8015D01C) is added
+  to KUSEG_NORMALIZE, the existing mechanism from main_0012 8012DEB8.
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [].
+- Run: all 3000 frames, no STRICT_INTERPRETER_ENTRY, no HOST_FAULT. Frames
+  1250-2550 run the SC02 member31 route (prims 6864-10060). At frame 2600 a new
+  load starts (ld_n 19 -> 87, ovl_state 0 -> 4) and the trace shows prims=0
+  through frame 3000.
+
 ## Next
 
 - Admit or reshape sc02_0031 `func_801831B4` (currently `abi`). Likely next

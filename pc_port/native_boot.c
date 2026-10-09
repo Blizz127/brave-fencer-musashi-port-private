@@ -44,6 +44,7 @@ void musashi_psyx_shutdown(void);
 #include <openssl/sha.h>
 #include <signal.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <math.h>
 #include <time.h>
@@ -5189,6 +5190,7 @@ _Static_assert(sizeof(((NativeBoot *)0)->ram_mirror_guard) % 4096u == 0u,
  * runs every word, exactly as without MUSASHI_NATIVE_LANE. */
 /* A host fault inside natively compiled decomp C names the lane function
  * (async-signal-safe formatting only), then exits 139. */
+static const char *g_fault_ram_path;
 static void lane_fault(int sig, siginfo_t *info, void *context) {
     char buf[128];
     static const char hex[] = "0123456789abcdef";
@@ -5214,6 +5216,36 @@ static void lane_fault(int sig, siginfo_t *info, void *context) {
 #endif
     buf[n++] = '\n';
     (void)!write(2, buf, (size_t)n);
+#if defined(__linux__) && defined(__x86_64__)
+    if (context) {
+        /* The host registers (gregs 0..15: r8..r15, rdi, rsi, rbp, rbx, rdx,
+         * rax, rcx, rsp) carry the guest values the native code was using. */
+        int g;
+        n = 0;
+        head = "native_boot: HOST_FAULT_REGS";
+        while (*head) buf[n++] = *head++;
+        for (g = 0; g < 16; g++) {
+            uint64_t v = (uint64_t)((ucontext_t *)context)->uc_mcontext.gregs[g];
+            buf[n++] = ' ';
+            for (i = 60; i >= 0; i -= 4) buf[n++] = hex[(v >> i) & 15u];
+            if (g == 7) { buf[n++] = '\n'; (void)!write(2, buf, (size_t)n); n = 0;
+                head = "native_boot: HOST_FAULT_REGS"; while (*head) buf[n++] = *head++; }
+        }
+        buf[n++] = '\n';
+        (void)!write(2, buf, (size_t)n);
+    }
+#endif
+    {
+        /* MUSASHI_STRICT_STOP_RAM: guest RAM at the fault, as at a strict stop. */
+        const char *ram_path = g_fault_ram_path;
+        if (ram_path) {
+            int fd = open(ram_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+            if (fd >= 0) {
+                (void)!write(fd, (const void *)(uintptr_t)0x80000000u, 0x200000u);
+                close(fd);
+            }
+        }
+    }
     signal(sig, SIG_DFL);
     raise(sig);
 }
@@ -5238,6 +5270,7 @@ static NativeBoot *native_boot_owner(NativeBoot *fallback) {
     {
         struct sigaction action;
         memset(&action, 0, sizeof action);
+        g_fault_ram_path = getenv("MUSASHI_STRICT_STOP_RAM");
         action.sa_sigaction = lane_fault;
         action.sa_flags = SA_SIGINFO;
         sigaction(SIGSEGV, &action, NULL);
