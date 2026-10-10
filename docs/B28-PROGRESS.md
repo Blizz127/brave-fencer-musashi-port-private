@@ -1759,6 +1759,13 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
   VRAM regions overwritten (separate 640-mode issue, untouched).
 - Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [].
 
+## Inc 123: sc03_0098 imported, strict runs the full 3000 frames
+
+- New overlay config `sc03_0098` (yaml, symbol file, strict allow). Imported 2109 byte-identical upstream functions with `vendor_split_import.py`.
+- The generator hit a KeyError on `func_801412A8` because upstream uses `__asm__` aliases (`aFXXXXXXXX`) for local helper bodies. Those bodies became prototypes: 612 ANSI files, plus 157 K&R files whose duplicate bodies had caused a `multiple definition` link error. Every file was re-verified as byte-exact.
+- Result: the `80128288` stop is gone. Strict hits no interpreter entry at all through the 3000-frame budget. sc03_0098 draws a textured 3D room (f1250-2550, about 6-10k prims/frame).
+- Next: around f2550 the game starts another overlay load (ovl_state 2→3→4). It sits at ld=3 with want=580, rd=0, the display goes to 640x480, and 0 prims are drawn. That points to a CD read that never completes, not a native-coverage gap.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for
