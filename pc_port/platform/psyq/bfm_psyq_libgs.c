@@ -18,6 +18,7 @@
 #include "../bfm_plat.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define GS_OUT_PACKET_P 0x800A5E60u   /* u32: next free packet address */
@@ -204,6 +205,25 @@ static const Gs5Type kGs5Types[30] = {
     [0x1D] = {0x1E8, 0, 44, 0x3C, 0, 0, 0},
 };
 
+/* MUSASHI_TRACE_GS5=1: histogram of (code, loop, fn) dispatches (exit). */
+static struct { uint32_t code, loop, fn, n; unsigned long c; } g_gs5h[128];
+static void gs5h_dump(void) {
+    int i;
+    for (i = 0; i < 128 && g_gs5h[i].c; i++)
+        fprintf(stderr, "native_boot: GS5 code=%02x loop=%u fn=%08x n=%u x%lu\n", g_gs5h[i].code,
+                g_gs5h[i].loop, g_gs5h[i].fn, g_gs5h[i].n, g_gs5h[i].c);
+}
+static void gs5h(uint32_t code, uint32_t loop, uint32_t fn, uint32_t n) {
+    static int on = -1;
+    int i;
+    if (on < 0) { on = getenv("MUSASHI_TRACE_GS5") != NULL; if (on) atexit(gs5h_dump); }
+    if (!on) return;
+    for (i = 0; i < 128; i++) {
+        if (!g_gs5h[i].c) { g_gs5h[i].code = code; g_gs5h[i].loop = loop; g_gs5h[i].fn = fn; g_gs5h[i].n = n; g_gs5h[i].c = 1; return; }
+        if (g_gs5h[i].code == code && g_gs5h[i].loop == loop && g_gs5h[i].fn == fn) { g_gs5h[i].c++; return; }
+    }
+}
+
 int bfm_psyq_GsSortObject5(uint32_t *r) {
     const uint32_t obj = A(0), ot = A(1), shift = A(2), scratch = A(3);
     uint32_t attr, tmd, blk, prim, vert, norm, lmode, b5, b6, div, lightmode = 0, w;
@@ -268,6 +288,7 @@ int bfm_psyq_GsSortObject5(uint32_t *r) {
                     args[0] = prim; args[1] = vert; args[2] = pk; args[3] = n;
                     args[4] = shift; args[5] = ot; args[6] = scratch; argc = 7u;
                 }
+                gs5h(code, loop, fn, n);
                 if (!bfm_psyq_guest_call(fn, argc, args, &ret)) return 0;
                 if (!put32(GS_OUT_PACKET_P, ret)) return 0;
             } else {                                /* preset buffer 0 / 1 */
@@ -286,6 +307,7 @@ int bfm_psyq_GsSortObject5(uint32_t *r) {
                     args[0] = prim; args[1] = vert; args[2] = pkt; args[3] = n;
                     args[4] = shift; args[5] = ot; argc = 6u;
                 }
+                gs5h(code, loop, fn, n);
                 if (!bfm_psyq_guest_call(fn, argc, args, NULL)) return 0;
             }
             prim += (grd ? t->grd_size : t->size) * n;

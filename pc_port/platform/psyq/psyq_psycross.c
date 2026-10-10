@@ -22,6 +22,8 @@
 #include <psx/inline_c.h>
 
 #include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 /* Defined in PsyCross LIBGTE.C but not declared in its libgte.h. Weak:
  * builds that replace PsyCross's LIBGTE with their own GTE owner (native
@@ -500,8 +502,27 @@ void musashi_lane_gte_stszotz(void *r0) {
     lane_gte_store32(r0, (uint32_t)((int32_t)(MFC2(19) & 0xFFFFu) >> 2));
     bfm_psyq_gte_end(0);
 }
+/* MUSASHI_TRACE_GTEFLAG=1: histogram of FLAG values read by stflg (exit). */
+static unsigned long g_flag_hist_n[64];
+static uint32_t g_flag_hist_v[64];
+static void flag_hist_dump(void) {
+    int i;
+    for (i = 0; i < 64 && g_flag_hist_n[i]; i++)
+        fprintf(stderr, "native_boot: GTEFLAG %08x x%lu\n", g_flag_hist_v[i], g_flag_hist_n[i]);
+}
+static void flag_hist(uint32_t v) {
+    static int on = -1;
+    int i;
+    if (on < 0) { on = getenv("MUSASHI_TRACE_GTEFLAG") != NULL; if (on) atexit(flag_hist_dump); }
+    if (!on) return;
+    for (i = 0; i < 64; i++) {
+        if (!g_flag_hist_n[i]) { g_flag_hist_v[i] = v; g_flag_hist_n[i] = 1; return; }
+        if (g_flag_hist_v[i] == v) { g_flag_hist_n[i]++; return; }
+    }
+}
 void musashi_lane_gte_stflg(void *r0) {
     if (!lane_gte_lease()) return;
+    flag_hist(CFC2(31));
     lane_gte_store32(r0, CFC2(31));
     bfm_psyq_gte_end(0);
 }
@@ -1045,7 +1066,25 @@ static int gs5_rgbc(const Gs5Prim *d, uint32_t prim) {
     return 1;
 }
 
+/* MUSASHI_TRACE_GS5RUN=1: per-descriptor flag-cull / nclip-cull / linked counts. */
+static struct { const void *d; unsigned long fl, nc, ln; uint32_t code; } g_gsr[24];
+static int g_gsr_on = -1;
+static void gsr_dump(void) {
+    int i;
+    for (i = 0; i < 24 && g_gsr[i].d; i++)
+        fprintf(stderr, "native_boot: GS5RUN d=%p psize=%u flagcull=%lu nclipcull=%lu linked=%lu pktcode=%02x\n",
+                g_gsr[i].d, ((const Gs5Prim *)g_gsr[i].d)->psize, g_gsr[i].fl, g_gsr[i].nc, g_gsr[i].ln, g_gsr[i].code);
+}
+static int gsr_slot(const void *d) {
+    int i;
+    if (g_gsr_on < 0) { g_gsr_on = getenv("MUSASHI_TRACE_GS5RUN") != NULL; if (g_gsr_on) atexit(gsr_dump); }
+    if (!g_gsr_on) return -1;
+    for (i = 0; i < 24; i++) { if (!g_gsr[i].d) g_gsr[i].d = d; if (g_gsr[i].d == d) return i; }
+    return -1;
+}
+
 static int gs5_run(const Gs5Prim *d, uint32_t *r) {
+    int gsr = gsr_slot(d);
     uint32_t prim = A(0), vert = A(1), norm = A(2), pkt = A(3);
     uint32_t n = A(4), shift = A(5), ot = A(6);
     uint32_t org, ofsw, cmds = 0, i;
@@ -1068,11 +1107,11 @@ static int gs5_run(const Gs5Prim *d, uint32_t *r) {
             if (!gs5_ldv((int)k, vert, gs5_u16(prim + d->vofs[k]))) GS5_FAIL();
         doCOP2(0x0280030); cmds++;                                    /* RTPT */
         if (d->lit && d->rgbc_at == GS5_RGBC_AFTER_RTPT && !gs5_rgbc(d, prim)) GS5_FAIL();
-        if ((int32_t)CFC2(31) < 0) continue;
+        if ((int32_t)CFC2(31) < 0) { if (gsr >= 0) g_gsr[gsr].fl++; continue; }
         doCOP2(0x1400006); cmds++;                                    /* NCLIP */
         if (d->lit && d->rgbc_at == GS5_RGBC_AFTER_NCLIP && !gs5_rgbc(d, prim)) GS5_FAIL();
         if (d->quad && !gs5_ldv(0, vert, gs5_u16(prim + d->vofs[3]))) GS5_FAIL();
-        if ((int32_t)MFC2(24) <= 0) continue;
+        if ((int32_t)MFC2(24) <= 0) { if (gsr >= 0) g_gsr[gsr].nc++; continue; }
         if (!(pp = (uint8_t *)P(pkt, (uint32_t)d->taglen * 4u + 4u))) GS5_FAIL();
         if (d->quad) {
             for (k = 0; k < 3u; ++k) lane_gte_store32(pp + d->xy[k], MFC2(12 + k));
@@ -1117,6 +1156,7 @@ static int gs5_run(const Gs5Prim *d, uint32_t *r) {
         old = (uint32_t)sp[0] | ((uint32_t)sp[1] << 8) | ((uint32_t)sp[2] << 16) | ((uint32_t)sp[3] << 24);
         lane_gte_store32(pp, ((uint32_t)d->taglen << 24) | (old & 0x00FFFFFFu));
         lane_gte_store32(sp, (old & 0xFF000000u) | (pkt & 0x00FFFFFFu));
+        if (gsr >= 0) { g_gsr[gsr].ln++; g_gsr[gsr].code = pp[7]; }
         if (d->quad) lane_gte_store32(pp + d->xy[3], MFC2(14));
         else for (k = 0; k < 3u; ++k) lane_gte_store32(pp + d->xy[k], MFC2(12 + k));
         if (d->lit) {
@@ -1548,7 +1588,6 @@ int bfm_psyq_grd_f4_l2(uint32_t *r) { return grd_run(&kGrdF4l2, r); }
 int bfm_psyq_grd_g4_l0(uint32_t *r) { return grd_run(&kGrdG4l0, r); }
 int bfm_psyq_grd_g4_l2(uint32_t *r) { return grd_run(&kGrdG4l2, r); }
 
-#include <stdio.h>
 
 /* MUSASHI_TRACE_DRAWOTAG helper: the GTE control state at the traced OT
  * (rotation, translation, OFX/OFY, H). Diagnostic only. */
