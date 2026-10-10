@@ -4125,6 +4125,138 @@ SPU_ENTRY(hle_st_frame_done) {
     g_cd_sp = saved;
     return 1;
 }
+
+/* ---- main_0003 handwritten MDEC bitstream routines, from the retail
+ * disassembly (vendor marks them PERMANENT-VERBATIM asm) ----
+ * 800D3204 (limit setter): cell 800D3200 = n > 1 ? n * 2 : 0xFFFFFF; returns
+ * the old value. 800D3234 (bs, out): the run-level VLC decoder. bs != 0
+ * starts a frame (bitstream header: 2 halfwords copied to out, quant scale,
+ * version); bs == 0 resumes from the state saved at 800D3574. Tables: AC
+ * 800DBE78 (13-bit index, 8 bytes) and 800EBE78 (escape, 9-bit index, 4
+ * bytes); DC (v3) at 800DBE78 - 1024 / - 2048. Returns 1 when the output
+ * limit (800D3200 halfwords) was reached, 0 at the end of the frame (65
+ * end codes appended; retail also sets SR bit 17, which has no host effect). */
+#define MDV_RES 0x686E1768A89D23D3ull
+SPU_ENTRY(hle_mdec_limit) {
+    uint32_t a0 = call->r[4], v0;
+    ovl_resident(0x800D3204u, 0x370u, MDV_RES);
+    v0 = rd32(0x800D3200u);
+    wr32(0x800D3200u, (int32_t)(a0 - 1u) > 0 ? a0 << 1 : 0x00FFFFFFu);
+    call->r[2] = v0;
+    return 1;
+}
+#define MDV_FILL() do { if (v1 & 0x10u) { v1 &= 0xFu; v0 |= (uint32_t)rd16(a0) << v1; a0 += 2u; } \
+                        else v1 &= 0xFu; } while (0)
+SPU_ENTRY(hle_mdec_vlc) {
+    const uint32_t a2 = 0x800DBE78u, a3 = 0x800EBE78u, st = 0x800D3574u;
+    uint32_t a0 = call->r[4], a1 = call->r[5];
+    uint32_t v0, v1, t0, t1, t2, t3, t4, t5, t6, t7, t8, t9, at;
+    ovl_resident(0x800D3204u, 0x370u, MDV_RES);
+    t1 = rd32(0x800D3200u);
+    if (a0 == 0u) {
+        a0 = rd32(st); a1 = rd32(st + 4u); v0 = rd32(st + 8u); v1 = rd32(st + 12u);
+        t4 = rd32(st + 16u); t5 = rd32(st + 20u); t7 = rd32(st + 24u);
+        t8 = rd32(st + 28u); t9 = rd32(st + 32u);
+        t6 = a1 + t1 * 2u;
+        goto ac;
+    }
+    t5 = t7 = t8 = t9 = 0;
+    t6 = a1 + t1 * 2u;
+    t0 = rd16(a0); t1 = rd16(a0 + 2u); t4 = rd16(a0 + 4u); t2 = rd16(a0 + 6u);
+    v0 = rd16(a0 + 8u); v1 = rd16(a0 + 10u);
+    t4 <<= 10;
+    if ((int32_t)(t2 - 3u) >= 0) t5 = 1;
+    a0 += 12u;
+    v0 = (v0 << 16) | v1;
+    v1 = 0;
+    wr16(a1, (uint16_t)t0); wr16(a1 + 2u, (uint16_t)t1);
+    a1 += 2u;
+block:
+    t0 = v0 >> 22;
+    a1 += 2u;
+    if (t5 == 0u) {
+        /* v2 DC: 10 bits */
+        if ((t0 ^ 0x1FFu) == 0u) goto end;
+        v0 <<= 10; v1 += 10u; MDV_FILL();
+        wr16(a1, (uint16_t)(t4 | t0));
+    } else {
+        /* v3 DC: per-component (Cr, Cb, Y x4) predictors t7/t8/t9 */
+        if ((t0 ^ 0x3FFu) == 0u) goto end;
+        at = a2 - 1024u;
+        if ((int32_t)(t5 - 3u) >= 0) at -= 1024u;
+        t0 = ((v0 >> 24) << 2) + at;
+        t1 = rd16(t0); t2 = rd16(t0 + 2u);
+        t0 = 0;
+        v0 <<= (t1 & 31u);
+        if (t2 != 0u) {
+            at = 32u - t2;
+            t0 = v0 >> (at & 31u);
+            if ((int32_t)v0 >= 0) { t3 = 0xFFFFFFFFu >> (at & 31u); t0 -= t3; }
+            v0 <<= (t2 & 31u);
+            v1 += t2;
+        }
+        v1 += t1; MDV_FILL();
+        at = t5 - 2u;
+        if ((int32_t)at > 0) { t9 += t0; t1 = t9; }
+        else if (at == 0u) { t8 += t0; t1 = t8; }
+        else { t7 += t0; t1 = t7; }
+        t1 = ((t1 << 2) & 0x3FFu) | t4;
+        t5 += 1u;
+        wr16(a1, (uint16_t)t1);
+        if (t5 == 7u) t5 -= 6u;
+    }
+    at = a1 - t6;
+    a1 += 2u;
+    if ((int32_t)at >= 0) goto save;
+ac:
+    t0 = ((v0 >> 19) << 3) + a2;
+    t1 = rd32(t0);
+    if (t1 != 0u) {
+        at = t1 & 0xFFu;
+        t3 = rd32(t0 + 4u);
+    } else {
+        v0 <<= 8; v1 += 8u; MDV_FILL();
+        t0 = ((v0 >> 23) << 2) + a3;
+        t1 = rd32(t0);
+        t3 = 0;
+        at = t1 & 0xFFu;
+    }
+    v0 <<= (at & 31u); v1 += at; MDV_FILL();
+    t1 >>= 16;
+    if (t1 == 0x7C1Fu) goto escape;
+    wr16(a1, (uint16_t)t1);
+    if (t1 == 0xFE00u) goto block;
+    a1 += 2u;
+    if (t3 == 0u) goto ac;
+    t2 = t3 & 0xFFFFu;
+    if (t2 == 0x7C1Fu) goto escape;
+    wr16(a1, (uint16_t)t2);
+    if (t2 == 0xFE00u) goto block;
+    t2 = t3 >> 16;
+    a1 += 2u;
+    if (t2 == 0u) goto ac;
+    if (t2 == 0x7C1Fu) goto escape;
+    wr16(a1, (uint16_t)t2);
+    if (t2 == 0xFE00u) goto block;
+    a1 += 2u;
+    goto ac;
+escape:
+    wr16(a1, (uint16_t)(v0 >> 16));
+    a1 += 2u;
+    t0 = rd16(a0); a0 += 2u;
+    v0 = (v0 << 16) | (t0 << (v1 & 31u));
+    goto ac;
+end:
+    for (t1 = 0; t1 < 65u; ++t1) { wr16(a1, 0xFE00u); a1 += 2u; }
+    call->r[2] = 0;
+    return 1;
+save:
+    wr32(st, a0); wr32(st + 4u, a1); wr32(st + 8u, v0); wr32(st + 12u, v1);
+    wr32(st + 16u, t4); wr32(st + 20u, t5); wr32(st + 24u, t7);
+    wr32(st + 28u, t8); wr32(st + 32u, t9);
+    call->r[2] = 1;
+    return 1;
+}
 SPU_ENTRY(hle_gs_link_object5) {
     /* 800553D8 GsLinkObject5(objtable, dobj, n): dobj->tmd = objtable +
      * n * 28 (one 7-word object entry), dobj->attribute = 0 */
@@ -4494,6 +4626,8 @@ static const MusashiNativeLaneEntry k_driver_entries[] = {
     {0x800D3020u, 0, hle_mdec_out_sync,  "MDEC_out_sync(ovl)",  0, 1, 0},
     {0x800D30B8u, 0, hle_mdec_status,    "MDEC_status(ovl)",    0, 1, 0},
     {0x800D30D0u, 0, hle_mdec_timeout,   "MDEC_timeout(ovl)",   1, 1, 0},
+    {0x800D3204u, 0, hle_mdec_limit,     "MDEC_vlc_limit(ovl)", 1, 1, 0},
+    {0x800D3234u, 0, hle_mdec_vlc,       "MDEC_vlc(ovl)",       2, 1, 0},
     {0x80043088u, 0, hle_st_set_ring,    "StSetRing",           2, 0, 0},
     {0x8004689Cu, 0, hle_st_clear_ring,  "StClearRing",         0, 0, 0},
     {0x80046BFCu, 0, hle_st_clear_slots, "StClearSlots",        2, 0, 0},
