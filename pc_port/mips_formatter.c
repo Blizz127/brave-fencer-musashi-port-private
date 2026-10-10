@@ -13896,6 +13896,227 @@ static int lane_try(MusashiBootMemory *memory, FormatterCpu *cpu) {
     return formatter_return(cpu) ? 1 : -1;
 }
 
+#ifdef MUSASHI_NATIVE_VSYNC_WAIT_BUILD
+/* M6a of the no-interpreter plan (dev builds only, -DMUSASHI_NATIVE_VSYNC_WAIT_BUILD=ON): the libetc VSync wait
+ * 800424E4..8004257C as an own instruction-exact model (design M6-VSYNC-NATIVE-DESIGN.md; offline model check
+ * tools/vsync_wait_model.py + tests/test_vsync_wait_model.py). It is a table over retail pcs, not a translation:
+ * each slot applies its retail instruction's effect to the GPRs and the two stack cells, charges the interpreter's
+ * cost (BIAS 2, +1 per load/store) and leaves pc/npc/delay_slot/branch_pc as formatter_step would. The 39 words
+ * are checked by FNV-1a 64 digest; no retail word is compiled in. Time follows D-011's known-deadline rule: after
+ * each checkpoint the deadline is queried, slots that start before it run without a checkpoint (whole loop
+ * iterations at once: the tick and the stack cells cannot change between checkpoints), and the checkpoint the
+ * interpreter makes at the first slot starting at or after it is made with the same CPU, so device commits and
+ * IRQ deliveries land at the same pc and cycle. Unknown deadline: a checkpoint before every slot (the
+ * interpreter's own sequence). MUSASHI_VSYNC_WAIT=native runs it; =perstep checkpoints before every slot (the
+ * verification leg); anything else leaves the wait to the interpreter. The timeout iteration (counter cell 0) is
+ * handed back to the interpreter at its first instruction, 8004250C. */
+enum { VW_OFF, VW_NATIVE, VW_PERSTEP };
+#define VW_ENTRY 0x800424E4u
+#define VW_LOOP 0x8004250Cu
+#define VW_EXIT 0x80042570u
+#define VW_TICK 0x8006CBB8u
+#define VW_WORDS 39u
+#define VW_DIGEST 0xd9b8652817b4ae85ull   /* FNV-1a 64 of the 39 words as the SLUS-00726 EXE holds them */
+static int g_vw_mode = -1;
+static uint64_t g_vw_calls, g_vw_done, g_vw_handover, g_vw_fallback, g_vw_other_ra;
+static uint64_t g_vw_slots, g_vw_checkpoints, g_vw_iterations;
+
+static void vw_report(void) {
+    fprintf(stderr, "native_boot: VSYNC_WAIT mode=%s calls=%llu done=%llu handover=%llu fallback=%llu "
+            "other_ra=%llu slots=%llu iterations_charged=%llu checkpoints=%llu\n",
+            g_vw_mode == VW_PERSTEP ? "perstep" : "native", (unsigned long long)g_vw_calls,
+            (unsigned long long)g_vw_done, (unsigned long long)g_vw_handover, (unsigned long long)g_vw_fallback,
+            (unsigned long long)g_vw_other_ra, (unsigned long long)g_vw_slots,
+            (unsigned long long)g_vw_iterations, (unsigned long long)g_vw_checkpoints);
+}
+
+static int vw_mode(void) {
+    if (g_vw_mode < 0) {
+        const char *v = getenv("MUSASHI_VSYNC_WAIT");
+        g_vw_mode = v && !strcmp(v, "native") ? VW_NATIVE : v && !strcmp(v, "perstep") ? VW_PERSTEP : VW_OFF;
+        if (g_vw_mode != VW_OFF) {
+            fprintf(stderr, "native_boot: VSYNC_WAIT mode=%s\n", g_vw_mode == VW_PERSTEP ? "perstep" : "native");
+            atexit(vw_report);
+        }
+    }
+    return g_vw_mode;
+}
+
+static uint32_t vw_get(const uint8_t *p) {
+    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
+}
+
+static void vw_put(uint8_t *p, uint32_t value) {
+    p[0] = (uint8_t)value; p[1] = (uint8_t)(value >> 8); p[2] = (uint8_t)(value >> 16); p[3] = (uint8_t)(value >> 24);
+}
+
+/* The interpreter's charge for a modeled slot; 0 = not a modeled slot (ra after the exit, or the timeout path). */
+static uint32_t vw_cost(uint32_t pc) {
+    switch (pc) {
+    case 0x800424ECu: case 0x800424F4u: case 0x80042504u: case 0x8004250Cu:
+    case 0x80042518u: case 0x8004251Cu: case 0x8004255Cu: case 0x80042570u:
+        return 3u;
+    case 0x800424E4u: case 0x800424E8u: case 0x800424F0u: case 0x800424F8u: case 0x800424FCu:
+    case 0x80042500u: case 0x80042508u: case 0x80042510u: case 0x80042514u: case 0x80042520u:
+    case 0x80042524u: case 0x80042528u: case 0x80042558u: case 0x80042560u: case 0x80042564u:
+    case 0x80042568u: case 0x8004256Cu: case 0x80042574u: case 0x80042578u: case 0x8004257Cu:
+        return 2u;
+    default:
+        return 0u;
+    }
+}
+
+/* Run the modeled slot at cpu->pc as formatter_step would: its effect, then r0, delay_slot, branch_pc, pc and npc.
+ * Its cost is added to *pending, which reaches the clock before the next checkpoint. */
+static void vw_slot(FormatterCpu *cpu, uint8_t *cell, uint8_t *ra_cell, const uint8_t *tick, uint64_t *pending) {
+    uint32_t pc = cpu->pc, next = cpu->npc, target = next + 4u;
+    int branch = 0;
+    switch (pc) {
+    case 0x800424E4u: cpu->r[29] -= 0x20u; break;
+    case 0x800424E8u: cpu->r[5] <<= 15; break;
+    case 0x800424ECu: vw_put(cell, cpu->r[5]); break;
+    case 0x800424F0u: case 0x80042558u: cpu->r[2] = 0x80070000u; break;
+    case 0x800424F4u: case 0x8004255Cu: cpu->r[2] = vw_get(tick); break;
+    case 0x800424FCu: case 0x80042564u: cpu->r[2] = (int32_t)cpu->r[2] < (int32_t)cpu->r[4] ? 1u : 0u; break;
+    case 0x80042500u: branch = 1; if (cpu->r[2] == 0u) target = VW_EXIT; break;
+    case 0x80042504u: vw_put(ra_cell, cpu->r[31]); break;
+    case 0x80042508u: cpu->r[3] = 0xFFFFFFFFu; break;
+    case 0x8004250Cu: case 0x8004251Cu: cpu->r[2] = vw_get(cell); break;
+    case 0x80042514u: cpu->r[2] -= 1u; break;
+    case 0x80042518u: vw_put(cell, cpu->r[2]); break;
+    case 0x80042524u: branch = 1; if (cpu->r[2] != cpu->r[3]) target = 0x80042558u; break;
+    case 0x80042568u: branch = 1; if (cpu->r[2] != 0u) target = VW_LOOP; break;
+    case 0x80042570u: cpu->r[31] = vw_get(ra_cell); break;
+    case 0x80042574u: cpu->r[29] += 0x20u; break;
+    case 0x80042578u: branch = 1; target = cpu->r[31]; break;
+    default: break;                      /* the nops */
+    }
+    cpu->r[0] = 0;
+    cpu->delay_slot = (uint8_t)branch;
+    cpu->branch_pc = branch ? pc : 0u;
+    cpu->pc = next;
+    cpu->npc = target;
+    *pending += vw_cost(pc);
+    ++g_vw_slots;
+}
+
+/* Charge the slots run since the last checkpoint (as lane_ledger_flush). 0 when the clock refuses. */
+static int vw_flush(FormatterCpu *cpu, uint64_t *pending) {
+    uint64_t cycles = *pending;
+    *pending = 0;
+    if (!cpu->clock) return 1;
+    while (cycles) {
+        uint32_t part = cycles > UINT32_MAX ? UINT32_MAX : (uint32_t)cycles;
+        if (!cpu->clock->advance || !cpu->clock->advance(cpu->clock->userdata, part)) return 0;
+        cycles -= part;
+    }
+    return 1;
+}
+
+/* The D-011 deadline in cycles from the time already charged; 0 (checkpoint now) when it is unknown, under the
+ * strict guard, or in perstep mode. */
+static uint64_t vw_until(FormatterCpu *cpu) {
+    uint64_t until = 0;
+    if (g_vw_mode == VW_PERSTEP || guard_strict()) return 0;
+    if (!cpu->clock || cpu->clock != g_deadline_clock || !g_deadline_fn) return 0;
+    if (!g_deadline_fn(cpu->clock->userdata, &until)) return 0;
+    return until;
+}
+
+/* The run loop's checkpoint before the slot the CPU is materialized at (device commit, then IRQ delivery, which runs
+ * to completion and returns here). 1 = continue, 0 = refused, -1 = host stop (pc/npc stay parked at the sentinel). */
+static int vw_checkpoint(FormatterCpu *cpu) {
+    const MusashiCallbackDevice *device = cpu->callback_device;
+    uint32_t pc = cpu->pc, npc = cpu->npc, branch = cpu->branch_pc;
+    uint8_t delay = cpu->delay_slot;
+    int ok = device->checkpoint(device->userdata, cpu);
+    ++g_vw_checkpoints;
+    if (ok && cpu->npc == UINT_MAX) return -1;
+    cpu->pc = pc;
+    cpu->npc = npc;
+    cpu->delay_slot = delay;
+    cpu->branch_pc = branch;
+    return ok ? 1 : 0;
+}
+
+/* Entry conditions; 0 leaves the wait to the interpreter with nothing changed. */
+static int vw_enter_ok(MusashiBootMemory *memory, FormatterCpu *cpu) {
+    static int host_handled = -1;
+    uint64_t h = 0xcbf29ce484222325ull;
+    uint32_t i, word, b;
+    if (cpu->merge_pending || cpu->gte_load_pending || cpu->delay_slot || cpu->branch_pc ||
+        cpu->npc != cpu->pc + 4u) return 0;
+    if (cpu->cd_irq_frame || cpu->bios_frame) return 0;      /* IRQ context: interpreted until M5 */
+    if (cpu->r[31] == UINT_MAX) return 0;                    /* the lane sentinel */
+    if (!cpu->callback_device || !cpu->callback_device->checkpoint) return 0;
+    if (host_handled < 0) {
+        host_handled = 0;
+        for (i = 0; i < VW_WORDS; ++i)
+            if (musashi_formatter_pc_host_handled(VW_ENTRY + 4u * i)) host_handled = 1;
+        if (host_handled) fprintf(stderr, "native_boot: VSYNC_WAIT refused: a wait pc is host-handled\n");
+    }
+    if (host_handled) return 0;
+    for (i = 0; i < VW_WORDS; ++i) {
+        if (!code_word(memory, cpu, VW_ENTRY + 4u * i, &word)) return 0;
+        for (b = 0; b < 4u; ++b) { h ^= (word >> (8u * b)) & 0xFFu; h *= 0x100000001b3ull; }
+    }
+    return h == VW_DIGEST;
+}
+
+/* 1: consumed; the CPU is at ra after 8004257C ran (done), or at a pc the model does not cover (handover: 8004250C
+ * of the timeout iteration, or the timeout path when a handler changed the counter), and the run loop makes its
+ * usual checkpoint there next. 0: not taken, nothing changed. -1: a host stop parked the CPU at the sentinel, or the
+ * clock or a checkpoint refused. */
+static int vsync_wait_native(MusashiBootMemory *memory, FormatterCpu *cpu) {
+    uint8_t *cell, *ra_cell;
+    const uint8_t *tick;
+    uint32_t sp, ran = VW_ENTRY;
+    uint64_t pending = 0, until;
+    int ok;
+    if (vw_mode() == VW_OFF) return 0;
+    ++g_vw_calls;
+    sp = cpu->r[29];
+    cell = cpu_ram_span(memory, cpu, sp - 0x10u, 4u);
+    ra_cell = cpu_ram_span(memory, cpu, sp - 0x08u, 4u);
+    tick = cpu_ram_span(memory, cpu, VW_TICK, 4u);
+    if (!cell || !ra_cell || !tick || !vw_enter_ok(memory, cpu)) {
+        ++g_vw_fallback;
+        return 0;
+    }
+    if (cpu->r[31] != 0x80042434u && cpu->r[31] != 0x80042458u) ++g_vw_other_ra;
+    vw_slot(cpu, cell, ra_cell, tick, &pending);             /* 800424E4: the run loop made its checkpoint */
+    for (;;) {
+        if (!vw_flush(cpu, &pending)) return -1;
+        if (ran == 0x8004257Cu) { ++g_vw_done; return 1; }   /* jr ra's delay slot ran: at ra */
+        if (!vw_cost(cpu->pc) || (cpu->pc == VW_LOOP && vw_get(cell) == 0u)) { ++g_vw_handover; return 1; }
+        until = vw_until(cpu);
+        while (pending < until && ran != 0x8004257Cu && vw_cost(cpu->pc) &&
+               !(cpu->pc == VW_LOOP && vw_get(cell) == 0u)) {
+            if (cpu->pc == VW_LOOP && (int32_t)vw_get(tick) < (int32_t)cpu->r[4]) {
+                uint64_t whole = (until - pending) / 32u, left = vw_get(cell);
+                if (whole > left) whole = left;              /* stop at the timeout iteration's start */
+                if (whole) {
+                    vw_put(cell, (uint32_t)(left - whole));
+                    cpu->r[2] = 1u;                          /* the slt result every iteration start carries */
+                    pending += 32u * whole;
+                    g_vw_iterations += whole;
+                    ran = 0x8004256Cu;                       /* the last slot of a whole iteration */
+                    continue;
+                }
+            }
+            ran = cpu->pc;
+            vw_slot(cpu, cell, ra_cell, tick, &pending);
+        }
+        if (ran == 0x8004257Cu || !vw_cost(cpu->pc) || (cpu->pc == VW_LOOP && vw_get(cell) == 0u)) continue;
+        if (!vw_flush(cpu, &pending)) return -1;
+        ok = vw_checkpoint(cpu);
+        if (ok <= 0) return -1;
+        ran = cpu->pc;
+        vw_slot(cpu, cell, ra_cell, tick, &pending);
+    }
+}
+#endif
+#line 13899 /* keep release __LINE__ values identical to the OFF build */
 static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
     uint32_t instruction, opcode, rs, rt, rd, immediate, old_npc;
     uint32_t target_npc;
@@ -13926,6 +14147,18 @@ static int formatter_step(MusashiBootMemory *memory, FormatterCpu *cpu) {
             return formatter_refuse0(__LINE__, cpu->pc);
         }
     }
+#ifdef MUSASHI_NATIVE_VSYNC_WAIT_BUILD
+    /* M6a: the VSync wait runs as its own model; its slots never reach the interpreter (or M0's count). */
+    if (cpu->pc == VW_ENTRY) {
+        int vw = vsync_wait_native(memory, cpu);
+        if (vw > 0) return 1;
+        if (vw < 0) {
+            if (cpu->pc == UINT_MAX && cpu->npc == UINT_MAX) return 0;
+            return formatter_refuse0(__LINE__, cpu->pc);
+        }
+    }
+#endif
+#line 13929
     if (cpu->pc == 0x80128158u) {
         static int last_sc01 = -1, last_sc02 = -1;
         static uint64_t last_digest;

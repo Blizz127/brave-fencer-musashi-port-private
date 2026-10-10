@@ -16,6 +16,12 @@ option(MUSASHI_DEV_MENU_PRESET_TABLE "Build the dev menu's Finish Area with a lo
 if(MUSASHI_DEV_MENU_PRESET_TABLE)
     add_compile_definitions(MUSASHI_DEV_MENU_PRESET_TABLE)
 endif()
+option(MUSASHI_NATIVE_VSYNC_WAIT_BUILD
+    "Dev-only (M6a of the no-interpreter plan): honour MUSASHI_VSYNC_WAIT=native|perstep; never in releases"
+    OFF)
+if(MUSASHI_NATIVE_VSYNC_WAIT_BUILD)
+    add_compile_definitions(MUSASHI_NATIVE_VSYNC_WAIT_BUILD)
+endif()
 option(MUSASHI_USE_VENDOR_BFM
     "Prefer cleaned house-style matched leaves reconciled with vendor/bfm-decomp (Druthulu)"
     OFF)
