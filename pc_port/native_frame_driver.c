@@ -4257,6 +4257,21 @@ save:
     call->r[2] = 1;
     return 1;
 }
+SPU_ENTRY(hle_st_free_ring) {
+    /* 80046B44 StFreeRing(base): the data slot of base (0x7E0 bytes each,
+     * after the ring's headers); a header in use (id 4) and its nSectors
+     * slots are released, the read cursor 800C6D40 moves past them; 1 when
+     * the slot was not in use. */
+    uint32_t ring = rd32(ST_RING), h;
+    int32_t slot = ((int32_t)(call->r[4] - (ring + (rd32(ST_RING_SIZE) << 5))) >> 2) / 504, n, i = 0;
+    h = ring + ((uint32_t)slot << 5);
+    if ((int16_t)rd16(h) != 4) { call->r[2] = 1; return 1; }
+    n = (int16_t)rd16(h + 6u);
+    for (; i < n; ++i) wr16(ring + ((uint32_t)(i + slot) << 5), 0);
+    wr32(0x800C6D40u, (uint32_t)(i + slot));
+    call->r[2] = 0;
+    return 1;
+}
 SPU_ENTRY(hle_gs_link_object5) {
     /* 800553D8 GsLinkObject5(objtable, dobj, n): dobj->tmd = objtable +
      * n * 28 (one 7-word object entry), dobj->attribute = 0 */
@@ -4545,6 +4560,7 @@ static const MusashiNativeLaneEntry k_driver_entries[] = {
     {0x80046610u, 0, hle_st_cd_interrupt, "StCdIntrReady",       0, 0, 0},
     {0x80046D1Cu, 0, hle_st_cd_interrupt, "StCdInterrupt",       0, 0, 0},
     {0x800469CCu, 0, hle_st_frame_done,   "StFrameDone",         0, 0, 0},
+    {0x80046B44u, 0, hle_st_free_ring,    "StFreeRing",          1, 1, 0},
     {0x800439F8u, 0, hle_cd_datasync,     "CdDataSync",          1, 1, 0},
     {0x80043B9Cu, 0, hle_cd_getintr,      "CD_getintr",          0, 1, 0},
     {0x80044124u, 0, hle_cd_sync,         "CD_sync",             2, 1, 0},
