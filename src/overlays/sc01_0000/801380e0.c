@@ -1,25 +1,24 @@
+/* Overlay range [801380E0,801387B8) from MAIN.CD member 0012.
+ * SHA256(span)=6d66675bee4ac82947d39a9b3c91f618eb998e5840e36cccdb4ac1aa4e9dbf5f.
+ * Word export for the native seam (m2c produced no draft). */
 /* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 /* func_801380E0 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-typedef float f32;
-typedef unsigned long long u64;
-typedef long long s64;
-typedef double f64;
-#ifndef NULL
-#define NULL ((void *)0)
-#endif
 
+/* File-scope declarations from the vendor translation unit. */
 extern s32 func_80029178(s32);
 extern s16 D_8012752E;
 
-s32 func_801380E0(s32 arg0) {
+/* func_801380E0 — shared body (overlay slot 0x80128158, h_text 6e5fdbea). ONE source: instantiated by #include at each
+ * member's site in address order; the members are recorded in config/dedup.us.yaml (Phase 35). */
+void func_801380E0(s32 arg0) {
     extern void func_8001931C(s32);
     extern void func_8001AAD0(s32, s32);
     extern s32 func_8001B22C(void);
     extern void func_80029124(s32, s32);
     extern s32 func_800CF864(s32, s32);
     extern void func_80138AB4(s32, s32);
-    extern s32 func_80138C60(s32, s32);
+    extern s32 func_80138C60();
     extern void func_80138D58(s32, s32);
     extern s32 func_80138DE0(u8 *arg0, u8 arg1, s32 arg2);
     extern void func_801391F0(s32, s32);

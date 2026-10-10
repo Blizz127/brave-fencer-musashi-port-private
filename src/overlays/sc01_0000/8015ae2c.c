@@ -1,14 +1,35 @@
+/* Overlay range [8015AE2C,8015B6F4) from MAIN.CD member 0012.
+ * SHA256(span)=5637dbe7984140063172568a8b0c07867971223636b7f5023e12bebc06a37aa8.
+ * Word export for the native seam (m2c produced no draft). */
 /* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 /* func_8015AE2C - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-typedef float f32;
-typedef unsigned long long u64;
-typedef long long s64;
-typedef double f64;
-#ifndef NULL
-#define NULL ((void *)0)
-#endif
 
+/* File-scope declarations from the vendor translation unit. */
+void func_8012A568(void (*a0)(void));
+extern void func_8012A568(void (*a0)(void));
+
+/* func_8015AE2C (ov_SC01_077_after, 562 ins, jtbl_801D8B54) — Phase 26 crack
+ * Entity main-update dispatcher: 7-case switch (0/1/2/6 shared, 3/4/5 own, no default
+ * block — out-of-range falls to the after-switch join), then movement/clamp/decay tail.
+ * PIN-FREE. Offset-pure (s32 arg0 + raw offsets) — ×134 template-safe.
+ *
+ * match_one: MATCH (562 ins). rtu_match (whole-TU): MATCH (562 ins) — see func_8015AE2C.md
+ * for the two TU-side prerequisites (engine_core.h DEFINE_func_8015BEC4 extern must drop its
+ * `(void)` prototype, and the def must stay K&R) plus the jtbl_carve trailing-pad-word note.
+ *
+ * Signature: `s32` return + K&R def are REQUIRED by the TU, byte-neutral vs void/ANSI here
+ * (both verified MATCH 562): engine_core.h's thunk DEFINE_func_8015BEC4 does
+ * `return func_8015AE2C();` (s32, zero-arg call) — only an unprototyped K&R def coexists
+ * with that call. §41d does not bite on this body (it has early `return;`s).
+ *
+ * jtbl_801D8B54 = 7 entries [0,1,2,6]->0x8015AEE4  [3]->0x8015AFE0  [4]->0x8015AFF0
+ * [5]->0x8015B000, bound `sltiu 7`, default(out-of-range) -> 0x8015B044 (after-switch).
+ * The raw dlabel's 8th word 0x00000000 is NOT a table entry: it is the original TU's
+ * intra-TU `.align 3` pad between consecutive jtbls (B34/B54/B74 chain) — the compiled
+ * object emits exactly 28 B; the pad must stay in the raw post-carve data piece.
+ */
+extern void (*D_801812A4[])(void *);
 extern s32 func_80161A60(s32 a0);
 extern u16 func_801487F4(s32 *a0);
 extern s32 func_80149FB0(s32 a0);
@@ -55,19 +76,23 @@ extern s32 func_8014A69C(s32 *a0);
 extern void func_8014E6A0(void);
 extern void func_8015CF8C(s32 *a0);
 extern s32 func_801725A4(u8 *a0);
+extern s32 D_800D4E94;
+extern s32 D_800D4ED4;
+extern u8 D_800D4F8C[];
+extern s32 D_800D4A9C;
+extern s32 D_800D4B48;
 
-s32 func_8015AE2C(arg0)
+void func_8015AE2C(arg0)
 s32 arg0;
 {
-    extern void (*D_801812A4[])(void *);
-    extern s16 D_801152A0;
+    /* [T51] scoped in from file scope: a file-scope decl of these symbols constrains every
+       LATER function in this TU, which blocks a byte-true decl of a different type.
+       Declaration-only move (cookbook §103); the whole-binary byte-gate is the arbiter. */
     extern u8 D_800D4BE0[];
-    extern s32 D_800D4E94;
-    extern s32 D_800D4ED4;
-    extern u8 D_800D4F8C[];
-    extern s32 D_800D4A9C;
-    extern s32 D_800D4B48;
-
+    /* [T51] scoped in from file scope: a file-scope decl of these symbols constrains every
+       LATER function in this TU, which blocks a byte-true decl of a different type.
+       Declaration-only move (cookbook §103); the whole-binary byte-gate is the arbiter. */
+    extern s16 D_801152A0;
     s32 flag;
     s32 r;
     s32 lim;

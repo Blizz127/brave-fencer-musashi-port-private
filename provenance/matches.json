@@ -324883,6 +324883,30 @@
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8013B83C",
+      "vram": 2148775996,
+      "size": 1088,
+      "region": "sc01_0000",
+      "source": "src/overlays/sc01_0000/8013b83c.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O0",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)",
+      "rodata_base": 2149201144
+    },
+    {
+      "name": "func_8013B83C",
+      "vram": 2148775996,
+      "size": 1088,
+      "region": "sc01_0001",
+      "source": "src/overlays/sc01_0001/8013b83c.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O0",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)",
+      "rodata_base": 2149496272
     }
   ]
 }

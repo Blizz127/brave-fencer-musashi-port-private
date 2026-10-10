@@ -1,16 +1,25 @@
+/* Overlay range [8015A3C8,8015AB7C) from MAIN.CD member 0012.
+ * SHA256(span)=049d5fbc746bb5ecc553c441d1daf32f4eeec10c57c081dec06df1fb09b598ad.
+ * Word export for the native seam (m2c produced no draft). */
 /* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 /* func_8015A3C8 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-typedef float f32;
-typedef unsigned long long u64;
-typedef long long s64;
-typedef double f64;
-#ifndef NULL
-#define NULL ((void *)0)
-#endif
 
-extern u8 D_80078E78[];
-extern s16 D_800B9A08;
+/* Vendor names mapped to address-named symbols for the link-by-address harness. */
+#define currentLocationId D_800B9A08
+
+/* File-scope declarations from the vendor translation unit. */
+void func_8012A568(void (*a0)(void));
+extern void func_8012A568(void (*a0)(void));
+extern u16 D_800B99DA;
+
+/* func_8015A3C8 (ov_SC01_077_after, 493 ins, jtbl_801D8B34) — Phase 26 crack
+ * Entity air/fall update: 7-case switch (0/1/2/6 shared, 3/4/5 own, no default block),
+ * then a big velocity-clamp tail with a nested char switch (0x41 / 0x53+0x73).
+ * PIN-FREE. Offset-pure (s32 arg0 + raw offsets) — x134 template-safe.
+ */
+extern s16 currentLocationId;
+
 extern s32 func_80149D9C(s32 a0);
 extern void func_80149FA8(void);
 extern s32 func_80149FB0(s32 a0);
@@ -18,7 +27,7 @@ extern s32 func_80161B84(void *a0);
 extern s32 func_80161B18(void *a0);
 extern s32 func_8014A048(s32 a0);
 extern void func_8014A218(void);
-extern int func_80161BE0(void *param_1);
+extern s32 func_80161BE0(s32*);
 extern s32 func_801619A4(s32 *a0);
 extern s32 func_80149AA8(s32 *a0);
 extern void func_80149AD4(s32 *a0);
@@ -58,16 +67,20 @@ extern void func_801553C0(s32 a0);
 extern void func_80161278(void *a0);
 extern void func_80161C24(s32 a0, s32 a1);
 extern s32 func_80172608(u8 *a0);
-extern void func_801483E8(void);
+extern void func_801483E8(unsigned char*);
 
-s32 func_8015A3C8(arg0)
+void func_8015A3C8(arg0)
 s32 arg0;
 {
+    /* [T51] scoped in from file scope: a file-scope decl of these symbols constrains every
+       LATER function in this TU, which blocks a byte-true decl of a different type.
+       Declaration-only move (cookbook §103); the whole-binary byte-gate is the arbiter. */
+    extern u8 D_80078E78[];
 
     extern void (*D_801812A4[])(void *);
-    extern u16 D_800B99DA;
+
     extern s32 D_800D5428;
-    extern u16 D_80181228[];
+    extern u8 D_80181228[];
     s32 min;
     s32 grav;
     s32 hi;
@@ -78,7 +91,7 @@ s32 arg0;
     u8 *p;
 
     p = D_80078E78;
-    if (D_800B9A08 == 0x302A) {
+    if (currentLocationId == 0x302A) {
         min = -0xC0000;
         grav = -0x4000;
         hi = 0;
