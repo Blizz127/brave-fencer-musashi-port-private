@@ -1,29 +1,35 @@
+/* Overlay range [80131B14,80131C78) from MAIN.CD member 0012.
+ * SHA256(span)=deb23fd6ef32d8f7ef618b5c4b2db8e894bca565db420bcab76d01f7ac459021.
+ * Word export for the native seam; the body below is an
+ * UNVERIFIED draft, not an oracle match claim. */
 /* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 /* func_80131B14 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-typedef float f32;
-typedef unsigned long long u64;
-typedef long long s64;
-typedef double f64;
-#ifndef NULL
-#define NULL ((void *)0)
-#endif
 
-extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern void func_80019064(void *a0);
+extern void func_8012B23C(s32 a0);
 extern void func_8012B2CC(s32 a0);
 extern void func_8016AA50(int, int);
-extern void func_8016B428(int);
-extern void func_80019064(void *);
-extern void func_8012B23C(s32 a0);
+extern s32 func_8016B428(s32);
+            typedef struct { s8 c[8]; } Blk8_80131B14;
 
-void func_80131B14() {
-    extern void func_8002A520(void *);
-    extern void func_8002A790(void *);
-    extern u8 D_8017F0C8;
+// @class: regalloc-order
+// @stuck: none — MATCH (89 ins). Reconcile: TU canonical decl is `void func_80131B14(void)`
+//   (ov_SC01_077_a.c L1676/L1756; callers cast to (void(*)(int)) when passing p), so the def MUST be
+//   (void) or cc1 hard-errors `conflicting types` (exit 33). §42c lever #6: capture incoming $a0 into a
+//   NORMAL pseudo (`register u8 *a0v __asm__("$4"); u8 *p = a0v;`) so p gets a callee-saved home ($s0).
+//   func_8012B2CC/func_8012B23C are file-scope DEFINE'd here (split L740/L744) as void(s32) — do NOT redeclare;
+//   the (void(*)(void*)) cast on the bare name is byte-neutral. Body keys: e(0x5E) as s32 not u8 (kills the
+//   compare-time andi 0xff); f76 dual-width via per-access casts (lhu in the decrement, lh in the <=0 compare);
+//   the p->f20 reload split into TWO separate temps so the 2nd load takes $v0 not $v1.
 
+void func_80131B14(void) {
     register u8 *a0v __asm__("$4");
     u8 *p = a0v;
 
+    extern void func_8002A520(void *);
+    extern void func_8002A790(void *);
+    extern u8 D_8017F0C8;
 
     s32 e = *(u8 *)(p + 0x5E);
 

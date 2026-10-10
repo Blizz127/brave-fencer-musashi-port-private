@@ -1,31 +1,28 @@
+/* Overlay range [8013EE10,8013EF88) from MAIN.CD member 0012.
+ * SHA256(span)=1f10207e37f3d038071277dbcd68fe7862d0b589641d02a42467eb242cef858b.
+ * Word export for the native seam; the body below is an
+ * UNVERIFIED draft, not an oracle match claim. */
 /* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 /* func_8013EE10 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-typedef float f32;
-typedef unsigned long long u64;
-typedef long long s64;
-typedef double f64;
-#ifndef NULL
-#define NULL ((void *)0)
-#endif
 
+/* File-scope declarations from the vendor translation unit. */
 typedef struct { s32 f0; } E4;
-extern void func_8012A5F8(void (*a0)(void), s32 a1);
-extern short D_800B9A02;
-extern unsigned short D_80115112;
-extern u8 D_801151C8[];
-extern s32 D_801151D0;
-extern s16 D_80184BD0;
-extern s16 D_80184BD2;
-extern unsigned char D_80184BD4;
-extern void func_801376E8(int a0, int a1);
-extern void func_8013FAF8(s16 a0, s16 a1);
-extern unsigned char *func_80141CA4(void);
 
 s32 func_8013EE10() {
     extern E4 aD80115188[] __asm__("D_80115188");
     extern E4 D_80115168[];
     extern unsigned short D_80115118;
+    extern short D_800B9A02;
+    extern u8 D_801151C8[];
+    extern s32 D_801151D0;
+    extern s16 D_80184BD0;
+    extern s16 D_80184BD2;
+    extern unsigned char D_80184BD4;
+    extern unsigned short D_80115112;
+    extern void func_8013FAF8(s16 a0, s16 a1);
+    extern void func_801376E8(int a0, int a1);
+    extern unsigned char *func_80141CA4(void);
 
     short i;
     u16 *p;

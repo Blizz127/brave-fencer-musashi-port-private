@@ -1,14 +1,15 @@
+/* Overlay range [801670E4,80167540) from MAIN.CD member 0012.
+ * SHA256(span)=68bb0b741ba19d6a73907fa229ec0faeb22c5eb1356f84ab40c9787039c2356e.
+ * Word export for the native seam; the body below is an
+ * UNVERIFIED draft, not an oracle match claim. */
 /* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 /* func_801670E4 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-typedef float f32;
-typedef unsigned long long u64;
-typedef long long s64;
-typedef double f64;
-#ifndef NULL
-#define NULL ((void *)0)
-#endif
 
+/* Vendor names mapped to address-named symbols for the link-by-address harness. */
+#define RotMatrixYXZ func_80049A1C
+
+/* File-scope declarations from the vendor translation unit. */
 typedef void (*code)(unsigned short *);
 typedef struct { s16 x, y, z, pad; } SVec_801670E4;
 typedef struct {
@@ -24,14 +25,22 @@ typedef struct {
     /* 0x58 */ u8 m1[0x20];
     /* 0x78 */ u8 m2[0x20];
 } Fr_801670E4;
-extern void func_80149350(s32);
+
+// @class: schedule
+// @stuck: 16/279 masked. 3 runs, ONE residual class: gcc's list-scheduler puts `la $s2` (p=DATA) + `addu $s4,$zero,$zero` (i=0) BEFORE the callee-arg address setup (addiu $a1,$sp,0x10 / addu $a2,$a1,$zero); the target emits them AFTER. Inert to ~40 statement-order permutations + pin/barrier combos (sched priority dominates the LUID tie-break, sched.c rank_for_schedule). Runs: 19-24 (blk1), 111-114 (region-B cx-load rotation), 177-182 (blk3). Permuter fuel.
+
+
+
+
+extern void func_80149350(s32 arg0, s32 a1, s32 a2);
 extern void func_800D20C0(void *a0, void *a1, s32 a2);
 extern void func_80017E68(void *a0, void *a1);
 extern void func_800D23D0(void *a0);
-extern void func_80049A1C(void *a0, void *a1);
+extern void RotMatrixYXZ(void *a0, void *a1);
 extern s32  func_80017758(void *a0, void *a1);
 extern s32  func_80017DC4(void *a0, void *a1);
 extern void func_80048EAC(void *a0, void *a1);
+
 
 s32 func_801670E4(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
 
@@ -106,7 +115,7 @@ s32 func_801670E4(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
     func_800D20C0(&f.cx, f.a8, 7);
     func_80017E68(&f.cx, f.m1);
     func_800D23D0(f.a8);
-    func_80049A1C(f.a8, f.m1);
+    RotMatrixYXZ(f.a8, f.m1);
 
     do {
         f.v[0].x = (s8)*p++;

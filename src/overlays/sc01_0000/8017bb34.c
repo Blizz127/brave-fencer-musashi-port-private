@@ -1,33 +1,36 @@
+/* Overlay range [8017BB34,8017BC38) from MAIN.CD member 0012.
+ * SHA256(span)=69dc3b6b1522fd11b4bef4ceb5874543b0bb2f73163b7557e1db3b3ad797f01e.
+ * Word export for the native seam; the body below is an
+ * UNVERIFIED draft, not an oracle match claim. */
 /* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_8017BB34 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-typedef float f32;
-typedef unsigned long long u64;
-typedef long long s64;
-typedef double f64;
-#ifndef NULL
-#define NULL ((void *)0)
-#endif
-
+/* func_8017BB34 - byte-exact against retail at -O2 (tools/register_match.py). */
+#define RotTransSV func_8004945C
 typedef struct { s16 a, b, c, d; } SV4;
 typedef struct { s16 m[3][3]; s16 pad; s32 t[3]; } MTX_8017BB34;
 typedef struct { s16 a, b, c, d; } SV4_8017BB34;
-extern void func_8012A568(void (*a0)(void));
 extern void func_80049CAC(s32 a0, s32 a1);
+extern void func_8004914C(void *);
+extern void func_800491AC(void *);
+extern void func_80049CAC();
 extern void func_8004914C(void *a0);
 extern void func_800491AC(void *a0);
-extern void func_8004945C(void *a0, void *a1, void *a2);
-extern SV4 D_801A5694;
-extern SV4 D_801A569C;
+extern void RotTransSV(s32 a0, s32 a1, void *a2);
+extern void func_8004914C();
+extern void func_800491AC();
+extern void RotTransSV(s32, s32, void*);
 
 s32 func_8017BB34(s32 param_1, s32 param_2)
 {
-    SV4_8017BB34 v0;            /* sp+0x10 : func_80049CAC arg0 */
-    MTX_8017BB34 mtx;           /* sp+0x18 : MATRIX_L48, t[] at sp+0x2c */
-    SV4_8017BB34 v1;            /* sp+0x38 : func_8004945C arg0 */
-    SV4_8017BB34 svec;          /* sp+0x40 */
-    SV4_8017BB34 buf1;          /* sp+0x48 : func_8004945C arg1 (-> (*(SV4_8017BB34*)&D_801A569C)) */
-    SV4_8017BB34 buf2;          /* sp+0x50 : func_8004945C arg2 */
+
+    extern SV4 D_801A5694;
+    extern SV4 D_801A569C;
+    SV4_8017BB34 v0;             
+    MTX_8017BB34 mtx;            
+    SV4_8017BB34 v1;             
+    SV4_8017BB34 svec;           
+    SV4_8017BB34 buf1;           
+    SV4_8017BB34 buf2;           
 
     svec = *(SV4_8017BB34 *)param_2;
     (*(SV4_8017BB34*)&D_801A5694) = svec;
@@ -46,6 +49,6 @@ s32 func_8017BB34(s32 param_1, s32 param_2)
     func_8004914C(&mtx);
     func_800491AC(&mtx);
 
-    func_8004945C(&v1, &buf1, &buf2);
+    RotTransSV(&v1, &buf1, &buf2);
     (*(SV4_8017BB34*)&D_801A569C) = buf1;
 }

@@ -1,31 +1,44 @@
+/* Overlay range [8016C49C,8016C74C) from MAIN.CD member 0012.
+ * SHA256(span)=f72bd8402af00f6af34dcf739df3747dbd9dfc41f90be21d9dfb7e779368ba1b.
+ * Word export for the native seam; the body below is an
+ * UNVERIFIED draft, not an oracle match claim. */
 /* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 /* func_8016C49C - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-typedef float f32;
-typedef unsigned long long u64;
-typedef long long s64;
-typedef double f64;
-#ifndef NULL
-#define NULL ((void *)0)
-#endif
 
-extern s32 D_8011D030;
-extern void func_80048FBC(void *a0, void *a1, void *a2);
-extern int func_8005C49C(void);
-extern void func_80049A1C(void *a0, void *a1);
+/* Vendor names mapped to address-named symbols for the link-by-address harness. */
+#define ApplyMatrixSV func_80048FBC
+#define RotMatrixYXZ func_80049A1C
+#define VectorNormalSS func_80047E98
+#define rand func_8005C49C
+
+/* File-scope declarations from the vendor translation unit. */
+typedef struct { s16 vx, vy, vz, pad; } Svec_801372B0;
+void func_8012A568(void (*a0)(void));
+extern void func_8012A568(void (*a0)(void));
+extern void RotMatrixYXZ(void *m, void *p);
+extern void ApplyMatrixSV(void *m, Svec_801372B0 *in, Svec_801372B0 *out);
+extern s32 rand(void);
+
+extern void func_80016714(void *a0, s32 a1);
+extern void func_8001CD9C(int, void *);
+extern void func_800233CC(void *, unsigned short);
 extern void func_80048EAC(void *a0, void *a1);
 extern void func_800D23D0(void *a0);
-extern void func_800233CC(void *, unsigned short);
-extern void func_80016714(void *a0, s32 a1);
-extern s32 func_80146A6C(s32 a0, void *a1, s32 a2, s32 a3, s32 a4, s32 a5, s32 a6);
 extern void func_801465C0(void);
-extern void func_80146C3C(void);
-extern void func_8012A568(void (*a0)(void));
+extern s32 func_80146A6C(s32 a0, void *a1, s32 a2, s32 a3, s32 a4, s32 a5, s32 a6);
+extern void func_80146C3C(u8*);
 
-s32 func_8016C49C(s32 param_1_arg) {
-    extern s32 func_80047E98(void *, void *);
-    extern void func_8001CD9C(s32, void *);
-    extern void func_8016CF04(s32, s32);
+// @class: regalloc-order
+// @stuck: none — MATCH (172/172, relocation-masked)
+
+
+
+void func_8016C49C(s32 param_1_arg) {
+
+    extern s32 D_8011D030;
+    extern s32 VectorNormalSS(void *, void *);
+    extern short func_8016CF04(s32, s32);
     extern u8 D_801A4B38[];
     extern u8 D_801A4BF8;
 
@@ -62,13 +75,13 @@ s32 func_8016C49C(s32 param_1_arg) {
             sv[1] = *(u16 *)(iVar5 + 0xa) - t;
         }
         sv[2] = *(u16 *)(iVar5 + 0xe) - *(u16 *)(iVar6 + 0xe);
-        func_80047E98(sv, sv);
+        VectorNormalSS(sv, sv);
         param_1[3] = *(u16 *)(iVar5 + 6) + ((s16)sv[0] >> 9);
         param_1[5] = *(u16 *)(iVar5 + 0xa) + (((s16)sv[1] >> 9) - 0x28);
         param_1[7] = *(u16 *)(iVar5 + 0xe) + ((s16)sv[2] >> 9);
         ((void(*)(void *))func_800D23D0)(sv);
         sv[0] = 0;
-        ((void(*)(void *, void *))func_80049A1C)(sv, param_1 + 0x1c);
+        ((void(*)(void *, void *))RotMatrixYXZ)(sv, param_1 + 0x1c);
         ((void(*)(void *, s32))func_80016714)(&D_801A4BF8, 0x620);
         ((s32(*)(s32, void *, s32, s32, s32, s32, s32))func_80146A6C)(0x32, param_1, 0, 0, 0, 0, *(int *)(param_1 + 0x18));
         sVar1 = 5;
@@ -78,18 +91,18 @@ s32 func_8016C49C(s32 param_1_arg) {
         if (iVar5b == 0) {
             return;
         }
-        func_8001CD9C(iVar5b, D_801A4B38);
+        ((void(*)(s32, void *))func_8001CD9C)(iVar5b, D_801A4B38);
         *(u32 *)(iVar5b + 4) |= 0x50000000;
-        uVar2 = ((int(*)())func_8005C49C)();
+        uVar2 = rand();
         sv[0] = (uVar2 & 0x7f) * 8 - 0x80;
         sv[1] = ((uVar2 & 0x7f00) >> 4) - 0x400;
         sv[2] = 0;
-        ((void(*)(void *, void *))func_80049A1C)(sv, mat);
+        ((void(*)(void *, void *))RotMatrixYXZ)(sv, mat);
         ((void(*)(void *, void *))func_80048EAC)(param_1 + 0x1c, mat);
         sv[1] = 0;
         sv[0] = 0;
         sv[2] = 0xb;
-        ((void(*)(void *, void *, void *))func_80048FBC)(mat, sv, sv);
+        ((void(*)(void *, void *, void *))ApplyMatrixSV)(mat, sv, sv);
         param_1[9] = sv[0];
         param_1[0xb] = sv[1];
         param_1[0xd] = sv[2];

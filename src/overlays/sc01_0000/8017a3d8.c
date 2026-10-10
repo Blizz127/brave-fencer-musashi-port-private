@@ -1,22 +1,19 @@
+/* Overlay range [8017A3D8,8017A460) from MAIN.CD member 0012.
+ * SHA256(span)=6cbecb50f3f8d25714fb18fdeca6c16855fc15964d38c1e54961679b22250c72.
+ * Word export for the native seam; the body below is an
+ * UNVERIFIED draft, not an oracle match claim. */
 /* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_8017A3D8 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-typedef float f32;
-typedef unsigned long long u64;
-typedef long long s64;
-typedef double f64;
-#ifndef NULL
-#define NULL ((void *)0)
-#endif
-
-extern short D_801A56AC;
-extern short D_801A56A8;
+/* func_8017A3D8 - byte-exact against retail at -O2 (tools/register_match.py). */
 extern int func_800D0CA0(int);
 extern int func_8001AAA0(void);
 extern int func_800D0CE0(void);
 
 int func_8017A3D8(void)
 {
+
+    extern short D_801A56AC;
+    extern short D_801A56A8;
     switch (D_801A56AC) {
     case 0:
         func_800D0CA0(1);

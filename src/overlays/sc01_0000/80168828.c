@@ -1,36 +1,38 @@
+/* Overlay range [80168828,801689D8) from MAIN.CD member 0012.
+ * SHA256(span)=871aae21999c78d67d19d2c41f0184c06fe5f08dbeef7f0a71cd20b3337d5c43.
+ * Word export for the native seam; the body below is an
+ * UNVERIFIED draft, not an oracle match claim. */
 /* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 /* func_80168828 - byte-exact against retail at -O2 (tools/register_match.py). */
 #include "psx_types.h"
-typedef float f32;
-typedef unsigned long long u64;
-typedef long long s64;
-typedef double f64;
-#ifndef NULL
-#define NULL ((void *)0)
-#endif
 
+/* Vendor names mapped to address-named symbols for the link-by-address harness. */
+#define RotMatrixYXZ func_80049A1C
+
+/* File-scope declarations from the vendor translation unit. */
 typedef struct {
     u16 f00, f02, f04, f06;
     s16 f08;
     u16 f0a, f0c, f0e, f10, f12, f14, f16;
     u8  f18, f19, f1a, f1b, f1c, f1d, f1e, f1f, f20, f21, f22, f23;
     u32 f24;
-} Thing_80168828_80168828;
+} Thing_80168828;
+
 extern void func_80017E68(void *a0, void *a1);
-extern void func_80049A1C(void *a0, void *a1);
 extern void func_80048EAC(void *a0, void *a1);
 
-void func_80168828()
+
+
+void func_80168828(void)
 {
     extern s32 func_80017DC4(void *a0, void *a1);
     extern void func_80049CAC(s32 a0, s32 a1);
     extern void func_800173BC(void *a0, void *a1);
     extern u16 D_80181BEC[];
 
-
     register s32 a0v __asm__("$4");
     s32 param_1 = a0v;
-    Thing_80168828_80168828 thing;
+    Thing_80168828 thing;
     s16 matA[16];
     s16 matB[16];
     s16 svec[4];
@@ -70,7 +72,7 @@ void func_80168828()
     svec[0] = *(u16 *)(param_1 + 0x12);
     svec[1] = *(u16 *)(param_1 + 0x16);
     svec[2] = *(u16 *)(param_1 + 0x1A);
-    func_80049A1C(svec, matB);
+    RotMatrixYXZ(svec, matB);
 
     func_80048EAC(matA, matB);
 

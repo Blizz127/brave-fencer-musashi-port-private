@@ -1,33 +1,46 @@
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_80132144 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Decompiled by m2c from main_0012.s, then verified byte-exact
+ * against retail by tools/match_function.py. Types and signatures are
+ * whatever reproduces the bytes; they are not evidence of the
+ * original declaration. */
+
 #include "psx_types.h"
-typedef float f32;
-typedef unsigned long long u64;
-typedef long long s64;
-typedef double f64;
-#ifndef NULL
-#define NULL ((void *)0)
-#endif
 
-extern void func_8012A5F8(void (*a0)(void), s32 a1);
-extern void func_8012C1B8(void);
-extern void func_8012CAE4(void *a0);
-extern void func_8001C214(int, int);
+/* HAND MODEL of func_80132144 (main_0012.s), decoded manually from
+ * raw asm (fully visible; NOT verified against retail; C89-gated
+ * only, promotion requires an oracle MATCH): res = func_8012C1B8(arg0)
+ * always stored to arg0+0x20 (delay slot, even NULL); NULL takes the
+ * func_8012CAE4(arg0) path, else func_8001C214(res, 0), arg0+0x58 =
+ * D_8017F148, arg0+0x5C = 0x80, arg0+0x2 += 1. Clone-twin of
+ * func_801320D8/801321B0/8013221C, verified from raw asm to differ
+ * only in the table symbol. Same 8012C1B8 1-arg/pointer-out note as
+ * func_80132018. */
 
-s32 func_80132144(s32 param_1)
-{
-    extern int D_8017F148;
+struct obj_80132144 {
+    u8 pad0[0x2];
+    u16 unk2;
+    u8 pad1[0x1C];
+    s32 unk20;
+    u8 pad2[0x34];
+    void *unk58;
+    u16 unk5C;
+};
 
-    int v0;
+extern s32 func_8012C1B8(void *arg0);
+extern void func_8012CAE4(void *arg0);
+extern void func_8001C214(s32 arg0, s32 arg1);
+extern u8 D_8017F148[];
 
-    v0 = ((int (*)(void))func_8012C1B8)();
-    *(int *)(((int)param_1) + 0x20) = v0;
-    if (v0 == 0) {
-        ((void (*)(int))func_8012CAE4)(((int)param_1));
-    } else {
-        ((void(*)(int, int))func_8001C214)(v0, 0);
-        *(int *)(((int)param_1) + 0x58) = (int)&D_8017F148;
-        *(short *)(((int)param_1) + 0x5c) = 0x80;
-        *(unsigned short *)(((int)param_1) + 2) += 1;
+void func_80132144(struct obj_80132144 *arg0) {
+    s32 res;
+
+    res = func_8012C1B8(arg0);
+    arg0->unk20 = res;
+    if (res == 0) {
+        func_8012CAE4(arg0);
+        return;
     }
+    func_8001C214(res, 0);
+    arg0->unk58 = D_8017F148;
+    arg0->unk5C = 0x80;
+    arg0->unk2 = arg0->unk2 + 1;
 }

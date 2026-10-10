@@ -1,17 +1,17 @@
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_80160B34 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Decompiled by m2c from main_0012.s, then verified byte-exact
+ * against retail by tools/match_function.py. Types and signatures are
+ * whatever reproduces the bytes; they are not evidence of the
+ * original declaration. */
+
+/* Decompiled by m2c from main.s, then verified byte-exact
+ * against retail by tools/match_function.py. Types and signatures are
+ * whatever reproduces the bytes; they are not evidence of the
+ * original declaration. */
+
 #include "psx_types.h"
-typedef float f32;
-typedef unsigned long long u64;
-typedef long long s64;
-typedef double f64;
-#ifndef NULL
-#define NULL ((void *)0)
-#endif
-
-
-s32 func_80160B34(s32 a0) {
-
-    extern void (*D_801816A0[])(void);
-    D_801816A0[*(u16 *)((s32)a0 + 0x2)]();
+typedef void (*CB)();
+extern CB D_801816A0[];
+typedef struct { u8 pad[2]; u16 idx; } T;
+void func_80160B34(T *p) {
+    D_801816A0[p->idx](p);
 }
