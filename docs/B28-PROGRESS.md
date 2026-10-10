@@ -1686,6 +1686,23 @@ GT3 from 80024448 case 0x34 (80026128) never runs in hybrid, so the cave mesh co
 overlay code. New trace: MUSASHI_TRACE_PSYCROSS adds PC_SEQ/PC_PRIM per-call/per-prim lines.
 Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames ran with no stop.
 
+## Inc 117 — sc02_0035 8014607C admitted (scratchpad stack switch); cave BG diff
+
+- Cave BG diff vs hybrid at the same driver frame (2450): hybrid draws the
+  textured cave (tpage 0x1C GT3 room mesh); strict draws Musashi only.
+  libgs GsSortObject5 dispatch and the native GT3 sorter are not the cause:
+  same per-type routines and call ratios as hybrid, and GT3 packets do get
+  linked (MUSASHI_TRACE_GS5 / MUSASHI_TRACE_GS5RUN histograms, env-gated).
+  One-shot gdb coverage of every lane function shows strict never takes the
+  mode-5 room branch of 8001FC08 (800243EC/80024448) and never dispatches
+  the room-object handlers hybrid runs (0x8017-0x8018, e.g. 80182B58): the
+  room objects are not spawned yet in strict at f2450.
+- Strict stop 8014607C (resident member sc02_0035, from STRICT_STOP_RAM):
+  hand-written asm form the lane cannot admit. Rewritten in the generator's
+  scratchpad-switch C form, same as main_0012's copy (global D_801BD728);
+  verify_registry: MATCH. Strict now runs past frame 3000 with no stop.
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [].
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for
