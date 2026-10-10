@@ -1752,11 +1752,13 @@ static int sample_keyboard_pad(void *userdata, uint16_t *buttons) {
         const char *auto_start = getenv("MUSASHI_BOOT_AUTO_START");
         const char *auto_continue = getenv("MUSASHI_BOOT_AUTO_CONTINUE");
         int continue_test = auto_continue && auto_continue[0] == '1';
-        if (auto_start && auto_start[0] == '1') {
+        /* MUSASHI_BOOT_AUTO_START=2: the same title presses, but the opening
+         * FMV plays out (no Start pulses before the title). */
+        if (auto_start && (auto_start[0] == '1' || auto_start[0] == '2')) {
             if (!boot->opening_overlay_ready) {
                 /* Pulse Start during FMV to create authentic edge transitions
                  * in 80018CE8 / D_80078DD2, allowing 800CEF94 to skip the FMV immediately. */
-                if ((boot->keyboard_polls % 10u) < 5u)
+                if (auto_start[0] == '1' && (boot->keyboard_polls % 10u) < 5u)
                     sampled &= (uint16_t)~(1u << 3);
             } else if (!boot->scene1_reached) {
                 /* Overlay 0004 is active; Start has now been released so edges can register */
