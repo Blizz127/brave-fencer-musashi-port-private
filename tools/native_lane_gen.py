@@ -2365,6 +2365,7 @@ GTE_INLINE_NAMES = (
     "nccs", "strgb", "stsxy3_g4", "strgb3_g4", "rtv0",
     "stsxy0", "stsxy1", "stsz",
     "avsz3", "avsz4", "stotz", "stsxy2", "stsxy3_f4", "stsxy3_ft4", "stsxy3_gt4", "strgb3",
+    "stsxy3_f3", "stsxy3_ft3",
 )
 GTE_INLINE_DEFINE_HEAD = re.compile(
     r'^#define\s+gte_(?:' + '|'.join(GTE_INLINE_NAMES) + r')\b')

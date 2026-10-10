@@ -93,6 +93,9 @@ void musashi_lane_gte_strgb3(void *r0, void *r1, void *r2);
  * as the _g3 forms (SXY +8/+16/+24, RGB +4/+12/+20). */
 #define gte_stsxy3_g4(r0) musashi_lane_gte_stsxy3_g3((void *)(r0))
 #define gte_strgb3_g4(r0) musashi_lane_gte_strgb3_g3((void *)(r0))
+/* _f3 stores SXY at +8/+12/+16 like _f4; _ft3 at +8/+16/+24 like _g3. */
+#define gte_stsxy3_f3(r0) musashi_lane_gte_stsxy3_f4((void *)(r0))
+#define gte_stsxy3_ft3(r0) musashi_lane_gte_stsxy3_g3((void *)(r0))
 
 #ifdef __cplusplus
 }

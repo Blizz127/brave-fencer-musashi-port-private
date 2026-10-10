@@ -297845,6 +297845,18 @@
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
+      "name": "func_8017BEBC",
+      "vram": 2149039804,
+      "size": 3808,
+      "region": "sc02_0035",
+      "source": "src/overlays/sc02_0035/8017bebc.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)",
+      "rodata_base": 2149307696
+    },
+    {
       "name": "func_8017CD9C",
       "vram": 2149043612,
       "size": 64,

@@ -1724,6 +1724,19 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
   801418F8, 80141A60.
 - Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [].
 
+## Inc 120 — sc02_0035 8017BEBC (TMD model renderer) imported + admitted
+
+- Stop 8017BEBC (resident sc02_0035): no source for [8017BEBC,8017CD9C).
+  Upstream SC02_035 uses shared body t67f11bf2 ("TMD-style model renderer,
+  952 ins"). Our sc07_0008 copy of that body is byte-identical against the
+  sc02_0035 retail words once rodata_base is the member's own switch table
+  (0x801BD530); verify_registry MATCH; registry entry added.
+- Lane refused it ("calls inline asm"): gte_stsxy3_f3 / gte_stsxy3_ft3 were
+  not in GTE_INLINE_NAMES. Strict-only generator change: names added; host
+  aliases in musashi_lane_gte_inline.h (_f3 = _f4 offsets +8/+12/+16,
+  _ft3 = _g3 offsets +8/+16/+24).
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [].
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for
