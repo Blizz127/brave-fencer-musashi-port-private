@@ -1,220 +1,62 @@
-/* sc01_0077: func_801670E4 from Druthulu/BFM-decomp
- * src/ov_SC01_077/ov_SC01_077_jr_8015C32C.c (preprocessed; only the declarations it uses),
- * byte-identical to the sc01_0077 retail words (gcc-2.7.2 -O2). */
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef unsigned int u32;
-typedef signed char s8;
-typedef short s16;
-typedef int s32;
-typedef struct {
-    u8 f0, f1, f2, f3;
-    struct { s16 a, b, c, d, e, g; } ent[16];
-} Blk_8016CF04;
-typedef struct {
-    u8 f0, f1, f2, f3;
-    struct { s16 a, b, c, d, e, g; } ent[16];
-} Blk_8016CF04_8016CF04;
-typedef struct {
-    s32 op;
-    union {
-        s32 w;
-        void *p;
-        s16 h[2];
-        u16 uh[2];
-    } a;
-} Cmd_80178D40;
-typedef struct { s16 x, y, z, pad; } SVEC_80167AE0;
-typedef struct { s16 x, y, z, pad; } SVEC_8016A290;
+/* SC02.CD member35 [801670E4,80167540): twin of main_0012 801670E4 (src/overlays/main_0012/801670e4.c); only the
+ * global addresses differ. Byte-identical to the sc02_0035 retail words
+ * (gcc-2.7.2 -O2, B28 inc 104 twin port). */
+/* Overlay range [801670E4,80167540) from MAIN.CD member 0012.
+ * SHA256(span)=68bb0b741ba19d6a73907fa229ec0faeb22c5eb1356f84ab40c9787039c2356e.
+ * Word export for the native seam; the body below is an
+ * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_801670E4 - byte-exact against retail at -O2 (tools/register_match.py). */
+#include "psx_types.h"
+
+/* Vendor names mapped to address-named symbols for the link-by-address harness. */
+#define RotMatrixYXZ func_80049A1C
+
+/* File-scope declarations from the vendor translation unit. */
 typedef void (*code)(unsigned short *);
-struct Fr {
-    u8 matrix[0x20];
-    SVEC_80167AE0 v[4];
-    struct { u8 r, g, b, pad; } col[4];
-    u32 code;
-};
-struct Fr_80167AE0 {
-    u8 matrix[0x20];
-    SVEC_80167AE0 v[4];
-    struct { u8 r, g, b, pad; } col[4];
-    u32 code;
-};
-struct Fr_8016A290 {
-    SVEC_8016A290 center;
-    SVEC_8016A290 diff;
-    s32 pos[3];
-    s32 _pad1c;
-    s16 mtx[32];
-    SVEC_8016A290 v[4];
-    struct { u8 r, g, b, pad; } col[4];
-    u32 code;
-};
 typedef struct { s16 x, y, z, pad; } SVec_801670E4;
 typedef struct {
-               u16 cx, cy, cz;
-               u16 _p06;
-               u16 a8[4];
-               s32 pos[3];
-               s32 _p1C;
-               SVec_801670E4 v[4];
-               struct { u8 r, g, b, cd; } col[4];
-               u32 code;
-               s32 _p54;
-               u8 m1[0x20];
-               u8 m2[0x20];
+    /* 0x00 */ u16 cx, cy, cz;
+    /* 0x06 */ u16 _p06;
+    /* 0x08 */ u16 a8[4];
+    /* 0x10 */ s32 pos[3];
+    /* 0x1C */ s32 _p1C;
+    /* 0x20 */ SVec_801670E4 v[4];
+    /* 0x40 */ struct { u8 r, g, b, cd; } col[4];
+    /* 0x50 */ u32 code;
+    /* 0x54 */ s32 _p54;
+    /* 0x58 */ u8 m1[0x20];
+    /* 0x78 */ u8 m2[0x20];
 } Fr_801670E4;
-extern s32 func_80161CD0(s32 a0, s32 a1);
-extern s32 D_80127098;
-extern s32 D_80127094;
-extern s32 D_80127090;
-extern void func_80147324(s32 arg0);
-extern s32 func_800CF8B4();
-extern void func_80149350(s32 arg0);
-extern void func_801599A4(void *a0);
-extern void func_80162CCC(void);
-extern void func_80016714(void *a0, s32 a1);
-extern void func_8014C010(s32 a0, s32 a1);
-extern void func_8015BDD0(s32 *a0);
-extern void func_80147324(s32 a0);
-extern void func_8015BF48(s32 *a0);
-extern s32 func_80161208();
-extern void func_8015BDD0(s32 *a0);
-extern void func_801599A4(void *a0);
-extern s32 func_80161208();
-extern s32 func_80161CD0(s32 a0, s32 a1);
-extern s32 func_800CF8B4(void);
-extern void func_8014C010(s32 a0, s32 a1);
-extern void func_80147324(s32 a0);
-extern void func_8014C010(s32 a0, s32 a1);
-extern void func_80147324(s32 arg0);
-extern void func_80147324(s32 a0);
-extern s32 func_80161208();
-extern s32 func_80161208();
-extern s32 func_80161208();
-extern s32 func_80161208();
-extern s32 func_80161208();
-extern s32 func_80161208();
-extern void func_80149350(s32 arg0);
-extern s32 func_80161208();
-extern s32 func_800CF8B4(void);
-extern s32 func_80161208();
-extern void func_80147324(s32 a0);
-extern s32 func_80161208();
-extern void func_80147324(s32 arg0);
-extern void func_80147324(s32 a0);
-extern s32 func_80161208();
-extern s32 func_80161208();
-extern void func_80147324(s32 a0);
-extern void func_80147324(s32 arg0);
-extern void func_80147324(s32 a0);
-extern s32 func_80161208();
-extern s32 func_80161208();
-extern s32 func_80161208();
-extern s32 func_80161208();
-extern void func_80147324(s32 arg0);
-extern s32 func_800CF8B4();
-extern s32 func_80161208();
-extern s32 func_80161208();
-extern s32 func_80161208();
-extern s32 func_80161208();
-extern s32 func_80161208();
-extern s32 func_80161208();
-extern s32 func_80161208();
-extern void func_80147324(s32 a0);
-extern void func_8016130C(void*, s32);
-void aF80161208(void *a0) __asm__("func_80161208");
-void aF80161208(void *a0) __asm__("func_80161208");
-extern void func_8016130C(void *a0, s32 a1);
-extern void func_801599A4(void*);
-extern void func_8015BDD0(s32*);
-extern void func_8015BF48(s32*);
-s32 aF8016130C(void *a0, s32 a1) __asm__("func_8016130C");
-s32 aF8016130C(void *a0, s32 a1) __asm__("func_8016130C");
-s32 aF8016130C(void *a0, s32 a1) __asm__("func_8016130C");
-extern void func_801599A4(void*);
-extern void func_8015BDD0(s32*);
-extern void func_8015BF48(s32*);
-extern void func_8016191C(void *a0, s32 a1);
-extern void func_801599A4(void *a0);
-extern void func_8015BF48(s32 *a0);
-extern void func_8014C010(s32 a0, s32 a1);
-extern void func_801599A4(void *a0);
-extern void func_8014C010(s32 a0, s32 a1);
-extern void func_8015BF48(s32 *a0);
-extern void func_8014C010(s32 a0, s32 a1);
-extern void func_801599A4(void *a0);
-extern void func_8015BF48(s32 *a0);
-extern void func_8014C010(s32 a0, s32 a1);
-extern void func_801599A4(void *a0);
-extern void func_8015BF48(s32 *a0);
-extern void func_8014C010(int a0, int a1);
-int aF8016191C(int param_1, unsigned int param_2) __asm__("func_8016191C");
-int aF8016191C(int param_1, unsigned int param_2) __asm__("func_8016191C");
-extern void func_801599A4(void *a0);
-extern void func_801599A4(void *a0);
-extern void func_801599A4(void *a0);
-extern void func_80147324();
-extern void func_80147324(s32 arg0);
-extern int func_800CF8B4();
-extern void func_80147324(int arg0);
-extern unsigned short D_80189604;
-void aF80161CD0(int param_1, unsigned int param_2) __asm__("func_80161CD0");
-void aF80161CD0(int param_1, unsigned int param_2) __asm__("func_80161CD0");
-extern void func_80147324(s32 arg0);
-extern void func_80016714(void *a0, s32 a1);
-extern void func_80016714(void *a0, s32 a1);
-extern void func_80016714(void *a0, s32 a1);
-extern void func_80016714(void *a0, s32 a1);
-extern void func_80016714(void *a0, s32 a1);
-extern void func_80016714(void *a0, s32 a1);
-void aF80162CCC(u8 *a0) __asm__("func_80162CCC");
-void aF80162CCC(u8 *a0) __asm__("func_80162CCC");
-void aF80162CCC(u8 *a0) __asm__("func_80162CCC");
-extern s32 aD_80127090 __asm__("D_80127090");
-extern s32 aD_80127094 __asm__("D_80127094");
-extern s32 aD_80127098 __asm__("D_80127098");
-extern s32 aD_80127090 __asm__("D_80127090");
-extern s32 aD_80127094 __asm__("D_80127094");
-extern s32 aD_80127098 __asm__("D_80127098");
-extern s32 aD_80127090 __asm__("D_80127090");
-extern s32 aD_80127094 __asm__("D_80127094");
-extern s32 aD_80127098 __asm__("D_80127098");
-extern s32 aD_80127090 __asm__("D_80127090");
-extern s32 aD_80127094 __asm__("D_80127094");
-extern s32 aD_80127098 __asm__("D_80127098");
-extern void func_80147324(s32 arg0);
-extern void func_80147324(s32 a0);
-extern void func_80147324(s32 arg0);
-extern void func_80162CCC();
-extern void func_80162CCC();
-extern void func_80162CCC();
-extern s32 func_80017DC4(void *a0, void *a1);
-extern s32 func_80161208();
-extern void func_801599A4(void *a0);
-extern s32 func_80161208();
-extern void func_801599A4(void *a0);
-extern void func_80016714(void *a0, s32 a1);
-extern s32 func_80017758(void *a0, void *a1);
-extern void func_80149350(s32);
+
+// @class: schedule
+// @stuck: 16/279 masked. 3 runs, ONE residual class: gcc's list-scheduler puts `la $s2` (p=DATA) + `addu $s4,$zero,$zero` (i=0) BEFORE the callee-arg address setup (addiu $a1,$sp,0x10 / addu $a2,$a1,$zero); the target emits them AFTER. Inert to ~40 statement-order permutations + pin/barrier combos (sched priority dominates the LUID tie-break, sched.c rank_for_schedule). Runs: 19-24 (blk1), 111-114 (region-B cx-load rotation), 177-182 (blk3). Permuter fuel.
+
+
+
+
+extern void func_80149350(s32 arg0, s32 a1, s32 a2);
 extern void func_800D20C0(void *a0, void *a1, s32 a2);
 extern void func_80017E68(void *a0, void *a1);
 extern void func_800D23D0(void *a0);
-extern void func_80049A1C(void *a0, void *a1);
-extern s32 func_80017758(void *a0, void *a1);
-extern s32 func_80017DC4(void *a0, void *a1);
+extern void RotMatrixYXZ(void *a0, void *a1);
+extern s32  func_80017758(void *a0, void *a1);
+extern s32  func_80017DC4(void *a0, void *a1);
 extern void func_80048EAC(void *a0, void *a1);
 
+
 s32 func_801670E4(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
-    extern u8 D_80189A20[];
-    extern u8 D_80189A0C[];
-    extern u8 D_80189A34[];
+
+    extern u8  D_80189A20[];
+    extern u8  D_80189A0C[];
+    extern u8  D_80189A34[];
     extern s32 D_801269A4;
     extern s32 D_801269A8;
     extern s32 D_801269AC;
     extern u16 D_80126CE0;
     Fr_801670E4 f;
-    u8 *p;
-    s32 ent;
+    register u8 *p   __asm__("$18");   /* $s2 */
+    register s32 ent __asm__("$19");   /* $s3 */
     s16 i;
     s32 d;
     s32 node;
@@ -223,12 +65,13 @@ s32 func_801670E4(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
     u8 cv2;
     register s32 gA __asm__("$2");
     register s32 cxv __asm__("$4");
-    s32 czv;
+    register s32 czv __asm__("$5");
     u8 *vc;
     u8 *ap;
     u8 *mp;
     u8 *va;
     u8 *vb;
+
     ent = arg0;
     node = *(s32 *)(ent + 0x34);
     f.v[1].z = 0;
@@ -262,6 +105,7 @@ s32 func_801670E4(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
     f.col[1].r = cv;
     f.col[1].g = cv;
     ((void (*)(s32, void *, void *))func_80149350)(node, va, vb);
+
     c = f.cx;
     *(s16 *)(ent + 0x06) = c;
     *(s32 *)(ent + 0x4C) = (s16)c;
@@ -274,7 +118,8 @@ s32 func_801670E4(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
     func_800D20C0(&f.cx, f.a8, 7);
     func_80017E68(&f.cx, f.m1);
     func_800D23D0(f.a8);
-    func_80049A1C(f.a8, f.m1);
+    RotMatrixYXZ(f.a8, f.m1);
+
     do {
         f.v[0].x = (s8)*p++;
         f.v[0].y = (s8)*p++;
@@ -284,6 +129,7 @@ s32 func_801670E4(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
         f.v[3].y = (s8)*p--;
         func_80017758(f.v, f.m1);
     } while ((i = i + 1) < 4);
+
     p = D_80189A0C;
     gA = 0xA0;
     cxv = (s16)f.cx;
@@ -299,6 +145,7 @@ s32 func_801670E4(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
     f.v[0].y = 0;
     f.pos[1] = D_801269A8 - (s16)f.cy;
     f.pos[2] = D_801269AC - czv;
+
     do {
         f.v[0].x = (s8)*p++;
         f.v[0].z = (s8)*p++;
@@ -308,6 +155,7 @@ s32 func_801670E4(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
         f.v[3].z = (s8)*p--;
         func_80017758(f.v, (void *)(ent + 0x38));
     } while ((i = i + 1) < 4);
+
     if (*(s32 *)(ent + 0x30) > 0) {
         vc = (u8 *)&f.cx;
         __asm__ __volatile__("" : "=r"(vc) : "0"(vc));

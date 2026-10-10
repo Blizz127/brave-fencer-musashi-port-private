@@ -1828,6 +1828,10 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 - main_0012 8016EDEC now takes and forwards its incoming a1 to 8016EE94; retail's jal leaves $a1 untouched. Byte-exact.
 - Gates pass (38/38), LOST []. The route passes f1800. Next stop: 8015444C.
 
+### Inc 134: sc01_0077 jump-table imports restored (rodata_base), 8015444C admitted
+- 48 of the original import's dropped rows were jump-table functions. My installer had ignored the importer's recorded rodata_base, so they failed verify. Reinstalled with rodata_base: 33 verified (including callee 801549F8). With the callee's body known, 8015444C passes the abi rule. Three more refusals use verified sibling twins.
+- Gates pass (38/38), LOST [].
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for
