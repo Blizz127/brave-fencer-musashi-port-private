@@ -1675,6 +1675,17 @@ frames 1900-2000 show Musashi in the attract cave with the logo. The cave backgr
 is still missing (hybrid draws it). PNGs are in /workspace/bfm-frames/.
 Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [] (no generator change).
 
+
+### Inc 116: sc02_0035 80135A4C admitted (abi: call 80135480 with its 4 arguments)
+
+The cave background (GT3 tpage 0x1C, ~128 per frame in hybrid) is missing because strict had
+not reached the scene logic: 80135A4C (hot in hybrid, 90k calls) was refused by the abi rule
+("calls func_80135480 with 0 of 4 declared arguments"). It now passes a0-a3 through, as the
+main_0012 copy does. Still byte-identical to sc02_0035 retail (with rodata_base 0x801BE1E8).
+GT3 from 80024448 case 0x34 (80026128) never runs in hybrid, so the cave mesh comes from
+overlay code. New trace: MUSASHI_TRACE_PSYCROSS adds PC_SEQ/PC_PRIM per-call/per-prim lines.
+Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames ran with no stop.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for

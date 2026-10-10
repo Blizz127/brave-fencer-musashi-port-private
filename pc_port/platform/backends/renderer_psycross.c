@@ -243,6 +243,14 @@ static int pc_submit(void *self, const BfmPlatPrim *p, size_t n) {
     (void)self;
     if (pc_trace()) fprintf(stderr, "PC_SEQ f=%lu submit n=%zu k0=%u\n", pc_frames, n, n ? p[0].kind : 0);
     pc_submits += n;
+    if (pc_trace()) {
+        size_t j;
+        for (j = 0; j < n; j++)
+            fprintf(stderr, "PC_PRIM f=%lu k=%u fl=%02x tp=%04x clut=%04x v0=%d,%d v1=%d,%d v2=%d,%d wh=%u,%u rgb=%u,%u,%u\n",
+                    pc_frames, p[j].kind, p[j].flags, p[j].tpage, p[j].clut, p[j].v[0].x, p[j].v[0].y,
+                    p[j].v[1].x, p[j].v[1].y, p[j].v[2].x, p[j].v[2].y, p[j].w, p[j].h,
+                    p[j].v[0].r, p[j].v[0].g, p[j].v[0].b);
+    }
     for (i = 0; i < n; i++) draw_one(&p[i]);
     return BFM_PLAT_OK;
 }
