@@ -31,7 +31,7 @@ extern u16 D_801A571A;
 extern s32 D_801A571C;
 extern u16 D_801A571E;
 extern s32 D_801A5720;
-#define D_801A5722 (*(s16 *)((s32)&D_801A5720 + 2))
+#define D_801A5722 (*(s16 *)((u8 *)&D_801A5720 + 2))
 extern u16 D_801A5724;
 extern u16 D_801A5726;
 extern s16 D_801A5728;
@@ -45,15 +45,15 @@ extern s32 D_801A5740;
 extern s32 D_801A5744;
 extern s32 D_801A5748;
 extern s32 D_801A574C;
-#define D_801A574E (*(s16 *)((s32)&D_801A574C + 2))
+#define D_801A574E (*(s16 *)((u8 *)&D_801A574C + 2))
 extern s32 D_801A5750;
-#define D_801A5752 (*(s16 *)((s32)&D_801A5750 + 2))
+#define D_801A5752 (*(s16 *)((u8 *)&D_801A5750 + 2))
 extern s32 D_801A5754;
 extern s32 D_801A5758;
 extern s32 D_801A575C;
-#define D_801A575E (*(s16 *)((s32)&D_801A575C + 2))
+#define D_801A575E (*(s16 *)((u8 *)&D_801A575C + 2))
 extern s32 D_801A5760;
-#define D_801A5762 (*(s16 *)((s32)&D_801A5760 + 2))
+#define D_801A5762 (*(s16 *)((u8 *)&D_801A5760 + 2))
 extern s32 D_801A5764;
 extern s32 D_801A5768;
 extern s32 D_801A576C;
