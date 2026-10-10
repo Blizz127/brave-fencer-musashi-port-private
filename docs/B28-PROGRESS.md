@@ -1852,6 +1852,9 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 ### Inc 139: main 8001D70C admitted
 - The imported file carried full bodies of six other 800.c functions (the importer's main path keeps them as definitions). Turned them into prototypes; still byte-exact. 8001D70C is admitted through the GTE frame-block pass. Gates pass, LOST []. Next stop main 8001D8C4.
 
+### Inc 140: main 8001D8C4 admitted (GTE macro rename)
+- Its local LDV0/MVMVA(1,0,0,0,0)/STMAC123 macros are PsyQ gte_ldv0/gte_rt/gte_stlvnl with identical asm bodies. Renamed them (byte-exact) so the existing host GTE helpers apply. Gates pass, LOST []. Next stop 8017DF5C.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for

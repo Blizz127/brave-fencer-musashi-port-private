@@ -25,18 +25,18 @@ __asm__(
     ".endm\n"
 );
 
-#define LDV0_8001D8C4(r0) __asm__ volatile (             \
+#define gte_ldv0(r0) __asm__ volatile (             \
     "lwc2 $0, 0( %0 );"                                  \
     "lwc2 $1, 4( %0 )"                                   \
     :                                                    \
     : "r"( r0 )                                          \
     : "memory" )
-#define MVMVA_8001D8C4() __asm__ volatile (              \
+#define gte_rt() __asm__ volatile (              \
     "nop;"                                               \
     "nop;"                                               \
     "mvmva 1, 0, 0, 0, 0"                                \
     : : : "memory" )
-#define STMAC123_8001D8C4(r0) __asm__ volatile (         \
+#define gte_stlvnl(r0) __asm__ volatile (         \
     "swc2 $25, 0( %0 );"                                 \
     "swc2 $26, 4( %0 );"                                 \
     "swc2 $27, 8( %0 )"                                  \
@@ -70,27 +70,27 @@ void func_8001D8C4(s32 a0, u8 * a1_p, u8 * a2_p) {
     sv[1][2] = z;
     sv[0][2] = z;
 
-    LDV0_8001D8C4(sv[0]);
-    MVMVA_8001D8C4();
-    STMAC123_8001D8C4(out);
+    gte_ldv0(sv[0]);
+    gte_rt();
+    gte_stlvnl(out);
     *(s16 *)(a2 + 0x08) = out[0];
     *(s16 *)(a2 + 0x0A) = out[1];
 
-    LDV0_8001D8C4(sv[1]);
-    MVMVA_8001D8C4();
-    STMAC123_8001D8C4(out);
+    gte_ldv0(sv[1]);
+    gte_rt();
+    gte_stlvnl(out);
     *(s16 *)(a2 + 0x10) = out[0];
     *(s16 *)(a2 + 0x12) = out[1];
 
-    LDV0_8001D8C4(sv[2]);
-    MVMVA_8001D8C4();
-    STMAC123_8001D8C4(out);
+    gte_ldv0(sv[2]);
+    gte_rt();
+    gte_stlvnl(out);
     *(s16 *)(a2 + 0x18) = out[0];
     *(s16 *)(a2 + 0x1A) = out[1];
 
-    LDV0_8001D8C4(sv[3]);
-    MVMVA_8001D8C4();
-    STMAC123_8001D8C4(out);
+    gte_ldv0(sv[3]);
+    gte_rt();
+    gte_stlvnl(out);
     *(s16 *)(a2 + 0x20) = out[0];
     *(s16 *)(a2 + 0x22) = out[1];
 }
