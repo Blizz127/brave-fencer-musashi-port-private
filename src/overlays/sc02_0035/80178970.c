@@ -9,7 +9,6 @@
 #include "psx_types.h"
 /* func_80178970 - byte-exact against retail at -O2 (tools/register_match.py). */
 extern s32 (*D_801819EC[])(void *);
-u32 v;
 extern s32 func_801789AC(s32 arg0);
 
 int func_80178970(void)

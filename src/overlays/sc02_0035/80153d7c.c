@@ -14,7 +14,6 @@ extern short currentLocationId;
 void func_80146CA0(void *a0);
 void func_80147324(s32 arg0);
 void func_80149020(s32 *a0);
-s32 a1;
 extern void func_80147324(s32 a0);
 extern void func_80147324(s32 arg0);
 extern void func_80146CA0(void *a0);

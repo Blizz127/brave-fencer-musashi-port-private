@@ -1703,6 +1703,16 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
   verify_registry: MATCH. Strict now runs past frame 3000 with no stop.
 - Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [].
 
+## Inc 118 — sc02_0035: drop stray decompiler globals (5 functions admitted)
+
+- Strict stop 801654A8 (resident sc02_0035, 99.3% image match at the stop):
+  refused by the symbols rule, "TU defines data a1": an unreferenced
+  `u16 a1;` global left by the decompiler. The same leftover blocked
+  80153D7C, 801647A4, 801681FC (a3) and 80178970 (v). Removed in all five;
+  verify_registry MATCH for each (byte-identical).
+- Note: the lane report keeps vram as a hex string; look it up that way.
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [].
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for

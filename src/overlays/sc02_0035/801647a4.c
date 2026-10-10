@@ -11,7 +11,6 @@
 extern void func_8001C810(s32 a0, s32 a1);
 extern void func_8014659C(void);
 extern void func_80146CA0(void *a0);
-u16 a1;
 extern void func_80164A74(s32 *a0);
 extern void func_80164930(s32 a);
 
