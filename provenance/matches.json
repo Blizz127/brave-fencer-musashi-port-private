@@ -353127,6 +353127,18 @@
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)",
       "rodata_base": 2149422176
+    },
+    {
+      "name": "func_8017C974",
+      "vram": 2149042548,
+      "size": 3788,
+      "region": "sc01_0077",
+      "source": "src/overlays/sc01_0077/8017c974.c",
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "rodata_base": 2149421264,
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     }
   ]
 }

@@ -1836,6 +1836,10 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 - The sc01_0077 route hit the old 80162968 fault. Its 801627E8 and dispatchers had the same dropped-a0 table calls fixed earlier in sc01_0000. Applied the pinned-$4 fix (sc01_0077, sc03_0098) and the dispatcher fix (57 in sc01_0077, 384 across main_*/sc02/sc03), all byte-exact.
 - Gates pass, TABLE_IDENTICAL, LOST []. The fault is gone; the next stop is 8017C974.
 
+### Inc 136: sc01_0077 8017C974 (shifted twin + GTE macro fold)
+- Gap at 8017C974 in sc01_0077. The only twin was sc02_0004 8017C59C, at a different address. Relocated it with an address map from both retail word streams (jal targets and hi/lo pairs, plus rodata_base). The upstream file had pre-expanded GTE asm, so I folded it back into the gte_* macro names the generator maps to host helpers. Byte-exact, admitted.
+- Gates pass, LOST []. Next stop 8017C294.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for
