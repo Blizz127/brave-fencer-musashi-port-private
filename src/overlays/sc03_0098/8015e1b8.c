@@ -1,10 +1,17 @@
-/* sc03_0098: func_8015E1B8 from Druthulu/BFM-decomp
- * src/ov_SC03_098/ov_SC03_098_jr_8015C32C.c (preprocessed; only the declarations it uses),
- * byte-identical to the sc03_0098 retail words (gcc-2.7.2 -O2). */
-typedef unsigned short u16;
-typedef int s32;
+/* Decompiled by m2c from main_0012.s, then verified byte-exact
+ * against retail by tools/match_function.py. Types and signatures are
+ * whatever reproduces the bytes; they are not evidence of the
+ * original declaration. */
 
-s32 func_8015E1B8(s32 a0) {
-    extern void (*D_80187C74[])(void);
-    D_80187C74[*(u16 *)((s32)a0 + 0x2)]();
+/* Decompiled by m2c from main.s, then verified byte-exact
+ * against retail by tools/match_function.py. Types and signatures are
+ * whatever reproduces the bytes; they are not evidence of the
+ * original declaration. */
+
+#include "psx_types.h"
+typedef void (*CB)();
+extern CB D_80187C74[];
+typedef struct { u8 pad[2]; u16 idx; } T;
+void func_8015E1B8(T *p) {
+    D_80187C74[p->idx](p);
 }

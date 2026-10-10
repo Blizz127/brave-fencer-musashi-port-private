@@ -1,15 +1,18 @@
-/* sc03_0098: func_8015C128 from Druthulu/BFM-decomp
- * src/ov_SC03_098/ov_SC03_098_jr_8015AE2C.c (preprocessed; only the declarations it uses),
- * byte-identical to the sc03_0098 retail words (gcc-2.7.2 -O2). */
-typedef unsigned short u16;
-typedef short s16;
-typedef int s32;
+/* Overlay range [8015C128,8015C32C) from MAIN.CD member 0012.
+ * SHA256(span)=54303083700161a367183f4cd02acc4df130eddb8d184f5e3d82008382a5303f.
+ * Word export for the native seam; the body below is an
+ * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8015C128 - byte-exact against retail at -O2 (tools/register_match.py). */
+#include "psx_types.h"
+
+extern void func_8001382C(s32 a0, void *a1, void *a2);
 extern void func_80146CA0(void *a0);
 extern void func_80146DB8(s32 *a0, s32 *a1);
 extern void func_80146E90(s32 *a0, s32 a1);
 extern s32 func_80146E98(s32 a0);
 extern void func_80147078(s32 *a0, s16 a1);
-extern void func_80147324(s32 arg0);
+extern void func_80147324(s32 a0);
 extern void func_801473EC(s32 *a0);
 extern void func_80147A84(s32 arg0);
 extern int func_80148AFC(void *a0);
@@ -17,48 +20,25 @@ extern s32 func_80149FB0(s32 a0);
 extern void func_8014C010(s32 a0, s32 a1);
 extern void func_8014CC28(s32 a0);
 extern void func_8014D738(void);
-extern u16 D_800B99DA;
 extern s32 func_8014F3E8(s32 a0);
-extern void func_80147324(s32 a0);
-extern void func_8001382C(s32 a0, void *a1, void *a2);
-extern void func_8014CC28(s32 a0);
-extern s32 func_8014F3E8(s32 a0);
-extern void func_80147A84(int);
-extern s32 func_80149FB0(s32 a0);
-extern int func_80148AFC(void *a0);
-extern void func_80146E90(s32 *a0, s32 a1);
-extern s32 func_80146E98(s32 a0);
-extern void func_80147A84(s32 a0);
-extern void func_801473EC(s32 *a0);
-extern void func_80146CA0(void *a0);
-extern void func_80147324(s32 arg0);
-extern void func_80147324(s32 a0);
-extern int func_80148AFC(void*);
-extern void func_80147078(s32*, s16);
-extern void func_80146DB8(s32*, s32*);
-extern void func_80147078(s32 *a0, s16 a1);
 extern s32 func_8015BE94();
-extern void func_80147078(s32 *a0, s16 a1);
-extern s32 func_8015BE94();
-extern void func_80146CA0(void *a0);
-s32 func_8015BE94(s32 *a0);
-extern void func_80147078(s32 *a0, s16 a1);
 extern void func_8015C0C4(s32 a0);
-extern void func_80147078(s32 *a0, s16 a1);
-extern void func_80147078(s32 *a0, s16 a1);
-extern void func_80146CA0(void *a0);
-extern void func_8015C0C4(s32);
-extern void func_80146CA0(void *a0);
-void func_8015C0C4(s32 a0);
 
-s32 func_8015C128(s32 param_1) {
-    extern void func_8015C6E0(int);
-    extern void (*D_801879BC[])(int);
+
+
+void func_8015C128(s32 param_1) {
+
+    extern void (*D_801879BC[])(void *);
+
+    extern u16 D_800B99DA;
+    extern void func_8015C6E0(s32*);
+
     int sp10[3];
     int sp20[3];
     int temp_s0;
     int temp_v0;
-    ((void(*)())func_80149FB0)();
+
+    ((void(*)(int))func_80149FB0)(((int)param_1));
     if (((int(*)(int))func_80148AFC)(((int)param_1)) & 0xFF) {
         sp10[0] = 0;
         sp10[1] = 0;
@@ -79,7 +59,7 @@ s32 func_8015C128(s32 param_1) {
     }
     if (((int(*)(int))func_8014D738)(((int)param_1)) != 0) {
         D_801879BC[*(u16 *)((int)param_1)](((int)param_1));
-        func_8015C6E0(((int)param_1));
+        ((void (*)(int))func_8015C6E0)(((int)param_1));
         return;
     }
     temp_s0 = ((int(*)(int))func_8014CC28)(((int)param_1));

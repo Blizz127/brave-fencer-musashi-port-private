@@ -1,38 +1,30 @@
-/* sc03_0098: func_80136334 from Druthulu/BFM-decomp
- * src/ov_SC03_098/ov_SC03_098_jr_80135D20.c (preprocessed; only the declarations it uses),
- * byte-identical to the sc03_0098 retail words (gcc-2.7.2 -O2). */
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef unsigned int u32;
-typedef signed char s8;
-typedef short s16;
-typedef int s32;
-extern void *memcpy(void *, const void *, unsigned int);
-extern u8 D_80126720[];
-extern u8 D_801152A8[];
-extern void *memcpy(void *, const void *, u32);
-extern void func_8005C324(int dst, int src, int n) __asm__("memcpy");
-extern void memcpy();
-extern u8 D_801858B4;
-extern u8 D_801858B0;
-extern s16 *D_801858B8;
-extern u8 D_801858BC;
-extern u8 D_801858B0;
-extern u8 D_801858B4;
-extern s16 *D_801858B8;
-extern u8 D_801858BC;
-extern u8 D_80126720[];
+/* Overlay range [80136334,801365B8) from MAIN.CD member 0012.
+ * SHA256(span)=a6203d583f0764e02fa108b2605ceb65855866352869494d6f6209be0c41bf2e.
+ * Word export for the native seam; the body below is an
+ * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80136334 - byte-exact against retail at -O2 (tools/register_match.py). */
+#include "psx_types.h"
+
+/* File-scope declarations from the vendor translation unit. */
+#define M2C_FIELD(expr, type_ptr, offset) (*(type_ptr)((s8 *)(expr) + (offset)))
 
 s32 func_80136334(void *arg0, s32 arg1, s32 arg2) {
+
+    extern u8 D_80126720[];
+    extern u8 D_801858B0;
+    extern u8 D_801858B4;
+    extern s16 *D_801858B8;
+    extern u8 D_801858BC;
     extern u8 D_801152A8[];
     extern s16 D_801152AA;
     extern s16 D_801152AC;
     extern s16 D_80126722;
     extern s16 D_80126724;
-    s32 a1v;
+    register s32 a1v __asm__("$11");
     register s32 a2v __asm__("$12");
-    s32 n;
-    s16 *b4;
+    register s32 n __asm__("$5");
+    register s16 *b4 __asm__("$7");
     s32 d;
     s32 dx;
     s32 denom;
@@ -41,6 +33,7 @@ s32 func_80136334(void *arg0, s32 arg1, s32 arg2) {
     (void)&frame_pad;
     __asm__("" : "=r"(a1v) : "0"(arg1));
     a2v = arg2;
+
     if (!(arg1 & 1)) {
         dx = (s16) arg2 - (*(s16 **)&D_801858B0)[2];
         d = dx;
@@ -52,17 +45,18 @@ s32 func_80136334(void *arg0, s32 arg1, s32 arg2) {
     }
     n = -d;
     {
-        s16 *b8 = *(s16 **)&D_801858BC;
+        register s16 *b8 __asm__("$6") = *(s16 **)&D_801858BC;
         u16 *ac = *(u16 **)&D_801858B0;
         b4 = D_801858B8;
         b4[0] = ac[0] + n * b8[0] / denom;
         b4[1] = ac[1] + n * b8[1] / denom;
         b4[2] = ac[2] + dx;
     }
-    if (b4[0] < (*(s16 *)((s8 *)(arg0) + (4)))) return 0;
-    if ((*(s16 *)((s8 *)(arg0) + (6))) < b4[0]) return 0;
-    if (b4[1] < (*(s16 *)((s8 *)(arg0) + (8)))) return 0;
-    if ((*(s16 *)((s8 *)(arg0) + (0xA))) < b4[1]) return 0;
+
+    if (b4[0] < M2C_FIELD(arg0, s16 *, 4)) return 0;
+    if (M2C_FIELD(arg0, s16 *, 6) < b4[0]) return 0;
+    if (b4[1] < M2C_FIELD(arg0, s16 *, 8)) return 0;
+    if (M2C_FIELD(arg0, s16 *, 0xA) < b4[1]) return 0;
     if (a1v & 0x8000) {
         u16 *b0 = *(u16 **)&D_801858B4;
         b4[0] = b0[0];
@@ -79,9 +73,9 @@ s32 func_80136334(void *arg0, s32 arg1, s32 arg2) {
         D_801858B8[2] = a2v - 2;
     }
     __asm__ __volatile__("" :: "r"(a1v), "r"(a2v));
-    (*(s16 *)D_80126720) = ((*(s16 *)((s8 *)(arg0) + (4))) + (*(s16 *)((s8 *)(arg0) + (6)))) >> 1;
-    D_80126722 = ((*(s16 *)((s8 *)(arg0) + (8))) + (*(s16 *)((s8 *)(arg0) + (0xA)))) >> 1;
+    (*(s16 *)D_80126720) = (M2C_FIELD(arg0, s16 *, 4) + M2C_FIELD(arg0, s16 *, 6)) >> 1;
+    D_80126722 = (M2C_FIELD(arg0, s16 *, 8) + M2C_FIELD(arg0, s16 *, 0xA)) >> 1;
     result = 1;
-    D_80126724 = ((*(s16 *)((s8 *)(arg0) + (0xC))) + (*(s16 *)((s8 *)(arg0) + (0xE)))) >> 1;
+    D_80126724 = (M2C_FIELD(arg0, s16 *, 0xC) + M2C_FIELD(arg0, s16 *, 0xE)) >> 1;
     return result;
 }

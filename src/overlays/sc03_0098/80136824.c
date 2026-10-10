@@ -1,82 +1,39 @@
-/* sc03_0098: func_80136824 from Druthulu/BFM-decomp
- * src/ov_SC03_098/ov_SC03_098_jr_80135D20.c (preprocessed; only the declarations it uses),
- * byte-identical to the sc03_0098 retail words (gcc-2.7.2 -O2). */
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef unsigned int u32;
-typedef signed char s8;
-typedef short s16;
-typedef int s32;
-typedef struct { s16 x, y, z, pad; } SVEC_80167AE0;
-typedef struct { s16 x, y, z, pad; } SVEC_8016A290;
-typedef void (*code)(unsigned short *);
-struct Fr {
-    u8 matrix[0x20];
-    SVEC_80167AE0 v[4];
-    struct { u8 r, g, b, pad; } col[4];
-    u32 code;
-};
-struct Fr_80167AE0 {
-    u8 matrix[0x20];
-    SVEC_80167AE0 v[4];
-    struct { u8 r, g, b, pad; } col[4];
-    u32 code;
-};
-struct Fr_8016A290 {
-    SVEC_8016A290 center;
-    SVEC_8016A290 diff;
-    s32 pos[3];
-    s32 _pad1c;
-    s16 mtx[32];
-    SVEC_8016A290 v[4];
-    struct { u8 r, g, b, pad; } col[4];
-    u32 code;
-};
-typedef struct { s16 x, y, z, pad; } SVec_801670E4;
-typedef struct {
-               u16 cx, cy, cz;
-               u16 _p06;
-               u16 a8[4];
-               s32 pos[3];
-               s32 _p1C;
-               SVec_801670E4 v[4];
-               struct { u8 r, g, b, cd; } col[4];
-               u32 code;
-               s32 _p54;
-               u8 m1[0x20];
-               u8 m2[0x20];
-} Fr_801670E4;
-extern void *memcpy(void *, const void *, unsigned int);
-extern u8 D_80126720[];
-extern u8 D_801152A8[];
-extern void *memcpy(void *, const void *, u32);
-extern void func_8005C324(int dst, int src, int n) __asm__("memcpy");
-extern void memcpy();
-extern u8 D_801858B4;
-extern u8 D_801858B0;
-extern s16 *D_801858B8;
-extern u8 D_801858BC;
-extern u8 D_801858B0;
-extern u8 D_801858B4;
-extern s16 *D_801858B8;
-extern u8 D_801858BC;
-extern u8 D_80126720[];
-extern u8 D_801858B4;
-extern u8 D_801858B0;
-extern s16 *D_801858B8;
-extern u8 D_801858BC;
-extern u8 D_80126720[];
+/* Overlay range [80136824,80136A94) from MAIN.CD member 0012.
+ * SHA256(span)=d0f07899ffd114d1eabfdb43d271e58a8465329abba2bbe66e7f633e08e9374e.
+ * Word export for the native seam; the body below is an
+ * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80136824 - byte-exact against retail at -O2 (tools/register_match.py). */
+#include "psx_types.h"
+
+/* File-scope declarations from the vendor translation unit. */
+#define M2C_FIELD(expr, type_ptr, offset) (*(type_ptr)((s8 *)(expr) + (offset)))
+
+// @class: pointer-type — pointer-vs-array reconcile for func_80136824 (ov_SC01_077_a)
+// D_801858B0/B0/B8 are file-scope `extern u8`, D_801858B8 is `extern s32 []`; each HOLDS a
+// pointer value that the target loads via lw then derefs. Read as pointer via *(T**)&sym.
+// D_801858B8 must be a SCALAR pointer (not s32[]) — as an array it decays and gcc CSEs the
+// base address into a held reg (lui;addiu;lw 0(reg)) across the 3 reloads; as a scalar
+// pointer it folds %lo (lui;lw %lo). Retype all 3 file-TU occurrences (byte-neutral: the
+// siblings read it once via *(u16**)&sym == direct lw either way).
 
 s32 func_80136824(s32 arg0, s32 arg1, s32 arg2) {
+
+    extern u8 D_80126720[];
+    extern u8 D_801858B0;
+    extern u8 D_801858B4;
+    extern s16 *D_801858B8;
+    extern u8 D_801858BC;
     extern u8 D_801152A8[];
     extern s16 D_801152AA;
     extern s16 D_801152AC;
     extern s16 D_80126722;
     extern s16 D_80126724;
-    u16 *ac;
-    s16 *b8;
-    s16 *b4;
-    s32 r;
+
+    register u16 *ac __asm__("$4");
+    register s16 *b8 __asm__("$6");
+    register s16 *b4 __asm__("$9");
+    register s32 r __asm__("$3");
     register s32 pos __asm__("$12");
     register s32 a1v __asm__("$5");
     s16 temp_v0;
@@ -88,6 +45,7 @@ s32 func_80136824(s32 arg0, s32 arg1, s32 arg2) {
     s32 var_v1;
     s16 *b4b;
     u16 *p;
+
     __asm__ ("" : "=r"(a1v) : "0"(arg1));
     pos = arg2;
     if (!(a1v & 1)) {
@@ -110,16 +68,16 @@ s32 func_80136824(s32 arg0, s32 arg1, s32 arg2) {
     temp_v0 = ac[2] + r;
     b4[2] = temp_v0;
     temp_v1 = b4[0];
-    if (temp_v1 < (*(s16 *)((s8 *)(((void *)arg0)) + (4)))) {
+    if (temp_v1 < M2C_FIELD(((void *)arg0), s16 *, 4)) {
         return 0;
     }
-    if ((*(s16 *)((s8 *)(((void *)arg0)) + (6))) < temp_v1) {
+    if (M2C_FIELD(((void *)arg0), s16 *, 6) < temp_v1) {
         return 0;
     }
-    if (temp_v0 < (*(s16 *)((s8 *)(((void *)arg0)) + (0xC)))) {
+    if (temp_v0 < M2C_FIELD(((void *)arg0), s16 *, 0xC)) {
         return 0;
     }
-    if ((*(s16 *)((s8 *)(((void *)arg0)) + (0xE))) < temp_v0) {
+    if (M2C_FIELD(((void *)arg0), s16 *, 0xE) < temp_v0) {
         return 0;
     }
     if (arg1 & 0x8000) {
@@ -142,8 +100,8 @@ s32 func_80136824(s32 arg0, s32 arg1, s32 arg2) {
     }
     b4b[1] = var_v0_3;
     __asm__ __volatile__("" :: "r"(pos));
-    (*(s16 *)D_80126720) = (s16) ((s32) ((*(s16 *)((s8 *)(((void *)arg0)) + (4))) + (*(s16 *)((s8 *)(((void *)arg0)) + (6)))) >> 1);
-    D_80126722 = (s16) ((s32) ((*(s16 *)((s8 *)(((void *)arg0)) + (8))) + (*(s16 *)((s8 *)(((void *)arg0)) + (0xA)))) >> 1);
-    D_80126724 = (s16) ((s32) ((*(s16 *)((s8 *)(((void *)arg0)) + (0xC))) + (*(s16 *)((s8 *)(((void *)arg0)) + (0xE)))) >> 1);
+    (*(s16 *)D_80126720) = (s16) ((s32) (M2C_FIELD(((void *)arg0), s16 *, 4) + M2C_FIELD(((void *)arg0), s16 *, 6)) >> 1);
+    D_80126722 = (s16) ((s32) (M2C_FIELD(((void *)arg0), s16 *, 8) + M2C_FIELD(((void *)arg0), s16 *, 0xA)) >> 1);
+    D_80126724 = (s16) ((s32) (M2C_FIELD(((void *)arg0), s16 *, 0xC) + M2C_FIELD(((void *)arg0), s16 *, 0xE)) >> 1);
     return 1;
 }

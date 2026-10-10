@@ -1,151 +1,34 @@
-/* sc03_0098: func_80166F58 from Druthulu/BFM-decomp
- * src/ov_SC03_098/ov_SC03_098_jr_8015C32C.c (preprocessed; only the declarations it uses),
- * byte-identical to the sc03_0098 retail words (gcc-2.7.2 -O2). */
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef int s32;
-extern s32 D_80127098;
-extern s32 D_80127094;
-extern s32 D_80127090;
-extern void func_80147324(s32 arg0);
-extern s32 func_800CF8B4();
-extern void func_801599A4(void *a0);
-extern void func_80162CCC(void);
-extern void func_80016714(void *a0, s32 a1);
-extern void func_8014C010(s32 a0, s32 a1);
-extern void func_8015BDD0(s32 *a0);
-extern void func_80147324(s32 a0);
-extern void func_8015BF48(s32 *a0);
-extern int func_80161208();
-extern s32 func_80161208();
-extern void func_8015BDD0(s32 *a0);
-extern s32 func_80161CD0(s32 a0, s32 a1);
-extern s32 func_800CF8B4(void);
-extern void func_8014C010(s32 a0, s32 a1);
-extern void func_80147324(s32 a0);
-extern void func_8014C010(s32 a0, s32 a1);
-extern void func_80147324(s32 arg0);
-extern void func_80147324(s32 a0);
-extern s32 func_80161208();
-extern s32 func_80161208();
-extern s32 func_80161208();
-extern s32 func_80161208();
-extern s32 func_80161208();
-extern s32 func_80161208();
-extern s32 func_80161208();
-extern s32 func_800CF8B4(void);
-extern s32 func_80161208();
-extern void func_80147324(s32 a0);
-extern s32 func_80161208(void);
-extern void func_80147324(s32 arg0);
-extern void func_80147324(s32 a0);
-extern s32 func_80161208(void);
-extern s32 func_80161208(void);
-extern void func_80147324(s32 a0);
-extern void func_801599A4(void *a0);
-extern void func_80147324(s32 arg0);
-extern void func_80147324(s32 a0);
-extern s32 func_80161208();
-extern s32 func_80161208();
-extern s32 func_80161208();
-extern s32 func_80161208();
-extern void func_80147324(s32 arg0);
-extern s32 func_800CF8B4();
-extern s32 func_80161208();
-extern s32 func_80161208();
-extern s32 func_80161208();
-extern s32 func_80161208();
-extern s32 func_80161208();
-extern s32 func_80161208();
-extern s32 func_80161208();
-extern void func_80147324(s32 a0);
-extern void func_8016130C(void*, s32);
-void aF80161208(void *a0) __asm__("func_80161208");
-void aF80161208(void *a0) __asm__("func_80161208");
-extern void func_8016130C(void *a0, s32 a1);
-extern void func_801599A4(void*);
-extern void func_8015BDD0(s32*);
-extern void func_8015BF48(s32*);
-s32 aF8016130C(void *a0, s32 a1) __asm__("func_8016130C");
-s32 aF8016130C(void *a0, s32 a1) __asm__("func_8016130C");
-s32 aF8016130C(void *a0, s32 a1) __asm__("func_8016130C");
-extern void func_801599A4(void*);
-extern void func_8015BDD0(s32*);
-extern void func_8015BF48(s32*);
-extern void func_8016191C(void *a0, s32 a1);
-extern void func_801599A4(void *a0);
-extern void func_8015BF48(s32 *a0);
-extern void func_8014C010(s32 a0, s32 a1);
-extern void func_801599A4(void *a0);
-extern void func_8014C010(s32 a0, s32 a1);
-extern void func_8015BF48(s32 *a0);
-extern void func_8014C010(s32 a0, s32 a1);
-extern void func_801599A4(void *a0);
-extern void func_8015BF48(s32 *a0);
-extern void func_8014C010(s32 a0, s32 a1);
-extern void func_801599A4(void *a0);
-extern void func_8015BF48(s32 *a0);
-extern void func_8014C010(int a0, int a1);
-int aF8016191C(int param_1, unsigned int param_2) __asm__("func_8016191C");
-int aF8016191C(int param_1, unsigned int param_2) __asm__("func_8016191C");
-extern void func_801599A4(void *a0);
-extern void func_801599A4(void *a0);
-extern void func_801599A4(void *a0);
-extern void func_80147324();
-extern void func_80147324(s32 arg0);
-extern int func_800CF8B4();
-extern void func_80147324(int arg0);
-void aF80161CD0(int param_1, unsigned int param_2) __asm__("func_80161CD0");
-void aF80161CD0(int param_1, unsigned int param_2) __asm__("func_80161CD0");
-extern void func_80147324(s32 arg0);
-extern void func_80016714(void *a0, s32 a1);
-extern void func_80016714(void *a0, s32 a1);
-extern void func_80016714(void *a0, s32 a1);
-extern void func_80016714(void *a0, s32 a1);
-extern void func_80016714(void *a0, s32 a1);
-extern void func_80016714(void *a0, s32 a1);
-void aF80162CCC(u8 *a0) __asm__("func_80162CCC");
-void aF80162CCC(u8 *a0) __asm__("func_80162CCC");
-void aF80162CCC(u8 *a0) __asm__("func_80162CCC");
-extern s32 aD_80127090 __asm__("D_80127090");
-extern s32 aD_80127094 __asm__("D_80127094");
-extern s32 aD_80127098 __asm__("D_80127098");
-extern s32 aD_80127090 __asm__("D_80127090");
-extern s32 aD_80127094 __asm__("D_80127094");
-extern s32 aD_80127098 __asm__("D_80127098");
-extern s32 aD_80127090 __asm__("D_80127090");
-extern s32 aD_80127094 __asm__("D_80127094");
-extern s32 aD_80127098 __asm__("D_80127098");
-extern s32 aD_80127090 __asm__("D_80127090");
-extern s32 aD_80127094 __asm__("D_80127094");
-extern s32 aD_80127098 __asm__("D_80127098");
-extern void func_80147324(s32 a0);
-extern void func_80147324(s32 arg0);
-extern void func_80162CCC();
-extern void func_80162CCC();
-extern void func_80162CCC();
-extern s32 func_80161208();
-extern void func_801599A4(void *a0);
+/* Overlay range [80166F58,8016706C) from MAIN.CD member 0012.
+ * SHA256(span)=08d02cee4615235bf789e19a6f1f18237b9fe126355f7d92b8f3002dc9931679.
+ * Word export for the native seam; the body below is an
+ * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+#include "psx_types.h"
+/* func_80166F58 - byte-exact against retail at -O2 (tools/register_match.py). */
 extern void func_80016714(void *a0, s32 a1);
 extern s32 D_8011D030;
+extern void func_80146C3C(u8 *a0);
 extern void func_80146C3C();
-extern void func_80146C3C();
+extern void func_80146C3C(u8*);
 
-s32 func_80166F58(s32 param_1, s32 param_2, s32 param_3, s32 param_4)
+void func_80166F58(s32 param_1, s32 param_2, s32 param_3, s32 param_4)
 {
+
     extern s32 D_8011D030;
     extern unsigned char D_801C44F0[];
-    register int p2 __asm__("$20");
-    int p3;
-    register int t2 __asm__("$5");
-    int t3;
+
+    register int p2 __asm__("$20");              
+    register int p3 __asm__("$17");              
+    register int t2 __asm__("$5");               
+    register int t3 __asm__("$6");               
     unsigned short *puVar1;
     short iVar2;
     int eq;
+
     iVar2 = 0;
     puVar1 = ((unsigned short *)&D_8011D030);
-    t2 = ((short)param_2); __asm__("" : "=r"(t2) : "0"(t2)); p2 = t2; __asm__("" : "=r"(p2) : "0"(p2));
-    t3 = ((short)param_3); __asm__("" : "=r"(t3) : "0"(t3)); p3 = t3;
+    t2 = ((short)param_2); __asm__("" : "=r"( t2 ) : "0"( t2 )) ; p2 = t2; __asm__("" : "=r"( p2 ) : "0"( p2 )) ;
+    t3 = ((short)param_3); __asm__("" : "=r"( t3 ) : "0"( t3 )) ; p3 = t3;
     eq = (p2 == p3);
     do {
         if ((puVar1 != ((unsigned short *)param_1)) &&
