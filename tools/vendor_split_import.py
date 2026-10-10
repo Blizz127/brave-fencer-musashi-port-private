@@ -124,7 +124,7 @@ for idx,(k,name,c) in enumerate(info):
                 hdr=re.sub(r'\s+',' ',hdr)
             parts.append(hdr+';')
         else: parts.append(cc.strip())
-    body='/* SC02.CD member35: func_%s from Druthulu/BFM-decomp\n * src/ov_SC02_035/%s (preprocessed; only the declarations it uses),\n * byte-identical to the sc02_0035 retail words (gcc-2.7.2 -O2). */\n'%(name[5:].upper(),os.path.basename(tu))+'\n'.join(parts)+'\n\n'+c.strip()+'\n'
+    body='/* %s: func_%s from Druthulu/BFM-decomp\n * src/%s/%s (preprocessed; only the declarations it uses),\n * byte-identical to the %s retail words (gcc-2.7.2 -O2). */\n'%(TGT,name[5:].upper(),os.path.basename(os.path.dirname(tu)),os.path.basename(tu),TGT)+'\n'.join(parts)+'\n\n'+c.strip()+'\n'
     for nm2,(a2,isf) in SYMS.items():
         if re.search(r'\b'+nm2+r'\b',body):
             body=re.sub(r'\b'+nm2+r'\b',('func_%08X' if isf else 'D_%08X')%a2,body)

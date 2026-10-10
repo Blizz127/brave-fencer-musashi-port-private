@@ -1,0 +1,60 @@
+/* sc03_0098: func_8016FBB8 from Druthulu/BFM-decomp
+ * src/ov_SC03_098/ov_SC03_098_jr_8016AB6C.c (preprocessed; only the declarations it uses),
+ * byte-identical to the sc03_0098 retail words (gcc-2.7.2 -O2). */
+typedef unsigned char u8;
+typedef unsigned short u16;
+typedef signed char s8;
+typedef short s16;
+typedef int s32;
+extern void func_80147060(u8 * a0);
+extern void func_80148634(void *a0);
+extern void func_801511A8(u8 *a0);
+extern u8 D_800B9A17;
+extern u8 D_800B9A17;
+extern void func_8017196C(s32 *a0, s8 a1);
+extern void func_80147060(u8 *a0);
+extern void func_801511A8(u8 *a0);
+extern void func_80148634(void *a0);
+void aF8016F0E4(u8 *p) __asm__("func_8016F0E4");
+extern void func_80148634(void *a0);
+extern u8 D_800B9A17;
+extern u8 D_800B9A17;
+extern void func_801719A4(int a0, int a1);
+extern void func_80147060(u8 *a0);
+extern void func_80148634(void *a0);
+extern void func_80148634(void *a0);
+extern void func_801719A4(int a0, int a1);
+extern s32 func_80171990(u8 *a0);
+extern s32 func_80171990(u8 *a0);
+extern void func_801719A4(int a0, int a1);
+extern s32 func_80171990(u8 *a0);
+extern void func_801719A4(int a0, int a1);
+extern s32 func_80171990(u8 *a0);
+extern void func_801719A4(int a0, int a1);
+extern void func_80171B44(s32 *a0);
+extern s32 func_80171990(u8 *a0);
+extern void func_801719A4(int a0, int a1);
+extern s32 func_80171990(u8 *a0);
+extern s32 func_80171990(u8 *a0);
+extern void func_801719A4(int a0, int a1);
+extern void func_80171B44(s32 *a0);
+extern s32 func_80171990(u8 *a0);
+extern void func_8016FC24();
+void func_8016FC24(s32 a0);
+void func_8017196C(s32 *a0, s8 a1);
+s32 func_80171990(u8 *a0);
+void func_801719A4(int a0, int a1);
+void func_80171B44(s32 *a0);
+
+void func_8016FBB8(s32 a0) {
+    u8 *p;
+    *(s16 *)(a0 + 0x136) = 2;
+    p = *(u8 **)(a0 + 0x20);
+    *(s16 *)(a0 + 0x132) = *(u16 *)(p + 0x12);
+    p = *(u8 **)(a0 + 0x20);
+    *(s16 *)(p + 0x12) = (*(u16 *)(p + 0x12) + 0x800) & 0xFFF;
+    func_801719A4(a0, 1);
+    func_80171B44((s32 *)a0);
+    func_80171990((u8 *)a0);
+    func_8016FC24(a0);
+}

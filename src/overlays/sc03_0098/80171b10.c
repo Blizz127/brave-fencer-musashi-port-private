@@ -1,0 +1,14 @@
+/* sc03_0098: func_80171B10 from Druthulu/BFM-decomp
+ * src/ov_SC03_098/ov_SC03_098_jr_8016AB6C.c (preprocessed; only the declarations it uses),
+ * byte-identical to the sc03_0098 retail words (gcc-2.7.2 -O2). */
+typedef short s16;
+typedef int s32;
+extern s32 func_8014C568(s16 *a0, s16 *a1);
+extern void func_8012A568(void (*a0)(void));
+extern s32 func_8014C568(s16 *a0, s16 *a1);
+extern s32 func_8014C568(s16 *a0, s16 *a1);
+
+void func_80171B10(void *a0) {
+    s32 ret = ((s32 (*)())func_8014C568)(a0);
+    *(s16 *)(*(s32 *)((s32)a0 + 0x20) + 0x12) = ret;
+}
