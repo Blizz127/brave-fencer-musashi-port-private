@@ -1812,6 +1812,10 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 - Admitted: sc01_0000 8017AE2C, 8017DD04, 8017E210, 8017E3A0, 8017E594; main_0003 800D0D6C, 800D12D0; main_0012 8012E014; plus main-exe rows under the same rule. LOST [].
 - The gate now also builds the strict binary (strict_build=). Next stop: main 8003D3B4.
 
+### Inc 131: libspu 8003D3B4 native (voice ADSR2 release bits)
+- main 8003D3B4 is a PsyQ library routine, so the lane excludes it. It is now a driver HLE: it sets the low 6 bits of voice ADSR2 through D_8006B54C, then runs the libspu delay (8003B0E4 = spu_delay).
+- Gates pass (38/38, strict_build=0, LOST []). The route passes f1700. Next stop: 80128288 in a newly loaded overlay.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for

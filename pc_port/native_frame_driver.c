@@ -2167,6 +2167,12 @@ SPU_ENTRY(hle_spu_voice_bits) {         /* 8003BE98 */
     call->r[2] = spu_voice_bits(call->r[4], call->r[5], call->r[6], call->r[7]);
     return 1;
 }
+SPU_ENTRY(hle_spu_voice_rr) {           /* 8003D3B4: voice ADSR2 low 6 bits (release), then the libspu delay */
+    uint32_t reg = rd32(SP_REGS) + ((call->r[4] << 3) + 5u) * 2u;
+    hw16w(reg, (uint16_t)((hw16(reg) & 0xFFC0u) | (uint16_t)call->r[5]));
+    spu_delay();
+    return 1;
+}
 SPU_ENTRY(hle_spu_set_common_attr) { spu_set_common_attr(call->r[4]); return 1; }
 SPU_ENTRY(hle_spu_dma_irq) {
     /* 8003AA18: DMA4 completion */
@@ -4520,6 +4526,7 @@ static const MusashiNativeLaneEntry k_driver_entries[] = {
     {0x8003BE98u, 0, hle_spu_voice_bits,  "_spu_voice_bits",     4, 1, 0},
     {0x8003C0A0u, 0, hle_spu_clear_reverb,"SpuClearReverbWorkArea", 1, 1, 0},
     {0x8003C598u, 0, hle_spu_set_common_attr, "SpuSetCommonAttr", 1, 0, 0},
+    {0x8003D3B4u, 0, hle_spu_voice_rr,    "_spu_voice_rr",       2, 0, 0},
     {0x8003D518u, 0, hle_ss_init,         "SsInit",              0, 0, 0},
     {0x8003D548u, 0, hle_ss_init_body,    "_SsInit",             0, 0, 0},
     {0x8003FA64u, 0, hle_ss_vm_flush,     "SpuVmFlush",          0, 0, 0},
