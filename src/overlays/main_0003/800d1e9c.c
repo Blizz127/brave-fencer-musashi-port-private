@@ -24,7 +24,7 @@ extern u8 D_800EC9FC[];
 struct S_D2394;
 struct S_D2394B;
 extern void func_800D2394(struct S_D2394 *t, s16 a1, s16 a2, s16 a3, s32 a4, struct S_D2394B *a5);
-extern void func_800D2454();
+extern s32 func_800D2454();
 extern void func_800D24D0();
 extern s32 func_800D2704();
 extern void func_800D298C();
