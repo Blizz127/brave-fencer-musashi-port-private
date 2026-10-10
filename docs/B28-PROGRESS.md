@@ -1737,6 +1737,14 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
   _ft3 = _g3 offsets +8/+16/+24).
 - Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [].
 
+## Inc 121 — main 80026D64 admitted (prototyped TMD packet emitters)
+
+- Stop 80026D64 (main exe): abi rule, "unprototyped func_80027058 with 7
+  arguments". Prototyped all six emitter calls (800273F4, 80027058,
+  800275BC, 80027200, 800277DC, 800279AC) as (u8 *, u8 *, u8 *, u8 *, s32,
+  s32, u32 *); verify_registry MATCH.
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [].
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for

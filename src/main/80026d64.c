@@ -12,12 +12,12 @@ extern u8 *D_800A5E60;
  * func_800279AC returns `LineG4 *`, a typedef declared below the INCLUDE_ASM site).
  * The §183 __asm__-label alias binds a locally-typed name to the real symbol, so the
  * call site keeps its `u8 *` result with no declaration conflict at the definitions. */
-extern u8 *func_800273F4();
-extern void *func_800275BC();
-extern void *func_800277DC();
-extern u8 *aF80027058() __asm__("func_80027058");
-extern u8 *aF80027200() __asm__("func_80027200");
-extern u8 *aF800279AC() __asm__("func_800279AC");
+extern u8 *func_800273F4(u8 *, u8 *, u8 *, u8 *, s32, s32, u32 *);
+extern void *func_800275BC(u8 *, u8 *, u8 *, u8 *, s32, s32, u32 *);
+extern void *func_800277DC(u8 *, u8 *, u8 *, u8 *, s32, s32, u32 *);
+extern u8 *aF80027058(u8 *, u8 *, u8 *, u8 *, s32, s32, u32 *) __asm__("func_80027058");
+extern u8 *aF80027200(u8 *, u8 *, u8 *, u8 *, s32, s32, u32 *) __asm__("func_80027200");
+extern u8 *aF800279AC(u8 *, u8 *, u8 *, u8 *, s32, s32, u32 *) __asm__("func_800279AC");
 
 /* The per-case `p += count * K` (rather than one shared `adv` temp assigned in every
  * arm) is LOAD-BEARING, not style.  With a shared temp the switch end-label is a real
