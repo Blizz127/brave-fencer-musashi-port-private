@@ -65,6 +65,7 @@ does not fit the member is a build error, never a silent 0. Under
 """
 import argparse
 import concurrent.futures
+import threading
 import json
 import os
 import re
@@ -1083,7 +1084,9 @@ MEMORY_FNS = ("memset", "memcpy", "memmove")
 # Guarded division helpers (mips_formatter.c) that lower_arith() calls.
 LANE_HELPERS = ("lane_sdiv32", "lane_srem32", "lane_udiv32", "lane_urem32",
                 # strict pass-through callers: the guest a0-a3 at entry (B28)
-                "musashi_lane_guest_reg")
+                "musashi_lane_guest_reg",
+                # strict unbounded integer->pointer, checked at run time (B28)
+                "musashi_lane_checked_ptr")
 # Strict (B28): host stand-ins for PsyQ inline_c.h GTE macros (see
 # include/musashi_lane_gte_inline.h and psyq_psycross.c).
 GTE_INLINE_HELPERS = (
@@ -1670,6 +1673,44 @@ def check_layout(ir):
                 raise Reject("layout", "pointer-element indexing")
 
 
+# Strict (B28): an integer->pointer conversion the rules cannot bound (a
+# guest base plus an unbounded index, e.g. 8017DD04's
+# `D_800AA60C[(u16)D_800B9A02 << 14]`) is not refused. check_optimized records
+# the line here instead, and checked_inttoptr() rewrites it to
+# musashi_lane_checked_ptr(addr, vram) (pc_port/lane_checked_ptr.c). That call
+# returns the same pointer for a guest-RAM address and aborts strict-native
+# naming the function otherwise. Non-strict builds still refuse.
+# Per thread: the generator compiles functions on a ThreadPoolExecutor.
+CHECKED_PTRS_TLS = threading.local()
+CHECKED_PTR_LINE = re.compile(r"^(\s*%[\w.]+ = )inttoptr i64 (%[\w.]+) to ptr\s*$")
+
+
+def checked_inttoptr(ir, module_internal, vram):
+    if not STRICT:
+        check_optimized(ir, module_internal)
+        return ir
+    hits = CHECKED_PTRS_TLS.hits = set()
+    try:
+        check_optimized(ir, module_internal)
+    finally:
+        CHECKED_PTRS_TLS.hits = None
+    if not hits:
+        return ir
+    out = []
+    for line in ir.split("\n"):
+        if line.strip() in hits:
+            m = CHECKED_PTR_LINE.match(line)
+            if not m:
+                raise Reject("inttoptr", "unbounded integer->pointer in an unsupported form")
+            line = f"{m.group(1)}call ptr @musashi_lane_checked_ptr(i64 {m.group(2)}, i32 {(vram & 0xFFFFFFFF) - ((vram & 0x80000000) << 1)})"
+        out.append(line)
+    ir = "\n".join(out)
+    if "declare ptr @musashi_lane_checked_ptr(" not in ir:
+        ir += "\ndeclare ptr @musashi_lane_checked_ptr(i64, i32)\n"
+    check_optimized(ir, module_internal)  # the rewritten module passes unaided
+    return ir
+
+
 def check_optimized(ir, module_internal):
     types = named_types(ir)
     private_globals = set(re.findall(r"^@([\w.$]+) = (?:private|internal)", ir, flags=re.M))
@@ -1818,7 +1859,10 @@ def check_optimized(ir, module_internal):
                             (STRICT and am and int(am.group(1)) <= 0xFFFFFFFF) or
                             (STRICT and bounded_guest_affine(val, defs)) or
                             (STRICT and scev_in_game_ram(ir, header, val))):
-                        raise Reject("inttoptr", f"integer->pointer from '{d[:40]}'")
+                        if STRICT and getattr(CHECKED_PTRS_TLS, "hits", None) is not None:
+                            CHECKED_PTRS_TLS.hits.add(s)
+                        else:
+                            raise Reject("inttoptr", f"integer->pointer from '{d[:40]}'")
                 elif re.fullmatch(r"-?\d+", val) and not const_addr_ok(int(val)):
                     raise Reject("inttoptr", f"constant address {int(val):x}")
             for const in re.findall(r"inttoptr \(i64 (-?\d+) to ptr\)", rhs):
@@ -3711,7 +3755,7 @@ def build_one(entry, out, symbols, hooks, clang, info=None):
             optir = void_result_returns(optir, f"lane_{qualify(member, name)}", name, info,
                                         entry["source"])
         internal = set(re.findall(r"^define internal [^@]*@([\w.$]+)\(", optir, flags=re.M))
-        check_optimized(optir, internal)
+        optir = checked_inttoptr(optir, internal, vram)
         check_device_pointers(optir, info)
         check_polling_loops(optir)
         defs = lane_names(optir)
@@ -3753,7 +3797,7 @@ def build_one(entry, out, symbols, hooks, clang, info=None):
                 if r.returncode:
                     raise lane_cycles.Refuse("optimize: " + (r.stderr.strip().splitlines() or ["?"])[0][:120])
                 lir, licalls = rewrite_indirect_calls(lopt.read_text())
-                check_optimized(lir, set(re.findall(r"^define internal [^@]*@([\w.$]+)\(", lir, flags=re.M)))
+                lir = checked_inttoptr(lir, set(re.findall(r"^define internal [^@]*@([\w.$]+)\(", lir, flags=re.M)), vram)
                 if lane_names(lir) != defs or licalls != icalls:
                     raise lane_cycles.Refuse("instrumented module changed its definitions or calls")
                 lir, lstubs = resolve_calls(lir)

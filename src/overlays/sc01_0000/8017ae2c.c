@@ -63,7 +63,7 @@ void func_8017AE2C(s32 param_1) {
                 func_8012B030((u8 *)pv);
                 /* &D_801A5840+0xC == &D_801A584C; distinct rtx defeats gcc's address-CSE
                    so BE98's arg rematerializes instead of sharing the store's reg (byte-gate). */
-                if (func_8012BE98(pv, (u16 *)((s32)&D_801A5840 + 0xC)) < 0x101) {
+                if (func_8012BE98(pv, (u16 *)((u8 *)&D_801A5840 + 0xC)) < 0x101) {
                     D_801A5840 = 0;
                     D_801A5842 = 0;
                 }
@@ -88,7 +88,7 @@ void func_8017AE2C(s32 param_1) {
         *(u16 *)(pv + 0xA) -= 8;
         func_8012B030((u8 *)pv);
         /* see note above: distinct rtx for the same address defeats address-CSE. */
-        if (func_8012BE98(pv, (u16 *)((s32)&D_801A5840 + 0xC)) < 0x101) {
+        if (func_8012BE98(pv, (u16 *)((u8 *)&D_801A5840 + 0xC)) < 0x101) {
             D_801A5840 = 0;
             D_801A5842 = 0;
         }

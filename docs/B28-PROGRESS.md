@@ -1804,6 +1804,14 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 - The `D_801A57xx` half-word macros used `(s32)&D_X + 2`, an int-to-pointer cast, which the lane rule refuses. Rewritten as `(u8 *)&D_X + 2`. Byte-exact (MATCH).
 - Gates pass, LOST []. Next stop: 8017DD04.
 
+### Inc 130: strict run-time checked pointers (unbounded inttoptr), 8017AE2C
+- Strict only: an integer->pointer conversion the lane cannot bound (a guest base plus an unbounded index, e.g. `D_800AA60C[(u16)D_800B9A02 << 14]`) is rewritten to `musashi_lane_checked_ptr(addr, fn_vram)`. The helper is in pc_port/lane_checked_ptr.c and is compiled into mips_formatter_strict.c so it links wherever musashi_strict_abort does. It returns the pointer unchanged for addresses within 2 MB KSEG0 RAM (with 8 bytes of access slack) and otherwise aborts strict-native, naming the function's entry PC. Non-strict builds still refuse; the hybrid table is identical.
+- New ctest `lane_checked_ptr_boundary` (tests/lane_checked_ptr_probe.c) covers in-range pass-through and out-of-range abort with the PC. ctest is now 38/38.
+- The capture set is thread-local; the generator's ThreadPoolExecutor made a global racy, which admitted and refused the same functions nondeterministically.
+- sc01_0000 8017AE2C: `(s32)&D_801A5840 + 0xC` changed to a byte pointer (MATCH).
+- Admitted: sc01_0000 8017AE2C, 8017DD04, 8017E210, 8017E3A0, 8017E594; main_0003 800D0D6C, 800D12D0; main_0012 8012E014; plus main-exe rows under the same rule. LOST [].
+- The gate now also builds the strict binary (strict_build=). Next stop: main 8003D3B4.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for

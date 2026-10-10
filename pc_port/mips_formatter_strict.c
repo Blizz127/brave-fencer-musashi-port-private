@@ -43,3 +43,8 @@ void musashi_strict_abort(const char *seam, const char *routine, uint32_t guest_
     fflush(stderr);
     abort();
 }
+
+/* Strict lane run-time pointer check (B28). Compiled here so it is linked
+ * wherever musashi_strict_abort is; tests/lane_checked_ptr_probe.c builds the
+ * same file on its own against a stub abort. */
+#include "lane_checked_ptr.c"

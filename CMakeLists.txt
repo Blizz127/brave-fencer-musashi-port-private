@@ -362,6 +362,13 @@ if(MUSASHI_BUILD_PC_PORT)
     target_link_libraries(musashi_word_clear_probe PRIVATE musashi_pc_port)
     add_test(NAME word_clear_boundary COMMAND musashi_word_clear_probe)
 
+    # Strict lane run-time pointer check (B28): links the helper alone, with a
+    # stub musashi_strict_abort, to prove in-range pass-through and abort-with-PC.
+    add_executable(musashi_lane_checked_ptr_probe tests/lane_checked_ptr_probe.c pc_port/lane_checked_ptr.c)
+    target_include_directories(musashi_lane_checked_ptr_probe PRIVATE pc_port/include)
+    target_compile_features(musashi_lane_checked_ptr_probe PRIVATE c_std_99)
+    add_test(NAME lane_checked_ptr_boundary COMMAND musashi_lane_checked_ptr_probe)
+
     add_executable(musashi_heap_continuation_probe tests/heap_continuation_probe.c)
     target_compile_features(musashi_heap_continuation_probe PRIVATE c_std_99)
     target_include_directories(musashi_heap_continuation_probe PRIVATE "${MUSASHI_GENERATED_DIR}")

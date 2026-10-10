@@ -64,7 +64,7 @@ void func_8017DD04(s32 arg0, s32 arg1)
     *(s16 *)(pkt + 0x20) = D_80182710;
     *(s16 *)(pkt + 0x22) = D_80182712;
     mlo = 0xFFFFFF;
-    *(u32 *)pkt = (*(u32 *)pkt & 0xFF000000) | (*(u32 *)((s32)D_800AA60C + (((u16)D_800B9A02) << 14)) & mlo);
+    *(u32 *)pkt = (*(u32 *)pkt & 0xFF000000) | (*(u32 *)(D_800AA60C + (((u16)D_800B9A02) << 14)) & mlo);
     ob = D_800AA60C;
     ((P_TAG *)((s32)ob + (((u16)D_800B9A02) << 14)))->addr = (u32)pkt;
     pkt += 0x28;
