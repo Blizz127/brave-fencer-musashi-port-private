@@ -19,12 +19,12 @@ extern s32 func_80159464(void);
 
 void func_801588CC(int param_1) {
 
-    extern void (*D_80180FA8[])(void);
+    extern void (*D_80180FA8[])(int);
     extern int D_801A45B4;
     extern int D_801A45B8;
     short sVar1;
 
-    D_80180FA8[*(unsigned short *)(param_1 + 2)]();
+    D_80180FA8[*(unsigned short *)(param_1 + 2)](param_1);
     switch (D_801A45B0) {
     case 0:
         break;

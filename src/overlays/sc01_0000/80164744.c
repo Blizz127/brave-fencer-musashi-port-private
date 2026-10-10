@@ -9,7 +9,7 @@ typedef double f64;
 #define NULL ((void *)0)
 #endif
 
-extern void (*D_8018180C[])(void);
+extern void (*D_8018180C[])(s32);
 extern void func_80162D28(s32 *a0);
 
 void func_80164744(s32 param_1)
@@ -17,7 +17,7 @@ void func_80164744(s32 param_1)
     s32 iVar1;
 
     iVar1 = *(s32 *)(param_1 + 0x20);
-    D_8018180C[*(u16 *)(param_1 + 2)]();
+    D_8018180C[*(u16 *)(param_1 + 2)](param_1);
     if (iVar1 != 0) {
         ((void (*)(s32))func_80162D28)(param_1);
     }

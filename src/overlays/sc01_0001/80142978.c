@@ -10,11 +10,11 @@ typedef double f64;
 #endif
 
 extern u16 D_801270C0;
-extern void (*D_80184E8C[])();
+extern void (*D_80184E8C[])(int);
 
 void func_80142978(int param_1)
 {
     if (*(s16 *)&D_801270C0 != 3) {
-        D_80184E8C[*(u16 *)(param_1 + 2)]();
+        D_80184E8C[*(u16 *)(param_1 + 2)](param_1);
     }
 }

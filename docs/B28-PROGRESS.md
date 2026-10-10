@@ -1791,6 +1791,11 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 - End VRAM dump (`/workspace/bfm-frames/strict_inc126_f3000.png`): nonblack 280679/307200 — glitched 3D path/character fragments on white (not FMV, not black). First non-FMV/non-black strict display after clearing 801285E4; draw=1 still not lit.
 - Next: light draw=1 on the attract/mesh path; clear CD soft-stalls want=41267 (main_0034) / want=580 (.PAC).
 
+### Inc 127: sc01 table dispatchers pass a0 explicitly (153 files, byte-exact)
+- 80162834 and 152 other sc01_0000/0001 dispatchers called handler tables as `T[i]()`. In retail, a0 survives in the register across the jalr; the native call bridge passes nothing. Each call now passes the function's first parameter, and is kept only where the single-row oracle verify still MATCHes (153/153).
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [] / GAINED [].
+- Route (AUTO_START=2) still faults at ~f1600: lane 80162968 reads object 80126B58, whose +4/+8 fields hold ff7c0000/fbdf0000. The bad object comes from upstream. Next: find who builds it.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for

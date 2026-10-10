@@ -9,9 +9,9 @@ typedef double f64;
 #define NULL ((void *)0)
 #endif
 
-extern void (*D_8018206C[])(void);
+extern void (*D_8018206C[])(void *);
 extern void func_8012A568(void (*a0)(void));
 
 void func_8016F834(void *a0) {
-    D_8018206C[*(u8 *)((s32)a0 + 0x216)]();
+    D_8018206C[*(u8 *)((s32)a0 + 0x216)](a0);
 }

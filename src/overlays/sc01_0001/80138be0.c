@@ -9,12 +9,12 @@ typedef double f64;
 #define NULL ((void *)0)
 #endif
 
-extern void (*D_80183E5C[])(void);
+extern void (*D_80183E5C[])(int);
 
 void func_80138BE0(int p)
 {
     if (*(unsigned short *)(p + 0xe) != 0) {
         *(unsigned short *)(p + 0xe) -= 1;
     }
-    D_80183E5C[*(short *)(p + 4)]();
+    D_80183E5C[*(short *)(p + 4)](p);
 }

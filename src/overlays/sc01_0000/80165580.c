@@ -11,7 +11,7 @@ typedef double f64;
 
 extern u8 D_80078EC5;
 extern u8 D_80078EC1;
-extern void (*D_8018186C[])(void);
+extern void (*D_8018186C[])(s32);
 extern void func_80165B28(void *a0);
 
 void func_80165580(s32 _arg0)
@@ -19,6 +19,6 @@ void func_80165580(s32 _arg0)
     if (D_80078EC5 & 0x80) {
         ((void (*)(void))func_80165B28)();
     } else {
-        D_8018186C[D_80078EC1 & 0x7F]();
+        D_8018186C[D_80078EC1 & 0x7F](_arg0);
     }
 }
