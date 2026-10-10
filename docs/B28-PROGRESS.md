@@ -1844,6 +1844,11 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 - sc01_0077 8017C294 passes `&corner[i]`, `&view[i]`, `&hit[i]` to guest callees in a loop (escape: non-constant offset into local). Strict now taints such an argument as "inside alloca X". Its frame base is proven from the retail words (dyn_arg_base): scan back from the jal through `move`, loop steps `addiu r,r,k`, and spill reloads to the seeding `addiu r, sp, imm`. Every call site must agree on the base, and the existing frame/overlap checks still apply. Result: corner sp+16, view sp+48, hit sp+80.
 - Hybrid unchanged (TABLE_IDENTICAL). Gates pass, LOST []. Next stop main 8001D70C.
 
+### Inc 138: main 8001D70C imported; strict GTE frame-block pass; asm labels are not instructions
+- main 8001D70C (440 B, upstream src/800.c) imported byte-identical. vendor_split_import now accepts `main` and adds the gte_macros.inc `.macro` prelude when a function uses mvmva.
+- Strict generator: gte_frame_block_host maps hand-inlined MulMatrix0/SetRotMatrix/SetTransMatrix asm, with literal sp offsets, to the existing host GTE helpers. Locals are named by `/* sp+0xNN */` comments checked against retail stores. strict_mixed_ok no longer counts declarator asm labels (`x __asm__("D_…")`) as instructions, which gains sc01_0001 8012EFB8, sc02_0035 8017E374 and sc03_0098 8017FF04.
+- Gates pass, LOST []. 8001D70C itself is still refused (in progress).
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for

@@ -353139,6 +353139,17 @@
       "optimization": "-O2",
       "rodata_base": 2149421264,
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8001D70C",
+      "vram": 2147604236,
+      "size": 440,
+      "region": "main",
+      "source": "src/main/8001d70c.c",
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     }
   ]
 }

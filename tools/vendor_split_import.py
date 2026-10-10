@@ -11,6 +11,7 @@ member's retail words (outdir/res.json). Installing them is separate."""
 import sys,re,os,json,subprocess,struct
 R=os.path.dirname(os.path.dirname(os.path.abspath(__file__))); V=os.environ.get('BFM_VENDOR','/workspace/druthulu-bfm')
 sys.path.insert(0,R+'/tools'); import native_lane_gen as g
+GTE_AS_MACROS='__asm__(\n    ".macro cop2op fake_op, op, gbg = 0, sf = 1, mx = 0, v = 0, cv = 0, lm = 0\\n"\n    "    cop2 \\\\fake_op << 20 | \\\\gbg << 20 | \\\\sf << 19 | \\\\mx << 17 | \\\\v << 15 | \\\\cv << 13 | \\\\lm << 10 | \\\\op\\n"\n    ".endm\\n"\n    ".macro mvmva sf, mx, v, cv, lm\\n"\n    "    cop2op 0x04, 0x12, sf = \\\\sf, mx = \\\\mx, v = \\\\v, cv = \\\\cv, lm = \\\\lm\\n"\n    ".endm\\n"\n    ".macro op sf\\n"\n    "    cop2op 0x17, 0x0C, sf = \\\\sf\\n"\n    ".endm\\n"\n);\n'
 TGT,tu,lo,hi,out=sys.argv[1],sys.argv[2],int(sys.argv[3],16),int(sys.argv[4],16),sys.argv[5]
 os.makedirs(out,exist_ok=True)
 pp=subprocess.run(['cpp','-P','-undef','-nostdinc','-I',V+'/include','-I',os.path.dirname(tu),'-Dmips','-D__GNUC__=2','-D__OPTIMIZE__','-Dpsx','-D_PSYQ','-D_MIPSEL','-D_LANGUAGE_C',tu],capture_output=True,text=True)
@@ -83,7 +84,7 @@ for line in open(V+'/config/symbols.us.txt'):
 have={m['vram'] for m in reg if m['region']==TGT}
 # VIMPORT_REDO=<vram hex>,...: regenerate these even though they have rows
 have-={int(x,16) for x in os.environ.get('VIMPORT_REDO','').split(',') if x}
-tinfo=g.member_info(TGT)
+tinfo=None if TGT=='main' else g.member_info(TGT)  # main: the executable's own words
 res=[]; RODATA={}
 for idx,(k,name,c) in enumerate(info):
     if k!='fn': continue
@@ -126,6 +127,8 @@ for idx,(k,name,c) in enumerate(info):
             parts.append(hdr+';')
         else: parts.append(cc.strip())
     body='/* %s: func_%s from Druthulu/BFM-decomp\n * src/%s/%s (preprocessed; only the declarations it uses),\n * byte-identical to the %s retail words (gcc-2.7.2 -O2). */\n'%(TGT,name[5:].upper(),os.path.basename(os.path.dirname(tu)),os.path.basename(tu),TGT)+'\n'.join(parts)+'\n\n'+c.strip()+'\n'
+    if re.search(r'\bmvmva\b',c) and '.macro mvmva' not in body:
+        body=body.replace('\n\n'+c.strip(), '\n'+GTE_AS_MACROS+'\n'+c.strip(),1)  # gte_macros.inc for GNU as
     for nm2,(a2,isf) in SYMS.items():
         if re.search(r'\b'+nm2+r'\b',body):
             body=re.sub(r'\b'+nm2+r'\b',('func_%08X' if isf else 'D_%08X')%a2,body)

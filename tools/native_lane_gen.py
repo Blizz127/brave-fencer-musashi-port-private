@@ -2424,6 +2424,90 @@ GTE_INLINE_DEFINE_HEAD = re.compile(
     r'^#define\s+gte_(?:' + '|'.join(GTE_INLINE_NAMES) + r')\b')
 
 
+
+# Strict (B28): a hand-inlined MulMatrix0/SetRotMatrix/SetTransMatrix asm
+# statement (main 8001D70C) addressing frame locals by literal sp offsets.
+# Each statement must be made only of these idioms, else it is left alone
+# (and stays refused): SetRotMatrix(%0); per column `ldclmv` (lhu 0/6/12 off
+# %0 or `addiu $2,$sp,K`), `rtir` (nop;nop;mvmva 1,0,3,3,0), `stclmv` (sh
+# 0/6/12); SetTransMatrix(%0) (words 5..7). sp+K names the C local declared
+# with a `/* sp+0xNN */` comment; the registry's byte-exact compile is what
+# proves gcc placed it there.
+_FRAME_ASM_RE = re.compile(
+    r'__asm__\s+volatile\s*\(\s*((?:"[^"]*"\s*)+):\s*:\s*"r"\s*\((.+?)\)\s*:\s*((?:"[^"]*"\s*,?\s*)+)\)\s*;', re.S)
+_FRAME_DECL_RE = re.compile(r'^\s*\w+\s+(\w+)\[(\d+)\];\s*/\*\s*sp\+0x([0-9A-Fa-f]+)\s*\*/', re.M)
+_SETROT = ["lw $12,0(%0)", "lw $13,4(%0)", "ctc2 $12,$0", "ctc2 $13,$1", "lw $12,8(%0)", "lw $13,12(%0)",
+           "lw $14,16(%0)", "ctc2 $12,$2", "ctc2 $13,$3", "ctc2 $14,$4"]
+_SETTR = ["lw $12,20(%0)", "lw $13,24(%0)", "ctc2 $12,$5", "lw $14,28(%0)", "ctc2 $13,$6", "ctc2 $14,$7"]
+
+
+def gte_frame_block_host(text):
+    if not STRICT or "mvmva" not in text and "ctc2 $12, $5" not in text:
+        return text
+    sizes = {"s32": 4, "u32": 4, "s16": 2, "u16": 2, "u8": 1, "s8": 1}
+    frame = []
+    for m in _FRAME_DECL_RE.finditer(text):
+        ty = m.group(0).split()[0]
+        if ty not in sizes:
+            return text
+        frame.append((int(m.group(3), 16), int(m.group(2)) * sizes[ty], m.group(1)))
+
+    def sp_expr(k):
+        for b, n, name in frame:
+            if b <= k < b + n:
+                return f"((char *){name} + {k - b})"
+        return None
+
+    def one(m):
+        ins = [re.sub(r"\s*,\s*", ",", re.sub(r"\(\s*", "(", re.sub(r"\s*\)", ")", x.strip())))
+               for x in "".join(re.findall(r'"([^"]*)"', m.group(1))).split(";") if x.strip()]
+        # `"r"((s32)local)`: the host keeps the pointer (a 32-bit round trip
+        # would truncate a host stack address)
+        op0 = f"({re.sub(r'^\(\s*(?:s32|u32|int|long)\s*\)\s*', '', m.group(2).strip())})"
+        out, i, reg2 = [], 0, None
+
+        def take(seq):
+            nonlocal i
+            if ins[i:i + len(seq)] == seq:
+                i += len(seq)
+                return True
+            return False
+        while i < len(ins):
+            if take(_SETROT):
+                out.append(f"musashi_lane_gte_SetRotMatrix((const void *){op0});")
+                continue
+            if take(_SETTR):
+                out.append(f"musashi_lane_gte_SetTransMatrix((const void *){op0});")
+                continue
+            am = re.fullmatch(r"addiu \$2,\$sp,(0x[0-9a-fA-F]+|\d+)", ins[i])
+            if am:
+                reg2 = sp_expr(int(am.group(1), 0))
+                if reg2 is None:
+                    return m.group(0)
+                i += 1
+                continue
+            for base, expr in (("%0", op0), ("$2", reg2)):
+                if expr and take([f"lhu $12,0({base})", f"lhu $13,6({base})", f"lhu $14,12({base})",
+                                  "mtc2 $12,$9", "mtc2 $13,$10", "mtc2 $14,$11"]):
+                    out.append(f"musashi_lane_gte_ldclmv((const void *){expr});")
+                    break
+                if expr and take(["mfc2 $12,$9", "mfc2 $13,$10", "mfc2 $14,$11",
+                                  f"sh $12,0({base})", f"sh $13,6({base})", f"sh $14,12({base})"]):
+                    out.append(f"musashi_lane_gte_stclmv((void *){expr});")
+                    break
+            else:
+                if take(["nop", "nop", "mvmva 1,0,3,3,0"]):
+                    out.append("musashi_lane_gte_rtir();")
+                    continue
+                return m.group(0)
+        return "{ " + " ".join(out) + " }"
+    new = _FRAME_ASM_RE.sub(one, text)
+    if new != text and '#include "musashi_lane_gte_inline.h"' not in new:
+        j = list(re.finditer(r'^#include[^\n]*\n', new, re.M))
+        k = j[-1].end() if j else 0
+        new = new[:k] + '#include "musashi_lane_gte_inline.h"\n' + new[k:]
+    return new
+
 def gte_inline_macros_host(text):
     lines = text.splitlines(keepends=True)
     out, i, hit = [], 0, False
@@ -2552,6 +2636,7 @@ def host_source(text):
         text = scratch_call_host(text) or text
         text = move_asm_host(text)
         text = load_asm_host(text)
+        text = gte_frame_block_host(text)
         text = gte_inline_macros_host(text)
         text = gte_host(text)
         text = gte_matrix_host(text)
@@ -4946,6 +5031,7 @@ def strict_mixed_ok(m):
     text = MOVE_ASM_RE.sub("", text)
     text = ADDIU_ASM_RE.sub("", text)
     text = load_asm_host(text)
+    text = gte_frame_block_host(text)
     text = gte_inline_macros_host(text)
     text = gte_host(text)
     text = gte_matrix_host(text)
@@ -4953,6 +5039,9 @@ def strict_mixed_ok(m):
     text = strip_macro_asm(text)
     ss = scratch_call_host(text)
     text = SCRATCH_CALL_RE.sub("", ss) if ss is not None else text
+    # an asm label on a declarator (`T x __asm__("D_800A6430");`) names a
+    # symbol; it is not an instruction
+    text = re.sub(r'(?<=[\w\])])\s*__asm__\s*\(\s*"[A-Za-z_][\w.$]*"\s*\)', "", text)
     asms = re.findall(r'(?:__asm__|\basm)\s*(?:volatile\s*|__volatile__\s*)?\(\s*("[^"]*")', text)
     # A whitespace-only template (80135EB0's `" "` cross-jump fence) emits
     # nothing either; the IR check (empty_asm_identity) strips it the same way.
