@@ -1766,6 +1766,14 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 - Result: the `80128288` stop is gone. Strict hits no interpreter entry at all through the 3000-frame budget. sc03_0098 draws a textured 3D room (f1250-2550, about 6-10k prims/frame).
 - Next: around f2550 the game starts another overlay load (ovl_state 2→3→4). It sits at ld=3 with want=580, rd=0, the display goes to 640x480, and 0 prims are drawn. That points to a CD read that never completes, not a native-coverage gap.
 
+## Inc 124: the opening FMV plays natively in strict
+
+- f2550+ is not an FMV. It is a `.PAC` data load (CD sector headers, no MDEC). The movie that hybrid plays is the boot-time logo FMV, which strict used to drop right after StSetStream.
+- `main_0003 800D1E9C` declared `func_800D2454` as void, so the native bridge dropped v0 and the player aborted. Now `s32` (byte-exact).
+- Native frame-driver HLE written from the retail disassembly (PE's StCdInterrupt used only as a reference): libcd2 stream interrupt `80046610`/`80046D1C`, frame-done DMA callback `800469CC`, DMA start/word copy helpers, StFreeRing `80046B44`. The handwritten `main_0003` MDEC VLC decoder `800D3234` and limit setter `800D3204` are guarded by an overlay residency hash.
+- Result: MDEC transfers 8 → 3704 and VRAM uploads 995 → 4521. By f1250, 88 decoded frames, all byte-identical to hybrid's. Saved `/workspace/bfm-frames/strict_fmv_040.png` (logo).
+- Open: f2550+ load still stalls (ld=3, want=580); the hybrid overlay diff still needs a hybrid OVL trace.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for
