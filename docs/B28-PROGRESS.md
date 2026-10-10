@@ -1849,6 +1849,9 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 - Strict generator: gte_frame_block_host maps hand-inlined MulMatrix0/SetRotMatrix/SetTransMatrix asm, with literal sp offsets, to the existing host GTE helpers. Locals are named by `/* sp+0xNN */` comments checked against retail stores. strict_mixed_ok no longer counts declarator asm labels (`x __asm__("D_…")`) as instructions, which gains sc01_0001 8012EFB8, sc02_0035 8017E374 and sc03_0098 8017FF04.
 - Gates pass, LOST []. 8001D70C itself is still refused (in progress).
 
+### Inc 139: main 8001D70C admitted
+- The imported file carried full bodies of six other 800.c functions (the importer's main path keeps them as definitions). Turned them into prototypes; still byte-exact. 8001D70C is admitted through the GTE frame-block pass. Gates pass, LOST []. Next stop main 8001D8C4.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for
