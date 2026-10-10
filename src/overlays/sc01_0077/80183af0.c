@@ -5,11 +5,11 @@ typedef unsigned short u16;
 typedef unsigned int u32;
 typedef int s32;
 extern void func_8012A568(void (*a0)(void));
-extern s32 func_8012BEE8(s32 a0);
+extern s32 func_8012BEE8(s32);
 extern void func_8012C218(void *a0);
 extern s32 D_801270CC;
-extern int func_8012BEE8(int a0);
-extern s32 func_8012BEE8(s32 a0);
+extern int func_8012BEE8(s32);
+extern s32 func_8012BEE8(s32);
 extern void func_80130D48(s32 a0);
 extern void func_8012C098(void);
 extern void func_8012C218(void *a0);
@@ -21,7 +21,7 @@ void func_80183AF0(s32 param_1) {
     mask = 0x80000000;
     p = *(s32 **)(param_1 + 0x20);
     p[1] ^= mask;
-    if (((s32 (*)(void))func_8012BEE8)() == 0) {
+    if (func_8012BEE8(param_1) == 0) {
         return;
     }
     func_80130D48(param_1);

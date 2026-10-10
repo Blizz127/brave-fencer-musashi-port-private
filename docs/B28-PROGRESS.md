@@ -1855,6 +1855,9 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 ### Inc 140: main 8001D8C4 admitted (GTE macro rename)
 - Its local LDV0/MVMVA(1,0,0,0,0)/STMAC123 macros are PsyQ gte_ldv0/gte_rt/gte_stlvnl with identical asm bodies. Renamed them (byte-exact) so the existing host GTE helpers apply. Gates pass, LOST []. Next stop 8017DF5C.
 
+### Inc 141: sc01_0077 abi batch (6 gained)
+- 8017DF5C: its prototype for func_800CF854 declared an argument, but the main_0010 callee is `(void)`; fixed. Five callers whose retail a0 is still the caller's own argument at the jal (behind switch tables the analysis cannot follow) now pass it explicitly. All byte-exact. Twins 801506A4 (sc02_0035) and 801670E4 (sc03_0098) installed. Gates pass, LOST []. Next stop 8017EF50 (ub).
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for

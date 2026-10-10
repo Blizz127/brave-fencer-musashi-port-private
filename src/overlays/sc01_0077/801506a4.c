@@ -1,3 +1,6 @@
+/* SC02.CD member35 [801506A4,80150820): twin of main_0012 801506A4 (src/overlays/main_0012/801506a4.c); only the
+ * global addresses differ. Byte-identical to the sc02_0035 retail words
+ * (gcc-2.7.2 -O2, B28 inc 104 twin port). */
 /* Overlay range [801506A4,80150820) from MAIN.CD member 0012.
  * SHA256(span)=738fd1954aefd94024d6a3ac2fbbfcb627bc620094eb57be86986d277a34e11e.
  * Word export for the native seam; the body below is an

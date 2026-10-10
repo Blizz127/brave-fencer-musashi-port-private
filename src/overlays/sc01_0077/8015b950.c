@@ -71,7 +71,7 @@ extern void func_80154150(s32 a0, s32 a1);
 extern void (*D_801891B8[])(void *);
 extern s32 D_8011F9C4;
 extern s32 D_8018914C;
-extern s32 func_80161B18(void);
+extern s32 func_80161B18(s32);
 extern s32 func_801619A4(s32*);
 extern s32 func_80149AA8(s32*);
 extern void func_80149AD4(s32*);
@@ -111,7 +111,7 @@ s32 func_8015B950(s32 arg0)
     s32 z;
     s32 doit;
     s32 lim = -0xB0000;
-    if (func_80161B18() != 0) {
+    if (func_80161B18(arg0) != 0) {
         return;
     }
     switch (((s32 (*)(s32))func_801619A4)(arg0)) {

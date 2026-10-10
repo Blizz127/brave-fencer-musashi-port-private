@@ -42,7 +42,7 @@ extern void func_8012B23C(s32 a0);
 extern void func_8012B14C(s32 a0, s32 a1);
 extern void func_8012A828(s32 a0, void *a1);
 extern s32 func_8005C49C(void);
-extern void func_80181F08(void);
+extern void func_80181F08(s32);
 extern s32 D_801270D8;
 extern s16 D_8018AACC;
 extern s16 D_8018AAD0;
@@ -65,7 +65,7 @@ void func_80183834(s32 param_1) {
     s32 ang;
     u16 t;
     if ((*(u16 *)(param_1 + 0x5C) & 1) != 0) {
-        func_80181F08();
+        func_80181F08(param_1);
     }
     if ((*(u16 *)(param_1 + 0x70) & 0x400) != 0 && D_801270D8 != 0 &&
         *(u16 *)(param_1 + 0x2) != 0xA) {

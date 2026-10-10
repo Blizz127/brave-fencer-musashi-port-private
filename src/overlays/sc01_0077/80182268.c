@@ -17,7 +17,7 @@ void func_80182268(void *a0) {
     case 2:
     case 5:
     case 6:
-        func_8012C098();
+        func_8012C098(a0);
         break;
     case 4:
         D_801270CC -= 1;

@@ -22,10 +22,10 @@ extern void func_8012A828(s32 a0, void *a1);
 extern void func_8012B2CC(s32 a0);
 extern void func_8012B23C(s32 a0);
 extern void func_8012B14C(s32 a0, s32 a1);
-extern s32 func_8012CBA4(s32 a0);
+extern s32 func_8012CBA4(int);
 extern void func_8012A828(s32 a0, void *a1);
 extern void func_8012B23C(s32 a0);
-extern s32 func_8012CBA4(s32);
+extern s32 func_8012CBA4(int);
 extern int func_8012BEE8(int a0);
 extern void func_8012B2CC(int a0);
 extern void func_8012B23C(int a0);
@@ -42,7 +42,7 @@ void func_8018281C(int param_1)
 {
     int iVar1;
     unsigned int uVar2;
-    ((void (*)(void))func_8012CBA4)();
+    func_8012CBA4(param_1);
     if ((((int)((unsigned int)*(unsigned short *)(param_1 + 0x70) << 0x10) >> 0x18 != 4) ||
          (D_801270D4 == 0)) &&
         (iVar1 = func_8012BEE8(param_1), iVar1 != 0)) {

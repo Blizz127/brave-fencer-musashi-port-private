@@ -6,7 +6,7 @@ extern void func_8012A568(void (*a0)(void));
 extern void func_8012C218(void *a0);
 extern s32 D_801270CC;
 extern void func_8012C098(void);
-extern void func_80130D48(s32 a0);
+extern void func_80130D48(int);
 extern void func_8012C098(void);
 extern void func_8012C218(void *a0);
 extern s32 D_801270CC;
@@ -16,7 +16,7 @@ void func_80183CF4(int param_1) {
     iVar1 = *(int *)(param_1 + 0x1c) + 1;
     *(int *)(param_1 + 0x1c) = iVar1;
     if (iVar1 >= 0x3d) {
-        ((void (*)(void))func_80130D48)();
+        func_80130D48(param_1);
         switch ((int)((unsigned int)*(unsigned short *)(param_1 + 0x70) << 0x10) >> 0x18) {
         case 0:
         case 1:
