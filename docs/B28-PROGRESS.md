@@ -1786,7 +1786,10 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 - Includes the New Game scene-load stop `801285E4` (scratchpad stack-switch form) and its callees `8014607C`, `80128678`, `80128714`, plus related scratch-switch / GTE helpers that were still `assembly`/`mixed` blockers.
 - Provenance: recovery assembly→mixed/c (or mixed→c) so strict `sc01_0000 all` / `sc01_0001 all` can host them; origins kept from the twin (vendor-derived or @untagged).
 - Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, retail only the 2 known jtbl build failures.
-- Next: strict run past former stop 801285E4 (~f1600); walk New Game / sc01 opening path.
+- Strict run (FR=3000): **no STRICT_INTERPRETER_ENTRY / no HOST_FAULT**. Former stop 801285E4 is cleared; f1600 now shows prims≈11k with want=41267 (main_0034 CD wait), not an interpreter abort.
+- High-prims window f1250–f2550 (prims 9k–13k, draw=0). Soft-stalls: want=580 (.PAC) early and again after f2600; want=41267 across the prims window.
+- End VRAM dump (`/workspace/bfm-frames/strict_inc126_f3000.png`): nonblack 280679/307200 — glitched 3D path/character fragments on white (not FMV, not black). First non-FMV/non-black strict display after clearing 801285E4; draw=1 still not lit.
+- Next: light draw=1 on the attract/mesh path; clear CD soft-stalls want=41267 (main_0034) / want=580 (.PAC).
 
 ## Next
 
