@@ -4,13 +4,13 @@
  * original declaration. */
 
 #include "psx_types.h"
-void func_8016EE94();
+void func_8016EE94(void *, s32);
 void func_801599A4();
 void func_80159B3C();
 extern u16 D_80126B58;
-void func_8016EDEC(void *p) {
+void func_8016EDEC(void *p, s32 a1) {
     u16 *s = &D_80126B58;
-    func_8016EE94(p);
+    func_8016EE94(p, a1); /* retail jal keeps the incoming a1 */
     if ((u16)(*s - 25) < 2) {
         return;
     }

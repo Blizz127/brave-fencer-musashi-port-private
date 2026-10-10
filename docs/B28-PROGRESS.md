@@ -1822,6 +1822,12 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 - Generator (strict): void_result_returns judged "does any caller read the value" by function name across every member. Overlays share one address range, so sc01_0077's own func_8012B4B8 blocked main_0012's (LOST). The check now covers only main plus the function's own member; main functions still count every source.
 - Gates pass (38/38, strict_build=0), LOST []. Next stop: 80145CEC.
 
+### Inc 133: sc01_0077 gaps, importer packed-typedef fix, 8016EDEC a1 pass-through
+- 186 gap rows (admitted in sibling members, missing in sc01_0077) were added from oracle-verified twins. One bogus 8-byte row at 801844EC was the `jr $ra` tail of the real 72-byte 801844AC and has been removed; the gap installer now refuses overlapping rows.
+- tools/vendor_split_import.py: `} __attribute__((packed, aligned(1))) Name;` now closes the typedef. The chunker used to keep only the attribute tail, which caused parse errors. Re-import: 39 more functions (including the 8013D53C stop). The verify pass dropped 34 rows that no longer matched.
+- main_0012 8016EDEC now takes and forwards its incoming a1 to 8016EE94; retail's jal leaves $a1 untouched. Byte-exact.
+- Gates pass (38/38), LOST []. The route passes f1800. Next stop: 8015444C.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for

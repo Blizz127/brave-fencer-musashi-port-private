@@ -37,7 +37,8 @@ while i<n:
             rest=src[j:j+200].lstrip()
             head=src[start:src.index('{',start)] if '{' in src[start:i] else ''
             aggregate=re.search(r'\b(typedef|struct|union|enum)\b|=',head) is not None
-            if rest.startswith(';') or (aggregate and re.match(r'^[\w\s\*,\[\]]+;',rest)):
+            # `} __attribute__((packed, aligned(1))) Name;` ends the typedef too
+            if rest.startswith(';') or (aggregate and re.match(r'^(?:__attribute__\s*\(\(.*?\)\)\s*)?[\w\s\*,\[\]]*;',rest)):
                 i=src.index(';',j)
             chunks.append(src[start:i+1]); start=i+1
     elif c==';' and depth==0:
