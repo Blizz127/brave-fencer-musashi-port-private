@@ -1832,6 +1832,10 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 - 48 of the original import's dropped rows were jump-table functions. My installer had ignored the importer's recorded rodata_base, so they failed verify. Reinstalled with rodata_base: 33 verified (including callee 801549F8). With the callee's body known, 8015444C passes the abi rule. Three more refusals use verified sibling twins.
 - Gates pass (38/38), LOST [].
 
+### Inc 135: jalr-keeps-a0 fixes extended to every strict member
+- The sc01_0077 route hit the old 80162968 fault. Its 801627E8 and dispatchers had the same dropped-a0 table calls fixed earlier in sc01_0000. Applied the pinned-$4 fix (sc01_0077, sc03_0098) and the dispatcher fix (57 in sc01_0077, 384 across main_*/sc02/sc03), all byte-exact.
+- Gates pass, TABLE_IDENTICAL, LOST []. The fault is gone; the next stop is 8017C974.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for

@@ -127,8 +127,8 @@ extern u8 D_801202A0[];
 extern void func_80015978(s32 a0, s32 *a1);
 extern s16 D_800B9A08;
 extern s32 func_80146A6C(s32 a0, void *a1, s32 a2, s32 a3, s32 a4, s32 a5, s32 a6);
-extern void (*D_80187078[])(void);
+extern void (*D_80187078[])(void *);
 
 void func_80152370(void *a0) {
-    D_80187078[*(u16 *)((s32)a0 + 0x2)]();
+    D_80187078[*(u16 *)((s32)a0 + 0x2)](a0);
 }

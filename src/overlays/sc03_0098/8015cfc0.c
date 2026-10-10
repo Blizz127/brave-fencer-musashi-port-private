@@ -5,6 +5,6 @@ typedef unsigned short u16;
 typedef int s32;
 
 void func_8015CFC0(s32 *a0) {
-    extern void (*D_80187B90[])(void);
-    D_80187B90[*(u16 *)((s32)a0 + 0x2)]();
+    extern void (*D_80187B90[])(s32 *);
+    D_80187B90[*(u16 *)((s32)a0 + 0x2)](a0);
 }

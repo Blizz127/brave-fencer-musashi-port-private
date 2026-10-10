@@ -58,12 +58,12 @@ extern void func_80137030(s16 a0, s16 a1);
 extern void aGsSortLine(Gline_801372B0 *p, void *ot, s32 z) __asm__("func_80051DC8");
 extern void aF80137030(s32 x, s32 y) __asm__("func_80137030");
 extern u16 aD800B9A02 __asm__("D_800B9A02");
-extern void (*D_80187120[])(void);
+extern void (*D_80187120[])(int);
 
 void func_80138BE0(int p)
 {
     if (*(unsigned short *)(p + 0xe) != 0) {
         *(unsigned short *)(p + 0xe) -= 1;
     }
-    D_80187120[*(short *)(p + 4)]();
+    D_80187120[*(short *)(p + 4)](p);
 }

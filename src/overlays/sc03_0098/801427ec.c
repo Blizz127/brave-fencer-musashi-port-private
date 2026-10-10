@@ -5,11 +5,11 @@ typedef unsigned short u16;
 typedef short s16;
 extern u16 D_801270C0;
 extern u16 D_801270C0;
-extern void (*D_80186768[])();
+extern void (*D_80186768[])(int);
 
 void func_801427EC(int param_1)
 {
     if (*(s16 *)&D_801270C0 != 3) {
-        D_80186768[*(u16 *)(param_1 + 2)]();
+        D_80186768[*(u16 *)(param_1 + 2)](param_1);
     }
 }

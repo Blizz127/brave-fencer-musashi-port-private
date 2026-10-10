@@ -29,7 +29,7 @@ void func_80161208(void *);
 
 void func_8015F9A4(struct data_8015F9A4 *arg0) {
     if (arg0->unkB8 & 0x8000) {
-        D_80180A1C[arg0->unk0]();
+        D_80180A1C[arg0->unk0](arg0);
         func_80147078(arg0, 0);
         func_80159B70(arg0);
         return;

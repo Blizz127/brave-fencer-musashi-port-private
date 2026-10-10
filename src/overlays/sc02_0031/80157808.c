@@ -15,14 +15,14 @@ typedef double f64;
 #define NULL ((void *)0)
 #endif
 
-extern void (*D_80186F7C[])(void);
+extern void (*D_80186F7C[])(void *);
 extern int D_801B6438;
 extern void func_801599A4(void *a0);
 extern void func_80159B3C(void *a0);
 
 void func_80157808(void *param_1)
 {
-    D_80186F7C[*(unsigned short *)((char *)param_1 + 2)]();
+    D_80186F7C[*(unsigned short *)((char *)param_1 + 2)](param_1);
     D_801B6438 = D_801B6438 - 1;
     if (D_801B6438 == -1) {
         func_801599A4(param_1);

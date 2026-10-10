@@ -5,7 +5,7 @@ typedef unsigned char u8;
 typedef signed char s8;
 typedef short s16;
 typedef int s32;
-extern void (*D_80188998[])();
+extern void (*D_80188998[])(void *);
 
 void func_80174BF4(void * arg0)
 {
@@ -18,5 +18,5 @@ void func_80174BF4(void * arg0)
     (*(s16 *)((s8 *)(arg0) + (0x30))) = -0x28;
     (*(s16 *)((s8 *)(arg0) + (0x32))) = 0;
     (*(s32 *)((s8 *)(arg0) + (0x54))) = 0;
-    D_80188998[(*(u8 *)((s8 *)(arg0) + (4)))]();
+    D_80188998[(*(u8 *)((s8 *)(arg0) + (4)))](arg0);
 }

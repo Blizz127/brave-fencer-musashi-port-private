@@ -16,7 +16,7 @@ typedef struct {
 } T;
 void func_80164744(T *p) {
     void *in = p->inner;
-    D_801870D4[p->u2]();
+    D_801870D4[p->u2](p);
     if (in) {
         func_80162D28(p);
     }

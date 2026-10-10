@@ -3,8 +3,8 @@
  * byte-identical to the sc03_0098 retail words (gcc-2.7.2 -O2). */
 typedef unsigned char u8;
 typedef int s32;
-extern void (*D_8018790C[])(void);
+extern void (*D_8018790C[])(void *);
 
 void func_80159698(void *a0) {
-    D_8018790C[*(u8 *)((s32)a0 + 0x15)]();
+    D_8018790C[*(u8 *)((s32)a0 + 0x15)](a0);
 }

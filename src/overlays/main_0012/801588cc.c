@@ -11,7 +11,7 @@
 
 void func_801588CC(int param_1) {
 
-    extern void (*D_80180720[])(void);
+    extern void (*D_80180720[])(int);
     extern s32 D_80184288;
     extern s32 D_8018428C;
     extern s32 D_80184290;
@@ -23,7 +23,7 @@ void func_801588CC(int param_1) {
     extern s32 func_80159464(void);
     short sVar1;
 
-    D_80180720[*(unsigned short *)(param_1 + 2)]();
+    D_80180720[*(unsigned short *)(param_1 + 2)](param_1);
     switch (D_80184288) {
     case 0:
         break;

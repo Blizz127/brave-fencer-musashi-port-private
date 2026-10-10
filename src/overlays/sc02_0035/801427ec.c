@@ -2,11 +2,11 @@
 #include "psx_types.h"
 /* func_801427EC - byte-exact against retail at -O2 (tools/register_match.py). */
 extern u16 D_801270C0;
-extern void (*D_80185918[])();
+extern void (*D_80185918[])(int);
 
 void func_801427EC(int param_1)
 {
     if (*(s16 *)&D_801270C0 != 3) {
-        D_80185918[*(u16 *)(param_1 + 2)]();
+        D_80185918[*(u16 *)(param_1 + 2)](param_1);
     }
 }

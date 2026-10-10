@@ -7,11 +7,11 @@ extern u16 D_801270C0;
 extern u16 D_801270C0;
 extern u16 D_801270C0;
 extern u16 D_801270C0;
-extern void (*D_80186954[])();
+extern void (*D_80186954[])(int);
 
 void func_80142978(int param_1)
 {
     if (*(s16 *)&D_801270C0 != 3) {
-        D_80186954[*(u16 *)(param_1 + 2)]();
+        D_80186954[*(u16 *)(param_1 + 2)](param_1);
     }
 }

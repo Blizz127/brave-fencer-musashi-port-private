@@ -9,5 +9,5 @@ extern CB D_80181254[];
 typedef struct { u8 pad[0x44]; u32 flags; u8 pad2[0x197-0x48]; u8 idx; } T;
 void func_80165B28(T *p) {
     p->flags |= 8;
-    D_80181254[p->idx]();
+    D_80181254[p->idx](p);
 }

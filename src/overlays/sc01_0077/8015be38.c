@@ -9,8 +9,8 @@ struct Obj {
 };
 typedef struct { char pad[0x12]; s16 field_0x12; } Obj;
 struct Obj;
-extern void (*D_8018932C[])(void);
+extern void (*D_8018932C[])(struct Obj *);
 
 void func_8015BE38(struct Obj *a0) {
-    D_8018932C[a0->idx]();
+    D_8018932C[a0->idx](a0);
 }

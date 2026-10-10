@@ -4,8 +4,8 @@
 typedef unsigned char u8;
 typedef int s32;
 extern void func_8012A568(void (*a0)(void));
-extern void (*D_80188F4C[])(void);
+extern void (*D_80188F4C[])(void *);
 
 void func_8017E89C(void *a0) {
-    D_80188F4C[*(u8 *)((s32)a0 + 0x15)]();
+    D_80188F4C[*(u8 *)((s32)a0 + 0x15)](a0);
 }

@@ -13,11 +13,11 @@ typedef double f64;
 #endif
 
 extern void func_8012A568(void (*a0)(void));
-extern void (*D_801893D4[])(void);
+extern void (*D_801893D4[])(void *);
 extern s32 func_80183B90(void);
 
 void func_80183314(void *a0) {
-    D_801893D4[*(u16 *)((s32)a0 + 0x2)]();
+    D_801893D4[*(u16 *)((s32)a0 + 0x2)](a0);
     if ((*(u16 *)((s32)a0 + 0x100) & 0x10) && func_80183B90() == 1) {
         *(u16 *)((s32)a0 + 0x100) &= ~0x10;
     }

@@ -5,7 +5,7 @@
 
 void func_800CC16C(void *a0) {
 
-    extern void (*D_800CCA18[])(void);
+    extern void (*D_800CCA18[])(void *);
     *(u32 *)((s32)a0 + 0x44) |= 8;
-    D_800CCA18[*(u8 *)((s32)a0 + 0x197)]();
+    D_800CCA18[*(u8 *)((s32)a0 + 0x197)](a0);
 }

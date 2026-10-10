@@ -137,5 +137,5 @@ extern void func_80147324(s32 arg0);
 extern DispatchFn D_80189B30[];
 
 s32 func_8016901C(void *a0) {
-    return D_80189B30[*(u16 *)((s32)a0 + 2)]();
+    return D_80189B30[*(u16 *)((s32)a0 + 2)](a0);
 }

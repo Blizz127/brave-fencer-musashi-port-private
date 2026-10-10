@@ -122,8 +122,8 @@ extern s32 aD_80127098 __asm__("D_80127098");
 extern void func_80147324(s32 a0);
 extern void func_80147324(s32 arg0);
 extern void func_80162CCC();
-extern void (*D_80187F30[])(void);
+extern void (*D_80187F30[])(void *);
 
 void func_80164BA0(void *a0) {
-    D_80187F30[*(u16 *)((s32)a0 + 0x2)]();
+    D_80187F30[*(u16 *)((s32)a0 + 0x2)](a0);
 }

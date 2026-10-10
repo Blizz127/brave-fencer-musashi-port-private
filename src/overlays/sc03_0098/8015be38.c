@@ -12,6 +12,6 @@ struct Obj {
 typedef struct { char pad[0x12]; s16 field_0x12; } Obj;
 
 void func_8015BE38(struct Obj *a0) {
-    extern void (*D_80187B30[])(void);
-    D_80187B30[*(u16 *)((s32)a0 + 0x2)]();
+    extern void (*D_80187B30[])(struct Obj *);
+    D_80187B30[*(u16 *)((s32)a0 + 0x2)](a0);
 }

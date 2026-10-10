@@ -23,8 +23,8 @@ extern s32 func_80135888(s32 a0, s32 a1, s32 a2, s32 a3);
 extern void func_8012F568(s32 a0, s32 a1, s32 a2, s32 a3, s32 a4, s32 a5);
 s32 aF80181CFC(s32 arg0, s32 arg1) __asm__("func_80181CFC");
 s32 aF80181CFC(s32 arg0, s32 arg1) __asm__("func_80181CFC");
-extern void (*D_801C2A8C[])(void);
+extern void (*D_801C2A8C[])(void *);
 
 void func_80184DE8(void *a0) {
-    D_801C2A8C[*(u16 *)((s32)a0 + 0x2)]();
+    D_801C2A8C[*(u16 *)((s32)a0 + 0x2)](a0);
 }

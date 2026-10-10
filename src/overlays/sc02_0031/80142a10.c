@@ -21,9 +21,9 @@ extern void func_80142A80(void);
 void func_80142A10(int param_1)
 {
 
-    extern void (*D_8018636C[])();
+    extern void (*D_8018636C[])(int);
     if (*(s16 *)&D_801270C0 != 3) {
-        D_8018636C[*(u16 *)(param_1 + 2)]();
+        D_8018636C[*(u16 *)(param_1 + 2)](param_1);
         if (*(s16 *)(param_1 + 0xFC) != 0) {
             ((void (*)(int))func_80142A80)(param_1);
         }

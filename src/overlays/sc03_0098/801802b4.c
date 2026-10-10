@@ -11,11 +11,11 @@ extern s32 func_8012D624(void *a0, s32 a1, s32 a2);
 extern s32 func_8012C658(s32 arg0, s32 arg1, s32 arg2);
 
 void func_801802B4(void *a0) {
-    extern void (*D_8019C104[])(void);
+    extern void (*D_8019C104[])(void *);
     extern u16 D_80126B96;
     s32 t;
     u16 *q;
-    D_8019C104[*(u16 *)((s32)a0 + 0x2)]();
+    D_8019C104[*(u16 *)((s32)a0 + 0x2)](a0);
     if (*(u16 *)((s32)a0 + 0x0) != 0) {
         if (*(s32 *)(*(s32 *)((s32)a0 + 0x20) + 0x4) >= 0) {
             *(s16 *)((s32)a0 + 0xa) = *(u16 *)((s32)a0 + 0xa) - 0x40;

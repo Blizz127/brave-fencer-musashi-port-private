@@ -10,12 +10,12 @@ extern void func_8012C218(void *a0);
 extern void func_8012C218(void *a0);
 extern void func_8012C218(void *a0);
 extern void func_8012C218(void *a0);
-extern void (*D_801884B8[])();
+extern void (*D_801884B8[])(int);
 
 void func_801442F8(int param_1)
 {
     int iVar1;
-    D_801884B8[*(u16 *)(param_1 + 2)]();
+    D_801884B8[*(u16 *)(param_1 + 2)](param_1);
     iVar1 = *(int *)(param_1 + 0x1c) + 1;
     *(int *)(param_1 + 0x1c) = iVar1;
     if (0x1d < iVar1) {

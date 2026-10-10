@@ -12,14 +12,14 @@ extern void func_80159B3C(void *a0);
 extern void func_801599A4(void *a0);
 extern void func_80159B3C(void *a0);
 extern int D_801C4358;
-extern void (*D_8018762C[])(void);
+extern void (*D_8018762C[])(void *);
 extern int D_801C4358;
 extern void func_801599A4(void *a0);
 extern void func_80159B3C(void *a0);
 
 void func_80157808(void *param_1)
 {
-    D_8018762C[*(unsigned short *)((char *)param_1 + 2)]();
+    D_8018762C[*(unsigned short *)((char *)param_1 + 2)](param_1);
     D_801C4358 = D_801C4358 - 1;
     if (D_801C4358 == -1) {
         func_801599A4(param_1);

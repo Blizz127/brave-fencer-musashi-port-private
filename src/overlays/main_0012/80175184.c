@@ -10,7 +10,7 @@ void func_80175268();
 void func_80175184(u16 *p) {
     u16 idx = p[1];
     if (idx < 2)
-        D_80181A08[idx]();
+        D_80181A08[idx](p);
     else
         func_80175268();
 }

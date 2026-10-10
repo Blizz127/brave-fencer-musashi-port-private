@@ -10,11 +10,11 @@ typedef double f64;
 #endif
 
 extern void func_8012A568(void (*a0)(void));
-extern void (*D_80188900[])(void);
+extern void (*D_80188900[])(void *);
 extern void func_80162D28(s32*);
 
 void func_8017DD10(void *a0) {
-        D_80188900[*(u16 *)((s32)a0 + 0x2)]();
+        D_80188900[*(u16 *)((s32)a0 + 0x2)](a0);
         if (*(s32 *)((s32)a0 + 0x20) != 0) {
             ((void (*)(void *))func_80162D28)(a0);
         }

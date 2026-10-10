@@ -24,7 +24,7 @@ typedef s64 M2C_UNK64;
 #define M2C_FIELD(expr, type_ptr, offset) (*(type_ptr)((s8 *)(expr) + (offset)))
 #define M2C_BITWISE(type, expr) ((type)(expr))
 
-extern void (*D_801882E8[])();
+extern void (*D_801882E8[])(void *);
 
 void func_80174BF4(void * arg0)
 {
@@ -37,5 +37,5 @@ void func_80174BF4(void * arg0)
     M2C_FIELD(arg0, s16 *, 0x30) = -0x28;
     M2C_FIELD(arg0, s16 *, 0x32) = 0;
     M2C_FIELD(arg0, s32 *, 0x54) = 0;
-    D_801882E8[M2C_FIELD(arg0, u8 *, 4)]();
+    D_801882E8[M2C_FIELD(arg0, u8 *, 4)](arg0);
 }

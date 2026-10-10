@@ -133,7 +133,7 @@ extern u8 D_801202A0[];
 extern u8 D_801202A0[];
 extern void func_80015978(s32 a0, s32 *a1);
 extern s32 D_800AE6B0;
-extern void (*D_80188798[])(void);
+extern void (*D_80188798[])(int);
 
 void func_80150B28(int param_1) {
     u32 idx;
@@ -142,7 +142,7 @@ void func_80150B28(int param_1) {
         idx = *(u16 *)(param_1 + 0x16C);
         if (idx != 0 && idx < 0x26) {
             sub = idx - 1;
-            D_80188798[sub]();
+            D_80188798[sub](param_1);
         }
     }
     *(u16 *)(param_1 + 0x16C) = 0;

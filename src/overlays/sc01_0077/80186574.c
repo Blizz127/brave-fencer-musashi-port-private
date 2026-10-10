@@ -4,7 +4,7 @@
 typedef int s32;
 void func_80185E68(s32 arg0);
 extern void func_80185E68();
-extern void (*D_801D5624[])();
+extern void (*D_801D5624[])(int);
 
 void func_80186574(int param_1)
 {
@@ -12,6 +12,6 @@ void func_80186574(int param_1)
         ((*(unsigned short *)(param_1 + 0x5c) & 1) != 0)) {
         ((void (*)())func_80185E68)();
     } else {
-        D_801D5624[*(unsigned short *)(param_1 + 2)]();
+        D_801D5624[*(unsigned short *)(param_1 + 2)](param_1);
     }
 }

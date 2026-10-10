@@ -97,7 +97,7 @@ void aF80161CD0(int param_1, unsigned int param_2) __asm__("func_80161CD0");
 extern void func_80147324(s32 arg0);
 extern s32 D_8011F750;
 extern s32 D_8011F750;
-extern void (*D_801896C0[])(void);
+extern void (*D_801896C0[])(u8 *);
 
 void func_801627E8(void)
 {
@@ -107,6 +107,6 @@ void func_801627E8(void)
     idx = *p;
     if (idx != 0) {
         idx = idx - 1;
-        D_801896C0[idx]();
+        D_801896C0[idx](p); /* retail jalr keeps the pinned a0 */
     }
 }

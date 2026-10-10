@@ -123,8 +123,8 @@ extern void func_80147324(s32 a0);
 extern void func_80147324(s32 arg0);
 extern void func_80162CCC();
 extern void func_80162CCC();
-extern void (*D_80187F40[])(void);
+extern void (*D_80187F40[])(void *);
 
 void func_80164EA4(void *a0) {
-    D_80187F40[*(u16 *)((s32)a0 + 0x2)]();
+    D_80187F40[*(u16 *)((s32)a0 + 0x2)](a0);
 }

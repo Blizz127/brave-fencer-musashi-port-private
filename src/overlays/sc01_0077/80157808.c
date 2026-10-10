@@ -16,14 +16,14 @@ extern void func_80159B3C(void *a0);
 extern void func_801599A4(void *a0);
 extern void func_80159B3C(void *a0);
 extern int D_801D9650;
-extern void (*D_80188E28[])(void);
+extern void (*D_80188E28[])(void *);
 extern int D_801D9650;
 extern void func_801599A4(void *a0);
 extern void func_80159B3C(void *a0);
 
 void func_80157808(void *param_1)
 {
-    D_80188E28[*(unsigned short *)((char *)param_1 + 2)]();
+    D_80188E28[*(unsigned short *)((char *)param_1 + 2)](param_1);
     D_801D9650 = D_801D9650 - 1;
     if (D_801D9650 == -1) {
         func_801599A4(param_1);

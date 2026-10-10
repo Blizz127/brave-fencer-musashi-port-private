@@ -15,13 +15,13 @@ typedef double f64;
 
 extern void func_8012A5F8(void (*a0)(void), s32 a1);
 extern void func_8012C218(void *a0);
-extern void (*D_8018660C[])();
+extern void (*D_8018660C[])(int);
 
 void func_801442F8(int param_1)
 {
     int iVar1;
 
-    D_8018660C[*(u16 *)(param_1 + 2)]();
+    D_8018660C[*(u16 *)(param_1 + 2)](param_1);
     iVar1 = *(int *)(param_1 + 0x1c) + 1;
     *(int *)(param_1 + 0x1c) = iVar1;
     if (0x1d < iVar1) {

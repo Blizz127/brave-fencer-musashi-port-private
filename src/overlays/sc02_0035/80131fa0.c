@@ -1,8 +1,8 @@
 /* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
 /* func_80131FA0 - byte-exact against retail at -O2 (tools/register_match.py). */
-extern void (*D_80184A50[])(void);
+extern void (*D_80184A50[])(void *);
 
 void func_80131FA0(void *a0) {
-    D_80184A50[*(u16 *)((s32)a0 + 0x2)]();
+    D_80184A50[*(u16 *)((s32)a0 + 0x2)](a0);
 }

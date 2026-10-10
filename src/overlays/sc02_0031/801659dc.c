@@ -13,6 +13,6 @@ typedef double f64;
 
 s32 func_801659DC(u8 *a0) {
 
-    extern void (*D_80187A4C[])(void);
-    D_80187A4C[*(u8 *)((s32)a0 + 0x1A0)]();
+    extern void (*D_80187A4C[])(u8 *);
+    D_80187A4C[*(u8 *)((s32)a0 + 0x1A0)](a0);
 }

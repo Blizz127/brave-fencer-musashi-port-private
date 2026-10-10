@@ -126,6 +126,6 @@ extern void func_80162CCC();
 extern void func_80162CCC();
 
 s32 func_801659DC(u8 *a0) {
-    extern void (*D_801880FC[])(void);
-    D_801880FC[*(u8 *)((s32)a0 + 0x1A0)]();
+    extern void (*D_801880FC[])(u8 *);
+    D_801880FC[*(u8 *)((s32)a0 + 0x1A0)](a0);
 }

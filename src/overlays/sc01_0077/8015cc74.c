@@ -3,9 +3,9 @@
  * byte-identical to the sc01_0077 retail words (gcc-2.7.2 -O2). */
 typedef unsigned short u16;
 typedef int s32;
-extern void (*D_80189354[])(void);
+extern void (*D_80189354[])(s32 *);
 
 void func_8015CC74(s32 * a0)
 {
-    D_80189354[*(u16 *)((s32)a0 + 0x2)]();
+    D_80189354[*(u16 *)((s32)a0 + 0x2)](a0);
 }

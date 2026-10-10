@@ -94,8 +94,8 @@ extern unsigned short D_80189604;
 void aF80161CD0(int param_1, unsigned int param_2) __asm__("func_80161CD0");
 void aF80161CD0(int param_1, unsigned int param_2) __asm__("func_80161CD0");
 extern void func_80147324(s32 arg0);
-extern void (*D_8018967C[])(void);
+extern void (*D_8018967C[])(void *);
 
 void func_80162330(void *a0) {
-    D_8018967C[*(u8 *)((s32)a0 + 0x15)]();
+    D_8018967C[*(u8 *)((s32)a0 + 0x15)](a0);
 }

@@ -11,7 +11,7 @@ void func_80142A80();
 typedef struct { u16 a, idx; u8 pad[0xF8]; s16 unkFC; } T;
 void func_80142A10(T *p) {
     if (D_801270C0 != 3) {
-        D_8017FA7C[p->idx]();
+        D_8017FA7C[p->idx](p);
         if (p->unkFC)
             func_80142A80(p);
     }

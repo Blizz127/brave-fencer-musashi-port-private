@@ -128,8 +128,8 @@ extern s32 func_80161208();
 extern void func_801599A4(void *a0);
 extern void func_80016714(void *a0, s32 a1);
 extern void func_80147324(s32 arg0);
-extern void (*D_8018832C[])(void);
+extern void (*D_8018832C[])(void *);
 
 void func_80168D58(void *a0) {
-    D_8018832C[*(u16 *)((s32)a0 + 0x2)]();
+    D_8018832C[*(u16 *)((s32)a0 + 0x2)](a0);
 }

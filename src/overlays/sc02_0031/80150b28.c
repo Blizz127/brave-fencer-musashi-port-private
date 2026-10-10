@@ -14,7 +14,7 @@ typedef double f64;
 void func_80150B28(int param_1) {
 
     extern s32 D_800AE6B0;
-    extern void (*D_801868EC[])(void);
+    extern void (*D_801868EC[])(int);
     u32 idx;
     register u32 sub __asm__("$2");
 
@@ -22,7 +22,7 @@ void func_80150B28(int param_1) {
         idx = *(u16 *)(param_1 + 0x16C);
         if (idx != 0 && idx < 0x26) {
             sub = idx - 1;
-            D_801868EC[sub]();
+            D_801868EC[sub](param_1);
         }
     }
     *(u16 *)(param_1 + 0x16C) = 0;

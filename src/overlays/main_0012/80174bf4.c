@@ -30,5 +30,5 @@ void func_80174BF4(T *p) {
     p->unk30 = -0x28;
     p->unk32 = 0;
     p->unk54 = 0;
-    D_801819F8[p->idx]();
+    D_801819F8[p->idx](p);
 }

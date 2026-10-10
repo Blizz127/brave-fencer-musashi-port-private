@@ -3,8 +3,8 @@
  * byte-identical to the sc01_0077 retail words (gcc-2.7.2 -O2). */
 typedef unsigned char u8;
 typedef int s32;
-extern void (*D_80189FA4[])(void);
+extern void (*D_80189FA4[])(void *);
 
 void func_8016FB7C(void *a0) {
-    D_80189FA4[*(u8 *)((s32)a0 + 0x216)]();
+    D_80189FA4[*(u8 *)((s32)a0 + 0x216)](a0);
 }

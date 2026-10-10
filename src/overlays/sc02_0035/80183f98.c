@@ -7,8 +7,8 @@ extern void func_8012A568(void (*a0)(void));
 extern void func_8018016C(s32 a0, s32 a1);
 extern s32 func_80182318_def(s32 a0, s32 a1) __asm__("func_8018016C");
 s32 func_80182318_def(s32 a0, s32 a1);
-extern void (*D_801BBE9C[])(void);
+extern void (*D_801BBE9C[])(void *);
 
 void func_80183F98(void *a0) {
-    D_801BBE9C[*(u16 *)((s32)a0 + 0x2)]();
+    D_801BBE9C[*(u16 *)((s32)a0 + 0x2)](a0);
 }

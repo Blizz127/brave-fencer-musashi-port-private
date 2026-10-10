@@ -10,8 +10,8 @@ typedef double f64;
 #endif
 
 extern void func_8012A568(void (*a0)(void));
-extern void (*D_80188D98[])(void);
+extern void (*D_80188D98[])(void *);
 
 void func_801810F4(void *a0) {
-    D_80188D98[*(u8 *)((s32)a0 + 0x15)]();
+    D_80188D98[*(u8 *)((s32)a0 + 0x15)](a0);
 }

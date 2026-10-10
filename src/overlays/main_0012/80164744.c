@@ -13,7 +13,7 @@ typedef struct {
 } T;
 void func_80164744(T *p) {
     void *in = p->inner;
-    D_80180F84[p->u2]();
+    D_80180F84[p->u2](p);
     if (in) {
         func_80162D28(p);
     }

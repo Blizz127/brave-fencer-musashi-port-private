@@ -19,6 +19,6 @@ extern void func_8012A568(void (*a0)(void));
 
 s32 func_80174474(void *a0) {
 
-    extern void (*D_801882C8[])(void);
-    D_801882C8[*(u8 *)((s32)a0 + 0x214)]();
+    extern void (*D_801882C8[])(void *);
+    D_801882C8[*(u8 *)((s32)a0 + 0x214)](a0);
 }

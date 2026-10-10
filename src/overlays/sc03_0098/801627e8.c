@@ -97,13 +97,13 @@ extern s32 D_8011F750;
 void func_801627E8(void)
 {
     extern s32 D_8011F750;
-    extern void (*D_80187EC4[])(void);
+    extern void (*D_80187EC4[])(u8 *);
     register u8 *p __asm__("$4") = (u8 *)&D_8011F750;
     s32 idx;
     __asm__ __volatile__("" : "=r"(p) : "0"(p));
     idx = *p;
     if (idx != 0) {
         idx = idx - 1;
-        D_80187EC4[idx]();
+        D_80187EC4[idx](p); /* retail jalr keeps the pinned a0 */
     }
 }

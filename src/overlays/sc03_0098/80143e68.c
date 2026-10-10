@@ -68,8 +68,8 @@ extern s16 D_800B9A02;
 extern short D_800B9A02;
 extern u16 D_80115116;
 extern void *memcpy(void *, const void *, u32);
-extern void (*D_80186CA0[])(void);
+extern void (*D_80186CA0[])(void *);
 
 void func_80143E68(void *a0) {
-    D_80186CA0[*(u16 *)((s32)a0 + 0x2)]();
+    D_80186CA0[*(u16 *)((s32)a0 + 0x2)](a0);
 }

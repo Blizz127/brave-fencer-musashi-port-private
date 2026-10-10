@@ -6,11 +6,11 @@ typedef short s16;
 extern u16 D_801270C0;
 extern u16 D_801270C0;
 extern u16 D_801270C0;
-extern void (*D_80186784[])();
+extern void (*D_80186784[])(int);
 
 void func_8014292C(int param_1)
 {
     if (*(s16 *)&D_801270C0 != 3) {
-        D_80186784[*(u16 *)(param_1 + 2)]();
+        D_80186784[*(u16 *)(param_1 + 2)](param_1);
     }
 }
