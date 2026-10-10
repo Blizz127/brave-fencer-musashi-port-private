@@ -3913,6 +3913,218 @@ SPU_ENTRY(hle_st_set_ring) {
 }
 SPU_ENTRY(hle_st_clear_ring) { st_clear_ring(); return 1; }
 SPU_ENTRY(hle_st_clear_slots) { st_clear_slots(call->r[4], call->r[5]); return 1; }
+
+/* ---- libcd2 sector stream interrupt, from the retail disassembly ----
+ * 80046610 (CdReadyCallback while streaming) = 80046D1C StCdInterrupt;
+ * 800469CC (DMA3 callback) closes a frame. Helpers: 800476C0 (DMA channel
+ * start), 8004768C (word copy). Register cells: 8006D058 reg0, 8006D060
+ * reg2, 8006D064 reg3, 8006D068 CDROM_DELAY, 8006D06C COM_DELAY, 8006D070
+ * DPCR, 8006D074 DICR, 8006D078 / 8006D088 DMA3 CHCR. Slot header (32 bytes)
+ * u16 id +0, u16 type +2, u16 secCount +4, u16 nSectors +6, u16 frame +8,
+ * loc +0x1C. */
+enum {
+    STI_DONE = 0x800AE644u, STI_MEMMODE = 0x800A2B9Cu, STI_MEMFLAG = 0x800A5F1Cu,
+    STI_MEMBUF = 0x800C7C78u, STI_MEMIDX = 0x800BA0D4u, STI_STATUS = 0x8006D0A0u,
+    STI_WIDX = 0x800C6D38u, STI_FIDX = 0x800C6D3Cu, STI_CUR = 0x80078808u,
+    STI_NOSUB = 0x800A2BA4u, STI_SEEK = 0x800C7C8Cu, STI_START = 0x800A642Cu,
+    STI_CHAN = 0x800A6608u, STI_NEXTCHAN = 0x800A6424u, STI_SEC = 0x800A2B94u,
+    STI_FRAME = 0x80078E38u, STI_END = 0x800C7C84u, STI_CB_END = 0x800A5E84u,
+    STI_CB_FRAME = 0x800A5E80u, STI_DATA = 0x800C7C90u, STI_LOC = 0x80078800u,
+    STI_LASTFRAME = 0x80078804u
+};
+static uint8_t g_sti_sub[4]; /* retail sp+40: kept when the subheader is not read */
+static void sti_w8(uint32_t cell, uint8_t v) { cd_w8_cell(cell, v); }
+static uint8_t sti_r8(uint32_t cell) {
+    const MusashiCdRegisterDevice *d = cd_dev();
+    uint8_t v = 0;
+    if (!d || !d->read8 || !d->read8(d->userdata, rd32(cell), &v))
+        driver_stop("cd_register_read_refused", cell);
+    return v;
+}
+static void sti_bump(void) { if (rd32(STI_MEMBUF)) wr32(STI_MEMIDX, rd32(STI_MEMIDX) + 1u); }
+static void sti_words(uint32_t dst, uint32_t src, uint32_t n) {
+    /* 8004768C */
+    uint32_t i;
+    for (i = 0; i < n; ++i) wr32(dst + i * 4u, rd32(src + i * 4u));
+}
+static void sti_dma(uint32_t ch, uint32_t madr, uint32_t hi, uint32_t lo, uint32_t chcr, uint32_t irq) {
+    /* 800476C0: wait for the channel, DICR enable bit, DPCR enable, MADR,
+     * BCR, wait for the CD FIFO (reg0 bit 6), CHCR */
+    const MusashiDmaCallbackRegistrationDevice *di = g_driver.ops ? g_driver.ops->dma_irq : NULL;
+    const MusashiCdRegisterDevice *d = cd_dev();
+    uint32_t base = 0x1F801080u + ch * 16u, v = 0, n = 0, dicr = 0;
+    if (!d || !d->read32 || !d->write32) { driver_stop("st_dma_device", 0x800476C0u); return; }
+    while (!g_driver.quit && d->read32(d->userdata, base + 8u, &v) && (v & 0x01000000u)) {
+        if (++n == 0x10000u) { fprintf(stderr, "native_boot: st_dma timeout ch=%u\n", ch); break; }
+        driver_spin(16u);
+    }
+    if (!di || !di->read32 || !di->write32 || !di->read32(di->userdata, rd32(0x8006D074u), &dicr))
+        { driver_stop("st_dma_dicr", 0x800476C0u); return; }
+    if ((irq & 0xFFu) == 1u) dicr |= (1u << ch) << 16;
+    else dicr &= ~((1u << ch) << 16);
+    /* a byte store to DICR+2: bits 16-23 only, no flag acknowledge */
+    (void)di->write32(di->userdata, rd32(0x8006D074u), dicr & 0x00FFFFFFu);
+    cd_w32(0x8006D070u, cd_r32(0x8006D070u) | (1u << (ch * 4u + 3u)));
+    if (!d->write32(d->userdata, base, madr) || !d->write32(d->userdata, base + 4u, (hi << 16) | lo))
+        { driver_stop("st_dma_write", base); return; }
+    while (!g_driver.quit && !(sti_r8(0x8006D058u) & 0x40u)) driver_spin(16u);
+    if (!d->write32(d->userdata, base + 8u, chcr)) driver_stop("st_dma_write", base + 8u);
+}
+static void sti_reset_frame(void) {
+    wr32(STI_FRAME, 0);
+    wr16(STI_SEC, 0);
+    st_clear_slots(rd32(STI_FIDX), rd32(STI_WIDX) - rd32(STI_FIDX));
+    wr32(STI_WIDX, rd32(STI_FIDX));
+    wr16(rd32(STI_CUR), 0);
+}
+static void sti_call(uint32_t fn, uint32_t a0) {
+    uint32_t a[1] = {a0};
+    if (fn) (void)call_at(g_cd_sp, fn, 1, a);
+}
+static void st_frame_done(void) {
+    /* 800469CC */
+    uint32_t h = rd32(ST_RING) + (rd32(STI_FIDX) << 5), i;
+    wr16(h, 2);
+    for (i = 0; i < 4u; ++i) wr8(STI_LOC + i, rd8(h + 0x1Cu + i));
+    wr32(STI_LASTFRAME, rd32(h + 8u));
+    wr32(STI_FIDX, rd32(STI_WIDX));
+    sti_call(rd32(STI_CB_FRAME), 0);
+    wr32(STI_DONE, 0);
+}
+static void st_cd_interrupt(uint32_t frame) {
+    /* 80046D1C; frame = the retail sp (CdReady's result at +48) */
+    uint32_t h, chcr, i, res = frame + 48u;
+    uint16_t st;
+    if (rd32(STI_DONE) == 1u) return;
+    if (rd32(STI_MEMMODE) && (cd_r32(0x8006D078u) & 0x01000000u)) {
+        wr32(STI_MEMFLAG, 1);
+        sti_bump();
+        wr32(STI_STATUS, 1);
+        return;
+    }
+    if (cd_ready(1, res) == 5) return;
+    st = rd8(res);
+    if (st & 4u) { wr32(STI_STATUS, 3); return; }
+    h = rd32(ST_RING) + (rd32(STI_WIDX) << 5);
+    wr32(STI_CUR, h);
+    if (rd16(h)) { sti_bump(); wr32(STI_STATUS, 4); return; }
+    sti_w8(0x8006D058u, 0); sti_w8(0x8006D064u, 0);
+    sti_w8(0x8006D058u, 0); sti_w8(0x8006D064u, 0x80);
+    cd_w32(0x8006D068u, 0x00020943u);
+    cd_w32(0x8006D06Cu, 0x1323u);
+    if (!rd32(STI_NOSUB)) {
+        for (i = 0; i < 4u; ++i) g_sti_sub[i] = sti_r8(0x8006D060u);
+        for (i = 0; i < 8u; ++i) (void)sti_r8(0x8006D060u);
+    }
+    if (rd32(STI_MEMBUF)) sti_words(rd32(STI_CUR), rd32(STI_MEMBUF) + (rd32(STI_MEMIDX) << 11), 8);
+    else sti_dma(3, rd32(STI_CUR), 0, 8, 0x11000000u, 0);
+    while (!g_driver.quit && (cd_r32(0x8006D088u) & 0x01000000u)) driver_spin(16u);
+    h = rd32(STI_CUR);
+    for (i = 0; i < 4u; ++i) wr8(h + 0x1Cu + i, g_sti_sub[i]);
+    cd_w32(0x8006D068u, 0x00020843u);
+    cd_w32(0x8006D06Cu, 0x1325u);
+    if (rd32(STI_SEEK) == 1u && rd32(STI_START) && rd32(STI_START) != rd16(h + 8u)) {
+        wr16(h, 0);
+        sti_bump();
+        return;
+    }
+    if (rd32(STI_SEEK) == 1u && rd32(STI_START)) wr32(STI_SEEK, 0);
+    if (rd16(h) != 0x160u || ((rd16(h + 2u) >> 10) & 0x1Fu) != rd32(STI_CHAN)) {
+        if (rd32(STI_MEMBUF)) wr32(STI_MEMIDX, 0);
+        wr32(STI_STATUS, 5);
+        wr16(h, 0);
+        return;
+    }
+    if ((uint16_t)rd16(STI_SEC) != rd16(h + 4u) ||
+        (rd32(STI_FRAME) && rd32(STI_FRAME) != rd16(h + 8u))) {
+        sti_reset_frame();
+        sti_bump();
+        wr32(STI_STATUS, 6);
+        return;
+    }
+    if (rd16(h + 4u) == 0u) {
+        uint32_t f = rd16(h + 8u);
+        wr16(STI_SEC, 0);
+        wr32(STI_FRAME, f);
+        if (rd32(STI_END) && f >= rd32(STI_END)) {
+            sti_reset_frame();
+            wr32(STI_SEEK, 1);
+            sti_call(rd32(STI_CB_END), h);
+            sti_bump();
+            wr32(STI_STATUS, 7);
+            return;
+        }
+        if (rd32(ST_RING_SIZE) - rd32(STI_WIDX) - 1u < rd16(h + 6u)) {
+            if (!rd32(STI_END)) {
+                wr16(h, 1);
+                wr32(STI_SEEK, 1);
+                sti_call(rd32(STI_CB_END), h);
+                sti_bump();
+                wr32(STI_STATUS, 8);
+                return;
+            }
+            if (rd16(rd32(ST_RING))) {
+                wr16(h, 0);
+                sti_bump();
+                wr32(STI_STATUS, 9);
+                return;
+            }
+            /* wrap: the header moves to slot 0 */
+            wr16(h, 1);
+            wr32(STI_WIDX, 0);
+            sti_words(rd32(ST_RING), h, 8);
+            wr32(STI_CUR, rd32(ST_RING));
+        }
+        wr32(STI_FIDX, rd32(STI_WIDX));
+    }
+    wr32(STI_STATUS, 10);
+    wr16(STI_SEC, (uint16_t)(rd16(STI_SEC) + 1u));
+    wr32(STI_DATA, rd32(ST_RING) + (rd32(ST_RING_SIZE) << 5) + rd32(STI_WIDX) * 0x7E0u);
+    if (rd32(STI_MEMMODE)) {
+        chcr = 0x11000000u;
+        cd_w32(0x8006D068u, 0x00020943u);
+        cd_w32(0x8006D06Cu, 0x1323u);
+    } else {
+        chcr = 0x11400100u;
+        cd_w32(0x8006D068u, 0x21020843u);
+    }
+    h = rd32(STI_CUR);
+    if ((uint32_t)(rd16(h + 6u) - 1u) == rd16(h + 4u)) {
+        wr32(STI_DONE, 1);
+        if (rd32(STI_MEMBUF)) {
+            sti_words(rd32(STI_DATA), rd32(STI_MEMBUF) + (rd32(STI_MEMIDX) << 11) + 32u, 0x1F8u);
+            wr32(STI_MEMIDX, rd32(STI_MEMIDX) + 1u);
+        } else {
+            sti_dma(3, rd32(STI_DATA), 0, 0x1F8u, chcr, 1);
+        }
+        wr16(STI_SEC, 0);
+        wr32(STI_FRAME, 0);
+        wr32(STI_CHAN, rd32(STI_NEXTCHAN));
+    } else if (rd32(STI_MEMBUF)) {
+        sti_words(rd32(STI_DATA), rd32(STI_MEMBUF) + (rd32(STI_MEMIDX) << 11) + 32u, 0x1F8u);
+        wr32(STI_MEMIDX, rd32(STI_MEMIDX) + 1u);
+    } else {
+        sti_dma(3, rd32(STI_DATA), 0, 0x1F8u, chcr, 0);
+    }
+    cd_w32(0x8006D06Cu, 0x1325u);
+    wr16(rd32(STI_CUR), 3);
+    wr32(STI_WIDX, rd32(STI_WIDX) + 1u);
+    if (rd32(STI_MEMBUF) && rd32(STI_DONE)) st_frame_done();
+}
+SPU_ENTRY(hle_st_cd_interrupt) {
+    uint32_t saved = g_cd_sp;
+    CD_SP();
+    st_cd_interrupt(call->r[29] - 64u);
+    g_cd_sp = saved;
+    return 1;
+}
+SPU_ENTRY(hle_st_frame_done) {
+    uint32_t saved = g_cd_sp;
+    CD_SP();
+    st_frame_done();
+    g_cd_sp = saved;
+    return 1;
+}
 SPU_ENTRY(hle_gs_link_object5) {
     /* 800553D8 GsLinkObject5(objtable, dobj, n): dobj->tmd = objtable +
      * n * 28 (one 7-word object entry), dobj->attribute = 0 */
@@ -4198,6 +4410,9 @@ static const MusashiNativeLaneEntry k_driver_entries[] = {
     {0x80043994u, 0, hle_cd_getsector,    "CdGetSector",         2, 1, 0},
     {0x800439B4u, 0, hle_cd_getsector2,   "CdGetSector2",        2, 1, 0},
     {0x800439D4u, 0, hle_cd_data_callback,"CdDataCallback",      1, 1, 0},
+    {0x80046610u, 0, hle_st_cd_interrupt, "StCdIntrReady",       0, 0, 0},
+    {0x80046D1Cu, 0, hle_st_cd_interrupt, "StCdInterrupt",       0, 0, 0},
+    {0x800469CCu, 0, hle_st_frame_done,   "StFrameDone",         0, 0, 0},
     {0x800439F8u, 0, hle_cd_datasync,     "CdDataSync",          1, 1, 0},
     {0x80043B9Cu, 0, hle_cd_getintr,      "CD_getintr",          0, 1, 0},
     {0x80044124u, 0, hle_cd_sync,         "CD_sync",             2, 1, 0},
