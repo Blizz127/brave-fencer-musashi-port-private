@@ -1,14 +1,17 @@
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_80155FF8 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Overlay range [80155FF8,80156044) from MAIN.CD member 0012.
+ * SHA256(span)=5c14daaabcf08990f47fc15d7c5f8379bb91c4eac1b5d9c88775a0c1ca58ff09.
+ * Word export for the native seam; the C body below is kept
+ * byte-identical (wrap only, no rewrite): the cleaned Druthulu/BFM-decomp
+ * form (vendor/bfm-decomp, same SLUS-00726 build), re-verified against
+ * retail at the recorded optimization by tools/match_function.py. */
 #include "psx_types.h"
-typedef float f32;
-typedef unsigned long long u64;
-typedef long long s64;
-typedef double f64;
-#ifndef NULL
-#define NULL ((void *)0)
-#endif
+#include "m2c_macros.h"
 
+/* func_80155FF8 - 19 words. Promoted from vendor/bfm-decomp
+ * (Druthulu, same SLUS-00726 build), split to an address-named file.
+ * Values and locals are the loosest that reproduce the bytes; they
+ * are not evidence of the original declaration. */
+extern void func_80156044(int arg, int a1);
 
 int func_80155FF8(int arg, int a1) {
     __asm__ __volatile__(

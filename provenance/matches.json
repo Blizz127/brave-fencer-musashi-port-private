@@ -53673,7 +53673,7 @@
       "size": 148,
       "region": "sc01_0000",
       "source": "src/overlays/sc01_0000/801285e4.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
@@ -53684,7 +53684,7 @@
       "size": 156,
       "region": "sc01_0000",
       "source": "src/overlays/sc01_0000/80128678.c",
-      "recovery": "assembly",
+      "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
@@ -53695,7 +53695,7 @@
       "size": 164,
       "region": "sc01_0000",
       "source": "src/overlays/sc01_0000/80128714.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
@@ -55677,7 +55677,7 @@
       "size": 60,
       "region": "sc01_0000",
       "source": "src/overlays/sc01_0000/8012ef34.c",
-      "recovery": "mixed",
+      "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
@@ -55688,7 +55688,7 @@
       "size": 72,
       "region": "sc01_0000",
       "source": "src/overlays/sc01_0000/8012ef70.c",
-      "recovery": "mixed",
+      "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
@@ -58013,7 +58013,7 @@
       "size": 304,
       "region": "sc01_0000",
       "source": "src/overlays/sc01_0000/8013aa24.c",
-      "recovery": "mixed",
+      "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
@@ -58024,7 +58024,7 @@
       "size": 484,
       "region": "sc01_0000",
       "source": "src/overlays/sc01_0000/8013ab54.c",
-      "recovery": "mixed",
+      "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
@@ -60011,7 +60011,7 @@
       "size": 172,
       "region": "sc01_0000",
       "source": "src/overlays/sc01_0000/8014607c.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
@@ -63459,7 +63459,7 @@
       "size": 188,
       "region": "sc01_0000",
       "source": "src/overlays/sc01_0000/80146750.c",
-      "recovery": "mixed",
+      "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
@@ -67067,10 +67067,10 @@
       "size": 88,
       "region": "sc01_0000",
       "source": "src/overlays/sc01_0000/8014ccb4.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function",
       "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": null
     },
     {
       "name": "func_8014CD0C",
@@ -67111,10 +67111,10 @@
       "size": 88,
       "region": "sc01_0000",
       "source": "src/overlays/sc01_0000/8014d04c.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function",
       "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": null
     },
     {
       "name": "func_8014D0A4",
@@ -67155,10 +67155,10 @@
       "size": 88,
       "region": "sc01_0000",
       "source": "src/overlays/sc01_0000/8014d3e0.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function",
       "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": null
     },
     {
       "name": "func_8014D438",
@@ -67199,10 +67199,10 @@
       "size": 88,
       "region": "sc01_0000",
       "source": "src/overlays/sc01_0000/8014d738.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function",
       "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": null
     },
     {
       "name": "func_8014D790",
@@ -67243,10 +67243,10 @@
       "size": 88,
       "region": "sc01_0000",
       "source": "src/overlays/sc01_0000/8014df3c.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function",
       "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": null
     },
     {
       "name": "func_8014DF94",
@@ -67287,10 +67287,10 @@
       "size": 88,
       "region": "sc01_0000",
       "source": "src/overlays/sc01_0000/8014e434.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function",
       "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": null
     },
     {
       "name": "func_8014E48C",
@@ -67331,10 +67331,10 @@
       "size": 88,
       "region": "sc01_0000",
       "source": "src/overlays/sc01_0000/8014e6a0.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function",
       "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": null
     },
     {
       "name": "func_8014E6F8",
@@ -67375,7 +67375,7 @@
       "size": 88,
       "region": "sc01_0000",
       "source": "src/overlays/sc01_0000/8014e934.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
@@ -67408,10 +67408,10 @@
       "size": 88,
       "region": "sc01_0000",
       "source": "src/overlays/sc01_0000/8014ed28.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function",
       "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": null
     },
     {
       "name": "func_8014ED80",
@@ -67441,10 +67441,10 @@
       "size": 88,
       "region": "sc01_0000",
       "source": "src/overlays/sc01_0000/8014f1f4.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function",
       "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": null
     },
     {
       "name": "func_8014F24C",
@@ -67485,10 +67485,10 @@
       "size": 88,
       "region": "sc01_0000",
       "source": "src/overlays/sc01_0000/8014f468.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function",
       "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": null
     },
     {
       "name": "func_8014F4C0",
@@ -67507,10 +67507,10 @@
       "size": 88,
       "region": "sc01_0000",
       "source": "src/overlays/sc01_0000/8014f6f4.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function",
       "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": null
     },
     {
       "name": "func_8014F74C",
@@ -67529,7 +67529,7 @@
       "size": 108,
       "region": "sc01_0000",
       "source": "src/overlays/sc01_0000/8014fa04.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
@@ -67551,10 +67551,10 @@
       "size": 88,
       "region": "sc01_0000",
       "source": "src/overlays/sc01_0000/8014fbc0.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function",
       "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": null
     },
     {
       "name": "func_8014FC18",
@@ -67584,10 +67584,10 @@
       "size": 88,
       "region": "sc01_0000",
       "source": "src/overlays/sc01_0000/8014fcfc.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function",
       "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": null
     },
     {
       "name": "func_8014FDF4",
@@ -67672,10 +67672,10 @@
       "size": 88,
       "region": "sc01_0000",
       "source": "src/overlays/sc01_0000/80150480.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function",
       "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": null
     },
     {
       "name": "func_80150528",
@@ -67771,7 +67771,7 @@
       "size": 184,
       "region": "sc01_0000",
       "source": "src/overlays/sc01_0000/80150a70.c",
-      "recovery": "assembly",
+      "recovery": "mixed",
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
@@ -78495,7 +78495,7 @@
       "size": 76,
       "region": "sc01_0000",
       "source": "src/overlays/sc01_0000/80155ff8.c",
-      "recovery": "assembly",
+      "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
@@ -82331,7 +82331,7 @@
       "size": 700,
       "region": "sc01_0000",
       "source": "src/overlays/sc01_0000/80161e08.c",
-      "recovery": "mixed",
+      "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
@@ -265318,7 +265318,7 @@
       "size": 156,
       "region": "sc01_0001",
       "source": "src/overlays/sc01_0001/80128678.c",
-      "recovery": "mixed",
+      "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
@@ -267356,7 +267356,7 @@
       "size": 60,
       "region": "sc01_0001",
       "source": "src/overlays/sc01_0001/8012ef34.c",
-      "recovery": "mixed",
+      "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
@@ -267367,7 +267367,7 @@
       "size": 72,
       "region": "sc01_0001",
       "source": "src/overlays/sc01_0001/8012ef70.c",
-      "recovery": "mixed",
+      "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
@@ -279972,7 +279972,7 @@
       "size": 304,
       "region": "sc01_0001",
       "source": "src/overlays/sc01_0001/8013aa24.c",
-      "recovery": "mixed",
+      "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
@@ -279983,7 +279983,7 @@
       "size": 484,
       "region": "sc01_0001",
       "source": "src/overlays/sc01_0001/8013ab54.c",
-      "recovery": "mixed",
+      "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"

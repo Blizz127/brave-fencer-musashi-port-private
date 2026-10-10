@@ -1,37 +1,28 @@
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_8014F1F4 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Overlay range [8014F1F4,8014F24C) from MAIN.CD member 0012.
+ * SHA256(span)=bf4b0ebff1a87beccd505a1463ae86957cccdf73918f74ac651b1a773f063ec8.
+ * Word export for the native seam. */
 #include "psx_types.h"
-typedef float f32;
-typedef unsigned long long u64;
-typedef long long s64;
-typedef double f64;
-#ifndef NULL
-#define NULL ((void *)0)
-#endif
 
+extern s32 D_801A4570;
 
-void func_8014F1F4(void)
-{
+/* B28: C plus the scratchpad switch-back asm (a0 passes through to func_8014F24C,
+ * its v0 is stored to D_801A4570 and returned); byte-identical (gcc-2.7.2-psx -O2). */
+s32 func_8014F1F4(s32 a0) {
+    s32 lane_outgoing_args[4]; /* the 16-byte outgoing-argument area of the retail frame */
+    register s32 p __asm__("$3") = 0x1F8003FC;
+    register s32 arg __asm__("$4") = a0;
     __asm__ __volatile__(
-        ".set noreorder\n"
-        "addiu $sp, $sp, -24\n"
-        "lui   $v1, 0x1f80\n"
-        "ori   $v1, $v1, 0x03fc\n"
-        "sw    $ra, 16($sp)\n"
-        "addu  $t0, $v1, $zero\n"
-        "lw    $t1, 0($t0)\n"
+        "addu  $8, %0, $zero\n"
+        "lw    $9, 0($8)\n"
         "nop\n"
-        "sw    $sp, 0($t1)\n"
-        "addiu $t1, $t1, -4\n"
-        "addu  $sp, $t1, $zero\n"
+        "sw    $sp, 0($9)\n"
+        "addiu $9, $9, -4\n"
+        "addu  $sp, $9, $zero\n"
         "jal   func_8014F24C\n"
         "lui   $at, %%hi(D_801A4570)\n"
         "sw    $v0, %%lo(D_801A4570)($at)\n"
         "addiu $sp, $sp, 4\n"
         "lw    $sp, 0($sp)\n"
-        "lui   $v0, %%hi(D_801A4570)\n"
-        "lw    $v0, %%lo(D_801A4570)($v0)\n"
-        "lw    $ra, 16($sp)\n"
-        "addiu $sp, $sp, 24\n"
-        : : : "memory");
+        : "=r"(p) : "0"(p), "r"(arg) : "$8", "$9", "$31", "memory");
+    return D_801A4570;
 }

@@ -1780,6 +1780,14 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 - main 80038A58: the registry row is `mixed`, and the source is a 100% oracle match at -O2. Its one instruction asm is `addiu %0,%1,18`, which pins scheduling, so a C rewrite stays 2 words off. Strict-only generator change: ADDIU_ASM_RE hosts it as `x = (char *)y + imm`. The hybrid table is identical.
 - Next stop: 801285E4 (~f1600, New Game scene load).
 
+
+### Inc 126: sc01_0000/0001 remount — 801285E4 cluster admitted (mixed/c)
+- Remounted 39 sc01_0000/0001 functions from byte-exact twins (main_0012 / sc02_0031 / sc02_0035 / sc03_0098), preferring the first twin that already had lane-admitted recovery. verify_registry 39/39 MATCH.
+- Includes the New Game scene-load stop `801285E4` (scratchpad stack-switch form) and its callees `8014607C`, `80128678`, `80128714`, plus related scratch-switch / GTE helpers that were still `assembly`/`mixed` blockers.
+- Provenance: recovery assembly→mixed/c (or mixed→c) so strict `sc01_0000 all` / `sc01_0001 all` can host them; origins kept from the twin (vendor-derived or @untagged).
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, retail only the 2 known jtbl build failures.
+- Next: strict run past former stop 801285E4 (~f1600); walk New Game / sc01 opening path.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for

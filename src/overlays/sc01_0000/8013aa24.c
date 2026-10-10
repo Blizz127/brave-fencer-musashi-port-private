@@ -1,42 +1,95 @@
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_8013AA24 - byte-exact against retail at -O2 (tools/register_match.py). */
-#include "psx_types.h"
-typedef float f32;
-typedef unsigned long long u64;
-typedef long long s64;
-typedef double f64;
-#ifndef NULL
-#define NULL ((void *)0)
-#endif
-
+/* sc03_0098: func_8013AA24 from Druthulu/BFM-decomp
+ * src/ov_SC03_098/ov_SC03_098_jr_801380E0.c (preprocessed; only the declarations it uses),
+ * byte-identical to the sc03_0098 retail words (gcc-2.7.2 -O2). */
+typedef unsigned char u8;
+typedef unsigned short u16;
+typedef unsigned int u32;
+typedef short s16;
+typedef int s32;
+typedef struct { u32 attr; s16 x0, y0, x1, y1; u8 r, g, b, code; } Gline_801372B0;
+typedef struct { s16 x, y, z, pad; } SVEC_80167AE0;
+typedef struct { s16 x, y, z, pad; } SVEC_8016A290;
+typedef void (*code)(unsigned short *);
+struct Fr {
+    u8 matrix[0x20];
+    SVEC_80167AE0 v[4];
+    struct { u8 r, g, b, pad; } col[4];
+    u32 code;
+};
+struct Fr_80167AE0 {
+    u8 matrix[0x20];
+    SVEC_80167AE0 v[4];
+    struct { u8 r, g, b, pad; } col[4];
+    u32 code;
+};
+struct Fr_8016A290 {
+    SVEC_8016A290 center;
+    SVEC_8016A290 diff;
+    s32 pos[3];
+    s32 _pad1c;
+    s16 mtx[32];
+    SVEC_8016A290 v[4];
+    struct { u8 r, g, b, pad; } col[4];
+    u32 code;
+};
+typedef struct { s16 x, y, z, pad; } SVec_801670E4;
+typedef struct {
+               u16 cx, cy, cz;
+               u16 _p06;
+               u16 a8[4];
+               s32 pos[3];
+               s32 _p1C;
+               SVec_801670E4 v[4];
+               struct { u8 r, g, b, cd; } col[4];
+               u32 code;
+               s32 _p54;
+               u8 m1[0x20];
+               u8 m2[0x20];
+} Fr_801670E4;
+extern void *memcpy(void *, const void *, unsigned int);
 extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern s32 D_800A651C;
+extern s16 D_800B9A02;
+extern void *memcpy(void *, const void *, u32);
+extern void func_8005C324(int dst, int src, int n) __asm__("memcpy");
+extern short D_800B9A02;
+extern void func_80051DC8(void *a0, void *a1, s32 a2);
+extern void func_80137030(s16 a0, s16 a1);
+extern void aGsSortLine(Gline_801372B0 *p, void *ot, s32 z) __asm__("func_80051DC8");
+extern void aF80137030(s32 x, s32 y) __asm__("func_80137030");
+extern u16 aD800B9A02 __asm__("D_800B9A02");
+extern short D_800B9A02;
+extern void *memcpy(void *, const void *, u32);
 extern void func_8013AD38(void *a0, s32 a1, void *a2, void *a3);
 extern void func_8013B204(s32 a0, s32 a1);
 extern void func_8013AF20();
 extern short D_800B9A02;
 extern s32 D_800A651C;
+void func_8013AD38(void *flag, s32 a1, void *out2, void *out3);
+void func_8013AF20(u32 *param_1, u16 *param_2, u16 *param_3, u8 *param_4);
+void func_8013B204(s32 a0, s32 a1);
 
 void func_8013AA24(s32 a0, s32 a1) {
     s32 s2 = a0;
     s32 s0 = a1;
-    u8 buf[0xE0];          /* spans 0x10 .. 0xF0 */
+    u8 buf[0xE0];
     s16 m00 = *(u16 *)(s0 + 8);
     s16 m11;
-    *(s16 *)(buf + 0x02) = 0;                       /* 0x12 */
-    *(s16 *)(buf + 0x04) = 0;                       /* 0x14 */
-    *(s16 *)(buf + 0x06) = 0;                       /* 0x16 */
-    *(s16 *)(buf + 0x00) = m00;                     /* 0x10 */
+    *(s16 *)(buf + 0x02) = 0;
+    *(s16 *)(buf + 0x04) = 0;
+    *(s16 *)(buf + 0x06) = 0;
+    *(s16 *)(buf + 0x00) = m00;
     m11 = *(u16 *)(s0 + 0xA);
-    *(s16 *)(buf + 0x0A) = 0;                       /* 0x1A */
-    *(s16 *)(buf + 0x0C) = 0;                       /* 0x1C */
-    *(s16 *)(buf + 0x0E) = 0;                       /* 0x1E */
-    *(s16 *)(buf + 0x10) = 0x1000;                  /* 0x20 */
-    *(s16 *)(buf + 0x08) = m11;                     /* 0x18 */
-    *(s32 *)(buf + 0x14) = *(s16 *)(s2 + 0x24);    /* 0x24 */
-    *(s32 *)(buf + 0x18) = *(s16 *)(s2 + 0x26);    /* 0x28 */
-    *(s32 *)(buf + 0x1C) = 0;                       /* 0x2C */
+    *(s16 *)(buf + 0x0A) = 0;
+    *(s16 *)(buf + 0x0C) = 0;
+    *(s16 *)(buf + 0x0E) = 0;
+    *(s16 *)(buf + 0x10) = 0x1000;
+    *(s16 *)(buf + 0x08) = m11;
+    *(s32 *)(buf + 0x14) = *(s16 *)(s2 + 0x24);
+    *(s32 *)(buf + 0x18) = *(s16 *)(s2 + 0x26);
+    *(s32 *)(buf + 0x1C) = 0;
     {
-        register s32 *p __asm__("$2") = (s32 *)(buf + 0x00);
+        s32 *p = (s32 *)(buf + 0x00);
         __asm__ __volatile__(
             "lw $12, 0(%0)\n"
             "lw $13, 4(%0)\n"
