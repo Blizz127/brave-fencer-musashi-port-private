@@ -1713,6 +1713,17 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 - Note: the lane report keeps vram as a hex string; look it up that way.
 - Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [].
 
+## Inc 119 — sc02_0035: 801287B8 abi fix + 14 twin ports (byte-exact)
+
+- Stop 801287B8: func_8013BC7C called with 0 of 1 args; now passes the
+  $a0-pinned pointer, as the main_0012/sc02_0031 twins do. MATCH.
+- Ported 14 sc02_0035 refusals (ub/compile/abi/inline asm) from their
+  admitted main_0012/sc02_0031 twins, remapping D_ globals by first-use
+  order; each kept only on a verify_registry MATCH against sc02_0035's
+  retail words. Kept as-is (no match): 801288E8, 80128940, 80128998,
+  801418F8, 80141A60.
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [].
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for

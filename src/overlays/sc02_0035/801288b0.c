@@ -1,10 +1,16 @@
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
-/* func_801288B0 - byte-exact against retail at -O2 (tools/register_match.py). */
-extern s32 D_801BC3F0;
-extern void func_8001ABBC(s32 a0, s32 a1, void *a2, s32 a3, s32 sp10);
-extern u8 D_800AEFD0;
 
-s32 func_801288B0(void) {
-    func_8001ABBC(0, 0, &D_800AEFD0, D_801BC3F0, 0);
+/* Decompiled by m2c from main_0012.s, then verified byte-exact
+ * against retail by tools/match_function.py. Types and signatures are
+ * whatever reproduces the bytes; they are not evidence of the
+ * original declaration. */
+
+int func_8001ABBC(s32, s32, void *, s32, s32);               /* extern */
+extern s32 D_801BC3F0;
+extern s32 *D_800AEFD0;
+
+/* B28: returns func_8001ABBC's result; the retail tail call leaves it in v0,
+ * which callers read. Byte-identical (gcc-2.7.2-psx -O2). */
+int func_801288B0(void) {
+    return func_8001ABBC(0, 0, &D_800AEFD0, D_801BC3F0, 0);
 }

@@ -1,50 +1,50 @@
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* Decompiled by m2c from main.s, then verified byte-exact
+ * against retail by tools/match_function.py. Types and signatures are
+ * whatever reproduces the bytes; they are not evidence of the
+ * original declaration. */
+
 #include "psx_types.h"
-/* func_8012FCC4 - byte-exact against retail at -O2 (tools/register_match.py). */
-struct S80131E00;
-struct S80131E00 {
-    char pad[0xB0];
-    s32 field_B0;
-};
-void func_8012B14C(s32 a0, s32 a1);
-extern void func_80131B14();
-extern void func_80131E00(struct S80131E00 *a0, s32 a1);
-extern s32 func_80131A34(s32, s32);
-extern void func_80131CA8(int a0, int a1);
-extern void func_80131CA8();
-extern s32 func_80131A34(s32 a0, s32 a1);
-extern void func_80131CA8(s32 a0, s32 a1);
-
-s32 func_8012FCC4(s32 param_1) {
-    extern int D_80184858;
-
-    int v1 = *(int *)(((int)param_1) + 0xC4);
-    *(char *)(((int)param_1) + 0xC1) = 8;
-    if (v1 & 2) {
-        *(char *)(((int)param_1) + 0xC1) = 1;
-        func_80131CA8(((int)param_1), 3);
+void func_80131E00();
+void func_80131B14();
+s32 func_80131A34();
+void func_8012B14C();
+void func_80131CA8();
+extern s32 D_80184858;
+typedef struct {
+    u8 pad[0x1C]; s32 u1C;
+    u8 pad20[0x56]; s16 u76;
+    u8 pad78[0x20]; s16 u98;
+    u8 pad9A[0x1A]; s32 uB4;
+    u8 padB8[9]; u8 uC1, uC2;
+    u8 padC3; s32 uC4;
+} T;
+void func_8012FCC4(T *p) {
+    p->uC1 = 8;
+    if (p->uC4 & 2) {
+        p->uC1 = 1;
+        func_80131CA8(p, 3);
         return;
     }
-    if (v1 & 1) {
-        ((void (*)(int, int))func_80131E00)(((int)param_1), 1);
+    if (p->uC4 & 1) {
+        func_80131E00(p, 1);
         return;
     }
-    if (*(int *)(((int)param_1) + 0xB4) & 0x100) {
-        ((void (*)(int))func_80131B14)(((int)param_1));
-        if (*(short *)(((int)param_1) + 0x76) <= 0) {
-            ((void (*)(int, int))func_80131E00)(((int)param_1), 0xC);
-            return;
-        }
-        if (((s32(*)(s32, s32))func_80131A34)(((int)param_1), 4) != 0) {
-            *(char *)(((int)param_1) + 0xC2) = 0;
-        } else {
-            *(short *)(((int)param_1) + 0x98) = 0;
-            *(char *)(((int)param_1) + 0xC2) = 1;
-        }
-        ((void (*)(int, void *))func_8012B14C)(((int)param_1), &D_80184858);
-        *(int *)(((int)param_1) + 0x1C) = 0;
-        func_80131CA8(((int)param_1), 0x1C);
+    if ((p->uB4 & 0x100) == 0) {
+        func_80131CA8(p, 0x1C);
         return;
     }
-    func_80131CA8(((int)param_1), 0x1C);
+    func_80131B14(p);
+    if (p->u76 <= 0) {
+        func_80131E00(p, 0xC);
+        return;
+    }
+    if (func_80131A34(p, 4)) {
+        p->uC2 = 0;
+    } else {
+        p->u98 = 0;
+        p->uC2 = 1;
+    }
+    func_8012B14C(p, &D_80184858);
+    p->u1C = 0;
+    func_80131CA8(p, 0x1C);
 }

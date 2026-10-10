@@ -1,12 +1,19 @@
 /* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-#include "psx_types.h"
 /* func_8014032C - byte-exact against retail at -O2 (tools/register_match.py). */
-extern s32 func_80029178(s32);
+#include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
 extern short D_80115128;
-extern s32 func_80029178(s32 arg);
-extern s32 func_800291B4(s32 arg);
 extern u8 D_8018556C[];
 extern u8 D_80185584[];
+extern s32 func_80029178(s32 arg);
+extern s32 func_800291B4(s32 arg);
 
 s32 func_8014032C(s32 param_1, s32 param_2) {
     extern int (*D_801858B4[])(void);
@@ -47,9 +54,9 @@ s32 func_8014032C(s32 param_1, s32 param_2) {
         switch ((*(s16*)&D_80115128)) {
         case 0:
             if (D_801858B4[((short)param_2)]() == 0) {
-                ((short)param_2) = 5;
+                param_2 = 5;
             } else if (D_801858A4[((short)param_2)]() != 0) {
-                ((short)param_2) = 4;
+                param_2 = 4;
             }
             result = D_80185600[((short)param_2)];
             break;
