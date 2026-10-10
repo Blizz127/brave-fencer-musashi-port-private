@@ -16,7 +16,7 @@ void func_80147078();
 void func_80159B70();
 s32 func_80161240();
 s32 func_80146E98();
-void func_80148AAC();
+s32 func_80148AAC();
 void func_80146DB8();
 void func_80146E90();
 void func_80146CA0();

@@ -1760,6 +1760,14 @@ static int sample_keyboard_pad(void *userdata, uint16_t *buttons) {
                  * in 80018CE8 / D_80078DD2, allowing 800CEF94 to skip the FMV immediately. */
                 if (auto_start[0] == '1' && (boot->keyboard_polls % 10u) < 5u)
                     sampled &= (uint16_t)~(1u << 3);
+                /* mode 2: the same pulses only once the title is up (polls
+                 * past MUSASHI_BOOT_AUTO_START_AFTER, default 2700) */
+                if (auto_start[0] == '2') {
+                    const char *after = getenv("MUSASHI_BOOT_AUTO_START_AFTER");
+                    unsigned long t = after ? strtoul(after, NULL, 0) : 2700ul;
+                    if (boot->keyboard_polls >= t && (boot->keyboard_polls % 10u) < 5u)
+                        sampled &= (uint16_t)~(1u << 3);
+                }
             } else if (!boot->scene1_reached) {
                 /* Overlay 0004 is active; Start has now been released so edges can register */
                 uint32_t phase = 0;

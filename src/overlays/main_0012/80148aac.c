@@ -7,8 +7,13 @@
 s32 func_80148AFC();
 typedef struct Inner { u8 pad[0x12]; u16 a; } Inner;
 typedef struct { u8 pad[0x20]; Inner *inner; } T;
-void func_80148AAC(T *p) {
-    if (func_80148AFC(p) & 0xFF) {
-        p->inner->a = (p->inner->a + 0xFA) & 0xFF8;
+/* Returns what retail leaves in v0 (8015CA28 tests it): 0, or the new
+ * value stored. */
+s32 func_80148AAC(T *p) {
+    s32 r = func_80148AFC(p) & 0xFF;
+    if (r) {
+        r = (p->inner->a + 0xFA) & 0xFF8;
+        p->inner->a = r;
     }
+    return r;
 }
