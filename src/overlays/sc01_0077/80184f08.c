@@ -39,7 +39,7 @@ extern s32 func_8012C354(s32 a0, s32 a1);
 extern void func_8012A828(int, void *);
 extern s32 D_801DA908;
 
-s32 func_80184F08(s32 param_1) {
+void func_80184F08(s32 param_1) {
     extern s32 func_8012C354(s32 a0, s32 a1);
     extern void func_8004A27C(s32, void *);
     extern void func_8004818C(s32, void *, s32);

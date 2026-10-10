@@ -26,7 +26,7 @@ extern void func_8014BB24(s32 a0, s32 a1, s32 a2);
 
 
 
-s32 func_801506A4(s32 arg0, s32 arg1) {
+void func_801506A4(s32 arg0, s32 arg1) {
 
     extern u16 aD80078EB4 __asm__("D_80078EB4");
     extern void func_80150820(s32, s32);

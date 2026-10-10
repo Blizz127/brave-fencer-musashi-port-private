@@ -26,7 +26,7 @@ typedef struct {
 } Cmd_80178D40;
 extern void func_8012A568(void (*a0)(void));
 
-s32 func_8017EF50(s32 param_1)
+void func_8017EF50(s32 param_1)
 {
     extern void func_8012931C(struct vec *a0);
     extern void func_801292C8(u8 *a0);

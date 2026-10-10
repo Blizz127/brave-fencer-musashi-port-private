@@ -13,7 +13,7 @@ extern M2C_UNK D_801D9BC8;
 s32 func_8016BF50(s32 param);
 void func_8016BFA8(s32 a0, s32 a1, s32 a2, s32 a3);
 
-s32 func_8016BD78(s32 param_1)
+void func_8016BD78(s32 param_1)
 {
     extern u8 D_801D9BC5;
     extern u8 D_801D9BC6;

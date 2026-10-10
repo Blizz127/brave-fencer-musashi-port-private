@@ -1858,6 +1858,9 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 ### Inc 141: sc01_0077 abi batch (6 gained)
 - 8017DF5C: its prototype for func_800CF854 declared an argument, but the main_0010 callee is `(void)`; fixed. Five callers whose retail a0 is still the caller's own argument at the jal (behind switch tables the analysis cannot follow) now pass it explicitly. All byte-exact. Twins 801506A4 (sc02_0035) and 801670E4 (sc03_0098) installed. Gates pass, LOST []. Next stop 8017EF50 (ub).
 
+### Inc 142: sc01_0077 no-return s32 functions declared void (11 gained)
+- 11 ub refusals were `s32` functions that never return a value (undef return). Declared them void (byte-exact); void_result_returns covers callers. Gates pass, LOST []. Next stop 8013A530.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for

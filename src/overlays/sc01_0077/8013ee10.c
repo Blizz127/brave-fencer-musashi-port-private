@@ -50,7 +50,7 @@ extern u16 D_80115112;
 void func_8013FAF8(s16 arg0, s16 arg1);
 unsigned char *func_80141CA4(void);
 
-s32 func_8013EE10() {
+void func_8013EE10() {
     extern E4 aD80115188[] __asm__("D_80115188");
     extern E4 D_80115168[];
     extern unsigned short D_80115118;

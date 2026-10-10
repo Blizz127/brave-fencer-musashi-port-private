@@ -9,7 +9,7 @@ extern void func_8012C218(void *a0);
 extern void func_8012C218(void *a0);
 extern signed char D_80199178[];
 
-s32 func_8018514C(s32 param_1) {
+void func_8018514C(s32 param_1) {
     int self = ((int)param_1);
     int iVar6;
     int iVar1;

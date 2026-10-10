@@ -11,7 +11,7 @@ extern u8 D_80078EC0;
 extern void (*D_8018A1AC[])(s32);
 extern void func_80146CA0(void *a0);
 
-s32 func_80175218(void * param_1)
+void func_80175218(void * param_1)
 {
     s32 i = D_80078EC0 - 1;
     D_8018A1AC[i](param_1);

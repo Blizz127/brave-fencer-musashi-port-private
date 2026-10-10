@@ -69,7 +69,7 @@ extern void func_8012A828(s32 a0, void *a1);
 void func_801829E0(int param_1);
 struct Prim { s16 f0, f2, f4, f6, f8, fA, fC, fE; s32 f10; };
 
-s32 func_80182A24(s32 arg0) {
+void func_80182A24(s32 arg0) {
     extern s32 func_8012E544(s32 a0);
     extern void func_8018301C(s32 a0);
     extern void func_80184ED8(s32 a0, s32 a1);
