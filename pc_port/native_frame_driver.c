@@ -4436,6 +4436,24 @@ static void main_frame(void) {
     (void)call0(F_8001513C);
     ++g_driver.frames;
     {
+        /* MUSASHI_TRACE_OVL=1: FNV-1a of the scene-specific overlay span
+         * 0x80170000..0x80180000, printed with the frame whenever it changes
+         * (maps the resident member over time; diagnostic only). */
+        static int on = -1;
+        static uint32_t last;
+        if (on < 0) on = getenv("MUSASHI_TRACE_OVL") != NULL;
+        if (on) {
+            const uint8_t *q = musashi_boot_ram_span(g_driver.memory, 0x80170000u, 0x10000u);
+            uint32_t h = 2166136261u;
+            unsigned i;
+            if (q) for (i = 0; i < 0x10000u; i += 4u) { h ^= (uint32_t)q[i] | ((uint32_t)q[i + 1] << 8); h *= 16777619u; }
+            if (q && h != last) {
+                fprintf(stderr, "native_boot: OVL_TRACE frame=%lu hash=%08x\n", (unsigned long)g_driver.frames, h);
+                last = h;
+            }
+        }
+    }
+    {
         /* MUSASHI_DUMP_VRAM_AT=N[,N...]: render stats + VRAM dump at those
          * frames (needs MUSASHI_DUMP_VRAM=1; files tagged _f<N>). */
         static const char *at = (const char *)-1;
