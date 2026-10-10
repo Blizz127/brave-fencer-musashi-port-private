@@ -1796,6 +1796,10 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 - Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [] / GAINED [].
 - Route (AUTO_START=2) still faults at ~f1600: lane 80162968 reads object 80126B58, whose +4/+8 fields hold ff7c0000/fbdf0000. The bad object comes from upstream. Next: find who builds it.
 
+### Inc 128: 801627E8 passes its pinned a0 (f1600 host fault fixed)
+- The f1600 fault in 80162968 was caused by 801627E8. It pins `$a0 = &D_8011F750` and then calls `D_801817AC[idx]()`. Retail's handler receives 0x8011F750 in a0; the native call passed nothing, so the handler read a stale 80126B58. The table is now typed `(u8 *)` and called with `p`. It is byte-exact (single-row verify MATCH) and was the only $4-pinned table call in the strict overlays.
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, LOST []. Route: no host fault. Next stop: 8017D490.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for

@@ -14,7 +14,7 @@ void func_801627E8(void)
 {
 
     extern s32 D_8011F750;               /* canonical: engine_core.h `extern s32 D_8011F750;` (func_8005CF28 here as a byte) */
-    extern void (*D_801817AC[])(void);   /* word-stride table of dispatch fn pointers */
+    extern void (*D_801817AC[])(u8 *);   /* word-stride table of dispatch fn pointers */
     register u8 *p __asm__("$4") = (u8 *)&D_8011F750;
     s32 idx;
 
@@ -22,6 +22,6 @@ void func_801627E8(void)
     idx = *p;
     if (idx != 0) {
         idx = idx - 1;
-        D_801817AC[idx]();
+        D_801817AC[idx](p); /* retail jalr keeps a0 = &D_8011F750 */
     }
 }
