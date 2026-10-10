@@ -1861,6 +1861,9 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 ### Inc 142: sc01_0077 no-return s32 functions declared void (11 gained)
 - 11 ub refusals were `s32` functions that never return a value (undef return). Declared them void (byte-exact); void_result_returns covers callers. Gates pass, LOST []. Next stop 8013A530.
 
+### Inc 143: 8013A530 admitted (prototypes for main callees)
+- All nine 8013a530.c copies declared func_80015F04/80015D4C with empty parens (9-arg calls). Used the src/main prototypes (byte-exact). Gates pass, LOST []. Next stop 8013AA24.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for

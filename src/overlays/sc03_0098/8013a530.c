@@ -59,8 +59,8 @@ extern void aF80137030(s32 x, s32 y) __asm__("func_80137030");
 extern u16 aD800B9A02 __asm__("D_800B9A02");
 extern short D_800B9A02;
 extern void *memcpy(void *, const void *, u32);
-extern void func_80015D4C();
-extern void func_80015F04();
+extern void func_80015D4C(s32 a0, s32 a1, s32 a2, s32 a3, u8 arg4, u8 arg5, u8 arg6, u16 arg7, u16 arg8);
+extern void func_80015F04(s32 a0, s32 a1, s32 a2, s32 a3, u8 arg4, u8 arg5, u8 arg6, u16 arg7, u16 arg8);
 extern void func_8013AA24(s32 a0, s32 a1);
 void func_8013AA24(s32 a0, s32 a1);
 
