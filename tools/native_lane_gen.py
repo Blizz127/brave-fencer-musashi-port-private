@@ -2212,7 +2212,16 @@ MOVE_ASM_RE = re.compile(r'\b(?:__asm__|asm)\s*(?:volatile\s*|__volatile__\s*)?\
 
 
 def move_asm_host(text):
+    text = ADDIU_ASM_RE.sub(lambda m: f"{m.group(2)} = (__typeof__({m.group(2)}))((char *)({m.group(3)}) + ({m.group(1)}));", text)
     return MOVE_ASM_RE.sub(lambda m: f"{m.group(1)} = (__typeof__({m.group(1)}))({m.group(2)});", text)
+
+
+# Strict (B28): an add-immediate written as asm to pin its schedule
+# (80038A58: `asm("addiu %0,%1,18" : "=r"(p) : "r"(base), "r"(dep))`; the
+# extra inputs only order it) is `p = base + 18` (bytes) on the host.
+ADDIU_ASM_RE = re.compile(r'\b(?:__asm__|asm)\s*(?:volatile\s*|__volatile__\s*)?\(\s*'
+                          r'"addiu\s+%0,\s*%1,\s*(-?(?:0x[0-9a-fA-F]+|\d+))"\s*:\s*"=r"\s*\(\s*(\w+)\s*\)\s*'
+                          r':\s*"r"\s*\(\s*(\w+)\s*\)(?:\s*,\s*"r"\s*\(\s*\w+\s*\))*\s*\)\s*;')
 
 
 # Strict (B28): a load written as asm to pin its scheduling (80133CD4:
@@ -4780,6 +4789,7 @@ def strict_mixed_ok(m):
     text = REG_PIN_RE.sub(r"\1", strip_multi_pins(src.read_text(errors="replace")))
     text = LA_ASM_RE.sub("", text)
     text = MOVE_ASM_RE.sub("", text)
+    text = ADDIU_ASM_RE.sub("", text)
     text = load_asm_host(text)
     text = gte_inline_macros_host(text)
     text = gte_host(text)

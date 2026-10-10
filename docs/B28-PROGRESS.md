@@ -1774,6 +1774,12 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 - Result: MDEC transfers 8 → 3704 and VRAM uploads 995 → 4521. By f1250, 88 decoded frames, all byte-identical to hybrid's. Saved `/workspace/bfm-frames/strict_fmv_040.png` (logo).
 - Open: f2550+ load still stalls (ld=3, want=580); the hybrid overlay diff still needs a hybrid OVL trace.
 
+### Inc 125: 80038A58 native (strict) and sc01 jump-table twins
+- The 13 sc01_0000/0001 jump-table twins (with translated rodata_base) are committed, including 8013B83C. The 8013B83C stop is cleared.
+- Regression check: the black display at the 8013B83C stop is not a regression. The stop is mid scene load around f1600, and the display was already black there before 4adcd522.
+- main 80038A58: the registry row is `mixed`, and the source is a 100% oracle match at -O2. Its one instruction asm is `addiu %0,%1,18`, which pins scheduling, so a C rewrite stays 2 words off. Strict-only generator change: ADDIU_ASM_RE hosts it as `x = (char *)y + imm`. The hybrid table is identical.
+- Next stop: 801285E4 (~f1600, New Game scene load).
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for
