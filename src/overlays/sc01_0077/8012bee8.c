@@ -1,0 +1,17 @@
+/* sc01_0077: func_8012BEE8 from Druthulu/BFM-decomp
+ * src/ov_SC01_077/ov_SC01_077_jr_8012ACE0.c (preprocessed; only the declarations it uses),
+ * byte-identical to the sc01_0077 retail words (gcc-2.7.2 -O2). */
+typedef unsigned int u32;
+typedef int s32;
+extern void func_8012A568(void (*a0)(void));
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+
+s32 func_8012BEE8(s32 a0) {
+    s32 v0;
+    v0 = *(s32*)(a0 + 0x1C);
+    if (!v0) goto ret1;
+    *(s32*)(a0 + 0x1C) = v0 - 1;
+    return (u32)(v0 - 1) < 1;
+ret1:
+    return 1;
+}

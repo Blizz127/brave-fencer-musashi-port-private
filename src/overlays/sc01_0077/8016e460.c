@@ -1,0 +1,74 @@
+/* sc01_0077: func_8016E460 from Druthulu/BFM-decomp
+ * src/ov_SC01_077/ov_SC01_077_jr_8016AB6C.c (preprocessed; only the declarations it uses),
+ * byte-identical to the sc01_0077 retail words (gcc-2.7.2 -O2). */
+typedef unsigned char u8;
+typedef unsigned short u16;
+typedef short s16;
+typedef int s32;
+extern s32 func_80017758(void *a0, void *a1);
+extern void func_80048EAC(void *a0, void *a1);
+extern s32 func_80017DC4(void *a0, void *a1);
+extern s32 func_80017758(void *a0, void *a1);
+extern s32 func_80017DC4(void *a0, void *a1);
+extern void func_80048EAC(void *a0, void *a1);
+extern s32 func_80017758(void *a0, void *a1);
+
+void func_8016E460(void *arg0, void *arg1) {
+    u8 buf[0x5C];
+    u8 *p = buf + 0x38;
+    u8 *q = buf + 0x58;
+    u8 v1;
+    u8 v0;
+    u8 w;
+    u16 t2c;
+    s32 c7 = 7;
+    s32 cm7 = -7;
+    s32 c3 = 3;
+    s32 cm3 = -3;
+    *(s16 *)(buf + 0x00) = c7;
+    *(s16 *)(buf + 0x10) = 0;
+    *(s16 *)(buf + 0x08) = 0;
+    *(s16 *)(buf + 0x18) = cm7;
+    *(s16 *)(buf + 0x0a) = c3;
+    *(s16 *)(buf + 0x1a) = 0;
+    *(s16 *)(buf + 0x02) = 0;
+    *(s16 *)(buf + 0x12) = cm3;
+    *(s16 *)(buf + 0x1c) = 0;
+    *(s16 *)(buf + 0x14) = 0;
+    *(s16 *)(buf + 0x0c) = 0;
+    *(s16 *)(buf + 0x04) = 0;
+    v1 = *(u8 *)((u8 *)arg0 + 0x30);
+    *(s32 *)(buf + 0x30) = 0x50000000;
+    v0 = v1 >> 2;
+    w = v0 >> 2;
+    *(u8 *)(buf + 0x2a) = v1;
+    *(u8 *)(buf + 0x26) = v1;
+    *(u8 *)(buf + 0x28) = v1;
+    *(u8 *)(buf + 0x24) = v1;
+    *(u8 *)(buf + 0x29) = v0;
+    *(u8 *)(buf + 0x25) = v0;
+    *(u8 *)(buf + 0x2c) = w;
+    *(u8 *)(buf + 0x20) = w;
+    *(u8 *)(buf + 0x2e) = w;
+    *(u8 *)(buf + 0x22) = w;
+    *(u8 *)(buf + 0x2d) = w;
+    *(u8 *)(buf + 0x21) = w;
+    t2c = *(u16 *)((u8 *)arg0 + 0x2c);
+    *(u16 *)(q + 0x02) = t2c;
+    *(u16 *)(q + 0x00) = t2c;
+    func_80017DC4(q, p);
+    func_80048EAC(arg1, p);
+    *(s32 *)(buf + 0x4c) = (s32)*(s16 *)((u8 *)arg0 + 6);
+    *(s32 *)(buf + 0x50) = (s32)*(s16 *)((u8 *)arg0 + 0xa);
+    *(s32 *)(buf + 0x54) = (s32)*(s16 *)((u8 *)arg0 + 0xe);
+    func_80017758(buf + 0x00, p);
+    *(s16 *)(buf + 0x00) = c3;
+    *(s16 *)(buf + 0x10) = 0;
+    *(s16 *)(buf + 0x08) = 0;
+    *(s16 *)(buf + 0x18) = cm3;
+    *(s16 *)(buf + 0x0a) = c7;
+    *(s16 *)(buf + 0x1a) = 0;
+    *(s16 *)(buf + 0x02) = 0;
+    *(s16 *)(buf + 0x12) = cm7;
+    func_80017758(buf + 0x00, p);
+}

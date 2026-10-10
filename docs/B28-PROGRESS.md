@@ -1816,6 +1816,12 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 - main 8003D3B4 is a PsyQ library routine, so the lane excludes it. It is now a driver HLE: it sets the low 6 bits of voice ADSR2 through D_8006B54C, then runs the libspu delay (8003B0E4 = spu_delay).
 - Gates pass (38/38, strict_build=0, LOST []). The route passes f1700. Next stop: 80128288 in a newly loaded overlay.
 
+### Inc 132: import sc01_0077 (scene after the New Game load); void-return scope fix
+- At f1700 the resident overlay is sc01_0077 (extracted/overlays/sc01/0077.pac0.bin; its SHA-1 matches upstream's check.ov_SC01_077.sha). Added config/overlay_sc01_0077.yaml (vram 0x80128158, code end 0x80186AD0: the last `jr $ra` past the last function, which is also the first data symbol upstream references), a registry target, and a strict allow line.
+- vendor_split_import: 2385 byte-identical functions; the dealias passes fixed 921. 48 that no longer verified were dropped. 48 of the 71 lane-refused functions (e.g. 801378F0, a memcpy type conflict) now use oracle-verified twins from sc01_0000.
+- Generator (strict): void_result_returns judged "does any caller read the value" by function name across every member. Overlays share one address range, so sc01_0077's own func_8012B4B8 blocked main_0012's (LOST). The check now covers only main plus the function's own member; main functions still count every source.
+- Gates pass (38/38, strict_build=0), LOST []. Next stop: 80145CEC.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for

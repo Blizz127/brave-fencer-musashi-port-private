@@ -3229,7 +3229,14 @@ def void_result_returns(optir, fname, name, info, own_source):
     if not rets or any(v != "undef" for _, v in rets):
         return optir
     uses = _call_use_index().get("func_" + name[5:].upper(), {})
-    if any(not all(oks) for src, oks in uses.items() if src != own_source):
+    # A call by name resolves inside the caller's own member (or main): overlay
+    # members share one address range, so another member's func_X is a
+    # different function (sc01_0077 reads its own 8012B4B8's value; main_0012's
+    # stays void).
+    own_dir = own_source.rsplit("/", 1)[0] + "/"
+    scope = ("src/",) if own_dir == "src/main/" else ("src/main/", own_dir)  # main is callable from every member
+    if any(not all(oks) for src, oks in uses.items()
+           if src != own_source and str(src).replace(str(ROOT) + "/", "").startswith(scope)):
         return optir
     vram = int(name[5:], 16)
     word = vram.to_bytes(4, "little")

@@ -1,0 +1,107 @@
+/* sc01_0077: func_8013A380 from Druthulu/BFM-decomp
+ * src/ov_SC01_077/ov_SC01_077_jr_801380E0.c (preprocessed; only the declarations it uses),
+ * byte-identical to the sc01_0077 retail words (gcc-2.7.2 -O2). */
+typedef unsigned char u8;
+typedef unsigned short u16;
+typedef unsigned int u32;
+typedef short s16;
+typedef int s32;
+struct Inner8013A4C4;
+struct S8013A4C4;
+struct Inner8013A4C4 {
+    u8 pad28[0x28];
+    s16 unk28;
+    s16 unk2A;
+};
+struct S8013A4C4 {
+    s16 unk0;
+    s16 unk2;
+    struct Inner8013A4C4 *unk4;
+    u8 padE[6];
+    s16 unkE;
+};
+typedef struct { u32 attr; s16 x0, y0, x1, y1; u8 r, g, b, code; } Gline_801372B0;
+typedef struct { s16 x, y, z, pad; } SVEC_80167AE0;
+typedef struct { s16 x, y, z, pad; } SVEC_8016A290;
+typedef void (*code)(unsigned short *);
+struct Fr {
+    u8 matrix[0x20];
+    SVEC_80167AE0 v[4];
+    struct { u8 r, g, b, pad; } col[4];
+    u32 code;
+};
+struct Fr_80167AE0 {
+    u8 matrix[0x20];
+    SVEC_80167AE0 v[4];
+    struct { u8 r, g, b, pad; } col[4];
+    u32 code;
+};
+struct Fr_8016A290 {
+    SVEC_8016A290 center;
+    SVEC_8016A290 diff;
+    s32 pos[3];
+    s32 _pad1c;
+    s16 mtx[32];
+    SVEC_8016A290 v[4];
+    struct { u8 r, g, b, pad; } col[4];
+    u32 code;
+};
+typedef struct { s16 x, y, z, pad; } SVec_801670E4;
+typedef struct {
+               u16 cx, cy, cz;
+               u16 _p06;
+               u16 a8[4];
+               s32 pos[3];
+               s32 _p1C;
+               SVec_801670E4 v[4];
+               struct { u8 r, g, b, cd; } col[4];
+               u32 code;
+               s32 _p54;
+               u8 m1[0x20];
+               u8 m2[0x20];
+} Fr_801670E4;
+extern void *memcpy(void *, const void *, unsigned int);
+extern void func_8012A568(void (*a0)(void));
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern s16 D_800B9A02;
+extern void *memcpy(void *, const void *, u32);
+extern void func_8005C324(int dst, int src, int n) __asm__("memcpy");
+extern short D_800B9A02;
+extern void func_80051DC8(void *a0, void *a1, s32 a2);
+extern void func_80137030(s16 a0, s16 a1);
+extern void aGsSortLine(Gline_801372B0 *p, void *ot, s32 z) __asm__("func_80051DC8");
+extern void aF80137030(s32 x, s32 y) __asm__("func_80137030");
+extern u16 aD800B9A02 __asm__("D_800B9A02");
+extern short D_800B9A02;
+struct S8013A4C4;
+extern u8 D_8011DA80[];
+extern void func_8013A530();
+extern void func_8013A448(void *a0);
+extern void func_8013A4C4(struct S8013A4C4 *a0);
+void func_8013A448(void *a0);
+void func_8013A4C4(struct S8013A4C4 *a0);
+void func_8013A530(int param_1);
+
+void func_8013A380(void) {
+    s16 *p;
+    s32 i;
+    p = (s16 *)D_8011DA80;
+    i = 0;
+    do {
+        if (p != (s16 *)0) {
+            switch (*p) {
+            case 2:
+                ((void (*)(void *))func_8013A530)(p);
+                break;
+            case 1:
+                func_8013A448(p);
+                break;
+            case 3:
+                func_8013A4C4((struct S8013A4C4 *)p);
+                break;
+            }
+        }
+        i += 1;
+        p += 8;
+    } while (i < 2);
+}

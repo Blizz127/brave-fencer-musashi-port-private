@@ -1,0 +1,57 @@
+/* sc01_0077: func_8016B5C0 from Druthulu/BFM-decomp
+ * src/ov_SC01_077/ov_SC01_077_jr_8016AB6C.c (preprocessed; only the declarations it uses),
+ * byte-identical to the sc01_0077 retail words (gcc-2.7.2 -O2). */
+typedef short s16;
+typedef int s32;
+extern void func_8016B984(void *a0);
+extern int func_8016B9F8(int);
+extern void func_8016B984(void *a0);
+extern void func_8016B91C(int);
+extern s32 func_8016B9F8(s32 param_1);
+extern void func_8016B984(void *a0);
+extern void func_8016B6BC(s32, s32, s32, s32);
+extern void func_8016B91C(s32);
+extern s16 D_80189CF8[];
+void func_8016B6BC(s32 param_1, s32 param_2, s32 param_3, s32 param_4);
+void func_8016B91C(s32 arg0);
+void func_8016B984(void *a0);
+s32 func_8016B9F8(s32 param_1);
+
+void func_8016B5C0(s32 param_1) {
+    s32 iVar4;
+    s32 iVar2;
+    s32 iVar5;
+    s16 sVar1;
+    s16 *psVar5;
+    s32 i;
+    iVar4 = *(s32 *)(param_1 + 0x18);
+    if (((s32 (*)(void))func_8016B9F8)() != 0) {
+        goto L984;
+    }
+    sVar1 = *(s16 *)(iVar4 + 0x1a) + 0x200;
+    *(s16 *)(iVar4 + 0x1a) = sVar1;
+    *(s16 *)(iVar4 + 0x18) = sVar1;
+    if (*(s32 *)(param_1 + 0x2c) == 0) {
+        iVar2 = *(s32 *)(param_1 + 0x1c);
+    } else {
+        iVar2 = *(s32 *)(param_1 + 0x1c) / 3;
+    }
+    iVar5 = *(s32 *)(param_1 + 0x1c) + -0x20;
+    *(s32 *)(param_1 + 0x1c) = iVar5;
+    if (iVar5 >= 0) {
+        goto LOOP;
+    }
+L984:
+    ((void (*)(s32))func_8016B984)(param_1);
+    return;
+LOOP:
+    i = 0;
+    psVar5 = D_80189CF8;
+    do {
+        func_8016B6BC(param_1, iVar2, (s32)*psVar5, (s32)(s16)i);
+        psVar5 = psVar5 + 1;
+        i = i + 1;
+    } while (i < 6);
+    func_8016B91C(param_1);
+    return;
+}
