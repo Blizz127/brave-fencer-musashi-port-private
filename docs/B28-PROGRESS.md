@@ -1745,6 +1745,20 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
   s32, u32 *); verify_registry MATCH.
 - Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [].
 
+## Inc 122 — 8012B608 native in strict with the exact retail cycle charge
+
+- Stop 8012B608 (angle step; one body covers main_0012/sc02_0031/sc02_0035)
+  was held out by OVERLAY_DENY, "ambiguous retail cycle mapping". Blizz's
+  call: option 2, an exact retail cycle charge, strict-only. The generator
+  already lifts a strict cycle hold only when lane_cycles maps the function
+  exactly (status mapped, ledger instrumented, else Reject "deny"); the
+  entry's wording just did not match that path. Reworded like 800128EC;
+  now admitted with the exact retail cycle ledger (no fixed charge, no
+  timing drift). Hybrid keeps the hold-out (TABLE_IDENTICAL).
+- Noted for later: from f3000 the 640x480 title frame draws flat white with
+  VRAM regions overwritten (separate 640-mode issue, untouched).
+- Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST [].
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for

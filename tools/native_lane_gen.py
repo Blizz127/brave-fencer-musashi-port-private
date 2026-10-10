@@ -2535,7 +2535,10 @@ OVERLAY_DENY = {
     # ambiguous, so it would run on the fixed charge and change guest time
     # (the B18 route proof's village DEVOBS/RAM/PAD differed with it native).
     # Held out to keep native-vs-interpreted runs exact, like main 800128EC.
-    ("main_0012", 0x8012B608): "ambiguous retail cycle mapping (fixed charge would change guest time)",
+    # Strict (B28, Blizz's call): same wording as main 800128EC, so the strict
+    # exact-ledger path in build_one lifts the hold only if the retail cycle
+    # mapping is exact ("mapped"); hybrid keeps the hold-out unchanged.
+    ("main_0012", 0x8012B608): "retail cycle mapping ambiguous: would keep the fixed charge (inexact timing)",
     # main_0012 8012DEB8 (B18): on the attract route it reads through a null
     # object pointer (+0x12), which retail reads harmlessly from the low-RAM
     # mirror; natively it faults the host (D-013 (4), job
