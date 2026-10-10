@@ -3401,6 +3401,82 @@ def escaped_locals(lines, derived):
     return out
 
 
+
+def dyn_root(name, dynamic, derived):
+    """The alloca a dynamic element address indexes, when its chain starts at
+    offset 0 of that alloca (`&arr[i]`); None otherwise."""
+    seen = set()
+    while name in dynamic and name not in seen:
+        seen.add(name)
+        name = dynamic[name]
+    if name in derived and derived[name][1] == 0:
+        return derived[name][0]
+    return None
+
+
+def _mips_dest(x):
+    op = x >> 26
+    if op == 0:
+        return (x >> 11) & 31
+    if op == 3:
+        return 31
+    if op in (0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
+              0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26):
+        return (x >> 16) & 31
+    return None
+
+
+def _sx16(v):
+    return v - 0x10000 if v & 0x8000 else v
+
+
+def dyn_arg_base(words, vram, jal_pc, reg):
+    """Strict (B28): the frame base of a loop-walked array passed in `reg` at
+    the jal at jal_pc: the arg is a `move` of a register whose every write in
+    the function is one `addiu r, sp, imm` (possibly through one `move` from
+    such a register) or `addiu r, r, k` (k > 0). Returns imm, or None."""
+    j = (jal_pc - vram) // 4
+    src = None
+    for k in [j + 1] + list(range(j - 1, max(j - 12, -1), -1)):
+        if k >= len(words):
+            continue
+        x = words[k]
+        if k != j + 1 and (x >> 26) in (2, 3, 4, 5, 6, 7, 1) or (k != j + 1 and x >> 26 == 0 and (x & 0x3F) in (8, 9)):
+            break
+        if _mips_dest(x) == reg:
+            if x >> 26 == 0 and (x & 0x3F) in (0x21, 0x25) and ((x >> 16) & 31) == 0:
+                src = (x >> 21) & 31
+            break
+    def seed(r, k):
+        # backward from the jal: the write that seeds r before the loop
+        hops = 0
+        while k > 0 and hops < 8:
+            k -= 1
+            x = words[k]
+            if _mips_dest(x) != r or x == 0:
+                continue
+            op, rs = x >> 26, (x >> 21) & 31
+            if op == 0x09 and rs == 29:
+                return _sx16(x & 0xFFFF)
+            if op == 0x09 and rs == r and _sx16(x & 0xFFFF) > 0:
+                continue  # the loop step (from the previous iteration)
+            if op == 0 and (x & 0x3F) in (0x21, 0x25) and ((x >> 16) & 31) == 0 and rs not in (0, 29):
+                r, hops = rs, hops + 1
+                continue
+            if op == 0x23 and rs == 29:
+                off = x & 0xFFFF
+                for k2 in range(k - 1, -1, -1):  # the spill it reloads
+                    y = words[k2]
+                    if y >> 26 == 0x2B and (y >> 21) & 31 == 29 and y & 0xFFFF == off:
+                        r, k, hops = (y >> 16) & 31, k2, hops + 1
+                        break
+                else:
+                    return None
+                continue
+            return None
+        return None
+    return seed(src, j) if src is not None else None
+
 def place_guest_locals(ir, fname, words, vram, frame, info=None):
     # escaped-only placement (no local reaches a callee) is best effort: if
     # the retail frame cannot place it, the IR is left as it was
@@ -3441,6 +3517,9 @@ def _place_guest_locals(ir, fname, words, vram, frame, info=None, _state=None):
                 derived[name] = derived[slot_src[lm.group(1)]]
                 continue
             pm = re.fullmatch(r"ptrtoint ptr (%[\w.\"$]+) to i32", rhs.strip())
+            if STRICT and pm and pm.group(1) in dynamic:
+                dynamic[name] = pm.group(1)
+                continue
             if STRICT and pm and pm.group(1) in derived:
                 # `(s32)&local` passed as an int argument: once the local
                 # sits in the retail frame its address is the guest one
@@ -3475,6 +3554,11 @@ def _place_guest_locals(ir, fname, words, vram, frame, info=None, _state=None):
                 op = a.split()[-1] if a.split() else ""
                 if op in derived:
                     tainted[i] = derived[op]
+                elif STRICT and op in dynamic:
+                    root = dyn_root(op, dynamic, derived)
+                    if root is None:
+                        raise Reject("escape", f"non-constant offset into local {dynamic[op]}")
+                    tainted[i] = (root, None)
             fm = re.search(r"func_([0-9A-Fa-f]{8})$", ca[0])
             calls.append((int(fm.group(1), 16), tainted, len(ca[1])))
     dyn_slots = set()
@@ -3521,6 +3605,10 @@ def _place_guest_locals(ir, fname, words, vram, frame, info=None, _state=None):
             lm = re.match(r"\s*%[\w.\"$]+ = load [^,]+, ptr (%[\w.\"$]+)(?:, align \d+)?(?:, ![\w.]+ !\d+)*\s*$", line)
             sm = re.match(r"\s*store [^,]+, ptr (%[\w.\"$]+)(?:, align \d+)?(?:, ![\w.]+ !\d+)*\s*$", line)
             text = line
+            ca2 = _call_args(line)
+            if ca2 and re.match(r"lane_(?:call_)?" + QFUNC + r"$", ca2[0]):
+                text = re.sub(r"\bcall [^@]*@[\w.$]+\(.*\)", lambda mo: " ".join(
+                    a for a in ca2[1] if a.split() and a.split()[-1] not in dynamic), line)
             if lm and lm.group(1) in dynamic:
                 text = ""
             elif sm and sm.group(1) in dynamic:
@@ -3551,6 +3639,9 @@ def _place_guest_locals(ir, fname, words, vram, frame, info=None, _state=None):
         if len(rsites) != len(ir_calls):
             if not (any(t for t, _ in ir_calls) or any(a for _, a in rsites)):
                 continue
+            if any(t[1] is None for tt, _ in ir_calls for t in tt.values()):
+                raise Reject("escape", f"dynamic local argument to {target:08x} with "
+                                       f"{len(ir_calls)} C calls, {len(rsites)} jal")
             merged = (merged_call_bases(ir_calls, rsites, base,
                                         sorted(allocas, key=lambda a: allocas[a][1]))
                       if STRICT and 0 < len(rsites) < len(ir_calls) else None)
@@ -3561,6 +3652,19 @@ def _place_guest_locals(ir, fname, words, vram, frame, info=None, _state=None):
             continue
         for (tainted, argc), (pc, args) in zip(ir_calls, rsites):
             sp_args = {i: o for i, o in args.items() if i < argc}
+            dyn = {i: t for i, t in tainted.items() if t[1] is None}
+            if dyn:
+                # Strict (B28): `f(&arr[i])` in a loop. Retail walks the array
+                # with a register seeded `addiu r, sp, imm` and stepped
+                # `addiu r, r, k`; imm is the array's frame base.
+                for i, (alloca, _) in dyn.items():
+                    b = dyn_arg_base(words, vram, pc, 4 + i)
+                    if b is None:
+                        raise Reject("escape", f"jal {target:08x} at {pc:08x}: dynamic local "
+                                               f"argument {i} has no provable frame base")
+                    if base.setdefault(alloca, b) != b:
+                        raise Reject("escape", f"local {alloca} at sp+{base[alloca]:#x} and sp+{b:#x}")
+                tainted = {i: t for i, t in tainted.items() if t[1] is not None}
             if set(tainted) != set(sp_args):
                 raise Reject("escape", f"jal {target:08x} at {pc:08x}: locals at arguments "
                                        f"{sorted(tainted)}, retail sp offsets at {sorted(sp_args)}")

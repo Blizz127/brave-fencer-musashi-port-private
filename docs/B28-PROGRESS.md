@@ -1840,6 +1840,10 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 - Gap at 8017C974 in sc01_0077. The only twin was sc02_0004 8017C59C, at a different address. Relocated it with an address map from both retail word streams (jal targets and hi/lo pairs, plus rodata_base). The upstream file had pre-expanded GTE asm, so I folded it back into the gte_* macro names the generator maps to host helpers. Byte-exact, admitted.
 - Gates pass, LOST []. Next stop 8017C294.
 
+### Inc 137: strict generator places loop-walked local arrays passed to callees
+- sc01_0077 8017C294 passes `&corner[i]`, `&view[i]`, `&hit[i]` to guest callees in a loop (escape: non-constant offset into local). Strict now taints such an argument as "inside alloca X". Its frame base is proven from the retail words (dyn_arg_base): scan back from the jal through `move`, loop steps `addiu r,r,k`, and spill reloads to the seeding `addiu r, sp, imm`. Every call site must agree on the base, and the existing frame/overlap checks still apply. Result: corner sp+16, view sp+48, hit sp+80.
+- Hybrid unchanged (TABLE_IDENTICAL). Gates pass, LOST []. Next stop main 8001D70C.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for
