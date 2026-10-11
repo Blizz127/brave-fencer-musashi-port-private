@@ -1899,6 +1899,20 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
   PutDrawEnv per frame in the field and strict issues one. Next is chasing
   that second pass. Village is location 1010.
 
+## Increments 150-151: draw-env trace and same-moment frames
+
+- `MUSASHI_TRACE_DRAWENV=FROM,COUNT` logs each renderer draw env with the
+  prims submitted under the previous one. In the field, strict sets one env
+  per frame (448-503 prims). Hybrid's extra envs are partial GPU-command updates
+  with 0 prims under them, and it draws about 430 prims per frame. There is no
+  missing second draw pass.
+- `MUSASHI_DUMP_VRAM_AT_INGAME=a,b,...` dumps on the script's in-game clock, so
+  strict and hybrid frames can be compared at the same moment.
+- Strict draws Musashi (a small character model under a far camera, in-game
+  frame 700) and his dialogue box with portrait (frame 1000). Hybrid's dumps at
+  those moments are caught partly drawn (mostly black), so they cannot serve as
+  a picture reference. Evidence: `/workspace/bfm-frames/b28_ig_*`.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for
