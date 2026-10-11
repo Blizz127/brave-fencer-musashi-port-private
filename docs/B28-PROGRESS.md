@@ -2018,6 +2018,12 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 - Gates: build=0, TABLE_IDENTICAL, ctest 39/39, strict_build=0, m2c=0, LOST [].
 - Village warp: next stop not_in_lane 8017f1f0.
 
+### Inc 163 — sc03_0001 8017F1F0 returns s32
+
+- func_8017F1F0: upstream faked the return with a `$v0` register-asm idiom under a void prototype (refused abi: callers read v0). Rewritten as plain `s32` returns, byte-exact.
+- Gates: build=0, TABLE_IDENTICAL, ctest 39/39, strict_build=0, m2c=0, LOST [].
+- Village warp: next stop not_in_lane 8004969c (main).
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for
