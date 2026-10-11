@@ -1943,6 +1943,15 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
   (801378f0: 50 of 58 words match), so they cannot be used as twins.
 - Gates pass, LOST [].
 
+## Increment 154: 14 more sc03_0001 imports
+
+- The importer's gcc-2.7.2 compile failed for 22 functions because file-scope
+  prototypes clashed with a function's own local `extern int f();`. Dropping
+  those prototypes and verifying installs 14 byte-identical, including the warp
+  stop 80145cec. The de-alias passes were re-run on them; a leftover
+  `aF80161CD0` body crashed emit_table again.
+- Gates pass, LOST []. The warp now stops at 801457a4.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for
