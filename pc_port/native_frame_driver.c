@@ -6,6 +6,7 @@
  * table (musashi_native_lane_invoke); a callee the lane cannot run stops the
  * process with seam=frame_driver. Built only with MUSASHI_STRICT_NATIVE. */
 #include "musashi_native_frame_driver.h"
+unsigned long long musashi_renderer_prims_total(void) __attribute__((weak));
 #include "musashi_callback_registration.h"
 #include "musashi_irq_dispatch.h"
 #include "musashi_vblank.h"
@@ -4850,9 +4851,17 @@ static void main_frame(void) {
         /* MUSASHI_DRIVER_TRACE=N: one progress line every N frames */
         static long every = -1;
         if (every < 0) { const char *e = getenv("MUSASHI_DRIVER_TRACE"); every = e ? atol(e) : 0; }
-        if (every > 0 && g_driver.frames % (unsigned long)every == 0)
-            fprintf(stderr, "native_boot: FRAME_TRACE frame=%lu alt=%u ovl_state=%u prims=%u "
-                    "disp=%u draw=%u st3b4=%04x ld=%u ld_n=%u ovl_flag=%u cdq=%u/%u cderr=%u cdst=%02x strm=%08x/%u lst=%d sync=%d rd=%d want=%d hdr=%08x %08x %08x\n", (unsigned long)g_driver.frames,
+        static unsigned long long last_sub;
+        unsigned long long sub = 0, now_sub = 0;
+        if (every > 0 && g_driver.frames % (unsigned long)every == 0) {
+            /* sub: prims the renderer received per frame since the last line
+             * (prims= is only the PRIM_AREA cursor, which the field code does
+             * not use) */
+            now_sub = musashi_renderer_prims_total ? musashi_renderer_prims_total() : 0;
+            sub = (now_sub - last_sub) / (unsigned long long)every;
+            last_sub = now_sub;
+            fprintf(stderr, "native_boot: FRAME_TRACE frame=%lu sub=%llu alt=%u ovl_state=%u prims=%u "
+                    "disp=%u draw=%u st3b4=%04x ld=%u ld_n=%u ovl_flag=%u cdq=%u/%u cderr=%u cdst=%02x strm=%08x/%u lst=%d sync=%d rd=%d want=%d hdr=%08x %08x %08x\n", (unsigned long)g_driver.frames, sub,
                     rd8(MAIN_STATE + ST_ALT_FRAME), rd16(0x800B99E4u),
                     rd32(PRIM_CURSOR) - (PRIM_AREA + buffer_index() * 80000u),
                     rd16(MAIN_STATE + ST_DISP_CUR), rd16(MAIN_STATE + ST_DRAW_CUR),
@@ -4861,6 +4870,7 @@ static void main_frame(void) {
                     rd8(0x8007620Cu), rd32(0x800AE708u), rd32(0x800AE7B0u),
                     (int)rd32(0x800AE6F0u), (int)rd32(0x800AE6E8u), (int)rd32(0x800AE734u + 0x18u),
                     (int)rd32(0x800AE7ACu), rd32(0x80078E40u), rd32(0x80078E44u), rd32(0x80078E48u));
+        }
     }
 }
 

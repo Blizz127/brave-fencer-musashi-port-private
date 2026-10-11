@@ -1808,6 +1808,24 @@ static int sample_keyboard_pad(void *userdata, uint16_t *buttons) {
                     sampled &= (uint16_t)~(1u << 14); /* Cross */
             }
         }
+        {
+            /* Test-only: MUSASHI_SCRIPT_AFTER=N starts the actions after N
+             * pad polls. The strict native path never feeds the GP1/GTE
+             * state that in_game_frames counts, so this drives that clock
+             * once per poll instead. */
+            static long script_after = -2;
+            static uint64_t last_poll;
+            if (script_after == -2) {
+                const char *e = getenv("MUSASHI_SCRIPT_AFTER");
+                script_after = e ? atol(e) : -1;
+            }
+            if (script_after >= 0 && boot->keyboard_polls >= (uint64_t)script_after &&
+                boot->keyboard_polls != last_poll) {
+                last_poll = boot->keyboard_polls;
+                boot->scene1_reached = 1;
+                ++boot->in_game_frames;
+            }
+        }
         if (boot->scene1_reached) {
             const char *auto_dismiss_env = getenv("MUSASHI_AUTO_DISMISS");
             int auto_dismiss = (auto_start && auto_start[0] == '1') ||
@@ -5793,6 +5811,14 @@ static MusashiResetGraphPrefixStatus strict_frame_driver_run(NativeBoot *boot) {
     return musashi_frame_driver_run(&boot->memory, &boot->startup_devices, &ops);
 }
 #endif
+
+/* FRAME_TRACE: total prims the renderer has received (PsyQ HLE + GPU bridge). */
+unsigned long long musashi_renderer_prims_total(void)
+{
+    BfmPlatRendererStats rs;
+    bfm_plat_renderer_stats(&rs);
+    return (unsigned long long)rs.prims;
+}
 
 int main(int argc, char **argv) {
     musashi_host_pad_hints();

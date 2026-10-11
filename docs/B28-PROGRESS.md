@@ -1883,6 +1883,22 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 - The Inc 146 volatile check no longer wraps host-local addresses (8013B274's frame scratch `L`), which had tripped "host address converted to integer". 8013B274 is admitted in all six members; 13 more sc01_0077 gap twins installed (verified).
 - Gates pass, LOST []. The strict route now runs to its frame limit with no STRICT_INTERPRETER_ENTRY.
 
+## Increment 149: walking route and a renderer prims counter
+
+- `FRAME_TRACE` gains `sub=`: prims the renderer received per frame since
+  the previous line. The old `prims=` reads the PRIM_AREA cursor, which the
+  field code does not use, so it read 0 in gameplay. Strict field frames get
+  430-490 prims per frame.
+- Test-only `MUSASHI_SCRIPT_AFTER=N` starts `MUSASHI_GAMEPLAY_ACTION=script`
+  after N pad polls. The strict native path never feeds the GP1/GTE state that
+  `scene1_reached`/`in_game_frames` detect. Input only.
+- With the same walk script, strict and hybrid both go 3005 -> 3008 and reach
+  pos (48,-4928) after step 4. Hybrid then slides 259 more units in Z during
+  the mash step.
+- Open: Musashi's sprite is not visible in strict. Hybrid issues about two
+  PutDrawEnv per frame in the field and strict issues one. Next is chasing
+  that second pass. Village is location 1010.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for
