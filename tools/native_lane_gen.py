@@ -2434,7 +2434,7 @@ GTE_INLINE_DEFINE_HEAD = re.compile(
 # with a `/* sp+0xNN */` comment; the registry's byte-exact compile is what
 # proves gcc placed it there.
 _FRAME_ASM_RE = re.compile(
-    r'__asm__\s+(?:volatile|__volatile__)\s*\(\s*((?:"[^"]*"\s*)+):\s*:\s*"r"\s*\((.+?)\)\s*:\s*((?:"[^"]*"\s*,?\s*)+)\)\s*;', re.S)
+    r'__asm__\s+(?:volatile|__volatile__)\s*\(\s*((?:"[^"]*"\s*)+)(?::\s*:\s*(?:"r"\s*\((.+?)\))?\s*(?::\s*((?:"[^"]*"\s*,?\s*)+))?)?\)\s*;', re.S)
 _FRAME_DECL_RE = re.compile(r'^\s*\w+\s+(\w+)\[(\d+)\];\s*/\*\s*sp\+0x([0-9A-Fa-f]+)\s*\*/', re.M)
 _SETROT = ["lw $12,0(%0)", "lw $13,4(%0)", "ctc2 $12,$0", "ctc2 $13,$1", "lw $12,8(%0)", "lw $13,12(%0)",
            "lw $14,16(%0)", "ctc2 $12,$2", "ctc2 $13,$3", "ctc2 $14,$4"]
@@ -2463,7 +2463,8 @@ def gte_frame_block_host(text):
                for x in re.split(r";|\\n", "".join(re.findall(r'"([^"]*)"', m.group(1)))) if x.strip()]
         # `"r"((s32)local)`: the host keeps the pointer (a 32-bit round trip
         # would truncate a host stack address)
-        op0 = f"({re.sub(r'^\(\s*(?:s32|u32|int|long)\s*\)\s*', '', m.group(2).strip())})"
+        op0 = (f"({re.sub(r'^\(\s*(?:s32|u32|int|long)\s*\)\s*', '', m.group(2).strip())})"
+               if m.group(2) else None)
         out, i, reg2 = [], 0, None
 
         def take(seq):
@@ -2473,10 +2474,19 @@ def gte_frame_block_host(text):
                 return True
             return False
         while i < len(ins):
-            if take(_SETROT):
+            if op0 and take(["lwc2 $0,0(%0)", "lwc2 $1,4(%0)"]):
+                out.append(f"musashi_lane_gte_ldv0((const void *){op0});")
+                continue
+            if take(["nop", "nop", "mvmva 1,0,0,0,0"]):
+                out.append("musashi_lane_gte_rtv0();")  # gte_rt: RT*V0 + TR
+                continue
+            if op0 and take(["swc2 $25,0(%0)", "swc2 $26,4(%0)", "swc2 $27,8(%0)"]):
+                out.append(f"musashi_lane_gte_stlvnl((void *){op0});")
+                continue
+            if op0 and take(_SETROT):
                 out.append(f"musashi_lane_gte_SetRotMatrix((const void *){op0});")
                 continue
-            if take(_SETTR):
+            if op0 and take(_SETTR):
                 out.append(f"musashi_lane_gte_SetTransMatrix((const void *){op0});")
                 continue
             am = re.fullmatch(r"addiu \$2,\$sp,(0x[0-9a-fA-F]+|\d+)", ins[i])
