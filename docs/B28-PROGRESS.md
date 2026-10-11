@@ -1994,6 +1994,12 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 - Gates: build=0, TABLE_IDENTICAL, ctest 39/39, strict_build=0, m2c=0, LOST [].
 - Village warp (1010) now stops at sc03_0001 80186a8c (was 8005a658).
 
+### Inc 159 — sc03_0001 80186A8C own C; warp reaches loc 1010
+
+- sc03_0001 func_80186A8C: clean-room C from the retail words, byte-exact (50/50 words).
+- Gates: build=0, TABLE_IDENTICAL, ctest 39/39, strict_build=0, m2c=0, LOST [].
+- Village warp: no STRICT_INTERPRETER_ENTRY. SCRIPT_POS reports loc=1010, then HOST_FAULT addr=0x20 at sc03_0001 8012AAAC (store through a null `*(obj+0x20)`; retail hits RAM via the KUSEG mirror). Next: KUSEG_NORMALIZE key.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for

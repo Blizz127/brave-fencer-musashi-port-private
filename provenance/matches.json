@@ -384728,6 +384728,17 @@
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80186A8C",
+      "vram": 2149083788,
+      "size": 200,
+      "region": "sc03_0001",
+      "source": "src/overlays/sc03_0001/80186a8c.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "clean room, written from the retail words for the owner (B28)"
     }
   ]
 }
