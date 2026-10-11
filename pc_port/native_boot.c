@@ -1283,6 +1283,7 @@ static void spiral_climb_input(NativeBoot *boot, uint16_t *sio_clear, uint16_t *
  * from the player's own motion, starting from the forest's (Right is +X,
  * Up is +Z), so a room's camera does not need to be known. A goto ends
  * early when the player leaves the room. */
+void musashi_native_dump_vram_tagged(const char *tag);
 enum { SCRIPT_ROOM, SCRIPT_HOLD, SCRIPT_TAP, SCRIPT_GOTO, SCRIPT_MASH, SCRIPT_CLIMB };
 typedef struct {
     int kind;
@@ -1865,6 +1866,30 @@ static int sample_keyboard_pad(void *userdata, uint16_t *buttons) {
             }
             /* Scripted gameplay actions for automated in-game validation */
             const char *gameplay_action = getenv("MUSASHI_GAMEPLAY_ACTION");
+            {
+                /* MUSASHI_DUMP_VRAM_AT_INGAME=a,b,...: dump the display at
+                 * these in-game (script clock) frames, for strict/hybrid
+                 * side-by-sides at the same moment */
+                static const char *at = (const char *)1;
+                static unsigned last_ig = ~0u;
+                if (at == (const char *)1) at = getenv("MUSASHI_DUMP_VRAM_AT_INGAME");
+                if (at && boot->in_game_frames != last_ig) {
+                    const char *q = at;
+                    last_ig = boot->in_game_frames;
+                    while (*q) {
+                        char *end;
+                        unsigned long f = strtoul(q, &end, 10);
+                        if (end == q) break;
+                        if (f == boot->in_game_frames) {
+                            char tag[32];
+                            snprintf(tag, sizeof tag, "_ig%lu", f);
+                            musashi_native_dump_vram_tagged(tag);
+                        }
+                        if (*end != ',') break;
+                        q = end + 1;
+                    }
+                }
+            }
             if (gameplay_action && boot->in_game_frames >= 5u) {
                 if (strcmp(gameplay_action, "walk") == 0) {
                     sampled &= (uint16_t)~(1u << 4); /* Up: walk forward */
