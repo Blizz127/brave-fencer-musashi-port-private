@@ -1867,6 +1867,9 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 ### Inc 144: GTE frame-block pass accepts `__volatile__` and `\n`-separated templates; runs last
 - 8013AA24 (and 8013AB54) carry SetRotMatrix+SetTransMatrix as one `__asm__ __volatile__` statement with `\n` separators; the pass now takes that spelling. It runs after gte_host/gte_matrix_host/gte_scale_host, so it only sees what they leave (running first broke gte_host's multi-statement match in main 800123F0/80012558/800126C4/8001382C). Gates pass, LOST []. Next stop 8013AD38.
 
+### Inc 145: 8013AD38 everywhere; sc01_0077 gap twins
+- Frame-block pass idioms ldv0/rt/stlvnl admit 8013AD38 in main_0012 and sc02_0035. sc01_0077 had no row there; twinned 8013AD38 (main_0012) and 8012EFB8 (sc01_0001) into its gaps (verified). Gates pass, LOST []. Next stop 801392FC.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for

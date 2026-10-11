@@ -353150,6 +353150,28 @@
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "size": 128,
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)",
+      "name": "func_8012EFB8",
+      "vram": 2148724664,
+      "region": "sc01_0077",
+      "source": "src/overlays/sc01_0077/8012efb8.c"
+    },
+    {
+      "size": 488,
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)",
+      "name": "func_8013AD38",
+      "vram": 2148773176,
+      "region": "sc01_0077",
+      "source": "src/overlays/sc01_0077/8013ad38.c"
     }
   ]
 }
