@@ -434,6 +434,31 @@ def dead_block_local(text, start, semi, name):
                      r"\s*(?:=|;|,|\[)", body) is not None
 
 
+
+def sunk_only_local(text, name):
+    """Strict (B28): an empty asm's untied output is dead when every other
+    mention of the variable is its declaration or an input operand of an
+    empty asm (80138ED0's `"=r"(decoy)` then `"" : : "r"(decoy)` scheduling
+    sink): nothing the host computes ever reads it."""
+    if not re.fullmatch(r"[A-Za-z_]\w*", name):
+        return False
+    body = re.sub(r"/\*.*?\*/|//[^\n]*", " ", text, flags=re.S)
+    uses = [m.start() for m in re.finditer(r"\b" + re.escape(name) + r"\b", body)]
+    decl = re.compile(r"(?:^|[;{])\s*(?:[A-Za-z_]\w*[\s*]+)+" + re.escape(name) + r"\s*;")
+    ok = 0
+    for u in uses:
+        line_start = max(body.rfind(";", 0, u), body.rfind("{", 0, u), body.rfind("}", 0, u))
+        stmt = body[line_start:body.find(";", u) + 1]
+        if decl.search(stmt):
+            ok += 1
+            continue
+        if re.search(r'\b(?:__asm__|__asm|asm)\s*(?:__volatile__|volatile)?\s*\(\s*""\s*:[^;]*\(\s*' +
+                     re.escape(name) + r'\s*\)', stmt):
+            ok += 1
+            continue
+        return False
+    return ok == len(uses)
+
 def strip_empty_asm(text, orig=None):
     """Drop empty-template asm statements that are identities on the host:
     no outputs, or every output tied to an input ("N") with the same
@@ -483,7 +508,8 @@ def strip_empty_asm(text, orig=None):
                 moves.append((expr.strip(), tied[0].strip()))
                 continue
             if not (STRICT and not tied and (expr.strip() in pinned or
-                                             dead_block_local(text, m.start(), j, expr.strip()))):
+                                             dead_block_local(text, m.start(), j, expr.strip()) or
+                                             sunk_only_local(text, expr.strip()))):
                 return None
         pieces.append(text[pos:m.start()])
         # A comment marker breaks when the asm text sits inside a comment
@@ -1691,17 +1717,28 @@ def checked_inttoptr(ir, module_internal, vram):
         return ir
     hits = CHECKED_PTRS_TLS.hits = set()
     vhits = CHECKED_PTRS_TLS.vhits = set()
+    shits = CHECKED_PTRS_TLS.shits = set()
     try:
         check_optimized(ir, module_internal)
     finally:
         CHECKED_PTRS_TLS.hits = None
         CHECKED_PTRS_TLS.vhits = None
-    if not hits and not vhits:
+        CHECKED_PTRS_TLS.shits = None
+    if not hits and not vhits and not shits:
         return ir
     pc = (vram & 0xFFFFFFFF) - ((vram & 0x80000000) << 1)
     out = []
     nvc = 0
     for line in ir.split("\n"):
+        if line.strip() in shits:
+            shm = re.match(r"(\s*%[\w.\"$]+ = (?:shl|lshr|ashr)(?: nuw| nsw| exact)* i32 [^,]+, )(%[\w.\"$]+)\s*$", line)
+            if not shm:
+                raise Reject("arith", "unmasked variable shift in an unsupported form")
+            nvc += 1
+            ind = re.match(r"\s*", line).group(0)
+            out.append(f"{ind}%lane.sm{nvc} = and i32 {shm.group(2)}, 31")
+            out.append(re.sub(r" nuw| nsw| exact", "", shm.group(1)) + f"%lane.sm{nvc}")
+            continue
         if line.strip() in vhits:
             vm = re.match(r"(\s*(?:%[\w.\"$]+ = )?(?:load|store) volatile .*, ptr )(%[\w.\"$]+)((?:, align \d+)?(?:, !.*)?)$", line)
             if not vm:
@@ -1719,7 +1756,7 @@ def checked_inttoptr(ir, module_internal, vram):
             line = f"{m.group(1)}call ptr @musashi_lane_checked_ptr(i64 {m.group(2)}, i32 {pc})"
         out.append(line)
     ir = "\n".join(out)
-    if "declare ptr @musashi_lane_checked_ptr(" not in ir:
+    if (hits or vhits) and "declare ptr @musashi_lane_checked_ptr(" not in ir:
         ir += "\ndeclare ptr @musashi_lane_checked_ptr(i64, i32)\n"
     check_optimized(ir, module_internal)  # the rewritten module passes unaided
     return ir
@@ -1910,7 +1947,13 @@ def check_optimized(ir, module_internal):
                     am_max = amount_max(amount, defs) if STRICT else None
                     if (mask is None or mask > 31) and not (STRICT and masked_amount(amount, defs)) and \
                             not (am_max is not None and am_max < int(sm.group(2)[1:])):
-                        raise Reject("arith", "unmasked variable shift")
+                        if STRICT and sm.group(2) == "i32" and \
+                                getattr(CHECKED_PTRS_TLS, "shits", None) is not None:
+                            # MIPS sllv/srlv/srav use the amount's low 5 bits;
+                            # checked_inttoptr() masks it the same way
+                            CHECKED_PTRS_TLS.shits.add(s)
+                        else:
+                            raise Reject("arith", "unmasked variable shift")
                 elif int(amount) >= int(sm.group(2)[1:]):
                     raise Reject("arith", "oversized constant shift")
             cm = re.search(r"\b(?:tail |musttail |notail )?call\b(.*)$", rhs)

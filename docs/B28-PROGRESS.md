@@ -1874,6 +1874,11 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 - Decomp C marks some struct-field reloads volatile (801392FC `*(volatile u16 *)(arg0 + 0x2E)`, needed for byte-exactness). The memory rule refused any volatile it could not prove was RAM. Strict now puts musashi_lane_checked_ptr on the exact address of each such access, so MMIO or any non-RAM address still aborts with the PC. Hybrid unchanged.
 - Gains 801392FC, 80137DD4 and 801424E4 across members. Gates pass, LOST []. Next stop 80138ED0.
 
+### Inc 147: strict empty-asm sinks and MIPS-masked variable shifts
+- strip_empty_asm: an untied output used only as an input to empty asms (80138ED0's `decoy` scheduling sink) is dead (sunk_only_local).
+- Unbounded i32 variable shifts get the amount masked to 5 bits, which is exactly what MIPS sllv/srlv/srav do, rather than being refused.
+- Gains 80138ED0, 801571C4, main_0010 800D02D0 and one main function. Gates pass, LOST []. The route now reaches f1900 (prims drawn) and stops at 8013B274.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for
