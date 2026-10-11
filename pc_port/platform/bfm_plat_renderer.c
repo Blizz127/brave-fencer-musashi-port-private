@@ -1,6 +1,7 @@
 #include "bfm_plat_renderer.h"
 #include "bfm_plat_mods.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -154,6 +155,25 @@ int bfm_plat_renderer_set_draw_env(const BfmPlatDrawEnv *e) {
     REQUIRE_ACTIVE();
     if (!e) return BFM_PLAT_INVALID;
     stats.draw_envs++;
+    {
+        /* MUSASHI_TRACE_DRAWENV=FROM,COUNT: log each draw env of renderer
+         * frames FROM..FROM+COUNT-1 with the prims submitted under the
+         * previous one (diagnostic, strict/hybrid diffs) */
+        static long from = -2, count;
+        static unsigned long long last_prims;
+        if (from == -2) {
+            const char *t = getenv("MUSASHI_TRACE_DRAWENV");
+            from = -1;
+            if (t) { from = atol(t); t = strchr(t, ','); count = t ? atol(t + 1) : 1; }
+        }
+        if (from >= 0 && stats.frames >= (unsigned long long)from &&
+            stats.frames < (unsigned long long)(from + count))
+            fprintf(stderr, "bfm_plat: DRAWENV f=%llu prev_prims=%llu clip=%d,%d,%d,%d ofs=%d,%d tpage=%04x dfe=%u isbg=%u bg=%02x%02x%02x\n",
+                    (unsigned long long)stats.frames, (unsigned long long)(stats.prims - last_prims),
+                    e->clip.x, e->clip.y, e->clip.w, e->clip.h, e->offset_x, e->offset_y,
+                    e->tpage, e->draw_on_display, e->clear_bg, e->bg_r, e->bg_g, e->bg_b);
+        last_prims = stats.prims;
+    }
     return active->set_draw_env ? active->set_draw_env(active->self, e)
                                 : BFM_PLAT_UNSUPPORTED;
 }
