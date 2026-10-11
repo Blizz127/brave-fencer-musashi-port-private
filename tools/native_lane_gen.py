@@ -2434,7 +2434,7 @@ GTE_INLINE_DEFINE_HEAD = re.compile(
 # with a `/* sp+0xNN */` comment; the registry's byte-exact compile is what
 # proves gcc placed it there.
 _FRAME_ASM_RE = re.compile(
-    r'__asm__\s+volatile\s*\(\s*((?:"[^"]*"\s*)+):\s*:\s*"r"\s*\((.+?)\)\s*:\s*((?:"[^"]*"\s*,?\s*)+)\)\s*;', re.S)
+    r'__asm__\s+(?:volatile|__volatile__)\s*\(\s*((?:"[^"]*"\s*)+):\s*:\s*"r"\s*\((.+?)\)\s*:\s*((?:"[^"]*"\s*,?\s*)+)\)\s*;', re.S)
 _FRAME_DECL_RE = re.compile(r'^\s*\w+\s+(\w+)\[(\d+)\];\s*/\*\s*sp\+0x([0-9A-Fa-f]+)\s*\*/', re.M)
 _SETROT = ["lw $12,0(%0)", "lw $13,4(%0)", "ctc2 $12,$0", "ctc2 $13,$1", "lw $12,8(%0)", "lw $13,12(%0)",
            "lw $14,16(%0)", "ctc2 $12,$2", "ctc2 $13,$3", "ctc2 $14,$4"]
@@ -2460,7 +2460,7 @@ def gte_frame_block_host(text):
 
     def one(m):
         ins = [re.sub(r"\s*,\s*", ",", re.sub(r"\(\s*", "(", re.sub(r"\s*\)", ")", x.strip())))
-               for x in "".join(re.findall(r'"([^"]*)"', m.group(1))).split(";") if x.strip()]
+               for x in re.split(r";|\\n", "".join(re.findall(r'"([^"]*)"', m.group(1)))) if x.strip()]
         # `"r"((s32)local)`: the host keeps the pointer (a 32-bit round trip
         # would truncate a host stack address)
         op0 = f"({re.sub(r'^\(\s*(?:s32|u32|int|long)\s*\)\s*', '', m.group(2).strip())})"
@@ -2636,11 +2636,11 @@ def host_source(text):
         text = scratch_call_host(text) or text
         text = move_asm_host(text)
         text = load_asm_host(text)
-        text = gte_frame_block_host(text)
         text = gte_inline_macros_host(text)
         text = gte_host(text)
         text = gte_matrix_host(text)
         text = gte_scale_host(text)
+        text = gte_frame_block_host(text)
         text = strip_macro_asm(text)
     return REG_PIN_RE.sub(r"\1", text)
 
@@ -5031,11 +5031,11 @@ def strict_mixed_ok(m):
     text = MOVE_ASM_RE.sub("", text)
     text = ADDIU_ASM_RE.sub("", text)
     text = load_asm_host(text)
-    text = gte_frame_block_host(text)
     text = gte_inline_macros_host(text)
     text = gte_host(text)
     text = gte_matrix_host(text)
     text = gte_scale_host(text)
+    text = gte_frame_block_host(text)
     text = strip_macro_asm(text)
     ss = scratch_call_host(text)
     text = SCRATCH_CALL_RE.sub("", ss) if ss is not None else text

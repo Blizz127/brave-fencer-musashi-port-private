@@ -1864,6 +1864,9 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 ### Inc 143: 8013A530 admitted (prototypes for main callees)
 - All nine 8013a530.c copies declared func_80015F04/80015D4C with empty parens (9-arg calls). Used the src/main prototypes (byte-exact). Gates pass, LOST []. Next stop 8013AA24.
 
+### Inc 144: GTE frame-block pass accepts `__volatile__` and `\n`-separated templates; runs last
+- 8013AA24 (and 8013AB54) carry SetRotMatrix+SetTransMatrix as one `__asm__ __volatile__` statement with `\n` separators; the pass now takes that spelling. It runs after gte_host/gte_matrix_host/gte_scale_host, so it only sees what they leave (running first broke gte_host's multi-statement match in main 800123F0/80012558/800126C4/8001382C). Gates pass, LOST []. Next stop 8013AD38.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for
