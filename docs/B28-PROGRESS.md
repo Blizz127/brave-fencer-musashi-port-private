@@ -2006,6 +2006,12 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 - Gates: build=0, TABLE_IDENTICAL, ctest 39/39, strict_build=0, m2c=0, LOST [].
 - Village warp: fault gone; next stop not_in_lane 801285e4.
 
+### Inc 161 — sc03_0001 asm-form swaps (20)
+
+- sc03_0001 801285E4 + 19 others (80128714, 8014607C, 8014CCB4..80150A70): the upstream raw-asm bodies (refused `calls: inline asm`) replaced by the admitted sibling forms (sc01_0000 / main_0012, symbols relocated), byte-exact. Origins tagged.
+- Gates: build=0, TABLE_IDENTICAL, ctest 39/39, strict_build=0, m2c=0, LOST [].
+- Village warp: next stop not_in_lane 80159a20.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for

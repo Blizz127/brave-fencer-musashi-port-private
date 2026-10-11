@@ -1,50 +1,39 @@
-/* sc03_0001: func_801285E4 from Druthulu/BFM-decomp
- * src/ov_SC03_001/ov_SC03_001.c (preprocessed; only the declarations it uses),
- * byte-identical to the sc03_0001 retail words (gcc-2.7.2 -O2). */
-typedef int s32;
-extern s32 func_80011A3C(void);
-extern s32 func_800D18DC(void);
-extern void func_8014607C(void);
-extern void func_801287B8(void);
-extern s32 func_80011A3C(void);
-extern s32 D_801ED344;
-void func_801287B8(void);
+/* Overlay range [801285E4,80128678): sc03_0001, two scratchpad stack-switch calls. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_801285E4 - byte-exact against retail at -O2 (tools/verify_registry.py; sibling form relocated). */
+#include "psx_types.h"
 
-void func_801285E4(void)
-{
+extern s32 D_801ED344;
+extern void func_8014607C(void);
+extern s32 func_80011A3C(void);
+
+void func_801285E4(void) {
+    register s32 p __asm__("$3") = 0x1F8003FC;
     __asm__ __volatile__(
-        ".set noreorder\n"
-        "addiu $sp, $sp, -24\n"
-        "lui   $v1, 0x1f80\n"
-        "ori   $v1, $v1, 0x03fc\n"
-        "sw    $ra, 16($sp)\n"
-        "addu  $t0, $v1, $zero\n"
-        "sw    $sp, 0($t0)\n"
-        "addiu $t0, $t0, -4\n"
-        "addu  $sp, $t0, $zero\n"
+        "addu  $8, %0, $zero\n"
+        "sw    $sp, 0($8)\n"
+        "addiu $8, $8, -4\n"
+        "addu  $sp, $8, $zero\n"
         "jal   func_800D18DC\n"
         "lui   $at, %%hi(D_801ED344)\n"
         "sw    $v0, %%lo(D_801ED344)($at)\n"
         "addiu $sp, $sp, 4\n"
         "lw    $sp, 0($sp)\n"
-        "jal   func_8014607C\n"
-        "lui   $v1, 0x1f80\n"
-        "ori   $v1, $v1, 0x03fc\n"
-        "addu  $t0, $v1, $zero\n"
-        "sw    $sp, 0($t0)\n"
-        "addiu $t0, $t0, -4\n"
-        "addu  $sp, $t0, $zero\n"
-        "jal   func_801287B8\n"
-        "addiu $sp, $sp, 4\n"
-        "lw    $sp, 0($sp)\n"
-        "lui   $v0, %%hi(D_801ED344)\n"
-        "lw    $v0, %%lo(D_801ED344)($v0)\n"
-        "nop\n"
-        "beqz  $v0, 1f\n"
-        "nop\n"
-        "jal   func_80011A3C\n"
-        "1:\n"
-        "lw    $ra, 16($sp)\n"
-        "addiu $sp, $sp, 24\n"
-        : : : "memory");
+        : : "r"(p) : "$8", "memory");
+    func_8014607C();
+    {
+        register s32 q __asm__("$3") = 0x1F8003FC;
+        __asm__ __volatile__(
+            "addu  $8, %0, $zero\n"
+            "sw    $sp, 0($8)\n"
+            "addiu $8, $8, -4\n"
+            "addu  $sp, $8, $zero\n"
+            "jal   func_801287B8\n"
+            "addiu $sp, $sp, 4\n"
+            "lw    $sp, 0($sp)\n"
+            : : "r"(q) : "$8", "memory");
+    }
+    if (D_801ED344 != 0) {
+        func_80011A3C();
+    }
 }
