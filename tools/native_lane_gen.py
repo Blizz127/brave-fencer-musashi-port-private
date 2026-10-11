@@ -1690,19 +1690,33 @@ def checked_inttoptr(ir, module_internal, vram):
         check_optimized(ir, module_internal)
         return ir
     hits = CHECKED_PTRS_TLS.hits = set()
+    vhits = CHECKED_PTRS_TLS.vhits = set()
     try:
         check_optimized(ir, module_internal)
     finally:
         CHECKED_PTRS_TLS.hits = None
-    if not hits:
+        CHECKED_PTRS_TLS.vhits = None
+    if not hits and not vhits:
         return ir
+    pc = (vram & 0xFFFFFFFF) - ((vram & 0x80000000) << 1)
     out = []
+    nvc = 0
     for line in ir.split("\n"):
+        if line.strip() in vhits:
+            vm = re.match(r"(\s*(?:%[\w.\"$]+ = )?(?:load|store) volatile .*, ptr )(%[\w.\"$]+)((?:, align \d+)?(?:, !.*)?)$", line)
+            if not vm:
+                raise Reject("memory", "volatile access in an unsupported form")
+            nvc += 1
+            ind = re.match(r"\s*", line).group(0)
+            out.append(f"{ind}%lane.vc{nvc}.i = ptrtoint ptr {vm.group(2)} to i64")
+            out.append(f"{ind}%lane.vc{nvc} = call ptr @musashi_lane_checked_ptr(i64 %lane.vc{nvc}.i, i32 {pc})")
+            out.append(f"{vm.group(1)}%lane.vc{nvc}{vm.group(3)}")
+            continue
         if line.strip() in hits:
             m = CHECKED_PTR_LINE.match(line)
             if not m:
                 raise Reject("inttoptr", "unbounded integer->pointer in an unsupported form")
-            line = f"{m.group(1)}call ptr @musashi_lane_checked_ptr(i64 {m.group(2)}, i32 {(vram & 0xFFFFFFFF) - ((vram & 0x80000000) << 1)})"
+            line = f"{m.group(1)}call ptr @musashi_lane_checked_ptr(i64 {m.group(2)}, i32 {pc})"
         out.append(line)
     ir = "\n".join(out)
     if "declare ptr @musashi_lane_checked_ptr(" not in ir:
@@ -1828,6 +1842,18 @@ def check_optimized(ir, module_internal):
                 if STRICT and re.match(r"(load|store) volatile ", rhs):
                     parts = split_top(re.sub(r"^(load|store) volatile ", "", rhs))
                     vol_ok = len(parts) > 1 and ram_address(parts[1])
+                    if not vol_ok and len(parts) > 1:
+                        a = parts[1].strip()
+                        a = a[4:].strip() if a.startswith("ptr ") else a
+                        if defs.get(a, "").startswith("call ptr @musashi_lane_checked_ptr("):
+                            vol_ok = True  # already run-time checked
+                        elif getattr(CHECKED_PTRS_TLS, "vhits", None) is not None:
+                            # Strict (B28): a guest-RAM volatile (decomp C's
+                            # reload barrier on a struct field) through an
+                            # unbounded pointer; checked_inttoptr() checks the
+                            # exact address at run time, so MMIO still aborts
+                            CHECKED_PTRS_TLS.vhits.add(s)
+                            vol_ok = True
                 if not vol_ok:
                     raise Reject("memory", "volatile access (device register)")
             if re.match(r"load (volatile )?", rhs):

@@ -1870,6 +1870,10 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 ### Inc 145: 8013AD38 everywhere; sc01_0077 gap twins
 - Frame-block pass idioms ldv0/rt/stlvnl admit 8013AD38 in main_0012 and sc02_0035. sc01_0077 had no row there; twinned 8013AD38 (main_0012) and 8012EFB8 (sc01_0001) into its gaps (verified). Gates pass, LOST []. Next stop 801392FC.
 
+### Inc 146: strict run-time check for guest-RAM volatile accesses
+- Decomp C marks some struct-field reloads volatile (801392FC `*(volatile u16 *)(arg0 + 0x2E)`, needed for byte-exactness). The memory rule refused any volatile it could not prove was RAM. Strict now puts musashi_lane_checked_ptr on the exact address of each such access, so MMIO or any non-RAM address still aborts with the PC. Hybrid unchanged.
+- Gains 801392FC, 80137DD4 and 801424E4 across members. Gates pass, LOST []. Next stop 80138ED0.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for
