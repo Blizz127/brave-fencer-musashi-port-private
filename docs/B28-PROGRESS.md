@@ -1987,6 +1987,13 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
   generator needs the local splat asm/main.s, which no worktree has.
 - Gates pass, LOST []. The warp now stops at 801889ac.
 
+### Inc 158 — SetDrawEnv HLE + sc03_0001 own-C fills
+
+- PsyQ `SetDrawEnv` (8005A658) is now native HLE (`bfm_psyq_SetDrawEnv`), rebuilding the retail DR_ENV packet. New `psyq_setdrawenv_differential` probe: 50,000 randomized cases byte-identical vs retail.
+- sc03_0001: +18 sibling relocations; own clean-room C for 8017E1B4, 80180B5C, 8018739C, 801877C0, 801889AC (byte-exact); 8018B238 upstream fixed (dropped a conflicting prototype). Registry origins tagged.
+- Gates: build=0, TABLE_IDENTICAL, ctest 39/39, strict_build=0, m2c=0, LOST [].
+- Village warp (1010) now stops at sc03_0001 80186a8c (was 8005a658).
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for
