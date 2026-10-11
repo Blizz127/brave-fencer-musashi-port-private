@@ -1952,6 +1952,14 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
   `aF80161CD0` body crashed emit_table again.
 - Gates pass, LOST []. The warp now stops at 801457a4.
 
+## Increment 155: sc03_0001 801457A4 (relocated sibling)
+
+- Upstream's sc03_0001 func_801457A4 matches 1 of 49 words. Retail there is
+  the -O0 table getter that other members carry. sc01_0000's source matches
+  75 of 79 words; relocating its table D_8017EBBC to D_8018D220 (sc03_0001's
+  lui 0x8019 / addiu -0x2DE0) is byte-identical.
+- Gates pass, LOST []. The warp now stops at 801336e8.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for

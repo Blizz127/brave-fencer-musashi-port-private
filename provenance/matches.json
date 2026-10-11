@@ -382323,6 +382323,17 @@
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_801457A4",
+      "vram": 2148816804,
+      "size": 316,
+      "region": "sc03_0001",
+      "source": "src/overlays/sc03_0001/801457a4.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O0",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     }
   ]
 }
