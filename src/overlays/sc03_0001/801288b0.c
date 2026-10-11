@@ -8,6 +8,6 @@ extern void func_8001ABBC(s32 a0, s32 a1, void *a2, s32 a3, s32 sp10);
 extern s32 D_801EBC68;
 extern u8 D_800AEFD0;
 
-s32 func_801288B0(void) {
+void func_801288B0(void) {
     func_8001ABBC(0, 0, &D_800AEFD0, D_801EBC68, 0);
 }

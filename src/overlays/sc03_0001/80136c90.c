@@ -4,7 +4,7 @@
 typedef int s32;
 typedef struct { char s[10]; } S10_80136C90;
 
-s32 func_80136C90()
+void func_80136C90()
 {
     extern void func_8001534C(int, void *, int, int, int, int);
     extern S10_80136C90 D_801EBEBC;

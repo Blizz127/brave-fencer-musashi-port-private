@@ -12,7 +12,7 @@ extern int D_800AF558;
 extern int D_801EBC68;
 extern void func_8001ABBC(s32 a0, s32 a1, void *a2, s32 a3, s32 sp10);
 
-int func_801288E8(int arg0)
+void func_801288E8(int arg0)
 {
     int *p = &D_800C7C60;
     *p = 0x60;

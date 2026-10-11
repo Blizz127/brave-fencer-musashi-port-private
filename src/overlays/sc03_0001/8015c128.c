@@ -51,7 +51,7 @@ extern void func_8015C0C4(s32);
 extern void func_80146CA0(void *a0);
 void func_8015C0C4(s32 a0);
 
-s32 func_8015C128(s32 param_1) {
+void func_8015C128(s32 param_1) {
     extern void func_8015C6E0(int);
     extern void (*D_8018FBA8[])(int);
     int sp10[3];

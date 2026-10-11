@@ -18,7 +18,7 @@ extern int D_800A2E20;
 extern u8 D_800AF560;
 extern s32 D_801EBC68;
 
-s32 func_80128940(s32 _arg0)
+void func_80128940(s32 _arg0)
 {
     s32 *p = &D_800C7C60;
     *p = 0x5E;

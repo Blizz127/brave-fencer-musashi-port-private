@@ -4,7 +4,7 @@
 typedef unsigned short u16;
 typedef int s32;
 
-s32 func_80160B34(s32 a0) {
+void func_80160B34(s32 a0) {
     extern void (*D_8018FFA4[])(void);
     D_8018FFA4[*(u16 *)((s32)a0 + 0x2)]();
 }

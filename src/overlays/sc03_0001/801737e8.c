@@ -5,7 +5,7 @@ typedef unsigned char u8;
 typedef int s32;
 extern void func_8012A568(void (*a0)(void));
 
-s32 func_801737E8(void *a0) {
+void func_801737E8(void *a0) {
     extern void (*D_80190B10[])(void);
     D_80190B10[*(u8 *)((s32)a0 + 0x214)]();
 }

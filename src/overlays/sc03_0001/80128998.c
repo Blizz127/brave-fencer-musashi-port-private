@@ -22,7 +22,7 @@ extern int D_800AECB0;
 extern s32 D_801EBC68;
 extern void func_8001ABBC(s32 a0, s32 a1, void *a2, s32 a3, s32 sp10);
 
-s32 func_80128998(void)
+void func_80128998(void)
 {
     int *p = &D_800C7C60;
     *p = 13;

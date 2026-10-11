@@ -131,7 +131,7 @@ extern s32 D_8011D030;
 extern void func_80146C3C();
 extern void func_80146C3C();
 
-s32 func_80166F58(s32 param_1, s32 param_2, s32 param_3, s32 param_4)
+void func_80166F58(s32 param_1, s32 param_2, s32 param_3, s32 param_4)
 {
     extern s32 D_8011D030;
     extern unsigned char D_801ED6A8[];

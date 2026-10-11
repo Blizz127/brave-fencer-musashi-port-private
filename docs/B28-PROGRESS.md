@@ -1932,6 +1932,17 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 - Gates pass, LOST []. The route is unchanged (no stop to f4200). The warp now
   stops at 801378f0.
 
+## Increment 153: sc03_0001 compile and ub refusals
+
+- The warp stop 801378f0 was sc03_0001's copy, refused because host clang
+  rejected `extern void memcpy();` next to `void *memcpy(...)`. Dropping the
+  K&R line is byte-neutral in 19 files.
+- 35 of 40 `ub` refusals were s32 functions that never return a value; they
+  are now `void` (byte-neutral, verified).
+- Sibling copies at the same address in other members are a different build
+  (801378f0: 50 of 58 words match), so they cannot be used as twins.
+- Gates pass, LOST [].
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for
