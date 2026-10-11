@@ -384284,17 +384284,6 @@
       "origin": "clean room, written from the retail words for the owner (B28)"
     },
     {
-      "name": "func_801285E4",
-      "vram": 2148697572,
-      "size": 148,
-      "region": "sc03_0001",
-      "source": "src/overlays/sc03_0001/801285e4.c",
-      "recovery": "c",
-      "extent": "function",
-      "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
-    },
-    {
       "name": "func_80128714",
       "vram": 2148697876,
       "size": 164,

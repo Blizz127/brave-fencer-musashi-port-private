@@ -160,6 +160,7 @@ TABLE: dict[str, Status] = {
     "RotTransSV": Status(P, 3, 0, "bfm_psyq_RotTransSV", "GTE bridge (gte_owner lease); long *flag via a host temporary"),
     "RotTransPers": Status(P, 4, 1, "bfm_psyq_RotTransPers", "GTE bridge (gte_owner lease); long *p/*flag via host temporaries"),
     "RotTransPers3": Status(P, 8, 1, "bfm_psyq_RotTransPers3", "GTE bridge (gte_owner lease); args 5-8 from the guest stack; long * via temporaries"),
+    "RotNclip4": Status(P, 11, 1, "bfm_psyq_RotNclip4", "GTE bridge (gte_owner lease); retail sequence RTPT, FLAG, NCLIP, early MAC0<=0 return, RTPS; args 5-11 from the guest stack"),
     "RotTransPers4": Status(P, 10, 1, "bfm_psyq_RotTransPers4", "GTE bridge (gte_owner lease); args 5-10 from the guest stack; long * via temporaries"),
     "RotMatrixYXZ": Status(H, 2, 1, "bfm_psyq_RotMatrixYXZ", "exact port of func_80049A1C over the guest table D_8006DF1C (PsyCross's differs by 1-2)"),
     "RotMatrixX": Status(H, 2, 1, "bfm_psyq_RotMatrixX", "exact port of func_80049F3C over the guest table D_8006DF1C"),

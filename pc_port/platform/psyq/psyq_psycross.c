@@ -288,6 +288,47 @@ static int32_t rtp4(SVECTOR *const v[4], int32_t sxy[4], int32_t *p, int32_t *fl
     return (int32_t)(MFC2(19) & 0xFFFFu) >> 2;
 }
 
+/* RotNclip4(v0..v3, sxy0..sxy3, p, otz, flag) at 8004969C, exact to the
+ * retail sequence: RTPT v0..v2, *flag = FLAG, NCLIP; MAC0 <= 0 returns MAC0
+ * with nothing else stored. Otherwise SXY0..2 -> sxy0..2, RTPS v3,
+ * SXY2 -> sxy3, IR0 -> *p, (u16)SZ3 >> 2 -> *otz, *flag = FLAG | the RTPT
+ * FLAG, which is also the return value. */
+int bfm_psyq_RotNclip4(uint32_t *r) {
+    SVECTOR *v[4];
+    int32_t sxy[4], p, otz, flag0, flag, mac0;
+    unsigned i;
+    for (i = 0; i < 4; i++)
+        if (!(v[i] = (SVECTOR *)P(A(i), sizeof(SVECTOR)))) return 0;
+    for (i = 4; i < 11; i++)
+        if (!P(A(i), 4)) return 0;
+    GTE_BEGIN();
+    for (i = 0; i < 3; i++) ldv((int)i, v[i]);
+    doCOP2(0x0280030);                     /* RTPT */
+    flag0 = (int32_t)CFC2(31);
+    doCOP2(0x1400006);                     /* NCLIP */
+    mac0 = (int32_t)MFC2(24);
+    if (mac0 <= 0) {
+        GTE_END(2);
+        put32(A(10), flag0);
+        r[2] = (uint32_t)mac0;
+        return 1;
+    }
+    for (i = 0; i < 3; i++) sxy[i] = (int32_t)MFC2(12 + (int)i);
+    ldv(0, v[3]);
+    doCOP2(0x0180001);                     /* RTPS */
+    sxy[3] = (int32_t)MFC2(14);
+    p = (int32_t)MFC2(8);
+    otz = (int32_t)(MFC2(19) & 0xFFFFu) >> 2;
+    flag = (int32_t)CFC2(31) | flag0;
+    GTE_END(3);
+    for (i = 0; i < 4; i++) put32(A(4 + i), sxy[i]);
+    put32(A(8), p);
+    put32(A(9), otz);
+    put32(A(10), flag);
+    r[2] = (uint32_t)flag;
+    return 1;
+}
+
 /* RotTransPers4(v0..v3, sxy0..sxy3, p, flag) -> SZ3 >> 2 of v3 */
 int bfm_psyq_RotTransPers4(uint32_t *r) {
     SVECTOR *v[4];

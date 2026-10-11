@@ -110,7 +110,7 @@ BFM_PSYQ(0x8004955C, RotTransPers, BFM_PSYQ_PSYCROSS, 4, 1, bfm_psyq_RotTransPer
 BFM_PSYQ(0x8004958C, RotTransPers3, BFM_PSYQ_PSYCROSS, 8, 1, bfm_psyq_RotTransPers3)
 BFM_PSYQ(0x800495EC, func_800495EC, BFM_PSYQ_STUB, 0, 0, bfm_psyq_stub)
 BFM_PSYQ(0x8004961C, RotTransPers4, BFM_PSYQ_PSYCROSS, 10, 1, bfm_psyq_RotTransPers4)
-BFM_PSYQ(0x8004969C, RotNclip4, BFM_PSYQ_STUB, 0, 0, bfm_psyq_stub)
+BFM_PSYQ(0x8004969C, RotNclip4, BFM_PSYQ_PSYCROSS, 11, 1, bfm_psyq_RotNclip4)
 BFM_PSYQ(0x8004974C, func_8004974C, BFM_PSYQ_STUB, 0, 0, bfm_psyq_stub)
 BFM_PSYQ(0x8004978C, RotMatrix, BFM_PSYQ_HLE, 2, 1, bfm_psyq_RotMatrix)
 BFM_PSYQ(0x80049A1C, RotMatrixYXZ, BFM_PSYQ_HLE, 2, 1, bfm_psyq_RotMatrixYXZ)

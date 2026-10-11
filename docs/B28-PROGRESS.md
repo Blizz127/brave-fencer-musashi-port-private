@@ -2024,6 +2024,12 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 - Gates: build=0, TABLE_IDENTICAL, ctest 39/39, strict_build=0, m2c=0, LOST [].
 - Village warp: next stop not_in_lane 8004969c (main).
 
+### Inc 164 — PsyQ RotNclip4 (8004969C) native
+
+- `bfm_psyq_RotNclip4` under the GTE bridge, exact to the retail sequence (RTPT, *flag = FLAG, NCLIP, early MAC0<=0 return; else SXY0..2, RTPS v3, SXY2/IR0/SZ3>>2, FLAG|FLAG0 returned). Status PSYCROSS 11 args. Also dropped a duplicate registry row for sc03_0001 801285E4.
+- Gates: build=0, TABLE_IDENTICAL, ctest 39/39, strict_build=0, m2c=0, LOST [].
+- Village warp: next stop not_in_lane 8017fc00. (TODO: differential probe for RotNclip4.)
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for
