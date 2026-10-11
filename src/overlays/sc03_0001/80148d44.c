@@ -1,5 +1,7 @@
 /* sc03_0001: func_80148D44 from Druthulu/BFM-decomp
  * src/ov_SC03_001/ov_SC03_001_after.c (preprocessed; only the declarations it uses),
+ * The handler now gets the angle explicitly (retail leaves it in a0 for the
+ * jalr; upstream only kept it there with the $4 register-asm idiom).
  * byte-identical to the sc03_0001 retail words (gcc-2.7.2 -O2). */
 typedef unsigned char u8;
 typedef unsigned short u16;
@@ -94,7 +96,7 @@ s32 func_80148D44(void) {
     }
     goto final;
 call:
-    return (s32)(s16)((s16 (*)())(D_8018F044[D_80126C02 >> 0xc]))();
+    return (s32)(s16)((s16 (*)(s32))(D_8018F044[D_80126C02 >> 0xc]))(a);
 final:
     {
         u32 e = D_80126C06;

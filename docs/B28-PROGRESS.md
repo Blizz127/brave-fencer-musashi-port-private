@@ -2036,6 +2036,14 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 - Gates: build=0, TABLE_IDENTICAL, ctest 39/39, strict_build=0, m2c=0, LOST [].
 - Village warp: next stop not_in_lane 800caf5c (main).
 
+### Inc 166 — hidden-a0 dispatch fixes (801627E8, 80148D44, 80157D20); stop diagnostics
+
+- Root cause of the 800caf5c stop: func_801627E8 dispatches D_801900B0[idx-1] with retail a0 = &D_8011F750 live into the jalr; upstream typed the handlers (void) and kept a0 with a $4 register-asm idiom, so the lane passed nothing and 80162834 read a junk state (0xC0 -> table index 192 -> zeroed RAM). Now `D_801900B0[idx](p)`, byte-exact.
+- Audit of the 70 sc03_0001 files with `__asm__("$4")`: direct calls are covered by the generator's pass-through ABI check; indirect calls are not. Fixed 80148D44 (angle in a0 for the D_8018F044 handler, was admitted = silent) and 80157D20 (really takes (void *, s32) and forwards both; was refused). The other indirect calls in those files already pass their arguments.
+- mips_formatter.c strict stop: prints STRICT_STOP_ARGS (argc, a0..a3) and 0x80 bytes at a0.
+- Gates: build=0, TABLE_IDENTICAL, ctest 39/39, strict_build=0, m2c=0, LOST [].
+- Village warp: next stop not_in_lane 8016e95c.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for

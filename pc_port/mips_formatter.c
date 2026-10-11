@@ -13777,6 +13777,19 @@ static uint32_t lane_strict_guest_call(uint32_t target, unsigned argc,
             fclose(out);
             fprintf(stderr, "native_boot: STRICT_STOP_RAM path=%s\n", ram_path);
         }
+        /* Stop evidence: the call's arguments, and 0x80 bytes at a0 when it
+         * is a guest RAM pointer (the object a dispatcher handed on). */
+        fprintf(stderr, "native_boot: STRICT_STOP_ARGS argc=%u a0=%08x a1=%08x a2=%08x a3=%08x\n",
+                argc, argc > 0 ? args[0] : 0u, argc > 1 ? args[1] : 0u,
+                argc > 2 ? args[2] : 0u, argc > 3 ? args[3] : 0u);
+        if (argc > 0 && (args[0] & 0xFFE00000u) == 0x80000000u) {
+            uint8_t *o = musashi_boot_ram_span(active->memory, args[0], 0x80u);
+            if (o) {
+                fprintf(stderr, "native_boot: STRICT_STOP_A0");
+                for (i = 0; i < 0x80u; ++i) fprintf(stderr, "%s%02x", (i & 15u) ? "" : " ", o[i]);
+                fprintf(stderr, "\n");
+            }
+        }
         musashi_strict_abort("lane_guest_call", "not_in_lane", target);
     }
     if (ran < 0) longjmp(active->abort, cpu->pc == UINT_MAX && cpu->npc == UINT_MAX ? 5 : 4);
