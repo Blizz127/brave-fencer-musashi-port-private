@@ -1,0 +1,27 @@
+/* sc03_0001: func_80173770 from Druthulu/BFM-decomp
+ * src/ov_SC03_001/ov_SC03_001_jr_801734BC.c (preprocessed; only the declarations it uses),
+ * byte-identical to the sc03_0001 retail words (gcc-2.7.2 -O2). */
+typedef unsigned char u8;
+typedef int s32;
+extern void func_8012A568(void (*a0)(void));
+extern void func_80171A1C(u8 *a0);
+extern void func_801723C4(s32 param_1, s32 param_2);
+extern s32 func_80174650(s32);
+extern void func_80171A1C(u8 *a0);
+extern void func_80171A1C(u8 *a0);
+extern void func_80171A1C(u8 *a0);
+extern void func_80171A1C(u8 *a0);
+extern s32 func_80174650(s32);
+extern s32 D_80127508;
+extern void func_80171A1C(u8 *a0);
+extern s32 D_80127508;
+extern void func_801723C4(s32 a0, s32 a1);
+extern void func_80171A1C(u8 *a0);
+extern s32 func_80174650(s32);
+s32 func_80174650(s32 _arg0);
+
+void func_80173770(u8 *a0) {
+    func_801723C4((s32)a0, D_80127508);
+    func_80171A1C(a0);
+    func_80174650((s32)a0);
+}

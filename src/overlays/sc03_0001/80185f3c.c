@@ -1,0 +1,33 @@
+/* sc03_0001: func_80185F3C from Druthulu/BFM-decomp
+ * src/ov_SC03_001/ov_SC03_001_jr_80184F64.c (preprocessed; only the declarations it uses),
+ * byte-identical to the sc03_0001 retail words (gcc-2.7.2 -O2). */
+typedef int s32;
+extern void func_8014CB68(void);
+extern void func_8012A568(void (*a0)(void));
+extern void func_8012E8E0(s32 a0, s32 a1);
+extern void func_8012E8E0(s32, s32);
+extern void func_8012E88C(s32);
+extern void func_8012E88C(s32 a0);
+extern void func_8012E8E0(s32, s32);
+extern void func_8012E88C(s32);
+extern void func_8012E8E0(s32 a0, s32 a1);
+extern void func_8012E88C(s32 a0);
+extern void func_80187344(void *s0);
+extern void func_8014CB68(void);
+extern s32 func_8012C588(s32, s32);
+extern void func_8012E8E0(s32, s32);
+extern void func_8012E88C(s32);
+extern void func_80187344(void *a0);
+extern void func_8014CB68(void);
+extern s32 func_8012C588(s32 a0, s32 a1);
+
+void func_80185F3C(void *arg0) {
+    extern short D_8019286C;
+    *(short *)((char *)arg0 + 0x2) = 0xC;
+    *(short *)((char *)arg0 + 0x34) = 0;
+    func_8012E8E0((s32)arg0, (s32)&D_8019286C);
+    func_8012E88C((s32)arg0);
+    func_80187344(arg0);
+    func_8014CB68();
+    func_8012C588(0x157, (s32)arg0);
+}

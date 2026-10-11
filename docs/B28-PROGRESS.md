@@ -1913,6 +1913,25 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
   those moments are caught partly drawn (mostly black), so they cannot serve as
   a picture reference. Evidence: `/workspace/bfm-frames/b28_ig_*`.
 
+## Increment 152: sc03_0001 (village scene overlay)
+
+- The dev-menu test warp to village 1010 (`BFM_DEV_MENU=1
+  BFM_DEV_MENU_WARP_TEST=1010:0`) stopped at 80128288. The stop RAM matches
+  extracted/overlays/sc03/0001.pac0.bin (base 0x80128158), which had no config.
+- New config `overlay_sc03_0001.yaml` (code 0x80128158..0x8018D220), a symbol
+  file, a registry target, and `sc03_0001 all` in the strict allow list.
+- Imported 2675 of 2841 upstream `ov_SC03_001` functions byte-identical. Helper
+  bodies were reduced to declarations: 805 brace-style and 161 K&R-style
+  (`aFxxxxxxxx(a0, ...)` followed by declaration lines; a K&R body defined
+  func_8014C4AC, which crashed emit_table with a KeyError).
+  `verify_registry.py` could not re-verify 56 of them (jump-table functions
+  without rodata_base), so they were left out. Now 2619 rows.
+- Generator: `void_result_readers` scans only main plus the member(s) a
+  function is resident in. sc03_0001's different function at 0x80181948 had
+  made sc01_0077 80181948 look like a void callee whose result is read.
+- Gates pass, LOST []. The route is unchanged (no stop to f4200). The warp now
+  stops at 801378f0.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for

@@ -18,3 +18,4 @@ sc03_0098 all
 sc01_0000 all
 sc01_0001 all
 sc01_0077 all
+sc03_0001 all

@@ -4237,7 +4237,7 @@ def _is_transfer(w):
     return op in (1, 2, 3, 4, 5, 6, 7) or (op == 0 and w & 63 in (8, 9))
 
 
-def void_result_readers(target, blobs):
+def void_result_readers(target, blobs, members=None):
     """Retail callers that read v0 or v1 after `jal target` (past its delay
     slot) before writing it: the callee returns a value there although its C
     is typed void. blobs: [(base vram, bytes)]. Scans straight-line code up to
@@ -4245,7 +4245,12 @@ def void_result_readers(target, blobs):
     (target unknown statically) are not covered."""
     hits = []
     want = 0x0C000000 | ((target >> 2) & 0x3FFFFFF)
-    for base, data in blobs:
+    for base, data, owner in blobs:
+        # an overlay function is only called by main or by a member it is
+        # resident in; another member's code at the same address is a
+        # different function (sc03_0001 80181948 is not sc01_0077's)
+        if members is not None and owner is not None and owner not in members:
+            continue
         n = len(data) // 4
         words = [int.from_bytes(data[4 * i:4 * i + 4], "little") for i in range(n)]
         for i, w in enumerate(words):
@@ -4283,12 +4288,12 @@ def retail_code_blobs(infos):
     """The main EXE text and each configured overlay member's code ranges."""
     blobs = []
     if MAIN_EXE.exists():
-        blobs.append((0x80010000, MAIN_EXE.read_bytes()[0x800:]))
-    for info in infos.values():
+        blobs.append((0x80010000, MAIN_EXE.read_bytes()[0x800:], None))
+    for mem, info in infos.items():
         for lo, hi in info.get("code") or []:
             off = lo - info["vram"] + info["start"]
             if 0 <= off <= len(info["data"]):
-                blobs.append((lo, info["data"][off:off + (hi - lo)]))
+                blobs.append((lo, info["data"][off:off + (hi - lo)], mem))
     return blobs
 
 
@@ -5373,7 +5378,8 @@ def main():
     for a in admitted:
         if a["defs"]["lane_" + a["qname"]][0] != "void":
             continue
-        readers = void_result_readers(a["vram"], blobs)
+        mems = (set(a.get("covers") or []) | {a["member"]}) if a.get("member") else None
+        readers = void_result_readers(a["vram"], blobs, mems)
         if readers:
             a.update(admitted=False, rule="abi",
                      detail="void callee, caller reads v0/v1 at " + ", ".join(f"{p:08x}" for p in readers[:4]))

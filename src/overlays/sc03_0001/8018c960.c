@@ -1,0 +1,122 @@
+/* sc03_0001: func_8018C960 from Druthulu/BFM-decomp
+ * src/ov_SC03_001/ov_SC03_001_jr_8018B8DC.c (preprocessed; only the declarations it uses),
+ * byte-identical to the sc03_0001 retail words (gcc-2.7.2 -O2). */
+typedef unsigned char u8;
+typedef unsigned short u16;
+typedef unsigned int u32;
+typedef short s16;
+typedef int s32;
+typedef struct { s16 x, y, z, pad; } SVEC_80167AE0;
+typedef struct { s16 x, y, z, pad; } SVEC_8016A290;
+typedef void (*code)(unsigned short *);
+struct Fr {
+    u8 matrix[0x20];
+    SVEC_80167AE0 v[4];
+    struct { u8 r, g, b, pad; } col[4];
+    u32 code;
+};
+struct Fr_80167AE0 {
+    u8 matrix[0x20];
+    SVEC_80167AE0 v[4];
+    struct { u8 r, g, b, pad; } col[4];
+    u32 code;
+};
+struct Fr_8016A290 {
+    SVEC_8016A290 center;
+    SVEC_8016A290 diff;
+    s32 pos[3];
+    s32 _pad1c;
+    s16 mtx[32];
+    SVEC_8016A290 v[4];
+    struct { u8 r, g, b, pad; } col[4];
+    u32 code;
+};
+typedef struct { s16 x, y, z, pad; } SVec_801670E4;
+typedef struct {
+               u16 cx, cy, cz;
+               u16 _p06;
+               u16 a8[4];
+               s32 pos[3];
+               s32 _p1C;
+               SVec_801670E4 v[4];
+               struct { u8 r, g, b, cd; } col[4];
+               u32 code;
+               s32 _p54;
+               u8 m1[0x20];
+               u8 m2[0x20];
+} Fr_801670E4;
+extern short D_800B9A02;
+extern s16 D_800B9A02;
+extern s32 D_801151D0;
+extern u16 D_801EF1EC;
+extern s16 D_801EF1F0;
+extern s16 D_800B9A02;
+extern s32 D_801151D0;
+extern u16 D_801EF1EC;
+extern s16 D_801EF1F0;
+
+void func_8018C960(void) {
+    typedef struct { u32 addr : 24; u32 len : 8; } PTag_8018C960;
+    typedef struct { u32 *ot; u32 pad[4]; } Env_8018C960;
+    typedef struct {
+        u32 tag;
+        u8 r0, g0, b0, code;
+        s16 x0, y0;
+        u8 r1, g1, b1, p1;
+        s16 x1, y1;
+        u8 r2, g2, b2, p2;
+        s16 x2, y2;
+        u8 r3, g3, b3, p3;
+        s16 x3, y3;
+    } PG4_8018C960;
+    extern Env_8018C960 D_800AE7BC[];
+    extern u8 aD801EF1EC __asm__("D_801EF1EC");
+    extern u8 aD801EF1F0 __asm__("D_801EF1F0");
+    u32 **pp;
+    volatile u16 *pbh;
+    u32 *p;
+    u32 *r;
+    u8 c1, c2;
+    pp = (u32 **)&D_801151D0;
+    pbh = (u16 *)&D_800B9A02;
+    p = *pp;
+    ((PTag_8018C960 *)p)->len = 1;
+    p[1] = 0xE1000015;
+    ((PTag_8018C960 *)p)->addr = ((PTag_8018C960 *)D_800AE7BC[*pbh].ot)->addr;
+    ((PTag_8018C960 *)D_800AE7BC[*pbh].ot)->addr = (u32)p;
+    p += 2;
+    ((PG4_8018C960 *)p)->tag = 0x08000000;
+    ((PG4_8018C960 *)p)->code = 0x3A;
+    ((PG4_8018C960 *)p)->x2 = -160;
+    ((PG4_8018C960 *)p)->x0 = -160;
+    ((PG4_8018C960 *)p)->x3 = 160;
+    ((PG4_8018C960 *)p)->x1 = 160;
+    c1 = aD801EF1EC;
+    ((PG4_8018C960 *)p)->b1 = c1;
+    ((PG4_8018C960 *)p)->b0 = c1;
+    ((PG4_8018C960 *)p)->g1 = c1;
+    ((PG4_8018C960 *)p)->g0 = c1;
+    ((PG4_8018C960 *)p)->r1 = c1;
+    ((PG4_8018C960 *)p)->r0 = c1;
+    c2 = aD801EF1F0;
+    ((PG4_8018C960 *)p)->y1 = -120;
+    ((PG4_8018C960 *)p)->b3 = c2;
+    ((PG4_8018C960 *)p)->b2 = c2;
+    ((PG4_8018C960 *)p)->g3 = c2;
+    ((PG4_8018C960 *)p)->g2 = c2;
+    ((PG4_8018C960 *)p)->r3 = c2;
+    ((PG4_8018C960 *)p)->r2 = c2;
+    ((PG4_8018C960 *)p)->y0 = -120;
+    ((PG4_8018C960 *)p)->y3 = 120;
+    ((PG4_8018C960 *)p)->y2 = 120;
+    ((PTag_8018C960 *)p)->addr = ((PTag_8018C960 *)D_800AE7BC[*pbh].ot)->addr;
+    ((PTag_8018C960 *)D_800AE7BC[*pbh].ot)->addr = (u32)p;
+    r = p + 9;
+    p = r;
+    ((PTag_8018C960 *)r)->len = 1;
+    r[1] = 0xE1000240;
+    ((PTag_8018C960 *)r)->addr = ((PTag_8018C960 *)D_800AE7BC[*pbh].ot)->addr;
+    ((PTag_8018C960 *)D_800AE7BC[*pbh].ot)->addr = (u32)r;
+    p += 2;
+    *pp = p;
+}
