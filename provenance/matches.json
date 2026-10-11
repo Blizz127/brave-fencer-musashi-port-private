@@ -353172,6 +353172,146 @@
       "vram": 2148773176,
       "region": "sc01_0077",
       "source": "src/overlays/sc01_0077/8013ad38.c"
+    },
+    {
+      "size": 276,
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)",
+      "name": "func_8012E778",
+      "vram": 2148722552,
+      "region": "sc01_0077",
+      "source": "src/overlays/sc01_0077/8012e778.c"
+    },
+    {
+      "size": 116,
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)",
+      "name": "func_8012F274",
+      "vram": 2148725364,
+      "region": "sc01_0077",
+      "source": "src/overlays/sc01_0077/8012f274.c"
+    },
+    {
+      "size": 144,
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)",
+      "name": "func_8012F40C",
+      "vram": 2148725772,
+      "region": "sc01_0077",
+      "source": "src/overlays/sc01_0077/8012f40c.c"
+    },
+    {
+      "size": 204,
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)",
+      "name": "func_8012F49C",
+      "vram": 2148725916,
+      "region": "sc01_0077",
+      "source": "src/overlays/sc01_0077/8012f49c.c"
+    },
+    {
+      "size": 280,
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "name": "func_80130AF0",
+      "vram": 2148731632,
+      "region": "sc01_0077",
+      "source": "src/overlays/sc01_0077/80130af0.c"
+    },
+    {
+      "size": 1064,
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)",
+      "name": "func_80130D48",
+      "vram": 2148732232,
+      "region": "sc01_0077",
+      "source": "src/overlays/sc01_0077/80130d48.c"
+    },
+    {
+      "size": 76,
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)",
+      "name": "func_80131CA8",
+      "vram": 2148736168,
+      "region": "sc01_0077",
+      "source": "src/overlays/sc01_0077/80131ca8.c"
+    },
+    {
+      "size": 440,
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)",
+      "name": "func_801330E0",
+      "vram": 2148741344,
+      "region": "sc01_0077",
+      "source": "src/overlays/sc01_0077/801330e0.c"
+    },
+    {
+      "size": 756,
+      "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)",
+      "name": "func_8013B274",
+      "vram": 2148774516,
+      "region": "sc01_0077",
+      "source": "src/overlays/sc01_0077/8013b274.c"
+    },
+    {
+      "size": 564,
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)",
+      "name": "func_8013D9B0",
+      "vram": 2148784560,
+      "region": "sc01_0077",
+      "source": "src/overlays/sc01_0077/8013d9b0.c"
+    },
+    {
+      "size": 72,
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "name": "func_80146A6C",
+      "vram": 2148821612,
+      "region": "sc01_0077",
+      "source": "src/overlays/sc01_0077/80146a6c.c"
+    },
+    {
+      "size": 48,
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "name": "func_801542DC",
+      "vram": 2148877020,
+      "region": "sc01_0077",
+      "source": "src/overlays/sc01_0077/801542dc.c"
+    },
+    {
+      "size": 224,
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)",
+      "name": "func_8016BBE0",
+      "vram": 2148973536,
+      "region": "sc01_0077",
+      "source": "src/overlays/sc01_0077/8016bbe0.c"
     }
   ]
 }

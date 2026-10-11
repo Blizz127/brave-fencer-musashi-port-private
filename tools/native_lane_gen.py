@@ -1884,6 +1884,8 @@ def check_optimized(ir, module_internal):
                         a = a[4:].strip() if a.startswith("ptr ") else a
                         if defs.get(a, "").startswith("call ptr @musashi_lane_checked_ptr("):
                             vol_ok = True  # already run-time checked
+                        elif refs_host(parts[1]):
+                            vol_ok = True  # a host local (frame scratch): ordinary memory
                         elif getattr(CHECKED_PTRS_TLS, "vhits", None) is not None:
                             # Strict (B28): a guest-RAM volatile (decomp C's
                             # reload barrier on a struct field) through an
@@ -2545,6 +2547,9 @@ def gte_frame_block_host(text):
         while i < len(ins):
             if op0 and take(["lwc2 $0,0(%0)", "lwc2 $1,4(%0)"]):
                 out.append(f"musashi_lane_gte_ldv0((const void *){op0});")
+                continue
+            if take(["nop", "nop", "mvmva 1,0,0,3,0"]):
+                out.append("musashi_lane_gte_rtv0_notr();")  # gte_rtv0: RT*V0, no TR
                 continue
             if take(["nop", "nop", "mvmva 1,0,0,0,0"]):
                 out.append("musashi_lane_gte_rtv0();")  # gte_rt: RT*V0 + TR

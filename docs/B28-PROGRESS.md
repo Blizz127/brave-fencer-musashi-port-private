@@ -1879,6 +1879,10 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 - Unbounded i32 variable shifts get the amount masked to 5 bits, which is exactly what MIPS sllv/srlv/srav do, rather than being refused.
 - Gains 80138ED0, 801571C4, main_0010 800D02D0 and one main function. Gates pass, LOST []. The route now reaches f1900 (prims drawn) and stops at 8013B274.
 
+### Inc 148: no strict stop through the route's frame limit
+- The Inc 146 volatile check no longer wraps host-local addresses (8013B274's frame scratch `L`), which had tripped "host address converted to integer". 8013B274 is admitted in all six members; 13 more sc01_0077 gap twins installed (verified).
+- Gates pass, LOST []. The strict route now runs to its frame limit with no STRICT_INTERPRETER_ENTRY.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for
