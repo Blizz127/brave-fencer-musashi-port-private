@@ -2000,6 +2000,12 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 - Gates: build=0, TABLE_IDENTICAL, ctest 39/39, strict_build=0, m2c=0, LOST [].
 - Village warp: no STRICT_INTERPRETER_ENTRY. SCRIPT_POS reports loc=1010, then HOST_FAULT addr=0x20 at sc03_0001 8012AAAC (store through a null `*(obj+0x20)`; retail hits RAM via the KUSEG mirror). Next: KUSEG_NORMALIZE key.
 
+### Inc 160 — KUSEG_NORMALIZE sc03_0001 8012AAAC
+
+- Strict generator: add (sc03_0001, 8012AAAC) to KUSEG_NORMALIZE (null `*(obj+0x20)` store; retail writes RAM 0x20 via the KUSEG mirror).
+- Gates: build=0, TABLE_IDENTICAL, ctest 39/39, strict_build=0, m2c=0, LOST [].
+- Village warp: fault gone; next stop not_in_lane 801285e4.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for

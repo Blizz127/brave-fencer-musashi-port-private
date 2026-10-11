@@ -2776,7 +2776,8 @@ OVERLAY_DENY = {
 # sc02_0031 8015D01C (B28 inc 100): its target object pointer (+0x180) is
 # null on the SC02 load route, so it reads 0x00000020 (RAM 0x80000020) and
 # then +0x12 of that word, as retail does; natively it faulted the host.
-KUSEG_NORMALIZE = {("main_0012", 0x8012DEB8), ("sc02_0031", 0x8015D01C)}
+KUSEG_NORMALIZE = {("main_0012", 0x8012DEB8), ("sc02_0031", 0x8015D01C),
+                   ("sc03_0001", 0x8012AAAC)}
 
 
 def fold_ram_mirror_consts(ir):
