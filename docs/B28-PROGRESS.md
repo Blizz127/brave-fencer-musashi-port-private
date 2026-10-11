@@ -1960,6 +1960,16 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
   lui 0x8019 / addiu -0x2DE0) is byte-identical.
 - Gates pass, LOST []. The warp now stops at 801336e8.
 
+## Increment 156: 203 relocated sibling twins in sc03_0001
+
+- For each upstream function start in sc03_0001 that had no row but had a row
+  at the same address in another member, scratch shift.py (Inc 136; an address
+  map from both members' retail words: jal targets, lui/lo pairs, rodata_base)
+  rewrote the sibling source. 203 of 205 verified byte-identical and were
+  installed, including the warp stop 801336e8. No file defines a function
+  without a row.
+- Gates pass, LOST []. The village warp now stops in main at 8005a658.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for
