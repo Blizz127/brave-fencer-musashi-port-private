@@ -353562,28 +353562,6 @@
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
-      "name": "func_801287B8",
-      "vram": 2148698040,
-      "size": 248,
-      "region": "sc03_0001",
-      "source": "src/overlays/sc03_0001/801287b8.c",
-      "recovery": "c",
-      "extent": "function",
-      "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
-    },
-    {
-      "name": "func_801288B0",
-      "vram": 2148698288,
-      "size": 56,
-      "region": "sc03_0001",
-      "source": "src/overlays/sc03_0001/801288b0.c",
-      "recovery": "c",
-      "extent": "function",
-      "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
-    },
-    {
       "name": "func_801288E8",
       "vram": 2148698344,
       "size": 88,
@@ -355588,17 +355566,6 @@
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
-      "name": "func_80148AFC",
-      "vram": 2148829948,
-      "size": 284,
-      "region": "sc03_0001",
-      "source": "src/overlays/sc03_0001/80148afc.c",
-      "recovery": "c",
-      "extent": "function",
-      "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
-    },
-    {
       "name": "func_80148C18",
       "vram": 2148830232,
       "size": 8,
@@ -355780,17 +355747,6 @@
       "size": 272,
       "region": "sc03_0001",
       "source": "src/overlays/sc03_0001/80148d44.c",
-      "recovery": "c",
-      "extent": "function",
-      "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
-    },
-    {
-      "name": "func_80148E54",
-      "vram": 2148830804,
-      "size": 268,
-      "region": "sc03_0001",
-      "source": "src/overlays/sc03_0001/80148e54.c",
       "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
@@ -361056,17 +361012,6 @@
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
-      "name": "func_80131170",
-      "vram": 2148733296,
-      "size": 352,
-      "region": "sc03_0001",
-      "source": "src/overlays/sc03_0001/80131170.c",
-      "recovery": "c",
-      "extent": "function",
-      "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
-    },
-    {
       "name": "func_80131340",
       "vram": 2148733760,
       "size": 1696,
@@ -361198,18 +361143,6 @@
       "extent": "function",
       "optimization": "-O2",
       "rodata_base": 2149498440,
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
-    },
-    {
-      "name": "func_80135A4C",
-      "vram": 2148751948,
-      "size": 724,
-      "region": "sc03_0001",
-      "source": "src/overlays/sc03_0001/80135a4c.c",
-      "recovery": "c",
-      "extent": "function",
-      "optimization": "-O2",
-      "rodata_base": 2149498464,
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
@@ -362768,18 +362701,6 @@
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
-      "name": "func_8014032C",
-      "vram": 2148795180,
-      "size": 732,
-      "region": "sc03_0001",
-      "source": "src/overlays/sc03_0001/8014032c.c",
-      "recovery": "c",
-      "extent": "function",
-      "optimization": "-O2",
-      "rodata_base": 2149500328,
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
-    },
-    {
       "name": "func_80140608",
       "vram": 2148795912,
       "size": 492,
@@ -362929,28 +362850,6 @@
       "size": 132,
       "region": "sc03_0001",
       "source": "src/overlays/sc03_0001/80141874.c",
-      "recovery": "c",
-      "extent": "function",
-      "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
-    },
-    {
-      "name": "func_801418F8",
-      "vram": 2148800760,
-      "size": 360,
-      "region": "sc03_0001",
-      "source": "src/overlays/sc03_0001/801418f8.c",
-      "recovery": "c",
-      "extent": "function",
-      "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
-    },
-    {
-      "name": "func_80141A60",
-      "vram": 2148801120,
-      "size": 304,
-      "region": "sc03_0001",
-      "source": "src/overlays/sc03_0001/80141a60.c",
       "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
@@ -365350,18 +365249,6 @@
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
-      "name": "func_80159A20",
-      "vram": 2148899360,
-      "size": 232,
-      "region": "sc03_0001",
-      "source": "src/overlays/sc03_0001/80159a20.c",
-      "recovery": "c",
-      "extent": "function",
-      "optimization": "-O2",
-      "rodata_base": 2149500788,
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
-    },
-    {
       "name": "func_80159B08",
       "vram": 2148899592,
       "size": 52,
@@ -365414,18 +365301,6 @@
       "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
-    },
-    {
-      "name": "func_80159C84",
-      "vram": 2148899972,
-      "size": 1348,
-      "region": "sc03_0001",
-      "source": "src/overlays/sc03_0001/80159c84.c",
-      "recovery": "c",
-      "extent": "function",
-      "optimization": "-O2",
-      "rodata_base": 2149500884,
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
@@ -365492,18 +365367,6 @@
       "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
-    },
-    {
-      "name": "func_8015A3C8",
-      "vram": 2148901832,
-      "size": 1972,
-      "region": "sc03_0001",
-      "source": "src/overlays/sc03_0001/8015a3c8.c",
-      "recovery": "c",
-      "extent": "function",
-      "optimization": "-O2",
-      "rodata_base": 2149500940,
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
@@ -365606,18 +365469,6 @@
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
-      "name": "func_8015AE2C",
-      "vram": 2148904492,
-      "size": 2248,
-      "region": "sc03_0001",
-      "source": "src/overlays/sc03_0001/8015ae2c.c",
-      "recovery": "c",
-      "extent": "function",
-      "optimization": "-O2",
-      "rodata_base": 2149500972,
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
-    },
-    {
       "name": "func_8015B6F4",
       "vram": 2148906740,
       "size": 192,
@@ -365659,18 +365510,6 @@
       "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
-    },
-    {
-      "name": "func_8015B950",
-      "vram": 2148907344,
-      "size": 1084,
-      "region": "sc03_0001",
-      "source": "src/overlays/sc03_0001/8015b950.c",
-      "recovery": "c",
-      "extent": "function",
-      "optimization": "-O2",
-      "rodata_base": 2149501004,
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
@@ -376549,17 +376388,6 @@
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
-      "name": "func_8017BB34",
-      "vram": 2149038900,
-      "size": 260,
-      "region": "sc03_0001",
-      "source": "src/overlays/sc03_0001/8017bb34.c",
-      "recovery": "c",
-      "extent": "function",
-      "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
-    },
-    {
       "name": "func_8017BC38",
       "vram": 2149039160,
       "size": 104,
@@ -382006,39 +381834,6 @@
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
-      "name": "func_8016BD78",
-      "vram": 2148973944,
-      "size": 296,
-      "region": "sc03_0001",
-      "source": "src/overlays/sc03_0001/8016bd78.c",
-      "recovery": "c",
-      "extent": "function",
-      "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
-    },
-    {
-      "name": "func_8016BEA0",
-      "vram": 2148974240,
-      "size": 148,
-      "region": "sc03_0001",
-      "source": "src/overlays/sc03_0001/8016bea0.c",
-      "recovery": "c",
-      "extent": "function",
-      "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
-    },
-    {
-      "name": "func_8016C49C",
-      "vram": 2148975772,
-      "size": 688,
-      "region": "sc03_0001",
-      "source": "src/overlays/sc03_0001/8016c49c.c",
-      "recovery": "c",
-      "extent": "function",
-      "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
-    },
-    {
       "name": "func_8016DF5C",
       "vram": 2148982620,
       "size": 624,
@@ -382066,28 +381861,6 @@
       "size": 72,
       "region": "sc03_0001",
       "source": "src/overlays/sc03_0001/80178b70.c",
-      "recovery": "c",
-      "extent": "function",
-      "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
-    },
-    {
-      "name": "func_8017B238",
-      "vram": 2149036600,
-      "size": 304,
-      "region": "sc03_0001",
-      "source": "src/overlays/sc03_0001/8017b238.c",
-      "recovery": "c",
-      "extent": "function",
-      "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
-    },
-    {
-      "name": "func_8017B614",
-      "vram": 2149037588,
-      "size": 404,
-      "region": "sc03_0001",
-      "source": "src/overlays/sc03_0001/8017b614.c",
       "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
@@ -383632,17 +383405,6 @@
       "origin": "owner re-derivation, clean room (bfm-rederive a0e50b7), clean input set (asm+m2c+owner headers)"
     },
     {
-      "name": "func_801506A4",
-      "vram": 2148861604,
-      "size": 380,
-      "region": "sc03_0001",
-      "source": "src/overlays/sc03_0001/801506a4.c",
-      "recovery": "c",
-      "extent": "function",
-      "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
-    },
-    {
       "name": "func_801508B4",
       "vram": 2148862132,
       "size": 68,
@@ -383796,16 +383558,6 @@
       "size": 164,
       "region": "sc03_0001",
       "source": "src/overlays/sc03_0001/80151fb4.c",
-      "recovery": "c",
-      "extent": "function",
-      "optimization": "-O2"
-    },
-    {
-      "name": "func_801520DC",
-      "vram": 2148868316,
-      "size": 184,
-      "region": "sc03_0001",
-      "source": "src/overlays/sc03_0001/801520dc.c",
       "recovery": "c",
       "extent": "function",
       "optimization": "-O2"
@@ -384719,6 +384471,252 @@
       "region": "sc03_0001",
       "source": "src/overlays/sc03_0001/80150a70.c",
       "recovery": "mixed",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_801287B8",
+      "vram": 2148698040,
+      "size": 248,
+      "region": "sc03_0001",
+      "source": "src/overlays/sc03_0001/801287b8.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_801288B0",
+      "vram": 2148698288,
+      "size": 56,
+      "region": "sc03_0001",
+      "source": "src/overlays/sc03_0001/801288b0.c",
+      "recovery": "c",
+      "extent": "function"
+    },
+    {
+      "name": "func_80131170",
+      "vram": 2148733296,
+      "size": 352,
+      "region": "sc03_0001",
+      "source": "src/overlays/sc03_0001/80131170.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80135A4C",
+      "vram": 2148751948,
+      "size": 724,
+      "region": "sc03_0001",
+      "source": "src/overlays/sc03_0001/80135a4c.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "rodata_base": 2149498464,
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8014032C",
+      "vram": 2148795180,
+      "size": 732,
+      "region": "sc03_0001",
+      "source": "src/overlays/sc03_0001/8014032c.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "rodata_base": 2149500328,
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_801418F8",
+      "vram": 2148800760,
+      "size": 360,
+      "region": "sc03_0001",
+      "source": "src/overlays/sc03_0001/801418f8.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80141A60",
+      "vram": 2148801120,
+      "size": 304,
+      "region": "sc03_0001",
+      "source": "src/overlays/sc03_0001/80141a60.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80148AFC",
+      "vram": 2148829948,
+      "size": 284,
+      "region": "sc03_0001",
+      "source": "src/overlays/sc03_0001/80148afc.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80148E54",
+      "vram": 2148830804,
+      "size": 268,
+      "region": "sc03_0001",
+      "source": "src/overlays/sc03_0001/80148e54.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_801506A4",
+      "vram": 2148861604,
+      "size": 380,
+      "region": "sc03_0001",
+      "source": "src/overlays/sc03_0001/801506a4.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_801520DC",
+      "vram": 2148868316,
+      "size": 184,
+      "region": "sc03_0001",
+      "source": "src/overlays/sc03_0001/801520dc.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80159A20",
+      "vram": 2148899360,
+      "size": 232,
+      "region": "sc03_0001",
+      "source": "src/overlays/sc03_0001/80159a20.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "rodata_base": 2149500788,
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80159C84",
+      "vram": 2148899972,
+      "size": 1348,
+      "region": "sc03_0001",
+      "source": "src/overlays/sc03_0001/80159c84.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "rodata_base": 2149500884,
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8015A3C8",
+      "vram": 2148901832,
+      "size": 1972,
+      "region": "sc03_0001",
+      "source": "src/overlays/sc03_0001/8015a3c8.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "rodata_base": 2149500940,
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8015AE2C",
+      "vram": 2148904492,
+      "size": 2248,
+      "region": "sc03_0001",
+      "source": "src/overlays/sc03_0001/8015ae2c.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "rodata_base": 2149500972,
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8015B950",
+      "vram": 2148907344,
+      "size": 1084,
+      "region": "sc03_0001",
+      "source": "src/overlays/sc03_0001/8015b950.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)",
+      "rodata_base": 2149501004
+    },
+    {
+      "name": "func_8016BD78",
+      "vram": 2148973944,
+      "size": 296,
+      "region": "sc03_0001",
+      "source": "src/overlays/sc03_0001/8016bd78.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8016BEA0",
+      "vram": 2148974240,
+      "size": 148,
+      "region": "sc03_0001",
+      "source": "src/overlays/sc03_0001/8016bea0.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2"
+    },
+    {
+      "name": "func_8016C49C",
+      "vram": 2148975772,
+      "size": 688,
+      "region": "sc03_0001",
+      "source": "src/overlays/sc03_0001/8016c49c.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8017B238",
+      "vram": 2149036600,
+      "size": 304,
+      "region": "sc03_0001",
+      "source": "src/overlays/sc03_0001/8017b238.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8017B614",
+      "vram": 2149037588,
+      "size": 404,
+      "region": "sc03_0001",
+      "source": "src/overlays/sc03_0001/8017b614.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8017BB34",
+      "vram": 2149038900,
+      "size": 260,
+      "region": "sc03_0001",
+      "source": "src/overlays/sc03_0001/8017bb34.c",
+      "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
       "origin": "vendor-derived (Druthulu/BFM-decomp)"

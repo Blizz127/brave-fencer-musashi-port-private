@@ -1,19 +1,23 @@
-/* sc03_0001: func_8014032C from Druthulu/BFM-decomp
- * src/ov_SC03_001/ov_SC03_001_jr_8013FFD8.c (preprocessed; only the declarations it uses),
- * byte-identical to the sc03_0001 retail words (gcc-2.7.2 -O2). */
-typedef unsigned char u8;
-typedef short s16;
-typedef int s32;
-extern s32 func_80029178(s32);
-extern short D_80115128;
-extern s32 func_80029178(s32 arg);
-extern s32 func_800291B4(s32 arg);
-extern short D_80115128;
+/* Overlay range [8014032C,80140608) from MAIN.CD member 0012.
+ * SHA256(span)=eef0d8567d5bcc0a77ecb8d8ce621eb5988f7cd9e0d37a66d2c52656272e5495.
+ * Word export for the native seam (m2c produced no draft). */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8014032C - byte-exact against retail at -O2 (tools/register_match.py). */
+#include "psx_types.h"
+
 extern short D_80115128;
 extern u8 D_8018E5A8[];
 extern u8 D_8018E5C0[];
 extern s32 func_80029178(s32 arg);
 extern s32 func_800291B4(s32 arg);
+
+
+
+
+/* indexed data arrays (overlay) */
+
+
+/* address-return symbols (main RAM) */
 
 s32 func_8014032C(s32 param_1, s32 param_2) {
     extern int (*D_8018E8F0[])(void);
@@ -34,9 +38,12 @@ s32 func_8014032C(s32 param_1, s32 param_2) {
     extern u8 D_80112B58[];
     extern u8 D_80112BA8[];
     extern u8 D_80112B90[];
+
+
     int cVar1;
     unsigned int uVar3;
     void *result;
+
     result = D_801117EC;
     switch (((short)param_1)) {
     case 0:
@@ -51,9 +58,9 @@ s32 func_8014032C(s32 param_1, s32 param_2) {
         switch ((*(s16*)&D_80115128)) {
         case 0:
             if (D_8018E8F0[((short)param_2)]() == 0) {
-                ((short)param_2) = 5;
+                param_2 = 5;
             } else if (D_8018E8E0[((short)param_2)]() != 0) {
-                ((short)param_2) = 4;
+                param_2 = 4;
             }
             result = D_8018E63C[((short)param_2)];
             break;

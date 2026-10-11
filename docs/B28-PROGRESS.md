@@ -2012,6 +2012,12 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 - Gates: build=0, TABLE_IDENTICAL, ctest 39/39, strict_build=0, m2c=0, LOST [].
 - Village warp: next stop not_in_lane 80159a20.
 
+### Inc 162 — sc03_0001 sibling-form swaps for abi/ub/compile refusals (22)
+
+- 22 refused sc03_0001 bodies (incl. 80159A20, 80135A4C, 801287B8) replaced by admitted byte-exact sibling forms (main_0012 / sc01_0000 / sc01_0077, symbols relocated).
+- Gates: build=0, TABLE_IDENTICAL, ctest 39/39, strict_build=0, m2c=0, LOST [].
+- Village warp: next stop not_in_lane 8017f1f0.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for

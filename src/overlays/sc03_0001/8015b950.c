@@ -1,6 +1,6 @@
-/* sc03_0001: func_8015B950 from Druthulu/BFM-decomp
- * src/ov_SC03_001/ov_SC03_001_jr_8015AE2C.c (preprocessed; only the declarations it uses),
- * byte-identical to the sc03_0001 retail words (gcc-2.7.2 -O2). */
+/* sc01_0077: func_8015B950 from Druthulu/BFM-decomp
+ * src/ov_SC01_077/ov_SC01_077_jr_8015AE2C.c (preprocessed; only the declarations it uses),
+ * byte-identical to the sc01_0077 retail words (gcc-2.7.2 -O2). */
 typedef unsigned char u8;
 typedef unsigned short u16;
 typedef short s16;
@@ -13,6 +13,7 @@ struct S_80149744 {
     char pad48[0xAC - 0x48];
     u16 h_AC;
 };
+extern s32 func_80161CD0(s32 a0, s32 a1);
 extern s32 func_80029178(s32 arg);
 extern void func_80146D90(s32 a0);
 extern void func_80146DB8(s32 *a0, s32 *a1);
@@ -35,19 +36,24 @@ extern void func_80149BAC(s32 *a0);
 extern s32 func_80029178(s32 a0);
 extern s32 func_80149CD4(s32 a0);
 extern s32 func_80013294(void *a0, void *a1);
+void func_80146D90(s32 a0);
 extern void func_80154150(s32 a0, s32 a1);
 extern void func_801541D8(u8 *a0, s32 a1, s32 a2);
 extern s32 func_80029178(s32);
-extern int func_80161208();
+extern s32 func_80161208();
 extern void func_8015E880(s32 *a0);
+extern s32 func_80161208();
+extern s32 func_80161208();
 extern s32 func_80161208();
 extern s32 func_801725A4(u8 *a0);
 extern void func_80146D90(int);
+extern void (*D_8018FBA8[])(void *);
 extern void func_80159B70(void *a0);
 extern void func_8015A264(void *a0);
 extern s32 D_8011F9C4;
 extern s32 func_80161CD0(s32 a0, s32 a1);
 extern M2C_UNK D_8018FB3C;
+extern void (*D_8018FBA8[])(void *);
 extern s32 func_801619A4(s32 *a0);
 extern s32 func_801498E0(s32 *a0);
 extern s32 func_80149954(s32 s0);
@@ -62,9 +68,10 @@ extern s32 func_80149AA8(s32 *a0);
 extern void func_80154150(s32 a0, s32 a1);
 extern s32 func_80149B54(s32 *a0);
 extern void func_80154150(s32 a0, s32 a1);
+extern void (*D_8018FBA8[])(void *);
 extern s32 D_8011F9C4;
 extern s32 D_8018FB3C;
-extern s32 func_80161B18(void);
+extern s32 func_80161B18(s32);
 extern s32 func_801619A4(s32*);
 extern s32 func_80149AA8(s32*);
 extern void func_80149AD4(s32*);
@@ -96,16 +103,15 @@ extern s32 func_80161CD0(s32, s32);
 extern s32 func_80161208(s32 a0);
 extern s32 func_801725A4(u8*);
 
-s32 func_8015B950(s32 arg0)
+void func_8015B950(s32 arg0)
 {
-    extern void (*D_8018FBA8[])(void *);
     s16 sp10[4];
     s16 sp18[4];
     s32 t;
     s32 z;
     s32 doit;
     s32 lim = -0xB0000;
-    if (func_80161B18() != 0) {
+    if (func_80161B18(arg0) != 0) {
         return;
     }
     switch (((s32 (*)(s32))func_801619A4)(arg0)) {

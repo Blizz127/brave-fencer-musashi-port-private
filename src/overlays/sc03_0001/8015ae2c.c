@@ -1,54 +1,35 @@
-/* sc03_0001: func_8015AE2C from Druthulu/BFM-decomp
- * src/ov_SC03_001/ov_SC03_001_jr_8015AE2C.c (preprocessed; only the declarations it uses),
- * byte-identical to the sc03_0001 retail words (gcc-2.7.2 -O2). */
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef unsigned int u32;
-typedef short s16;
-typedef int s32;
-extern s32 func_80146994(s32 a0, s32 a1, s32 a2, s32 a3);
-extern s32 func_80146994(s32 arg0, s32 arg1, s32 arg2, s32 arg3);
-extern void func_80146CA0(void *a0);
-extern void func_80146D90(s32 a0);
-extern void func_80146E90(s32 *a0, s32 a1);
-extern s32 func_80146E98(s32 a0);
-extern void func_801473EC(s32 *a0);
-extern void func_80147460(s32 a0);
-extern void func_80147814(s32 a0, s32 a1);
-extern void func_80147A30(s32 a0, s32 a1, s32 a2);
-extern void func_80147A30(int a0, int a1, int a2);
-extern void func_80147AD4(s32 arg0, s32 arg1, s32 arg2, s32 arg3);
-extern void func_80147A84(s32 arg0);
-extern void func_80147AD4(s32 a0, s32 a1, s32 a2, s32 a3);
-extern void func_80148038(s32 a0, s32 a1);
-extern s32 func_800CF8B4();
-extern u16 func_801487F4(s32 *a0);
-extern int func_80148AFC(void *a0);
-extern s32 func_801491C4(s32 a0);
-extern s32 func_80149184(s32 a0);
-extern s32 func_801498E0(s32 *a0);
-extern s32 func_80149954(s32 s0);
-extern s32 func_80149A64(s32 *a0);
-extern s32 func_80149C08(s32 arg0);
-extern void func_801577C8();
-extern s32 func_80149FB0(s32 a0);
-extern s32 func_8014A674(s32 *a0);
-extern s32 func_8014A69C(s32 *a0);
-extern s32 func_8014C050(s32 a0, s32 a1);
-extern void func_8014E434(void);
-extern void func_8014E6A0(void);
-extern void func_80154274(s32 *a0, s32 a1);
-extern void func_80154A74(s32 a0, s32 a1);
-extern void func_80154150(s32 a0, s32 a1);
-extern void func_801541D8(u8 *a0, s32 a1, s32 a2);
-extern int func_80155FF8(int arg, int a1);
-extern void func_801577C8(s32 arg0);
-extern s32 func_801725A4(u8 *a0);
-extern void func_80147A84(int);
-extern void func_80148038(int, int);
-extern void func_80147460(int);
-extern void func_80146D90(int);
-extern void func_80154A74(int, int);
+/* Overlay range [8015AE2C,8015B6F4) from MAIN.CD member 0012.
+ * SHA256(span)=5637dbe7984140063172568a8b0c07867971223636b7f5023e12bebc06a37aa8.
+ * Word export for the native seam (m2c produced no draft). */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8015AE2C - byte-exact against retail at -O2 (tools/register_match.py). */
+#include "psx_types.h"
+
+/* File-scope declarations from the vendor translation unit. */
+void func_8012A568(void (*a0)(void));
+extern void func_8012A568(void (*a0)(void));
+
+/* func_8015AE2C (ov_SC01_077_after, 562 ins, jtbl_801D8B54) — Phase 26 crack
+ * Entity main-update dispatcher: 7-case switch (0/1/2/6 shared, 3/4/5 own, no default
+ * block — out-of-range falls to the after-switch join), then movement/clamp/decay tail.
+ * PIN-FREE. Offset-pure (s32 arg0 + raw offsets) — ×134 template-safe.
+ *
+ * match_one: MATCH (562 ins). rtu_match (whole-TU): MATCH (562 ins) — see func_8015AE2C.md
+ * for the two TU-side prerequisites (engine_core.h DEFINE_func_8015BEC4 extern must drop its
+ * `(void)` prototype, and the def must stay K&R) plus the jtbl_carve trailing-pad-word note.
+ *
+ * Signature: `s32` return + K&R def are REQUIRED by the TU, byte-neutral vs void/ANSI here
+ * (both verified MATCH 562): engine_core.h's thunk DEFINE_func_8015BEC4 does
+ * `return func_8015AE2C();` (s32, zero-arg call) — only an unprototyped K&R def coexists
+ * with that call. §41d does not bite on this body (it has early `return;`s).
+ *
+ * jtbl_801D8B54 = 7 entries [0,1,2,6]->0x8015AEE4  [3]->0x8015AFE0  [4]->0x8015AFF0
+ * [5]->0x8015B000, bound `sltiu 7`, default(out-of-range) -> 0x8015B044 (after-switch).
+ * The raw dlabel's 8th word 0x00000000 is NOT a table entry: it is the original TU's
+ * intra-TU `.align 3` pad between consecutive jtbls (B34/B54/B74 chain) — the compiled
+ * object emits exactly 28 B; the pad must stay in the raw post-carve data piece.
+ */
+extern void (*D_8018FBA8[])(void *);
 extern s32 func_80161A60(s32 a0);
 extern u16 func_801487F4(s32 *a0);
 extern s32 func_80149FB0(s32 a0);
@@ -95,27 +76,29 @@ extern s32 func_8014A69C(s32 *a0);
 extern void func_8014E6A0(void);
 extern void func_8015CF8C(s32 *a0);
 extern s32 func_801725A4(u8 *a0);
-int func_8015B6F4(int param_1);
-s32 func_8015B7B4(s32 a0);
-s32 func_8015B858(u8 *a0);
-void func_8015B8F8(s32 *a0);
+extern s32 D_800D4E94;
+extern s32 D_800D4ED4;
+extern u8 D_800D4F8C[];
+extern s32 D_800D4A9C;
+extern s32 D_800D4B48;
 
-s32 func_8015AE2C(arg0)
+void func_8015AE2C(arg0)
 s32 arg0;
 {
-    extern void (*D_8018FBA8[])(void *);
-    extern s16 D_801152A0;
+    /* [T51] scoped in from file scope: a file-scope decl of these symbols constrains every
+       LATER function in this TU, which blocks a byte-true decl of a different type.
+       Declaration-only move (cookbook §103); the whole-binary byte-gate is the arbiter. */
     extern u8 D_800D4BE0[];
-    extern s32 D_800D4E94;
-    extern s32 D_800D4ED4;
-    extern u8 D_800D4F8C[];
-    extern s32 D_800D4A9C;
-    extern s32 D_800D4B48;
+    /* [T51] scoped in from file scope: a file-scope decl of these symbols constrains every
+       LATER function in this TU, which blocks a byte-true decl of a different type.
+       Declaration-only move (cookbook §103); the whole-binary byte-gate is the arbiter. */
+    extern s16 D_801152A0;
     s32 flag;
     s32 r;
     s32 lim;
     s32 doit;
     s32 t;
+
     flag = 0;
     if ((func_80161A60(arg0) != 0) && (((s32 (*)(s32))func_801487F4)(arg0) & 0x40) && (*(s32 *)(arg0 + 0x34) >= 0)) {
         flag = 1;

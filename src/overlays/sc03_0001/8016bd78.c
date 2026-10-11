@@ -1,19 +1,20 @@
-/* sc03_0001: func_8016BD78 from Druthulu/BFM-decomp
- * src/ov_SC03_001/ov_SC03_001_jr_8016AB6C.c (preprocessed; only the declarations it uses),
- * byte-identical to the sc03_0001 retail words (gcc-2.7.2 -O2). */
+/* sc01_0077: func_8016BD78 from Druthulu/BFM-decomp
+ * src/ov_SC01_077/ov_SC01_077_jr_8016AB6C.c (preprocessed; only the declarations it uses),
+ * byte-identical to the sc01_0077 retail words (gcc-2.7.2 -O2). */
 typedef unsigned char u8;
 typedef unsigned short u16;
 typedef short s16;
 typedef int s32;
 typedef s32 M2C_UNK;
+M2C_UNK func_8016BF50();
 extern void func_8016BFA8(s32 a0, s32 a1, s32 a2, s32 a3);
 extern M2C_UNK D_801EDA84;
 extern M2C_UNK D_801EDA88;
+s32 func_8016BF50(s32 param);
 void func_8016BFA8(s32 a0, s32 a1, s32 a2, s32 a3);
 
-s32 func_8016BD78(s32 param_1)
+void func_8016BD78(s32 param_1)
 {
-    extern void func_8016BF50(void);
     extern u8 D_801EDA85;
     extern u8 D_801EDA86;
     extern u8 D_801EDA89;
@@ -23,7 +24,7 @@ s32 func_8016BD78(s32 param_1)
     u8 *p1;
     u8 *p2;
     iVar2 = *(s32 *)(param_1 + 0x20);
-    func_8016BF50();
+    ((void(*)())func_8016BF50)();
     p1 = &(*(u8 *)&D_801EDA84);
     if (*p1 != 0) *p1 -= 4;
     if (D_801EDA85 != 0) D_801EDA85 -= 4;

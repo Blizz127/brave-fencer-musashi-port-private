@@ -1,57 +1,25 @@
-/* sc03_0001: func_8015A3C8 from Druthulu/BFM-decomp
- * src/ov_SC03_001/ov_SC03_001_jr_8015A3C8.c (preprocessed; only the declarations it uses),
- * byte-identical to the sc03_0001 retail words (gcc-2.7.2 -O2). */
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef unsigned int u32;
-typedef short s16;
-typedef int s32;
-extern void func_80146DB8(s32 *a0, s32 *a1);
-extern void func_80147078(s32 *a0, s16 a1);
-extern void func_801473EC(s32 *a0);
-extern void func_80147AD4(s32 arg0, s32 arg1, s32 arg2, s32 arg3);
-extern void func_80147A84(s32 arg0);
-extern void func_80147AD4(s32 a0, s32 a1, s32 a2, s32 a3);
-extern u16 func_801487F4(s32 *a0);
-extern s32 func_80148824(void *arg0);
-extern s32 func_801488A8(u8 *a0);
-extern int func_80148AFC(void *a0);
-extern s32 func_801496D4(void *a0);
-extern void func_80149704(void);
-extern s16 D_800B9A08;
-extern s32 func_80149AA8(s32 *a0);
-extern s32 func_80149B54(s32 *a0);
-extern s32 func_801498E0(s32 *a0);
-extern s32 func_80149954(s32 s0);
-extern s32 func_80149A64(s32 *a0);
-extern void func_80149AD4(s32 *a0);
-extern s32 func_80149B54(s32 * arg0);
-extern void func_80149BAC(s32 *a0);
-extern s32 func_80149CD4(s32 a0);
-extern s32 func_80149D9C(s32 a0);
-extern void func_80149FA8(void);
-extern u8 D_80078E78[];
-extern s32 func_80149FB0(s32 a0);
-extern s32 func_8014A048(s32 param_1);
-extern void func_8014A218(void);
-extern s32 func_8016F1C4(void);
-extern void func_8014C010(s32 a0, s32 a1);
-extern void func_8014D738(void);
-extern void func_8014E934(s32 _arg0);
+/* Overlay range [8015A3C8,8015AB7C) from MAIN.CD member 0012.
+ * SHA256(span)=049d5fbc746bb5ecc553c441d1daf32f4eeec10c57c081dec06df1fb09b598ad.
+ * Word export for the native seam (m2c produced no draft). */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8015A3C8 - byte-exact against retail at -O2 (tools/register_match.py). */
+#include "psx_types.h"
+
+/* Vendor names mapped to address-named symbols for the link-by-address harness. */
+#define currentLocationId D_800B9A08
+
+/* File-scope declarations from the vendor translation unit. */
+void func_8012A568(void (*a0)(void));
+extern void func_8012A568(void (*a0)(void));
 extern u16 D_800B99DA;
-extern void func_8014E934(s32 a0);
-extern void func_80154A74(s32 a0, s32 a1);
-extern void func_801553C0(s32 a0);
-extern void func_80155440(s32 *a0);
-extern void func_80154150(s32 a0, s32 a1);
-extern void func_801541D8(u8 *a0, s32 a1, s32 a2);
-extern void func_8015E880(s32 *a0);
-extern void func_80147A84(int);
-extern void func_80154A74(int, int);
-extern void func_80159B70(void *a0);
-extern s32 func_80172608(u8 *a0);
-extern u8 D_80078E78[];
-extern s16 D_800B9A08;
+
+/* func_8015A3C8 (ov_SC01_077_after, 493 ins, jtbl_801D8B34) — Phase 26 crack
+ * Entity air/fall update: 7-case switch (0/1/2/6 shared, 3/4/5 own, no default block),
+ * then a big velocity-clamp tail with a nested char switch (0x41 / 0x53+0x73).
+ * PIN-FREE. Offset-pure (s32 arg0 + raw offsets) — x134 template-safe.
+ */
+extern s16 currentLocationId;
+
 extern s32 func_80149D9C(s32 a0);
 extern void func_80149FA8(void);
 extern s32 func_80149FB0(s32 a0);
@@ -59,7 +27,7 @@ extern s32 func_80161B84(void *a0);
 extern s32 func_80161B18(void *a0);
 extern s32 func_8014A048(s32 a0);
 extern void func_8014A218(void);
-extern int func_80161BE0(void *param_1);
+extern s32 func_80161BE0(s32*);
 extern s32 func_801619A4(s32 *a0);
 extern s32 func_80149AA8(s32 *a0);
 extern void func_80149AD4(s32 *a0);
@@ -99,18 +67,20 @@ extern void func_801553C0(s32 a0);
 extern void func_80161278(void *a0);
 extern void func_80161C24(s32 a0, s32 a1);
 extern s32 func_80172608(u8 *a0);
-extern void func_801483E8(void);
-s32 func_8015AB7C(s32 a0);
-s32 func_8015ABD4(s32 a0, s32 a1, s32 a2);
-void func_8015AC48(s32 arg0);
+extern void func_801483E8(unsigned char*);
 
-s32 func_8015A3C8(arg0)
+void func_8015A3C8(arg0)
 s32 arg0;
 {
+    /* [T51] scoped in from file scope: a file-scope decl of these symbols constrains every
+       LATER function in this TU, which blocks a byte-true decl of a different type.
+       Declaration-only move (cookbook §103); the whole-binary byte-gate is the arbiter. */
+    extern u8 D_80078E78[];
+
     extern void (*D_8018FBA8[])(void *);
-    extern u16 D_800B99DA;
+
     extern s32 D_800D5428;
-    extern u8 D_8018FB2C;
+    extern u8 D_8018FB2C[];
     s32 min;
     s32 grav;
     s32 hi;
@@ -119,8 +89,9 @@ s32 arg0;
     s32 lo2;
     s32 sv;
     u8 *p;
+
     p = D_80078E78;
-    if (D_800B9A08 == 0x302A) {
+    if (currentLocationId == 0x302A) {
         min = -0xC0000;
         grav = -0x4000;
         hi = 0;
@@ -129,6 +100,7 @@ s32 arg0;
         grav = -0x1000;
         hi = 0;
     }
+
     if (func_80149D9C(arg0) != 0) {
         D_8018FBA8[*(u16 *)arg0]((void *)arg0);
         ((void (*)(s32))func_80149FA8)(arg0);
@@ -181,6 +153,7 @@ s32 arg0;
         }
         break;
     }
+
     if (func_80149CD4(arg0) != 0) {
         D_8018FBA8[*(u16 *)arg0]((void *)arg0);
         ((void (*)(s32))func_8015E880)(arg0);
@@ -202,6 +175,7 @@ s32 arg0;
         }
         return;
     }
+
     ((void (*)(s32))func_80148AFC)(arg0);
     if (*(u32 *)(arg0 + 0x44) & 0x200) {
         if (*(s32 *)(arg0 + 0x23C) == 0) {
@@ -283,6 +257,7 @@ s32 arg0;
             break;
         }
     }
+
     ((void (*)(s32))func_801473EC)(arg0);
     if ((min >= *(s32 *)(arg0 + 0x2C)) && !(D_800B99DA & 7)) {
         func_8014C010(arg0, 2);

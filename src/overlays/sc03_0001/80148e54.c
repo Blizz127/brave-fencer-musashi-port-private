@@ -1,77 +1,68 @@
-/* sc03_0001: func_80148E54 from Druthulu/BFM-decomp
- * src/ov_SC03_001/ov_SC03_001_after.c (preprocessed; only the declarations it uses),
- * byte-identical to the sc03_0001 retail words (gcc-2.7.2 -O2). */
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef unsigned int u32;
-typedef short s16;
-typedef int s32;
-typedef struct Rec801466F0 {
-    u16 unk0;
-    u16 unk2;
-    u16 unk4;
-    u16 unk6;
-    s32 unk8;
-    s32 unkC;
-    s32 unk10;
-} Rec801466F0;
-extern s32 D_80126B58;
-extern void func_8002D4C8(s32 a0, s32 a1);
-extern s32 D_80126B58;
-extern void func_80015978(s32 a0, s32 *a1);
-extern void func_801466F0(s32 a0, s32 a1, s32 a2, s32 a3, s32 sp5, s32 sp6, s32 sp7, s32 sp8);
-extern u16 *func_80146750(u16 *param_1);
-extern u16 *func_8014680C(short *param_1);
-extern void aF801466F0(u16 a0, s32 a1, u16 a2, u16 a3, u16 sp5, s32 sp6, s32 sp7, s32 sp8)
-    __asm__("func_801466F0");
-void aF801466F0(u16 a0, s32 a1, u16 a2, u16 a3, u16 sp5, s32 sp6, s32 sp7, s32 sp8) __asm__("func_801466F0");
-unsigned short *func_80146750(unsigned short *a0);
-unsigned short *func_8014680C(short *param_1);
-extern s32 D_8011D030;
-extern s32 func_80146A6C(s32 a0, void *a1, s32 a2, s32 a3, s32 a4, s32 a5, s32 a6);
-extern s32 func_80146A6C(s32 a0, void *a1, s32 a2, s32 a3, s32 a4, s32 a5, s32 a6);
-extern s32 D_8011D030;
-extern void func_80146AFC(void*);
-void aF80146A6C(s16 a0, s32 a1, s16 a2, s16 a3, u16 a4, s32 a5, s32 a6) __asm__("func_80146A6C");
-void aF80146A6C(s16 a0, s32 a1, s16 a2, s16 a3, u16 a4, s32 a5, s32 a6) __asm__("func_80146A6C");
-void aF80146A6C(s16 a0, s32 a1, s16 a2, s16 a3, u16 a4, s32 a5, s32 a6) __asm__("func_80146A6C");
-s32 aF80146AFC(void *arg0) __asm__("func_80146AFC");
-s32 aF80146AFC(void *arg0) __asm__("func_80146AFC");
-s32 aF80146AFC(void *arg0) __asm__("func_80146AFC");
-extern void func_80147364();
-extern void func_80147364();
-extern s16 D_800B9A08;
-extern s32 D_80126B58;
-extern void func_80015978(s32, s32*);
-extern s32 aF8012E5CC(s32, s32, s32) __asm__("func_8012E5CC");
-extern void func_8002D4C8(s32 a0, s32 a1);
-void aF80147364(u16 param_1, u16 param_2) __asm__("func_80147364");
-void aF80147364(u16 param_1, u16 param_2) __asm__("func_80147364");
-extern s32 func_8004CFEC(s32 a0, s32 a1);
-extern void func_80015978(int a0, int *a1);
-extern s32 D_80126B58;
-extern s32 D_80126B58;
-extern s32 func_8004CFEC(s32 a0, s32 a1);
-extern s32 func_8004CFEC(s32 a0, s32 a1);
-extern s32 func_8004CFEC(s32, s32);
+/* Overlay range [80148E54,80148F60) from MAIN.CD member 0012.
+ * SHA256(span)=4d04462e5a1aabfc2d23f9efb915fced1d3926a5a33dac2edf43af258d09a1dc.
+ * Word export for the native seam; the body below is an
+ * UNVERIFIED draft, not an oracle match claim. */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+#include "psx_types.h"
+/* func_80148E54 - byte-exact against retail at -O2 (tools/register_match.py). */
+#define ratan2 func_8004CFEC
+extern s32 ratan2(s32 a0, s32 a1);
+extern s32 ratan2(s32 x, s32 y);
+extern s32 ratan2(s32, s32);
 
+/* Same dispatch as 80148AFC: a fallthrough (no case) returns the constant
+ * gcc's dispatch leaves in $v0 (0x41 below 0x54, else 0x73), and a0 still
+ * holds the angle at the handler jalr. Both are spelled out with pinned
+ * registers (byte-identical to the switch form). */
 s32 func_80148E54(s32 arg0) {
+
     extern s32 D_801151D4;
-    extern s16 (*D_8018F084[])();
-    register s32 tmp __asm__("$4") = (func_8004CFEC(*(s32 *)(D_801151D4 + 0x44) - *(s32 *)(D_801151D4 + 0x50),
-                                             *(s32 *)(D_801151D4 + 0x48) - *(s32 *)(D_801151D4 + 0x3C)) - 0x400) & 0xFFF;
-    s32 ang;
-    __asm__("" : "=r"(tmp) : "0"(tmp));
-    ang = tmp;
-    switch (*(u8 *)(arg0 + 0xA9)) {
-    case 0x41:
-        return D_8018F084[*(u16 *)(arg0 + 0xAA) >> 12]();
-    case 0x53:
-    case 0x73:
-        if ((*(u16 *)(arg0 + 0xAE) & 0xFF) == 0x80 && (*(u16 *)(arg0 + 0xAE) >> 8) == 0x80) {
-            return -1;
-        }
-        return (ang + func_8004CFEC((*(u16 *)(arg0 + 0xAE) & 0xFF) - 0x80,
-                             0x80 - (*(u16 *)(arg0 + 0xAE) >> 8))) & 0xFFF;
-    }
+    extern s16 (*D_8018F084[])(s32);
+    register s32 s0 __asm__("$16") = arg0;
+    register s32 s1 __asm__("$17");
+    register s32 v0 __asm__("$2");
+    register s32 v1 __asm__("$3");
+    register s32 a0_ __asm__("$4");
+    register s32 a1 __asm__("$5");
+    v0 = D_801151D4;
+    a0_ = *(s32 *)(v0 + 0x44) - *(s32 *)(v0 + 0x50);
+    a1 = *(s32 *)(v0 + 0x48) - *(s32 *)(v0 + 0x3C);
+    v0 = ratan2(a0_, a1);
+    v0 = v0 - 0x400;
+    a0_ = v0 & 0xFFF;
+    __asm__("" : "=r"(a0_) : "0"(a0_));
+    s1 = a0_;
+    v1 = *(u8 *)(s0 + 0xA9);
+    if (v1 == 0x53) goto LAB_S;
+    v0 = v1 < 0x54;
+    if (v0 == 0) goto LAB_GE;
+    v0 = 0x41;
+    if (v1 == v0) goto LAB_41;
+    goto LAB_RET;
+LAB_GE:
+    v0 = 0x73;
+    if (v1 == v0) goto LAB_S;
+    goto LAB_RET;
+LAB_41:
+    v0 = D_8018F084[*(u16 *)(s0 + 0xAA) >> 12](a0_);
+    goto LAB_RET;
+LAB_S:
+    v1 = *(u16 *)(s0 + 0xAE);
+    v0 = 0x80;
+    a0_ = v1 & 0xFF;
+    if (a0_ != v0) goto LAB_ATAN;
+    v0 = v1 >> 8;
+    if (v0 == a0_) { v0 = -1; goto LAB_RET; }
+LAB_ATAN:
+    a1 = *(u16 *)(s0 + 0xAE);
+    v0 = 0x80;
+    a0_ = a1 & 0xFF;
+    a0_ = a0_ - 0x80;
+    a1 = a1 >> 8;
+    a1 = v0 - a1;
+    v0 = ratan2(a0_, a1);
+    v0 = s1 + v0;
+    v0 = v0 & 0xFFF;
+LAB_RET:
+    return v0;
 }

@@ -1,45 +1,14 @@
-/* sc03_0001: func_80135A4C from Druthulu/BFM-decomp
- * src/ov_SC03_001/ov_SC03_001_jr_80135A4C.c (preprocessed; only the declarations it uses),
- * byte-identical to the sc03_0001 retail words (gcc-2.7.2 -O2). */
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef unsigned int u32;
-typedef signed char s8;
-typedef short s16;
-typedef int s32;
-struct V3;
-struct V3 { s16 x; s16 y; s16 z; };
+/* Overlay range [80135A4C,80135D20) from MAIN.CD member 0012.
+ * SHA256(span)=c4b1d0488f17b92007aad33f82e4990e13d85d7916d43b2f885345405361ea17.
+ * Word export for the native seam (m2c produced no draft). */
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_80135A4C - byte-exact against retail at -O2 (tools/register_match.py). */
+#include "psx_types.h"
+
+/* File-scope declarations from the vendor translation unit. */
 typedef struct { u8 b[8]; } Blk8;
-typedef struct {
-    u8 f0, f1, f2, f3;
-    struct { s16 a, b, c, d, e, g; } ent[16];
-} Blk_8016CF04;
-typedef struct {
-    u8 f0, f1, f2, f3;
-    struct { s16 a, b, c, d, e, g; } ent[16];
-} Blk_8016CF04_8016CF04;
 typedef struct { u16 f0, f2, f4; s16 f6; } Box;
-typedef struct {
-    s32 op;
-    union {
-        s32 w;
-        void *p;
-        s16 h[2];
-        u16 uh[2];
-    } a;
-} Cmd_80178D40;
 typedef struct { s16 x, y, z; } V3;
-extern void *memcpy(void *, const void *, unsigned int);
-extern void func_8012A568(void (*a0)(void));
-extern void func_8012A5F8(void (*a0)(void), s32 a1);
-extern u8 D_801152A8[];
-extern void *memcpy(void *, const void *, u32);
-extern void func_8005C324(int dst, int src, int n) __asm__("memcpy");
-extern u8 D_8018DAA0;
-extern u8 D_8018DA9C;
-extern s16 *D_8018DAA4;
-extern u16 D_801ED3C0;
-extern s16 func_80135480(void *param_1, s32 param_2, s16 *param_3, s16 *param_4);
 
 s32 func_80135A4C(s32 a0, s32 a1, s32 *a2, s32 a3) {
     typedef struct { s8 c[8]; } Blk8;
@@ -56,6 +25,7 @@ s32 func_80135A4C(s32 a0, s32 a1, s32 *a2, s32 a3) {
     extern s32 D_801ED3E4;
     extern u8 D_801152A8[];
     extern u8 D_801152B0;
+
     s32 *p;
     register s32 s7 __asm__("$23");
     s32 flag;
@@ -65,7 +35,8 @@ s32 func_80135A4C(s32 a0, s32 a1, s32 *a2, s32 a3) {
     s32 ret;
     s32 frame_pad[8];
     (void)&frame_pad;
-    switch (((s32 (*)(void))func_80135480)()) {
+
+    switch (((s32 (*)(void *, s32, s16 *, s16 *))func_80135480)((void *)a0, a1, (s16 *)a2, (s16 *)a3)) {
     case 0:
         return 0;
     case 1:
@@ -89,6 +60,7 @@ s32 func_80135A4C(s32 a0, s32 a1, s32 *a2, s32 a3) {
         flag = 1;
         break;
     }
+
     acc = 0;
     if (a1 < 0) {
         if (func_80135EB0(p, -0x8000) == 0) {
@@ -106,6 +78,7 @@ s32 func_80135A4C(s32 a0, s32 a1, s32 *a2, s32 a3) {
         if (p != 0) goto loop;
         return 0;
     }
+
     i = 0;
     *(s16 *)((*(u8 **)&D_8018DA9C) + 6) = -0x7FFF;
     *(s16 *)((*(u8 **)&D_8018DAA0) + 6) = 0x7FFF;
@@ -119,6 +92,7 @@ s32 func_80135A4C(s32 a0, s32 a1, s32 *a2, s32 a3) {
         }
         eq = t;
     }
+
     while (1) {
         ret = func_80133AB0(0, (s16)(*(Box **)&D_8018DA9C)->f0, (s16)(*(Box **)&D_8018DA9C)->f4, (s32)p);
         if (ret == 0) goto out;
@@ -130,6 +104,7 @@ s32 func_80135A4C(s32 a0, s32 a1, s32 *a2, s32 a3) {
             if (old >= 5) return 0;
         }
     }
+
 out:
     if ((s16)acc != 0 || D_801ED3BC != 0) {
         if ((*(Box **)&D_8018DA9C)->f6 >= -0xBCB) {
