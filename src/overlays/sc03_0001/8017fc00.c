@@ -14,7 +14,7 @@ typedef struct {
 } Ent_8017D6EC;
 extern void func_8002D4C8(s32 a0, s32 a1);
 extern void func_8012A568(void (*a0)(void));
-extern s32 func_80013450(s32);
+extern s32 func_80013450(s32, s32);
 extern void func_8004914C(void *a0);
 extern void func_800491AC(void *a0);
 extern void func_8017E204(void *arg0);
@@ -34,7 +34,7 @@ void func_8017FC00(void)
     extern s32 D_80126B58;
     extern u8 D_800AF648;
     extern s32 D_80191968;
-    extern s32 func_80013450(s32);
+    extern s32 func_80013450(s32, s32);
     s32 *p = &D_80126B58;
     s32 sxy, pv, flag;
     s16 x;
@@ -58,7 +58,7 @@ void func_8017FC00(void)
             }
             x = *(s16 *)&sxy;
             pan = (x * 15) / 320;
-            dist = ((s32 (*)(s32, s32))func_80013450)((s32)(p + 1), (s32)&D_80191968);
+            dist = func_80013450((s32)(p + 1), (s32)&D_80191968);
             if (dist >= 0x240) {
                 dist = 0x23F;
             }

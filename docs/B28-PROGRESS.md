@@ -2030,6 +2030,12 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 - Gates: build=0, TABLE_IDENTICAL, ctest 39/39, strict_build=0, m2c=0, LOST [].
 - Village warp: next stop not_in_lane 8017fc00. (TODO: differential probe for RotNclip4.)
 
+### Inc 165 — sc03_0001 8017FC00 two-arg prototype
+
+- func_8017FC00: func_80013450 declared `(s32, s32)` and called directly (upstream cast a 1-arg prototype; refused abi pass-through). Byte-exact.
+- Gates: build=0, TABLE_IDENTICAL, ctest 39/39, strict_build=0, m2c=0, LOST [].
+- Village warp: next stop not_in_lane 800caf5c (main).
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for
