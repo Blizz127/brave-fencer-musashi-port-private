@@ -390,6 +390,57 @@ int bfm_psyq_PutDrawEnv(uint32_t *r) {
     return 1;
 }
 
+/* SetDrawEnv(DR_ENV *dr, DRAWENV *env), as retail libgpu 8005A658 and its
+ * helpers 8005AB00..8005AD34: E3 clip start, E4 clip end, E5 offset, E1 mode,
+ * E2 texture window, E6, then with isbg a 0x60 rectangle over the clip area
+ * (moved by -ofs, size clamped to the VRAM limits); tag length 6 or 9. The
+ * GPU type byte D_80072788 (1, 2: 12-bit fields) and the VRAM limits
+ * D_8007278C/E are libgpu's own globals in guest RAM. */
+static uint32_t sde_clamp(int v, int lim) { return v < 0 ? 0u : (v > lim - 1 ? (uint32_t)(lim - 1) : (uint32_t)v); }
+int bfm_psyq_SetDrawEnv(uint32_t *r) {
+    uint8_t *dr = (uint8_t *)bfm_psyq_ptr(A(0), 40);
+    uint8_t *e = (uint8_t *)bfm_psyq_ptr(A(1), 28);
+    uint8_t *g = (uint8_t *)bfm_psyq_ptr(0x80072788u, 8);
+    uint32_t w[9], x0, y0, x1, y1;
+    int newgpu, lim_w, lim_h, n = 6, i;
+    int16_t cx, cy, cw, ch, ox, oy;
+    if (!dr || !e || !g) return 0;
+    newgpu = (uint8_t)(g[0] - 1u) < 2u;
+    lim_w = rd16s(g + 4); lim_h = rd16s(g + 6);
+    cx = rd16s(e); cy = rd16s(e + 2); cw = rd16s(e + 4); ch = rd16s(e + 6);
+    ox = rd16s(e + 8); oy = rd16s(e + 10);
+    x0 = sde_clamp(cx, lim_w); y0 = sde_clamp(cy, lim_h);
+    x1 = sde_clamp((int16_t)(cx + cw - 1), lim_w); y1 = sde_clamp((int16_t)(cy + ch - 1), lim_h);
+    if (newgpu) {
+        w[0] = 0xE3000000u | (y0 & 0xFFFu) << 12 | (x0 & 0xFFFu);
+        w[1] = 0xE4000000u | (y1 & 0xFFFu) << 12 | (x1 & 0xFFFu);
+        w[2] = 0xE5000000u | ((uint32_t)oy & 0xFFFu) << 12 | ((uint32_t)ox & 0xFFFu);
+        w[3] = 0xE1000000u | (e[22] ? 0x800u : 0u) | (rd16s(e + 20) & 0x27FFu) | (e[23] ? 0x1000u : 0u);
+    } else {
+        w[0] = 0xE3000000u | (y0 & 0x3FFu) << 10 | (x0 & 0x3FFu);
+        w[1] = 0xE4000000u | (y1 & 0x3FFu) << 10 | (x1 & 0x3FFu);
+        w[2] = 0xE5000000u | ((uint32_t)oy & 0x7FFu) << 11 | ((uint32_t)ox & 0x7FFu);
+        w[3] = 0xE1000000u | (e[22] ? 0x200u : 0u) | (rd16s(e + 20) & 0x9FFu) | (e[23] ? 0x400u : 0u);
+    }
+    w[4] = 0xE2000000u | (uint32_t)(e[14] >> 3) << 15 | (uint32_t)(e[12] >> 3) << 10 |
+           (uint32_t)(((-rd16s(e + 18)) & 0xFF) >> 3) << 5 | (uint32_t)(((-rd16s(e + 16)) & 0xFF) >> 3);
+    w[5] = 0xE6000000u;
+    if (e[24]) {
+        uint16_t rw = (uint16_t)(cw < 0 ? 0 : (cw > lim_w - 1 ? lim_w - 1 : cw));
+        uint16_t rh = (uint16_t)(ch < 0 ? 0 : (ch > lim_h - 1 ? lim_h - 1 : ch));
+        w[6] = 0x60000000u | (uint32_t)e[27] << 16 | (uint32_t)e[26] << 8 | e[25];
+        w[7] = (uint32_t)(uint16_t)(cy - oy) << 16 | (uint16_t)(cx - ox);
+        w[8] = (uint32_t)rh << 16 | rw;
+        n = 9;
+    }
+    for (i = 0; i < n; i++) {
+        dr[4 + 4 * i] = (uint8_t)w[i]; dr[5 + 4 * i] = (uint8_t)(w[i] >> 8);
+        dr[6 + 4 * i] = (uint8_t)(w[i] >> 16); dr[7 + 4 * i] = (uint8_t)(w[i] >> 24);
+    }
+    dr[3] = (uint8_t)n;
+    return 1;
+}
+
 /* DISPENV: RECT disp, RECT screen, u8 isinter, isrgb24, pad, pad */
 int bfm_psyq_PutDispEnv(uint32_t *r) {
     uint8_t *e = (uint8_t *)bfm_psyq_ptr(A(0), 20);

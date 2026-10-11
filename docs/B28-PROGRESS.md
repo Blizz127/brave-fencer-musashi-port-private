@@ -1970,6 +1970,23 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
   without a row.
 - Gates pass, LOST []. The village warp now stops in main at 8005a658.
 
+## Increment 157: native SetDrawEnv (village warp stop 8005A658)
+
+- 8005A658 is libgpu SetDrawEnv, a stub until now. bfm_psyq_SetDrawEnv writes
+  the DR_ENV as retail does (8005A658 plus helpers 8005AB00..8005AD34): E3/E4
+  clip clamped to the libgpu VRAM limits D_8007278C/E, E5 offset, E1 mode,
+  E2 texture window, E6, and with isbg a 0x60 rectangle over the clip moved by
+  -ofs; tag length 6 or 9. The GPU-type byte D_80072788 (1, 2) selects the
+  12-bit field encodings.
+- New ctest psyq_setdrawenv_differential compares against retail on the
+  interpreter, using the user's own EXE as the oracle. It covers 3000 random
+  DRAWENVs, GPU types 0-3 and both VRAM heights. All RAM is identical except
+  the retail stack frame (50000-case fuzz also identical). ctest is now 39/39.
+- bfm_psyq_compat.def was edited by hand: one status line, exactly what
+  psyq_callsites.py would emit from the new psyq_compat_status.py entry. The
+  generator needs the local splat asm/main.s, which no worktree has.
+- Gates pass, LOST []. The warp now stops at 801889ac.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for

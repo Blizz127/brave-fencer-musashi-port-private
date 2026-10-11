@@ -95,7 +95,7 @@ TABLE: dict[str, Status] = {
     "PutDrawEnv": Status(H, 1, 1, "bfm_psyq_PutDrawEnv", "guest DRAWENV -> BfmPlatDrawEnv; returns the guest pointer"),
     "PutDispEnv": Status(H, 1, 1, "bfm_psyq_PutDispEnv", "guest DISPENV -> BfmPlatDispEnv; returns the guest pointer"),
     "DrawOTag": Status(H, 1, 0, "bfm_psyq_DrawOTag", "walks the guest OT (24-bit links) and decodes GP0 packets to BfmPlatPrim; unknown codes skipped and counted"),
-    "SetDrawEnv": Status(S, 0, 0, None, "builds a DR_ENV packet in guest RAM (TBD)"),
+    "SetDrawEnv": Status(H, 2, 0, "bfm_psyq_SetDrawEnv", "DR_ENV packet in guest RAM as retail 8005A658 (E3/E4/E5/E1/E2/E6, isbg 0x60 rect)"),
     "DrawSyncCallback": Status(S, 0, 0, None, "callback into guest code: needs the lane's guest-call thunk"),
     # --- libgs: packet builders over guest RAM (pc_port/platform/psyq/bfm_psyq_libgs.c)
     "GsSortLine": Status(H, 3, 0, "bfm_psyq_GsSortLine", "E1 + LINE_F2 into GsOUT_PACKET_P, linked into the guest GsOT; drawn by DrawOTag"),

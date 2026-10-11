@@ -885,6 +885,22 @@ if(MUSASHI_BUILD_PC_PORT)
                 ${CMAKE_CURRENT_SOURCE_DIR}/extracted/disc/files/SLUS_007.26)
     set_tests_properties(psyq_stgetnext_differential PROPERTIES SKIP_RETURN_CODE 77)
 
+    # SetDrawEnv HLE vs the interpreted retail libgpu code at 0x8005A658
+    # (random DRAWENVs, GPU types and VRAM limits; all RAM but the stack frame).
+    add_executable(musashi_psyq_setdrawenv_probe tests/psyq_setdrawenv_probe.c)
+    target_compile_features(musashi_psyq_setdrawenv_probe PRIVATE c_std_99)
+    target_include_directories(musashi_psyq_setdrawenv_probe PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/pc_port/include ${CMAKE_CURRENT_SOURCE_DIR}/pc_port/platform)
+    if(TARGET musashi_native_lane)
+        target_link_libraries(musashi_psyq_setdrawenv_probe PRIVATE musashi_native_lane)
+    else()
+        target_link_libraries(musashi_psyq_setdrawenv_probe PRIVATE bfm_plat musashi_pc_port)
+    endif()
+    add_test(NAME psyq_setdrawenv_differential
+        COMMAND musashi_psyq_setdrawenv_probe
+                ${CMAKE_CURRENT_SOURCE_DIR}/extracted/disc/files/SLUS_007.26)
+    set_tests_properties(psyq_setdrawenv_differential PROPERTIES SKIP_RETURN_CODE 77)
+
     # LZC HLE (func_80049440, MTC2 LZCS / MFC2 LZCR) vs the interpreted retail
     # code over a real gte_owner: v0, the whole GTE bank, both owner counters,
     # RAM. With the lane it binds the production bridge (native_lane_psyq.c).
