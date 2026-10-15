@@ -51,7 +51,7 @@ extern void func_801831F0(short*);
 void func_80183778(void *arg0) {
     extern u8 D_801B9400[];
     if (*(u16 *)((char *)arg0 + 0x34) == 0) {
-        if (((s32 (*)(void))func_80187A64)() != 0) {
+        if (func_80187A64((s32)arg0) != 0) {
             func_80187994((s32)arg0, (s32)&D_801B9400[0], 1, 0x40);
             *(s16 *)((char *)arg0 + 0x34) = 1;
         }

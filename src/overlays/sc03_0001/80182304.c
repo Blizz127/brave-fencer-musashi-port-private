@@ -29,7 +29,7 @@ extern void func_80181D8C(short*);
 void func_80182304(void *arg0) {
     extern short D_801B9348;
     if (*(u16 *)((char *)arg0 + 0x34) == 0) {
-        if (((s32 (*)(void))func_80187A64)() != 0) {
+        if (func_80187A64((s32)arg0) != 0) {
             func_80187994((s32)arg0, (s32)&((u8 *)&D_801B9348)[0], 1, 0x40);
             *(s16 *)((char *)arg0 + 0x34) = 1;
             *(s32 *)((char *)arg0 + 0x1C) = 0x20;

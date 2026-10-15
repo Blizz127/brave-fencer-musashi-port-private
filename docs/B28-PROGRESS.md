@@ -2044,6 +2044,11 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 - Gates: build=0, TABLE_IDENTICAL, ctest 39/39, strict_build=0, m2c=0, LOST [].
 - Village warp: next stop not_in_lane 8016e95c.
 
+### Inc 167 — sc03_0001 sibling swaps (8016E95C+) + 80187A64 hidden-a0
+
+- Leftover from Oct 11: sibling-form swaps that admitted 8016E95C (ub), 801312D0, 8017AE2C. Gates already verified by the Oct 12 detached full.sh (build=0, TABLE_IDENTICAL, ctest 39/39, strict_build=0, m2c=0, LOST []); warp stop moved to 8017c710.
+- 80182304 / 80182AEC / 80183778: each called func_80187A64 with a (void) cast while retail left a0 = arg0 live into the jal (hidden-a0). Pass arg0 explicitly; byte-exact. (Audit follow-up from Inc 166.)
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for

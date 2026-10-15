@@ -1,11 +1,14 @@
-/* sc03_0001: func_8017AE2C from Druthulu/BFM-decomp
- * src/ov_SC03_001/ov_SC03_001_jr_8017AE2C.c (preprocessed; only the declarations it uses),
- * byte-identical to the sc03_0001 retail words (gcc-2.7.2 -O2). */
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef short s16;
-typedef int s32;
-extern s32 func_80012A60(s32 a0, s32 a1);
+/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* func_8017AE2C - byte-exact against retail at -O2 (tools/register_match.py). */
+#include "psx_types.h"
+typedef float f32;
+typedef unsigned long long u64;
+typedef long long s64;
+typedef double f64;
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
 extern void func_8012A568(void (*a0)(void));
 extern s32 func_8012B608(s32 a0, s32 a1, s32 a2);
 extern void func_8012B178(s32 a0, s32 a1);
@@ -19,8 +22,9 @@ extern s16 D_801EF3AA;
 extern s16 D_801EF3B4;
 
 void func_8017AE2C(s32 param_1) {
-    s32 pv = param_1;
-    s16 *g = &D_801EF3A8;
+    register s32 pv __asm__("$16") = param_1;
+    register s16 *g __asm__("$17") = &D_801EF3A8;
+
     switch (g[0]) {
     case 0:
     default:
@@ -57,7 +61,9 @@ void func_8017AE2C(s32 param_1) {
                 func_8012AD80(pv);
                 *(u16 *)(pv + 0xA) -= 8;
                 func_8012B030((u8 *)pv);
-                if (func_8012BE98(pv, (u16 *)((s32)&D_801EF3A8 + 0xC)) < 0x101) {
+                /* &D_801EF3A8+0xC == &D_801EF3B4; distinct rtx defeats gcc's address-CSE
+                   so BE98's arg rematerializes instead of sharing the store's reg (byte-gate). */
+                if (func_8012BE98(pv, (u16 *)((u8 *)&D_801EF3A8 + 0xC)) < 0x101) {
                     D_801EF3A8 = 0;
                     D_801EF3AA = 0;
                 }
@@ -81,7 +87,8 @@ void func_8017AE2C(s32 param_1) {
         func_8012AD80(pv);
         *(u16 *)(pv + 0xA) -= 8;
         func_8012B030((u8 *)pv);
-        if (func_8012BE98(pv, (u16 *)((s32)&D_801EF3A8 + 0xC)) < 0x101) {
+        /* see note above: distinct rtx for the same address defeats address-CSE. */
+        if (func_8012BE98(pv, (u16 *)((u8 *)&D_801EF3A8 + 0xC)) < 0x101) {
             D_801EF3A8 = 0;
             D_801EF3AA = 0;
         }
