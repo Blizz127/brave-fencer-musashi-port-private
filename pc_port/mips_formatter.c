@@ -13918,15 +13918,15 @@ enum { VW_OFF, VW_NATIVE, VW_PERSTEP };
 #define VW_WORDS 39u
 #define VW_DIGEST 0xd9b8652817b4ae85ull   /* FNV-1a 64 of the 39 words as the SLUS-00726 EXE holds them */
 static int g_vw_mode = -1;
-static uint64_t g_vw_calls, g_vw_done, g_vw_handover, g_vw_fallback, g_vw_other_ra;
+static uint64_t g_vw_calls, g_vw_done, g_vw_handover, g_vw_fallback;
 static uint64_t g_vw_slots, g_vw_checkpoints, g_vw_iterations;
 
 static void vw_report(void) {
     fprintf(stderr, "native_boot: VSYNC_WAIT mode=%s calls=%llu done=%llu handover=%llu fallback=%llu "
-            "other_ra=%llu slots=%llu iterations_charged=%llu checkpoints=%llu\n",
+            "slots=%llu iterations_charged=%llu checkpoints=%llu\n",
             g_vw_mode == VW_PERSTEP ? "perstep" : "native", (unsigned long long)g_vw_calls,
             (unsigned long long)g_vw_done, (unsigned long long)g_vw_handover, (unsigned long long)g_vw_fallback,
-            (unsigned long long)g_vw_other_ra, (unsigned long long)g_vw_slots,
+            (unsigned long long)g_vw_slots,
             (unsigned long long)g_vw_iterations, (unsigned long long)g_vw_checkpoints);
 }
 
@@ -14083,7 +14083,6 @@ static int vsync_wait_native(MusashiBootMemory *memory, FormatterCpu *cpu) {
         ++g_vw_fallback;
         return 0;
     }
-    if (cpu->r[31] != 0x80042434u && cpu->r[31] != 0x80042458u) ++g_vw_other_ra;
     vw_slot(cpu, cell, ra_cell, tick, &pending);             /* 800424E4: the run loop made its checkpoint */
     for (;;) {
         if (!vw_flush(cpu, &pending)) return -1;
