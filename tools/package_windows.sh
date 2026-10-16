@@ -193,6 +193,9 @@ rem Playable window, real-time guest clock, errors shown on screen.
 if not defined MUSASHI_INTERACTIVE set MUSASHI_INTERACTIVE=1
 if not defined MUSASHI_GUEST_CLOCK set MUSASHI_GUEST_CLOCK=1
 if not defined MUSASHI_HOLD_WINDOW_MS set MUSASHI_HOLD_WINDOW_MS=3000
+rem The game's VSync wait runs as native code by default, as in the Linux r47 launch.sh;
+rem set MUSASHI_VSYNC_WAIT=off to run the r41 interpreter wait instead.
+if not defined MUSASHI_VSYNC_WAIT set MUSASHI_VSYNC_WAIT=native
 if not defined BFM_DEV_MENU (
     if exist "%CONF%\dev-menu-off" (set BFM_DEV_MENU=0) else (set BFM_DEV_MENU=1)
 )
@@ -331,7 +334,7 @@ manifest = {
                     "or picked on first run"],
     "excluded": ["disc image and all other game data", "BIOS"],
     "launch": "launch.cmd [native port options]",
-    "packaging_revision": "licenses1-discenv1",
+    "packaging_revision": "licenses1-discenv1-vsync1",
     "contains_game_data": False,
     "distribution": distribution,
     "files": files,
