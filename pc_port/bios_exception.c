@@ -1,5 +1,5 @@
 #include "musashi_bios_exception.h"
-#include <openssl/evp.h>
+#include "platform/bfm_plat_sha256.h"
 #include <string.h>
 
 static const uint8_t rom_hash[32] = {
@@ -111,10 +111,11 @@ static int init_with(MusashiBiosExceptionImage *image,MusashiBootMemory *memory,
 }
 int musashi_bios_exception_init(MusashiBiosExceptionImage *image,MusashiBootMemory *memory,
     MusashiBiosKernel *kernel,MusashiCpuStatus *cpu,const uint8_t *rom,size_t size) {
-    unsigned length=0;uint8_t digest[32];
+    uint8_t digest[32];BfmPlatSha256 sha;
     if(image && image->busy) {image->faulted=1;return 0;}
-    if(!rom || size!=524288 || !EVP_Digest(rom,size,digest,&length,EVP_sha256(),NULL) ||
-        length!=32 || memcmp(digest,rom_hash,32) || !equal_words(rom+0x10174,table_words,7))return 0;
+    if(!rom || size!=524288)return 0;
+    bfm_plat_sha256_init(&sha);bfm_plat_sha256_update(&sha,rom,size);bfm_plat_sha256_final(&sha,digest);
+    if(memcmp(digest,rom_hash,32) || !equal_words(rom+0x10174,table_words,7))return 0;
     return init_with(image,memory,kernel,cpu,rom);
 }
 int musashi_bios_exception_init_selected(MusashiBiosExceptionImage *image,MusashiBootMemory *memory,

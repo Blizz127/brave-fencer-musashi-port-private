@@ -1,6 +1,6 @@
 #include "musashi_disc_media.h"
 
-#include <openssl/evp.h>
+#include "platform/bfm_plat_sha256.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -28,14 +28,15 @@ static int hex_value(char value) {
 
 static int sha256_matches(const unsigned char *data, size_t size,
                           const char *expected_hex) {
-    unsigned char digest[EVP_MAX_MD_SIZE];
-    unsigned int digest_size = 0;
+    unsigned char digest[32];
+    BfmPlatSha256 sha;
     size_t i;
 
-    if (!data || !expected_hex || strlen(expected_hex) != 64u ||
-        EVP_Digest(data, size, digest, &digest_size, EVP_sha256(), NULL) != 1 ||
-        digest_size != 32u)
+    if (!data || !expected_hex || strlen(expected_hex) != 64u)
         return 0;
+    bfm_plat_sha256_init(&sha);
+    bfm_plat_sha256_update(&sha, data, size);
+    bfm_plat_sha256_final(&sha, digest);
     for (i = 0; i < 32u; ++i) {
         int high = hex_value(expected_hex[i * 2u]);
         int low = hex_value(expected_hex[i * 2u + 1u]);
@@ -175,12 +176,27 @@ static long file_size(const char *path) {
     return length;
 }
 
+static int cue_file_is_absolute(const char *name) {
+#ifdef _WIN32
+    if (name[0] == '\\' || (name[0] && name[1] == ':')) return 1;
+#endif
+    return name[0] == '/';
+}
+
 /* Up to eight FILE entries of a cue sheet, resolved against its folder. */
 static int cue_files(const char *cue_path, char files[][4096], int max) {
     FILE *cue = fopen(cue_path, "r");
     char line[4096], dir[4096];
     const char *slash = strrchr(cue_path, '/');
     int count = 0;
+#ifdef _WIN32
+    /* Windows paths may use either separator (and "C:disc.cue" names a folder by drive). */
+    {
+        const char *back = strrchr(cue_path, '\\');
+        if (back && (!slash || back > slash)) slash = back;
+        if (!slash && cue_path[0] && cue_path[1] == ':') slash = cue_path + 1;
+    }
+#endif
     if (!cue) return -1;
     snprintf(dir, sizeof dir, "%.*s", slash ? (int)(slash - cue_path) : 0, cue_path);
     while (fgets(line, sizeof line, cue)) {
@@ -198,7 +214,10 @@ static int cue_files(const char *cue_path, char files[][4096], int max) {
         }
         if (!end || end == name || count >= max) { fclose(cue); return -1; }
         *end = '\0';
-        if (name[0] == '/' || !slash) snprintf(files[count], 4096, "%s", name);
+        if (cue_file_is_absolute(name) || !slash) snprintf(files[count], 4096, "%s", name);
+#ifdef _WIN32
+        else if (*slash == ':') snprintf(files[count], 4096, "%.2s%s", cue_path, name);
+#endif
         else snprintf(files[count], 4096, "%s/%s", dir, name);
         ++count;
     }

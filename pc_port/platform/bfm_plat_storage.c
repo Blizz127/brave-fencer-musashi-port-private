@@ -6,6 +6,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 #define MAX_BACKENDS 8
 
@@ -379,9 +382,13 @@ int bfm_plat_memcard_save(unsigned slot, const uint8_t *card, size_t size) {
     ok = fwrite(card, 1, size, f) == size;
     ok = (fclose(f) == 0) && ok;
 #ifdef _WIN32
-    if (ok) remove(path);
-#endif
+    /* rename() will not replace an existing file here. Removing the old card
+     * first would lose it if the process ended before the rename; replace it
+     * in one step instead (same ANSI paths as fopen). */
+    if (!ok || !MoveFileExA(tmp, path, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
+#else
     if (!ok || rename(tmp, path) != 0) {
+#endif
         remove(tmp);
         return BFM_PLAT_ERROR;
     }

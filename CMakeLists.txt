@@ -98,7 +98,15 @@ if(MUSASHI_BUILD_PC_PORT AND MUSASHI_WITH_PSYCROSS)
         VERBATIM)
     list(REMOVE_ITEM MUSASHI_PSYCROSS_SOURCES_CXX "${MUSASHI_GTE_UPSTREAM}")
     list(APPEND MUSASHI_PSYCROSS_SOURCES_CXX "${MUSASHI_GTE_PREPARED}")
-    set_source_files_properties(${MUSASHI_PSYCROSS_SOURCES_C} PROPERTIES LANGUAGE C)
+    if(WIN32)
+        # The Linux build's GCC is never passed -x c for these (CMP0119 is
+        # unset), so it compiles every uppercase .C as C++ and only warns
+        # about the C-only -std flag. clang does the same but rejects that
+        # flag; say C++ outright so the Windows objects match.
+        set_source_files_properties(${MUSASHI_PSYCROSS_SOURCES_C} PROPERTIES LANGUAGE CXX)
+    else()
+        set_source_files_properties(${MUSASHI_PSYCROSS_SOURCES_C} PROPERTIES LANGUAGE C)
+    endif()
     add_library(psycross_static STATIC
         ${MUSASHI_PSYCROSS_SOURCES_C}
         ${MUSASHI_PSYCROSS_SOURCES_CXX}
@@ -156,12 +164,34 @@ if(MUSASHI_BUILD_PC_PORT AND MUSASHI_WITH_PSYCROSS)
             OpenAL::OpenAL
             OpenGL::GL
     )
+    if(WIN32)
+        # Windows (zig/MinGW, cmake/zig-windows.cmake). Upstream's MSVC build
+        # gets these through its precompiled headers:
+        #  - PsyX_main.cpp's _WIN32 console code uses Win32 types without
+        #    including <windows.h>;
+        #  - PsyX_render.cpp calls sinf/cosf without <math.h>;
+        #  - <AL/al.h> resolves from the OpenAL prefix's include/.
+        set_property(SOURCE "${MUSASHI_PSYCROSS_DIR}/src/PsyX_main.cpp" APPEND PROPERTY
+            COMPILE_OPTIONS -DWIN32_LEAN_AND_MEAN -DNOMINMAX -include windows.h)
+        set_property(SOURCE "${MUSASHI_PSYCROSS_DIR}/src/render/PsyX_render.cpp" APPEND PROPERTY
+            COMPILE_OPTIONS -include math.h)
+        # LIBETC.C's (int)callback casts (see the -fpermissive note above):
+        # clang only accepts them as a Microsoft extension.
+        set_property(SOURCE "${MUSASHI_PSYCROSS_DIR}/src/psx/LIBETC.C" APPEND PROPERTY
+            COMPILE_OPTIONS -fms-extensions)
+        target_include_directories(psycross_static PRIVATE "${OPENAL_INCLUDE_DIR}/..")
+    endif()
 endif()
 
 if(MUSASHI_BUILD_PC_PORT)
-    # Native entry-data loading verifies the complete retail EXE before writes.
-    # Crypto only: no TLS/network dependency is used by the port.
-    find_package(OpenSSL REQUIRED COMPONENTS Crypto)
+    if(WIN32)
+        # setenv, mkdir(path, mode), localtime_r on the UCRT.
+        add_compile_options("$<$<COMPILE_LANGUAGE:C>:SHELL:-include ${CMAKE_CURRENT_SOURCE_DIR}/pc_port/compat/win32_posix.h>")
+    endif()
+    # Native entry-data loading verifies the complete retail EXE before writes,
+    # with the in-tree SHA-256 (no crypto library on any host).
+    add_library(bfm_sha256 STATIC pc_port/platform/bfm_plat_sha256.c)
+    target_include_directories(bfm_sha256 PUBLIC pc_port/platform)
     find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
     set(MUSASHI_GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
@@ -295,7 +325,7 @@ if(MUSASHI_BUILD_PC_PORT)
             ${MUSASHI_GENERATED_DIR}
     )
     target_compile_features(musashi_pc_port PUBLIC c_std_99)
-    target_link_libraries(musashi_pc_port PUBLIC musashi_shared PRIVATE OpenSSL::Crypto)
+    target_link_libraries(musashi_pc_port PUBLIC musashi_shared bfm_sha256)
     if(MUSASHI_WITH_PSYCROSS)
         target_sources(musashi_pc_port PRIVATE
             pc_port/psyx_shutdown.cpp
@@ -397,17 +427,33 @@ if(MUSASHI_BUILD_PC_PORT)
     target_link_libraries(musashi_device_epoch_probe PRIVATE musashi_pc_port)
     add_test(NAME device_epoch_boundary COMMAND musashi_device_epoch_probe)
 
+    # Cue FILE entries resolve against the cue's folder for any cwd and separator.
+    add_executable(musashi_disc_cue_path_probe tests/disc_cue_path_probe.c)
+    target_link_libraries(musashi_disc_cue_path_probe PRIVATE musashi_pc_port)
+    add_test(NAME disc_cue_path COMMAND musashi_disc_cue_path_probe
+             ${CMAKE_CURRENT_BINARY_DIR}/disc_cue_path_probe.tmp)
+
     if(MUSASHI_WITH_PSYCROSS)
         # Own pinned entry state and IRQ lifetime in an executable. This
         # currently stops at the first missing device; it is not a menu demo.
-        add_library(musashi_x11_nograb SHARED pc_port/x11_nograb.c)
-        target_include_directories(musashi_x11_nograb PRIVATE
-            ${CMAKE_CURRENT_SOURCE_DIR}/pc_port/include)
-        target_link_libraries(musashi_x11_nograb PRIVATE ${CMAKE_DL_LIBS})
+        # X11 only: Windows has no X server to interpose (the two spectator
+        # entry points are no-ops in pc_port/platform/windows.c).
+        if(NOT WIN32)
+            add_library(musashi_x11_nograb SHARED pc_port/x11_nograb.c)
+            target_include_directories(musashi_x11_nograb PRIVATE
+                ${CMAKE_CURRENT_SOURCE_DIR}/pc_port/include)
+            target_link_libraries(musashi_x11_nograb PRIVATE ${CMAKE_DL_LIBS})
+            set(MUSASHI_X11_NOGRAB musashi_x11_nograb)
+        endif()
         add_executable(musashi_native_boot pc_port/native_boot.c)
         target_link_options(musashi_native_boot PRIVATE -Wl,--gc-sections)
         target_compile_features(musashi_native_boot PRIVATE c_std_99)
-        target_link_libraries(musashi_native_boot PRIVATE musashi_pc_port musashi_x11_nograb ${CMAKE_DL_LIBS})
+        target_link_libraries(musashi_native_boot PRIVATE musashi_pc_port ${MUSASHI_X11_NOGRAB} ${CMAKE_DL_LIBS})
+        if(WIN32)
+            # A console program whose own main is the entry (stderr carries
+            # the gate lines), not SDL2main's WinMain.
+            target_compile_definitions(musashi_native_boot PRIVATE SDL_MAIN_HANDLED)
+        endif()
 
         add_executable(musashi_gpu_psycross_probe tests/gpu_psycross_probe.c)
         target_compile_features(musashi_gpu_psycross_probe PRIVATE c_std_99)
@@ -448,7 +494,7 @@ if(MUSASHI_BUILD_PC_PORT)
         # into this synthetic source-registration fixture.
         target_compile_options(musashi_irq_scheduler_probe PRIVATE -ffunction-sections -fdata-sections)
         target_link_options(musashi_irq_scheduler_probe PRIVATE -Wl,--gc-sections)
-        target_link_libraries(musashi_irq_scheduler_probe PRIVATE OpenSSL::Crypto SDL2::SDL2)
+        target_link_libraries(musashi_irq_scheduler_probe PRIVATE bfm_sha256 SDL2::SDL2)
         add_test(NAME irq_scheduler_boundary COMMAND musashi_irq_scheduler_probe)
 
         # This one requires a real SDL/GL display because PsyCross owns the
@@ -541,13 +587,15 @@ if(MUSASHI_BUILD_PC_PORT)
     # Core list tracks pc_port/platform/bfm_plat*.c (ARCHITECTURE-PORT.md).
     file(GLOB BFM_PLAT_CORE_SOURCES CONFIGURE_DEPENDS
         ${CMAKE_CURRENT_SOURCE_DIR}/pc_port/platform/bfm_plat*.c)
+    list(REMOVE_ITEM BFM_PLAT_CORE_SOURCES
+        ${CMAKE_CURRENT_SOURCE_DIR}/pc_port/platform/bfm_plat_sha256.c)   # bfm_sha256
     add_library(bfm_plat STATIC ${BFM_PLAT_CORE_SOURCES}
         pc_port/platform/psyq/bfm_psyq_compat.c
         pc_port/platform/psyq/bfm_psyq_libgs.c
         pc_port/platform/psyq/bfm_psyq_libgte.c         # + psyq/psyq_psycross.c with PsyCross
         pc_port/platform/psyq/bfm_psyq_libpad.c)        # S3a libpad leaves (input frame)
     target_include_directories(bfm_plat PUBLIC pc_port/platform)
-    target_link_libraries(bfm_plat PUBLIC ${CMAKE_DL_LIBS} m)
+    target_link_libraries(bfm_plat PUBLIC bfm_sha256 ${CMAKE_DL_LIBS} m)
 
     if(MUSASHI_WITH_PSYCROSS)   # SDL2 / OpenAL / GL already found above
         target_sources(bfm_plat PRIVATE
@@ -592,7 +640,7 @@ if(MUSASHI_BUILD_PC_PORT)
         target_link_libraries(bfm_plat PRIVATE bfm_lua)
     endif()
     # Optional: pc_port/platform/backends/disc_pinned.c + BFM_PLAT_WITH_PINNED_DISC
-    # (links disc_media.c / OpenSSL::Crypto, already in musashi_pc_port).
+    # (links disc_media.c, already in musashi_pc_port).
 
     # Optional gl renderer: needs SDL2 and the Khronos GL headers only (entry
     # points come from SDL_GL_GetProcAddress; do not link libGL or a loader).
@@ -623,6 +671,11 @@ if(MUSASHI_BUILD_PC_PORT)
     if(MUSASHI_NATIVE_LANE)
         find_program(MUSASHI_CLANG NAMES clang REQUIRED)
         find_package(Python3 COMPONENTS Interpreter REQUIRED)
+        # Lane objects for a non-Linux host (cmake/zig-windows.cmake sets it).
+        set(MUSASHI_LANE_TARGET_FLAG)
+        if(MUSASHI_LANE_HOST_TARGET)
+            set(MUSASHI_LANE_TARGET_FLAG --host-target ${MUSASHI_LANE_HOST_TARGET})
+        endif()
         set(MUSASHI_LANE_DIR ${MUSASHI_GENERATED_DIR}/native_lane)
         # Overlay members compiled into the lane (digest-verified per call).
         # Release (own-code) builds take overlay functions from
@@ -688,6 +741,7 @@ if(MUSASHI_BUILD_PC_PORT)
                     --out ${MUSASHI_LANE_DIR} --clang ${MUSASHI_CLANG} --ar ${CMAKE_AR} --jobs 4
                     ${MUSASHI_LANE_MEMBERS_FLAG}
                     ${MUSASHI_LANE_OWN_CODE_FLAG}
+                    ${MUSASHI_LANE_TARGET_FLAG}
             DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/tools/native_lane_gen.py
                     ${CMAKE_CURRENT_SOURCE_DIR}/tools/lane_cycles.py
                     ${CMAKE_CURRENT_SOURCE_DIR}/provenance/matches.json
