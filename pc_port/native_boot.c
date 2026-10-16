@@ -58,7 +58,8 @@ extern SDL_mutex *g_intrMutex;
 static volatile sig_atomic_t host_stop_signal;
 /* Who asked the host to stop, for EXECUTION_BOUNDARY: a signal (Steam's
  * "Exit Game", timeout, Ctrl+C), SDL's quit event, or a test stop. */
-enum { HOST_STOP_SIGNAL = 1, HOST_STOP_SDL_QUIT, HOST_STOP_IN_GAME_TARGET, HOST_STOP_MENU_PREVIEW };
+enum { HOST_STOP_SIGNAL = 1, HOST_STOP_SDL_QUIT, HOST_STOP_IN_GAME_TARGET, HOST_STOP_MENU_PREVIEW,
+       HOST_STOP_SCRIPT_GATE };
 static volatile sig_atomic_t host_stop_source;
 /* PERF window (host time, SDL performance counter ticks): time slept by the
  * guest clock because the guest was ahead, and time spent presenting. */
@@ -73,6 +74,7 @@ static const char *host_stop_source_name(void) {
     case HOST_STOP_SDL_QUIT: return "SDL_QUIT";
     case HOST_STOP_IN_GAME_TARGET: return "IN_GAME_TARGET";
     case HOST_STOP_MENU_PREVIEW: return "MENU_PREVIEW";
+    case HOST_STOP_SCRIPT_GATE: return "SCRIPT_GATE";
     default: return "UNKNOWN";
     }
 }
@@ -1258,16 +1260,26 @@ static void spiral_climb_input(NativeBoot *boot, uint16_t *sio_clear, uint16_t *
  *   mash N                 tap Cross 4 of every 30 frames for N frames
  *   climb N [KEYS]         the spiral-stair walk (spiral_climb_input) for N
  *                          frames, optionally pulsing KEYS
+ *   until KEYS|tapKEYS|mash ADDR SIZE VALUE STABLE N
+ *                          hold KEYS (tapKEYS: press them 2 frames of
+ *                          every 4; mash: tap Cross as above) until the
+ *                          SIZE-byte (1, 2 or 4) guest value at ADDR (hex)
+ *                          equals VALUE (hex; !VALUE: differs from it) for
+ *                          STABLE frames in a row;
+ *                          after N frames without that, stop the run
+ *                          (SCRIPT_GATE_FAILED, host stop SCRIPT_GATE)
  * Frames are in-game frames. The pad-to-world rotation of goto is learned
  * from the player's own motion, starting from the forest's (Right is +X,
  * Up is +Z), so a room's camera does not need to be known. A goto ends
  * early when the player leaves the room. */
-enum { SCRIPT_ROOM, SCRIPT_HOLD, SCRIPT_TAP, SCRIPT_GOTO, SCRIPT_MASH, SCRIPT_CLIMB };
+enum { SCRIPT_ROOM, SCRIPT_HOLD, SCRIPT_TAP, SCRIPT_GOTO, SCRIPT_MASH, SCRIPT_CLIMB, SCRIPT_UNTIL };
 typedef struct {
     int kind;
     uint16_t keys;
     unsigned room, n, on, off, count;
     int mash, x, z;
+    uint32_t addr, value;
+    unsigned size, stable;
 } ScriptStep;
 
 static uint16_t script_keys(const char *s) {
@@ -1319,6 +1331,14 @@ static int script_load(ScriptStep *steps, int max) {
         } else if (sscanf(line, " climb %u %63s", &s->n, b) >= 1) {
             s->kind = SCRIPT_CLIMB;
             s->keys = b[0] ? script_keys(b) : 0;
+        } else if (sscanf(line, " until %63s %x %u %63s %u %u", a, &s->addr, &s->size, b,
+                          &s->stable, &s->n) == 6 &&
+                   (s->size == 1u || s->size == 2u || s->size == 4u)) {
+            s->kind = SCRIPT_UNTIL;
+            s->x = b[0] == '!';   /* !VALUE: wait until the value differs from VALUE */
+            s->value = (uint32_t)strtoul(b + s->x, NULL, 16);
+            s->mash = strcmp(a, "mash") == 0 ? 1 : strncmp(a, "tap", 3) == 0 ? 2 : 0;
+            s->keys = s->mash == 1 ? 0 : script_keys(s->mash == 2 ? a + 3 : a);
         } else {
             continue;
         }
@@ -1396,6 +1416,43 @@ static uint16_t script_input(NativeBoot *boot) {
         spiral_climb_input(boot, &keys, NULL, NULL, NULL);
         if (s->keys && (t % 45u) < 6u) keys |= s->keys;
         break;
+    case SCRIPT_UNTIL: {
+        static unsigned held;   /* frames in a row the value has matched */
+        uint32_t got = 0;
+        uint16_t got16 = 0;
+        uint8_t *p8;
+        if (t == 0u) held = 0;
+        if (s->size == 1u) {
+            p8 = musashi_boot_ram_span(&boot->memory, s->addr, 1);
+            got = p8 ? *p8 : 0xffffffffu;
+        } else if (s->size == 2u) {
+            got = musashi_boot_read16(&boot->memory, s->addr, &got16) ? got16 : 0xffffffffu;
+        } else if (!musashi_boot_read32(&boot->memory, s->addr, &got)) {
+            got = 0xffffffffu;
+        }
+        held = (got == s->value) != (s->x != 0) ? held + 1u : 0u;
+        if (held >= s->stable) {
+            fprintf(stderr, "native_boot: SCRIPT step=%d until ok frame=%u addr=%08x value=%x loc=%04x pos=(%d,%d)\n",
+                    cur, frame, s->addr, got, location, x, z);
+            ++cur;
+            step_frame = frame + 1u;
+            return 0;
+        }
+        if (t >= s->n) {
+            uint16_t act = 0;
+            uint8_t *ability = musashi_boot_ram_span(&boot->memory, 0x80078EC1u, 1);
+            (void)musashi_boot_read16(&boot->memory, 0x80126B58u, &act);
+            fprintf(stderr, "native_boot: SCRIPT_GATE_FAILED step=%d addr=%08x size=%u want=%s%x got=%x frame=%u "
+                    "loc=%04x pos=(%d,%d) act=%u ability=%02x\n", cur, s->addr, s->size, s->x ? "!" : "", s->value,
+                    got, frame, location, x, z, act, ability ? *ability : 0u);
+            cur = nsteps;   /* no more input: the run stops here, with its RAM dump */
+            host_stop_source = HOST_STOP_SCRIPT_GATE;
+            host_stop_signal = SIGTERM;
+            return 0;
+        }
+        if (s->mash == 2) return (t % 4u) < 2u ? s->keys : 0;
+        return s->mash ? ((frame % 30u) < 4u ? (uint16_t)(1u << 14) : 0) : s->keys;
+    }
     case SCRIPT_GOTO: {
         double dx = (double)s->x - x, dz = (double)s->z - z, dist = sqrt(dx * dx + dz * dz);
         if (t == 0u) {

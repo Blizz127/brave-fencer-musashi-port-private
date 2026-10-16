@@ -152,5 +152,6 @@ static const struct { uint32_t base, bytes; uint64_t digest; } kCodeModules[] = 
     { 0x801ef468u,  32768u, 0x7c91c899cb8fc90cull }, /* sc03_0077 */
     { 0x801ef468u,  15676u, 0x3b323858bbc8d714ull }, /* sc03_0078 */
     { 0x801ef468u,  39340u, 0x919d6749693fecfcull }, /* sc03_0079 */
+    { 0x800cae08u,   6768u, 0xba429172c163ae26ull }, /* main_0015 */
 };
 #endif
