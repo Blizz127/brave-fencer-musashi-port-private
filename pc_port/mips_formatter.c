@@ -12750,16 +12750,44 @@ enum { SC_ENTRY_WORDS = 178 };
  * once its first 64 words in guest RAM match the module the developer's disc
  * holds. Positive checks last until the overlay identity changes (a room
  * load); a failed check is retried, since a room loads its module after the
- * room's own entry. */
+ * room's own entry. Up to 29 MAIN.CD modules share one load slot, so a module
+ * already verified in this generation is accepted before guest RAM is
+ * hashed, and a slot is hashed once per call, not once per row. The LWL/LWR
+ * and COP2 admission paths ask about every PC (main-EXE ones included), so a
+ * PC outside all rows is answered by one bounds check. */
 static int identified_module(uint32_t pc) {
     static uint32_t verified_generation[sizeof kCodeModules / sizeof kCodeModules[0]];
+    static uint32_t lowest, highest;
+    uint64_t digest = 0;
+    uint32_t hashed_base = 0;
+    int covered = 0, hashed = 0;
     size_t i;
+    if (!highest) {
+        uint32_t lo = 0xffffffffu, hi = 0;
+        for (i = 0; i < sizeof kCodeModules / sizeof kCodeModules[0]; ++i) {
+            if (kCodeModules[i].base < lo) lo = kCodeModules[i].base;
+            if (kCodeModules[i].base + kCodeModules[i].bytes > hi)
+                hi = kCodeModules[i].base + kCodeModules[i].bytes;
+        }
+        lowest = lo;
+        highest = hi;
+    }
+    if (pc < lowest || pc >= highest) return 0;
     for (i = 0; i < sizeof kCodeModules / sizeof kCodeModules[0]; ++i) {
-        uint64_t digest;
         if (pc < kCodeModules[i].base || pc - kCodeModules[i].base >= kCodeModules[i].bytes) continue;
         if (verified_generation[i] == g_admit_generation) return 1;
-        if (g_fetch_memory && span_digest(g_fetch_memory, kCodeModules[i].base, 64u, &digest) &&
-            digest == kCodeModules[i].digest) {
+        covered = 1;
+    }
+    if (!covered) return 0;
+    for (i = 0; i < sizeof kCodeModules / sizeof kCodeModules[0]; ++i) {
+        if (pc < kCodeModules[i].base || pc - kCodeModules[i].base >= kCodeModules[i].bytes) continue;
+        if (!hashed || hashed_base != kCodeModules[i].base) {
+            if (!g_fetch_memory || !span_digest(g_fetch_memory, kCodeModules[i].base, 64u, &digest))
+                continue;
+            hashed_base = kCodeModules[i].base;
+            hashed = 1;
+        }
+        if (digest == kCodeModules[i].digest) {
             verified_generation[i] = g_admit_generation;
             fprintf(stderr, "native_boot: CODE_MODULE identified base=%08x bytes=%u\n",
                     kCodeModules[i].base, kCodeModules[i].bytes);

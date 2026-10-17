@@ -152,6 +152,40 @@ static const struct { uint32_t base, bytes; uint64_t digest; } kCodeModules[] = 
     { 0x801ef468u,  32768u, 0x7c91c899cb8fc90cull }, /* sc03_0077 */
     { 0x801ef468u,  15676u, 0x3b323858bbc8d714ull }, /* sc03_0078 */
     { 0x801ef468u,  39340u, 0x919d6749693fecfcull }, /* sc03_0079 */
+    { 0x800cae08u,   6100u, 0x1123298a1d6a61acull }, /* main_0013 */
+    { 0x800cae08u,   2088u, 0x727ef953f480e6f3ull }, /* main_0014 */
     { 0x800cae08u,   6768u, 0xba429172c163ae26ull }, /* main_0015 */
+    { 0x800cae08u,   1928u, 0x2d42f9aed5e8b27eull }, /* main_0016 */
+    { 0x800cae08u,   1492u, 0xf03ebf6ee1393e50ull }, /* main_0017 */
+    { 0x800cae08u,   2712u, 0xd100570efd393f26ull }, /* main_0018 */
+    { 0x800cae08u,   6760u, 0xfb966d7003c5d301ull }, /* main_0019 */
+    { 0x800cae08u,   3244u, 0x41a7332beb6b0d4cull }, /* main_0020 */
+    { 0x800cae08u,   1936u, 0xfb2b07b748108191ull }, /* main_0021 */
+    { 0x800cae08u,   4072u, 0x7ef680339938c9b2ull }, /* main_0022 */
+    { 0x800cae08u,    388u, 0xe7138f51b939c685ull }, /* main_0023 */
+    { 0x800cae08u,    332u, 0x9250473b74b4c0fbull }, /* main_0024 */
+    { 0x800cae08u,   6396u, 0xb5693318fdd5317aull }, /* main_0025 */
+    { 0x800cae08u,   3600u, 0x0b297abd272bba8full }, /* main_0026 */
+    { 0x800cae08u,   5272u, 0xcb7d202f01efa88cull }, /* main_0027 */
+    { 0x800cae08u,   4460u, 0x77a667a4a71ebf72ull }, /* main_0028 */
+    { 0x800cae08u,   1984u, 0xfa556aa2328aa87aull }, /* main_0029 */
+    { 0x800cae08u,   1876u, 0xe7aa38b60d79d19aull }, /* main_0030 */
+    { 0x800cae08u,   5044u, 0x90514d41c2d96112ull }, /* main_0031 */
+    { 0x800cae08u,   5572u, 0x8fb541245baa93efull }, /* main_0032 */
+    { 0x800cae08u,   3264u, 0xdd371f2784f2bdd6ull }, /* main_0033 */
+    { 0x800cae08u,   7444u, 0xc7206cb2d3593e5bull }, /* main_0034 */
+    { 0x800cae08u,   1248u, 0x66c9daabb906e805ull }, /* main_0035 */
+    { 0x800cae08u,   4916u, 0xaf6f9a1cb0edaaa6ull }, /* main_0036 */
+    { 0x800cae08u,   2904u, 0xb77c2a1534f8761bull }, /* main_0037 */
+    { 0x800cae08u,   7232u, 0xe770fd4a92a83d38ull }, /* main_0038 */
+    { 0x800cae08u,   5700u, 0x922d63fc5f907c14ull }, /* main_0039 */
+    { 0x800cae08u,   3956u, 0x83c6a4836a8c1e6aull }, /* main_0040 */
+    { 0x800cae08u,   4100u, 0xa9c6cf8cc4125913ull }, /* main_0041 */
+    { 0x800ccb1cu,    636u, 0x470fc331f6af0404ull }, /* main_0042 */
+    { 0x800ccb1cu,   3912u, 0xf6c11250aa672310ull }, /* main_0043 */
+    { 0x800ccb1cu,   8920u, 0xfa7ad2f6f521c68full }, /* main_0044 */
+    { 0x800ccb1cu,   5432u, 0x5da2a4fef7d45617ull }, /* main_0045 */
+    { 0x800ccb1cu,   7612u, 0x718525471346b946ull }, /* main_0046 */
+    { 0x800ccb1cu,   3272u, 0x9c3d0f46fea2b8a2ull }, /* main_0047 */
 };
 #endif
