@@ -37,7 +37,17 @@ MODULE_BASES.update({"sc03/%04d" % m: 0x801EF468 for m in range(73, 80)})
 # his first ability (Fusion assimilation), and a guest RAM dump taken there
 # holds its 0x1A70 bytes at 800CAE08 byte for byte; all nine of its
 # lui/addiu references into 800Cxxxx land inside it.
-MAIN_MODULE_BASES = {"main/0015": 0x800CAE08}
+# Members 0013..0041 have their type-1 chunk linked for the same slot, and
+# 0042..0047 for a second slot at 800CCB1C. Unlike main/0015 these bases are
+# static, not yet seen in a guest RAM dump: each is the member's link address
+# plus its chunk's file offset past the 0x800-byte chunk header (main/0015's
+# gives 800CAE08 the same way), internal jal targets land inside each module,
+# the second slot starts where the largest first-slot module (main/0034,
+# 0x1D14 bytes) ends, and its largest module (main/0044, 0x22D8 bytes) ends
+# one word below member 0010's code at 800CEDF8. A row whose digest does not
+# match guest RAM is never admitted.
+MAIN_MODULE_BASES = {"main/%04d" % m: 0x800CAE08 for m in range(13, 42)}
+MAIN_MODULE_BASES.update({"main/%04d" % m: 0x800CCB1C for m in range(42, 48)})
 root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 
 
