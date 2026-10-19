@@ -757,3 +757,17 @@ void musashi_dev_menu_reset(void) {
     (void)kFinishCandidates;
     memset(&M, 0, sizeof M);
 }
+
+size_t musashi_dev_menu_emit_text(MusashiDevMenuEmit emit, void *user) {
+    const char *lines[LINES_MAX];
+    char row[LINE_W + 1];
+    int highlight, badge_only;
+    size_t n = musashi_dev_menu_text(lines, LINES_MAX, &highlight, &badge_only), i;
+    if (!emit) return 0;
+    for (i = 0; i < n; ++i) {
+        snprintf(row, sizeof row, "%s", lines[i]);
+        if ((int)i == highlight && row[0] == ' ') row[0] = '>';
+        emit(user, 8, 8 + 12 * (int)i, row);
+    }
+    return n;
+}

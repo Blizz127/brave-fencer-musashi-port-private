@@ -51,6 +51,18 @@ static const char *highlighted(void) {
     return lines[hl];
 }
 
+/* Captures musashi_dev_menu_emit_text: positions, '>' rows, the last one. */
+static struct { unsigned n, bad_pos, marked; char last_marked[64]; } cap;
+static void capture(void *u, int x, int y, const char *text) {
+    (void)u;
+    if (x != 8 || y != 8 + 12 * (int)cap.n) ++cap.bad_pos;
+    if (text[0] == '>') {
+        ++cap.marked;
+        snprintf(cap.last_marked, sizeof cap.last_marked, "%s", text);
+    }
+    ++cap.n;
+}
+
 int main(void) {
     MusashiDevMenuState st;
     const char *lines[24];
@@ -393,6 +405,35 @@ int main(void) {
         assert(writes == 0);
     }
     puts("DEV_MENU_ENHANCE_PASS rows=3 guest_writes=0 take_once=1");
+
+    /* Bridge/gl presenters draw the menu from musashi_dev_menu_emit_text:
+     * the same lines, '>' on the selected row, nothing while the menu is off
+     * or closed; switching back to the Original renderer is reachable. */
+    {
+        MusashiDevMenuEnhancements seed = { 1, 2u, -1 }, got;
+        start(NULL, NULL, NULL);
+        memset(&cap, 0, sizeof cap);
+        assert(musashi_dev_menu_emit_text(capture, NULL) == 0 && cap.n == 0);
+        start("1", NULL, NULL);
+        musashi_dev_menu_set_enhancements(&seed);
+        assert(musashi_dev_menu_emit_text(capture, NULL) == 0 && cap.n == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_TOGGLE, 0);
+        for (i = 0; i < 4; ++i) musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
+        memset(&cap, 0, sizeof cap);
+        assert(musashi_dev_menu_emit_text(capture, NULL) == musashi_dev_menu_text(lines, 24, &hl, &badge));
+        assert(cap.n == 9 && cap.bad_pos == 0 && cap.marked == 1);
+        assert(strcmp(cap.last_marked, "> RENDERER: GL (EXPERIMENTAL)") == 0);
+        assert(musashi_dev_menu_emit_text(NULL, NULL) == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
+        memset(&cap, 0, sizeof cap);
+        (void)musashi_dev_menu_emit_text(capture, NULL);
+        assert(cap.marked == 1 && strcmp(cap.last_marked, "> RENDERER: ORIGINAL") == 0);
+        assert(musashi_dev_menu_take_enhancements(&got) == MUSASHI_DEV_ENH_RENDERER);
+        assert(got.renderer_gl == 0 && got.scale == 2u && got.dither == -1);
+        assert(writes == 0);
+    }
+    puts("DEV_MENU_BRIDGE_PASS lines=9 marked=1 switch_back=1");
 
     puts("DEV_MENU_PASS off_inert=1 hard_disable=1 parity=1 cheats=game_state warps=29 folders=3 finish=0");
     return 0;

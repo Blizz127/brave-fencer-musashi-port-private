@@ -262,9 +262,16 @@ static int display_on(const NativeBoot *boot) {
     return boot->gpu_renderer.display_enabled;
 }
 
+#ifdef MUSASHI_WITH_BFM_PLAT
+static void dev_menu_overlay_bridge(void);   /* the dev menu on the bridge path (below) */
+#endif
+
 static int present_frame(NativeBoot *boot) {
 #ifdef MUSASHI_WITH_BFM_PLAT
-    if (g_gpu_bridge_on) return bfm_gpu_bridge_vblank(&g_gpu_bridge) == 0;
+    if (g_gpu_bridge_on) {
+        dev_menu_overlay_bridge();   /* queued as overlay text before this present */
+        return bfm_gpu_bridge_vblank(&g_gpu_bridge) == 0;
+    }
 #endif
     return musashi_gpu_psycross_present(&boot->gpu_renderer);
 }
@@ -2487,6 +2494,23 @@ static void dev_menu_screenshot(int width, int height) {
 }
 
 static void enhancements_menu_poll(void);   /* Enhancements page (below plat_start) */
+
+/* The bridge renderers present without the PsyCross overlay hook that runs
+ * dev_menu_overlay, so on that path the menu is queued as renderer overlay
+ * text (drawn over the composed frame, cleared after the present, never in
+ * VRAM) and the Enhancements change is persisted here. Keys and the vblank
+ * pass stay where they are, so nothing runs twice. Without it a player who
+ * picked the gl renderer could not see the menu to switch back. */
+static void bridge_overlay_emit(void *user, int x, int y, const char *text) {
+    (void)user;
+    (void)bfm_plat_renderer_overlay_text(x, y, text);
+}
+
+static void dev_menu_overlay_bridge(void) {
+    if (!musashi_dev_menu_enabled()) return;
+    enhancements_menu_poll();
+    (void)musashi_dev_menu_emit_text(bridge_overlay_emit, NULL);
+}
 
 static void dev_menu_overlay(void *user, int width, int height) {
     const char *lines[24];

@@ -98,6 +98,12 @@ typedef struct MusashiDevMenuEnhancements {
 enum { MUSASHI_DEV_ENH_RENDERER = 1u, MUSASHI_DEV_ENH_SCALE = 2u, MUSASHI_DEV_ENH_DITHER = 4u };
 void musashi_dev_menu_set_enhancements(const MusashiDevMenuEnhancements *enh);
 unsigned musashi_dev_menu_take_enhancements(MusashiDevMenuEnhancements *out);
+/* The menu as positioned text for presenters without the PsyCross overlay
+ * hook (the bfm_plat bridge renderers): every line of musashi_dev_menu_text
+ * at (8, 8 + 12 * i), the selected row's leading space replaced by '>'.
+ * Returns the number of lines emitted (0 while nothing is shown). */
+typedef void (*MusashiDevMenuEmit)(void *user, int x, int y, const char *text);
+size_t musashi_dev_menu_emit_text(MusashiDevMenuEmit emit, void *user);
 
 /* Test access. */
 typedef struct MusashiDevMenuState {
