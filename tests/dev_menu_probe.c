@@ -338,6 +338,62 @@ int main(void) {
     unsetenv("BFM_DEV_MENU_FINISH_TEST");
 #endif
 
+    /* Enhancements page: host-seeded values cycle in the menu and are taken
+     * once for the host to persist; browsing and changing them writes no
+     * guest byte, is not a cheat and leaves the save note unset. */
+    {
+        MusashiDevMenuEnhancements seed = { 0, 1u, -1 }, got;
+        start("1", NULL, NULL);
+        musashi_dev_menu_set_enhancements(&seed);
+        assert(musashi_dev_menu_take_enhancements(&got) == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_TOGGLE, 0);
+        for (i = 0; i < 4; ++i) musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+        assert(strcmp(highlighted(), "  ENHANCEMENTS >") == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
+        assert(strcmp(highlighted(), "  RENDERER: ORIGINAL") == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+        assert(strcmp(highlighted(), "  RESOLUTION: NATIVE (GL ONLY)") == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+        assert(strcmp(highlighted(), "  DITHER: AUTO (GL ONLY)") == 0);
+        for (i = 0; i < 1000; ++i) musashi_dev_menu_vblank(1, 0x000b, 9, 1);
+        assert(musashi_dev_menu_take_enhancements(&got) == 0 && writes == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_UP, 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_UP, 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
+        assert(strcmp(highlighted(), "  RENDERER: GL (EXPERIMENTAL)") == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
+        assert(strcmp(highlighted(), "  RESOLUTION: 2X") == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
+        assert(strcmp(highlighted(), "  DITHER: OFF") == 0);
+        assert(musashi_dev_menu_take_enhancements(&got) ==
+               (MUSASHI_DEV_ENH_RENDERER | MUSASHI_DEV_ENH_SCALE | MUSASHI_DEV_ENH_DITHER));
+        assert(got.renderer_gl == 1 && got.scale == 2u && got.dither == 0);
+        assert(musashi_dev_menu_take_enhancements(&got) == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+        assert(strcmp(highlighted(), "  BACK") == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
+        assert(strcmp(highlighted(), "  ENHANCEMENTS >") == 0);
+        for (i = 0; i < 1000; ++i) musashi_dev_menu_vblank(1, 0x000b, 9, 1);
+        musashi_dev_menu_state(&st);
+        assert(writes == 0 && st.cheat_writes == 0 && !st.god && !st.resource);
+        assert(!musashi_dev_menu_used());
+        /* a seeded scale cycles 4 -> native; an out-of-range seed reads native */
+        seed.scale = 4u;
+        musashi_dev_menu_set_enhancements(&seed);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
+        assert(strcmp(highlighted(), "  RESOLUTION: NATIVE (GL ONLY)") == 0);
+        assert(musashi_dev_menu_take_enhancements(&got) == MUSASHI_DEV_ENH_SCALE && got.scale == 1u);
+        seed.scale = 99u;
+        musashi_dev_menu_set_enhancements(&seed);
+        assert(strcmp(highlighted(), "  RESOLUTION: NATIVE (GL ONLY)") == 0);
+        assert(writes == 0);
+    }
+    puts("DEV_MENU_ENHANCE_PASS rows=3 guest_writes=0 take_once=1");
+
     puts("DEV_MENU_PASS off_inert=1 hard_disable=1 parity=1 cheats=game_state warps=29 folders=3 finish=0");
     return 0;
 }

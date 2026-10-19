@@ -2486,12 +2486,15 @@ static void dev_menu_screenshot(int width, int height) {
     free(rgb);
 }
 
+static void enhancements_menu_poll(void);   /* Enhancements page (below plat_start) */
+
 static void dev_menu_overlay(void *user, int width, int height) {
     const char *lines[24];
     int highlight, badge_only, scale = height / 320, cell_h, i, cols = 0;
     size_t n;
     (void)user;
     if (musashi_dev_menu_take_screenshot()) dev_menu_screenshot(width, height);
+    enhancements_menu_poll();
     n = musashi_dev_menu_text(lines, 24, &highlight, &badge_only);
     if (!n) return;
     if (scale < 2) scale = 2;
@@ -5229,6 +5232,66 @@ static int plat_reg_read(void *user, unsigned reg, uint32_t *out) {
     return 0;
 }
 
+/* Enhancements (dev menu page; docs/GRAPHICS-ENHANCEMENTS-DESIGN.md stage 0).
+ * From config.ini only these keys reach the game: [video] gpu = bfm_plat
+ * together with [backends] renderer = gl selects the gl renderer (any other
+ * renderer name leaves the cpu path), and [video] internal_scale and dither
+ * reach it. MUSASHI_GPU / MUSASHI_RENDERER, when set, win over the file.
+ * Without those keys startup is unchanged: cpu rasteriser, scale 1. Menu
+ * changes are written back one key at a time and apply on the next launch. */
+static char g_enh_renderer[BFM_PLAT_NAME_MAX];
+static MusashiDevMenuEnhancements g_enh_saved = { 0, 1u, -1 };
+
+static const char *enh_dither_name(int d) { return d < 0 ? "auto" : d ? "on" : "off"; }
+
+static void enhancements_from_file(BfmPlatConfig *cfg) {
+    BfmPlatConfig file;
+    char path[512];
+    const char *gpu = getenv("MUSASHI_GPU");
+    bfm_plat_config_defaults(&file);
+    if (bfm_plat_config_default_path(path, sizeof path) != BFM_PLAT_OK ||   /* BFM_PLAT_OK is 0 */
+        bfm_plat_config_load_file(&file, path) != BFM_PLAT_OK)
+        return;
+    g_enh_saved.renderer_gl = file.gpu_path == BFM_GPU_BFM_PLAT && strcmp(file.renderer, "gl") == 0;
+    g_enh_saved.scale = (unsigned)file.internal_scale;   /* 1..8, checked by the parser */
+    g_enh_saved.dither = file.dither;
+    cfg->internal_scale = file.internal_scale;
+    cfg->dither = file.dither;
+    if (g_enh_saved.renderer_gl && !(gpu && gpu[0])) {
+        cfg->gpu_path = BFM_GPU_BFM_PLAT;
+        snprintf(g_enh_renderer, sizeof g_enh_renderer, "gl");
+    }
+    if (g_enh_saved.renderer_gl || file.internal_scale != 1 || file.dither != BFM_DITHER_AUTO)
+        fprintf(stderr, "native_boot: ENHANCEMENTS config renderer=%s scale=%d dither=%s%s\n",
+                g_enh_saved.renderer_gl ? "gl" : "original", file.internal_scale,
+                enh_dither_name(file.dither),
+                g_enh_saved.renderer_gl && gpu && gpu[0] ? " (MUSASHI_GPU set: env wins)" : "");
+}
+
+static void enhancements_menu_poll(void) {
+    MusashiDevMenuEnhancements e;
+    unsigned changed = musashi_dev_menu_take_enhancements(&e);
+    char path[512], scale[8];
+    int ok;
+    if (!changed) return;
+    ok = bfm_plat_config_default_path(path, sizeof path) == BFM_PLAT_OK;   /* BFM_PLAT_OK is 0 */
+    if (ok && (changed & MUSASHI_DEV_ENH_RENDERER)) {
+        ok = bfm_plat_config_write_key(path, "video", "gpu", e.renderer_gl ? "bfm_plat" : "cpu") == BFM_PLAT_OK;
+        if (ok && e.renderer_gl)
+            ok = bfm_plat_config_write_key(path, "backends", "renderer", "gl") == BFM_PLAT_OK;
+    }
+    if (ok && (changed & MUSASHI_DEV_ENH_SCALE)) {
+        snprintf(scale, sizeof scale, "%u", e.scale);
+        ok = bfm_plat_config_write_key(path, "video", "internal_scale", scale) == BFM_PLAT_OK;
+    }
+    if (ok && (changed & MUSASHI_DEV_ENH_DITHER))
+        ok = bfm_plat_config_write_key(path, "video", "dither", enh_dither_name(e.dither)) == BFM_PLAT_OK;
+    if (ok) g_enh_saved = e;
+    else musashi_dev_menu_toast("ENHANCEMENTS: CONFIG.INI NOT SAVED");
+    fprintf(stderr, "native_boot: ENHANCEMENTS saved=%d renderer=%s scale=%u dither=%s (next launch)\n",
+            ok, e.renderer_gl ? "gl" : "original", e.scale, enh_dither_name(e.dither));
+}
+
 static void plat_entry_hook(void *user, uint32_t pc, const uint32_t *regs) {
     (void)user;
     if (!bfm_plat_hooks_has(pc)) return;
@@ -5254,6 +5317,7 @@ static void plat_start(MusashiBootMemory *memory) {
     snprintf(cfg.input, sizeof cfg.input, "null");
     cfg.disc_path[0] = 0;      /* native_boot owns the disc and its identity check */
     cfg.disc_search[0] = 0;
+    enhancements_from_file(&cfg);
     {
         /* The bridge's renderer opens after PsyCross is up (gpu_bridge_attach);
          * bfm_plat starts on the null renderer like the cpu path. */
@@ -5308,11 +5372,14 @@ static void gpu_bridge_attach(MusashiGpuController *gpu) {
     const char *name = getenv("MUSASHI_RENDERER"), *selected = NULL;
     BfmPlatOutput out;
     if (!bfm_gpu_bridge_selected(bfm_plat_config())) return;
-    if (!name || !name[0]) name = "psycross";
+    if (!name || !name[0]) name = g_enh_renderer[0] ? g_enh_renderer : "psycross";
     memset(&out, 0, sizeof out);
     out.window_width = 640;
     out.window_height = 480;
-    out.internal_scale = 1;
+    {
+        const BfmPlatConfig *c = bfm_plat_config();   /* scale 1 unless config.ini sets it */
+        out.internal_scale = c && c->internal_scale >= 1 && c->internal_scale <= 8 ? c->internal_scale : 1;
+    }
     out.aspect_num = 4;
     out.aspect_den = 3;
     if (bfm_plat_renderer_open(name, &out, &selected) != 0 || !selected ||
@@ -5601,6 +5668,7 @@ int main(int argc, char **argv) {
         if (musashi_dev_menu_init(&guest, 0))
             musashi_gpu_psycross_set_overlay(dev_menu_overlay, NULL);
     }
+    musashi_dev_menu_set_enhancements(&g_enh_saved);   /* after init, which clears the menu */
 #endif
     (void)present_frame(&boot);
     if (boot.media) {

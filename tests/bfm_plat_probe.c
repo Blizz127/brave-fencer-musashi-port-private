@@ -127,6 +127,50 @@ static int group_config(int argc, char **argv) {
         bfm_plat_config_defaults(&r);
         CHECK(bfm_plat_config_load_file(&r, "/nonexistent/x.ini") == BFM_PLAT_NOT_FOUND);
     }
+    /* write_key: one key set, every other line kept; the file and its
+     * directories are created; a later load reads the values */
+    {
+        static const char *mine = "; mine\n[video]\nvsync = 0\ngpu = bfm_plat\ngpu = cpu\n"
+                                  "[mod.hello]\ngreeting = hi\n";
+        char p2[600], text[2048];
+        BfmPlatConfig r;
+        FILE *f;
+        size_t n;
+        snprintf(p2, sizeof p2, "%s/wk/sub/config.ini", argv[0]);
+        CHECK(bfm_plat_config_write_key(p2, "video", "gpu", "bfm_plat") == BFM_PLAT_OK);
+        CHECK(bfm_plat_config_write_key(p2, "backends", "renderer", "gl") == BFM_PLAT_OK);
+        CHECK(bfm_plat_config_write_key(p2, "video", "internal_scale", "2") == BFM_PLAT_OK);
+        CHECK(bfm_plat_config_write_key(p2, "video", "gpu", "cpu") == BFM_PLAT_OK);
+        CHECK(bfm_plat_config_write_key(p2, "video", "gpu", "a\nb") == BFM_PLAT_INVALID);
+        CHECK(bfm_plat_config_write_key(p2, "video", "gpu", "x;y") == BFM_PLAT_INVALID);
+        CHECK(bfm_plat_config_write_key(p2, "Video", "gpu", "cpu") == BFM_PLAT_INVALID);
+        CHECK(bfm_plat_config_write_key(p2, "video", "", "cpu") == BFM_PLAT_INVALID);
+        f = fopen(p2, "rb");
+        n = f ? fread(text, 1, sizeof text - 1, f) : 0;
+        if (f) fclose(f);
+        text[n] = 0;
+        CHECK(strcmp(text, "[video]\ngpu = cpu\ninternal_scale = 2\n\n[backends]\nrenderer = gl\n") == 0);
+        bfm_plat_config_defaults(&r);
+        CHECK(bfm_plat_config_load_file(&r, p2) == BFM_PLAT_OK);
+        CHECK(r.gpu_path == BFM_GPU_CPU && strcmp(r.renderer, "gl") == 0 && r.internal_scale == 2);
+        CHECK(r.bad_line == 0 && r.rejected_values == 0);
+        f = fopen(p2, "wb");
+        CHECK(f != NULL);
+        if (f) { fputs(mine, f); fclose(f); }
+        CHECK(bfm_plat_config_write_key(p2, "video", "gpu", "bfm_plat") == BFM_PLAT_OK);
+        CHECK(bfm_plat_config_write_key(p2, "video", "dither", "off") == BFM_PLAT_OK);
+        CHECK(bfm_plat_config_write_key(p2, "mod.hello", "extra", "1") == BFM_PLAT_OK);
+        f = fopen(p2, "rb");
+        n = f ? fread(text, 1, sizeof text - 1, f) : 0;
+        if (f) fclose(f);
+        text[n] = 0;
+        CHECK(strcmp(text, "; mine\n[video]\nvsync = 0\ngpu = bfm_plat\ndither = off\n"
+                           "[mod.hello]\ngreeting = hi\nextra = 1\n") == 0);
+        bfm_plat_config_defaults(&r);
+        CHECK(bfm_plat_config_load_file(&r, p2) == BFM_PLAT_OK);
+        CHECK(r.gpu_path == BFM_GPU_BFM_PLAT && r.dither == BFM_DITHER_OFF && r.vsync == 0);
+        CHECK(strcmp(bfm_plat_config_get(&r, "mod.hello.greeting"), "hi") == 0);
+    }
     CHECK(bfm_plat_config_default_path(path, sizeof path) == BFM_PLAT_OK);
     printf("path %s\n", path);
     return 0;

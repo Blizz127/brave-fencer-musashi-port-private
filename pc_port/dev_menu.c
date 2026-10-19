@@ -50,7 +50,7 @@ static const struct { uint32_t address; unsigned width; } kExitGuards[] = {
 };
 enum { WARP_WAIT_LIMIT = 600, WARP_ARRIVE_LIMIT = 3600 };
 
-enum { PAGE_ROOT, PAGE_WARP, PAGE_FINISH, PAGE_CHEATS, PAGE_OPTIONS };
+enum { PAGE_ROOT, PAGE_WARP, PAGE_FINISH, PAGE_CHEATS, PAGE_OPTIONS, PAGE_ENHANCE };
 enum { SCRIPT_MAX = 64, LINES_MAX = 24, LINE_W = 56 };
 enum { ACT_NONE, ACT_DRANS, ACT_HOUR };
 
@@ -111,7 +111,10 @@ static const DevJump kFinishCandidates[] = {
 };
 enum { WARP_COUNT = sizeof kWarps / sizeof kWarps[0], FINISH_COUNT = 0 };
 
-static const char *const kRoot[] = { "WARP >", "FINISH AREA >", "CHEATS >", "OPTIONS >" };
+static const char *const kRoot[] = { "WARP >", "FINISH AREA >", "CHEATS >", "OPTIONS >",
+                                     "ENHANCEMENTS >" };
+/* Enhancements page: renderer, resolution, dither, BACK. */
+enum { ROOT_ROWS = sizeof kRoot / sizeof kRoot[0], ENHANCE_ROWS = 4 };
 
 static struct {
     int inited, enabled, hard_disabled, open, page, selection, help;
@@ -136,6 +139,8 @@ static struct {
     struct { unsigned frame, key; } script[SCRIPT_MAX];
     unsigned nscript, iscript;
     char toast[LINE_W];
+    MusashiDevMenuEnhancements enh;   /* host-seeded, persisted by the host */
+    unsigned enh_changed;             /* MUSASHI_DEV_ENH_* not yet taken */
     char lines[LINES_MAX][LINE_W];
 } M;
 
@@ -182,6 +187,8 @@ int musashi_dev_menu_init(const MusashiDevMenuGuest *guest, int force_on) {
     M.hard_disabled = cheats && cheats[0] == '0';
     M.enabled = !M.hard_disabled && guest && (force_on || (env && env[0] == '1'));
     if (guest && !M.hard_disabled) M.guest = *guest;
+    M.enh.scale = 1u;
+    M.enh.dither = -1;
     if (M.hard_disabled) {
         fprintf(stderr, "[DEV_MENU] hard-disabled (BFM_CHEATS=0)\n");
         return 0;
@@ -216,6 +223,8 @@ void musashi_dev_menu_toast(const char *message) {
 
 static unsigned page_rows(void) {
     switch (M.page) {
+    case PAGE_ROOT: return ROOT_ROWS;
+    case PAGE_ENHANCE: return ENHANCE_ROWS;
     case PAGE_WARP: return (M.folder ? kFolders[M.folder - 1].count : (unsigned)FOLDER_COUNT) + 1u;
     case PAGE_FINISH: return FINISH_COUNT + 1u;
     case PAGE_CHEATS: return 5u;
@@ -225,6 +234,31 @@ static unsigned page_rows(void) {
 }
 
 static void mark_used(void) { M.used = 1; }
+
+static const char *enh_renderer(void) { return M.enh.renderer_gl ? "GL (EXPERIMENTAL)" : "ORIGINAL"; }
+static const char *enh_dither(void) { return M.enh.dither < 0 ? "AUTO" : M.enh.dither ? "ON" : "OFF"; }
+static unsigned enh_scale(void) { return M.enh.scale ? M.enh.scale : 1u; }
+
+/* Enhancements rows cycle a value the host persists for the next launch;
+ * none of them reads or writes guest memory or counts as a cheat. */
+static void enhance_select(void) {
+    if (M.selection == 0) {
+        M.enh.renderer_gl = !M.enh.renderer_gl;
+        M.enh_changed |= MUSASHI_DEV_ENH_RENDERER;
+        snprintf(M.toast, sizeof M.toast, "RENDERER: %s (NEXT LAUNCH)", enh_renderer());
+    } else if (M.selection == 1) {
+        M.enh.scale = enh_scale() >= 4u ? 1u : enh_scale() + 1u;
+        M.enh_changed |= MUSASHI_DEV_ENH_SCALE;
+        snprintf(M.toast, sizeof M.toast, "RESOLUTION: %uX (NEXT LAUNCH)", M.enh.scale);
+    } else {
+        M.enh.dither = M.enh.dither < 0 ? 0 : M.enh.dither == 0 ? 1 : -1;
+        M.enh_changed |= MUSASHI_DEV_ENH_DITHER;
+        snprintf(M.toast, sizeof M.toast, "DITHER: %s (NEXT LAUNCH)", enh_dither());
+    }
+    fprintf(stderr, "[DEV_MENU] enhancements renderer=%s scale=%u dither=%s (next launch)\n",
+            M.enh.renderer_gl ? "gl" : "original", enh_scale(),
+            M.enh.dither < 0 ? "auto" : M.enh.dither ? "on" : "off");
+}
 
 static void set_toggle(int *flag, int on, const char *name) {
     *flag = on;
@@ -286,6 +320,9 @@ static void select_row(void) {
         break;
     case PAGE_FINISH:
         if (FINISH_COUNT) finish_request(&kFinish[M.selection], 0);
+        break;
+    case PAGE_ENHANCE:
+        enhance_select();
         break;
     default: break;
     }
@@ -584,6 +621,25 @@ int musashi_dev_menu_used(void) {
     return 1;
 }
 
+void musashi_dev_menu_set_enhancements(const MusashiDevMenuEnhancements *enh) {
+    if (!enh) return;
+    M.enh = *enh;
+    if (M.enh.scale < 1u || M.enh.scale > 8u) M.enh.scale = 1u;
+    if (M.enh.dither < -1 || M.enh.dither > 1) M.enh.dither = -1;
+    M.enh.renderer_gl = M.enh.renderer_gl != 0;
+    M.enh_changed = 0;
+}
+
+unsigned musashi_dev_menu_take_enhancements(MusashiDevMenuEnhancements *out) {
+    unsigned changed = M.enh_changed;
+    M.enh_changed = 0;
+    if (changed && out) {
+        *out = M.enh;
+        out->scale = enh_scale();
+    }
+    return changed;
+}
+
 static void line(size_t *n, const char *fmt, ...) {
     va_list ap;
     if (*n >= LINES_MAX) return;
@@ -625,7 +681,7 @@ size_t musashi_dev_menu_text(const char **lines, size_t max, int *highlight, int
         line(&n, " ");
         first = n;
         if (M.page == PAGE_ROOT) {
-            for (i = 0; i < 4u; ++i) line(&n, "  %s", kRoot[i]);
+            for (i = 0; i < (size_t)ROOT_ROWS; ++i) line(&n, "  %s", kRoot[i]);
         } else if (M.page == PAGE_WARP) {
             if (M.folder) {
                 for (i = 0; i < kFolders[M.folder - 1].count; ++i)
@@ -647,6 +703,13 @@ size_t musashi_dev_menu_text(const char **lines, size_t max, int *highlight, int
             line(&n, "  BP MAX: %s", on(M.resource));
             line(&n, "  ADD %u DRANS", DRANS_STEP);
             line(&n, "  TIME +1 HOUR");
+            line(&n, "  BACK");
+        } else if (M.page == PAGE_ENHANCE) {
+            const char *gl_only = M.enh.renderer_gl ? "" : " (GL ONLY)";
+            line(&n, "  RENDERER: %s", enh_renderer());
+            if (enh_scale() == 1u) line(&n, "  RESOLUTION: NATIVE%s", gl_only);
+            else line(&n, "  RESOLUTION: %uX%s", enh_scale(), gl_only);
+            line(&n, "  DITHER: %s%s", enh_dither(), gl_only);
             line(&n, "  BACK");
         } else {
             unsigned speed = kFfSpeeds[M.ff_speed_index];

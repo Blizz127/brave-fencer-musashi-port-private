@@ -130,4 +130,15 @@ int bfm_plat_config_save_file(const BfmPlatConfig *cfg, const char *path);
 /* Output aspect (numerator/denominator). */
 void bfm_plat_config_aspect(const BfmPlatConfig *cfg, int *num, int *den);
 
+/* Sets one "key = value" in [section] of the INI file at path, keeping
+ * every other line (comments, order, unknown sections): the first matching
+ * key in the section is replaced and later duplicates there are dropped;
+ * a missing key is added after the section's last entry, a missing section
+ * at the end of the file. Creates the file and its directories when
+ * missing; writes path.tmp and renames it over path. Names are [a-z0-9_.-];
+ * values have no line break, ';' or '#'. Returns BFM_PLAT_OK,
+ * BFM_PLAT_INVALID or BFM_PLAT_ERROR (I/O). */
+int bfm_plat_config_write_key(const char *path, const char *section,
+                              const char *key, const char *value);
+
 #endif
