@@ -2712,14 +2712,24 @@ static void host_event_log(const SDL_Event *ev) {
     }
 }
 
-/* Window mode and what SDL gave (owner handheld gate, docs/HANDHELD-AUDIT-r49e.md).
- * host_window_apply_mode decides once, after the window exists. HOST_WINDOW
- * reports the outcome a couple of seconds into the run, when the compositor
- * has answered the resize, so last-run.log from a Game Mode session says what
- * the window really was. */
+/* Window mode and what SDL gave (owner device checks, docs/HANDHELD-AUDIT-r49e.md).
+ * host_window_plan decides BEFORE PsyCross creates the window: a fullscreen
+ * decision creates it at the output's size (then marked fullscreen-desktop,
+ * which resizes nothing), and a window is created at its picture's aspect
+ * (1280x960 for 4:3, 1280x720 / 1280x800 for the gl renderer's WIDESCREEN).
+ * r50 switched a 1280x960 window to fullscreen: SDL's x11 backend leaves that
+ * resize to the window manager, so without one SDL reported the output size
+ * while the GL back buffer stayed 1280x960, and the picture was clipped.
+ * HOST_WINDOW reports the outcome a couple of seconds into the run, so
+ * last-run.log from a Game Mode session says what the window really was. */
 static int g_cfg_fullscreen = -1;   /* config.ini [video] fullscreen: -1 unset, else 0 or 1 */
-static int g_window_fullscreen;     /* the final decision, after any refusal */
+static int g_window_fullscreen;     /* what the window is, after creation */
 static int g_window_decided;
+static MusashiHostSession g_window_session;
+static MusashiWindowDecision g_window_decision;
+static int g_window_aspect_num = 4, g_window_aspect_den = 3;   /* the presented picture */
+static int g_window_w = 1280, g_window_h = 960;                /* the windowed size */
+static int g_window_out_w, g_window_out_h;                     /* the output, for fullscreen */
 
 static void host_window_report(void) {
     static unsigned polls;
@@ -2730,7 +2740,7 @@ static void host_window_report(void) {
     if (!window) return;
     SDL_GetWindowSize(window, &ww, &wh);
     SDL_GL_GetDrawableSize(window, &dw, &dh);
-    bars = musashi_host_fit_rect(dw, dh, 4, 3, &fx, &fy, &fw, &fh);
+    bars = musashi_host_fit_rect(dw, dh, g_window_aspect_num, g_window_aspect_den, &fx, &fy, &fw, &fh);
     fprintf(stderr, "native_boot: HOST_WINDOW fullscreen=%d window=%dx%d drawable=%dx%d "
             "fit=%dx%d+%d+%d bars=%d\n", (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN) != 0,
             ww, wh, dw, dh, fw, fh, fx, fy, bars);
@@ -5106,8 +5116,9 @@ static void host_window_inspect(SDL_Window *window) {
      * Xwayland + SDL_PumpEvents was forcing X input focus back every TAP.
      * When MUSASHI_INTERACTIVE=1 is set, allow focus for playable interaction. */
     SDL_GetWindowSize(window, &width, &height);
-    if ((width != 1280 || height != 960) && !(SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN))
-        SDL_SetWindowSize(window, 1280, 960);   /* a fullscreen window keeps the output's size */
+    if ((width != g_window_w || height != g_window_h) && !g_window_decision.fullscreen &&
+        !(SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN))
+        SDL_SetWindowSize(window, g_window_w, g_window_h);   /* a fullscreen window keeps the output's size */
     SDL_SetWindowAlwaysOnTop(window, SDL_FALSE);
     SDL_SetWindowGrab(window, SDL_FALSE);
     SDL_SetWindowKeyboardGrab(window, SDL_FALSE);
@@ -5143,37 +5154,71 @@ static void host_window_inspect(SDL_Window *window) {
         SDL_RaiseWindow(window);
 }
 
-/* Window mode for the owner handheld gate. A desktop session keeps today's
- * decorated 1280x960 window, and since r51 so does Steam Game Mode (a
- * Gamescope session, logged as reason=gamescope-windowed): Gamescope shows the
- * window borderless and scaled. Borderless desktop fullscreen is explicit only:
- * BFM_FULLSCREEN=1, --fullscreen or config.ini [video] fullscreen = 1 (the
- * switch after creation is not device-verified; an emulated Game Mode capture
- * showed a clipped frame). SDL_WINDOW_FULLSCREEN_DESKTOP never changes the display mode. Called
- * once, after the window exists and before the first present, so that
- * present clears the resized drawable. The decision is logged either way. */
+#ifdef MUSASHI_WITH_BFM_PLAT
+static void gpu_bridge_planned_aspect(int *num, int *den);
+#endif
+
+/* Window mode for the owner device checks, decided before PsyCross creates
+ * the window (main calls this just before PsyX_Initialise; config.ini is
+ * already read). A desktop session keeps today's decorated window, and since
+ * r51 so does Steam Game Mode (a Gamescope session, logged as
+ * reason=gamescope-windowed): Gamescope shows the window borderless and
+ * scaled. Borderless desktop fullscreen is explicit only: BFM_FULLSCREEN=1,
+ * --fullscreen or config.ini [video] fullscreen = 1 (the DISPLAY row writes
+ * it for the next launch). The window's size follows the picture: 1280x960
+ * for 4:3, 1280x720 / 1280x800 when the gl renderer shows WIDESCREEN. */
+static void host_window_plan(void) {
+    musashi_host_session_detect_env(&g_window_session);
+    g_window_decision = musashi_host_window_decide(getenv("BFM_FULLSCREEN"), g_cfg_fullscreen,
+                                                   g_window_session.gamescope);
+#ifdef MUSASHI_WITH_BFM_PLAT
+    gpu_bridge_planned_aspect(&g_window_aspect_num, &g_window_aspect_den);
+#endif
+    musashi_host_window_size(g_window_aspect_num, g_window_aspect_den, &g_window_w, &g_window_h);
+    if (g_window_decision.fullscreen) {
+        /* the output's size, so the window can be created at it (PsyCross
+         * initialises SDL video again itself) */
+        SDL_DisplayMode mode;
+        if (SDL_InitSubSystem(SDL_INIT_VIDEO) == 0) {
+            if (SDL_GetDesktopDisplayMode(0, &mode) == 0) {
+                g_window_out_w = mode.w;
+                g_window_out_h = mode.h;
+            }
+            SDL_QuitSubSystem(SDL_INIT_VIDEO);
+        }
+        if (g_window_out_w < 1 || g_window_out_h < 1)
+            fprintf(stderr, "native_boot: HOST_WINDOW output size unknown (%s); created %dx%d\n",
+                    SDL_GetError(), g_window_w, g_window_h);
+    }
+}
+
+/* After PsyX_Initialise, before the first present: a fullscreen window was
+ * created at the output's size and is now marked fullscreen-desktop
+ * (SDL_WINDOW_FULLSCREEN_DESKTOP never changes the display mode, and the size
+ * is already the output's, so the GL back buffer is too). SDL then gets the
+ * windowed size to return to; for a fullscreen-desktop window
+ * SDL_SetWindowSize only records it. The decision is logged either way. */
 static void host_window_apply_mode(SDL_Window *window) {
-    MusashiHostSession session;
-    MusashiWindowDecision decision;
     const char *driver;
     if (!window) return;
-    musashi_host_session_detect_env(&session);
-    decision = musashi_host_window_decide(getenv("BFM_FULLSCREEN"), g_cfg_fullscreen, session.gamescope);
     g_window_fullscreen = (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN) != 0;
-    if (decision.fullscreen && !g_window_fullscreen) {
+    if (g_window_decision.fullscreen && !g_window_fullscreen) {
         if (SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP) == 0) {
             g_window_fullscreen = 1;
+            SDL_SetWindowSize(window, g_window_w, g_window_h);
         } else {
-            fprintf(stderr, "native_boot: HOST_WINDOW fullscreen refused (%s); staying windowed\n",
+            fprintf(stderr, "native_boot: HOST_WINDOW fullscreen refused (%s); windowed\n",
                     SDL_GetError());
+            SDL_SetWindowSize(window, g_window_w, g_window_h);
         }
     }
     driver = SDL_GetCurrentVideoDriver();
     fprintf(stderr, "native_boot: HOST_SESSION gamescope=%d because=%s steamdeck=%d steamgamepadui=%d "
             "video_driver=%s osk_support=%d window=%s reason=%s\n",
-            session.gamescope, session.because, session.steam_deck, session.steam_gamepad_ui,
-            driver ? driver : "?", SDL_HasScreenKeyboardSupport() ? 1 : 0,
-            g_window_fullscreen ? "fullscreen_desktop" : "windowed", decision.reason);
+            g_window_session.gamescope, g_window_session.because, g_window_session.steam_deck,
+            g_window_session.steam_gamepad_ui, driver ? driver : "?",
+            SDL_HasScreenKeyboardSupport() ? 1 : 0,
+            g_window_fullscreen ? "fullscreen_desktop" : "windowed", g_window_decision.reason);
     g_window_decided = 1;
 }
 
@@ -5383,7 +5428,8 @@ static int plat_reg_read(void *user, unsigned reg, uint32_t *out) {
  * interval; without it the borrowed PsyCross swap interval (the driver's
  * default: PsyCross only sets it in PsyX_BeginScene, which the bridge never
  * calls) is left alone. [video] fullscreen decides the window mode for both
- * renderers in host_window_apply_mode (with BFM_FULLSCREEN and Gamescope).
+ * renderers in host_window_plan (with BFM_FULLSCREEN and Gamescope), before
+ * the window is created.
  * [video] present = integer
  * (a key the typed parser keeps as text) shows the gl image at whole
  * multiples of the display height; fit, absent or any other value fits it.
@@ -5414,7 +5460,7 @@ static void enhancements_from_file(BfmPlatConfig *cfg) {
     g_enh_saved.dither = file.dither;
     g_enh_saved.vsync = file.vsync;   /* -1 unless the file sets 0 or 1 */
     g_enh_saved.fullscreen = file.fullscreen == 1;
-    g_cfg_fullscreen = file.fullscreen;   /* -1 unless the file sets 0 or 1: host_window_apply_mode */
+    g_cfg_fullscreen = file.fullscreen;   /* -1 unless the file sets 0 or 1: host_window_plan */
     present = bfm_plat_config_get(&file, "video.present");
     g_enh_saved.present_integer = present && strcmp(present, "integer") == 0;
     g_enh_saved.widescreen = enh_widescreen_of(file.aspect_num, file.aspect_den);
@@ -5543,11 +5589,31 @@ static int bridge_be_read(void *u, uint16_t x, uint16_t y, uint16_t *p) {
     return bfm_gpu_bridge_read_vram((BfmGpuBridge *)u, x, y, p);
 }
 
-static void gpu_bridge_attach(MusashiGpuController *gpu) {
-    const char *name = getenv("MUSASHI_RENDERER"), *selected = NULL;
-    BfmPlatOutput out;
-    if (!bfm_gpu_bridge_selected(bfm_plat_config())) return;
+/* The renderer gpu_bridge_attach opens, or NULL when the bridge is off. */
+static const char *gpu_bridge_renderer_name(void) {
+    const char *name = getenv("MUSASHI_RENDERER");
+    if (!bfm_gpu_bridge_selected(bfm_plat_config())) return NULL;
     if (!name || !name[0]) name = g_enh_renderer[0] ? g_enh_renderer : "psycross";
+    return name;
+}
+
+/* The picture the window is planned for, before PsyCross creates it
+ * (host_window_plan): gl with WIDESCREEN shows 16:9 or 16:10 (hor+, the
+ * widescreen block of gpu_bridge_attach), everything else 4:3. */
+static void gpu_bridge_planned_aspect(int *num, int *den) {
+    const char *name = gpu_bridge_renderer_name();
+    *num = 4;
+    *den = 3;
+    if (name && strcmp(name, "gl") == 0 && g_enh_saved.widescreen) {
+        *num = 16;
+        *den = g_enh_saved.widescreen == 2 ? 10 : 9;
+    }
+}
+
+static void gpu_bridge_attach(MusashiGpuController *gpu) {
+    const char *name = gpu_bridge_renderer_name(), *selected = NULL;
+    BfmPlatOutput out;
+    if (!name) return;
     memset(&out, 0, sizeof out);
     out.window_width = 640;
     out.window_height = 480;
@@ -5564,26 +5630,38 @@ static void gpu_bridge_attach(MusashiGpuController *gpu) {
         out.present_integer = g_enh_saved.present_integer;
         if (g_enh_saved.widescreen) {
             /* hor+ (bfm_plat_widescreen.h): the gl renderer widens its scene
-             * targets and shows the extra columns; in a 4:3 window the
-             * picture is letterboxed, fullscreen fills a 16:9/16:10 screen */
+             * targets and shows the extra columns. host_window_plan made the
+             * window this aspect (1280x720 / 1280x800), so a window shows it
+             * without bars, and fullscreen fills a 16:9/16:10 screen */
             out.aspect_num = 16;
             out.aspect_den = g_enh_saved.widescreen == 2 ? 10 : 9;
             fprintf(stderr, "native_boot: ENHANCEMENTS widescreen aspect=%d:%d mode=hor+\n",
                     out.aspect_num, out.aspect_den);
         }
     }
+    out.fullscreen = g_window_fullscreen;   /* the borrowed window is already in its mode */
     if (bfm_plat_renderer_open(name, &out, &selected) != 0 || !selected ||
         strcmp(selected, name) != 0) {
         fprintf(stderr, "native_boot: GPU_PATH bfm_plat refused: renderer %s unavailable; cpu\n",
                 name);
         (void)bfm_plat_renderer_open("null", &out, NULL);
+        if (g_window_aspect_num * 3 != g_window_aspect_den * 4) {
+            /* the window was planned for gl's wide picture; the cpu present
+             * stretches a window, so a window goes back to 4:3 */
+            g_window_aspect_num = 4;
+            g_window_aspect_den = 3;
+            musashi_host_window_size(4, 3, &g_window_w, &g_window_h);
+            if (!g_window_fullscreen && SDL_GL_GetCurrentWindow())
+                SDL_SetWindowSize(SDL_GL_GetCurrentWindow(), g_window_w, g_window_h);
+        }
         return;
     }
     if (strcmp(name, "gl") == 0 && (g_enh_saved.vsync >= 0 || g_window_fullscreen)) {
-        /* explicit config.ini vsync, and the window mode host_window_apply_mode
-         * settled (BFM_FULLSCREEN, config.ini fullscreen, Gamescope), through
-         * the renderer's own live output change; vsync -1 and a windowed
-         * window keep the borrowed PsyCross interval and window */
+        /* explicit config.ini vsync through the renderer's own live output
+         * change. The window was created in its mode (host_window_plan), and
+         * the renderer was opened with it, so the fullscreen value here
+         * matches and switches nothing; vsync -1 keeps the borrowed PsyCross
+         * interval */
         int rc;
         out.vsync = g_enh_saved.vsync;
         out.fullscreen = g_window_fullscreen;
@@ -5811,7 +5889,13 @@ int main(int argc, char **argv) {
      * gamescope (Steam Game Mode) the window can be shown and focused by the
      * compositor while SDL still drops every joystick press as background. */
     SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
-    PsyX_Initialise("Brave Fencer Musashi - native VRAM", 1280, 960, 0);
+    host_window_plan();   /* the window's mode and size, before it exists */
+    {
+        int create_w, create_h;
+        (void)musashi_host_window_create_size(g_window_decision.fullscreen, g_window_w, g_window_h,
+                                              g_window_out_w, g_window_out_h, &create_w, &create_h);
+        PsyX_Initialise("Brave Fencer Musashi - native VRAM", create_w, create_h, 0);
+    }
     fprintf(stderr, "native_boot: VIDEO_SOURCE mode=%d policy=NTSC selected_before_worker=1\n",
             GetVideoMode());
     if (!SDL_GL_GetCurrentWindow() || !g_intrMutex) {

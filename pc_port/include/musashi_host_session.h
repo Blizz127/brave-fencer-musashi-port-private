@@ -176,4 +176,39 @@ static inline int musashi_host_fit_rect(int dw, int dh, int aw, int ah,
     if (h) *h = fh;
     return fw != dw || fh != dh;
 }
+
+/* The windowed size for a picture of aspect aw:ah: 1280 wide and as tall as
+ * that aspect makes it. 4:3 gives today's 1280x960 window; the gl renderer's
+ * WIDESCREEN gives 1280x720 (16:9) or 1280x800 (16:10), so a window (and
+ * Gamescope, which scales the window to the screen) shows the wide picture
+ * without letterbox bars. Invalid input keeps 1280x960. */
+static inline void musashi_host_window_size(int aw, int ah, int *w, int *h) {
+    long long n = 960;
+    if (aw >= 1 && ah >= 1) {
+        n = (1280LL * ah + aw / 2) / aw;
+        if (n < 1 || n > 4096) n = 960;
+    }
+    if (w) *w = 1280;
+    if (h) *h = (int)n;
+}
+
+/* The size PsyX_Initialise is given, decided before the window exists. A
+ * fullscreen decision creates the window at the output's size (out_w x out_h,
+ * the desktop display mode), and native_boot then marks it fullscreen-desktop
+ * before the first present, which changes no size. SDL's x11 backend never
+ * resizes a window itself for fullscreen: it asks the window manager, and
+ * without one (Xvfb) the window and its GL back buffer keep the size they were
+ * created with. r50 switched a 1280x960 window, so SDL reported the output size
+ * while the back buffer stayed 1280x960 and the picture was clipped. Creating
+ * it fullscreen-desktop does not help either: SDL creates the X window at the
+ * size it is given (PsyCross gives none for that flag, which makes it 1x1).
+ * A window, or an output size that is unknown, gets w x h. Returns 1 when the
+ * window is to be marked fullscreen-desktop after creation. */
+static inline int musashi_host_window_create_size(int fullscreen, int w, int h,
+                                                  int out_w, int out_h, int *cw, int *ch) {
+    int at_output = fullscreen && out_w >= 1 && out_h >= 1;
+    if (cw) *cw = at_output ? out_w : w;
+    if (ch) *ch = at_output ? out_h : h;
+    return fullscreen != 0;
+}
 #endif
