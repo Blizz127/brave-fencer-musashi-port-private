@@ -33,17 +33,24 @@ Facts that shape every feature below:
   - `vsync = 0|1` (gl only) sets the swap interval. Absent, the interval is
     left as it is; see frame pacing in 3.2.
   - `fullscreen = 0|1` (both renderers, r50) decides the window mode in
-    `host_window_apply_mode`: 1 borderless desktop fullscreen, 0 a window.
-    Absent, the window is kept everywhere. Since r51 that includes Steam
-    Game Mode, where Gamescope shows the window borderless and scaled. r50
-    switched Game Mode to fullscreen automatically, but an emulated Game
-    Mode capture (Xvfb, no window manager) showed the post-creation switch
-    leaving a 1280x960 back buffer under a 1920x1080 SDL size, which
-    clipped the picture. `BFM_FULLSCREEN` / `--fullscreen` /
+    `host_window_plan`, before the window exists: 1 borderless desktop
+    fullscreen, 0 a window. Absent, the window is kept everywhere. Since
+    r51 that includes Steam Game Mode, where Gamescope shows the window
+    borderless and scaled. r50 switched Game Mode to fullscreen
+    automatically, but an emulated Game Mode capture (Xvfb, no window
+    manager) showed the post-creation switch leaving a 1280x960 back buffer
+    under a 1920x1080 SDL size, which clipped the picture: SDL's x11
+    backend leaves the fullscreen resize to the window manager. Since
+    qol-fs a fullscreen window is created at the output's size and only
+    then marked fullscreen-desktop, so its back buffer is the output's
+    with or without a window manager. `BFM_FULLSCREEN` / `--fullscreen` /
     `--windowed` win over the file (docs/HANDHELD-AUDIT-r49e.md).
   - `aspect = 16:9|16:10` (gl only, G3) opens the gl renderer at that aspect:
     hor+ (more of the scene at the sides, the game's projection untouched).
-    `4:3` or absent keeps 4:3. A typed key, so `save_file` keeps it.
+    `4:3` or absent keeps 4:3. A typed key, so `save_file` keeps it. Since
+    qol-fs the window is created at that aspect too (1280x720 / 1280x800,
+    `host_window_plan`), so a window, and Gamescope scaling it, show the
+    wide picture without letterbox bars; 4:3 and Original keep 1280x960.
   - `present = integer` (gl only) places the image at whole multiples of the display
     height (`bfm_plat_present_viewport`). This is a text key the typed
     parser keeps, so `bfm_plat_config_save_file` drops it.

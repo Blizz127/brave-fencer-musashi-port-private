@@ -1,6 +1,7 @@
 /* Host session helper for the owner handheld gate: Gamescope detection (parity
  * with the launcher's SteamGameMode.DetectGamescope vectors), the window-mode
- * precedence, and the 4:3 fit rectangle. Pure logic, no display needed. */
+ * precedence, the 4:3 fit rectangle and the window plan (windowed size per
+ * aspect, fullscreen at creation). Pure logic, no display needed. */
 #include "musashi_host_session.h"
 
 #include <stdio.h>
@@ -191,12 +192,64 @@ static void sweep(void) {
         }
 }
 
+/* The window is planned before it exists: its windowed size follows the
+ * picture's aspect, and a fullscreen decision creates it at the output's size
+ * instead of switching a 1280x960 window afterwards. */
+static void window_plan(void) {
+    int w, h, cw, ch;
+    musashi_host_window_size(4, 3, &w, &h);
+    CHECK(w == 1280 && h == 960);          /* today's window, Original and gl 4:3 */
+    musashi_host_window_size(16, 9, &w, &h);
+    CHECK(w == 1280 && h == 720);
+    musashi_host_window_size(16, 10, &w, &h);
+    CHECK(w == 1280 && h == 800);
+    musashi_host_window_size(0, 3, &w, &h);
+    CHECK(w == 1280 && h == 960);
+    musashi_host_window_size(4, -1, &w, &h);
+    CHECK(w == 1280 && h == 960);
+    musashi_host_window_size(1, 100000, &w, &h);
+    CHECK(w == 1280 && h == 960);          /* absurd aspects keep the 4:3 window */
+    musashi_host_window_size(16, 9, NULL, NULL);
+
+    /* A window gets its windowed size, whatever the output is. */
+    CHECK(musashi_host_window_create_size(0, 1280, 960, 1920, 1080, &cw, &ch) == 0);
+    CHECK(cw == 1280 && ch == 960);
+    CHECK(musashi_host_window_create_size(0, 1280, 720, 1920, 1080, &cw, &ch) == 0);
+    CHECK(cw == 1280 && ch == 720);
+    /* Fullscreen: created at the output's size, then marked fullscreen-desktop. */
+    CHECK(musashi_host_window_create_size(1, 1280, 960, 1920, 1080, &cw, &ch) == 1);
+    CHECK(cw == 1920 && ch == 1080);
+    CHECK(musashi_host_window_create_size(1, 1280, 720, 1280, 800, &cw, &ch) == 1);
+    CHECK(cw == 1280 && ch == 800);
+    /* An unknown output size falls back to the windowed size (still marked). */
+    CHECK(musashi_host_window_create_size(1, 1280, 960, 0, 1080, &cw, &ch) == 1);
+    CHECK(cw == 1280 && ch == 960);
+    CHECK(musashi_host_window_create_size(1, 1280, 960, 1920, -1, &cw, &ch) == 1);
+    CHECK(cw == 1280 && ch == 960);
+    CHECK(musashi_host_window_create_size(1, 1280, 960, 1920, 1080, NULL, NULL) == 1);
+
+    /* Decision first, creation size second: the sequence native_boot runs. */
+    CHECK(musashi_host_window_create_size(musashi_host_window_decide("1", -1, 1).fullscreen,
+                                          1280, 960, 1920, 1080, &cw, &ch) == 1);
+    CHECK(cw == 1920 && ch == 1080);       /* Game Mode + BFM_FULLSCREEN=1 */
+    CHECK(musashi_host_window_create_size(musashi_host_window_decide(NULL, 1, 0).fullscreen,
+                                          1280, 960, 2560, 1600, &cw, &ch) == 1);
+    CHECK(cw == 2560 && ch == 1600);       /* config fullscreen = 1 */
+    CHECK(musashi_host_window_create_size(musashi_host_window_decide(NULL, -1, 1).fullscreen,
+                                          1280, 960, 1280, 800, &cw, &ch) == 0);
+    CHECK(cw == 1280 && ch == 960);        /* Game Mode alone stays a window (r51) */
+    CHECK(musashi_host_window_create_size(musashi_host_window_decide(NULL, -1, 0).fullscreen,
+                                          1280, 720, 1920, 1080, &cw, &ch) == 0);
+    CHECK(cw == 1280 && ch == 720);        /* desktop default, gl 16:9 */
+}
+
 int main(void) {
     detection();
     flags();
     window_decision();
     fit_rect();
     sweep();
+    window_plan();
     if (failures) {
         fprintf(stderr, "host session probe: %d failure(s)\n", failures);
         return 1;

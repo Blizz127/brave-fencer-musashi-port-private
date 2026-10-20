@@ -235,6 +235,13 @@ Why each choice:
 - **After creation, before the first present.** The first present (`native_boot.c` near `present_frame(&boot)` after the GPU init) then
   clears the resized drawable to black; later presents happen only while the display is on, so an unpainted resized window could otherwise
   sit through boot.
+- **Superseded by qol-fs (2026-10-20): decided before creation, created at the output's size.** `host_window_plan` now decides the mode
+  before `PsyX_Initialise`. A fullscreen decision gives PsyCross the desktop display mode's size, and `host_window_apply_mode` then only
+  marks the window fullscreen-desktop, which resizes nothing. SDL's x11 backend leaves the fullscreen resize to the window manager: without
+  one (Xvfb) r50's switched 1280x960 window kept a 1280x960 back buffer while SDL reported 1920x1080. Creating the window
+  fullscreen-desktop does not avoid that either, since SDL creates the X window at the size it is given (PsyCross gives none for that flag:
+  1x1). `tests/gpu_present_fit_probe.c` step 4 checks the drawn frame to the screen's edges, and fails on r50's sequence
+  (`MUSASHI_PRESENT_FIT_CREATE=r50`, a hand-run negative control).
 - **Fit from the live window state.** No new global to keep in sync; the GL renderer path keeps its own fitting.
 - **Precedence with kill switches.** If Game Mode misbehaves on the device: `BFM_FULLSCREEN=0` in the Steam launch options, `--windowed`, or
   the Enhancements DISPLAY row set to WINDOW (it writes an explicit `fullscreen = 0`, which beats Gamescope, and works from the pad).
