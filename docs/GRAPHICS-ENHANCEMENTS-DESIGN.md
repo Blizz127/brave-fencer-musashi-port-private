@@ -41,6 +41,9 @@ Facts that shape every feature below:
     leaving a 1280x960 back buffer under a 1920x1080 SDL size, which
     clipped the picture. `BFM_FULLSCREEN` / `--fullscreen` /
     `--windowed` win over the file (docs/HANDHELD-AUDIT-r49e.md).
+  - `aspect = 16:9|16:10` (gl only, G3) opens the gl renderer at that aspect:
+    hor+ (more of the scene at the sides, the game's projection untouched).
+    `4:3` or absent keeps 4:3. A typed key, so `save_file` keeps it.
   - `present = integer` (gl only) places the image at whole multiples of the display
     height (`bfm_plat_present_viewport`). This is a text key the typed
     parser keeps, so `bfm_plat_config_save_file` drops it.
@@ -59,7 +62,8 @@ Facts that shape every feature below:
   - VSYNC (DEFAULT/ON/OFF; DEFAULT is the absent key);
   - DISPLAY (WINDOW/FULLSCREEN; it shows the mode in effect, Game Mode's
     automatic fullscreen included);
-  - PRESENT (FIT/INTEGER).
+  - PRESENT (FIT/INTEGER);
+  - WIDESCREEN (OFF / 16:9 HOR+ / 16:10 HOR+; G3, gl only: writes `[video] aspect`).
 
   Each change is written to `config.ini` one key at a time
   (`bfm_plat_config_write_key`) and applies on the next launch.
@@ -378,6 +382,13 @@ the driver's value.
   with a scripted edge-of-screen test in 1010 and 3008. Anamorphic also
   needs `bfm_plat_widescreen_sx_current` called from the GTE backend.
   Estimate: 1 day for hor+ on gl, culling fixes open-ended.
+
+**G3 status (2026-10-20, branch claude/gfx-ws).** The Enhancements page has a WIDESCREEN row: OFF, 16:9 HOR+ or 16:10 HOR+, gl only.
+- It writes `[video] aspect`, and `gpu_bridge_attach` opens the gl renderer at that aspect.
+- The existing scene-slot margins then carry the extra columns.
+- Anamorphic is not offered, because it needs the GTE hook.
+- Culling fixes are not done, so expect pop-in at the sides.
+- Evidence: ~/release-staging/bfm-gfx-ws, holding the s16 identity leg and the 4:3 vs 16:9 screenshots.
 
 ### 3.5 Anti-aliasing and anisotropic filtering
 
