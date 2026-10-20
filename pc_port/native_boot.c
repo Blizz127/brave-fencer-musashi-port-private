@@ -5261,6 +5261,9 @@ static int plat_reg_read(void *user, unsigned reg, uint32_t *out) {
  * together with [backends] renderer = gl selects the gl renderer (any other
  * renderer name leaves the cpu path), and [video] internal_scale and dither
  * reach it. MUSASHI_GPU / MUSASHI_RENDERER, when set, win over the file.
+ * [video] vsync = 1 and fullscreen = 1 reach the gl renderer only when the
+ * file sets them (the parser's default vsync = 1 does not count): without
+ * them the borrowed PsyCross swap interval and window are left alone.
  * Without those keys startup is unchanged: cpu rasteriser, scale 1. Menu
  * changes are written back one key at a time and apply on the next launch. */
 static char g_enh_renderer[BFM_PLAT_NAME_MAX];
@@ -5273,22 +5276,27 @@ static void enhancements_from_file(BfmPlatConfig *cfg) {
     char path[512];
     const char *gpu = getenv("MUSASHI_GPU");
     bfm_plat_config_defaults(&file);
+    file.vsync = -1;   /* still -1 after the load: the file does not set it */
+    file.fullscreen = -1;
     if (bfm_plat_config_default_path(path, sizeof path) != BFM_PLAT_OK ||   /* BFM_PLAT_OK is 0 */
         bfm_plat_config_load_file(&file, path) != BFM_PLAT_OK)
         return;
     g_enh_saved.renderer_gl = file.gpu_path == BFM_GPU_BFM_PLAT && strcmp(file.renderer, "gl") == 0;
     g_enh_saved.scale = (unsigned)file.internal_scale;   /* 1..8, checked by the parser */
     g_enh_saved.dither = file.dither;
+    g_enh_saved.vsync = file.vsync == 1;
+    g_enh_saved.fullscreen = file.fullscreen == 1;
     cfg->internal_scale = file.internal_scale;
     cfg->dither = file.dither;
     if (g_enh_saved.renderer_gl && !(gpu && gpu[0])) {
         cfg->gpu_path = BFM_GPU_BFM_PLAT;
         snprintf(g_enh_renderer, sizeof g_enh_renderer, "gl");
     }
-    if (g_enh_saved.renderer_gl || file.internal_scale != 1 || file.dither != BFM_DITHER_AUTO)
-        fprintf(stderr, "native_boot: ENHANCEMENTS config renderer=%s scale=%d dither=%s%s\n",
+    if (g_enh_saved.renderer_gl || file.internal_scale != 1 || file.dither != BFM_DITHER_AUTO ||
+        g_enh_saved.vsync || g_enh_saved.fullscreen)
+        fprintf(stderr, "native_boot: ENHANCEMENTS config renderer=%s scale=%d dither=%s vsync=%d fullscreen=%d%s\n",
                 g_enh_saved.renderer_gl ? "gl" : "original", file.internal_scale,
-                enh_dither_name(file.dither),
+                enh_dither_name(file.dither), g_enh_saved.vsync, g_enh_saved.fullscreen,
                 g_enh_saved.renderer_gl && gpu && gpu[0] ? " (MUSASHI_GPU set: env wins)" : "");
 }
 
@@ -5310,6 +5318,10 @@ static void enhancements_menu_poll(void) {
     }
     if (ok && (changed & MUSASHI_DEV_ENH_DITHER))
         ok = bfm_plat_config_write_key(path, "video", "dither", enh_dither_name(e.dither)) == BFM_PLAT_OK;
+    if (ok && (changed & MUSASHI_DEV_ENH_VSYNC))
+        ok = bfm_plat_config_write_key(path, "video", "vsync", e.vsync ? "1" : "0") == BFM_PLAT_OK;
+    if (ok && (changed & MUSASHI_DEV_ENH_FULLSCREEN))
+        ok = bfm_plat_config_write_key(path, "video", "fullscreen", e.fullscreen ? "1" : "0") == BFM_PLAT_OK;
     if (ok) g_enh_saved = e;
     else musashi_dev_menu_toast("ENHANCEMENTS: CONFIG.INI NOT SAVED");
     fprintf(stderr, "native_boot: ENHANCEMENTS saved=%d renderer=%s scale=%u dither=%s (next launch)\n",
@@ -5412,6 +5424,16 @@ static void gpu_bridge_attach(MusashiGpuController *gpu) {
                 name);
         (void)bfm_plat_renderer_open("null", &out, NULL);
         return;
+    }
+    if (strcmp(name, "gl") == 0 && (g_enh_saved.vsync || g_enh_saved.fullscreen)) {
+        /* explicit config.ini values only, through the renderer's own live
+         * output change; 0 keeps the borrowed PsyCross interval and window */
+        int rc;
+        out.vsync = g_enh_saved.vsync;
+        out.fullscreen = g_enh_saved.fullscreen;
+        rc = bfm_plat_renderer_set_output(&out);
+        fprintf(stderr, "native_boot: ENHANCEMENTS output vsync=%d fullscreen=%d rc=%d\n",
+                out.vsync, out.fullscreen, rc);
     }
     bfm_gpu_bridge_init(&g_gpu_bridge);
     {

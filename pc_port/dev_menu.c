@@ -113,8 +113,8 @@ enum { WARP_COUNT = sizeof kWarps / sizeof kWarps[0], FINISH_COUNT = 0 };
 
 static const char *const kRoot[] = { "WARP >", "FINISH AREA >", "CHEATS >", "OPTIONS >",
                                      "ENHANCEMENTS >" };
-/* Enhancements page: renderer, resolution, dither, BACK. */
-enum { ROOT_ROWS = sizeof kRoot / sizeof kRoot[0], ENHANCE_ROWS = 4 };
+/* Enhancements page: renderer, resolution, dither, vsync, display, BACK. */
+enum { ROOT_ROWS = sizeof kRoot / sizeof kRoot[0], ENHANCE_ROWS = 6 };
 
 static struct {
     int inited, enabled, hard_disabled, open, page, selection, help;
@@ -238,6 +238,8 @@ static void mark_used(void) { M.used = 1; }
 static const char *enh_renderer(void) { return M.enh.renderer_gl ? "GL (EXPERIMENTAL)" : "ORIGINAL"; }
 static const char *enh_dither(void) { return M.enh.dither < 0 ? "AUTO" : M.enh.dither ? "ON" : "OFF"; }
 static unsigned enh_scale(void) { return M.enh.scale ? M.enh.scale : 1u; }
+static const char *enh_vsync(void) { return M.enh.vsync ? "ON" : "OFF"; }
+static const char *enh_display(void) { return M.enh.fullscreen ? "FULLSCREEN" : "WINDOW"; }
 
 /* Enhancements rows cycle a value the host persists for the next launch;
  * none of them reads or writes guest memory or counts as a cheat. */
@@ -250,14 +252,23 @@ static void enhance_select(void) {
         M.enh.scale = enh_scale() >= 4u ? 1u : enh_scale() + 1u;
         M.enh_changed |= MUSASHI_DEV_ENH_SCALE;
         snprintf(M.toast, sizeof M.toast, "RESOLUTION: %uX (NEXT LAUNCH)", M.enh.scale);
-    } else {
+    } else if (M.selection == 2) {
         M.enh.dither = M.enh.dither < 0 ? 0 : M.enh.dither == 0 ? 1 : -1;
         M.enh_changed |= MUSASHI_DEV_ENH_DITHER;
         snprintf(M.toast, sizeof M.toast, "DITHER: %s (NEXT LAUNCH)", enh_dither());
+    } else if (M.selection == 3) {
+        M.enh.vsync = !M.enh.vsync;
+        M.enh_changed |= MUSASHI_DEV_ENH_VSYNC;
+        snprintf(M.toast, sizeof M.toast, "VSYNC: %s (NEXT LAUNCH)", enh_vsync());
+    } else {
+        M.enh.fullscreen = !M.enh.fullscreen;
+        M.enh_changed |= MUSASHI_DEV_ENH_FULLSCREEN;
+        snprintf(M.toast, sizeof M.toast, "DISPLAY: %s (NEXT LAUNCH)", enh_display());
     }
-    fprintf(stderr, "[DEV_MENU] enhancements renderer=%s scale=%u dither=%s (next launch)\n",
+    fprintf(stderr, "[DEV_MENU] enhancements renderer=%s scale=%u dither=%s vsync=%s display=%s (next launch)\n",
             M.enh.renderer_gl ? "gl" : "original", enh_scale(),
-            M.enh.dither < 0 ? "auto" : M.enh.dither ? "on" : "off");
+            M.enh.dither < 0 ? "auto" : M.enh.dither ? "on" : "off",
+            M.enh.vsync ? "on" : "off", M.enh.fullscreen ? "fullscreen" : "window");
 }
 
 static void set_toggle(int *flag, int on, const char *name) {
@@ -627,6 +638,8 @@ void musashi_dev_menu_set_enhancements(const MusashiDevMenuEnhancements *enh) {
     if (M.enh.scale < 1u || M.enh.scale > 8u) M.enh.scale = 1u;
     if (M.enh.dither < -1 || M.enh.dither > 1) M.enh.dither = -1;
     M.enh.renderer_gl = M.enh.renderer_gl != 0;
+    M.enh.vsync = M.enh.vsync == 1;
+    M.enh.fullscreen = M.enh.fullscreen == 1;
     M.enh_changed = 0;
 }
 
@@ -710,6 +723,8 @@ size_t musashi_dev_menu_text(const char **lines, size_t max, int *highlight, int
             if (enh_scale() == 1u) line(&n, "  RESOLUTION: NATIVE%s", gl_only);
             else line(&n, "  RESOLUTION: %uX%s", enh_scale(), gl_only);
             line(&n, "  DITHER: %s%s", enh_dither(), gl_only);
+            line(&n, "  VSYNC: %s%s", enh_vsync(), gl_only);
+            line(&n, "  DISPLAY: %s%s", enh_display(), gl_only);
             line(&n, "  BACK");
         } else {
             unsigned speed = kFfSpeeds[M.ff_speed_index];

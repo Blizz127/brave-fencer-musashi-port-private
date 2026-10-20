@@ -367,10 +367,13 @@ int main(void) {
         assert(strcmp(highlighted(), "  RESOLUTION: NATIVE (GL ONLY)") == 0);
         musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
         assert(strcmp(highlighted(), "  DITHER: AUTO (GL ONLY)") == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+        assert(strcmp(highlighted(), "  VSYNC: OFF (GL ONLY)") == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+        assert(strcmp(highlighted(), "  DISPLAY: WINDOW (GL ONLY)") == 0);
         for (i = 0; i < 1000; ++i) musashi_dev_menu_vblank(1, 0x000b, 9, 1);
         assert(musashi_dev_menu_take_enhancements(&got) == 0 && writes == 0);
-        musashi_dev_menu_keys(MUSASHI_DEV_KEY_UP, 0);
-        musashi_dev_menu_keys(MUSASHI_DEV_KEY_UP, 0);
+        for (i = 0; i < 4; ++i) musashi_dev_menu_keys(MUSASHI_DEV_KEY_UP, 0);
         musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
         assert(strcmp(highlighted(), "  RENDERER: GL (EXPERIMENTAL)") == 0);
         musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
@@ -382,6 +385,17 @@ int main(void) {
         assert(musashi_dev_menu_take_enhancements(&got) ==
                (MUSASHI_DEV_ENH_RENDERER | MUSASHI_DEV_ENH_SCALE | MUSASHI_DEV_ENH_DITHER));
         assert(got.renderer_gl == 1 && got.scale == 2u && got.dither == 0);
+        assert(got.vsync == 0 && got.fullscreen == 0);
+        assert(musashi_dev_menu_take_enhancements(&got) == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
+        assert(strcmp(highlighted(), "  VSYNC: ON") == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
+        assert(strcmp(highlighted(), "  DISPLAY: FULLSCREEN") == 0);
+        assert(musashi_dev_menu_take_enhancements(&got) ==
+               (MUSASHI_DEV_ENH_VSYNC | MUSASHI_DEV_ENH_FULLSCREEN));
+        assert(got.vsync == 1 && got.fullscreen == 1 && got.renderer_gl == 1 && got.dither == 0);
         assert(musashi_dev_menu_take_enhancements(&got) == 0);
         musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
         assert(strcmp(highlighted(), "  BACK") == 0);
@@ -402,9 +416,19 @@ int main(void) {
         seed.scale = 99u;
         musashi_dev_menu_set_enhancements(&seed);
         assert(strcmp(highlighted(), "  RESOLUTION: NATIVE (GL ONLY)") == 0);
+        /* only an explicit 1 seeds vsync/fullscreen on; anything else reads off */
+        seed.vsync = 1;
+        seed.fullscreen = 7;
+        musashi_dev_menu_set_enhancements(&seed);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+        assert(strcmp(highlighted(), "  VSYNC: ON (GL ONLY)") == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+        assert(strcmp(highlighted(), "  DISPLAY: WINDOW (GL ONLY)") == 0);
+        assert(musashi_dev_menu_take_enhancements(&got) == 0);
         assert(writes == 0);
     }
-    puts("DEV_MENU_ENHANCE_PASS rows=3 guest_writes=0 take_once=1");
+    puts("DEV_MENU_ENHANCE_PASS rows=5 guest_writes=0 take_once=1");
 
     /* Bridge/gl presenters draw the menu from musashi_dev_menu_emit_text:
      * the same lines, '>' on the selected row, nothing while the menu is off
@@ -422,7 +446,7 @@ int main(void) {
         musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
         memset(&cap, 0, sizeof cap);
         assert(musashi_dev_menu_emit_text(capture, NULL) == musashi_dev_menu_text(lines, 24, &hl, &badge));
-        assert(cap.n == 9 && cap.bad_pos == 0 && cap.marked == 1);
+        assert(cap.n == 11 && cap.bad_pos == 0 && cap.marked == 1);
         assert(strcmp(cap.last_marked, "> RENDERER: GL (EXPERIMENTAL)") == 0);
         assert(musashi_dev_menu_emit_text(NULL, NULL) == 0);
         musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
@@ -433,7 +457,7 @@ int main(void) {
         assert(got.renderer_gl == 0 && got.scale == 2u && got.dither == -1);
         assert(writes == 0);
     }
-    puts("DEV_MENU_BRIDGE_PASS lines=9 marked=1 switch_back=1");
+    puts("DEV_MENU_BRIDGE_PASS lines=11 marked=1 switch_back=1");
 
     puts("DEV_MENU_PASS off_inert=1 hard_disable=1 parity=1 cheats=game_state warps=29 folders=3 finish=0");
     return 0;
