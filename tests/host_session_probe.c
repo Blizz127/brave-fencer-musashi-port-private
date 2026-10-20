@@ -115,8 +115,8 @@ static void window_decision(void) {
     decide_case("", -1, 0, 0, "default");
     decide_case("auto", -1, 0, 0, "default");
     /* Gamescope alone turns fullscreen on. */
-    decide_case(NULL, -1, 1, 1, "gamescope");
-    decide_case("auto", -1, 1, 1, "gamescope");
+    decide_case(NULL, -1, 1, 0, "gamescope-windowed");   /* r51: no automatic fullscreen */
+    decide_case("auto", -1, 1, 0, "gamescope-windowed");
     /* An explicit config value wins over Gamescope, in both directions. */
     decide_case(NULL, 0, 1, 0, "config video.fullscreen=0");
     decide_case(NULL, 1, 0, 1, "config video.fullscreen=1");
@@ -126,7 +126,7 @@ static void window_decision(void) {
     decide_case("false", -1, 1, 0, "BFM_FULLSCREEN=0");
     decide_case("true", -1, 0, 1, "BFM_FULLSCREEN=1");
     /* A config value outside 0/1 is "unset". */
-    decide_case(NULL, 7, 1, 1, "gamescope");
+    decide_case(NULL, 7, 1, 0, "gamescope-windowed");
     decide_case(NULL, -5, 0, 0, "default");
 }
 

@@ -34,8 +34,12 @@ Facts that shape every feature below:
     left as it is; see frame pacing in 3.2.
   - `fullscreen = 0|1` (both renderers, r50) decides the window mode in
     `host_window_apply_mode`: 1 borderless desktop fullscreen, 0 a window.
-    Absent, Steam Game Mode (Gamescope) gets fullscreen and a desktop
-    session keeps the window; `BFM_FULLSCREEN` / `--fullscreen` /
+    Absent, the window is kept everywhere. Since r51 that includes Steam
+    Game Mode, where Gamescope shows the window borderless and scaled. r50
+    switched Game Mode to fullscreen automatically, but an emulated Game
+    Mode capture (Xvfb, no window manager) showed the post-creation switch
+    leaving a 1280x960 back buffer under a 1920x1080 SDL size, which
+    clipped the picture. `BFM_FULLSCREEN` / `--fullscreen` /
     `--windowed` win over the file (docs/HANDHELD-AUDIT-r49e.md).
   - `present = integer` (gl only) places the image at whole multiples of the display
     height (`bfm_plat_present_viewport`). This is a text key the typed

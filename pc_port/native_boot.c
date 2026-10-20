@@ -5144,11 +5144,12 @@ static void host_window_inspect(SDL_Window *window) {
 }
 
 /* Window mode for the owner handheld gate. A desktop session keeps today's
- * decorated 1280x960 window. Steam Game Mode (a Gamescope session) gets
- * borderless desktop fullscreen, so the window is the output instead of a
- * window Gamescope has to scale and letterbox; BFM_FULLSCREEN=0 or
- * --windowed, or an explicit config.ini [video] fullscreen = 0, turns that
- * off. SDL_WINDOW_FULLSCREEN_DESKTOP never changes the display mode. Called
+ * decorated 1280x960 window, and since r51 so does Steam Game Mode (a
+ * Gamescope session, logged as reason=gamescope-windowed): Gamescope shows the
+ * window borderless and scaled. Borderless desktop fullscreen is explicit only:
+ * BFM_FULLSCREEN=1, --fullscreen or config.ini [video] fullscreen = 1 (the
+ * switch after creation is not device-verified; an emulated Game Mode capture
+ * showed a clipped frame). SDL_WINDOW_FULLSCREEN_DESKTOP never changes the display mode. Called
  * once, after the window exists and before the first present, so that
  * present clears the resized drawable. The decision is logged either way. */
 static void host_window_apply_mode(SDL_Window *window) {

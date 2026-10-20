@@ -133,8 +133,14 @@ static inline MusashiWindowDecision musashi_host_window_decide(const char *env_f
         d.fullscreen = config_fullscreen;
         d.reason = config_fullscreen ? "config video.fullscreen=1" : "config video.fullscreen=0";
     } else if (gamescope) {
-        d.fullscreen = 1;
-        d.reason = "gamescope";
+        /* r51: no automatic fullscreen. Gamescope already shows the window
+         * borderless and scaled. In an emulated Game Mode session (Xvfb,
+         * no window manager), switching the window to fullscreen after
+         * creation left the GL back buffer at 1280x960 while SDL reported
+         * the output size, so the picture was clipped. Fullscreen is now
+         * explicit only: BFM_FULLSCREEN=1, --fullscreen, config fullscreen = 1. */
+        d.fullscreen = 0;
+        d.reason = "gamescope-windowed";
     } else {
         d.fullscreen = 0;
         d.reason = "default";
