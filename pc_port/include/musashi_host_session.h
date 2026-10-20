@@ -75,7 +75,7 @@ static inline int musashi_host_flag(const char *v) {
  * there), so the launcher and the game agree on what Game Mode is:
  * GAMESCOPE_WAYLAND_DISPLAY non-blank, or XDG_CURRENT_DESKTOP / XDG_SESSION_DESKTOP
  * naming gamescope, or SteamDeck=1 together with SteamGamepadUI=1. SteamDeck=1
- * alone is NOT enough (a Deck-image desktop session sets it too). Linux only.
+ * alone is NOT enough (the launcher's test expects false for it). Linux only.
  * BFM_GAMESCOPE=0 / =1 force it off / on (device diagnosis). */
 static inline void musashi_host_session_detect(MusashiHostEnv env, int is_linux,
                                                MusashiHostSession *out) {
