@@ -647,8 +647,9 @@ class BfmPlatTests(unittest.TestCase):
 
         # Present viewport. The rects follow the C's double arithmetic (a
         # non-negative x rounds as int(x + 0.5)); the properties below hold
-        # for exact fractions: inside the window, centred, within half a
-        # pixel of the aspect, whole display lines and maximal when integer.
+        # for exact fractions: inside the window, centred, the rounded side
+        # within half a pixel of the aspect, whole display lines and maximal
+        # when integer.
         def rnd(v):
             return int(v + 0.5)
 
@@ -665,21 +666,23 @@ class BfmPlatTests(unittest.TestCase):
             seen.add((ww, wh, asp, src))
             self.assertTrue(0 < w <= ww and 0 < h <= wh, l)
             self.assertEqual((x, y), ((ww - w) // 2, (wh - h) // 2), l)
-            self.assertLessEqual(abs(F(w) - h * F(num, den)), F(1, 2), l)
             k = wh // src if src else 0
             while k and rnd(k * src * a) > ww:
                 k -= 1
             if k:
                 self.assertEqual((w, h), (rnd(k * src * a), k * src), l)
                 self.assertEqual(h % src, 0, l)
+                self.assertLessEqual(abs(F(w) - h * F(num, den)), F(1, 2), l)
                 self.assertTrue((k + 1) * src > wh or rnd((k + 1) * src * a) > ww, l)
             else:
                 # fit, only when even 1x does not fit: one side fills the window
                 self.assertTrue(src == 0 or src > wh or rnd(src * a) > ww, l)
                 if ww / wh > a:
                     self.assertEqual((w, h), (rnd(wh * a), wh), l)
+                    self.assertLessEqual(abs(F(w) - h * F(num, den)), F(1, 2), l)
                 else:
                     self.assertEqual((w, h), (ww, rnd(ww / a)), l)
+                    self.assertLessEqual(abs(F(h) - w / F(num, den)), F(1, 2), l)
         self.assertEqual(len(seen), len(present))
         # values to check by hand: 1080p at 4:3 is 4x 240 lines (1280x960 with
         # bars 320/60) or fitted 1440x1080; 720p at 4:3 is exactly 3x; a
