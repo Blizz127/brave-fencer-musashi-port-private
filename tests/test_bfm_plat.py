@@ -387,7 +387,9 @@ class BfmPlatTests(unittest.TestCase):
         out = self.run_probe("config", d, env=env)
         self.assertIn(f"path {d}/xdg/bfm-port/config.ini", out)
         env["BFM_PORT_CONFIG"] = "/custom/cfg.ini"
-        self.assertIn("path /custom/cfg.ini", self.run_probe("config", d, env=env))
+        # a fresh directory: the probe's write_key block expects wk/sub/config.ini absent
+        override = self.fresh("config-override")
+        self.assertIn("path /custom/cfg.ini", self.run_probe("config", override, env=env))
         saved = (d / "saved.ini").read_text()
         self.assertIn("[mod.hello]\ngreeting = hi there", saved)
 
