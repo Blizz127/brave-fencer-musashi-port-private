@@ -14,7 +14,9 @@
  * feedback (textures sampling drawn VRAM: GPU snapshots for 15-bit pages,
  * readback for CLUT pages), PS1 dithering (video.dither), internal
  * resolution 1x-8x
- * (video.internal_scale), hor+ widescreen from the projection/widescreen
+ * (video.internal_scale), MSAA 2x/4x/8x (video.msaa, off by default: then
+ * the renderer is exactly the single-sample one; see bfm_gl_exec_set_msaa),
+ * hor+ widescreen from the projection/widescreen
  * state, HD texture replacement (upload_replacement), overlay text. */
 
 #include "../bfm_plat_renderer.h"
@@ -58,6 +60,13 @@ static int dither_on(const GlRenderer *s) {
     int mode = c ? c->dither : BFM_DITHER_AUTO;
     if (mode == BFM_DITHER_AUTO) return bfm_gl_exec_scale(s->x) == 1;
     return mode == BFM_DITHER_ON;
+}
+
+/* video.msaa as the host's config carries it (native_boot copies it from
+ * config.ini like internal_scale and dither). */
+static int msaa_request(void) {
+    const BfmPlatConfig *c = bfm_plat_config();
+    return c ? c->msaa : 0;
 }
 
 static int flush(GlRenderer *s);
@@ -159,6 +168,16 @@ static int gl_init(void *self, const BfmPlatOutput *o) {
         return BFM_PLAT_UNSUPPORTED;
     }
     bfm_gl_exec_set_integer(s->x, o->present_integer);
+    {
+        /* MSAA is applied at start only; 0 leaves the executor untouched and says nothing */
+        int want = msaa_request();
+        if (want >= 2) {
+            int got = bfm_gl_exec_set_msaa(s->x, want);
+            fprintf(stderr, "GL_MSAA requested=%d effective=%d\n", want, got);
+            if (bfm_gl_exec_msaa_note(s->x)[0])
+                fprintf(stderr, "GL_MSAA note: %s\n", bfm_gl_exec_msaa_note(s->x));
+        }
+    }
     bfm_gl_vram_init(&s->vram);
     bfm_gl_batch_init(&s->batch);
     bfm_gl_batch_init(&s->overlay);
@@ -174,6 +193,14 @@ static int gl_init(void *self, const BfmPlatOutput *o) {
 static void gl_shutdown(void *self) {
     GlRenderer *s = (GlRenderer *)self;
     int i;
+    if (s->x && bfm_gl_exec_msaa(s->x)) {
+        BfmGlMsaaStats st;
+        bfm_gl_exec_msaa_stats(s->x, &st);
+        fprintf(stderr,
+                "GL_MSAA stats effective=%d resolves=%u snapshots=%u readbacks=%u stencil_builds=%u presents=%u\n",
+                bfm_gl_exec_msaa(s->x), st.resolves, st.snapshots, st.readbacks, st.stencil_builds,
+                st.presents);
+    }
     if (s->x) {
         for (i = 0; i < BFM_GL_MAX_REPLACEMENTS; i++)
             if (s->repl.r[i].live) bfm_gl_exec_texture_free(s->x, s->repl.r[i].id);

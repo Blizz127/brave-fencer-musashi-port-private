@@ -12,6 +12,9 @@
  *              internal_scale, window_width, window_height, fullscreen,
  *              frame_rate (30|60), vsync, screenshot_dir,
  *              dither (auto | on | off; auto = PS1 dither at 1x only),
+ *              msaa (0 | 2 | 4 | 8; gl renderer only: multisampled scene and
+ *              VRAM targets, clamped to what the GPU supports; 0 = off, the
+ *              default, and then the renderer is exactly the single-sample one),
  *              gpu (cpu | bfm_plat: native_boot's GPU ports rasterise on the
  *              CPU, or feed bfm_plat_gpu_bridge -> the renderer backend)
  *   [timing]   fast_forward_speed (x real speed, 0 = uncapped),
@@ -63,6 +66,8 @@ typedef struct BfmPlatConfig {
     int frame_rate;          /* 30 (retail pacing) or 60 (interpolated) */
     int vsync;
     int dither;              /* BFM_DITHER_AUTO / _OFF / _ON (gl renderer) */
+    int msaa;                /* 0 = off, else 2 / 4 / 8 samples (gl renderer); the
+                                renderer clamps it to the GPU's limit */
     int gpu_path;            /* BFM_GPU_CPU / BFM_GPU_BFM_PLAT */
     char screenshot_dir[BFM_PLAT_PATH_MAX];
     /* timing */

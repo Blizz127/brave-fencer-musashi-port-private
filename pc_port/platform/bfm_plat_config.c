@@ -34,6 +34,7 @@ void bfm_plat_config_defaults(BfmPlatConfig *cfg) {
     cfg->frame_rate = 30;
     cfg->vsync = 1;
     cfg->dither = BFM_DITHER_AUTO;
+    cfg->msaa = 0;
     cfg->fast_forward_speed = 4.0;
     cfg->fast_forward_toggle = 0;
     copy_str(cfg->renderer, sizeof cfg->renderer, "psycross");
@@ -166,6 +167,10 @@ int bfm_plat_config_set(BfmPlatConfig *cfg, const char *key,
         int on;
         if (strcmp(value, "auto") == 0) cfg->dither = BFM_DITHER_AUTO;
         else if (bfm_plat_ini_bool(value, &on)) cfg->dither = on ? BFM_DITHER_ON : BFM_DITHER_OFF;
+        else r = BFM_PLAT_INVALID;
+    } else if (strcmp(key, "video.msaa") == 0) {
+        long v;   /* exactly 0 (off), 2, 4 or 8; anything else keeps the previous value */
+        if (bfm_plat_ini_long(value, &v) && (v == 0 || v == 2 || v == 4 || v == 8)) cfg->msaa = (int)v;
         else r = BFM_PLAT_INVALID;
     }
     else if (strcmp(key, "video.screenshot_dir") == 0) r = set_path(cfg->screenshot_dir, sizeof cfg->screenshot_dir, value);
@@ -329,10 +334,10 @@ int bfm_plat_config_save_file(const BfmPlatConfig *c, const char *path) {
             c->widescreen_mode == BFM_WIDESCREEN_ANAMORPHIC ? "anamorphic" : "hor+");
     fprintf(f, "internal_scale = %d\n"
                "window_width = %d\nwindow_height = %d\nfullscreen = %d\n"
-               "frame_rate = %d\nvsync = %d\ndither = %s\ngpu = %s\nscreenshot_dir = %s\n\n",
+               "frame_rate = %d\nvsync = %d\ndither = %s\nmsaa = %d\ngpu = %s\nscreenshot_dir = %s\n\n",
             c->internal_scale, c->window_width,
             c->window_height, c->fullscreen, c->frame_rate, c->vsync,
-            c->dither == BFM_DITHER_AUTO ? "auto" : c->dither ? "on" : "off",
+            c->dither == BFM_DITHER_AUTO ? "auto" : c->dither ? "on" : "off", c->msaa,
             c->gpu_path == BFM_GPU_BFM_PLAT ? "bfm_plat" : "cpu", c->screenshot_dir);
     fprintf(f, "[timing]\nfast_forward_speed = %g\nfast_forward_toggle = %d\n\n",
             c->fast_forward_speed, c->fast_forward_toggle);

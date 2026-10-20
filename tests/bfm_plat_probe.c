@@ -85,6 +85,25 @@ static int group_config(int argc, char **argv) {
     CHECK(bfm_plat_config_set(&c, "video.dither", "sometimes") == BFM_PLAT_INVALID);
     CHECK(bfm_plat_config_set(&c, "video.dither", "off") == BFM_PLAT_OK && c.dither == BFM_DITHER_OFF);
     CHECK(bfm_plat_config_set(&c, "video.dither", "on") == BFM_PLAT_OK && c.dither == BFM_DITHER_ON);
+    /* gl renderer MSAA: 0 (off, the default) | 2 | 4 | 8; any other value is refused and the old one kept */
+    CHECK(c.msaa == 0);
+    CHECK(bfm_plat_config_set(&c, "video.msaa", "3") == BFM_PLAT_INVALID && c.msaa == 0);
+    CHECK(bfm_plat_config_set(&c, "video.msaa", "16") == BFM_PLAT_INVALID && c.msaa == 0);
+    CHECK(bfm_plat_config_set(&c, "video.msaa", "-4") == BFM_PLAT_INVALID && c.msaa == 0);
+    CHECK(bfm_plat_config_set(&c, "video.msaa", "4x") == BFM_PLAT_INVALID && c.msaa == 0);
+    CHECK(bfm_plat_config_set(&c, "video.msaa", "") == BFM_PLAT_INVALID && c.msaa == 0);
+    CHECK(bfm_plat_config_set(&c, "video.msaa", "4") == BFM_PLAT_OK && c.msaa == 4);
+    CHECK(bfm_plat_config_set(&c, "video.msaa", "9") == BFM_PLAT_INVALID && c.msaa == 4);
+    CHECK(bfm_plat_config_set(&c, "video.msaa", "8") == BFM_PLAT_OK && c.msaa == 8);
+    CHECK(bfm_plat_config_set(&c, "video.msaa", "2") == BFM_PLAT_OK && c.msaa == 2);
+    CHECK(bfm_plat_config_set(&c, "video.msaa", "0") == BFM_PLAT_OK && c.msaa == 0);
+    {
+        char *args[] = {"prog", "--set", "video.msaa=2"};
+        CHECK(bfm_plat_config_apply_args(&c, 3, args, NULL) == BFM_PLAT_OK && c.msaa == 2);
+        args[2] = "video.msaa=5";
+        CHECK(bfm_plat_config_apply_args(&c, 3, args, NULL) == BFM_PLAT_INVALID && c.msaa == 2);
+    }
+    CHECK(bfm_plat_config_set(&c, "video.msaa", "4") == BFM_PLAT_OK && c.msaa == 4);   /* round-trips below */
     /* GPU path: cpu (default) | bfm_plat */
     CHECK(c.gpu_path == BFM_GPU_CPU);
     CHECK(bfm_plat_config_set(&c, "video.gpu", "gl") == BFM_PLAT_INVALID);
@@ -112,6 +131,7 @@ static int group_config(int argc, char **argv) {
         CHECK(r.widescreen == 1 && r.internal_scale == 3 && r.frame_rate == 30);
         CHECK(r.log_level == 4 && r.mods_enabled == 0 && r.bad_line == 0);
         CHECK(r.dither == BFM_DITHER_ON && r.gpu_path == BFM_GPU_BFM_PLAT);
+        CHECK(r.msaa == 4);                       /* a typed key: save_file keeps it */
         CHECK(strcmp(r.renderer, "hle") == 0);
         CHECK(strcmp(bfm_plat_config_get(&r, "mod.hello.greeting"), "hi there") == 0);
         /* --config is applied before other overrides */

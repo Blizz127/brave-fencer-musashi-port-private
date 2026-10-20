@@ -70,7 +70,8 @@ Facts that shape every feature below:
   - DISPLAY (WINDOW/FULLSCREEN; it shows the mode in effect, Game Mode's
     automatic fullscreen included);
   - PRESENT (FIT/INTEGER);
-  - WIDESCREEN (OFF / 16:9 HOR+ / 16:10 HOR+; G3, gl only: writes `[video] aspect`).
+  - WIDESCREEN (OFF / 16:9 HOR+ / 16:10 HOR+; G3, gl only: writes `[video] aspect`);
+  - ANTI-ALIASING (OFF / 2X / 4X / 8X; G4, gl only: writes `[video] msaa`).
 
   Each change is written to `config.ini` one key at a time
   (`bfm_plat_config_write_key`) and applies on the next launch.
@@ -417,6 +418,37 @@ the driver's value.
   (`GL_TEXTURE_MAX_ANISOTROPY_EXT`, present on both hosts' drivers) and
   mip generation for replacements. Menu: `ANISOTROPIC: OFF / 2x..16x`,
   greyed until perspective textures are on. Estimate: 0.5 day after 3.4.
+
+**G4 status (2026-10-20, branch claude/gfx-msaa).** MSAA is built for the gl renderer, as the config key `[video] msaa = 0|2|4|8` (typed, so `save_file` keeps it). Absent or 0 is off, and off is the renderer as it was. The ENHANCEMENTS page has an ANTI-ALIASING row (OFF / 2X / 4X / 8X, gl only, applied on the next launch).
+- **Effective samples.**
+  - The request is clamped to `GL_MAX_SAMPLES` and `GL_MAX_COLOR_TEXTURE_SAMPLES` (`bfm_gl_msaa_effective`), then halved until the VRAM target's multisample colour fits 256 MiB at the internal scale.
+  - The driver may allocate more than it is asked for (llvmpipe turns 2 into 4), so the renderer reports what the framebuffer holds: `GL_MSAA requested=N effective=M`, once, when msaa is 2 or more (0 says nothing). A `GL_MSAA note:` line says what was clamped or why MSAA stayed off. `GL_MSAA stats ...` counts the resolves, snapshots, readbacks and stencil builds that ran, but it prints only when the renderer is closed, and the live game does not close it at HOST_STOP, so there it does not appear.
+  - A missing entry point, a shader that does not link or an allocation that fails leaves MSAA off, with the single-sample executor untouched.
+- **Targets.**
+  - Every scene slot and the VRAM target gets an RGBA8 multisample texture and an FBO that all draws render into. The window overlay stays single-sample.
+  - A target's single-sample texture is its resolved image. SNAPSHOT, RESOLVE/readback, `finish` and present first resolve the rect they need into it (`glBlitFramebuffer`, identical rects), so they all see box-averaged samples.
+  - The mask-check stencil is a multisample renderbuffer, built per sample: one pass per sample under `GL_SAMPLE_MASK` over the target's alpha. A mask-check draw over a mask-set polygon edge therefore keeps exactly the samples the polygon covered.
+- **Draw program.** It is derived at run time from the single-sample shaders by nine text patches, each asserted to match exactly once, so the single-sample strings are never edited.
+  - There is no half-pixel shift. The single-sample path shifts geometry by half a device pixel so that a pixel centre lands on the PS1's integer sample point. With samples spread over the pixel that would blur every sprite, glyph and tile border. Without it a pixel-aligned rect covers whole pixels and only polygon edges blend.
+  - The varyings are `centroid`, and the 1x integer barycentric formulas run only for a pixel whose integer position is inside its triangle (the pixels the PS1 draws). Fringe pixels keep centroid values and never fetch the neighbouring atlas texel.
+  - The derivative correction of the replacement coordinates goes, because it undid the shift.
+- **Caveats.**
+  - The resolve averages samples. A RESOLVE into the VRAM mirror (StoreImage, or a CLUT/paletted page fed by a render target) holds blended colours on polygon edges, and the mask bit there is the majority of the pixel's samples. Interior pixels, whose samples all agree, are exact.
+  - At internal scale above 1 the sample point of a gradient or a texel moves by half a device pixel, so interior values change too, by one step. In the 2x probe that is 3565 interior pixels of the Gouraud scene and 1626 of the textured one, with a largest channel difference of 9 of 255. Flat colours and pixel-aligned geometry are unaffected at any scale. This is a real gap against "only polygon edges change", and the in-game gates run at 1x. MSAA is redundant above 3x anyway.
+  - The 2x request holds 4 samples on llvmpipe.
+- **Config path in the live game.**
+  - `enhancements_from_file` in `native_boot.c` copies `msaa` into the config the renderer reads (`cfg->msaa = file.msaa;`, like `internal_scale` and `dither`) and seeds the menu row (`g_enh_saved.msaa`). The renderer reads only that field; it has no config reader of its own.
+  - The `ENHANCEMENTS config` log line prints ` msaa=N` only when N is non-zero, so an absent key or 0 reads nothing extra and logs nothing new.
+  - The ANTI-ALIASING row cycles 0, 2, 4, 8 (`MUSASHI_DEV_ENH_MSAA`, taken once like the other rows), and `enhancements_menu_poll` writes it with `bfm_plat_config_write_key(path, "video", "msaa", ...)`.
+- **Tests.** `tests/bfm_gl_msaa_probe.c`, built and run by `tests/test_bfm_gl.py` on a real GL 3.3 core context made through SDL (a display, xvfb or offscreen EGL, no OSMesa).
+  - At 1x (and for flat colours at 2x) polygon scenes differ from the single-sample image only within two pixels of a silhouette edge. At 2x the Gouraud and textured scenes also change interior pixels by at most one step (see Caveats).
+  - Pixel-aligned shapes are identical over the whole image.
+  - A texture with a magenta frame shows no magenta (no bleed).
+  - The per-sample mask, the snapshot and readback of resolved data, present, `set_msaa(0)`, the GPU clamp and the memory fit are all checked.
+  - With `BFM_GL_BASE_DIR` set to a checkout from before MSAA, msaa = 0 hashes equal to that tree's executor, scene by scene.
+  - `tests/bfm_gl_sdl_smoke.c msaa N` covers the renderer glue: the config field, the log line and StoreImage.
+  - The OSMesa exec level is unchanged and was not run (Mesa 26 has no OSMesa).
+- Evidence: ~/release-staging/bfm-gfx-msaa.
 
 ## 4. Order of implementation
 

@@ -5433,10 +5433,13 @@ static int plat_reg_read(void *user, unsigned reg, uint32_t *out) {
  * [video] present = integer
  * (a key the typed parser keeps as text) shows the gl image at whole
  * multiples of the display height; fit, absent or any other value fits it.
+ * [video] msaa (0, 2, 4 or 8; a typed key) reaches the gl renderer through
+ * the config (cfg->msaa, like internal_scale and dither); 0 or absent reads
+ * and logs nothing extra.
  * Without those keys startup is unchanged: cpu rasteriser, scale 1. Menu
  * changes are written back one key at a time and apply on the next launch. */
 static char g_enh_renderer[BFM_PLAT_NAME_MAX];
-static MusashiDevMenuEnhancements g_enh_saved = { 0, 1u, -1, -1, 0, 0, 0 };
+static MusashiDevMenuEnhancements g_enh_saved = { 0, 1u, -1, -1, 0, 0, 0, 0 };
 
 static const char *enh_dither_name(int d) { return d < 0 ? "auto" : d ? "on" : "off"; }
 static const char *enh_vsync_name(int v) { return v < 0 ? "default" : v ? "on" : "off"; }
@@ -5464,25 +5467,31 @@ static void enhancements_from_file(BfmPlatConfig *cfg) {
     present = bfm_plat_config_get(&file, "video.present");
     g_enh_saved.present_integer = present && strcmp(present, "integer") == 0;
     g_enh_saved.widescreen = enh_widescreen_of(file.aspect_num, file.aspect_den);
+    g_enh_saved.msaa = file.msaa;   /* 0, 2, 4 or 8 (typed key); the gl renderer clamps it to the GPU */
     cfg->internal_scale = file.internal_scale;
     cfg->dither = file.dither;
+    cfg->msaa = file.msaa;
     if (g_enh_saved.renderer_gl && !(gpu && gpu[0])) {
         cfg->gpu_path = BFM_GPU_BFM_PLAT;
         snprintf(g_enh_renderer, sizeof g_enh_renderer, "gl");
     }
     if (g_enh_saved.renderer_gl || file.internal_scale != 1 || file.dither != BFM_DITHER_AUTO ||
-        g_enh_saved.vsync >= 0 || g_enh_saved.fullscreen || g_enh_saved.present_integer || g_enh_saved.widescreen)
-        fprintf(stderr, "native_boot: ENHANCEMENTS config renderer=%s scale=%d dither=%s vsync=%s fullscreen=%d present=%s widescreen=%s%s\n",
+        g_enh_saved.vsync >= 0 || g_enh_saved.fullscreen || g_enh_saved.present_integer || g_enh_saved.widescreen) {
+        char msaa[16] = "";   /* shown only when set: an absent key or 0 leaves this line exactly as it was */
+        if (file.msaa) snprintf(msaa, sizeof msaa, " msaa=%d", file.msaa);
+        fprintf(stderr, "native_boot: ENHANCEMENTS config renderer=%s scale=%d dither=%s vsync=%s fullscreen=%d present=%s widescreen=%s%s%s\n",
                 g_enh_saved.renderer_gl ? "gl" : "original", file.internal_scale,
                 enh_dither_name(file.dither), enh_vsync_name(g_enh_saved.vsync), g_enh_saved.fullscreen,
                 g_enh_saved.present_integer ? "integer" : "fit", enh_widescreen_name(g_enh_saved.widescreen),
+                msaa,
                 g_enh_saved.renderer_gl && gpu && gpu[0] ? " (MUSASHI_GPU set: env wins)" : "");
+    }
 }
 
 static void enhancements_menu_poll(void) {
     MusashiDevMenuEnhancements e;
     unsigned changed = musashi_dev_menu_take_enhancements(&e);
-    char path[512], scale[8];
+    char path[512], scale[8], msaa[4];
     int ok;
     if (!changed) return;
     ok = bfm_plat_config_default_path(path, sizeof path) == BFM_PLAT_OK;   /* BFM_PLAT_OK is 0 */
@@ -5505,12 +5514,16 @@ static void enhancements_menu_poll(void) {
         ok = bfm_plat_config_write_key(path, "video", "present", e.present_integer ? "integer" : "fit") == BFM_PLAT_OK;
     if (ok && (changed & MUSASHI_DEV_ENH_WIDESCREEN))
         ok = bfm_plat_config_write_key(path, "video", "aspect", enh_widescreen_name(e.widescreen)) == BFM_PLAT_OK;
+    if (ok && (changed & MUSASHI_DEV_ENH_MSAA)) {   /* ANTI-ALIASING row: 0 (OFF), 2, 4 or 8 */
+        snprintf(msaa, sizeof msaa, "%d", e.msaa);
+        ok = bfm_plat_config_write_key(path, "video", "msaa", msaa) == BFM_PLAT_OK;
+    }
     if (ok) g_enh_saved = e;
     else musashi_dev_menu_toast("ENHANCEMENTS: CONFIG.INI NOT SAVED");
-    fprintf(stderr, "native_boot: ENHANCEMENTS saved=%d renderer=%s scale=%u dither=%s vsync=%s fullscreen=%d present=%s widescreen=%s (next launch)\n",
+    fprintf(stderr, "native_boot: ENHANCEMENTS saved=%d renderer=%s scale=%u dither=%s vsync=%s fullscreen=%d present=%s widescreen=%s msaa=%d (next launch)\n",
             ok, e.renderer_gl ? "gl" : "original", e.scale, enh_dither_name(e.dither),
             enh_vsync_name(e.vsync), e.fullscreen, e.present_integer ? "integer" : "fit",
-            enh_widescreen_name(e.widescreen));
+            enh_widescreen_name(e.widescreen), e.msaa);
 }
 
 static void plat_entry_hook(void *user, uint32_t pc, const uint32_t *regs) {

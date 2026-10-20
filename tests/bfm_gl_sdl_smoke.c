@@ -5,10 +5,12 @@
  * data only. */
 
 #include "bfm_plat.h"
+#include "bfm_plat_config.h"
 #include "bfm_plat_renderer.h"
 #include <SDL.h>
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 int bfm_plat_backend_gl_register(void);
@@ -28,6 +30,67 @@ static BfmPlatRect R(int x, int y, int w, int h) {
     return r;
 }
 
+/* `smoke msaa N`: video.msaa through the backend. The config field the renderer reads when it opens is N (0 = off),
+ * a red triangle is drawn into the frame buffer, and StoreImage of one row across its slanted edges is classified:
+ * with MSAA on the resolved row holds blends of red and the black background (5-bit red strictly between 0 and 31),
+ * with it off it holds only those two colours. The renderer logs "GL_MSAA requested=N effective=M" on stderr. */
+static int msaa_mode(int samples) {
+    BfmPlatOutput o;
+    BfmPlatDispEnv de;
+    BfmPlatDrawEnv env;
+    BfmPlatPrim p;
+    BfmPlatRect r;
+    static uint16_t row[160];
+    const BfmPlatRendererBackend *gl;
+    const char *sel = NULL;
+    int i, red = 0, black = 0, blended = 0, other = 0;
+    bfm_plat_config()->msaa = samples;
+    memset(&o, 0, sizeof o);
+    o.window_width = 640; o.window_height = 480; o.internal_scale = 1;
+    o.aspect_num = 4; o.aspect_den = 3; o.vsync = 0;
+    CHECK(bfm_plat_backend_gl_register() == BFM_PLAT_OK);
+    bfm_plat_renderer_open("gl", &o, &sel);
+    if (!sel || strcmp(sel, "gl") != 0) {
+        printf("skip: gl backend could not open (selected %s)\n", sel ? sel : "none");
+        return 0;
+    }
+    gl = bfm_plat_renderer_find("gl");
+    CHECK(gl != NULL);
+    memset(&de, 0, sizeof de);
+    de.disp = R(0, 0, 320, 240);
+    CHECK(bfm_plat_renderer_set_disp_env(&de) == BFM_PLAT_OK);
+    memset(&env, 0, sizeof env);
+    env.clip = R(0, 0, 320, 240);
+    env.clear_bg = 1;
+    CHECK(bfm_plat_renderer_set_draw_env(&env) == BFM_PLAT_OK);
+    memset(&p, 0, sizeof p);
+    p.kind = BFM_PRIM_POLY_F3;
+    p.v[0].x = 10; p.v[0].y = 10; p.v[0].r = 248;
+    p.v[1].x = 150; p.v[1].y = 30;
+    p.v[2].x = 30; p.v[2].y = 100;
+    CHECK(bfm_plat_renderer_submit(&p, 1) == BFM_PLAT_OK);
+    CHECK(bfm_plat_renderer_present() == BFM_PLAT_OK);
+    r = R(0, 40, 160, 1);
+    CHECK(bfm_plat_renderer_download_vram(&r, row) == BFM_PLAT_OK);
+    for (i = 0; i < 160; i++) {
+        if (row[i] == 0x001F) red++;
+        else if (row[i] == 0x0000) black++;
+        else if ((row[i] & 0x7FE0) == 0 && (row[i] & 31) > 0 && (row[i] & 31) < 31) blended++;
+        else other++;
+    }
+    printf("msaa backend requested=%d: row y=40: %d red, %d black, %d blended red, %d other\n", samples, red, black,
+           blended, other);
+    CHECK(red > 20 && black > 20 && other == 0);
+    CHECK(samples ? blended > 0 : blended == 0);
+    bfm_plat_renderer_close();
+    if (fails) {
+        printf("%d failure(s)\n", fails);
+        return 1;
+    }
+    printf("ok gl_sdl_msaa\n");
+    return 0;
+}
+
 int main(int argc, char **argv) {
     SDL_Window *host_window = NULL;
     SDL_GLContext host_context = NULL;
@@ -43,6 +106,7 @@ int main(int argc, char **argv) {
     const char *sel = NULL;
     int i, frame;
 
+    if (argc > 2 && strcmp(argv[1], "msaa") == 0) return msaa_mode(atoi(argv[2]));
     if (argc > 1 && strcmp(argv[1], "borrow") == 0) {
         CHECK(SDL_InitSubSystem(SDL_INIT_VIDEO) == 0);
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
