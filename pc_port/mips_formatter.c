@@ -8673,6 +8673,10 @@ static int formatter_call(MusashiBootMemory *memory, FormatterCpu *cpu,
         if (!intrinsic_span(cpu, cpu->r[4], cpu->r[5])) return 0;
         if (!musashi_boot_call_80016714(memory, cpu->r[4], cpu->r[5]))
             return 0;
+        /* Retail leaves the loop-end constant -1 in v0 on every path (the
+         * delay slot at 8001671C, then 80016770 / 80016794), and the callers
+         * that return its result read it (src/main/80016714.c, R46L4). */
+        cpu->r[2] = 0xFFFFFFFFu;
         return formatter_return(cpu);
     }
     if (address == STARTUP_CLEAR_29044) {

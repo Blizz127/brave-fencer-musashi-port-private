@@ -4,7 +4,7 @@
 #include "musashi_psyq_hle.h"
 
 /* PsyQ services (libetc/libc2) are port-owned HLE, never Sony code. */
-extern void func_80016714_native(uint8_t *destination, int32_t count);
+extern int32_t func_80016714_native(uint8_t *destination, int32_t count);   /* returns -1 (R46L4); unused here */
 extern void func_80029044_native(uint8_t *destination);
 extern void func_8002906C_native(uint8_t *destination);
 

@@ -370,6 +370,12 @@ if(MUSASHI_BUILD_PC_PORT)
     target_link_libraries(musashi_event_registration_cpu_probe PRIVATE musashi_pc_port)
     add_test(NAME event_registration_source_cpu COMMAND musashi_event_registration_cpu_probe)
 
+    add_executable(musashi_environment_clear_v0_probe tests/environment_clear_v0_probe.c)
+    target_compile_features(musashi_environment_clear_v0_probe PRIVATE c_std_99)
+    target_include_directories(musashi_environment_clear_v0_probe PRIVATE "${MUSASHI_GENERATED_DIR}")
+    target_link_libraries(musashi_environment_clear_v0_probe PRIVATE musashi_pc_port)
+    add_test(NAME environment_clear_v0 COMMAND musashi_environment_clear_v0_probe)
+
     add_executable(musashi_dev_menu_probe tests/dev_menu_probe.c pc_port/dev_menu.c)
     target_compile_features(musashi_dev_menu_probe PRIVATE c_std_99)
     target_include_directories(musashi_dev_menu_probe PRIVATE pc_port/include)
