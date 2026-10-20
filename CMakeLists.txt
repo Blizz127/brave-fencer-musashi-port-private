@@ -763,7 +763,7 @@ if(MUSASHI_BUILD_PC_PORT)
                     ${CMAKE_CURRENT_SOURCE_DIR}/extracted/disc/files/SLUS_007.26)
         set_tests_properties(native_lane_environment_clear PROPERTIES SKIP_RETURN_CODE 77)
         # 8002D4C8 / 80031BE0 leave retail's v0 through the generated lane wrappers, and
-        # 80011C10 is held out so the interpreter leaves its v0 (main_0012 readers).
+        # 80011C10 is held out so the interpreter leaves its v0 (no reader is known).
         add_executable(musashi_native_lane_v0_safety_probe tests/native_lane_v0_safety_probe.c)
         target_compile_features(musashi_native_lane_v0_safety_probe PRIVATE c_std_99)
         target_include_directories(musashi_native_lane_v0_safety_probe PRIVATE "${MUSASHI_GENERATED_DIR}")

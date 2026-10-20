@@ -1,4 +1,4 @@
-/* The three r55 native voids whose retail v0 an interpreted reader uses, through
+/* The three r55 native voids whose retail v0 the lane did not leave, through
  * the REAL generated native lane (musashi_native_lane): the installed table, its
  * generated wrappers and the formatter's own lane_try / run_startup_cpu. This
  * file includes mips_formatter.c only to seed the guest CPU and reach those
@@ -8,10 +8,11 @@
  *   80031BE0  v0 = the paused byte (D_800A46E8+0x82F = 0x800A4F17) when nonzero,
  *             else the closing loop flag, 0 at exit; slot status words published.
  *   8002D4C8  v0 = the pending byte 0x800A4F18 when no work is pending (0);
- *             main_0012 8012E5CC / 80147364 leave 1 / 0x308D in v0 before the jal,
- *             and the 80148BA4 dispatcher returns the handler's low byte.
- *   80011C10  v0 = the state base 0x800AF630 (sign-tested by main_0012 80128AA8);
+ *             interpreted callers set v0 just before the jal (e.g. 1 / 0x308D).
+ *   80011C10  v0 = the state base 0x800AF630;
  *             held out of the lane, so the interpreter must run it.
+ * No reader of these values is known: the v3.2 audit's two candidates (main_0012
+ * 80128AA8, 80148BB0) cannot reach them (r56 review packet, R55-IMPACT-REPORT-v2).
  * Routes: 1 lane_try (returns 1 only when the generated wrapper ran);
  *         1b run_startup_cpu -> formatter_call -> lane_try or the interpreter;
  *         D  differential: the same seeded state run once through the loop with the
