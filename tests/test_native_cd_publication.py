@@ -19,7 +19,7 @@ typedef struct {
  unsigned phase, incoming_valid, interrupt, response_count;
  unsigned announced_valid, announced_claimed, command;
 } MusashiCdOwnedState;
-typedef struct { void *cd_drive, *cd_dma, *spu; struct { struct { int busy; } cd_frame; } irq; uint64_t cd_irq_production_limit; } NativeBoot;
+typedef struct { void *cd_drive, *cd_dma, *spu; struct { struct { int busy; } cd_frame; } irq; uint64_t cd_irq_production_limit; uint32_t xa_sector_frames; } NativeBoot;
 static MusashiCdOwnedState drive;
 static unsigned publications, fetches;
 static int dma_busy, dma_waiting;
