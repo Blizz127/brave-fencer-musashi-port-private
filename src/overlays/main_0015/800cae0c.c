@@ -1,10 +1,11 @@
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* Owner re-derivation from retail assembly (clean input set). UNVERIFIED DRAFT: not compiled yet. */
+/* Hands the module descriptor block D_800CBB88 to func_800183E0. */
 #include "psx_types.h"
-/* func_800CAE0C - byte-exact against retail at -O2 (tools/register_match.py). */
-extern s32 func_800183E0(s32 *a0);
 
-void func_800CAE0C(void) {
+extern u8 D_800CBB88[];
+extern int func_800183E0(unsigned int value);
 
-    extern s32 D_800CBB88;
-    func_800183E0(&D_800CBB88);
+void func_800CAE0C(void)
+{
+    func_800183E0((u32)D_800CBB88);
 }

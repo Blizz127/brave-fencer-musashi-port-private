@@ -1,16 +1,21 @@
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* Owner re-derivation from retail assembly (clean input set). UNVERIFIED DRAFT: not compiled yet. */
+/* In game mode 8 runs the state handler D_800CBB60[o->state]; otherwise func_80146C3C. */
 #include "psx_types.h"
-/* func_800CB830 - byte-exact against retail at -O2 (tools/register_match.py). */
-extern void func_80146C3C(void);
 
-void func_800CB830(void *arg0) {
+typedef struct {
+    u16 pad0;
+    u16 state;          /* 0x2 */
+} Obj;
 
-    extern u8 D_80078EC1;
-    extern void (*D_800CBB60[])(void);
-    if (D_80078EC1 == 0x8) {
-        u16 v0 = *(u16 *)((u8 *)arg0 + 2);
-        D_800CBB60[v0]();
+extern u8 D_80078EC1;
+extern u32 D_800CBB60[];
+extern void func_80146C3C(void *o);
+
+void func_800CB830(Obj *o)
+{
+    if (D_80078EC1 == 8) {
+        ((void (*)(Obj *))D_800CBB60[o->state])(o);
     } else {
-        func_80146C3C();
+        func_80146C3C(o);
     }
 }

@@ -1,12 +1,19 @@
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* Owner re-derivation from retail assembly (clean input set). UNVERIFIED DRAFT: not compiled yet. */
+/* Starts animation D_800CBAC0, applies effect 0x15 and advances the step. */
 #include "psx_types.h"
-/* func_800CAEC0 - byte-exact against retail at -O2 (tools/register_match.py). */
-extern s32 D_800CBAC0[];
-extern void func_80154274(s32 *a0, s32 a1);
-extern void func_80154A74(s32 a0, s32 a1);
 
-void func_800CAEC0(u8 *a0) {
-    func_80154274((s32 *)a0, (s32)D_800CBAC0);
-    func_80154A74((s32)a0, 0x15);
-    *(u8 *)(a0 + 0x197) += 1;
+typedef struct {
+    u8 pad0[0x197];
+    u8 step;            /* 0x197 */
+} Obj;
+
+extern u8 D_800CBAC0[];
+extern void func_80154274(void *o, u32 v);
+extern void func_80154A74(void *o, s32 i);
+
+void func_800CAEC0(Obj *o)
+{
+    func_80154274(o, (u32)D_800CBAC0);
+    func_80154A74(o, 0x15);
+    o->step++;
 }
