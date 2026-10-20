@@ -192,22 +192,33 @@ BfmGlBlendState bfm_gl_blend_state(int mode) {
     s.equation = BFM_GL_FUNC_ADD;
     s.src = s.dst = BFM_GL_ONE;
     s.constant = 1.0f;
+    s.src_mul = 8;
+    s.src_shift = 0;
+    s.dst_factor = 1.0f;
     switch (mode & 3) {
-    case 0:  /* 0.5 * F + 0.5 * B */
-        s.src = s.dst = BFM_GL_CONSTANT_COLOR;
-        s.constant = 0.5f;
+    case 0:  /* (B + F) >> 1: 4F + B * 127/255 */
+        s.src_mul = 4;
+        s.dst_factor = 127.0f / 255.0f;
         break;
-    case 1:  /* F + B */
+    case 1:  /* B + F: 8F + B */
         break;
-    case 2:  /* B - F */
+    case 2:  /* B - F: B - 8F */
         s.equation = BFM_GL_FUNC_REVERSE_SUBTRACT;
         break;
-    default: /* 0.25 * F + B */
-        s.src = BFM_GL_CONSTANT_COLOR;
-        s.constant = 0.25f;
+    default: /* B + (F >> 2): 8(F >> 2) + B */
+        s.src_shift = 2;
         break;
     }
     return s;
+}
+
+int bfm_gl_blend_byte(const BfmGlBlendState *s, int back8, int f) {
+    double src = (double)(s->src_mul * (f >> s->src_shift));
+    double dst = back8 * (double)s->dst_factor;
+    double o = s->equation == BFM_GL_FUNC_REVERSE_SUBTRACT ? dst - src : src + dst;
+    if (o < 0.0) o = 0.0;
+    if (o > 255.0) o = 255.0;
+    return round_i(o);
 }
 
 uint16_t bfm_gl_blend_emulate(const BfmGlBlendState *s, uint16_t back,
@@ -215,18 +226,9 @@ uint16_t bfm_gl_blend_emulate(const BfmGlBlendState *s, uint16_t back,
     uint16_t out = 0;
     int i;
     for (i = 0; i < 3; i++) {
-        /* dst: what an RGBA8 target holds for a 5-bit value; src: shader
-         * output (float) */
-        double b = (double)round_i(((back >> (5 * i)) & 31) * 255.0 / 31.0) / 255.0;
-        double f = (double)((front >> (5 * i)) & 31) / 31.0;
-        double sf = s->src == BFM_GL_CONSTANT_COLOR ? s->constant : 1.0;
-        double df = s->dst == BFM_GL_CONSTANT_COLOR ? s->constant : 1.0;
-        double o = s->equation == BFM_GL_FUNC_REVERSE_SUBTRACT
-                       ? b * df - f * sf : f * sf + b * df;
-        int q;
-        if (o < 0.0) o = 0.0;
-        if (o > 1.0) o = 1.0;
-        q = round_i(o * 255.0) >> 3;   /* stored RGB8, read back as 5-bit */
+        /* dst: the byte an opaque write of a 5-bit value leaves (c5 / 31) */
+        int b8 = round_i(((back >> (5 * i)) & 31) * 255.0 / 31.0);
+        int q = bfm_gl_blend_byte(s, b8, (front >> (5 * i)) & 31) >> 3;
         out |= (uint16_t)(q << (5 * i));
     }
     return out;

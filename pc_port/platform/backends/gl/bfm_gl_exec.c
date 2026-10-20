@@ -102,7 +102,7 @@ struct BfmGlExec {
     int scale;
     int integer;                 /* present at whole multiples of the display height */
     GLint u_size, u_flip, u_half, u_pass, u_pass_bit, u_dither, u_scale, u_win, u_vram, u_repl;
-    GLint b_src, b_tex, b_alpha;
+    GLint b_src, b_tex, b_alpha, b_five;
     /* redundant-state filter for run_cmds (-2 = unknown) */
     int cur_blend, cur_pass, cur_dither;
     BfmPlatRect cur_win;
@@ -262,18 +262,27 @@ static const char *fs_tex =
     "        }\n"
     "        if (!exact) rgb = (flags & 2u) != 0u ? t : min(t * v_color.rgb * (255.0 / 128.0), vec3(1.0));\n"
     "    }\n"
+    "    ivec3 c5 = ivec3(0);\n"
+    "    bool five = exact;\n"
     "    if (exact) {\n"
     "        if (u_dither != 0 && (flags & 4u) != 0u) {\n"
     "            ivec2 q = ivec2(gl_FragCoord.xy) / u_scale;\n"
     "            c8 = clamp(c8 + dm[(q.y & 3) * 4 + (q.x & 3)], 0, 255);\n"
     "        }\n"
-    "        rgb = vec3(c8 >> 3) / 31.0;\n"
+    "        c5 = c8 >> 3;\n"
+    "        rgb = vec3(c5) / 31.0;\n"
     "    } else if (u_dither != 0 && (flags & 4u) != 0u) {\n"
     "        ivec2 q = ivec2(gl_FragCoord.xy) / u_scale;\n"
     "        float d = float(dm[(q.y & 3) * 4 + (q.x & 3)]);\n"
     "        vec3 d8 = clamp(floor(rgb * 255.0 + 0.5) + d, 0.0, 255.0);\n"
-    "        rgb = floor(d8 / 8.0) / 31.0;\n"
-    "    }\n"
+    "        c5 = ivec3(d8) >> 3;\n"
+    "        rgb = vec3(c5) / 31.0;\n"
+    "        five = true;\n"
+    "    }\n";
+
+/* the pass split, the blend and the written colour: a fourth literal (each
+ * stays within C99's 4095-character minimum) */
+static const char *fs_out =
     "    /* two-pass draws: pass 1 keeps fragments whose bit is 0, pass 2 those\n"
     "     * whose bit is 1; the bit is STP (mode-2 split) or the written bit 15\n"
     "     * (stencil upkeep). Untextured fragments have STP 0. */\n"
@@ -284,17 +293,28 @@ static const char *fs_tex =
     "    }\n"
     "    /* semi-transparency per fragment (dual-source): untextured pixels,\n"
     "     * STP texels and replacement texels blend; the rest are opaque.\n"
-    "     * Factors are bfm_gl_blend_state's; mode 2 draws use a\n"
-    "     * reverse-subtract equation and ignore o_factor. */\n"
-    "    float sf = 1.0, df = 0.0;\n"
+    "     * Mode 2 draws use a reverse-subtract equation and ignore o_factor.\n"
+    "     * A 5-bit front f blends exactly as the PS1 does (bfm_gl_blend_state\n"
+    "     * / bfm_gl_blend_byte): a target byte 8b + r (r < 8) holds 5-bit b;\n"
+    "     * the source is a whole number of steps, src_mul * (f >> src_shift)\n"
+    "     * of 255, mode 3 floors F / 4 itself, and mode 0 scales the\n"
+    "     * destination by 127/255 so 4(b + f) + r/2 - (8b + r)/510 rounds\n"
+    "     * into step (b + f) >> 1 for every r. 8-bit fronts (replacement\n"
+    "     * texels) keep the plain factors. */\n"
+    "    vec3 src = rgb;\n"
+    "    float df = 0.0;\n"
     "    if ((flags & 64u) != 0u && ((flags & 1u) == 0u || stp || v_info.w != 0u)) {\n"
     "        uint mode = (flags >> 8) & 3u;\n"
     "        df = 1.0;\n"
-    "        if (mode == 0u) { sf = 0.5; df = 0.5; }\n"
-    "        else if (mode == 3u) sf = 0.25;\n"
+    "        if (five) {\n"
+    "            if (mode == 0u) { src = vec3(c5 * 4) / 255.0; df = 127.0 / 255.0; }\n"
+    "            else if (mode == 3u) src = vec3((c5 >> 2) * 8) / 255.0;\n"
+    "            else src = vec3(c5 * 8) / 255.0;\n"
+    "        } else if (mode == 0u) { src = rgb * 0.5; df = 0.5; }\n"
+    "        else if (mode == 3u) src = rgb * 0.25;\n"
     "    }\n"
     "    /* alpha carries the PS1 mask bit (bit 15) of the written pixel */\n"
-    "    o_color = vec4(rgb * sf, (stp || (flags & 32u) != 0u) ? 1.0 : 0.0);\n"
+    "    o_color = vec4(src, (stp || (flags & 32u) != 0u) ? 1.0 : 0.0);\n"
     "    o_factor = vec4(df, df, df, 0.0);\n"
     "}\n";
 
@@ -308,15 +328,20 @@ static const char *blit_vs =
     "    v_uv = vec2(mix(u_src.x, u_src.z, c.x), mix(u_src.y, u_src.w, c.y));\n"
     "}\n";
 
+/* u_five: show each byte as the 8-bit value of its 5-bit pixel (byte >> 3,
+ * as c5 / 31: what the Original path displays), so a blend's low bits never
+ * reach the window; off for movie images and live HD replacements. */
 static const char *blit_fs =
     "#version 330 core\n"
     "in vec2 v_uv;\n"
     "uniform sampler2D u_tex;\n"
     "uniform int u_alpha_test;\n"
+    "uniform int u_five;\n"
     "out vec4 o_color;\n"
     "void main() {\n"
     "    vec4 c = texture(u_tex, v_uv);\n"
     "    if (u_alpha_test != 0 && c.a < 0.5) discard;\n"
+    "    if (u_five != 0) c.rgb = floor(floor(c.rgb * 255.0 + 0.5) / 8.0) / 31.0;\n"
     "    o_color = vec4(c.rgb, 1.0);\n"
     "}\n";
 
@@ -443,9 +468,9 @@ BfmGlExec *bfm_gl_exec_create(BfmGlGetProc gp, int scale, char *err, size_t n) {
     }
     x->scale = scale;
     {
-        const char *fs[3];
-        fs[0] = fs_src; fs[1] = fs_main; fs[2] = fs_tex;
-        x->prog = link(x, vs_src, fs, 3, err, n);
+        const char *fs[4];
+        fs[0] = fs_src; fs[1] = fs_main; fs[2] = fs_tex; fs[3] = fs_out;
+        x->prog = link(x, vs_src, fs, 4, err, n);
     }
     if (!x->prog || !(x->blit = link(x, blit_vs, &blit_fs, 1, err, n))) {
         bfm_gl_exec_destroy(x);
@@ -464,6 +489,7 @@ BfmGlExec *bfm_gl_exec_create(BfmGlGetProc gp, int scale, char *err, size_t n) {
     x->b_src = x->GetUniformLocation(x->blit, "u_src");
     x->b_tex = x->GetUniformLocation(x->blit, "u_tex");
     x->b_alpha = x->GetUniformLocation(x->blit, "u_alpha_test");
+    x->b_five = x->GetUniformLocation(x->blit, "u_five");
     x->GenFramebuffers(1, &x->snap_fbo);
 
     x->GenVertexArrays(1, &x->vao);
@@ -979,9 +1005,9 @@ static void fit(const BfmGlExec *x, int win_w, int win_h, double aspect, int src
 }
 
 /* Clears the window and draws texture region (s0,t0)-(s1,t1), t0 = top,
- * into viewport vp. */
+ * into viewport vp; five: see blit_fs. */
 static void blit(BfmGlExec *x, GLuint tex, int win_w, int win_h, const int vp[4],
-                 float s0, float t0, float s1, float t1) {
+                 float s0, float t0, float s1, float t1, int five) {
     x->BindFramebuffer(GL_FRAMEBUFFER, 0);
     x->Disable(GL_SCISSOR_TEST);
     x->Disable(GL_BLEND);
@@ -992,11 +1018,22 @@ static void blit(BfmGlExec *x, GLuint tex, int win_w, int win_h, const int vp[4]
     x->UseProgram(x->blit);
     x->Uniform1i(x->b_tex, 0);
     x->Uniform4f(x->b_src, s0, t0, s1, t1);
+    x->Uniform1i(x->b_five, five);
     x->ActiveTexture(GL_TEXTURE0);
     x->BindTexture(GL_TEXTURE_2D, tex);
     x->BindVertexArray(x->empty_vao);
     x->DrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    x->Uniform1i(x->b_five, 0);
     x->BindVertexArray(0);
+}
+
+/* Any HD replacement texture in use: their texels keep 8 bits on screen. */
+static int repl_live(const BfmGlBatch *b) {
+    int i;
+    if (!b->repl) return 0;
+    for (i = 0; i < BFM_GL_MAX_REPLACEMENTS; i++)
+        if (b->repl->r[i].live) return 1;
+    return 0;
 }
 
 int bfm_gl_exec_present_image(BfmGlExec *x, int w, int h, const uint8_t *rgba,
@@ -1016,7 +1053,7 @@ int bfm_gl_exec_present_image(BfmGlExec *x, int w, int h, const uint8_t *rgba,
     x->BindTexture(GL_TEXTURE_2D, x->image_tex);
     x->TexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgba);
     fit(x, win_w, win_h, aspect, h, vp);
-    blit(x, x->image_tex, win_w, win_h, vp, 0.0f, 0.0f, 1.0f, 1.0f);
+    blit(x, x->image_tex, win_w, win_h, vp, 0.0f, 0.0f, 1.0f, 1.0f, 0);
     if (overlay && overlay->nc) {
         upload_verts(x, overlay);
         run_cmds(x, overlay, 0, vp);
@@ -1051,7 +1088,7 @@ int bfm_gl_exec_present(BfmGlExec *x, const BfmGlBatch *b,
     }
     ivp[1] = vp[1];
     ivp[3] = vp[3];
-    blit(x, src->tex, win_w, win_h, vp, s0, t0, s1, t1);
+    blit(x, src->tex, win_w, win_h, vp, s0, t0, s1, t1, !repl_live(b));
     if (overlay && overlay->nc) {
         upload_verts(x, overlay);
         run_cmds(x, overlay, dither, ivp);

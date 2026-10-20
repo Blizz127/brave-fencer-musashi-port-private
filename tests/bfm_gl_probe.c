@@ -135,16 +135,34 @@ static void test_blend(void) {
     CHECK(bfm_gl_blend_ref(2, rgb15(5, 20, 9), rgb15(9, 9, 9)) == rgb15(0, 11, 0));
     CHECK(bfm_gl_blend_ref(3, rgb15(10, 30, 0), rgb15(13, 31, 3)) == rgb15(13, 31, 0));
     s = bfm_gl_blend_state(0);
-    CHECK(s.equation == BFM_GL_FUNC_ADD && s.src == BFM_GL_CONSTANT_COLOR &&
-          s.dst == BFM_GL_CONSTANT_COLOR && s.constant == 0.5f);
+    CHECK(s.equation == BFM_GL_FUNC_ADD && s.src_mul == 4 && s.src_shift == 0 &&
+          s.dst_factor == 127.0f / 255.0f);
     s = bfm_gl_blend_state(1);
-    CHECK(s.equation == BFM_GL_FUNC_ADD && s.src == BFM_GL_ONE && s.dst == BFM_GL_ONE);
+    CHECK(s.equation == BFM_GL_FUNC_ADD && s.src_mul == 8 && s.src_shift == 0 &&
+          s.dst_factor == 1.0f);
     s = bfm_gl_blend_state(2);
     CHECK(s.equation == BFM_GL_FUNC_REVERSE_SUBTRACT && s.src == BFM_GL_ONE &&
-          s.dst == BFM_GL_ONE);
+          s.dst == BFM_GL_ONE && s.src_mul == 8 && s.dst_factor == 1.0f);
     s = bfm_gl_blend_state(3);
-    CHECK(s.equation == BFM_GL_FUNC_ADD && s.src == BFM_GL_CONSTANT_COLOR &&
-          s.constant == 0.25f && s.dst == BFM_GL_ONE);
+    CHECK(s.equation == BFM_GL_FUNC_ADD && s.src_mul == 8 && s.src_shift == 2 &&
+          s.dst_factor == 1.0f);
+    /* every stored byte 8b + r (any low bits earlier blends left) and every
+     * 5-bit front: the stored result's top five bits are the PS1 formula */
+    {
+        int n = 0, ok = 0, r;
+        for (m = 0; m < 4; m++) {
+            s = bfm_gl_blend_state(m);
+            for (b = 0; b < 32; b++)
+                for (r = 0; r < 8; r++)
+                    for (f = 0; f < 32; f++) {
+                        int want = bfm_gl_blend_ref(m, (uint16_t)b, (uint16_t)f) & 31;
+                        n++;
+                        ok += (bfm_gl_blend_byte(&s, 8 * b + r, f) >> 3) == want;
+                    }
+        }
+        CHECK(ok == n);
+        printf("blend any stored byte: %d/%d exact vs PS1\n", ok, n);
+    }
     /* the GL state, evaluated, against the PS1 formula for every 5-bit pair */
     for (m = 0; m < 4; m++) {
         int exact = 0, worst = 0;
@@ -162,10 +180,8 @@ static void test_blend(void) {
                 exact += d == 0;
                 if (d > worst) worst = d;
             }
-        /* add/subtract are exact; the halving/quartering modes keep the
-         * fraction the PS1 truncates, so they may round up by one step */
-        CHECK(worst <= 1);
-        if (m == 1 || m == 2) CHECK(exact == 1024);
+        /* every mode is exact, the halving/quartering ones included */
+        CHECK(exact == 1024 && worst == 0);
         printf("blend mode %d: %d/1024 exact vs PS1, worst %d\n", m, exact, worst);
     }
 }
@@ -813,8 +829,8 @@ static void exec_blend(void) {
             }
         for (y = 0; y < 32; y++)   /* no STP: plain front colour */
             CHECK(out[y * 32 + 31] == (front[y * 32 + 31] & 0x7FFF));
-        CHECK(worst_ref <= 1 && worst_gl <= 1);
-        if (m == 1 || m == 2) CHECK(exact_ref == 32 * 31);
+        CHECK(worst_ref == 0 && worst_gl == 0);
+        CHECK(exact_ref == 32 * 31 && exact_gl == 32 * 31);
         printf("gl blend mode %d: vs PS1 %d/%d exact (worst %d), vs GL model %d exact (worst %d)\n",
                m, exact_ref, 32 * 31, worst_ref, exact_gl, worst_gl);
     }
@@ -958,6 +974,42 @@ static void exec_scene_present(void) {
     }
     bfm_gl_batch_free(&ov);
     printf("gl hor+ scene + present + overlay ok (%d overlay pixels on a row)\n", lit);
+}
+
+/* A blend leaves low bits in the target byte (here 8f + B for mode 1); the
+ * window shows the 5-bit sum's own 8-bit value, as the Original path does,
+ * and readback gives the PS1 sum. */
+static void exec_present_five(void) {
+    BfmPlatRect disp = R(0, 0, 320, 240);
+    BfmPlatDrawEnv env;
+    BfmPlatPrim t = prim(BFM_PRIM_TILE);
+    uint16_t out[1];
+    FinishFn finish;
+    int slot;
+    const uint8_t *mid = &winbuf[((size_t)(WIN_H / 2) * WIN_W + WIN_W / 2) * 4];
+    LOADFN(finish, getproc("glFinish"));
+    CHECK(bfm_gl_exec_set_scale(X, 1) == BFM_PLAT_OK);
+    bfm_gl_batch_set_display(&B, &disp, 0);
+    memset(&env, 0, sizeof env);
+    env.clip = disp;
+    bfm_gl_batch_set_env(&B, &env);
+    t.v[0].x = 0; t.v[0].y = 0; t.w = 320; t.h = 240;
+    t.v[0].r = 20 * 8; t.v[0].g = 3 * 8; t.v[0].b = 30 * 8;     /* back 20, 3, 30 */
+    bfm_gl_batch_add(&B, &t, 1);
+    t.v[0].r = 9 * 8; t.v[0].g = 1 * 8; t.v[0].b = 7 * 8;       /* front 9, 1, 7 */
+    t.flags = BFM_PRIM_FLAG_SEMI_TRANS;
+    t.tpage = tp(2, 1, 0, 0);
+    bfm_gl_batch_add(&B, &t, 1);
+    slot = bfm_gl_batch_scene_at(&B, 0, 0);
+    CHECK(slot >= 0);
+    read_target(BFM_GL_TARGET_SCENE0 + slot, 160, 120, 1, 1, out);
+    CHECK(out[0] == rgb15(29, 4, 31));                           /* B + F, saturated */
+    CHECK(bfm_gl_exec_present(X, &B, NULL, WIN_W, WIN_H, 4.0 / 3.0, 0) == BFM_PLAT_OK);
+    finish();
+    /* 29, 4, 31 as c5 * 255 / 31, rounded: 239, 33, 255 (the raw bytes are
+     * 8 * 9 + 165 = 237, 8 + 25 = 33, 255) */
+    CHECK(mid[0] == 239 && mid[1] == 33 && mid[2] == 255);
+    printf("gl present 5-bit display: %d %d %d\n", mid[0], mid[1], mid[2]);
 }
 
 static void exec_replacement(void) {
@@ -1319,6 +1371,7 @@ static int run_exec(const char *lib) {
     bfm_gl_batch_init(&B);
     B.vram = &vram;
     exec_scene_present();
+    exec_present_five();
     exec_scene_coherency(1);
     exec_scene_coherency(3);
     CHECK(bfm_gl_exec_error(X) == 0);

@@ -64,7 +64,9 @@ void bfm_gl_exec_texture_free(BfmGlExec *x, uint32_t id);
  * the display origin (hor+: the whole wide target) or the display rect of
  * the VRAM target, fitted to image_aspect with black bars (or at a whole
  * multiple of its height, see bfm_gl_exec_set_integer), then the overlay
- * batch over the 4:3 display area. Does not swap. */
+ * batch over the 4:3 display area. Each pixel shows the 8-bit value of its
+ * 5-bit VRAM value (as the Original path displays it) unless an HD
+ * replacement texture is live. Does not swap. */
 int bfm_gl_exec_present(BfmGlExec *x, const BfmGlBatch *b,
                         const BfmGlBatch *overlay, int win_w, int win_h,
                         double image_aspect, int dither);

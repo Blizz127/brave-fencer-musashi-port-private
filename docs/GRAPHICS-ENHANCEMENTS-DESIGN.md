@@ -741,3 +741,75 @@ per-frame parity, performance acceptance and the Enhancements menu remain
 open. No private build was published at this checkpoint. Production execution
 remains hybrid with original CPU interpretation; native conversion remains
 tracked separately and deferred.
+
+
+### Exact semi-transparency and 5-bit display (gfx-g3, 2026-10-20)
+
+**Root cause of the one-step class.** The gl executor blended in normalised RGBA8 space:
+- the front was written as `c5/31`;
+- the back was read as stored;
+- the factors were 0.5/0.5 (mode 0) and 0.25 (mode 3).
+
+Modes 0 and 3 therefore kept the fraction that the PS1 truncates, `(B + F) >> 1` and `B + (F >> 2)`, so they could round up one 5-bit step (D-033). In the controller fixture (`tests/bfm_gl_ctl_probe.c`) these were the "semi-transparent: one 5-bit step" pixels:
+- 7,924 at 1x with the test's 6 scenes;
+- 16,226 with 12 scenes.
+
+**The fix: commit `30be401ced`, gl renderer only.** A target byte `8b + r` (`r < 8`) holds the 5-bit back `b`, and readback is `>> 3`. The shader writes a 5-bit front `f` as a whole number of steps:
+
+| mode | written |
+|---|---|
+| 1 | `8f + B` |
+| 2 | `B - 8f` |
+| 3 | `8(f >> 2) + B` |
+| 0 | `4f + B · 127/255`, using the dual-source factor |
+
+For mode 0, `4(b + f) + r/2 - (8b + r)/510` rounds into step `(b + f) >> 1` for every `r`. All four modes are therefore exact for any stored byte, including the low bits that earlier blends leave behind.
+- The C model is `bfm_gl_blend_state`, `bfm_gl_blend_byte` and `bfm_gl_blend_emulate`.
+- 8-bit fronts (HD replacement texels) keep the plain factors.
+- Opaque writes are unchanged.
+
+**5-bit display: commit `afb019abae`.** After an exact blend, a byte can keep low bits; mode 1 leaves `8f + B`, for example. The scene present therefore shows each byte as `(byte >> 3)/31`, which is `c5 · 255/31` on screen. That is exactly the colour the Original path displays for the same VRAM pixel.
+- Opaque bytes are already that value, so nothing changes for them.
+- Movie images, and any frame while an HD replacement is live, keep 8 bits.
+
+**Results** (gcc 15.2; GL on steamrt4 OSMesa/llvmpipe; local devbox):
+
+| check | before (`3e639e8352`) | after (`afb019abae`) |
+|---|---|---|
+| core model: modes 0-3 vs PS1, 1024 pairs each | 254 / 1024 / 1024 / 213 (worst 1) | **1024 each**; any stored byte 32768/32768 |
+| exec probe (real GL): modes 0-3 vs PS1, of 992 | 228 / 992 / 992 / 183 (worst 1) | **992 each**. The C model now matches GL on every pixel; mode 0 was 911/992. |
+| controller fixture 1x, 6 scenes: semi one-step | 7,924 | **0** |
+| controller fixture 1x, 12 scenes: semi one-step | 16,226 | **0** |
+| controller fixture 1x: opaque non-edge / semi >1-step | 0 / 0 | 0 / 0 |
+| controller fixture 1x, 12 scenes: edge-rule pixels (D-030, the controller's inclusive edges) | 5,754 | 5,576 |
+| controller fixture 3x: semi one-step | 7,924 | **0** |
+| present: back 20,3,30 + mode-1 front 9,1,7 on screen | raw bytes 237,33,255 | 239,33,255 (= Original) |
+
+**Village matched stop, run on this devbox.** This is the coherency job's recipe: test warp 1010:0, idle input, in-game frame 1250, then `MUSASHI_DUMP_VRAM_FULL`. The runs were headless (offscreen SDL plus EGL surfaceless, Mesa 26 llvmpipe) and used one binary per side:
+- base `3e639e8352`, sha256 `b03fc1f3...`;
+- after `afb019abae`, sha256 `9a6d34e4...`.
+
+All three legs reached the same state:
+- `[WARP] arrived 1010.0 ... vblanks=416`;
+- identical native-lane counters;
+- `VRAM_SOURCE display=0,0,320,240 clip=0,250,319,469`.
+
+The cpu leg is the Original renderer from the base binary. This change does not touch the cpu path.
+
+| cpu (Original) vs gl, RGB555 | before | after |
+|---|---|---|
+| whole VRAM 1024x512 | 2931 (0.559%) | **336 (0.064%)** |
+| drawing area y=10, 320x220 | 1491 (2.118%) | **173 (0.246%)** |
+| drawing area y=250, 320x220 | 1440 (2.045%) | **163 (0.232%)** |
+
+- **Step histogram, 1 / 2 / 3 / >3 steps:** before 2540 / 106 / 22 / 263, after 22 / 24 / 30 / 260.
+- **Brightness:** gl brighter than cpu on 2731 pixels before and 132 after. The truncated fraction is gone.
+- **Base gl vs new gl:** 2661 pixels changed, all of them darker, by 1 or 2 steps.
+- **The 336 that remain:**
+  - 150 equal a neighbouring cpu pixel, mostly the right one (86) or the one below (39). That is the shape of the controller's inclusive edges (D-030).
+  - 335 sit on a colour boundary of the cpu image; 1 is interior.
+- **Other hosts:** these local numbers are not the blizzpc figures above (1843 pixels, older candidate `629dd3af`). Different binaries and hosts reach slightly different village frames.
+
+**Still open:**
+- The edge-rule pixels belong to the controller. Its inclusive edges draw one pixel wider than the PS1; that is D-030, together with the polygon texpage state and the E2 texture window. Fixing them changes the shipped Original picture, so it stays a separate owner decision with its own gate.
+- At 3x, 20 opaque pixels and 5 semi pixels with more than one step remain in the 6-scene fixture, before and after. They come from the float path's texel rounding (D-033's float half), which this change does not touch.

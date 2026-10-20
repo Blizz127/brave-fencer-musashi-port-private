@@ -81,9 +81,10 @@ class GlRendererTests(unittest.TestCase):
         probe = self.build("gl_core", [], CORE + [str(ROOT / "tests/bfm_gl_probe.c")])
         out = self.run_bin([str(probe), "core"])
         self.assertIn("ok core", out)
-        # add/subtract modes are bit-exact; the halving modes within one step
-        self.assertIn("blend mode 1: 1024/1024 exact", out)
-        self.assertIn("blend mode 2: 1024/1024 exact", out)
+        # every PS1 semi-transparency mode is bit-exact, over any stored byte
+        for m in range(4):
+            self.assertIn(f"blend mode {m}: 1024/1024 exact", out)
+        self.assertIn("blend any stored byte: 32768/32768 exact vs PS1", out)
 
     def test_exec_osmesa(self):
         inc, lib = gl_include(), osmesa_lib()
@@ -97,7 +98,9 @@ class GlRendererTests(unittest.TestCase):
             self.skipTest(out.strip())
         self.assertIn("ok exec", out)
         self.assertIn("textures 4/8/15-bit: 3072 texels, 3072 exact", out)
-        self.assertIn("gl blend mode 1: vs PS1 992/992 exact", out)
+        for m in range(4):
+            self.assertIn(f"gl blend mode {m}: vs PS1 992/992 exact", out)
+        self.assertIn("gl present 5-bit display: 239 33 255", out)
         # mask bit and render feedback, all 16 bits vs the reference rasteriser
         for line in ("gl mask 1x: 6144 px bit-exact", "gl mask 3x: 6144 px bit-exact",
                      "gl feedback 4-bit + CLUT: 1024 px bit-exact",
