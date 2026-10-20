@@ -82,15 +82,31 @@ uint16_t bfm_gl_blend_ref(int mode, uint16_t back, uint16_t front);
 #define BFM_GL_ONE 0
 #define BFM_GL_CONSTANT_COLOR 1
 
+/* How the gl executor blends a 5-bit front f into an RGBA8 target. A
+ * target byte 8b + r (r < 8) holds the 5-bit back b (readback is >> 3). The
+ * fragment shader writes the source as src_mul * (f >> src_shift) / 255, a
+ * whole number of 5-bit steps, and the blend unit adds the destination
+ * times dst_factor (the dual-source factor), or subtracts the source
+ * (mode 2's fixed-function reverse subtract: equation/src/dst/constant).
+ * Mode 0 uses dst_factor 127/255: 4(b + f) + r/2 - (8b + r)/510 then
+ * rounds into step (b + f) >> 1 for every r and every b, so all four modes
+ * equal the PS1 formula (bfm_gl_blend_ref) whatever low bits earlier
+ * blends left in the byte. 8-bit fronts (replacement texels) use the plain
+ * 0.5/0.25 factors instead. */
 typedef struct BfmGlBlendState {
     int equation;
-    int src, dst;
+    int src, dst;                /* fixed-function factors (mode 2 draws) */
     float constant;              /* glBlendColor value for CONSTANT_COLOR */
+    int src_mul, src_shift;      /* shader source: src_mul * (f >> src_shift) */
+    float dst_factor;            /* dual-source destination factor */
 } BfmGlBlendState;
 
 BfmGlBlendState bfm_gl_blend_state(int mode);
-/* The GL blend on an RGBA8 target, in float, for 5-bit inputs; returns the
- * result mapped back to 5-bit channels (rounded). */
+/* One channel: the byte the target holds after blending 5-bit front f over
+ * the stored byte back8 (any 0..255), rounded as the blend unit stores it. */
+int bfm_gl_blend_byte(const BfmGlBlendState *s, int back8, int f);
+/* The GL blend over a back written opaque (its bytes as the shader writes a
+ * 5-bit value, c5 / 31), mapped back to 5-bit channels (>> 3). */
 uint16_t bfm_gl_blend_emulate(const BfmGlBlendState *s, uint16_t back,
                               uint16_t front);
 

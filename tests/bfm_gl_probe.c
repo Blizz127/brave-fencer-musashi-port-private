@@ -135,16 +135,34 @@ static void test_blend(void) {
     CHECK(bfm_gl_blend_ref(2, rgb15(5, 20, 9), rgb15(9, 9, 9)) == rgb15(0, 11, 0));
     CHECK(bfm_gl_blend_ref(3, rgb15(10, 30, 0), rgb15(13, 31, 3)) == rgb15(13, 31, 0));
     s = bfm_gl_blend_state(0);
-    CHECK(s.equation == BFM_GL_FUNC_ADD && s.src == BFM_GL_CONSTANT_COLOR &&
-          s.dst == BFM_GL_CONSTANT_COLOR && s.constant == 0.5f);
+    CHECK(s.equation == BFM_GL_FUNC_ADD && s.src_mul == 4 && s.src_shift == 0 &&
+          s.dst_factor == 127.0f / 255.0f);
     s = bfm_gl_blend_state(1);
-    CHECK(s.equation == BFM_GL_FUNC_ADD && s.src == BFM_GL_ONE && s.dst == BFM_GL_ONE);
+    CHECK(s.equation == BFM_GL_FUNC_ADD && s.src_mul == 8 && s.src_shift == 0 &&
+          s.dst_factor == 1.0f);
     s = bfm_gl_blend_state(2);
     CHECK(s.equation == BFM_GL_FUNC_REVERSE_SUBTRACT && s.src == BFM_GL_ONE &&
-          s.dst == BFM_GL_ONE);
+          s.dst == BFM_GL_ONE && s.src_mul == 8 && s.dst_factor == 1.0f);
     s = bfm_gl_blend_state(3);
-    CHECK(s.equation == BFM_GL_FUNC_ADD && s.src == BFM_GL_CONSTANT_COLOR &&
-          s.constant == 0.25f && s.dst == BFM_GL_ONE);
+    CHECK(s.equation == BFM_GL_FUNC_ADD && s.src_mul == 8 && s.src_shift == 2 &&
+          s.dst_factor == 1.0f);
+    /* every stored byte 8b + r (any low bits earlier blends left) and every
+     * 5-bit front: the stored result's top five bits are the PS1 formula */
+    {
+        int n = 0, ok = 0, r;
+        for (m = 0; m < 4; m++) {
+            s = bfm_gl_blend_state(m);
+            for (b = 0; b < 32; b++)
+                for (r = 0; r < 8; r++)
+                    for (f = 0; f < 32; f++) {
+                        int want = bfm_gl_blend_ref(m, (uint16_t)b, (uint16_t)f) & 31;
+                        n++;
+                        ok += (bfm_gl_blend_byte(&s, 8 * b + r, f) >> 3) == want;
+                    }
+        }
+        CHECK(ok == n);
+        printf("blend any stored byte: %d/%d exact vs PS1\n", ok, n);
+    }
     /* the GL state, evaluated, against the PS1 formula for every 5-bit pair */
     for (m = 0; m < 4; m++) {
         int exact = 0, worst = 0;
@@ -162,10 +180,8 @@ static void test_blend(void) {
                 exact += d == 0;
                 if (d > worst) worst = d;
             }
-        /* add/subtract are exact; the halving/quartering modes keep the
-         * fraction the PS1 truncates, so they may round up by one step */
-        CHECK(worst <= 1);
-        if (m == 1 || m == 2) CHECK(exact == 1024);
+        /* every mode is exact, the halving/quartering ones included */
+        CHECK(exact == 1024 && worst == 0);
         printf("blend mode %d: %d/1024 exact vs PS1, worst %d\n", m, exact, worst);
     }
 }
@@ -813,8 +829,8 @@ static void exec_blend(void) {
             }
         for (y = 0; y < 32; y++)   /* no STP: plain front colour */
             CHECK(out[y * 32 + 31] == (front[y * 32 + 31] & 0x7FFF));
-        CHECK(worst_ref <= 1 && worst_gl <= 1);
-        if (m == 1 || m == 2) CHECK(exact_ref == 32 * 31);
+        CHECK(worst_ref == 0 && worst_gl == 0);
+        CHECK(exact_ref == 32 * 31 && exact_gl == 32 * 31);
         printf("gl blend mode %d: vs PS1 %d/%d exact (worst %d), vs GL model %d exact (worst %d)\n",
                m, exact_ref, 32 * 31, worst_ref, exact_gl, worst_gl);
     }
