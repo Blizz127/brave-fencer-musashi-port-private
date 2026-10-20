@@ -14,7 +14,7 @@ def test_late_pcm_is_queued_intact_and_contiguously(tmp_path):
 #include <stdio.h>
 #include <assert.h>
 typedef struct { uint64_t sample_index; } MusashiSpuCdAudioSnapshot;
-typedef struct { void *spu; uint64_t xa_sample_anchor; } NativeBoot;
+typedef struct { void *spu; uint64_t xa_sample_anchor; uint32_t xa_sector_frames; } NativeBoot;
 static uint64_t current,starts[4];static unsigned calls;
 static int16_t samples[4][4];
 static int musashi_spu_cd_audio_snapshot(void *p,MusashiSpuCdAudioSnapshot *s) {
@@ -26,7 +26,7 @@ static int musashi_spu_cd_audio_submit_cd_pcm(void *p,uint64_t start,const int16
 }
 '''+body+r'''
 int main(void) {
- NativeBoot b={(void*)1,0};const int16_t pcm[4]={-32768,32767,-13,71};
+ NativeBoot b={(void*)1,0,0};const int16_t pcm[4]={-32768,32767,-13,71};
  current=10;assert(submit_xa_pcm(&b,0,0,pcm,2));
  current=15;assert(submit_xa_pcm(&b,0,2,pcm,2));
  current=16;assert(submit_xa_pcm(&b,0,4,pcm,2));
