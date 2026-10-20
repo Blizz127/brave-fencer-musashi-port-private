@@ -100,6 +100,7 @@ class GlRendererTests(unittest.TestCase):
         self.assertIn("textures 4/8/15-bit: 3072 texels, 3072 exact", out)
         for m in range(4):
             self.assertIn(f"gl blend mode {m}: vs PS1 992/992 exact", out)
+        self.assertIn("gl present 5-bit display: 239 33 255", out)
         # mask bit and render feedback, all 16 bits vs the reference rasteriser
         for line in ("gl mask 1x: 6144 px bit-exact", "gl mask 3x: 6144 px bit-exact",
                      "gl feedback 4-bit + CLUT: 1024 px bit-exact",

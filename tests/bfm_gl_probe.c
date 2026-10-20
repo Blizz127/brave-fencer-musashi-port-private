@@ -976,6 +976,42 @@ static void exec_scene_present(void) {
     printf("gl hor+ scene + present + overlay ok (%d overlay pixels on a row)\n", lit);
 }
 
+/* A blend leaves low bits in the target byte (here 8f + B for mode 1); the
+ * window shows the 5-bit sum's own 8-bit value, as the Original path does,
+ * and readback gives the PS1 sum. */
+static void exec_present_five(void) {
+    BfmPlatRect disp = R(0, 0, 320, 240);
+    BfmPlatDrawEnv env;
+    BfmPlatPrim t = prim(BFM_PRIM_TILE);
+    uint16_t out[1];
+    FinishFn finish;
+    int slot;
+    const uint8_t *mid = &winbuf[((size_t)(WIN_H / 2) * WIN_W + WIN_W / 2) * 4];
+    LOADFN(finish, getproc("glFinish"));
+    CHECK(bfm_gl_exec_set_scale(X, 1) == BFM_PLAT_OK);
+    bfm_gl_batch_set_display(&B, &disp, 0);
+    memset(&env, 0, sizeof env);
+    env.clip = disp;
+    bfm_gl_batch_set_env(&B, &env);
+    t.v[0].x = 0; t.v[0].y = 0; t.w = 320; t.h = 240;
+    t.v[0].r = 20 * 8; t.v[0].g = 3 * 8; t.v[0].b = 30 * 8;     /* back 20, 3, 30 */
+    bfm_gl_batch_add(&B, &t, 1);
+    t.v[0].r = 9 * 8; t.v[0].g = 1 * 8; t.v[0].b = 7 * 8;       /* front 9, 1, 7 */
+    t.flags = BFM_PRIM_FLAG_SEMI_TRANS;
+    t.tpage = tp(2, 1, 0, 0);
+    bfm_gl_batch_add(&B, &t, 1);
+    slot = bfm_gl_batch_scene_at(&B, 0, 0);
+    CHECK(slot >= 0);
+    read_target(BFM_GL_TARGET_SCENE0 + slot, 160, 120, 1, 1, out);
+    CHECK(out[0] == rgb15(29, 4, 31));                           /* B + F, saturated */
+    CHECK(bfm_gl_exec_present(X, &B, NULL, WIN_W, WIN_H, 4.0 / 3.0, 0) == BFM_PLAT_OK);
+    finish();
+    /* 29, 4, 31 as c5 * 255 / 31, rounded: 239, 33, 255 (the raw bytes are
+     * 8 * 9 + 165 = 237, 8 + 25 = 33, 255) */
+    CHECK(mid[0] == 239 && mid[1] == 33 && mid[2] == 255);
+    printf("gl present 5-bit display: %d %d %d\n", mid[0], mid[1], mid[2]);
+}
+
 static void exec_replacement(void) {
     static uint8_t rgba[64 * 64 * 4];
     static uint16_t tex[16 * 16], out[64 * 16];
@@ -1335,6 +1371,7 @@ static int run_exec(const char *lib) {
     bfm_gl_batch_init(&B);
     B.vram = &vram;
     exec_scene_present();
+    exec_present_five();
     exec_scene_coherency(1);
     exec_scene_coherency(3);
     CHECK(bfm_gl_exec_error(X) == 0);

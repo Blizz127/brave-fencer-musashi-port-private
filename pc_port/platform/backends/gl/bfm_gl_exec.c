@@ -102,7 +102,7 @@ struct BfmGlExec {
     int scale;
     int integer;                 /* present at whole multiples of the display height */
     GLint u_size, u_flip, u_half, u_pass, u_pass_bit, u_dither, u_scale, u_win, u_vram, u_repl;
-    GLint b_src, b_tex, b_alpha;
+    GLint b_src, b_tex, b_alpha, b_five;
     /* redundant-state filter for run_cmds (-2 = unknown) */
     int cur_blend, cur_pass, cur_dither;
     BfmPlatRect cur_win;
@@ -328,15 +328,20 @@ static const char *blit_vs =
     "    v_uv = vec2(mix(u_src.x, u_src.z, c.x), mix(u_src.y, u_src.w, c.y));\n"
     "}\n";
 
+/* u_five: show each byte as the 8-bit value of its 5-bit pixel (byte >> 3,
+ * as c5 / 31: what the Original path displays), so a blend's low bits never
+ * reach the window; off for movie images and live HD replacements. */
 static const char *blit_fs =
     "#version 330 core\n"
     "in vec2 v_uv;\n"
     "uniform sampler2D u_tex;\n"
     "uniform int u_alpha_test;\n"
+    "uniform int u_five;\n"
     "out vec4 o_color;\n"
     "void main() {\n"
     "    vec4 c = texture(u_tex, v_uv);\n"
     "    if (u_alpha_test != 0 && c.a < 0.5) discard;\n"
+    "    if (u_five != 0) c.rgb = floor(floor(c.rgb * 255.0 + 0.5) / 8.0) / 31.0;\n"
     "    o_color = vec4(c.rgb, 1.0);\n"
     "}\n";
 
@@ -484,6 +489,7 @@ BfmGlExec *bfm_gl_exec_create(BfmGlGetProc gp, int scale, char *err, size_t n) {
     x->b_src = x->GetUniformLocation(x->blit, "u_src");
     x->b_tex = x->GetUniformLocation(x->blit, "u_tex");
     x->b_alpha = x->GetUniformLocation(x->blit, "u_alpha_test");
+    x->b_five = x->GetUniformLocation(x->blit, "u_five");
     x->GenFramebuffers(1, &x->snap_fbo);
 
     x->GenVertexArrays(1, &x->vao);
@@ -999,9 +1005,9 @@ static void fit(const BfmGlExec *x, int win_w, int win_h, double aspect, int src
 }
 
 /* Clears the window and draws texture region (s0,t0)-(s1,t1), t0 = top,
- * into viewport vp. */
+ * into viewport vp; five: see blit_fs. */
 static void blit(BfmGlExec *x, GLuint tex, int win_w, int win_h, const int vp[4],
-                 float s0, float t0, float s1, float t1) {
+                 float s0, float t0, float s1, float t1, int five) {
     x->BindFramebuffer(GL_FRAMEBUFFER, 0);
     x->Disable(GL_SCISSOR_TEST);
     x->Disable(GL_BLEND);
@@ -1012,11 +1018,22 @@ static void blit(BfmGlExec *x, GLuint tex, int win_w, int win_h, const int vp[4]
     x->UseProgram(x->blit);
     x->Uniform1i(x->b_tex, 0);
     x->Uniform4f(x->b_src, s0, t0, s1, t1);
+    x->Uniform1i(x->b_five, five);
     x->ActiveTexture(GL_TEXTURE0);
     x->BindTexture(GL_TEXTURE_2D, tex);
     x->BindVertexArray(x->empty_vao);
     x->DrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    x->Uniform1i(x->b_five, 0);
     x->BindVertexArray(0);
+}
+
+/* Any HD replacement texture in use: their texels keep 8 bits on screen. */
+static int repl_live(const BfmGlBatch *b) {
+    int i;
+    if (!b->repl) return 0;
+    for (i = 0; i < BFM_GL_MAX_REPLACEMENTS; i++)
+        if (b->repl->r[i].live) return 1;
+    return 0;
 }
 
 int bfm_gl_exec_present_image(BfmGlExec *x, int w, int h, const uint8_t *rgba,
@@ -1036,7 +1053,7 @@ int bfm_gl_exec_present_image(BfmGlExec *x, int w, int h, const uint8_t *rgba,
     x->BindTexture(GL_TEXTURE_2D, x->image_tex);
     x->TexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgba);
     fit(x, win_w, win_h, aspect, h, vp);
-    blit(x, x->image_tex, win_w, win_h, vp, 0.0f, 0.0f, 1.0f, 1.0f);
+    blit(x, x->image_tex, win_w, win_h, vp, 0.0f, 0.0f, 1.0f, 1.0f, 0);
     if (overlay && overlay->nc) {
         upload_verts(x, overlay);
         run_cmds(x, overlay, 0, vp);
@@ -1071,7 +1088,7 @@ int bfm_gl_exec_present(BfmGlExec *x, const BfmGlBatch *b,
     }
     ivp[1] = vp[1];
     ivp[3] = vp[3];
-    blit(x, src->tex, win_w, win_h, vp, s0, t0, s1, t1);
+    blit(x, src->tex, win_w, win_h, vp, s0, t0, s1, t1, !repl_live(b));
     if (overlay && overlay->nc) {
         upload_verts(x, overlay);
         run_cmds(x, overlay, dither, ivp);
