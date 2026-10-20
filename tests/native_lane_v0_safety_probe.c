@@ -13,7 +13,13 @@
  *   80011C10  v0 = the state base 0x800AF630 (sign-tested by main_0012 80128AA8);
  *             held out of the lane, so the interpreter must run it.
  * Routes: 1 lane_try (returns 1 only when the generated wrapper ran);
- *         1b run_startup_cpu -> formatter_call -> lane_try or the interpreter.
+ *         1b run_startup_cpu -> formatter_call -> lane_try or the interpreter;
+ *         D  differential: the same seeded state run once through the loop with the
+ *            lane on and once with it suspended, so the interpreter executes the
+ *            retail words (the original path); all 32 GPRs, hi/lo and the whole
+ *            2 MiB RAM are compared. v0, the callee-saved registers, sp, fp, ra and
+ *            every live byte must match; the other caller-saved registers and the
+ *            dead stack below sp are reported, not required (the wrapper boundary).
  * Not exercised: 8002D4C8 with work pending (its callees 80030F80 and 8002D320
  * are interpreted SPU/voice code that needs device state the probe lacks).
  * Exit 0 = pass, 1 = fail, 77 = EXE or host window unavailable. */
@@ -132,6 +138,56 @@ static int state_ok(void) {
            rd16(STATE + 0xA3CEu) == 0 && rd16(STATE + 0xA3D0u) == 0;
 }
 
+static const char *const kRegName[32] = {
+    "zero", "at", "v0", "v1", "a0", "a1", "a2", "a3", "t0", "t1", "t2", "t3", "t4", "t5", "t6", "t7",
+    "s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7", "t8", "t9", "k0", "k1", "gp", "sp", "fp", "ra"};
+static uint8_t *g_snap0, *g_snapn;
+
+/* Route D: native (lane on) vs original (lane suspended: the interpreter runs the retail words). */
+static void differential(const char *what, uint32_t pc, uint32_t a0, uint32_t a1, uint32_t v0_seed, void (*prep)(void)) {
+    FormatterCpu n, o;
+    MusashiCallbackDevice dn, dd;
+    MusashiResetGraphPrefixStop stop;
+    int32_t result = 0;
+    unsigned k, live = 0, dead = 0;
+    uint32_t first_live = 0;
+    int rn, ro;
+    char regs[512];
+    size_t used = 0;
+    prep();
+    memcpy(g_snap0, g_mem->bytes, MUSASHI_RAM_SIZE);
+    seed_cpu(&n, &dn, pc, a0, a1, v0_seed, UINT_MAX);
+    memset(&stop, 0, sizeof stop);
+    rn = run_startup_cpu(g_mem, &n, lane_reference_sink, NULL, &result, &stop, NULL, NULL, NULL);
+    memcpy(g_snapn, g_mem->bytes, MUSASHI_RAM_SIZE);
+    memcpy(g_mem->bytes, g_snap0, MUSASHI_RAM_SIZE);
+    seed_cpu(&o, &dd, pc, a0, a1, v0_seed, UINT_MAX);
+    memset(&stop, 0, sizeof stop);
+    musashi_native_lane_suspend(1);
+    ro = run_startup_cpu(g_mem, &o, lane_reference_sink, NULL, &result, &stop, NULL, NULL, NULL);
+    musashi_native_lane_suspend(0);
+    CHECK(rn == MUSASHI_RESETGRAPH_PREFIX_COMPLETE && ro == MUSASHI_RESETGRAPH_PREFIX_COMPLETE,
+          "%s D status native=%d original=%d", what, rn, ro);
+    regs[0] = 0;
+    for (k = 0; k < 32; ++k)
+        if (n.r[k] != o.r[k] && used < sizeof regs - 48)
+            used += (size_t)snprintf(regs + used, sizeof regs - used, " %s:%08x/%08x", kRegName[k], n.r[k], o.r[k]);
+    if (n.hi != o.hi || n.lo != o.lo)
+        used += (size_t)snprintf(regs + used, sizeof regs - used, " hi/lo:%08x.%08x/%08x.%08x", n.hi, n.lo, o.hi, o.lo);
+    CHECK(n.r[2] == o.r[2], "%s D v0 native=%08x original=%08x (seed %08x)", what, n.r[2], o.r[2], v0_seed);
+    for (k = 16; k < 24; ++k) CHECK(n.r[k] == o.r[k], "%s D callee-saved %s differs", what, kRegName[k]);
+    for (k = 28; k < 32; ++k) CHECK(n.r[k] == o.r[k], "%s D %s differs", what, kRegName[k]);
+    CHECK(n.pc == o.pc, "%s D pc native=%08x original=%08x", what, n.pc, o.pc);
+    for (k = 0; k < MUSASHI_RAM_SIZE; ++k) {
+        if (g_snapn[k] == g_mem->bytes[k]) continue;
+        if (0x80000000u + k >= SP - 0x400u && 0x80000000u + k < SP) ++dead;
+        else if (!live++) first_live = 0x80000000u + k;
+    }
+    CHECK(live == 0, "%s D %u live RAM byte(s) differ, first at %08x", what, live, first_live);
+    printf("DIFF %-18s seed=%08x v0=%08x/%08x regs(native/original):%s%s dead_stack_bytes=%u live_bytes=%u\n",
+           what, v0_seed, n.r[2], o.r[2], regs[0] ? regs : " ", "", dead, live);
+}
+
 int main(int argc, char **argv) {
     static const uint32_t seeds[3] = {0x5EB7C0DEu, 1u, 0u};
     const MusashiNativeLaneEntry *e31, *e2d, *e11;
@@ -169,8 +225,19 @@ int main(int argc, char **argv) {
             run_both("8002D4C8 idle", 0x8002D4C8u, 0x90u, 0x1234u, seeds[s], e2d != NULL, prep_dispatch, 0u, dispatch_ok);
         run_both("80011C10", 0x80011C10u, 0, 0, seeds[s], e11 != NULL, prep_state, STATE, state_ok);
     }
+    g_snap0 = malloc(MUSASHI_RAM_SIZE);
+    g_snapn = malloc(MUSASHI_RAM_SIZE);
+    if (!g_snap0 || !g_snapn) { fprintf(stderr, "v0_safety: no memory for RAM snapshots\n"); return 1; }
+    for (s = 0; s < 3; ++s) {
+        g_paused = 0x5Au;
+        differential("80031BE0 paused", 0x80031BE0u, 0, 0, seeds[s], prep_slots);
+        g_paused = 0;
+        differential("80031BE0 running", 0x80031BE0u, 0, 0, seeds[s], prep_slots);
+        differential("8002D4C8 idle", 0x8002D4C8u, 0x90u, 0x1234u, seeds[s], prep_dispatch);
+        differential("80011C10", 0x80011C10u, 0, 0, seeds[s], prep_state);
+    }
     if (g_fail) { fprintf(stderr, "v0_safety: %u of %u check(s) failed\n", g_fail, g_checks); return 1; }
-    printf("NATIVE_LANE_V0_SAFETY_PASS checks=%u seeds=3 (80031BE0 returns=%u, 8002D4C8 returns=%u, 80011C10 interpreted)\n",
+    printf("NATIVE_LANE_V0_SAFETY_PASS checks=%u seeds=3 routes=lane_try,loop,differential (80031BE0 returns=%u, 8002D4C8 returns=%u, 80011C10 interpreted)\n",
            g_checks, (unsigned)e31->returns, (unsigned)e2d->returns);
     return 0;
 }
