@@ -158,6 +158,7 @@ static int gl_init(void *self, const BfmPlatOutput *o) {
         gl_shutdown(s);
         return BFM_PLAT_UNSUPPORTED;
     }
+    bfm_gl_exec_set_integer(s->x, o->present_integer);
     bfm_gl_vram_init(&s->vram);
     bfm_gl_batch_init(&s->batch);
     bfm_gl_batch_init(&s->overlay);
@@ -204,7 +205,10 @@ static int gl_output(void *self, const BfmPlatOutput *o) {
     }
     if (o->fullscreen != s->out.fullscreen)
         SDL_SetWindowFullscreen(s->win, o->fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
-    if (o->vsync != s->out.vsync) SDL_GL_SetSwapInterval(o->vsync ? 1 : 0);
+    /* vsync -1: the interval stays whatever the context has (a borrowed
+     * PsyCross context keeps its own until a caller sets 0 or 1) */
+    if (o->vsync >= 0 && o->vsync != s->out.vsync) SDL_GL_SetSwapInterval(o->vsync ? 1 : 0);
+    bfm_gl_exec_set_integer(s->x, o->present_integer);
     s->out = *o;
     layout(s);
     return BFM_PLAT_OK;

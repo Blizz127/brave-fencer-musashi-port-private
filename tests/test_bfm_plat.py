@@ -645,6 +645,50 @@ class BfmPlatTests(unittest.TestCase):
                 self.assertIn(f"window {num}:{den} {h} {ww}", lines)
         self.assertIn("hfov 18181 24158", lines)   # 2*atan(160/1000), 2*atan(214/1000)
 
+        # Present viewport. The rects follow the C's double arithmetic (a
+        # non-negative x rounds as int(x + 0.5)); the properties below hold
+        # for exact fractions: inside the window, centred, within half a
+        # pixel of the aspect, whole display lines and maximal when integer.
+        def rnd(v):
+            return int(v + 0.5)
+
+        present = [l for l in lines if l.startswith("present ")]
+        self.assertEqual(len(present), 3 * 9 * 4)
+        seen = set()
+        for l in present:
+            head, tail = l.split(" -> ")
+            _, ww, wh, asp, src = head.split()
+            ww, wh, src = int(ww), int(wh), int(src)
+            num, den = (int(v) for v in asp.split(":"))
+            a = num / den
+            x, y, w, h = (int(v) for v in tail.split())
+            seen.add((ww, wh, asp, src))
+            self.assertTrue(0 < w <= ww and 0 < h <= wh, l)
+            self.assertEqual((x, y), ((ww - w) // 2, (wh - h) // 2), l)
+            self.assertLessEqual(abs(F(w) - h * F(num, den)), F(1, 2), l)
+            k = wh // src if src else 0
+            while k and rnd(k * src * a) > ww:
+                k -= 1
+            if k:
+                self.assertEqual((w, h), (rnd(k * src * a), k * src), l)
+                self.assertEqual(h % src, 0, l)
+                self.assertTrue((k + 1) * src > wh or rnd((k + 1) * src * a) > ww, l)
+            else:
+                # fit, only when even 1x does not fit: one side fills the window
+                self.assertTrue(src == 0 or src > wh or rnd(src * a) > ww, l)
+                if ww / wh > a:
+                    self.assertEqual((w, h), (rnd(wh * a), wh), l)
+                else:
+                    self.assertEqual((w, h), (ww, rnd(ww / a)), l)
+        self.assertEqual(len(seen), len(present))
+        # values to check by hand: 1080p at 4:3 is 4x 240 lines (1280x960 with
+        # bars 320/60) or fitted 1440x1080; 720p at 4:3 is exactly 3x; a
+        # 300x200 window is below 1x and fits
+        self.assertIn("present 1920 1080 4:3 240 -> 320 60 1280 960", lines)
+        self.assertIn("present 1920 1080 4:3 0 -> 240 0 1440 1080", lines)
+        self.assertIn("present 1280 720 4:3 240 -> 160 0 960 720", lines)
+        self.assertIn("present 300 200 4:3 240 -> 16 0 267 200", lines)
+
     def test_lua_runtime_sample_mod_and_sandbox(self):
         lua_src = ROOT / "tools/third_party/lua/src"
         if not (lua_src / "lua.h").is_file():

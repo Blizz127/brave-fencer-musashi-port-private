@@ -1204,6 +1204,30 @@ static int group_widescreen(void) {
     printf("hfov %d %d\n", (int)bfm_plat_projection_hfov_mdeg(1000, 320),
            (int)bfm_plat_projection_hfov_mdeg(1000, 428));
 
+    /* present viewport: fit (src_h 0) and integer (src_h = display lines) */
+    {
+        static const int wins[][2] = {{640, 480}, {800, 600}, {1280, 720}, {1280, 800},
+                                      {1920, 1080}, {2560, 1440}, {3840, 2160}, {300, 200},
+                                      {1000, 1000}};
+        static const int srcs[] = {0, 224, 240, 480};
+        int vp[4], s;
+        for (a = 0; a < 3; a++)
+            for (w = 0; w < sizeof wins / sizeof wins[0]; w++)
+                for (s = 0; s < 4; s++) {
+                    bfm_plat_present_viewport(wins[w][0], wins[w][1],
+                                              (double)aspects[a][0] / aspects[a][1], srcs[s], vp);
+                    printf("present %d %d %d:%d %d -> %d %d %d %d\n", wins[w][0], wins[w][1],
+                           aspects[a][0], aspects[a][1], srcs[s], vp[0], vp[1], vp[2], vp[3]);
+                }
+        bfm_plat_present_viewport(1280, 720, 0.0, 240, vp);   /* aspect <= 0 is 4:3 */
+        CHECK(vp[0] == 160 && vp[1] == 0 && vp[2] == 960 && vp[3] == 720);
+        bfm_plat_present_viewport(0, 720, 4.0 / 3.0, 240, vp);
+        CHECK(vp[0] == 0 && vp[1] == 0 && vp[2] == 0 && vp[3] == 0);
+        bfm_plat_present_viewport(1280, -1, 4.0 / 3.0, 0, vp);
+        CHECK(vp[0] == 0 && vp[1] == 0 && vp[2] == 0 && vp[3] == 0);
+        bfm_plat_present_viewport(1280, 720, 4.0 / 3.0, 240, NULL);   /* no crash */
+    }
+
     /* config + current state + projection hook sites */
     {
         BfmPlatConfig c;

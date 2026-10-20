@@ -94,11 +94,12 @@ typedef struct MusashiDevMenuEnhancements {
     int renderer_gl;    /* 0 Original (cpu rasteriser), 1 gl renderer (experimental) */
     unsigned scale;     /* gl internal resolution 1..8 (1 native; the menu cycles 1..4) */
     int dither;         /* -1 auto, 0 off, 1 on (gl renderer) */
-    int vsync;          /* 1 swap interval 1 (gl renderer); 0 leaves the interval as it is */
+    int vsync;          /* -1 default (the driver's interval), 0 off, 1 on (gl renderer) */
     int fullscreen;     /* 1 borderless desktop fullscreen (gl renderer); 0 leaves the window */
+    int present_integer; /* 1 image at whole multiples of the display height, 0 fit (gl renderer) */
 } MusashiDevMenuEnhancements;
 enum { MUSASHI_DEV_ENH_RENDERER = 1u, MUSASHI_DEV_ENH_SCALE = 2u, MUSASHI_DEV_ENH_DITHER = 4u,
-       MUSASHI_DEV_ENH_VSYNC = 8u, MUSASHI_DEV_ENH_FULLSCREEN = 16u };
+       MUSASHI_DEV_ENH_VSYNC = 8u, MUSASHI_DEV_ENH_FULLSCREEN = 16u, MUSASHI_DEV_ENH_PRESENT = 32u };
 void musashi_dev_menu_set_enhancements(const MusashiDevMenuEnhancements *enh);
 unsigned musashi_dev_menu_take_enhancements(MusashiDevMenuEnhancements *out);
 /* The menu as positioned text for presenters without the PsyCross overlay

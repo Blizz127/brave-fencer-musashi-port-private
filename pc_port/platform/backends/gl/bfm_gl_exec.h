@@ -33,6 +33,9 @@ void bfm_gl_exec_destroy(BfmGlExec *x);
 int bfm_gl_exec_scale(const BfmGlExec *x);
 /* Reallocates the render targets (their content is lost). */
 int bfm_gl_exec_set_scale(BfmGlExec *x, int scale);
+/* on: the present calls place the image at whole multiples of the display
+ * height (bfm_plat_present_viewport); off (the default): fitted. */
+void bfm_gl_exec_set_integer(BfmGlExec *x, int on);
 
 /* Uploads the mirror's dirty box to the VRAM texture and clears it. */
 void bfm_gl_exec_sync_vram(BfmGlExec *x, BfmGlVram *v);
@@ -59,7 +62,8 @@ void bfm_gl_exec_texture_free(BfmGlExec *x, uint32_t id);
 
 /* Draws the displayed frame into the default framebuffer: the scene slot at
  * the display origin (hor+: the whole wide target) or the display rect of
- * the VRAM target, fitted to image_aspect with black bars, then the overlay
+ * the VRAM target, fitted to image_aspect with black bars (or at a whole
+ * multiple of its height, see bfm_gl_exec_set_integer), then the overlay
  * batch over the 4:3 display area. Does not swap. */
 int bfm_gl_exec_present(BfmGlExec *x, const BfmGlBatch *b,
                         const BfmGlBatch *overlay, int win_w, int win_h,

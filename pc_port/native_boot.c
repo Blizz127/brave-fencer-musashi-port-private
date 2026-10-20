@@ -5261,20 +5261,26 @@ static int plat_reg_read(void *user, unsigned reg, uint32_t *out) {
  * together with [backends] renderer = gl selects the gl renderer (any other
  * renderer name leaves the cpu path), and [video] internal_scale and dither
  * reach it. MUSASHI_GPU / MUSASHI_RENDERER, when set, win over the file.
- * [video] vsync = 1 and fullscreen = 1 reach the gl renderer only when the
- * file sets them (the parser's default vsync = 1 does not count): without
- * them the borrowed PsyCross swap interval and window are left alone.
+ * [video] vsync and fullscreen reach the gl renderer only when the file
+ * sets them (the parser's default vsync = 1 does not count): vsync = 0 or 1
+ * sets the swap interval, fullscreen = 1 makes the window borderless
+ * fullscreen; without them the borrowed PsyCross swap interval (the
+ * driver's default: PsyCross only sets it in PsyX_BeginScene, which the
+ * bridge never calls) and window are left alone. [video] present = integer
+ * (a key the typed parser keeps as text) shows the gl image at whole
+ * multiples of the display height; fit, absent or any other value fits it.
  * Without those keys startup is unchanged: cpu rasteriser, scale 1. Menu
  * changes are written back one key at a time and apply on the next launch. */
 static char g_enh_renderer[BFM_PLAT_NAME_MAX];
-static MusashiDevMenuEnhancements g_enh_saved = { 0, 1u, -1 };
+static MusashiDevMenuEnhancements g_enh_saved = { 0, 1u, -1, -1, 0, 0 };
 
 static const char *enh_dither_name(int d) { return d < 0 ? "auto" : d ? "on" : "off"; }
+static const char *enh_vsync_name(int v) { return v < 0 ? "default" : v ? "on" : "off"; }
 
 static void enhancements_from_file(BfmPlatConfig *cfg) {
     BfmPlatConfig file;
     char path[512];
-    const char *gpu = getenv("MUSASHI_GPU");
+    const char *gpu = getenv("MUSASHI_GPU"), *present;
     bfm_plat_config_defaults(&file);
     file.vsync = -1;   /* still -1 after the load: the file does not set it */
     file.fullscreen = -1;
@@ -5284,8 +5290,10 @@ static void enhancements_from_file(BfmPlatConfig *cfg) {
     g_enh_saved.renderer_gl = file.gpu_path == BFM_GPU_BFM_PLAT && strcmp(file.renderer, "gl") == 0;
     g_enh_saved.scale = (unsigned)file.internal_scale;   /* 1..8, checked by the parser */
     g_enh_saved.dither = file.dither;
-    g_enh_saved.vsync = file.vsync == 1;
+    g_enh_saved.vsync = file.vsync;   /* -1 unless the file sets 0 or 1 */
     g_enh_saved.fullscreen = file.fullscreen == 1;
+    present = bfm_plat_config_get(&file, "video.present");
+    g_enh_saved.present_integer = present && strcmp(present, "integer") == 0;
     cfg->internal_scale = file.internal_scale;
     cfg->dither = file.dither;
     if (g_enh_saved.renderer_gl && !(gpu && gpu[0])) {
@@ -5293,10 +5301,11 @@ static void enhancements_from_file(BfmPlatConfig *cfg) {
         snprintf(g_enh_renderer, sizeof g_enh_renderer, "gl");
     }
     if (g_enh_saved.renderer_gl || file.internal_scale != 1 || file.dither != BFM_DITHER_AUTO ||
-        g_enh_saved.vsync || g_enh_saved.fullscreen)
-        fprintf(stderr, "native_boot: ENHANCEMENTS config renderer=%s scale=%d dither=%s vsync=%d fullscreen=%d%s\n",
+        g_enh_saved.vsync >= 0 || g_enh_saved.fullscreen || g_enh_saved.present_integer)
+        fprintf(stderr, "native_boot: ENHANCEMENTS config renderer=%s scale=%d dither=%s vsync=%s fullscreen=%d present=%s%s\n",
                 g_enh_saved.renderer_gl ? "gl" : "original", file.internal_scale,
-                enh_dither_name(file.dither), g_enh_saved.vsync, g_enh_saved.fullscreen,
+                enh_dither_name(file.dither), enh_vsync_name(g_enh_saved.vsync), g_enh_saved.fullscreen,
+                g_enh_saved.present_integer ? "integer" : "fit",
                 g_enh_saved.renderer_gl && gpu && gpu[0] ? " (MUSASHI_GPU set: env wins)" : "");
 }
 
@@ -5318,14 +5327,17 @@ static void enhancements_menu_poll(void) {
     }
     if (ok && (changed & MUSASHI_DEV_ENH_DITHER))
         ok = bfm_plat_config_write_key(path, "video", "dither", enh_dither_name(e.dither)) == BFM_PLAT_OK;
-    if (ok && (changed & MUSASHI_DEV_ENH_VSYNC))
+    if (ok && (changed & MUSASHI_DEV_ENH_VSYNC) && e.vsync >= 0)   /* the menu never goes back to -1 */
         ok = bfm_plat_config_write_key(path, "video", "vsync", e.vsync ? "1" : "0") == BFM_PLAT_OK;
     if (ok && (changed & MUSASHI_DEV_ENH_FULLSCREEN))
         ok = bfm_plat_config_write_key(path, "video", "fullscreen", e.fullscreen ? "1" : "0") == BFM_PLAT_OK;
+    if (ok && (changed & MUSASHI_DEV_ENH_PRESENT))
+        ok = bfm_plat_config_write_key(path, "video", "present", e.present_integer ? "integer" : "fit") == BFM_PLAT_OK;
     if (ok) g_enh_saved = e;
     else musashi_dev_menu_toast("ENHANCEMENTS: CONFIG.INI NOT SAVED");
-    fprintf(stderr, "native_boot: ENHANCEMENTS saved=%d renderer=%s scale=%u dither=%s (next launch)\n",
-            ok, e.renderer_gl ? "gl" : "original", e.scale, enh_dither_name(e.dither));
+    fprintf(stderr, "native_boot: ENHANCEMENTS saved=%d renderer=%s scale=%u dither=%s vsync=%s fullscreen=%d present=%s (next launch)\n",
+            ok, e.renderer_gl ? "gl" : "original", e.scale, enh_dither_name(e.dither),
+            enh_vsync_name(e.vsync), e.fullscreen, e.present_integer ? "integer" : "fit");
 }
 
 static void plat_entry_hook(void *user, uint32_t pc, const uint32_t *regs) {
@@ -5418,6 +5430,12 @@ static void gpu_bridge_attach(MusashiGpuController *gpu) {
     }
     out.aspect_num = 4;
     out.aspect_den = 3;
+    if (strcmp(name, "gl") == 0) {
+        /* gl borrows the PsyCross context: -1 records its swap interval as
+         * unknown, so only an explicit config.ini vsync changes it */
+        out.vsync = -1;
+        out.present_integer = g_enh_saved.present_integer;
+    }
     if (bfm_plat_renderer_open(name, &out, &selected) != 0 || !selected ||
         strcmp(selected, name) != 0) {
         fprintf(stderr, "native_boot: GPU_PATH bfm_plat refused: renderer %s unavailable; cpu\n",
@@ -5425,15 +5443,16 @@ static void gpu_bridge_attach(MusashiGpuController *gpu) {
         (void)bfm_plat_renderer_open("null", &out, NULL);
         return;
     }
-    if (strcmp(name, "gl") == 0 && (g_enh_saved.vsync || g_enh_saved.fullscreen)) {
+    if (strcmp(name, "gl") == 0 && (g_enh_saved.vsync >= 0 || g_enh_saved.fullscreen)) {
         /* explicit config.ini values only, through the renderer's own live
-         * output change; 0 keeps the borrowed PsyCross interval and window */
+         * output change; vsync -1 and fullscreen 0 keep the borrowed
+         * PsyCross interval and window */
         int rc;
         out.vsync = g_enh_saved.vsync;
         out.fullscreen = g_enh_saved.fullscreen;
         rc = bfm_plat_renderer_set_output(&out);
-        fprintf(stderr, "native_boot: ENHANCEMENTS output vsync=%d fullscreen=%d rc=%d\n",
-                out.vsync, out.fullscreen, rc);
+        fprintf(stderr, "native_boot: ENHANCEMENTS output vsync=%s fullscreen=%d present=%s rc=%d\n",
+                enh_vsync_name(out.vsync), out.fullscreen, out.present_integer ? "integer" : "fit", rc);
     }
     bfm_gpu_bridge_init(&g_gpu_bridge);
     {
