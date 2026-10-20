@@ -414,7 +414,7 @@ the driver's value.
 **G4 status (2026-10-20, branch claude/gfx-msaa).** MSAA is built for the gl renderer, as the config key `[video] msaa = 0|2|4|8` (typed, so `save_file` keeps it). Absent or 0 is off, and off is the renderer as it was. The ENHANCEMENTS row is not wired yet.
 - **Effective samples.**
   - The request is clamped to `GL_MAX_SAMPLES` and `GL_MAX_COLOR_TEXTURE_SAMPLES` (`bfm_gl_msaa_effective`), then halved until the VRAM target's multisample colour fits 256 MiB at the internal scale.
-  - The driver may allocate more than it is asked for (llvmpipe turns 2 into 4), so the renderer reports what the framebuffer holds: `GL_MSAA requested=N effective=M`, once, whenever the key is present (0 included). A `GL_MSAA note:` line says what was clamped or why MSAA stayed off, and `GL_MSAA stats ...` at shutdown counts the resolves, snapshots, readbacks and stencil builds that ran.
+  - The driver may allocate more than it is asked for (llvmpipe turns 2 into 4), so the renderer reports what the framebuffer holds: `GL_MSAA requested=N effective=M`, once, when msaa is 2 or more (0 says nothing). A `GL_MSAA note:` line says what was clamped or why MSAA stayed off. `GL_MSAA stats ...` counts the resolves, snapshots, readbacks and stencil builds that ran, but it prints only when the renderer is closed, and the live game does not close it at HOST_STOP, so there it does not appear.
   - A missing entry point, a shader that does not link or an allocation that fails leaves MSAA off, with the single-sample executor untouched.
 - **Targets.**
   - Every scene slot and the VRAM target gets an RGBA8 multisample texture and an FBO that all draws render into. The window overlay stays single-sample.
@@ -428,9 +428,7 @@ the driver's value.
   - The resolve averages samples. A RESOLVE into the VRAM mirror (StoreImage, or a CLUT/paletted page fed by a render target) holds blended colours on polygon edges, and the mask bit there is the majority of the pixel's samples. Interior pixels, whose samples all agree, are exact.
   - At internal scale above 1 the sample point of a gradient or a texel moves by half a device pixel, so interior values change too, by one step. In the 2x probe that is 3565 interior pixels of the Gouraud scene and 1626 of the textured one, with a largest channel difference of 9 of 255. Flat colours and pixel-aligned geometry are unaffected at any scale. This is a real gap against "only polygon edges change", and the in-game gates run at 1x. MSAA is redundant above 3x anyway.
   - The 2x request holds 4 samples on llvmpipe.
-- **Config path in the live game.**
-  - `native_boot.c` copies only `internal_scale` and `dither` from its private read of config.ini into the config the renderer sees.
-  - Until it also copies `msaa` (`cfg->msaa = file.msaa;` in `enhancements_from_file`), `renderer_gl.c` reads the key from the user's config.ini itself. That bridge is marked TEMPORARY in the code.
+- **Config path in the live game.** `enhancements_from_file` in `native_boot.c` copies `msaa` into the config the renderer reads (`cfg->msaa = file.msaa;`, like `internal_scale` and `dither`), and its `ENHANCEMENTS config` log line prints `msaa=N`. The renderer reads only that field. That is the whole host wiring: the ENHANCEMENTS row (dev menu) is not wired.
 - **Tests.** `tests/bfm_gl_msaa_probe.c`, built and run by `tests/test_bfm_gl.py` on a real GL 3.3 core context made through SDL (a display, xvfb or offscreen EGL, no OSMesa).
   - At 1x (and for flat colours at 2x) polygon scenes differ from the single-sample image only within two pixels of a silhouette edge. At 2x the Gouraud and textured scenes also change interior pixels by at most one step (see Caveats).
   - Pixel-aligned shapes are identical over the whole image.

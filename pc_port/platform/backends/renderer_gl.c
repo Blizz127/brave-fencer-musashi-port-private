@@ -62,30 +62,11 @@ static int dither_on(const GlRenderer *s) {
     return mode == BFM_DITHER_ON;
 }
 
-/* video.msaa for this renderer: the host config's when it carries the key (or
- * a non-zero field), else the user's config.ini, read here once. That second
- * source is a TEMPORARY bridge: native_boot.c copies only internal_scale and
- * dither from its private read of the file into the config it hands
- * bfm_plat_init, so until it also copies msaa the key would never arrive.
- * Delete the file read once it does. *seen is set when a key was found
- * anywhere, so an explicit 0 is reported too. */
-static int msaa_request(int *seen) {
+/* video.msaa as the host's config carries it (native_boot copies it from
+ * config.ini like internal_scale and dither). */
+static int msaa_request(void) {
     const BfmPlatConfig *c = bfm_plat_config();
-    BfmPlatConfig file;
-    char path[BFM_PLAT_PATH_MAX];
-    *seen = 0;
-    if (c && (c->msaa || bfm_plat_config_get(c, "video.msaa"))) {
-        *seen = 1;
-        return c->msaa;
-    }
-    bfm_plat_config_defaults(&file);
-    if (bfm_plat_config_default_path(path, sizeof path) == BFM_PLAT_OK &&
-        bfm_plat_config_load_file(&file, path) == BFM_PLAT_OK &&
-        bfm_plat_config_get(&file, "video.msaa")) {
-        *seen = 1;
-        return file.msaa;        /* a refused value left the default, 0 */
-    }
-    return 0;
+    return c ? c->msaa : 0;
 }
 
 static int flush(GlRenderer *s);
@@ -188,12 +169,14 @@ static int gl_init(void *self, const BfmPlatOutput *o) {
     }
     bfm_gl_exec_set_integer(s->x, o->present_integer);
     {
-        /* MSAA is applied at start only; absent or 0 leaves the executor untouched */
-        int seen = 0, want = msaa_request(&seen), got = 0;
-        if (want >= 2) got = bfm_gl_exec_set_msaa(s->x, want);
-        if (seen) fprintf(stderr, "GL_MSAA requested=%d effective=%d\n", want, got);
-        if (want >= 2 && bfm_gl_exec_msaa_note(s->x)[0])
-            fprintf(stderr, "GL_MSAA note: %s\n", bfm_gl_exec_msaa_note(s->x));
+        /* MSAA is applied at start only; 0 leaves the executor untouched and says nothing */
+        int want = msaa_request();
+        if (want >= 2) {
+            int got = bfm_gl_exec_set_msaa(s->x, want);
+            fprintf(stderr, "GL_MSAA requested=%d effective=%d\n", want, got);
+            if (bfm_gl_exec_msaa_note(s->x)[0])
+                fprintf(stderr, "GL_MSAA note: %s\n", bfm_gl_exec_msaa_note(s->x));
+        }
     }
     bfm_gl_vram_init(&s->vram);
     bfm_gl_batch_init(&s->batch);

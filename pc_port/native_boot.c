@@ -5420,16 +5420,18 @@ static void enhancements_from_file(BfmPlatConfig *cfg) {
     g_enh_saved.widescreen = enh_widescreen_of(file.aspect_num, file.aspect_den);
     cfg->internal_scale = file.internal_scale;
     cfg->dither = file.dither;
+    cfg->msaa = file.msaa;
     if (g_enh_saved.renderer_gl && !(gpu && gpu[0])) {
         cfg->gpu_path = BFM_GPU_BFM_PLAT;
         snprintf(g_enh_renderer, sizeof g_enh_renderer, "gl");
     }
     if (g_enh_saved.renderer_gl || file.internal_scale != 1 || file.dither != BFM_DITHER_AUTO ||
         g_enh_saved.vsync >= 0 || g_enh_saved.fullscreen || g_enh_saved.present_integer || g_enh_saved.widescreen)
-        fprintf(stderr, "native_boot: ENHANCEMENTS config renderer=%s scale=%d dither=%s vsync=%s fullscreen=%d present=%s widescreen=%s%s\n",
+        fprintf(stderr, "native_boot: ENHANCEMENTS config renderer=%s scale=%d dither=%s vsync=%s fullscreen=%d present=%s widescreen=%s msaa=%d%s\n",
                 g_enh_saved.renderer_gl ? "gl" : "original", file.internal_scale,
                 enh_dither_name(file.dither), enh_vsync_name(g_enh_saved.vsync), g_enh_saved.fullscreen,
                 g_enh_saved.present_integer ? "integer" : "fit", enh_widescreen_name(g_enh_saved.widescreen),
+                file.msaa,
                 g_enh_saved.renderer_gl && gpu && gpu[0] ? " (MUSASHI_GPU set: env wins)" : "");
 }
 
