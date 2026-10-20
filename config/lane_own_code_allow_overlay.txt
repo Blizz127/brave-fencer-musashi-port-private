@@ -135,3 +135,13 @@ main_0012 801439fc
 main_0012 80143ebc
 main_0012 80128ed8
 main_0012 8014c6f4
+# r50 native slice (2026-10-20): main_0015 S-min type-handler/draw slice, owner clean-room C
+# (bfm-rederive 54cfd93c, MATCH receipts pilot1/check1/check2), as on claude/native-s1-main0015-smin
+# 90c7570ac4. On this line their callers (engine type loop 80165CA0) and callees (80146C3C, 80017758)
+# stay interpreted; 800cb494/800cb830 dispatch the D_800CBB58/D_800CBB60 state tables through the guest.
+main_0015 800cb494
+main_0015 800cb6a4
+main_0015 800cb6fc
+main_0015 800cb830
+main_0015 800cb930
+main_0015 800cb988
