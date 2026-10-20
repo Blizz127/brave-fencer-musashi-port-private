@@ -1,15 +1,20 @@
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* Owner re-derivation from retail assembly (clean input set). UNVERIFIED DRAFT: not compiled yet. */
+/* On a settled state 0x8000 runs func_801599A4 then func_80159B3C. */
 #include "psx_types.h"
-/* func_800CB140 - byte-exact against retail at -O2 (tools/register_match.py). */
-extern s32 func_80161208();
-extern void func_801599A4(void *a0);
-extern void func_80159B3C(void *a0);
 
-void func_800CB140(s32 *a0) {
-    if (func_80161208() == 0) {
-        if (*(u16 *)((u8 *)a0 + 0xB8) == 0x8000) {
-            func_801599A4(a0);
-            func_80159B3C(a0);
-        }
+typedef struct {
+    u8 pad0[0xB8];
+    u16 mode;           /* 0xB8 */
+} Obj;
+
+extern s32 func_80161208(void *o);
+extern s32 func_801599A4(void *o);
+extern void func_80159B3C(void *o);
+
+void func_800CB140(Obj *o)
+{
+    if (func_80161208(o) == 0 && o->mode == 0x8000) {
+        func_801599A4(o);
+        func_80159B3C(o);
     }
 }

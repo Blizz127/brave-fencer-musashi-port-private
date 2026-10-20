@@ -1,8 +1,10 @@
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
+/* Owner re-derivation from retail assembly (clean input set). UNVERIFIED DRAFT: not compiled yet. */
+/* Forwards the object to func_80162CCC. */
 #include "psx_types.h"
-/* func_800CB474 - byte-exact against retail at -O2 (tools/register_match.py). */
-extern void func_80162CCC(void);
 
-void func_800CB474(void) {
-    func_80162CCC();
+extern void func_80162CCC(void *o);
+
+void func_800CB474(void *o)
+{
+    func_80162CCC(o);
 }
