@@ -2,7 +2,8 @@
 #define MUSASHI_DEV_MENU_H
 
 /* Port Dev Menu (shared port spec v1, ~/release-staging/port-dev-menu):
- * a host-only playtest menu. Root: Warp > Finish Area > Cheats > Options.
+ * a host-only playtest menu. Root: Warp > Finish Area > Cheats > Options >
+ * Enhancements.
  *
  * Off unless asked: BFM_DEV_MENU=1 (or --dev-menu) enables the menu and its
  * F-keys (the packaged launch.sh sets BFM_DEV_MENU=1 unless it is 0 or the
@@ -83,6 +84,30 @@ int musashi_dev_menu_used(void);
 /* Lines to draw, top to bottom; *highlight is the selected line or -1.
  * *badge_only is 1 when only the CHEATS marker is shown. */
 size_t musashi_dev_menu_text(const char **lines, size_t max, int *highlight, int *badge_only);
+
+/* Enhancements page: host-only presentation options, retail by default
+ * (docs/GRAPHICS-ENHANCEMENTS-DESIGN.md). The host seeds the values saved
+ * in config.ini; a change made in the menu is taken once (MUSASHI_DEV_ENH_*
+ * bits, *out set) for the host to persist. They apply on the next launch
+ * and never read or write guest memory. */
+typedef struct MusashiDevMenuEnhancements {
+    int renderer_gl;    /* 0 Original (cpu rasteriser), 1 gl renderer (experimental) */
+    unsigned scale;     /* gl internal resolution 1..8 (1 native; the menu cycles 1..4) */
+    int dither;         /* -1 auto, 0 off, 1 on (gl renderer) */
+    int vsync;          /* -1 default (the driver's interval), 0 off, 1 on (gl renderer) */
+    int fullscreen;     /* 1 borderless desktop fullscreen (gl renderer); 0 leaves the window */
+    int present_integer; /* 1 image at whole multiples of the display height, 0 fit (gl renderer) */
+} MusashiDevMenuEnhancements;
+enum { MUSASHI_DEV_ENH_RENDERER = 1u, MUSASHI_DEV_ENH_SCALE = 2u, MUSASHI_DEV_ENH_DITHER = 4u,
+       MUSASHI_DEV_ENH_VSYNC = 8u, MUSASHI_DEV_ENH_FULLSCREEN = 16u, MUSASHI_DEV_ENH_PRESENT = 32u };
+void musashi_dev_menu_set_enhancements(const MusashiDevMenuEnhancements *enh);
+unsigned musashi_dev_menu_take_enhancements(MusashiDevMenuEnhancements *out);
+/* The menu as positioned text for presenters without the PsyCross overlay
+ * hook (the bfm_plat bridge renderers): every line of musashi_dev_menu_text
+ * at (8, 8 + 12 * i), the selected row's leading space replaced by '>'.
+ * Returns the number of lines emitted (0 while nothing is shown). */
+typedef void (*MusashiDevMenuEmit)(void *user, int x, int y, const char *text);
+size_t musashi_dev_menu_emit_text(MusashiDevMenuEmit emit, void *user);
 
 /* Test access. */
 typedef struct MusashiDevMenuState {

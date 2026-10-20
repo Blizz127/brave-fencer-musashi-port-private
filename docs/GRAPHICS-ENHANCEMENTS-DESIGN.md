@@ -25,19 +25,38 @@ Two render paths exist, selected by the environment, not by config.ini:
 
 Facts that shape every feature below:
 
-- **Config keys exist but do not reach the live game.** `[video]`
-  `internal_scale`, `window_width/height`, `fullscreen`, `vsync`, `aspect`,
-  `widescreen_mode`, `frame_rate`, `dither`, `gpu` are parsed
-  (`bfm_plat_config.c:130-166`) and saved, but `native_boot.c:plat_start`
-  builds its config from defaults and the environment only
-  (`native_boot.c:5094-5125`), and `gpu_bridge_attach` hardcodes
-  640x480, scale 1, 4:3 (`native_boot.c:5160-5165`). D-012 records
-  `frame_rate = 60` as accepted with no effect.
-- **No Enhancements page, no persistence.** `dev_menu.c` has ROOT / WARP /
-  FINISH AREA / CHEATS / OPTIONS; state is in memory only. Options holds
-  FAST-FORWARD, FAST-FORWARD SPEED, SCREENSHOT. `tests/dev_menu_probe.c`
-  is the parity model (menu browsed, every cheat off, zero guest bytes
-  change over 1000 VBlanks); any Enhancements page must keep it green.
+- **Only some config keys reach the live game (enhancements G1/G2).**
+  `native_boot.c:enhancements_from_file` reads `config.ini` at startup:
+  `[video] gpu = bfm_plat` with `[backends] renderer = gl` selects the gl
+  bridge, and `internal_scale` and `dither` reach it. On gl only, three
+  keys are applied after the attach when the file sets them:
+  - `vsync = 0|1` sets the swap interval. Absent, the interval is left as
+    it is; see frame pacing in 3.2.
+  - `fullscreen = 1` gives borderless desktop fullscreen.
+  - `present = integer` places the image at whole multiples of the display
+    height (`bfm_plat_present_viewport`). This is a text key the typed
+    parser keeps, so `bfm_plat_config_save_file` drops it.
+
+  `MUSASHI_GPU` / `MUSASHI_RENDERER` still win over the file.
+  `window_width/height`, `aspect`, `widescreen_mode` and `frame_rate` are
+  parsed (`bfm_plat_config.c`) and saved but still do not reach the game:
+  `gpu_bridge_attach` opens 640x480 at 4:3. D-012 records `frame_rate = 60`
+  as accepted with no effect.
+- **Enhancements page.** `dev_menu.c` has ROOT / WARP / FINISH AREA /
+  CHEATS / OPTIONS / ENHANCEMENTS. Enhancements holds these rows; every row
+  but RENDERER is gl only:
+  - RENDERER (ORIGINAL / GL);
+  - RESOLUTION (NATIVE..4X);
+  - DITHER (AUTO/OFF/ON);
+  - VSYNC (DEFAULT/ON/OFF; DEFAULT is the absent key);
+  - DISPLAY (WINDOW/FULLSCREEN);
+  - PRESENT (FIT/INTEGER).
+
+  Each change is written to `config.ini` one key at a time
+  (`bfm_plat_config_write_key`) and applies on the next launch.
+  `tests/dev_menu_probe.c` is the parity model: the menu is browsed and
+  changed with every cheat off, and zero guest bytes change over 1000
+  VBlanks.
 - **Retail logic is 30 Hz; the host presents 60 fields.** `main` waits
   `VSync(*(s32 *)(p + 0xA3E8))` = 2 fields. `epoch_video_edge`
   (`native_boot.c:2760-2830`) presents once per 60 Hz field, so every
@@ -244,10 +263,13 @@ Feasibility and prerequisites, in order:
 Estimate: 3 to 5 days after stage 0 and 3.4. Risk: high (identity misses
 show as judder on particles; must be visibly acceptable).
 
-Also cheap and worth doing first: **frame pacing**. The host presents
-every field without a swap interval (`g_cfg_swapInterval = 0`,
-`SDL_GL_SwapWindow` direct); `video.vsync` is only honoured by the gl
-backend. Expose `VSYNC: ON/OFF` on the page once gl is the renderer.
+Also cheap and worth doing first: **frame pacing**. PsyCross sets the swap
+interval only in `PsyX_BeginScene` (`g_cfg_swapInterval = 0`, so 0 every
+frame). Only the bridge + psycross renderer calls it. The cpu path
+(`gpu_psycross.c`, `SDL_GL_SwapWindow` direct) and bridge + gl never call
+it, so their interval is whatever the driver gives a new context. The
+Enhancements VSYNC row (G2, gl only) sets 0 or 1 explicitly; DEFAULT leaves
+the driver's value.
 
 ### 3.3 Upscalers: FSR 1, FSR 2/3, DLSS
 

@@ -1,6 +1,7 @@
 /* GL 3.3 core executor. See bfm_gl_exec.h. */
 
 #include "bfm_gl_exec.h"
+#include "../../bfm_plat_widescreen.h"
 
 #include <GL/glcorearb.h>
 
@@ -99,6 +100,7 @@ struct BfmGlExec {
     Snapshot snap[BFM_GL_MAX_SNAPSHOTS];
     GLuint snap_fbo;
     int scale;
+    int integer;                 /* present at whole multiples of the display height */
     GLint u_size, u_flip, u_half, u_pass, u_pass_bit, u_dither, u_scale, u_win, u_vram, u_repl;
     GLint b_src, b_tex, b_alpha;
     /* redundant-state filter for run_cmds (-2 = unknown) */
@@ -551,6 +553,10 @@ int bfm_gl_exec_set_scale(BfmGlExec *x, int scale) {
     return target_alloc(x, &x->tgt[0], BFM_GL_VRAM_W, BFM_GL_VRAM_H);
 }
 
+void bfm_gl_exec_set_integer(BfmGlExec *x, int on) {
+    if (x) x->integer = on != 0;
+}
+
 void bfm_gl_exec_sync_vram(BfmGlExec *x, BfmGlVram *v) {
     int y;
     if (!x || !v || !v->dirty) return;
@@ -966,17 +972,10 @@ void bfm_gl_exec_texture_free(BfmGlExec *x, uint32_t id) {
     if (x && id) x->DeleteTextures(1, &t);
 }
 
-static void fit(int win_w, int win_h, double aspect, int vp[4]) {
-    if (aspect <= 0.0) aspect = 4.0 / 3.0;
-    if ((double)win_w / win_h > aspect) {
-        vp[3] = win_h;
-        vp[2] = (int)(win_h * aspect + 0.5);
-    } else {
-        vp[2] = win_w;
-        vp[3] = (int)(win_w / aspect + 0.5);
-    }
-    vp[0] = (win_w - vp[2]) / 2;
-    vp[1] = (win_h - vp[3]) / 2;
+/* src_h: the displayed image's height in display lines (integer mode). */
+static void fit(const BfmGlExec *x, int win_w, int win_h, double aspect, int src_h,
+                int vp[4]) {
+    bfm_plat_present_viewport(win_w, win_h, aspect, x->integer ? src_h : 0, vp);
 }
 
 /* Clears the window and draws texture region (s0,t0)-(s1,t1), t0 = top,
@@ -1016,7 +1015,7 @@ int bfm_gl_exec_present_image(BfmGlExec *x, int w, int h, const uint8_t *rgba,
     }
     x->BindTexture(GL_TEXTURE_2D, x->image_tex);
     x->TexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgba);
-    fit(win_w, win_h, aspect, vp);
+    fit(x, win_w, win_h, aspect, h, vp);
     blit(x, x->image_tex, win_w, win_h, vp, 0.0f, 0.0f, 1.0f, 1.0f);
     if (overlay && overlay->nc) {
         upload_verts(x, overlay);
@@ -1033,7 +1032,7 @@ int bfm_gl_exec_present(BfmGlExec *x, const BfmGlBatch *b,
     float s0, t0, s1, t1;
     Target *src;
     if (!x || !b || win_w <= 0 || win_h <= 0) return BFM_PLAT_INVALID;
-    fit(win_w, win_h, aspect, vp);
+    fit(x, win_w, win_h, aspect, b->disp.h, vp);
     slot = bfm_gl_batch_scene_at(b, b->disp.x, b->disp.y);
     if (slot >= 0 && (src = target_for(x, b, BFM_GL_TARGET_SCENE0 + slot)) != NULL) {
         s0 = 0.0f; t0 = 0.0f; s1 = 1.0f; t1 = 1.0f;
