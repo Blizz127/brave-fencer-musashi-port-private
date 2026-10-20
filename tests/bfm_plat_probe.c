@@ -127,6 +127,50 @@ static int group_config(int argc, char **argv) {
         bfm_plat_config_defaults(&r);
         CHECK(bfm_plat_config_load_file(&r, "/nonexistent/x.ini") == BFM_PLAT_NOT_FOUND);
     }
+    /* write_key: one key set, every other line kept; the file and its
+     * directories are created; a later load reads the values */
+    {
+        static const char *mine = "; mine\n[video]\nvsync = 0\ngpu = bfm_plat\ngpu = cpu\n"
+                                  "[mod.hello]\ngreeting = hi\n";
+        char p2[600], text[2048];
+        BfmPlatConfig r;
+        FILE *f;
+        size_t n;
+        snprintf(p2, sizeof p2, "%s/wk/sub/config.ini", argv[0]);
+        CHECK(bfm_plat_config_write_key(p2, "video", "gpu", "bfm_plat") == BFM_PLAT_OK);
+        CHECK(bfm_plat_config_write_key(p2, "backends", "renderer", "gl") == BFM_PLAT_OK);
+        CHECK(bfm_plat_config_write_key(p2, "video", "internal_scale", "2") == BFM_PLAT_OK);
+        CHECK(bfm_plat_config_write_key(p2, "video", "gpu", "cpu") == BFM_PLAT_OK);
+        CHECK(bfm_plat_config_write_key(p2, "video", "gpu", "a\nb") == BFM_PLAT_INVALID);
+        CHECK(bfm_plat_config_write_key(p2, "video", "gpu", "x;y") == BFM_PLAT_INVALID);
+        CHECK(bfm_plat_config_write_key(p2, "Video", "gpu", "cpu") == BFM_PLAT_INVALID);
+        CHECK(bfm_plat_config_write_key(p2, "video", "", "cpu") == BFM_PLAT_INVALID);
+        f = fopen(p2, "rb");
+        n = f ? fread(text, 1, sizeof text - 1, f) : 0;
+        if (f) fclose(f);
+        text[n] = 0;
+        CHECK(strcmp(text, "[video]\ngpu = cpu\ninternal_scale = 2\n\n[backends]\nrenderer = gl\n") == 0);
+        bfm_plat_config_defaults(&r);
+        CHECK(bfm_plat_config_load_file(&r, p2) == BFM_PLAT_OK);
+        CHECK(r.gpu_path == BFM_GPU_CPU && strcmp(r.renderer, "gl") == 0 && r.internal_scale == 2);
+        CHECK(r.bad_line == 0 && r.rejected_values == 0);
+        f = fopen(p2, "wb");
+        CHECK(f != NULL);
+        if (f) { fputs(mine, f); fclose(f); }
+        CHECK(bfm_plat_config_write_key(p2, "video", "gpu", "bfm_plat") == BFM_PLAT_OK);
+        CHECK(bfm_plat_config_write_key(p2, "video", "dither", "off") == BFM_PLAT_OK);
+        CHECK(bfm_plat_config_write_key(p2, "mod.hello", "extra", "1") == BFM_PLAT_OK);
+        f = fopen(p2, "rb");
+        n = f ? fread(text, 1, sizeof text - 1, f) : 0;
+        if (f) fclose(f);
+        text[n] = 0;
+        CHECK(strcmp(text, "; mine\n[video]\nvsync = 0\ngpu = bfm_plat\ndither = off\n"
+                           "[mod.hello]\ngreeting = hi\nextra = 1\n") == 0);
+        bfm_plat_config_defaults(&r);
+        CHECK(bfm_plat_config_load_file(&r, p2) == BFM_PLAT_OK);
+        CHECK(r.gpu_path == BFM_GPU_BFM_PLAT && r.dither == BFM_DITHER_OFF && r.vsync == 0);
+        CHECK(strcmp(bfm_plat_config_get(&r, "mod.hello.greeting"), "hi") == 0);
+    }
     CHECK(bfm_plat_config_default_path(path, sizeof path) == BFM_PLAT_OK);
     printf("path %s\n", path);
     return 0;
@@ -1159,6 +1203,30 @@ static int group_widescreen(void) {
     CHECK(bfm_plat_widescreen_compute(16, 9, 0, 0, 240, &ws) == BFM_PLAT_INVALID);
     printf("hfov %d %d\n", (int)bfm_plat_projection_hfov_mdeg(1000, 320),
            (int)bfm_plat_projection_hfov_mdeg(1000, 428));
+
+    /* present viewport: fit (src_h 0) and integer (src_h = display lines) */
+    {
+        static const int wins[][2] = {{640, 480}, {800, 600}, {1280, 720}, {1280, 800},
+                                      {1920, 1080}, {2560, 1440}, {3840, 2160}, {300, 200},
+                                      {1000, 1000}};
+        static const int srcs[] = {0, 224, 240, 480};
+        int vp[4], s;
+        for (a = 0; a < 3; a++)
+            for (w = 0; w < sizeof wins / sizeof wins[0]; w++)
+                for (s = 0; s < 4; s++) {
+                    bfm_plat_present_viewport(wins[w][0], wins[w][1],
+                                              (double)aspects[a][0] / aspects[a][1], srcs[s], vp);
+                    printf("present %d %d %d:%d %d -> %d %d %d %d\n", wins[w][0], wins[w][1],
+                           aspects[a][0], aspects[a][1], srcs[s], vp[0], vp[1], vp[2], vp[3]);
+                }
+        bfm_plat_present_viewport(1280, 720, 0.0, 240, vp);   /* aspect <= 0 is 4:3 */
+        CHECK(vp[0] == 160 && vp[1] == 0 && vp[2] == 960 && vp[3] == 720);
+        bfm_plat_present_viewport(0, 720, 4.0 / 3.0, 240, vp);
+        CHECK(vp[0] == 0 && vp[1] == 0 && vp[2] == 0 && vp[3] == 0);
+        bfm_plat_present_viewport(1280, -1, 4.0 / 3.0, 0, vp);
+        CHECK(vp[0] == 0 && vp[1] == 0 && vp[2] == 0 && vp[3] == 0);
+        bfm_plat_present_viewport(1280, 720, 4.0 / 3.0, 240, NULL);   /* no crash */
+    }
 
     /* config + current state + projection hook sites */
     {

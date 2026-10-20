@@ -51,6 +51,18 @@ static const char *highlighted(void) {
     return lines[hl];
 }
 
+/* Captures musashi_dev_menu_emit_text: positions, '>' rows, the last one. */
+static struct { unsigned n, bad_pos, marked; char last_marked[64]; } cap;
+static void capture(void *u, int x, int y, const char *text) {
+    (void)u;
+    if (x != 8 || y != 8 + 12 * (int)cap.n) ++cap.bad_pos;
+    if (text[0] == '>') {
+        ++cap.marked;
+        snprintf(cap.last_marked, sizeof cap.last_marked, "%s", text);
+    }
+    ++cap.n;
+}
+
 int main(void) {
     MusashiDevMenuState st;
     const char *lines[24];
@@ -337,6 +349,149 @@ int main(void) {
     assert(st.warp_state == 0 && st.warps_failed == 1 && writes == 0);
     unsetenv("BFM_DEV_MENU_FINISH_TEST");
 #endif
+
+    /* Enhancements page: host-seeded values cycle in the menu and are taken
+     * once for the host to persist; browsing and changing them writes no
+     * guest byte, is not a cheat and leaves the save note unset. */
+    {
+        MusashiDevMenuEnhancements seed = { 0, 1u, -1, -1, 0, 0 }, got;
+        start("1", NULL, NULL);
+        musashi_dev_menu_set_enhancements(&seed);
+        assert(musashi_dev_menu_take_enhancements(&got) == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_TOGGLE, 0);
+        for (i = 0; i < 4; ++i) musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+        assert(strcmp(highlighted(), "  ENHANCEMENTS >") == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
+        assert(strcmp(highlighted(), "  RENDERER: ORIGINAL") == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+        assert(strcmp(highlighted(), "  RESOLUTION: NATIVE (GL ONLY)") == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+        assert(strcmp(highlighted(), "  DITHER: AUTO (GL ONLY)") == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+        assert(strcmp(highlighted(), "  VSYNC: DEFAULT (GL ONLY)") == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+        assert(strcmp(highlighted(), "  DISPLAY: WINDOW (GL ONLY)") == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+        assert(strcmp(highlighted(), "  PRESENT: FIT (GL ONLY)") == 0);
+        for (i = 0; i < 1000; ++i) musashi_dev_menu_vblank(1, 0x000b, 9, 1);
+        assert(musashi_dev_menu_take_enhancements(&got) == 0 && writes == 0);
+        for (i = 0; i < 5; ++i) musashi_dev_menu_keys(MUSASHI_DEV_KEY_UP, 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
+        assert(strcmp(highlighted(), "  RENDERER: GL (EXPERIMENTAL)") == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
+        assert(strcmp(highlighted(), "  RESOLUTION: 2X") == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
+        assert(strcmp(highlighted(), "  DITHER: OFF") == 0);
+        assert(musashi_dev_menu_take_enhancements(&got) ==
+               (MUSASHI_DEV_ENH_RENDERER | MUSASHI_DEV_ENH_SCALE | MUSASHI_DEV_ENH_DITHER));
+        assert(got.renderer_gl == 1 && got.scale == 2u && got.dither == 0);
+        /* untouched rows hand back what was seeded: vsync stays default */
+        assert(got.vsync == -1 && got.fullscreen == 0 && got.present_integer == 0);
+        assert(musashi_dev_menu_take_enhancements(&got) == 0);
+        /* VSYNC leaves DEFAULT for ON, then alternates OFF/ON: config.ini
+         * holds 0 or 1, never "default" */
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
+        assert(strcmp(highlighted(), "  VSYNC: ON") == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
+        assert(strcmp(highlighted(), "  VSYNC: OFF") == 0);
+        assert(musashi_dev_menu_take_enhancements(&got) == MUSASHI_DEV_ENH_VSYNC && got.vsync == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
+        assert(strcmp(highlighted(), "  VSYNC: ON") == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
+        assert(strcmp(highlighted(), "  DISPLAY: FULLSCREEN") == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
+        assert(strcmp(highlighted(), "  PRESENT: INTEGER") == 0);
+        assert(musashi_dev_menu_take_enhancements(&got) ==
+               (MUSASHI_DEV_ENH_VSYNC | MUSASHI_DEV_ENH_FULLSCREEN | MUSASHI_DEV_ENH_PRESENT));
+        assert(got.vsync == 1 && got.fullscreen == 1 && got.present_integer == 1);
+        assert(got.renderer_gl == 1 && got.scale == 2u && got.dither == 0);
+        assert(musashi_dev_menu_take_enhancements(&got) == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
+        assert(strcmp(highlighted(), "  PRESENT: FIT") == 0);
+        assert(musashi_dev_menu_take_enhancements(&got) == MUSASHI_DEV_ENH_PRESENT &&
+               got.present_integer == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+        assert(strcmp(highlighted(), "  BACK") == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
+        assert(strcmp(highlighted(), "  ENHANCEMENTS >") == 0);
+        for (i = 0; i < 1000; ++i) musashi_dev_menu_vblank(1, 0x000b, 9, 1);
+        musashi_dev_menu_state(&st);
+        assert(writes == 0 && st.cheat_writes == 0 && !st.god && !st.resource);
+        assert(!musashi_dev_menu_used());
+        /* a seeded scale cycles 4 -> native; an out-of-range seed reads native */
+        seed.scale = 4u;
+        musashi_dev_menu_set_enhancements(&seed);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
+        assert(strcmp(highlighted(), "  RESOLUTION: NATIVE (GL ONLY)") == 0);
+        assert(musashi_dev_menu_take_enhancements(&got) == MUSASHI_DEV_ENH_SCALE && got.scale == 1u);
+        seed.scale = 99u;
+        musashi_dev_menu_set_enhancements(&seed);
+        assert(strcmp(highlighted(), "  RESOLUTION: NATIVE (GL ONLY)") == 0);
+        /* seeds: vsync -1/0/1 read DEFAULT/OFF/ON and anything else DEFAULT;
+         * only an explicit 1 seeds fullscreen and integer present on */
+        seed.vsync = 0;
+        musashi_dev_menu_set_enhancements(&seed);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+        assert(strcmp(highlighted(), "  VSYNC: OFF (GL ONLY)") == 0);
+        seed.vsync = 1;
+        musashi_dev_menu_set_enhancements(&seed);
+        assert(strcmp(highlighted(), "  VSYNC: ON (GL ONLY)") == 0);
+        seed.vsync = 5;
+        seed.fullscreen = 7;
+        seed.present_integer = 2;
+        musashi_dev_menu_set_enhancements(&seed);
+        assert(strcmp(highlighted(), "  VSYNC: DEFAULT (GL ONLY)") == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+        assert(strcmp(highlighted(), "  DISPLAY: WINDOW (GL ONLY)") == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+        assert(strcmp(highlighted(), "  PRESENT: FIT (GL ONLY)") == 0);
+        seed.fullscreen = 1;
+        seed.present_integer = 1;
+        musashi_dev_menu_set_enhancements(&seed);
+        assert(strcmp(highlighted(), "  PRESENT: INTEGER (GL ONLY)") == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_UP, 0);
+        assert(strcmp(highlighted(), "  DISPLAY: FULLSCREEN (GL ONLY)") == 0);
+        assert(musashi_dev_menu_take_enhancements(&got) == 0);
+        assert(writes == 0);
+    }
+    puts("DEV_MENU_ENHANCE_PASS rows=6 guest_writes=0 take_once=1");
+
+    /* Bridge/gl presenters draw the menu from musashi_dev_menu_emit_text:
+     * the same lines, '>' on the selected row, nothing while the menu is off
+     * or closed; switching back to the Original renderer is reachable. */
+    {
+        MusashiDevMenuEnhancements seed = { 1, 2u, -1, -1, 0, 0 }, got;
+        start(NULL, NULL, NULL);
+        memset(&cap, 0, sizeof cap);
+        assert(musashi_dev_menu_emit_text(capture, NULL) == 0 && cap.n == 0);
+        start("1", NULL, NULL);
+        musashi_dev_menu_set_enhancements(&seed);
+        assert(musashi_dev_menu_emit_text(capture, NULL) == 0 && cap.n == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_TOGGLE, 0);
+        for (i = 0; i < 4; ++i) musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
+        memset(&cap, 0, sizeof cap);
+        assert(musashi_dev_menu_emit_text(capture, NULL) == musashi_dev_menu_text(lines, 24, &hl, &badge));
+        assert(cap.n == 12 && cap.bad_pos == 0 && cap.marked == 1);
+        assert(strcmp(cap.last_marked, "> RENDERER: GL (EXPERIMENTAL)") == 0);
+        assert(musashi_dev_menu_emit_text(NULL, NULL) == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
+        memset(&cap, 0, sizeof cap);
+        (void)musashi_dev_menu_emit_text(capture, NULL);
+        assert(cap.marked == 1 && strcmp(cap.last_marked, "> RENDERER: ORIGINAL") == 0);
+        assert(musashi_dev_menu_take_enhancements(&got) == MUSASHI_DEV_ENH_RENDERER);
+        assert(got.renderer_gl == 0 && got.scale == 2u && got.dither == -1);
+        assert(writes == 0);
+    }
+    puts("DEV_MENU_BRIDGE_PASS lines=12 marked=1 switch_back=1");
 
     puts("DEV_MENU_PASS off_inert=1 hard_disable=1 parity=1 cheats=game_state warps=29 folders=3 finish=0");
     return 0;

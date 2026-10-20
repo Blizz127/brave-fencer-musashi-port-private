@@ -273,9 +273,16 @@ static int display_on(const NativeBoot *boot) {
     return boot->gpu_renderer.display_enabled;
 }
 
+#ifdef MUSASHI_WITH_BFM_PLAT
+static void dev_menu_overlay_bridge(void);   /* the dev menu on the bridge path (below) */
+#endif
+
 static int present_frame(NativeBoot *boot) {
 #ifdef MUSASHI_WITH_BFM_PLAT
-    if (g_gpu_bridge_on) return bfm_gpu_bridge_vblank(&g_gpu_bridge) == 0;
+    if (g_gpu_bridge_on) {
+        dev_menu_overlay_bridge();   /* queued as overlay text before this present */
+        return bfm_gpu_bridge_vblank(&g_gpu_bridge) == 0;
+    }
 #endif
     return musashi_gpu_psycross_present(&boot->gpu_renderer);
 }
@@ -2563,12 +2570,32 @@ static void dev_menu_screenshot(int width, int height) {
     free(rgb);
 }
 
+static void enhancements_menu_poll(void);   /* Enhancements page (below plat_start) */
+
+/* The bridge renderers present without the PsyCross overlay hook that runs
+ * dev_menu_overlay, so on that path the menu is queued as renderer overlay
+ * text (drawn over the composed frame, cleared after the present, never in
+ * VRAM) and the Enhancements change is persisted here. Keys and the vblank
+ * pass stay where they are, so nothing runs twice. Without it a player who
+ * picked the gl renderer could not see the menu to switch back. */
+static void bridge_overlay_emit(void *user, int x, int y, const char *text) {
+    (void)user;
+    (void)bfm_plat_renderer_overlay_text(x, y, text);
+}
+
+static void dev_menu_overlay_bridge(void) {
+    if (!musashi_dev_menu_enabled()) return;
+    enhancements_menu_poll();
+    (void)musashi_dev_menu_emit_text(bridge_overlay_emit, NULL);
+}
+
 static void dev_menu_overlay(void *user, int width, int height) {
     const char *lines[24];
     int highlight, badge_only, scale = height / 320, cell_h, i, cols = 0;
     size_t n;
     (void)user;
     if (musashi_dev_menu_take_screenshot()) dev_menu_screenshot(width, height);
+    enhancements_menu_poll();
     n = musashi_dev_menu_text(lines, 24, &highlight, &badge_only);
     if (!n) return;
     if (scale < 2) scale = 2;
@@ -5283,6 +5310,90 @@ static int plat_reg_read(void *user, unsigned reg, uint32_t *out) {
     return 0;
 }
 
+/* Enhancements (dev menu page; docs/GRAPHICS-ENHANCEMENTS-DESIGN.md stage 0).
+ * From config.ini only these keys reach the game: [video] gpu = bfm_plat
+ * together with [backends] renderer = gl selects the gl renderer (any other
+ * renderer name leaves the cpu path), and [video] internal_scale and dither
+ * reach it. MUSASHI_GPU / MUSASHI_RENDERER, when set, win over the file.
+ * [video] vsync and fullscreen reach the gl renderer only when the file
+ * sets them (the parser's default vsync = 1 does not count): vsync = 0 or 1
+ * sets the swap interval, fullscreen = 1 makes the window borderless
+ * fullscreen; without them the borrowed PsyCross swap interval (the
+ * driver's default: PsyCross only sets it in PsyX_BeginScene, which the
+ * bridge never calls) and window are left alone. [video] present = integer
+ * (a key the typed parser keeps as text) shows the gl image at whole
+ * multiples of the display height; fit, absent or any other value fits it.
+ * Without those keys startup is unchanged: cpu rasteriser, scale 1. Menu
+ * changes are written back one key at a time and apply on the next launch. */
+static char g_enh_renderer[BFM_PLAT_NAME_MAX];
+static MusashiDevMenuEnhancements g_enh_saved = { 0, 1u, -1, -1, 0, 0 };
+
+static const char *enh_dither_name(int d) { return d < 0 ? "auto" : d ? "on" : "off"; }
+static const char *enh_vsync_name(int v) { return v < 0 ? "default" : v ? "on" : "off"; }
+
+static void enhancements_from_file(BfmPlatConfig *cfg) {
+    BfmPlatConfig file;
+    char path[512];
+    const char *gpu = getenv("MUSASHI_GPU"), *present;
+    bfm_plat_config_defaults(&file);
+    file.vsync = -1;   /* still -1 after the load: the file does not set it */
+    file.fullscreen = -1;
+    if (bfm_plat_config_default_path(path, sizeof path) != BFM_PLAT_OK ||   /* BFM_PLAT_OK is 0 */
+        bfm_plat_config_load_file(&file, path) != BFM_PLAT_OK)
+        return;
+    g_enh_saved.renderer_gl = file.gpu_path == BFM_GPU_BFM_PLAT && strcmp(file.renderer, "gl") == 0;
+    g_enh_saved.scale = (unsigned)file.internal_scale;   /* 1..8, checked by the parser */
+    g_enh_saved.dither = file.dither;
+    g_enh_saved.vsync = file.vsync;   /* -1 unless the file sets 0 or 1 */
+    g_enh_saved.fullscreen = file.fullscreen == 1;
+    present = bfm_plat_config_get(&file, "video.present");
+    g_enh_saved.present_integer = present && strcmp(present, "integer") == 0;
+    cfg->internal_scale = file.internal_scale;
+    cfg->dither = file.dither;
+    if (g_enh_saved.renderer_gl && !(gpu && gpu[0])) {
+        cfg->gpu_path = BFM_GPU_BFM_PLAT;
+        snprintf(g_enh_renderer, sizeof g_enh_renderer, "gl");
+    }
+    if (g_enh_saved.renderer_gl || file.internal_scale != 1 || file.dither != BFM_DITHER_AUTO ||
+        g_enh_saved.vsync >= 0 || g_enh_saved.fullscreen || g_enh_saved.present_integer)
+        fprintf(stderr, "native_boot: ENHANCEMENTS config renderer=%s scale=%d dither=%s vsync=%s fullscreen=%d present=%s%s\n",
+                g_enh_saved.renderer_gl ? "gl" : "original", file.internal_scale,
+                enh_dither_name(file.dither), enh_vsync_name(g_enh_saved.vsync), g_enh_saved.fullscreen,
+                g_enh_saved.present_integer ? "integer" : "fit",
+                g_enh_saved.renderer_gl && gpu && gpu[0] ? " (MUSASHI_GPU set: env wins)" : "");
+}
+
+static void enhancements_menu_poll(void) {
+    MusashiDevMenuEnhancements e;
+    unsigned changed = musashi_dev_menu_take_enhancements(&e);
+    char path[512], scale[8];
+    int ok;
+    if (!changed) return;
+    ok = bfm_plat_config_default_path(path, sizeof path) == BFM_PLAT_OK;   /* BFM_PLAT_OK is 0 */
+    if (ok && (changed & MUSASHI_DEV_ENH_RENDERER)) {
+        ok = bfm_plat_config_write_key(path, "video", "gpu", e.renderer_gl ? "bfm_plat" : "cpu") == BFM_PLAT_OK;
+        if (ok && e.renderer_gl)
+            ok = bfm_plat_config_write_key(path, "backends", "renderer", "gl") == BFM_PLAT_OK;
+    }
+    if (ok && (changed & MUSASHI_DEV_ENH_SCALE)) {
+        snprintf(scale, sizeof scale, "%u", e.scale);
+        ok = bfm_plat_config_write_key(path, "video", "internal_scale", scale) == BFM_PLAT_OK;
+    }
+    if (ok && (changed & MUSASHI_DEV_ENH_DITHER))
+        ok = bfm_plat_config_write_key(path, "video", "dither", enh_dither_name(e.dither)) == BFM_PLAT_OK;
+    if (ok && (changed & MUSASHI_DEV_ENH_VSYNC) && e.vsync >= 0)   /* the menu never goes back to -1 */
+        ok = bfm_plat_config_write_key(path, "video", "vsync", e.vsync ? "1" : "0") == BFM_PLAT_OK;
+    if (ok && (changed & MUSASHI_DEV_ENH_FULLSCREEN))
+        ok = bfm_plat_config_write_key(path, "video", "fullscreen", e.fullscreen ? "1" : "0") == BFM_PLAT_OK;
+    if (ok && (changed & MUSASHI_DEV_ENH_PRESENT))
+        ok = bfm_plat_config_write_key(path, "video", "present", e.present_integer ? "integer" : "fit") == BFM_PLAT_OK;
+    if (ok) g_enh_saved = e;
+    else musashi_dev_menu_toast("ENHANCEMENTS: CONFIG.INI NOT SAVED");
+    fprintf(stderr, "native_boot: ENHANCEMENTS saved=%d renderer=%s scale=%u dither=%s vsync=%s fullscreen=%d present=%s (next launch)\n",
+            ok, e.renderer_gl ? "gl" : "original", e.scale, enh_dither_name(e.dither),
+            enh_vsync_name(e.vsync), e.fullscreen, e.present_integer ? "integer" : "fit");
+}
+
 static void plat_entry_hook(void *user, uint32_t pc, const uint32_t *regs) {
     (void)user;
     if (!bfm_plat_hooks_has(pc)) return;
@@ -5308,6 +5419,7 @@ static void plat_start(MusashiBootMemory *memory) {
     snprintf(cfg.input, sizeof cfg.input, "null");
     cfg.disc_path[0] = 0;      /* native_boot owns the disc and its identity check */
     cfg.disc_search[0] = 0;
+    enhancements_from_file(&cfg);
     {
         /* The bridge's renderer opens after PsyCross is up (gpu_bridge_attach);
          * bfm_plat starts on the null renderer like the cpu path. */
@@ -5362,19 +5474,39 @@ static void gpu_bridge_attach(MusashiGpuController *gpu) {
     const char *name = getenv("MUSASHI_RENDERER"), *selected = NULL;
     BfmPlatOutput out;
     if (!bfm_gpu_bridge_selected(bfm_plat_config())) return;
-    if (!name || !name[0]) name = "psycross";
+    if (!name || !name[0]) name = g_enh_renderer[0] ? g_enh_renderer : "psycross";
     memset(&out, 0, sizeof out);
     out.window_width = 640;
     out.window_height = 480;
-    out.internal_scale = 1;
+    {
+        const BfmPlatConfig *c = bfm_plat_config();   /* scale 1 unless config.ini sets it */
+        out.internal_scale = c && c->internal_scale >= 1 && c->internal_scale <= 8 ? c->internal_scale : 1;
+    }
     out.aspect_num = 4;
     out.aspect_den = 3;
+    if (strcmp(name, "gl") == 0) {
+        /* gl borrows the PsyCross context: -1 records its swap interval as
+         * unknown, so only an explicit config.ini vsync changes it */
+        out.vsync = -1;
+        out.present_integer = g_enh_saved.present_integer;
+    }
     if (bfm_plat_renderer_open(name, &out, &selected) != 0 || !selected ||
         strcmp(selected, name) != 0) {
         fprintf(stderr, "native_boot: GPU_PATH bfm_plat refused: renderer %s unavailable; cpu\n",
                 name);
         (void)bfm_plat_renderer_open("null", &out, NULL);
         return;
+    }
+    if (strcmp(name, "gl") == 0 && (g_enh_saved.vsync >= 0 || g_enh_saved.fullscreen)) {
+        /* explicit config.ini values only, through the renderer's own live
+         * output change; vsync -1 and fullscreen 0 keep the borrowed
+         * PsyCross interval and window */
+        int rc;
+        out.vsync = g_enh_saved.vsync;
+        out.fullscreen = g_enh_saved.fullscreen;
+        rc = bfm_plat_renderer_set_output(&out);
+        fprintf(stderr, "native_boot: ENHANCEMENTS output vsync=%s fullscreen=%d present=%s rc=%d\n",
+                enh_vsync_name(out.vsync), out.fullscreen, out.present_integer ? "integer" : "fit", rc);
     }
     bfm_gpu_bridge_init(&g_gpu_bridge);
     {
@@ -5655,6 +5787,7 @@ int main(int argc, char **argv) {
         if (musashi_dev_menu_init(&guest, 0))
             musashi_gpu_psycross_set_overlay(dev_menu_overlay, NULL);
     }
+    musashi_dev_menu_set_enhancements(&g_enh_saved);   /* after init, which clears the menu */
 #endif
     (void)present_frame(&boot);
     if (boot.media) {
