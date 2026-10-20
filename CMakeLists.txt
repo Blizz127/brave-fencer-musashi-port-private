@@ -461,6 +461,15 @@ if(MUSASHI_BUILD_PC_PORT)
         add_test(NAME gpu_psycross_live COMMAND musashi_gpu_psycross_probe)
         set_tests_properties(gpu_psycross_live PROPERTIES SKIP_RETURN_CODE 77)
 
+        # Present geometry of a fullscreen window (owner handheld gate): 4:3 with bars.
+        # Opt-in: it skips (77) unless MUSASHI_PRESENT_FIT_PROBE=1, because it makes a
+        # fullscreen window; run it under a private Xvfb (see the probe's header).
+        add_executable(musashi_gpu_present_fit_probe tests/gpu_present_fit_probe.c)
+        target_compile_features(musashi_gpu_present_fit_probe PRIVATE c_std_99)
+        target_link_libraries(musashi_gpu_present_fit_probe PRIVATE musashi_pc_port)
+        add_test(NAME gpu_present_fit_live COMMAND musashi_gpu_present_fit_probe)
+        set_tests_properties(gpu_present_fit_live PROPERTIES SKIP_RETURN_CODE 77)
+
         # The probe supplies a test-owned VSyncCallback. Production resolves
         # the same bridge against PsyCross's actual VBlank event source.
         add_executable(musashi_irq_scheduler_probe

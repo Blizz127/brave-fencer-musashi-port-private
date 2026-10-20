@@ -1,4 +1,5 @@
 #include "musashi_gpu_psycross.h"
+#include "musashi_host_session.h"
 
 #include <SDL.h>
 #include <stdlib.h>
@@ -492,9 +493,14 @@ int musashi_gpu_psycross_present(MusashiGpuPsyCross *gpu) {
     glDisable(GL_SCISSOR_TEST);
     glColorMaski(0, GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     /* Stretch the GP1 display rect to the whole drawable. Integer letterbox
-     * left a black band through the window (GL y=0 is the bottom). */
+     * left a black band through the window (GL y=0 is the bottom). A
+     * fullscreen window (Steam Game Mode, BFM_FULLSCREEN) is seldom 4:3, so
+     * there the image keeps 4:3 inside the drawable with black bars. The
+     * window's live state decides on every present: a windowed or hand-resized
+     * window takes the stretch above, exactly as before. */
     {
         int dw = 1280, dh = 960;
+        int fx = 0, fy = 0, fw, fh;
         GLint prev_viewport[4];
         SDL_Window *window = (SDL_Window *)gpu->window;
         glGetIntegerv(GL_VIEWPORT, prev_viewport);
@@ -505,8 +511,15 @@ int musashi_gpu_psycross_present(MusashiGpuPsyCross *gpu) {
         glViewport(0, 0, dw, dh);
         glClearColor(0.f, 0.f, 0.f, 1.f);
         glClear(GL_COLOR_BUFFER_BIT);
+        fw = dw;
+        fh = dh;
+        if (window && (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN) != 0 &&
+            musashi_host_fit_rect(dw, dh, 4, 3, &fx, &fy, &fw, &fh))
+            glViewport(fx, fy, fw, fh);
         if (gpu->display_enabled)
             blit_ok = blit_vram(gpu);
+        if (fw != dw || fh != dh)
+            glViewport(0, 0, dw, dh);   /* the overlay and the restore below see the whole drawable */
         if (g_overlay) {
             g_overlay_height = dh;
             glEnable(GL_SCISSOR_TEST);

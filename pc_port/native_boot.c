@@ -36,6 +36,7 @@ void musashi_psyx_shutdown(void);
 
 #include <SDL.h>
 #include "musashi_host_chord.h"
+#include "musashi_host_session.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -2731,6 +2732,30 @@ static void host_event_log(const SDL_Event *ev) {
     }
 }
 
+/* Window mode and what SDL gave (owner handheld gate, docs/HANDHELD-AUDIT-r49e.md).
+ * host_window_apply_mode decides once, after the window exists. HOST_WINDOW
+ * reports the outcome a couple of seconds into the run, when the compositor
+ * has answered the resize, so last-run.log from a Game Mode session says what
+ * the window really was. */
+static int g_cfg_fullscreen = -1;   /* config.ini [video] fullscreen: -1 unset, else 0 or 1 */
+static int g_window_fullscreen;     /* the final decision, after any refusal */
+static int g_window_decided;
+
+static void host_window_report(void) {
+    static unsigned polls;
+    SDL_Window *window;
+    int ww = 0, wh = 0, dw = 0, dh = 0, fx, fy, fw, fh, bars;
+    if (!g_window_decided || ++polls != 120u) return;
+    window = SDL_GL_GetCurrentWindow();
+    if (!window) return;
+    SDL_GetWindowSize(window, &ww, &wh);
+    SDL_GL_GetDrawableSize(window, &dw, &dh);
+    bars = musashi_host_fit_rect(dw, dh, 4, 3, &fx, &fy, &fw, &fh);
+    fprintf(stderr, "native_boot: HOST_WINDOW fullscreen=%d window=%dx%d drawable=%dx%d "
+            "fit=%dx%d+%d+%d bars=%d\n", (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN) != 0,
+            ww, wh, dw, dh, fw, fh, fx, fy, bars);
+}
+
 static void host_focus_log(void) {
     static int last = -1;
     int now = SDL_GetKeyboardFocus() != NULL;
@@ -2738,6 +2763,7 @@ static void host_focus_log(void) {
         fprintf(stderr, "native_boot: HOST_FOCUS keyboard_focus=%d\n", now);
         last = now;
     }
+    host_window_report();
 }
 
 /* Route record, read-only, one line per room entry: when a room goes live
@@ -5104,8 +5130,8 @@ static void host_window_inspect(SDL_Window *window) {
      * Xwayland + SDL_PumpEvents was forcing X input focus back every TAP.
      * When MUSASHI_INTERACTIVE=1 is set, allow focus for playable interaction. */
     SDL_GetWindowSize(window, &width, &height);
-    if (width != 1280 || height != 960)
-        SDL_SetWindowSize(window, 1280, 960);
+    if ((width != 1280 || height != 960) && !(SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN))
+        SDL_SetWindowSize(window, 1280, 960);   /* a fullscreen window keeps the output's size */
     SDL_SetWindowAlwaysOnTop(window, SDL_FALSE);
     SDL_SetWindowGrab(window, SDL_FALSE);
     SDL_SetWindowKeyboardGrab(window, SDL_FALSE);
@@ -5139,6 +5165,39 @@ static void host_window_inspect(SDL_Window *window) {
     }
     if (interactive)
         SDL_RaiseWindow(window);
+}
+
+/* Window mode for the owner handheld gate. A desktop session keeps today's
+ * decorated 1280x960 window. Steam Game Mode (a Gamescope session) gets
+ * borderless desktop fullscreen, so the window is the output instead of a
+ * window Gamescope has to scale and letterbox; BFM_FULLSCREEN=0 or
+ * --windowed, or an explicit config.ini [video] fullscreen = 0, turns that
+ * off. SDL_WINDOW_FULLSCREEN_DESKTOP never changes the display mode. Called
+ * once, after the window exists and before the first present, so that
+ * present clears the resized drawable. The decision is logged either way. */
+static void host_window_apply_mode(SDL_Window *window) {
+    MusashiHostSession session;
+    MusashiWindowDecision decision;
+    const char *driver;
+    if (!window) return;
+    musashi_host_session_detect_env(&session);
+    decision = musashi_host_window_decide(getenv("BFM_FULLSCREEN"), g_cfg_fullscreen, session.gamescope);
+    g_window_fullscreen = (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN) != 0;
+    if (decision.fullscreen && !g_window_fullscreen) {
+        if (SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP) == 0) {
+            g_window_fullscreen = 1;
+        } else {
+            fprintf(stderr, "native_boot: HOST_WINDOW fullscreen refused (%s); staying windowed\n",
+                    SDL_GetError());
+        }
+    }
+    driver = SDL_GetCurrentVideoDriver();
+    fprintf(stderr, "native_boot: HOST_SESSION gamescope=%d because=%s steamdeck=%d steamgamepadui=%d "
+            "video_driver=%s osk_support=%d window=%s reason=%s\n",
+            session.gamescope, session.because, session.steam_deck, session.steam_gamepad_ui,
+            driver ? driver : "?", SDL_HasScreenKeyboardSupport() ? 1 : 0,
+            g_window_fullscreen ? "fullscreen_desktop" : "windowed", decision.reason);
+    g_window_decided = 1;
 }
 
 static void hold_window(NativeBoot *boot) {
@@ -5346,6 +5405,7 @@ static void enhancements_from_file(BfmPlatConfig *cfg) {
     g_enh_saved.dither = file.dither;
     g_enh_saved.vsync = file.vsync;   /* -1 unless the file sets 0 or 1 */
     g_enh_saved.fullscreen = file.fullscreen == 1;
+    g_cfg_fullscreen = file.fullscreen;   /* -1 unless the file sets 0 or 1: host_window_apply_mode */
     present = bfm_plat_config_get(&file, "video.present");
     g_enh_saved.present_integer = present && strcmp(present, "integer") == 0;
     cfg->internal_scale = file.internal_scale;
@@ -5497,13 +5557,14 @@ static void gpu_bridge_attach(MusashiGpuController *gpu) {
         (void)bfm_plat_renderer_open("null", &out, NULL);
         return;
     }
-    if (strcmp(name, "gl") == 0 && (g_enh_saved.vsync >= 0 || g_enh_saved.fullscreen)) {
-        /* explicit config.ini values only, through the renderer's own live
-         * output change; vsync -1 and fullscreen 0 keep the borrowed
-         * PsyCross interval and window */
+    if (strcmp(name, "gl") == 0 && (g_enh_saved.vsync >= 0 || g_window_fullscreen)) {
+        /* explicit config.ini vsync, and the window mode host_window_apply_mode
+         * settled (BFM_FULLSCREEN, config.ini fullscreen, Gamescope), through
+         * the renderer's own live output change; vsync -1 and a windowed
+         * window keep the borrowed PsyCross interval and window */
         int rc;
         out.vsync = g_enh_saved.vsync;
-        out.fullscreen = g_enh_saved.fullscreen;
+        out.fullscreen = g_window_fullscreen;
         rc = bfm_plat_renderer_set_output(&out);
         fprintf(stderr, "native_boot: ENHANCEMENTS output vsync=%s fullscreen=%d present=%s rc=%d\n",
                 enh_vsync_name(out.vsync), out.fullscreen, out.present_integer ? "integer" : "fit", rc);
@@ -5599,6 +5660,10 @@ int main(int argc, char **argv) {
     for (int i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "--dev-menu") == 0) {
             setenv("BFM_DEV_MENU", "1", 1);
+        } else if (strcmp(argv[i], "--fullscreen") == 0) {
+            setenv("BFM_FULLSCREEN", "1", 1);
+        } else if (strcmp(argv[i], "--windowed") == 0) {
+            setenv("BFM_FULLSCREEN", "0", 1);
         } else if (strcmp(argv[i], "--disc") == 0 && i + 1 < argc) {
             disc_path = argv[++i];
         } else if (strcmp(argv[i], "--headless") == 0) {
@@ -5734,6 +5799,7 @@ int main(int argc, char **argv) {
         return 77;
     }
     host_window_inspect(SDL_GL_GetCurrentWindow());
+    host_window_apply_mode(SDL_GL_GetCurrentWindow());
     /* SDL converts SIGTERM into an event, but source execution may not pump
      * window events while waiting for I/O. Stop at the next clock boundary
      * and retain the diagnostic dump instead of leaving timeout's child alive. */
@@ -5787,6 +5853,7 @@ int main(int argc, char **argv) {
         if (musashi_dev_menu_init(&guest, 0))
             musashi_gpu_psycross_set_overlay(dev_menu_overlay, NULL);
     }
+    g_enh_saved.fullscreen = g_window_fullscreen;   /* the DISPLAY row shows the mode in effect, Gamescope's included */
     musashi_dev_menu_set_enhancements(&g_enh_saved);   /* after init, which clears the menu */
 #endif
     (void)present_frame(&boot);
