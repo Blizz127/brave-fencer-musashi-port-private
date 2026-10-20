@@ -354,7 +354,7 @@ int main(void) {
      * once for the host to persist; browsing and changing them writes no
      * guest byte, is not a cheat and leaves the save note unset. */
     {
-        MusashiDevMenuEnhancements seed = { 0, 1u, -1, -1, 0, 0, 0 }, got;
+        MusashiDevMenuEnhancements seed = { 0, 1u, -1, -1, 0, 0, 0, 0 }, got;
         start("1", NULL, NULL);
         musashi_dev_menu_set_enhancements(&seed);
         assert(musashi_dev_menu_take_enhancements(&got) == 0);
@@ -375,9 +375,11 @@ int main(void) {
         assert(strcmp(highlighted(), "  PRESENT: FIT (GL ONLY)") == 0);
         musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
         assert(strcmp(highlighted(), "  WIDESCREEN: OFF (GL ONLY)") == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+        assert(strcmp(highlighted(), "  ANTI-ALIASING: OFF (GL ONLY)") == 0);
         for (i = 0; i < 1000; ++i) musashi_dev_menu_vblank(1, 0x000b, 9, 1);
         assert(musashi_dev_menu_take_enhancements(&got) == 0 && writes == 0);
-        for (i = 0; i < 6; ++i) musashi_dev_menu_keys(MUSASHI_DEV_KEY_UP, 0);
+        for (i = 0; i < 7; ++i) musashi_dev_menu_keys(MUSASHI_DEV_KEY_UP, 0);
         musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
         assert(strcmp(highlighted(), "  RENDERER: GL (EXPERIMENTAL)") == 0);
         musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
@@ -430,6 +432,23 @@ int main(void) {
         musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
         assert(strcmp(highlighted(), "  WIDESCREEN: OFF") == 0);
         assert(musashi_dev_menu_take_enhancements(&got) == MUSASHI_DEV_ENH_WIDESCREEN && got.widescreen == 0);
+        /* ANTI-ALIASING cycles OFF -> 2X -> 4X -> 8X -> OFF, one take per change, and
+         * only the msaa value moves (the renderer is GL by now: no "(GL ONLY)") */
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+        assert(strcmp(highlighted(), "  ANTI-ALIASING: OFF") == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
+        assert(strcmp(highlighted(), "  ANTI-ALIASING: 2X") == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
+        assert(strcmp(highlighted(), "  ANTI-ALIASING: 4X") == 0);
+        assert(musashi_dev_menu_take_enhancements(&got) == MUSASHI_DEV_ENH_MSAA && got.msaa == 4);
+        assert(got.widescreen == 0 && got.present_integer == 0 && got.renderer_gl == 1 && got.scale == 2u);
+        assert(musashi_dev_menu_take_enhancements(&got) == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
+        assert(strcmp(highlighted(), "  ANTI-ALIASING: 8X") == 0);
+        assert(musashi_dev_menu_take_enhancements(&got) == MUSASHI_DEV_ENH_MSAA && got.msaa == 8);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
+        assert(strcmp(highlighted(), "  ANTI-ALIASING: OFF") == 0);
+        assert(musashi_dev_menu_take_enhancements(&got) == MUSASHI_DEV_ENH_MSAA && got.msaa == 0);
         musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
         assert(strcmp(highlighted(), "  BACK") == 0);
         musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
@@ -487,16 +506,48 @@ int main(void) {
         seed.widescreen = 7;
         musashi_dev_menu_set_enhancements(&seed);
         assert(strcmp(highlighted(), "  WIDESCREEN: OFF (GL ONLY)") == 0);
+        /* msaa seeds: 0/2/4/8 read OFF/2X/4X/8X, anything else (3, 16, -2) OFF; a seed is
+         * not a change */
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+        assert(strcmp(highlighted(), "  ANTI-ALIASING: OFF (GL ONLY)") == 0);
+        seed.msaa = 4;
+        musashi_dev_menu_set_enhancements(&seed);
+        assert(strcmp(highlighted(), "  ANTI-ALIASING: 4X (GL ONLY)") == 0);
+        seed.msaa = 2;
+        musashi_dev_menu_set_enhancements(&seed);
+        assert(strcmp(highlighted(), "  ANTI-ALIASING: 2X (GL ONLY)") == 0);
+        seed.msaa = 8;
+        musashi_dev_menu_set_enhancements(&seed);
+        assert(strcmp(highlighted(), "  ANTI-ALIASING: 8X (GL ONLY)") == 0);
+        seed.msaa = 3;
+        musashi_dev_menu_set_enhancements(&seed);
+        assert(strcmp(highlighted(), "  ANTI-ALIASING: OFF (GL ONLY)") == 0);
+        seed.msaa = 16;
+        musashi_dev_menu_set_enhancements(&seed);
+        assert(strcmp(highlighted(), "  ANTI-ALIASING: OFF (GL ONLY)") == 0);
+        seed.msaa = -2;
+        musashi_dev_menu_set_enhancements(&seed);
+        assert(strcmp(highlighted(), "  ANTI-ALIASING: OFF (GL ONLY)") == 0);
+        /* a seeded 4X cycles on to 8X (only the msaa bit is raised) and then wraps to OFF */
+        seed.msaa = 4;
+        musashi_dev_menu_set_enhancements(&seed);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
+        assert(strcmp(highlighted(), "  ANTI-ALIASING: 8X (GL ONLY)") == 0);
+        assert(musashi_dev_menu_take_enhancements(&got) == MUSASHI_DEV_ENH_MSAA && got.msaa == 8);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
+        assert(strcmp(highlighted(), "  ANTI-ALIASING: OFF (GL ONLY)") == 0);
+        assert(musashi_dev_menu_take_enhancements(&got) == MUSASHI_DEV_ENH_MSAA && got.msaa == 0);
+        musashi_dev_menu_set_enhancements(&seed);
         assert(musashi_dev_menu_take_enhancements(&got) == 0);
         assert(writes == 0);
     }
-    puts("DEV_MENU_ENHANCE_PASS rows=7 guest_writes=0 take_once=1");
+    puts("DEV_MENU_ENHANCE_PASS rows=8 guest_writes=0 take_once=1");
 
     /* Bridge/gl presenters draw the menu from musashi_dev_menu_emit_text:
      * the same lines, '>' on the selected row, nothing while the menu is off
      * or closed; switching back to the Original renderer is reachable. */
     {
-        MusashiDevMenuEnhancements seed = { 1, 2u, -1, -1, 0, 0, 0 }, got;
+        MusashiDevMenuEnhancements seed = { 1, 2u, -1, -1, 0, 0, 0, 4 }, got;
         start(NULL, NULL, NULL);
         memset(&cap, 0, sizeof cap);
         assert(musashi_dev_menu_emit_text(capture, NULL) == 0 && cap.n == 0);
@@ -508,7 +559,7 @@ int main(void) {
         musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
         memset(&cap, 0, sizeof cap);
         assert(musashi_dev_menu_emit_text(capture, NULL) == musashi_dev_menu_text(lines, 24, &hl, &badge));
-        assert(cap.n == 13 && cap.bad_pos == 0 && cap.marked == 1);
+        assert(cap.n == 14 && cap.bad_pos == 0 && cap.marked == 1);
         assert(strcmp(cap.last_marked, "> RENDERER: GL (EXPERIMENTAL)") == 0);
         assert(musashi_dev_menu_emit_text(NULL, NULL) == 0);
         musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
@@ -517,9 +568,10 @@ int main(void) {
         assert(cap.marked == 1 && strcmp(cap.last_marked, "> RENDERER: ORIGINAL") == 0);
         assert(musashi_dev_menu_take_enhancements(&got) == MUSASHI_DEV_ENH_RENDERER);
         assert(got.renderer_gl == 0 && got.scale == 2u && got.dither == -1);
+        assert(got.msaa == 4);   /* the seeded msaa rides along untouched when another row changes */
         assert(writes == 0);
     }
-    puts("DEV_MENU_BRIDGE_PASS lines=13 marked=1 switch_back=1");
+    puts("DEV_MENU_BRIDGE_PASS lines=14 marked=1 switch_back=1");
 
     puts("DEV_MENU_PASS off_inert=1 hard_disable=1 parity=1 cheats=game_state warps=29 folders=3 finish=0");
     return 0;

@@ -113,8 +113,8 @@ enum { WARP_COUNT = sizeof kWarps / sizeof kWarps[0], FINISH_COUNT = 0 };
 
 static const char *const kRoot[] = { "WARP >", "FINISH AREA >", "CHEATS >", "OPTIONS >",
                                      "ENHANCEMENTS >" };
-/* Enhancements page: renderer, resolution, dither, vsync, display, present, widescreen, BACK. */
-enum { ROOT_ROWS = sizeof kRoot / sizeof kRoot[0], ENHANCE_ROWS = 8 };
+/* Enhancements page: renderer, resolution, dither, vsync, display, present, widescreen, anti-aliasing, BACK. */
+enum { ROOT_ROWS = sizeof kRoot / sizeof kRoot[0], ENHANCE_ROWS = 9 };
 
 static struct {
     int inited, enabled, hard_disabled, open, page, selection, help;
@@ -245,6 +245,9 @@ static const char *enh_present(void) { return M.enh.present_integer ? "INTEGER" 
 static const char *enh_widescreen(void) {
     return M.enh.widescreen == 1 ? "16:9 HOR+" : M.enh.widescreen == 2 ? "16:10 HOR+" : "OFF";
 }
+static const char *enh_msaa(void) {
+    return M.enh.msaa == 2 ? "2X" : M.enh.msaa == 4 ? "4X" : M.enh.msaa == 8 ? "8X" : "OFF";
+}
 
 /* Enhancements rows cycle a value the host persists for the next launch;
  * none of them reads or writes guest memory or counts as a cheat. */
@@ -275,19 +278,26 @@ static void enhance_select(void) {
         M.enh.present_integer = !M.enh.present_integer;
         M.enh_changed |= MUSASHI_DEV_ENH_PRESENT;
         snprintf(M.toast, sizeof M.toast, "PRESENT: %s (NEXT LAUNCH)", enh_present());
-    } else {
+    } else if (M.selection == 6) {
         /* OFF -> 16:9 -> 16:10 -> OFF: hor+ only (the gl renderer shows more of
          * the scene at the sides; the game's projection is unchanged) */
         M.enh.widescreen = (M.enh.widescreen + 1) % 3;
         M.enh_changed |= MUSASHI_DEV_ENH_WIDESCREEN;
         snprintf(M.toast, sizeof M.toast, "WIDESCREEN: %s (NEXT LAUNCH)", enh_widescreen());
+    } else {
+        /* OFF -> 2X -> 4X -> 8X -> OFF: the gl renderer's MSAA; the host clamps
+         * it to what the GPU supports when it starts */
+        M.enh.msaa = M.enh.msaa == 0 ? 2 : M.enh.msaa == 2 ? 4 : M.enh.msaa == 4 ? 8 : 0;
+        M.enh_changed |= MUSASHI_DEV_ENH_MSAA;
+        snprintf(M.toast, sizeof M.toast, "ANTI-ALIASING: %s (NEXT LAUNCH)", enh_msaa());
     }
-    fprintf(stderr, "[DEV_MENU] enhancements renderer=%s scale=%u dither=%s vsync=%s display=%s present=%s widescreen=%s (next launch)\n",
+    fprintf(stderr, "[DEV_MENU] enhancements renderer=%s scale=%u dither=%s vsync=%s display=%s present=%s widescreen=%s msaa=%s (next launch)\n",
             M.enh.renderer_gl ? "gl" : "original", enh_scale(),
             M.enh.dither < 0 ? "auto" : M.enh.dither ? "on" : "off",
             M.enh.vsync < 0 ? "default" : M.enh.vsync ? "on" : "off",
             M.enh.fullscreen ? "fullscreen" : "window", M.enh.present_integer ? "integer" : "fit",
-            M.enh.widescreen == 1 ? "16:9" : M.enh.widescreen == 2 ? "16:10" : "off");
+            M.enh.widescreen == 1 ? "16:9" : M.enh.widescreen == 2 ? "16:10" : "off",
+            M.enh.msaa == 2 ? "2x" : M.enh.msaa == 4 ? "4x" : M.enh.msaa == 8 ? "8x" : "off");
 }
 
 static void set_toggle(int *flag, int on, const char *name) {
@@ -661,6 +671,7 @@ void musashi_dev_menu_set_enhancements(const MusashiDevMenuEnhancements *enh) {
     M.enh.fullscreen = M.enh.fullscreen == 1;
     M.enh.present_integer = M.enh.present_integer == 1;
     if (M.enh.widescreen < 0 || M.enh.widescreen > 2) M.enh.widescreen = 0;
+    if (M.enh.msaa != 2 && M.enh.msaa != 4 && M.enh.msaa != 8) M.enh.msaa = 0;
     M.enh_changed = 0;
 }
 
@@ -748,6 +759,7 @@ size_t musashi_dev_menu_text(const char **lines, size_t max, int *highlight, int
             line(&n, "  DISPLAY: %s", enh_display());   /* both renderers (host_window_apply_mode) */
             line(&n, "  PRESENT: %s%s", enh_present(), gl_only);
             line(&n, "  WIDESCREEN: %s%s", enh_widescreen(), gl_only);
+            line(&n, "  ANTI-ALIASING: %s%s", enh_msaa(), gl_only);
             line(&n, "  BACK");
         } else {
             unsigned speed = kFfSpeeds[M.ff_speed_index];
