@@ -18,7 +18,7 @@ Evidence classes used below:
 |---|---|---|---|---|
 | 1 Controller | SDL GameController sampler with Steam-virtual-pad preference, hotplug, Legion/InputPlumber ignore-list repair and background-events hint. No defect found. | Low. Observed side effects of the shipped dev-menu defaults: L3 toggles fast-forward, R3 held fast-forwards, a lone Back/Start is arbitrated (section 3.3). Error dialogs cannot be dismissed with a pad. | None (no defect). Options listed for the lead. | Out-of-box behaviour under Steam Input in menus and gameplay. |
 | 2 Window | Windowed 1280x960 `SDL_WINDOW_RESIZABLE`; nothing makes it fullscreen. The Right-Alt+Enter toggle cited by the r47 audit is dead code. Present stretches 4:3 over the whole drawable. | Medium. No evidence either way for Gamescope's own scaling; a fullscreen window at the output size would be the standard path. | Gamescope-only borderless desktop fullscreen plus 4:3 fit; kill switches. Section 6. | Whether it presents with no white border at the device's real size and aspect. |
-| 3 Text entry | **No text field is reachable in the shipped package by default.** The developer console is not reachable (correction to the r47 audit, section 2). The only exposure is the `launch.sh` zenity/kdialog disc picker, and only when no disc is found. | Low for the game. Medium if the picker appears. | None coded (no consumer). OSK design in section 5.4. Tripwire tests keep the audited absence true. | Confirm the picker never appears and no text field shows. |
+| 3 Text entry | **No text field is reachable in the shipped package by default.** The developer console is not reachable (correction to the r47 audit, section 1). The only exposure is the `launch.sh` zenity/kdialog disc picker, and only when no disc is found. | Low for the game. Medium if the picker appears. | None coded (no consumer). OSK design in section 5.4. Tripwire tests keep the audited absence true. | Confirm the picker never appears and no text field shows. |
 
 ## 1. Corrections to the r47 audit (`~/release-staging/bfm-r47-release/handheld-gate/HANDHELD-GATE-AUDIT-r47.md`)
 
@@ -111,7 +111,7 @@ No defect was found in the controller path, so nothing was changed. Options for 
   `SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE` and no fullscreen flag for fullscreen = 0 (PsyCross `src/render/PsyX_render.cpp:275-287`).
   It is an ordinary decorated 1280x960 window.
 - `host_window_inspect` (`native_boot.c:5070-5118`) forces the size back to 1280x960 (5083-5084), shows the cursor, grabs
-  nothing and raises the window when `MUSASHI_INTERACTIVE=1`. `hold_window` (5120-5139, 3 s from `launch.sh`) calls it again.
+  nothing and raises the window when `MUSASHI_INTERACTIVE=1`. `hold_window` (5120-5139) calls it again when the run ends.
 - Hints (`native_boot.c:5719-5725`) include `SDL_HINT_VIDEO_MINIMIZE_ON_FOCUS_LOSS=0`, which a fullscreen window needs.
 - Nothing in this build can make the default (ORIGINAL, PsyCross) path fullscreen: the Right-Alt+Enter toggle is dead (section 1),
   `--fullscreen` is silently ignored by `main`'s argument loop (`native_boot.c:5602-5636`), and `[video] fullscreen = 1` reaches only
@@ -128,8 +128,9 @@ No defect was found in the controller path, so nothing was changed. Options for 
 
 ### 4.2 Risk under Gamescope
 
-- A windowed 1280x960 window is scaled and letterboxed by Gamescope itself. The bars and any border colour are Gamescope's,
-  not the game's; the game cannot produce a white border once it presents, because it clears to black and fills the drawable.
+- A windowed 1280x960 window is expected to be scaled and letterboxed by Gamescope itself (unverified: **[D]**). The bars and any border
+  colour would then be Gamescope's, not the game's; the game cannot produce a white border once it presents, because it clears to black
+  and fills the drawable.
 - Where a white border could come from: another window of the same shortcut showing around a smaller game window (the launcher
   hides itself on PLAY in Game Mode since 0.9.271 [L `docs/releases/0.9.271.md:59-66`]), or a window the compositor does not treat as
   the app window. Neither can be decided from source. **[D]**
@@ -146,7 +147,7 @@ inside the real drawable with black bars. Desktop behaviour is unchanged.
 
 | # | Flow | Where [S] | Reachable in the shipped package by default? | Starts SDL text input? | Verdict |
 |---|---|---|---|---|---|
-| 1 | Platform-layer developer console (typed commands) | `bfm_plat_console_ui.c`, toggle `bfm_plat.c:247-248`, text `backends/input_sdl.c:173-177` | **No** (section 1.1): input backend is `null`; needs `MUSASHI_INPUT=bfm_plat` and a FRAME_BEGIN hook | Only through input_sdl.c | Not exposed. Tripwire-tested. |
+| 1 | Platform-layer developer console (typed commands) | `bfm_plat_console_ui.c`, toggle `bfm_plat.c:247-248`, text `backends/input_sdl.c:173-177` | **No** (section 1, item 1): input backend is `null`; needs `MUSASHI_INPUT=bfm_plat` and a FRAME_BEGIN hook | Only through input_sdl.c | Not exposed. Tripwire-tested. |
 | 2 | Cheat menu | `bfm_plat_console.c` (model), draw `bfm_plat.c:278` | No default hotkey (`bfm_plat_input.c:182` is empty) | No | No typing at all |
 | 3 | Port Dev Menu (on by default) | `dev_menu.c`, glue `native_boot.c:2360-2640` | Yes | No | Pad/F-key only; no text field |
 | 4 | Enhancements page | `dev_menu.c` rows, `native_boot.c:5369-5398` | Yes (inside the dev menu) | No | Cycles values; no typing |
@@ -189,7 +190,7 @@ code today and a path nobody can test off the device. Prefer, in this order, whe
 
 1. A built-in pad-driven keyboard drawn through the dev-menu overlay (what the launcher did in 0.9.225): independent of `SteamDeck`, the video
    driver and Steam being reachable, and passwords can be masked by construction.
-2. Otherwise `SDL_StartTextInput()` (Steam's keyboard when SDL supports it) plus the helper `musashi_host_session_gamescope()` from this branch to
+2. Otherwise `SDL_StartTextInput()` (Steam's keyboard when SDL supports it) plus `musashi_host_session_detect_env()` from this branch to
    decide whether to add the explicit URL. Mode 0 (one line, Enter closes) is right for single-line fields:
    `steam://open/keyboard?XPosition=0&YPosition=0&Width=0&Height=0&Mode=0`.
 
@@ -197,7 +198,85 @@ The tripwire tests (section 6) fail the day a new `SDL_StartTextInput` caller or
 
 ## 6. Fixes in this branch
 
-(Filled in below as commits land; see section 8 for the final list.)
+Commits on `claude/qol-h1` (base 3e639e8352), separable so the lead can take the safe parts alone:
+
+| Commit | What | Touches | Takeable alone |
+|---|---|---|---|
+| `c327d9192b` | this audit | docs | yes |
+| `50d4cd39c9` | tripwire tests for check 3 | `tests/test_handheld_gate_audit.py` | yes |
+| `ebd932e2e0` | `musashi_host_session.h` (Gamescope detection, window decision, 4:3 fit) and its probe | new header, tests | yes, nothing calls it |
+| `083631b6ec` | window mode wiring, present fit, session log, opt-in live present probe | `native_boot.c`, `gpu_psycross.c`, `CMakeLists.txt`, `musashi_host_session.h` (comment), `tests/gpu_present_fit_probe.c` | needs the device check (6.1) |
+
+### 6.1 Borderless desktop fullscreen under Gamescope, 4:3 inside it (check 2)
+
+What it does:
+
+1. `host_window_apply_mode` (native_boot.c) runs once, right after `PsyX_Initialise` and before the first present. It asks
+   `musashi_host_window_decide`: **`BFM_FULLSCREEN` (1/0; `--fullscreen` / `--windowed` set it) first, then an explicit config.ini
+   `[video] fullscreen = 1|0`, then Gamescope, then windowed.** Only the Gamescope rung is new behaviour. If it decides fullscreen it
+   calls `SDL_SetWindowFullscreen(SDL_WINDOW_FULLSCREEN_DESKTOP)`; a refusal is logged and the window stays windowed.
+2. `musashi_gpu_psycross_present` keeps 4:3 inside the drawable with black bars **when the window is fullscreen** (decided from the live
+   window flags on every present); a windowed or hand-resized window runs the identical stretch as before.
+3. `host_window_inspect` no longer forces a fullscreen window back to 1280x960.
+4. Two log lines go to `last-run.log`: `HOST_SESSION` at startup (Gamescope decision and which variable matched, `SteamDeck` and
+   `SteamGamepadUI`, the SDL video driver, `SDL_HasScreenKeyboardSupport`, the window mode and reason) and `HOST_WINDOW` after about two
+   seconds (real window and drawable size, fullscreen flag, the 4:3 fit rectangle). They are the artifact-bound evidence for the first
+   device run and answer the open questions of section 5.3 without another build.
+
+Why each choice:
+
+- **Gamescope only.** The gate is about Game Mode, and desktop users keep today's decorated window. Detection is the launcher's own rule
+  (`SteamGameMode.DetectGamescope`, device-exercised there since 0.9.271) so the two programs agree on what Game Mode is. `SteamDeck=1`
+  alone is not a signal (the launcher's test expects false; it counts only together with `SteamGamepadUI=1`). Parity vectors are in
+  `tests/host_session_probe.c`.
+- **Desktop fullscreen, not exclusive.** `PsyX_Initialise`'s fullscreen argument maps to exclusive `SDL_WINDOW_FULLSCREEN` (PsyCross
+  `PsyX_render.cpp:278-281`), which asks for a 1280x960 mode. Desktop fullscreen never changes the display mode and makes the window the
+  output, so Gamescope has nothing to scale or letterbox.
+- **After creation, before the first present.** The first present (`native_boot.c` near `present_frame(&boot)` after the GPU init) then
+  clears the resized drawable to black; later presents happen only while the display is on, so an unpainted resized window could otherwise
+  sit through boot.
+- **Fit from the live window state.** No new global to keep in sync; the GL renderer path keeps its own fitting.
+- **Precedence with kill switches.** If Game Mode misbehaves on the device: `BFM_FULLSCREEN=0` in the Steam launch options, `--windowed`, or
+  the Enhancements DISPLAY row set to WINDOW (it writes an explicit `fullscreen = 0`, which beats Gamescope, and works from the pad).
+
+Desktop behaviour: unchanged by default (decision `default`, same present path). Four other effects the lead should know:
+
+1. `--fullscreen` now does what it says (it was silently ignored); `--windowed` is new.
+2. An explicit `[video] fullscreen = 1` now also applies to the ORIGINAL renderer, not only gl: this extends the G2 contract. The gl output
+   change now follows the effective mode, so `BFM_FULLSCREEN=0` also vetoes a config `fullscreen = 1` there.
+3. The DISPLAY row is seeded from the mode in effect (native_boot.c only; `dev_menu.c` is untouched), so under Gamescope it shows FULLSCREEN
+   and one press turns it off for the next launch.
+4. `HOST_SESSION` / `HOST_WINDOW` are new log lines.
+
+Tests: `tests/host_session_probe.c` (pure: the launcher's detection vectors, precedence, the fit rectangle swept over 160k sizes), the opt-in live probe
+`tests/gpu_present_fit_probe.c` (section 7.4) and the existing live `musashi_gpu_psycross_probe` as a regression check of the windowed present.
+
+Not changed: the mouse cursor stays visible (`host_window_inspect`), the guest is untouched, the X11 interposer is untouched.
+
+Risks (all device-unverified): how Gamescope's XWayland (or the Wayland driver) answers the EWMH fullscreen request from this window; whether the
+launcher window stays visible behind it (the launcher hides itself on PLAY since 0.9.271 [L]); the visible cursor; legibility of the dev menu at the
+output's resolution (its scale follows the drawable height).
+
+**Scaling quality is a preference this branch does not decide.** The image is still sampled with `GL_NEAREST`, as in a window. A window at 1280x960 is an exact
+4x of a 320x240 display; a fullscreen fit at 1080p is 4.5x (1440x1080) and at 1280x800 is 3.33x (1067x800), so some pixel columns are one pixel wider than
+their neighbours. Alternatives, each a few lines at the same site in `musashi_gpu_psycross_present`: whole-multiple (integer) scaling, which is crisp but leaves
+larger bars (at 1080p it is 4x = 1280x960, at 800p it is 3x = 960x720); or linear filtering only when the scale is not a whole number. This is the same question as
+`docs/GRAPHICS-ENHANCEMENTS-DESIGN.md:440-442` (gl already offers PRESENT FIT / INTEGER). Decide it after seeing the device.
+
+### 6.2 Tripwires for check 3
+
+`tests/test_handheld_gate_audit.py` (8 tests, mutation-checked on a scratch copy): launch.sh never mentions `MUSASHI_INPUT`; `SDL_StartTextInput`,
+`SDL_StopTextInput`, `SDL_SetTextInputRect`, `SDL_TEXTINPUT` and `SDL_TEXTEDITING` appear only in `input_sdl.c`; `plat_start` forces the null input
+backend; `plat_input_attach` is env-gated; the console toggle is reachable only through `bfm_plat.c` and the frame hook; nothing opens URLs or the Steam
+keyboard; no password field exists. Each failure names this document.
+
+### 6.3 Not coded, with reasons
+
+- **Steam on-screen keyboard fallback** (section 5.4): no consumer, device-only, would look like a pass.
+- **L3/R3 fast-forward gating and pad-dismissable error dialogs** (section 3.4): owner-visible dev-menu and fatal-error behaviour; the lead decides.
+- **`launch.sh` disc picker in Game Mode**: the script is pinned (`tools/package_legion.sh` must not change). Proposal for the next package revision: when
+  Gamescope is detected, skip the picker and show the existing message, relying on the launcher to pass `BFM_DISC`.
+- **Hiding the cursor in fullscreen**: unverifiable here and Gamescope may already hide an idle cursor.
 
 ## 7. Host evidence recorded during the audit [H]
 
@@ -226,9 +305,71 @@ dummy driver, SteamDeck=1 : has_osk=0
   `DEV_MENU_ENHANCE_PASS`, `DEV_MENU_BRIDGE_PASS`, `DEV_MENU_PASS` (3 PASS lines).
 - `pytest tests/test_bfm_plat.py`: 37 passed, 1 skipped in 41.57 s.
 
+### 7.4 Live present geometry (opt-in probe, private Xvfb)
+
+`tests/gpu_present_fit_probe.c` samples pixels from inside the present (the overlay callback runs after the blit and before the swap) on a real PsyCross GL
+context with all-white VRAM (llvmpipe, Mesa 26.0.8). Run as `MUSASHI_PRESENT_FIT_PROBE=1 xvfb-run -a -s "-screen 0 WxHx24" musashi_gpu_present_fit_probe`.
+Built by hand with the same compile flags and libraries as the CMake target (the CMake build of that one target was queued behind other helpers' heavy jobs;
+CMake generated the target and the `gpu_present_fit_live` ctest entry, and the heavy-slot build of `musashi_native_boot` passed, section 7.5).
+
+```
+1280x800  : fullscreen 1280x800: image 1067x800 at 106,0, bars black   PRESENT FIT OBSERVED ... rc=0
+1280x1024 : fullscreen 1280x1024: image 1280x960 at 0,32, bars black   PRESENT FIT OBSERVED ... rc=0
+1920x1080 : fullscreen 1920x1080: image 1440x1080 at 240,0, bars black PRESENT FIT OBSERVED ... rc=0
+1280x960  : 4:3 screen, only the windowed stretch was checked          rc=0
+no opt-in : skipped: opt-in probe ...                                  rc=77
+fit disabled in a scratch copy of gpu_psycross.c: FAIL black(0)&&black(1)&&black(2)&&black(3)   rc=1
+```
+
+Limits: Xvfb has no window manager, so SDL takes its legacy fullscreen path (an override-redirect window), not the EWMH path Gamescope uses. The window
+starts at least screen-sized because under Xvfb the GL framebuffer does not grow when a window does (found while writing the probe: pixels beyond the original
+1280x960 stayed unreadable after hundreds of presents). Nothing here is evidence about Gamescope.
+
+### 7.5 Builds and tests on the branch head
+
+- `heavy_slot.sh nice -n 10 cmake --build /tmp/bfm-qol-h1-build --target musashi_native_boot musashi_gpu_psycross_probe -j3` (RelWithDebInfo, gcc 15.2): rc 0, no
+  warning from the changed code (the warnings present are the existing disc_media, bfm_psyq_libgte and OpenSSL SHA256 ones). `musashi_native_boot` was **built, not run**:
+  `host_window_apply_mode` and the log lines have not executed in a real boot (that needs the disc), only their pure logic and the present geometry are exercised.
+- Existing live probe `musashi_gpu_psycross_probe` under `xvfb-run -s "-screen 0 1280x1024x24"`: rc 0, `GPU BACKEND OBSERVED: ... display-on accepted`.
+- `gcc -std=gnu99 -Wall -Wextra -Werror -I pc_port/include tests/dev_menu_probe.c pc_port/dev_menu.c`: prints `DEV_MENU_ENHANCE_PASS`, `DEV_MENU_BRIDGE_PASS`, `DEV_MENU_PASS` (3 PASS lines).
+- `pytest tests/test_bfm_plat.py`: 37 passed, 1 skipped in 28.14 s (baseline before the change: 37 passed, 1 skipped in 41.57 s).
+- `pytest tests/test_host_chord.py tests/test_host_session.py tests/test_handheld_gate_audit.py`: 10 passed in 1.47 s. `tests/host_session_probe.c` also builds and passes with clang 21.1.8 under `-std=c99 -pedantic -Werror`.
+- Mutation checks on scratch copies: six tripwire mutations (launch.sh exports `MUSASHI_INPUT`, a text-input call in native_boot, `plat_start` no longer null, `plat_input_attach` un-gated, a
+  `bfm_plat_frame_begin` call, a password mention) each fail exactly the intended test; eight helper mutations (SteamDeck alone, config over env, no horizontal fit, no vertical fit,
+  no centring, round-down, override ignored, case-sensitive match) each fail the probe.
+
+### 7.6 Merge check against the other lanes (read only, `git merge-tree`)
+
+`git merge-tree $(git merge-base claude/r49-enh windows-r49-enh) claude/qol-h1 windows-r49-enh`: **no conflict markers**; `CMakeLists.txt`, `mips_formatter.c` and `native_boot.c` are changed on both
+sides and auto-merge. The same check against `claude/r50-native-main0015` and `claude/enh-g2` is clean.
+
 ## 8. Device-only items and what the first device run should capture
 
-See section 9 once the HOST_SESSION line exists. Until then: record `~/.local/state/bfm-port/last-run.log` and screenshots from the Game Mode session.
+Keep `~/.local/state/bfm-port/last-run.log` from the Game Mode session with the package sha256, plus screenshots. Record the device identity at test
+time: the gate names the owner's Alienware/Bazzite, while the launcher's 0.9.278 note names Legion Go 2 as its acceptance target and says the exact
+hardware, OS, Game Mode, Gamescope, controller and Steam Input identity is unverified.
+
+**Check 1 (controller).** Pad drives the title, the game's menus and a room with no remap or keyboard: D-pad and stick, A/B/X/Y, shoulders, triggers,
+Start, Select; the Port Dev Menu opens with Back+Start and moves with D-pad and A/B. Log lines to keep: `GameController attached/chosen`,
+`HOST_INPUT_DEVICE`, `controller ignore list`. Watch for accidental fast-forward from a stick click and for the Start/Back arbitration feel (3.3).
+
+**Check 2 (window).** `HOST_SESSION` should read `gamescope=1 because=<variable>` and `window=fullscreen_desktop reason=gamescope`; `HOST_WINDOW` should read
+`fullscreen=1` with `window` and `drawable` equal to the output size and `bars=1` unless the output is 4:3. Look at the screen: no border, no white band, the
+image 4:3 centred with black bars, no flash of a smaller window at start, the dev menu legible. If `gamescope=0` on the device, record `steamdeck`,
+`steamgamepadui`, `video_driver` from the same line and the environment (`XDG_CURRENT_DESKTOP`, `GAMESCOPE_WAYLAND_DISPLAY`): the detection rule then needs
+the variable that session really sets (`BFM_GAMESCOPE=1` forces it meanwhile). If the window misbehaves, retest with `BFM_FULLSCREEN=0`.
+
+**Check 3 (text entry).** No text prompt anywhere in the game, the Port Dev Menu or its Enhancements page; the `launch.sh` disc picker never appears (the disc
+is found without it); record `HOST_SESSION osk_support=` (1 only when SDL would open Steam's keyboard in that session: `SteamDeck=1` on the x11 driver).
+A dialog from `say()` or `user_error` appearing at all is itself a finding.
+
+**A stale config can veto Gamescope.** If the device's `~/.config/bfm-port/config.ini` already holds `[video] fullscreen = 0` (for example from toggling the
+DISPLAY row in an earlier test build), the explicit config wins: `HOST_SESSION` then reads `reason=config video.fullscreen=0`, the window stays windowed, and that
+is the precedence working, not a detection failure. `BFM_FULLSCREEN` beats the config too.
+
+**Before shipping (lead's side).** `musashi_native_boot` was built but never run on this branch, so `host_window_apply_mode`, `HOST_SESSION` and `HOST_WINDOW` have not
+executed in a real boot. On integration the first route or save leg's log should show `HOST_SESSION gamescope=0 ... window=windowed reason=default` with route and save
+identity unchanged; confirm the gate log parsers ignore the two new lines; one Xvfb leg with `BFM_GAMESCOPE=1` would exercise the fullscreen path end to end for the cost of one leg.
 
 ## 9. Gate record skeleton (all NOT RUN until the device session)
 
