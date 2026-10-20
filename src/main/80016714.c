@@ -10,12 +10,16 @@
 
 /* Decompiled from retail and verified byte-exact with the identified
  * gcc-2.7.2-psx -O1 build. The separate word counter preserves the retail
- * use of v1 while the original byte count remains in a1 for the tail. */
+ * use of v1 while the original byte count remains in a1 for the tail.
+ * Returns -1: the loop-end constant is left in v0 on every path, and the
+ * callers (func_8012C218 and the table dispatchers that return its result)
+ * read it (R46L4 void-table ABI). */
 #ifdef MUSASHI_NATIVE_MEMSET_BINDING
-void func_80016714_native(u8 *arg0, s32 arg1) {
+s32 func_80016714_native(u8 *arg0, s32 arg1) {
 #else
-void func_80016714(s8 *arg0, s32 arg1) {
+s32 func_80016714(s8 *arg0, s32 arg1) {
 #endif
+    s32 var_end;
 #ifdef MUSASHI_NATIVE_MEMSET_BINDING
     uintptr_t var_address;
     s32 var_word_count;
@@ -25,12 +29,13 @@ void func_80016714(s8 *arg0, s32 arg1) {
 
     if (arg1 < 4) {
         arg1--;
-        if (arg1 != -1) {
+        var_end = -1;
+        if (arg1 != var_end) {
             do {
                 *arg0 = 0;
                 arg1--;
                 arg0++;
-            } while (arg1 != -1);
+            } while (arg1 != var_end);
         }
     } else {
 #ifdef MUSASHI_NATIVE_MEMSET_BINDING
@@ -60,10 +65,12 @@ void func_80016714(s8 *arg0, s32 arg1) {
         }
 #ifdef MUSASHI_NATIVE_MEMSET_BINDING
         var_word_count = (arg1 >> 2) - 1;
-        if (var_word_count != -1) {
+        var_end = -1;
+        if (var_word_count != var_end) {
 #else
         var_v1 = (arg1 >> 2) - 1;
-        if (var_v1 != -1) {
+        var_end = -1;
+        if (var_v1 != var_end) {
 #endif
             do {
                 *(u32 *)arg0 = 0;
@@ -74,18 +81,20 @@ void func_80016714(s8 *arg0, s32 arg1) {
 #endif
                 arg0 += 4;
 #ifdef MUSASHI_NATIVE_MEMSET_BINDING
-            } while (var_word_count != -1);
+            } while (var_word_count != var_end);
 #else
-            } while (var_v1 != -1);
+            } while (var_v1 != var_end);
 #endif
         }
         arg1 = (arg1 & 3) - 1;
-        if (arg1 != -1) {
+        var_end = -1;
+        if (arg1 != var_end) {
             do {
                 *arg0 = 0;
                 arg1--;
                 arg0++;
-            } while (arg1 != -1);
+            } while (arg1 != var_end);
         }
     }
+    return var_end;
 }

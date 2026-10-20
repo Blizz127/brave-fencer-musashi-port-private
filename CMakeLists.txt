@@ -370,6 +370,12 @@ if(MUSASHI_BUILD_PC_PORT)
     target_link_libraries(musashi_event_registration_cpu_probe PRIVATE musashi_pc_port)
     add_test(NAME event_registration_source_cpu COMMAND musashi_event_registration_cpu_probe)
 
+    add_executable(musashi_environment_clear_v0_probe tests/environment_clear_v0_probe.c)
+    target_compile_features(musashi_environment_clear_v0_probe PRIVATE c_std_99)
+    target_include_directories(musashi_environment_clear_v0_probe PRIVATE "${MUSASHI_GENERATED_DIR}")
+    target_link_libraries(musashi_environment_clear_v0_probe PRIVATE musashi_pc_port)
+    add_test(NAME environment_clear_v0 COMMAND musashi_environment_clear_v0_probe)
+
     add_executable(musashi_dev_menu_probe tests/dev_menu_probe.c pc_port/dev_menu.c)
     target_compile_features(musashi_dev_menu_probe PRIVATE c_std_99)
     target_include_directories(musashi_dev_menu_probe PRIVATE pc_port/include)
@@ -746,6 +752,16 @@ if(MUSASHI_BUILD_PC_PORT)
             COMMAND musashi_native_lane_targeted_probe
                     ${CMAKE_CURRENT_SOURCE_DIR}/extracted/disc/files/SLUS_007.26)
         set_tests_properties(native_lane_targeted_differential PROPERTIES SKIP_RETURN_CODE 77)
+        # func_80016714 leaves retail's v0 through the generated lane wrapper, the
+        # startup loop, the host intrinsic and the generated direct call.
+        add_executable(musashi_native_lane_env_clear_probe tests/native_lane_env_clear_probe.c)
+        target_compile_features(musashi_native_lane_env_clear_probe PRIVATE c_std_99)
+        target_include_directories(musashi_native_lane_env_clear_probe PRIVATE "${MUSASHI_GENERATED_DIR}")
+        target_link_libraries(musashi_native_lane_env_clear_probe PRIVATE musashi_native_lane)
+        add_test(NAME native_lane_environment_clear
+            COMMAND musashi_native_lane_env_clear_probe
+                    ${CMAKE_CURRENT_SOURCE_DIR}/extracted/disc/files/SLUS_007.26)
+        set_tests_properties(native_lane_environment_clear PROPERTIES SKIP_RETURN_CODE 77)
         # A host stop inside a GTE load delay is a stop, not a refusal (fb8c).
         add_executable(musashi_native_lane_host_stop_probe tests/native_lane_host_stop_probe.c)
         target_compile_features(musashi_native_lane_host_stop_probe PRIVATE c_std_99)
