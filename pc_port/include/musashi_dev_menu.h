@@ -95,7 +95,7 @@ typedef struct MusashiDevMenuEnhancements {
     unsigned scale;     /* gl internal resolution 1..8 (1 native; the menu cycles 1..4) */
     int dither;         /* -1 auto, 0 off, 1 on (gl renderer) */
     int vsync;          /* -1 default (the driver's interval), 0 off, 1 on (gl renderer) */
-    int fullscreen;     /* 1 borderless desktop fullscreen (gl renderer); 0 leaves the window */
+    int fullscreen;     /* 1 borderless desktop fullscreen, 0 window (both renderers); the host seeds the mode in effect */
     int present_integer; /* 1 image at whole multiples of the display height, 0 fit (gl renderer) */
 } MusashiDevMenuEnhancements;
 enum { MUSASHI_DEV_ENH_RENDERER = 1u, MUSASHI_DEV_ENH_SCALE = 2u, MUSASHI_DEV_ENH_DITHER = 4u,

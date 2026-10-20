@@ -28,12 +28,16 @@ Facts that shape every feature below:
 - **Only some config keys reach the live game (enhancements G1/G2).**
   `native_boot.c:enhancements_from_file` reads `config.ini` at startup:
   `[video] gpu = bfm_plat` with `[backends] renderer = gl` selects the gl
-  bridge, and `internal_scale` and `dither` reach it. On gl only, three
-  keys are applied after the attach when the file sets them:
-  - `vsync = 0|1` sets the swap interval. Absent, the interval is left as
-    it is; see frame pacing in 3.2.
-  - `fullscreen = 1` gives borderless desktop fullscreen.
-  - `present = integer` places the image at whole multiples of the display
+  bridge, and `internal_scale` and `dither` reach it. Three more keys act
+  only when the file sets them:
+  - `vsync = 0|1` (gl only) sets the swap interval. Absent, the interval is
+    left as it is; see frame pacing in 3.2.
+  - `fullscreen = 0|1` (both renderers, r50) decides the window mode in
+    `host_window_apply_mode`: 1 borderless desktop fullscreen, 0 a window.
+    Absent, Steam Game Mode (Gamescope) gets fullscreen and a desktop
+    session keeps the window; `BFM_FULLSCREEN` / `--fullscreen` /
+    `--windowed` win over the file (docs/HANDHELD-AUDIT-r49e.md).
+  - `present = integer` (gl only) places the image at whole multiples of the display
     height (`bfm_plat_present_viewport`). This is a text key the typed
     parser keeps, so `bfm_plat_config_save_file` drops it.
 
@@ -44,12 +48,13 @@ Facts that shape every feature below:
   as accepted with no effect.
 - **Enhancements page.** `dev_menu.c` has ROOT / WARP / FINISH AREA /
   CHEATS / OPTIONS / ENHANCEMENTS. Enhancements holds these rows; every row
-  but RENDERER is gl only:
+  but RENDERER and DISPLAY is gl only:
   - RENDERER (ORIGINAL / GL);
   - RESOLUTION (NATIVE..4X);
   - DITHER (AUTO/OFF/ON);
   - VSYNC (DEFAULT/ON/OFF; DEFAULT is the absent key);
-  - DISPLAY (WINDOW/FULLSCREEN);
+  - DISPLAY (WINDOW/FULLSCREEN; it shows the mode in effect, Game Mode's
+    automatic fullscreen included);
   - PRESENT (FIT/INTEGER).
 
   Each change is written to `config.ini` one key at a time
