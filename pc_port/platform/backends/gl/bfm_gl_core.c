@@ -250,6 +250,16 @@ int bfm_gl_dither5(int c8, int x, int y) {
     return c >> 3;
 }
 
+/* ---- MSAA ---------------------------------------------------------------- */
+
+int bfm_gl_msaa_effective(int requested, int max_samples) {
+    int n = requested < max_samples ? requested : max_samples, p = 2;
+    if (n < 2) return 0;               /* off, "1x", or a GPU without multisampling */
+    if (n > 16) n = 16;
+    while (p * 2 <= n) p *= 2;         /* the largest of 2, 4, 8, 16 that fits */
+    return p;
+}
+
 /* ---- HD replacements ----------------------------------------------------- */
 
 static int rect_eq(const BfmPlatRect *a, const BfmPlatRect *b) {

@@ -201,6 +201,15 @@ static void test_dither(void) {
     CHECK(bfm_gl_dither5(104, 6, 5) == bfm_gl_dither5(104, 2, 1));  /* 4x4 tile */
 }
 
+static void test_msaa_effective(void) {
+    static const int t[][3] = {   /* requested, GPU max, expected */
+        {0, 8, 0}, {-3, 8, 0}, {1, 8, 0}, {2, 8, 2}, {3, 8, 2}, {4, 8, 4}, {5, 8, 4}, {8, 8, 8},
+        {8, 4, 4}, {8, 6, 4}, {4, 2, 2}, {4, 1, 0}, {4, 0, 0}, {2, 3, 2}, {16, 16, 16}, {64, 64, 16}};
+    size_t i;
+    for (i = 0; i < sizeof t / sizeof t[0]; i++)
+        CHECK(bfm_gl_msaa_effective(t[i][0], t[i][1]) == t[i][2]);
+}
+
 static void test_vram(void) {
     static uint16_t in[64], out[64];
     BfmPlatRect r = R(100, 200, 8, 8), row = R(10, 0, 8, 1);
@@ -652,6 +661,7 @@ static int run_core(void) {
     test_modulate();
     test_blend();
     test_dither();
+    test_msaa_effective();
     test_vram();
     test_rgb24();
     test_batch();

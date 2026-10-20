@@ -115,6 +115,15 @@ extern const int8_t bfm_gl_dither_matrix[4][4];
 /* 8-bit channel at native pixel (x, y) -> dithered, truncated to 5 bits */
 int bfm_gl_dither5(int c8, int x, int y);
 
+/* ---- MSAA ---- */
+/* The sample count to ask the GPU for: requested (video.msaa) clamped to
+ * max_samples (the smaller of GL_MAX_SAMPLES and the multisample-texture
+ * limit) and rounded down to 2, 4, 8 or 16. 0 = off: requested < 2, or a
+ * GPU that supports less than 2. The driver may still allocate more than it
+ * is asked for (llvmpipe rounds 2 up to 4), so the executor reports what the
+ * framebuffer really holds (bfm_gl_exec_msaa). */
+int bfm_gl_msaa_effective(int requested, int max_samples);
+
 /* ---- HD replacements ---- */
 #define BFM_GL_MAX_REPLACEMENTS 256
 typedef struct BfmGlReplacement {
