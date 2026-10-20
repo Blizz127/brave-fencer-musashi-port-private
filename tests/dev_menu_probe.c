@@ -370,7 +370,7 @@ int main(void) {
         musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
         assert(strcmp(highlighted(), "  VSYNC: DEFAULT (GL ONLY)") == 0);
         musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
-        assert(strcmp(highlighted(), "  DISPLAY: WINDOW (GL ONLY)") == 0);
+        assert(strcmp(highlighted(), "  DISPLAY: WINDOW") == 0);
         musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
         assert(strcmp(highlighted(), "  PRESENT: FIT (GL ONLY)") == 0);
         for (i = 0; i < 1000; ++i) musashi_dev_menu_vblank(1, 0x000b, 9, 1);
@@ -450,7 +450,7 @@ int main(void) {
         musashi_dev_menu_set_enhancements(&seed);
         assert(strcmp(highlighted(), "  VSYNC: DEFAULT (GL ONLY)") == 0);
         musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
-        assert(strcmp(highlighted(), "  DISPLAY: WINDOW (GL ONLY)") == 0);
+        assert(strcmp(highlighted(), "  DISPLAY: WINDOW") == 0);
         musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
         assert(strcmp(highlighted(), "  PRESENT: FIT (GL ONLY)") == 0);
         seed.fullscreen = 1;
@@ -458,7 +458,7 @@ int main(void) {
         musashi_dev_menu_set_enhancements(&seed);
         assert(strcmp(highlighted(), "  PRESENT: INTEGER (GL ONLY)") == 0);
         musashi_dev_menu_keys(MUSASHI_DEV_KEY_UP, 0);
-        assert(strcmp(highlighted(), "  DISPLAY: FULLSCREEN (GL ONLY)") == 0);
+        assert(strcmp(highlighted(), "  DISPLAY: FULLSCREEN") == 0);
         assert(musashi_dev_menu_take_enhancements(&got) == 0);
         assert(writes == 0);
     }

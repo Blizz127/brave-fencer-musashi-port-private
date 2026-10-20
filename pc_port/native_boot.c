@@ -5374,12 +5374,13 @@ static int plat_reg_read(void *user, unsigned reg, uint32_t *out) {
  * together with [backends] renderer = gl selects the gl renderer (any other
  * renderer name leaves the cpu path), and [video] internal_scale and dither
  * reach it. MUSASHI_GPU / MUSASHI_RENDERER, when set, win over the file.
- * [video] vsync and fullscreen reach the gl renderer only when the file
- * sets them (the parser's default vsync = 1 does not count): vsync = 0 or 1
- * sets the swap interval, fullscreen = 1 makes the window borderless
- * fullscreen; without them the borrowed PsyCross swap interval (the
- * driver's default: PsyCross only sets it in PsyX_BeginScene, which the
- * bridge never calls) and window are left alone. [video] present = integer
+ * [video] vsync reaches the gl renderer only when the file sets it (the
+ * parser's default vsync = 1 does not count): vsync = 0 or 1 sets the swap
+ * interval; without it the borrowed PsyCross swap interval (the driver's
+ * default: PsyCross only sets it in PsyX_BeginScene, which the bridge never
+ * calls) is left alone. [video] fullscreen decides the window mode for both
+ * renderers in host_window_apply_mode (with BFM_FULLSCREEN and Gamescope).
+ * [video] present = integer
  * (a key the typed parser keeps as text) shows the gl image at whole
  * multiples of the display height; fit, absent or any other value fits it.
  * Without those keys startup is unchanged: cpu rasteriser, scale 1. Menu

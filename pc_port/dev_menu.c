@@ -734,7 +734,7 @@ size_t musashi_dev_menu_text(const char **lines, size_t max, int *highlight, int
             else line(&n, "  RESOLUTION: %uX%s", enh_scale(), gl_only);
             line(&n, "  DITHER: %s%s", enh_dither(), gl_only);
             line(&n, "  VSYNC: %s%s", enh_vsync(), gl_only);
-            line(&n, "  DISPLAY: %s%s", enh_display(), gl_only);
+            line(&n, "  DISPLAY: %s", enh_display());   /* both renderers (host_window_apply_mode) */
             line(&n, "  PRESENT: %s%s", enh_present(), gl_only);
             line(&n, "  BACK");
         } else {
