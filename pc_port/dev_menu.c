@@ -49,6 +49,7 @@ static const struct { uint32_t address; unsigned width; } kExitGuards[] = {
     { 0x80074780u, 4 }, { 0x800760c8u, 4 }, { 0x80114e70u, 2 }, { 0x80075838u, 4 }
 };
 enum { WARP_WAIT_LIMIT = 600, WARP_ARRIVE_LIMIT = 3600 };
+enum { RENDERER_NOTICE_VBLANKS = 600 };   /* the closed-menu renderer notice, about 10 s */
 
 enum { PAGE_ROOT, PAGE_WARP, PAGE_FINISH, PAGE_CHEATS, PAGE_OPTIONS, PAGE_ENHANCE };
 enum { SCRIPT_MAX = 64, LINES_MAX = 24, LINE_W = 56 };
@@ -141,6 +142,7 @@ static struct {
     char toast[LINE_W];
     MusashiDevMenuEnhancements enh;   /* host-seeded, persisted by the host */
     unsigned enh_changed;             /* MUSASHI_DEV_ENH_* not yet taken */
+    int renderer_failed;              /* the requested renderer refused this launch */
     char lines[LINES_MAX][LINE_W];
 } M;
 
@@ -248,6 +250,13 @@ static const char *enh_widescreen(void) {
 static const char *enh_msaa(void) {
     return M.enh.msaa == 2 ? "2X" : M.enh.msaa == 4 ? "4X" : M.enh.msaa == 8 ? "8X" : "OFF";
 }
+/* Toast suffix for the GL-only rows: with RENDERER: ORIGINAL a change is saved
+ * but does nothing until the renderer is GL too. The longest toast,
+ * "WIDESCREEN: 16:10 HOR+ (NEXT LAUNCH; SET RENDERER: GL)", is 54 characters
+ * (LINE_W - 2). */
+static const char *enh_when(void) {
+    return M.enh.renderer_gl ? "(NEXT LAUNCH)" : "(NEXT LAUNCH; SET RENDERER: GL)";
+}
 
 /* Enhancements rows cycle a value the host persists for the next launch;
  * none of them reads or writes guest memory or counts as a cheat. */
@@ -259,17 +268,17 @@ static void enhance_select(void) {
     } else if (M.selection == 1) {
         M.enh.scale = enh_scale() >= 4u ? 1u : enh_scale() + 1u;
         M.enh_changed |= MUSASHI_DEV_ENH_SCALE;
-        snprintf(M.toast, sizeof M.toast, "RESOLUTION: %uX (NEXT LAUNCH)", M.enh.scale);
+        snprintf(M.toast, sizeof M.toast, "RESOLUTION: %uX %s", M.enh.scale, enh_when());
     } else if (M.selection == 2) {
         M.enh.dither = M.enh.dither < 0 ? 0 : M.enh.dither == 0 ? 1 : -1;
         M.enh_changed |= MUSASHI_DEV_ENH_DITHER;
-        snprintf(M.toast, sizeof M.toast, "DITHER: %s (NEXT LAUNCH)", enh_dither());
+        snprintf(M.toast, sizeof M.toast, "DITHER: %s %s", enh_dither(), enh_when());
     } else if (M.selection == 3) {
         /* DEFAULT (no key: the driver's interval) -> ON -> OFF -> ON; config.ini
          * holds 0 or 1 only, so DEFAULT comes back by deleting the key */
         M.enh.vsync = M.enh.vsync == 1 ? 0 : 1;
         M.enh_changed |= MUSASHI_DEV_ENH_VSYNC;
-        snprintf(M.toast, sizeof M.toast, "VSYNC: %s (NEXT LAUNCH)", enh_vsync());
+        snprintf(M.toast, sizeof M.toast, "VSYNC: %s %s", enh_vsync(), enh_when());
     } else if (M.selection == 4) {
         M.enh.fullscreen = !M.enh.fullscreen;
         M.enh_changed |= MUSASHI_DEV_ENH_FULLSCREEN;
@@ -277,19 +286,19 @@ static void enhance_select(void) {
     } else if (M.selection == 5) {
         M.enh.present_integer = !M.enh.present_integer;
         M.enh_changed |= MUSASHI_DEV_ENH_PRESENT;
-        snprintf(M.toast, sizeof M.toast, "PRESENT: %s (NEXT LAUNCH)", enh_present());
+        snprintf(M.toast, sizeof M.toast, "PRESENT: %s %s", enh_present(), enh_when());
     } else if (M.selection == 6) {
         /* OFF -> 16:9 -> 16:10 -> OFF: hor+ only (the gl renderer shows more of
          * the scene at the sides; the game's projection is unchanged) */
         M.enh.widescreen = (M.enh.widescreen + 1) % 3;
         M.enh_changed |= MUSASHI_DEV_ENH_WIDESCREEN;
-        snprintf(M.toast, sizeof M.toast, "WIDESCREEN: %s (NEXT LAUNCH)", enh_widescreen());
+        snprintf(M.toast, sizeof M.toast, "WIDESCREEN: %s %s", enh_widescreen(), enh_when());
     } else {
         /* OFF -> 2X -> 4X -> 8X -> OFF: the gl renderer's MSAA; the host clamps
          * it to what the GPU supports when it starts */
         M.enh.msaa = M.enh.msaa == 0 ? 2 : M.enh.msaa == 2 ? 4 : M.enh.msaa == 4 ? 8 : 0;
         M.enh_changed |= MUSASHI_DEV_ENH_MSAA;
-        snprintf(M.toast, sizeof M.toast, "ANTI-ALIASING: %s (NEXT LAUNCH)", enh_msaa());
+        snprintf(M.toast, sizeof M.toast, "ANTI-ALIASING: %s %s", enh_msaa(), enh_when());
     }
     fprintf(stderr, "[DEV_MENU] enhancements renderer=%s scale=%u dither=%s vsync=%s display=%s present=%s widescreen=%s msaa=%s (next launch)\n",
             M.enh.renderer_gl ? "gl" : "original", enh_scale(),
@@ -675,6 +684,8 @@ void musashi_dev_menu_set_enhancements(const MusashiDevMenuEnhancements *enh) {
     M.enh_changed = 0;
 }
 
+void musashi_dev_menu_set_renderer_failed(int failed) { M.renderer_failed = failed != 0; }
+
 unsigned musashi_dev_menu_take_enhancements(MusashiDevMenuEnhancements *out) {
     unsigned changed = M.enh_changed;
     M.enh_changed = 0;
@@ -699,11 +710,13 @@ static const char *on(int v) { return v ? "ON" : "OFF"; }
 size_t musashi_dev_menu_text(const char **lines, size_t max, int *highlight, int *badge_only) {
     size_t n = 0, i, first = 0;
     int any = M.god || M.resource;
+    int notice = M.renderer_failed && M.vblanks < RENDERER_NOTICE_VBLANKS;
     if (highlight) *highlight = -1;
     if (badge_only) *badge_only = 0;
-    if (!M.enabled || (!M.open && !any && !M.help)) return 0;
+    if (!M.enabled || (!M.open && !any && !M.help && !notice)) return 0;
     if (!M.open && !M.help) {
-        line(&n, "CHEATS");
+        /* one short badge line: the renderer notice first, while it lasts */
+        line(&n, "%s", notice ? "RENDERER FAILED: USING ORIGINAL" : "CHEATS");
         if (badge_only) *badge_only = 1;
     } else if (M.help) {
         line(&n, "PORT DEV MENU - KEYS");
@@ -761,6 +774,10 @@ size_t musashi_dev_menu_text(const char **lines, size_t max, int *highlight, int
             line(&n, "  WIDESCREEN: %s%s", enh_widescreen(), gl_only);
             line(&n, "  ANTI-ALIASING: %s%s", enh_msaa(), gl_only);
             line(&n, "  BACK");
+            if (M.renderer_failed) {   /* after BACK: the row indices stay put */
+                line(&n, " ");
+                line(&n, "RENDERER FAILED TO START: USING ORIGINAL (SEE LOG)");
+            }
         } else {
             unsigned speed = kFfSpeeds[M.ff_speed_index];
             line(&n, "  FAST-FORWARD: %s", on(M.ff_toggle));

@@ -573,6 +573,65 @@ int main(void) {
     }
     puts("DEV_MENU_BRIDGE_PASS lines=14 marked=1 switch_back=1");
 
+    /* A renderer that refused to start (the host fell back to the cpu path):
+     * with the menu closed a notice shows for the first 600 guest VBlanks, ahead
+     * of the CHEATS badge, then goes; the Enhancements page says so under BACK
+     * without moving a row; set_enhancements keeps the flag; menu off, nothing.
+     * GL-only toasts say when RENDERER is still ORIGINAL. */
+    {
+        MusashiDevMenuEnhancements seed = { 1, 1u, -1, -1, 0, 0, 0, 0 };
+        size_t n;
+        start(NULL, NULL, NULL);
+        musashi_dev_menu_set_renderer_failed(1);
+        assert(musashi_dev_menu_text(lines, 24, &hl, &badge) == 0);
+        start("1", NULL, NULL);
+        musashi_dev_menu_set_enhancements(&seed);
+        assert(musashi_dev_menu_text(lines, 24, &hl, &badge) == 0);
+        musashi_dev_menu_set_renderer_failed(1);
+        musashi_dev_menu_set_enhancements(&seed);
+        assert(musashi_dev_menu_text(lines, 24, &hl, &badge) == 1 && badge &&
+               strcmp(lines[0], "RENDERER FAILED: USING ORIGINAL") == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_GOD, 0);
+        for (i = 0; i < 599; ++i) musashi_dev_menu_vblank(1, 0x000b, 9, 1);
+        assert(musashi_dev_menu_text(lines, 24, &hl, &badge) == 1 && badge &&
+               strcmp(lines[0], "RENDERER FAILED: USING ORIGINAL") == 0);
+        musashi_dev_menu_vblank(1, 0x000b, 9, 1);
+        assert(musashi_dev_menu_text(lines, 24, &hl, &badge) == 1 && badge &&
+               strcmp(lines[0], "CHEATS") == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_GOD, 0);
+        assert(musashi_dev_menu_text(lines, 24, &hl, &badge) == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_TOGGLE, 0);
+        for (i = 0; i < 4; ++i) musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
+        assert(strcmp(highlighted(), "  RENDERER: GL (EXPERIMENTAL)") == 0);
+        n = musashi_dev_menu_text(lines, 24, &hl, &badge);
+        assert(n == 16 && hl == 3 && !badge && strcmp(lines[11], "  BACK") == 0 &&
+               strcmp(lines[12], " ") == 0 &&
+               strcmp(lines[13], "RENDERER FAILED TO START: USING ORIGINAL (SEE LOG)") == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
+        n = musashi_dev_menu_text(lines, 24, &hl, &badge);
+        assert(strcmp(lines[n - 1], "RESOLUTION: 2X (NEXT LAUNCH)") == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_UP, 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
+        n = musashi_dev_menu_text(lines, 24, &hl, &badge);
+        assert(strcmp(lines[n - 1], "RENDERER: ORIGINAL (NEXT LAUNCH)") == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
+        n = musashi_dev_menu_text(lines, 24, &hl, &badge);
+        assert(strcmp(lines[n - 1], "RESOLUTION: 3X (NEXT LAUNCH; SET RENDERER: GL)") == 0);
+        for (i = 0; i < 5; ++i) musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
+        n = musashi_dev_menu_text(lines, 24, &hl, &badge);
+        assert(strcmp(highlighted(), "  WIDESCREEN: 16:10 HOR+ (GL ONLY)") == 0);
+        assert(strcmp(lines[n - 1], "WIDESCREEN: 16:10 HOR+ (NEXT LAUNCH; SET RENDERER: GL)") == 0);
+        musashi_dev_menu_set_renderer_failed(0);
+        n = musashi_dev_menu_text(lines, 24, &hl, &badge);
+        assert(n == 14 && strcmp(lines[11], "  BACK") == 0);
+    }
+    puts("DEV_MENU_RENDERER_FAILED_PASS notice_vblanks=600 page_line=1 toasts=gl_hint");
+
     puts("DEV_MENU_PASS off_inert=1 hard_disable=1 parity=1 cheats=game_state warps=29 folders=3 finish=0");
     return 0;
 }

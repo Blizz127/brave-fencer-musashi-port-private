@@ -78,6 +78,21 @@ Facts that shape every feature below:
   `tests/dev_menu_probe.c` is the parity model: the menu is browsed and
   changed with every cheat off, and zero guest bytes change over 1000
   VBlanks.
+  - With RENDERER: ORIGINAL, a change to a gl-only row is still saved, and
+    its toast says `(NEXT LAUNCH; SET RENDERER: GL)`.
+  - **A renderer that refuses to start is shown, not silent (added after r56;
+    not yet in a release).**
+    When the renderer asked for (gl from the file, or `MUSASHI_RENDERER`)
+    refuses, `gpu_bridge_attach` keeps the cpu path, as before. It logs the
+    unchanged `GPU_PATH bfm_plat refused` line, then `ENHANCEMENTS renderer
+    <name> failed to start`. The gl backend's own reason (`[gl] ...`) comes
+    before both. The dev menu then shows it in two places:
+    - with the menu closed, a `RENDERER FAILED: USING ORIGINAL` badge for
+      the first 600 guest VBlanks;
+    - on this page, a line under BACK.
+
+    This was motivated by an owner device report on r55: "none of the
+    enhancements seem to work". Its cause is not established.
 - **Retail logic is 30 Hz; the host presents 60 fields.** `main` waits
   `VSync(*(s32 *)(p + 0xA3E8))` = 2 fields. `epoch_video_edge`
   (`native_boot.c:2760-2830`) presents once per 60 Hz field, so every

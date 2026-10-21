@@ -5623,6 +5623,10 @@ static void gpu_bridge_planned_aspect(int *num, int *den) {
     }
 }
 
+/* 1 when the renderer asked for refused to start, so the cpu path draws: the dev
+ * menu shows it (a notice at startup, a line on the Enhancements page). */
+static int g_bridge_renderer_failed;
+
 static void gpu_bridge_attach(MusashiGpuController *gpu) {
     const char *name = gpu_bridge_renderer_name(), *selected = NULL;
     BfmPlatOutput out;
@@ -5657,6 +5661,10 @@ static void gpu_bridge_attach(MusashiGpuController *gpu) {
         strcmp(selected, name) != 0) {
         fprintf(stderr, "native_boot: GPU_PATH bfm_plat refused: renderer %s unavailable; cpu\n",
                 name);
+        fprintf(stderr, "native_boot: ENHANCEMENTS renderer %s failed to start: the original renderer "
+                        "is in use, and the options that need %s do nothing this launch (any reason "
+                        "the renderer gave is logged above)\n", name, name);
+        g_bridge_renderer_failed = 1;
         (void)bfm_plat_renderer_open("null", &out, NULL);
         if (g_window_aspect_num * 3 != g_window_aspect_den * 4) {
             /* the window was planned for gl's wide picture; the cpu present
@@ -5974,6 +5982,7 @@ int main(int argc, char **argv) {
     }
     g_enh_saved.fullscreen = g_window_fullscreen;   /* the DISPLAY row shows the mode in effect, Gamescope's included */
     musashi_dev_menu_set_enhancements(&g_enh_saved);   /* after init, which clears the menu */
+    musashi_dev_menu_set_renderer_failed(g_bridge_renderer_failed);
 #endif
     (void)present_frame(&boot);
     if (boot.media) {

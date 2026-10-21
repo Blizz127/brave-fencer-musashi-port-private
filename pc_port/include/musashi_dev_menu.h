@@ -105,6 +105,12 @@ enum { MUSASHI_DEV_ENH_RENDERER = 1u, MUSASHI_DEV_ENH_SCALE = 2u, MUSASHI_DEV_EN
        MUSASHI_DEV_ENH_WIDESCREEN = 64u, MUSASHI_DEV_ENH_MSAA = 128u };
 void musashi_dev_menu_set_enhancements(const MusashiDevMenuEnhancements *enh);
 unsigned musashi_dev_menu_take_enhancements(MusashiDevMenuEnhancements *out);
+/* 1 when the renderer this launch asked for (config.ini or MUSASHI_RENDERER)
+ * refused to start, so the original renderer draws instead. The Enhancements page
+ * then says so under BACK, and while the menu is closed a notice shows for the
+ * first 600 guest VBlanks (about 10 s). Call after musashi_dev_menu_init,
+ * which clears it; set_enhancements leaves it alone. */
+void musashi_dev_menu_set_renderer_failed(int failed);
 /* The menu as positioned text for presenters without the PsyCross overlay
  * hook (the bfm_plat bridge renderers): every line of musashi_dev_menu_text
  * at (8, 8 + 12 * i), the selected row's leading space replaced by '>'.
