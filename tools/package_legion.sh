@@ -218,11 +218,16 @@ completely (fast-forward and screenshot keys too). Warp lists only rooms
 verified on test machines, in area folders; Finish Area and Finish Current
 Step have no verified entries yet, so they are empty.
 Launch modes: the Banshee launcher shows PLAY ORIGINAL and PLAY ENHANCED
-(build-info.json). They choose the renderer only: --original the original
-renderer, --enhanced the GL renderer with your saved Enhancements settings.
+(build-info.json). On every start they choose the renderer only: --original
+the original renderer, --enhanced the GL renderer; every other Enhancements
+setting stays your saved one. So a RENDERER change in the dev menu only
+affects starts without either flag (./launch.sh, older launchers).
 The last of the two flags wins, so one in your own launch options overrides
 the button. MUSASHI_GPU, if set, overrides both; MUSASHI_RENDERER only
 replaces --enhanced's GL renderer (it does nothing with --original).
+If the GL renderer fails to start, the original one draws; with the dev
+menu on (the default) a RENDERER FAILED notice shows for about 10 s, and
+the log records the failure.
 TXT
 } > "$stage/README.txt"
 
