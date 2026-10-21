@@ -221,7 +221,8 @@ Launch modes: the Banshee launcher shows PLAY ORIGINAL and PLAY ENHANCED
 (build-info.json). They choose the renderer only: --original the original
 renderer, --enhanced the GL renderer with your saved Enhancements settings.
 The last of the two flags wins, so one in your own launch options overrides
-the button; MUSASHI_GPU or MUSASHI_RENDERER, if set, override both.
+the button. MUSASHI_GPU, if set, overrides both; MUSASHI_RENDERER only
+replaces --enhanced's GL renderer (it does nothing with --original).
 TXT
 } > "$stage/README.txt"
 

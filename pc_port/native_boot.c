@@ -5442,8 +5442,10 @@ static char g_enh_renderer[BFM_PLAT_NAME_MAX];
 static MusashiDevMenuEnhancements g_enh_saved = { 0, 1u, -1, -1, 0, 0, 0, 0 };
 /* Launcher launch mode (PLAY ORIGINAL / PLAY ENHANCED pass --original / --enhanced; the last of the two on the
  * command line wins). Process-local, never read from the environment. It chooses the RENDERER only, over
- * config.ini, in enhancements_from_file; every other Enhancements setting stays the file's. MUSASHI_GPU and
- * MUSASHI_RENDERER still win over it, and it never sets them: MUSASHI_GPU also gates the PsyQ device wrappers. */
+ * config.ini, in enhancements_from_file; every other Enhancements setting stays the file's. A set MUSASHI_GPU
+ * still wins over it. MUSASHI_RENDERER only names the bridge's renderer (gpu_bridge_renderer_name), so it can
+ * replace --enhanced's gl but never turns the bridge on under --original. The mode never sets either variable:
+ * MUSASHI_GPU also gates the PsyQ device wrappers. */
 enum { LAUNCH_MODE_DEFAULT, LAUNCH_MODE_ORIGINAL, LAUNCH_MODE_ENHANCED };
 static int g_launch_mode = LAUNCH_MODE_DEFAULT;
 
