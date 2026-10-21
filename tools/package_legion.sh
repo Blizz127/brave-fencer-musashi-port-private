@@ -217,8 +217,18 @@ an empty file ~/.config/bfm-port/dev-menu-off. BFM_CHEATS=0 disables it
 completely (fast-forward and screenshot keys too). Warp lists only rooms
 verified on test machines, in area folders; Finish Area and Finish Current
 Step have no verified entries yet, so they are empty.
+Launch modes: the Banshee launcher shows PLAY ORIGINAL and PLAY ENHANCED
+(build-info.json). They choose the renderer only: --original the original
+renderer, --enhanced the GL renderer with your saved Enhancements settings.
+The last of the two flags wins, so one in your own launch options overrides
+the button; MUSASHI_GPU or MUSASHI_RENDERER, if set, override both.
 TXT
 } > "$stage/README.txt"
+
+# Launcher launch modes: the Banshee launcher (0.9.230 and later) reads build-info.json from the install root and
+# offers PLAY ORIGINAL / PLAY ENHANCED, passing the chosen flag to launch.sh. The flag picks the renderer only.
+printf '%s\n' '{"launchModes": {"original": ["--original"], "enhanced": ["--enhanced"]}, "defaultLaunchMode": "original"}' \
+    > "$stage/build-info.json"
 
 python3 - "$stage" "$name" "$commit" "$branch" "$status" "$issues" <<'PY'
 import hashlib, json, os, sys

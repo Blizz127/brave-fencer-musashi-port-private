@@ -5440,6 +5440,12 @@ static int plat_reg_read(void *user, unsigned reg, uint32_t *out) {
  * changes are written back one key at a time and apply on the next launch. */
 static char g_enh_renderer[BFM_PLAT_NAME_MAX];
 static MusashiDevMenuEnhancements g_enh_saved = { 0, 1u, -1, -1, 0, 0, 0, 0 };
+/* Launcher launch mode (PLAY ORIGINAL / PLAY ENHANCED pass --original / --enhanced; the last of the two on the
+ * command line wins). Process-local, never read from the environment. It chooses the RENDERER only, over
+ * config.ini, in enhancements_from_file; every other Enhancements setting stays the file's. MUSASHI_GPU and
+ * MUSASHI_RENDERER still win over it, and it never sets them: MUSASHI_GPU also gates the PsyQ device wrappers. */
+enum { LAUNCH_MODE_DEFAULT, LAUNCH_MODE_ORIGINAL, LAUNCH_MODE_ENHANCED };
+static int g_launch_mode = LAUNCH_MODE_DEFAULT;
 
 static const char *enh_dither_name(int d) { return d < 0 ? "auto" : d ? "on" : "off"; }
 static const char *enh_vsync_name(int v) { return v < 0 ? "default" : v ? "on" : "off"; }
@@ -5456,9 +5462,23 @@ static void enhancements_from_file(BfmPlatConfig *cfg) {
     file.vsync = -1;   /* still -1 after the load: the file does not set it */
     file.fullscreen = -1;
     if (bfm_plat_config_default_path(path, sizeof path) != BFM_PLAT_OK ||   /* BFM_PLAT_OK is 0 */
-        bfm_plat_config_load_file(&file, path) != BFM_PLAT_OK)
+        bfm_plat_config_load_file(&file, path) != BFM_PLAT_OK) {
+        /* No config.ini: only --enhanced changes anything (the GL renderer, every other setting at its default);
+         * with no flag or with --original, startup is unchanged. */
+        if (g_launch_mode == LAUNCH_MODE_ENHANCED) {
+            g_enh_saved.renderer_gl = 1;
+            if (!(gpu && gpu[0])) {
+                cfg->gpu_path = BFM_GPU_BFM_PLAT;
+                snprintf(g_enh_renderer, sizeof g_enh_renderer, "gl");
+            }
+            fprintf(stderr, "native_boot: ENHANCEMENTS launch_mode=enhanced renderer=gl (no config.ini)%s\n",
+                    gpu && gpu[0] ? " (MUSASHI_GPU set: env wins)" : "");
+        }
         return;
+    }
     g_enh_saved.renderer_gl = file.gpu_path == BFM_GPU_BFM_PLAT && strcmp(file.renderer, "gl") == 0;
+    if (g_launch_mode != LAUNCH_MODE_DEFAULT)   /* the launch mode overrides the file's RENDERER choice only */
+        g_enh_saved.renderer_gl = g_launch_mode == LAUNCH_MODE_ENHANCED;
     g_enh_saved.scale = (unsigned)file.internal_scale;   /* 1..8, checked by the parser */
     g_enh_saved.dither = file.dither;
     g_enh_saved.vsync = file.vsync;   /* -1 unless the file sets 0 or 1 */
@@ -5476,14 +5496,17 @@ static void enhancements_from_file(BfmPlatConfig *cfg) {
         snprintf(g_enh_renderer, sizeof g_enh_renderer, "gl");
     }
     if (g_enh_saved.renderer_gl || file.internal_scale != 1 || file.dither != BFM_DITHER_AUTO ||
-        g_enh_saved.vsync >= 0 || g_enh_saved.fullscreen || g_enh_saved.present_integer || g_enh_saved.widescreen) {
+        g_enh_saved.vsync >= 0 || g_enh_saved.fullscreen || g_enh_saved.present_integer || g_enh_saved.widescreen ||
+        g_launch_mode != LAUNCH_MODE_DEFAULT) {
         char msaa[16] = "";   /* shown only when set: an absent key or 0 leaves this line exactly as it was */
+        const char *mode = g_launch_mode == LAUNCH_MODE_ENHANCED ? " launch_mode=enhanced"
+                         : g_launch_mode == LAUNCH_MODE_ORIGINAL ? " launch_mode=original" : "";   /* no flag: "" */
         if (file.msaa) snprintf(msaa, sizeof msaa, " msaa=%d", file.msaa);
-        fprintf(stderr, "native_boot: ENHANCEMENTS config renderer=%s scale=%d dither=%s vsync=%s fullscreen=%d present=%s widescreen=%s%s%s\n",
+        fprintf(stderr, "native_boot: ENHANCEMENTS config renderer=%s scale=%d dither=%s vsync=%s fullscreen=%d present=%s widescreen=%s%s%s%s\n",
                 g_enh_saved.renderer_gl ? "gl" : "original", file.internal_scale,
                 enh_dither_name(file.dither), enh_vsync_name(g_enh_saved.vsync), g_enh_saved.fullscreen,
                 g_enh_saved.present_integer ? "integer" : "fit", enh_widescreen_name(g_enh_saved.widescreen),
-                msaa,
+                msaa, mode,
                 g_enh_saved.renderer_gl && gpu && gpu[0] ? " (MUSASHI_GPU set: env wins)" : "");
     }
 }
@@ -5785,6 +5808,10 @@ int main(int argc, char **argv) {
             setenv("BFM_FULLSCREEN", "1", 1);
         } else if (strcmp(argv[i], "--windowed") == 0) {
             setenv("BFM_FULLSCREEN", "0", 1);
+        } else if (strcmp(argv[i], "--enhanced") == 0) {
+            g_launch_mode = LAUNCH_MODE_ENHANCED;   /* launcher PLAY ENHANCED: the GL renderer (see g_launch_mode) */
+        } else if (strcmp(argv[i], "--original") == 0) {
+            g_launch_mode = LAUNCH_MODE_ORIGINAL;   /* launcher PLAY ORIGINAL: the original renderer */
         } else if (strcmp(argv[i], "--disc") == 0 && i + 1 < argc) {
             disc_path = argv[++i];
         } else if (strcmp(argv[i], "--headless") == 0) {
