@@ -632,6 +632,57 @@ int main(void) {
     }
     puts("DEV_MENU_RENDERER_FAILED_PASS notice_vblanks=600 page_line=1 toasts=gl_hint");
 
+    /* The renderer that draws (the host's attach result) under BACK, beside the
+     * requested RENDERER row: the row's words for gl and original, other names in
+     * capitals; a RENDERER change leaves it alone; after the failure line when both
+     * are set; set_enhancements keeps it; init clears it; no closed-menu notice. */
+    {
+        MusashiDevMenuEnhancements seed = { 1, 1u, -1, -1, 0, 0, 0, 0 };
+        size_t n;
+        start("1", NULL, NULL);
+        musashi_dev_menu_set_enhancements(&seed);
+        musashi_dev_menu_set_renderer_in_use("original");
+        musashi_dev_menu_set_enhancements(&seed);
+        assert(musashi_dev_menu_text(lines, 24, &hl, &badge) == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_TOGGLE, 0);
+        for (i = 0; i < 4; ++i) musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
+        assert(strcmp(highlighted(), "  RENDERER: GL (EXPERIMENTAL)") == 0);
+        n = musashi_dev_menu_text(lines, 24, &hl, &badge);
+        assert(n == 16 && hl == 3 && !badge && strcmp(lines[11], "  BACK") == 0 &&
+               strcmp(lines[12], " ") == 0 && strcmp(lines[13], "IN USE NOW: ORIGINAL") == 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);   /* RENDERER GL -> ORIGINAL, for the next launch */
+        assert(strcmp(highlighted(), "  RENDERER: ORIGINAL") == 0);
+        n = musashi_dev_menu_text(lines, 24, &hl, &badge);
+        assert(n == 16 && strcmp(lines[13], "IN USE NOW: ORIGINAL") == 0 &&
+               strcmp(lines[n - 1], "RENDERER: ORIGINAL (NEXT LAUNCH)") == 0);
+        musashi_dev_menu_set_renderer_in_use("gl");
+        n = musashi_dev_menu_text(lines, 24, &hl, &badge);
+        assert(n == 16 && strcmp(lines[13], "IN USE NOW: GL (EXPERIMENTAL)") == 0);
+        musashi_dev_menu_set_renderer_in_use("psycross");
+        n = musashi_dev_menu_text(lines, 24, &hl, &badge);
+        assert(n == 16 && strcmp(lines[13], "IN USE NOW: PSYCROSS") == 0);
+        musashi_dev_menu_set_renderer_failed(1);
+        musashi_dev_menu_set_renderer_in_use("original");
+        n = musashi_dev_menu_text(lines, 24, &hl, &badge);
+        assert(n == 17 && strcmp(lines[11], "  BACK") == 0 && strcmp(lines[12], " ") == 0 &&
+               strcmp(lines[13], "RENDERER FAILED TO START: USING ORIGINAL (SEE LOG)") == 0 &&
+               strcmp(lines[14], "IN USE NOW: ORIGINAL") == 0);
+        musashi_dev_menu_set_renderer_failed(0);
+        musashi_dev_menu_set_renderer_in_use(NULL);
+        n = musashi_dev_menu_text(lines, 24, &hl, &badge);
+        assert(n == 14 && strcmp(lines[11], "  BACK") == 0);
+        musashi_dev_menu_set_renderer_in_use("original");
+        start("1", NULL, NULL);   /* init clears it */
+        musashi_dev_menu_set_enhancements(&seed);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_TOGGLE, 0);
+        for (i = 0; i < 4; ++i) musashi_dev_menu_keys(MUSASHI_DEV_KEY_DOWN, 0);
+        musashi_dev_menu_keys(MUSASHI_DEV_KEY_OK, 0);
+        n = musashi_dev_menu_text(lines, 24, &hl, &badge);
+        assert(n == 14 && strcmp(lines[11], "  BACK") == 0);
+    }
+    puts("DEV_MENU_RENDERER_IN_USE_PASS page_line=1 labels=3 toggle_keeps=1 with_failure=1 init_clears=1");
+
     puts("DEV_MENU_PASS off_inert=1 hard_disable=1 parity=1 cheats=game_state warps=29 folders=3 finish=0");
     return 0;
 }

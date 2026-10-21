@@ -143,6 +143,7 @@ static struct {
     MusashiDevMenuEnhancements enh;   /* host-seeded, persisted by the host */
     unsigned enh_changed;             /* MUSASHI_DEV_ENH_* not yet taken */
     int renderer_failed;              /* the requested renderer refused this launch */
+    char renderer_in_use[24];         /* the renderer that draws this launch (host); "" shows nothing */
     char lines[LINES_MAX][LINE_W];
 } M;
 
@@ -239,6 +240,20 @@ static unsigned page_rows(void) {
 static void mark_used(void) { M.used = 1; }
 
 static const char *enh_renderer(void) { return M.enh.renderer_gl ? "GL (EXPERIMENTAL)" : "ORIGINAL"; }
+/* IN USE NOW, the renderer that draws (from the host): the RENDERER row's words for
+ * gl and original, any other renderer's name in capitals. */
+static const char *enh_in_use(void) {
+    static char upper[sizeof M.renderer_in_use];
+    size_t i;
+    if (strcmp(M.renderer_in_use, "gl") == 0) return "GL (EXPERIMENTAL)";
+    if (strcmp(M.renderer_in_use, "original") == 0) return "ORIGINAL";
+    for (i = 0; M.renderer_in_use[i]; ++i) {
+        char c = M.renderer_in_use[i];
+        upper[i] = c >= 'a' && c <= 'z' ? (char)(c - 'a' + 'A') : c;
+    }
+    upper[i] = 0;
+    return upper;
+}
 static const char *enh_dither(void) { return M.enh.dither < 0 ? "AUTO" : M.enh.dither ? "ON" : "OFF"; }
 static unsigned enh_scale(void) { return M.enh.scale ? M.enh.scale : 1u; }
 static const char *enh_vsync(void) { return M.enh.vsync < 0 ? "DEFAULT" : M.enh.vsync ? "ON" : "OFF"; }
@@ -686,6 +701,10 @@ void musashi_dev_menu_set_enhancements(const MusashiDevMenuEnhancements *enh) {
 
 void musashi_dev_menu_set_renderer_failed(int failed) { M.renderer_failed = failed != 0; }
 
+void musashi_dev_menu_set_renderer_in_use(const char *renderer) {
+    snprintf(M.renderer_in_use, sizeof M.renderer_in_use, "%s", renderer ? renderer : "");
+}
+
 unsigned musashi_dev_menu_take_enhancements(MusashiDevMenuEnhancements *out) {
     unsigned changed = M.enh_changed;
     M.enh_changed = 0;
@@ -774,10 +793,9 @@ size_t musashi_dev_menu_text(const char **lines, size_t max, int *highlight, int
             line(&n, "  WIDESCREEN: %s%s", enh_widescreen(), gl_only);
             line(&n, "  ANTI-ALIASING: %s%s", enh_msaa(), gl_only);
             line(&n, "  BACK");
-            if (M.renderer_failed) {   /* after BACK: the row indices stay put */
-                line(&n, " ");
-                line(&n, "RENDERER FAILED TO START: USING ORIGINAL (SEE LOG)");
-            }
+            if (M.renderer_failed || M.renderer_in_use[0]) line(&n, " ");   /* after BACK: the row indices stay put */
+            if (M.renderer_failed) line(&n, "RENDERER FAILED TO START: USING ORIGINAL (SEE LOG)");
+            if (M.renderer_in_use[0]) line(&n, "IN USE NOW: %s", enh_in_use());
         } else {
             unsigned speed = kFfSpeeds[M.ff_speed_index];
             line(&n, "  FAST-FORWARD: %s", on(M.ff_toggle));

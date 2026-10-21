@@ -5651,6 +5651,10 @@ static void gpu_bridge_planned_aspect(int *num, int *den) {
 /* 1 when the renderer asked for refused to start, so the cpu path draws: the dev
  * menu shows it (a notice at startup, a line on the Enhancements page). */
 static int g_bridge_renderer_failed;
+/* The renderer that draws this launch, from gpu_bridge_attach's own result: "original"
+ * (the cpu path, also after a refusal) or the bfm_plat renderer that opened. The dev
+ * menu shows it beside the RENDERER row, which stays the requested setting. */
+static char g_renderer_in_use[BFM_PLAT_NAME_MAX] = "original";
 
 static void gpu_bridge_attach(MusashiGpuController *gpu) {
     const char *name = gpu_bridge_renderer_name(), *selected = NULL;
@@ -5736,6 +5740,7 @@ static void gpu_bridge_attach(MusashiGpuController *gpu) {
     gpu->tap_userdata = &g_gpu_bridge;
     gpu->raster_disabled = 1;
     g_gpu_bridge_on = 1;
+    snprintf(g_renderer_in_use, sizeof g_renderer_in_use, "%s", selected);
     fprintf(stderr, "native_boot: GPU_PATH bfm_plat renderer=%s\n", selected);
 }
 
@@ -6012,6 +6017,10 @@ int main(int argc, char **argv) {
     g_enh_saved.fullscreen = g_window_fullscreen;   /* the DISPLAY row shows the mode in effect, Gamescope's included */
     musashi_dev_menu_set_enhancements(&g_enh_saved);   /* after init, which clears the menu */
     musashi_dev_menu_set_renderer_failed(g_bridge_renderer_failed);
+    musashi_dev_menu_set_renderer_in_use(g_renderer_in_use);
+    if (g_launch_mode != LAUNCH_MODE_DEFAULT)   /* flagged starts only: a start without a flag logs as before */
+        fprintf(stderr, "native_boot: ENHANCEMENTS renderer in_use=%s requested=%s\n", g_renderer_in_use,
+                g_enh_saved.renderer_gl ? "gl" : "original");
 #endif
     (void)present_frame(&boot);
     if (boot.media) {

@@ -111,6 +111,13 @@ unsigned musashi_dev_menu_take_enhancements(MusashiDevMenuEnhancements *out);
  * first 600 guest VBlanks (about 10 s). Call after musashi_dev_menu_init,
  * which clears it; set_enhancements leaves it alone. */
 void musashi_dev_menu_set_renderer_failed(int failed);
+/* The renderer that draws this launch, as the host found it when it opened the
+ * renderer: "original" (the cpu path, also after a refusal), "gl", or another
+ * renderer's name; NULL or "" shows nothing. The Enhancements page shows it under
+ * BACK as IN USE NOW, beside the RENDERER row, which stays the requested setting
+ * (a RENDERER change applies on the next launch and leaves this line alone).
+ * Call after musashi_dev_menu_init, which clears it; set_enhancements leaves it alone. */
+void musashi_dev_menu_set_renderer_in_use(const char *renderer);
 /* The menu as positioned text for presenters without the PsyCross overlay
  * hook (the bfm_plat bridge renderers): every line of musashi_dev_menu_text
  * at (8, 8 + 12 * i), the selected row's leading space replaced by '>'.
