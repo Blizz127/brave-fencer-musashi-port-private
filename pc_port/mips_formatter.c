@@ -15461,7 +15461,7 @@ static MusashiResetGraphPrefixStatus run_startup_cpu_loop(
                 cpu->pc == 0x8003b954u || cpu->pc == 0x8003b280u ||
                 cpu->pc == 0x8002c984u || cpu->pc == 0x8002c98cu ||
                 cpu->pc == 0x80037d98u || cpu->pc == 0x8002cc00u ||
-                cpu->pc == 0x80034c24u || cpu->pc == 0x800430dcu ||
+                cpu->pc == 0x80034c24u || cpu->pc == 0x800430dcu || cpu->pc == 0x800243ecu ||
                 cpu->pc == 0x80043830u || cpu->pc == 0x80043938u ||
                 cpu->pc == 0x80034cd0u || cpu->pc == 0x8002cc34u ||
                 cpu->pc == 0x800101fcu || cpu->pc == 0x8001971cu ||

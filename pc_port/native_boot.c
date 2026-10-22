@@ -3706,6 +3706,15 @@ static int checkpoint_refuse(const void *continuation, const char *why) {
     return 0;
 }
 
+/* RENDER_ENTER: the first eight entries into the three render paths, then every 500th; one counter for all
+ * three (checkpoint logs 80024448 and 80026D64, observe_entry 800243EC). */
+static unsigned g_render_calls;
+static void log_render_enter(const NativeBoot *boot, uint32_t pc) {
+    if (g_render_calls < 8u || (g_render_calls % 500u) == 0u)
+        fprintf(stderr, "native_boot: RENDER_ENTER pc=%08x frame=%u n=%u\n", pc, boot->in_game_frames, g_render_calls);
+    g_render_calls++;
+}
+
 static int checkpoint(void *userdata, const void *continuation) {
     NativeBoot *boot = userdata;
     MusashiCpuContext context;
@@ -3791,13 +3800,9 @@ static int checkpoint(void *userdata, const void *continuation) {
          * rotation. All of them are wired to their retail words with admitted
          * COP2 sites, so the retail code now runs instead; the host versions
          * disagreed with it (func_80021174 always reported "visible"). */
-        if (raw_cpu[34] == 0x800243ECu || raw_cpu[34] == 0x80024448u || raw_cpu[34] == 0x80026D64u) {
-            static unsigned render_calls;
-            if (render_calls < 8u || (render_calls % 500u) == 0u)
-                fprintf(stderr, "native_boot: RENDER_ENTER pc=%08x frame=%u n=%u\n",
-                        raw_cpu[34], boot->in_game_frames, render_calls);
-            render_calls++;
-        }
+        /* 800243EC's RENDER_ENTER comes from observe_entry instead (an entry observer, so that function may run
+         * native); one counter keeps the n= sequence. */
+        if (raw_cpu[34] == 0x80024448u || raw_cpu[34] == 0x80026D64u) log_render_enter(boot, raw_cpu[34]);
     }
     devobs_host(boot, ((const uint32_t *)continuation)[34]);
     if (boot->continuation && boot->continuation != continuation) {
@@ -4184,6 +4189,10 @@ static void observe_entry(void *userdata, const MusashiEntryCpuSnapshot *cpu) {
     NativeBoot *boot = userdata;
     unsigned i;
     trace_cpu_state(cpu->pc, cpu->npc, cpu->hi, cpu->lo, cpu->r);
+    /* An entry observation fires as the interpreter reaches the entry, before the lane runs the body, so 800243EC
+     * keeps its log as a lane function. Its only callers (two JALs in 8001FC08) run interpreted; a native caller's
+     * direct call would skip it. */
+    if (cpu->pc == 0x800243ecu) log_render_enter(boot, cpu->pc);
     if (cpu->pc == 0x800cf104u && boot->opening_overlay_ready) {
         const char *preview=getenv("MUSASHI_PAUSE_AT_START_SCREEN");
         uint16_t state;
