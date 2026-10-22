@@ -989,31 +989,94 @@ def rewrite_indirect_calls(ir):
     return "\n".join(out) + "\n", icalls
 
 
+def ir_blocks(lines):
+    """[(name, lines)] of one function body, in order. The unlabeled entry
+    block is "%<entry>"; every other block starts at its "N:" line."""
+    blocks, name, cur = [], "%<entry>", []
+    for line in lines:
+        m = re.match(r"^([\w.$-]+):", line)
+        if m:
+            blocks.append((name, cur))
+            name, cur = "%" + m.group(1), [line]
+        else:
+            cur.append(line)
+    blocks.append((name, cur))
+    return blocks
+
+
 def check_polling_loops(ir):
     """A native call runs to completion without IRQ delivery. A loop that
     neither stores nor calls can only make progress through state an IRQ or
     device changes (a VSync counter, a DMA flag), so it could spin forever
     natively. Refuse any such loop; counting loops that also store or call
-    are unaffected."""
+    are unaffected.
+
+    Loops are found on the control-flow graph, not in the text layout. A back
+    edge goes to a block that dominates its source, and its body is that
+    natural loop: the blocks that reach the source without passing the
+    target. So a block laid out earlier on a forward path is no loop
+    (801379FC's `.preheader`), a call block laid out after the latch still
+    counts, a call outside the loop cannot hide a polling loop, and a nested
+    polling loop is judged on its own blocks. A retreating edge whose target
+    does not dominate it (an irreducible cycle) is judged on every block on a
+    path from its target to its source."""
     for header, lines in functions(ir):
-        labels = {}
-        for idx, line in enumerate(lines):
-            m = re.match(r"^([\w.$-]+):", line)
-            if m:
-                labels["%" + m.group(1)] = idx
-        # The entry block is unlabeled; numbered blocks still get "N:" lines.
-        for idx, line in enumerate(lines):
-            if not line.strip().startswith("br "):
-                continue
-            for target in re.findall(r"label (%[\w.$\"-]+)", line):
-                start = labels.get(target)
-                if start is None or start > idx:
-                    continue
-                body = lines[start: idx + 1]
-                if not any(re.search(r"\bstore\b", l) or
-                           (re.search(r"\bcall\b", l) and "@llvm." not in l) for l in body) \
-                        and not loop_walks_memory(body):
-                    raise Reject("irq", "loop with no store or call (polling)")
+        blocks = ir_blocks(lines)
+        names = [n for n, _ in blocks]
+        text = dict(blocks)
+        succ = {n: [s for s in re.findall(r"label (%[\w.$\"-]+)", "\n".join(b)) if s in text] for n, b in blocks}
+        pred = {n: [] for n in names}
+        for n in names:
+            for s in succ[n]:
+                pred[s].append(n)
+        entry = names[0]
+        dom = {n: set(names) for n in names}
+        dom[entry] = {entry}
+        changed = True
+        while changed:
+            changed = False
+            for n in names[1:]:
+                new = set.intersection(*(dom[q] for q in pred[n])) | {n} if pred[n] else {n}
+                if new != dom[n]:
+                    dom[n], changed = new, True
+        state, stack, retreating = {entry: 1}, [(entry, iter(succ[entry]))], []
+        while stack:
+            n, it = stack[-1]
+            for s in it:
+                if state.get(s) == 1:
+                    retreating.append((n, s))
+                elif s not in state:
+                    state[s] = 1
+                    stack.append((s, iter(succ[s])))
+                    break
+            else:
+                state[n] = 2
+                stack.pop()
+
+        def closure(start, edges):
+            seen, todo = set(), [start]
+            while todo:
+                n = todo.pop()
+                if n not in seen:
+                    seen.add(n)
+                    todo.extend(edges[n])
+            return seen
+
+        for src, head in retreating:
+            if head in dom[src]:
+                loop, todo = {head}, [src]
+                while todo:
+                    n = todo.pop()
+                    if n not in loop:
+                        loop.add(n)
+                        todo.extend(pred[n])
+            else:
+                loop = closure(head, succ) & closure(src, pred)
+            body = [l for n, b in blocks if n in loop for l in b]
+            if not any(re.search(r"\bstore\b", l) or
+                       (re.search(r"\bcall\b", l) and "@llvm." not in l) for l in body) \
+                    and not loop_walks_memory(body):
+                raise Reject("irq", "loop with no store or call (polling)")
 
 
 def lane_names(ir):

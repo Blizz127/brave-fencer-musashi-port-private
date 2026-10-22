@@ -103,6 +103,51 @@ class EmptyAsmTest(unittest.TestCase):
         self.assertEqual(g.strip_empty_asm('__asm__("mtc2 $1, $2");')[1], 0)
 
 
+class PollingLoopTest(unittest.TestCase):
+    """The irq rule follows the control-flow graph, not the text layout (801379FC)."""
+
+    def check(self, ir):
+        sys.path.insert(0, str(ROOT / "tools"))
+        import native_lane_gen as g
+        g.check_polling_loops(ir)
+
+    def refused(self, ir):
+        sys.path.insert(0, str(ROOT / "tools"))
+        import native_lane_gen as g
+        with self.assertRaises(g.Reject) as cm:
+            g.check_polling_loops(ir)
+        self.assertIn("irq", str(cm.exception.args))
+
+    def test_real_poll_refused(self):
+        self.refused("define void @f(ptr %p) {\n  br label %1\n1:\n  %v = load i32, ptr %p, align 4\n"
+                     "  %c = icmp eq i32 %v, 0\n  br i1 %c, label %1, label %2\n2:\n  ret void\n}\n")
+
+    def test_earlier_block_on_a_forward_path_is_no_loop(self):
+        # 801379FC: %2 branches to .preheader, laid out earlier but not on any cycle
+        self.check("define void @f(ptr %p, i1 %c) {\n  br i1 %c, label %pre, label %2\npre:\n  br label %3\n"
+                   "2:\n  %v = load i32, ptr %p, align 4\n  %d = icmp eq i32 %v, 0\n  br i1 %d, label %pre, label %3\n"
+                   "3:\n  ret void\n}\n")
+
+    def test_call_block_after_the_latch_counts(self):
+        self.check("declare void @g()\ndefine void @f(ptr %p) {\n  br label %h\nh:\n  %v = load i32, ptr %p, align 4\n"
+                   "  %z = icmp eq i32 %v, 0\n  br i1 %z, label %c, label %l\nl:\n  %w = load i32, ptr %p, align 4\n"
+                   "  %y = icmp eq i32 %w, 7\n  br i1 %y, label %h, label %x\nc:\n  call void @g()\n  br label %l\n"
+                   "x:\n  ret void\n}\n")
+
+    def test_nested_poll_inside_a_calling_loop_refused(self):
+        # outer loop calls g(); the inner loop spins on *p with no store or call of its own
+        self.refused("declare void @g()\ndefine void @f(ptr %p) {\n  br label %o\no:\n  call void @g()\n  br label %i\n"
+                     "i:\n  %v = load i32, ptr %p, align 4\n  %z = icmp eq i32 %v, 0\n  br i1 %z, label %i, label %e\n"
+                     "e:\n  %w = load i32, ptr %p, align 4\n  %y = icmp eq i32 %w, 9\n  br i1 %y, label %x, label %o\n"
+                     "x:\n  ret void\n}\n")
+
+    def test_call_outside_the_loop_cannot_hide_a_poll(self):
+        # the old text-range body (h .. h2) took in %side's call, which is not on the loop
+        self.refused("declare void @g()\ndefine void @f(ptr %p, i1 %k) {\n  br i1 %k, label %h, label %side\n"
+                     "h:\n  %v = load i32, ptr %p, align 4\n  %z = icmp eq i32 %v, 0\n  br i1 %z, label %h2, label %x\n"
+                     "side:\n  call void @g()\n  br label %x\nh2:\n  br label %h\nx:\n  ret void\n}\n")
+
+
 class NativeLaneSourceTest(unittest.TestCase):
     def test_formatter_consults_lane_before_fetch(self):
         source = (ROOT / "pc_port/mips_formatter.c").read_text()
