@@ -11,7 +11,7 @@
 void *func_80010A08();
 void func_80058EE4();
 void func_80017E8C();
-s32 func_8004958C();
+s32 func_8004958C(void *v0, s32 *v1, s32 *v2, s32 *sxy0, s32 *sxy1, s32 *sxy2, s32 *p, s32 *flag);
 void func_80018094();
 typedef struct {
     u8 pad[8]; s32 u8;
