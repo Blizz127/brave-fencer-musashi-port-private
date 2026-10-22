@@ -13,6 +13,15 @@ extern u8 D_80078EBF;
 
 extern u8 func_80029178(s32 flag);
 
+/* Declared s32 but returns no value: every path falls off the end. The one caller (801462CC) ignores v0
+ * and v1: it next calls func_8016F14C, which writes both at entry. Host builds return an explicit 0
+ * (the RETURN_NO_VALUE convention, docs/MATCHING.md on main). */
+#ifdef __mips__
+#define RETURN_NO_VALUE return
+#else
+#define RETURN_NO_VALUE return 0
+#endif
+
 s32 func_8014A59C(Obj8014A59C *obj)
 {
     s32 add;
@@ -32,4 +41,5 @@ s32 func_8014A59C(Obj8014A59C *obj)
     } else {
         D_80078EBF = 0;
     }
+    RETURN_NO_VALUE;
 }
