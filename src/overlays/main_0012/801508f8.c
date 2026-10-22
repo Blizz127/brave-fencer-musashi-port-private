@@ -12,15 +12,24 @@ extern s32 func_8015094C(Obj801508F8 *obj);
 
 /* Declared s32 but returns no value: retail keeps v0 live at the exit (nop in the
  * first delay slot), which only an int-typed function produces. The one caller
- * (801464FC) ignores v0, so no value is defined or needed. */
+ * (801464FC) ignores v0 and v1: it next calls func_8014B5B0, which touches neither,
+ * then func_80161D88, which writes both at entry. Host builds return an explicit 0
+ * (the RETURN_NO_VALUE convention, docs/MATCHING.md on main). */
+#ifdef __mips__
+#define RETURN_NO_VALUE return
+#else
+#define RETURN_NO_VALUE return 0
+#endif
+
 s32 func_801508F8(Obj801508F8 *obj)
 {
     if (obj->active == 0) {
-        return;
+        RETURN_NO_VALUE;
     }
     if (obj->type == 0x1A) {
-        return;
+        RETURN_NO_VALUE;
     }
     while (func_8015094C(obj)) {
     }
+    RETURN_NO_VALUE;
 }

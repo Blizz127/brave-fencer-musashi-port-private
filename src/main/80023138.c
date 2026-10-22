@@ -80,7 +80,7 @@ void func_80023138(u32 *obj, u8 *colors, RingShape *shape, PrimTag *ot) {
     poly[-1].y3 = shape->inner[1];
     if (flags & 0x40000000) {
         mode = (DrMode *)poly;
-        D_800A5E60 += 12 * sizeof(DrMode);
+        D_800A5E60 += 12 * 8; /* 12 DrMode of 8 bytes (guest and host); the native lane refuses sizeof */
         for (i = 0; i < 12; i++, mode++) {
             mode->tag.len = 1;
             mode->code = 0xE1000000 | ((flags >> 23) & 0x60);
