@@ -7,14 +7,14 @@ struct AnimEnt {
     u32 flags;
 };
 struct AnimSt {
-    struct AnimEnt *tbl;
+    u32 tbl; /* struct AnimEnt *, kept as a guest-address word (native-lane layout rule) */
     short idx;
     short hold;
 };
 int func_80128ED8(char *o, struct AnimSt *st) {
     int pad[1];
     short c = st->hold;
-    struct AnimEnt *t = st->tbl;
+    struct AnimEnt *t = (struct AnimEnt *)st->tbl;
     u32 fl;
     if (c == 0) {
         return 1;
