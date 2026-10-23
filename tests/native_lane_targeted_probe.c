@@ -29,7 +29,12 @@
  * compares (a) at the first guest callee entry: its pc, a0-a3, sp, the four
  * outgoing stack-argument words and the bytes of every guest-frame local, and
  * (b) at the return: v0, all guest RAM outside the frame band plus the
- * guest-frame locals inside it, both GTE banks, and the cycles. */
+ * guest-frame locals inside it, both GTE banks, and the cycles.
+ *
+ * N-GTE family (same harness, "targeted_gte" lines): the inline-GTE
+ * functions the lane runs through its COP2 helpers. The interpreter leg runs
+ * their retail COP2 words through the owner's transfer, the native leg the
+ * lane_gte_* helpers on the same owner (musashi_native_lane_gte_bind). */
 #define _GNU_SOURCE
 #include "musashi_boot_memory.h"
 #include "musashi_native_lane.h"
@@ -328,7 +333,8 @@ static void on_fault(int sig, siginfo_t *info, void *ctx);
 /* kinds per argument: p = pointer into the seeded scratch (4-aligned),
  * h = pointer that may be 2-aligned (s16 arrays), i = small integer,
  * n = index 0..3, l = zero-terminated word list (empty) or NULL */
-static const struct { uint32_t pc; const char *kinds; } ESC[] = {
+typedef struct { uint32_t pc; const char *kinds; } EscFn;
+static const EscFn ESC[] = {
     {0x8001282Cu, "p"}, {0x800128B4u, "p"}, {0x800128ECu, "pp"}, {0x80012E0Cu, "iiii"},
     {0x80014168u, "pp"}, {0x80014774u, ""}, {0x80016D78u, "pi"},
     {0x8001C1E4u, "pp"}, {0x8001C214u, "pl"},
@@ -336,6 +342,15 @@ static const struct { uint32_t pc; const char *kinds; } ESC[] = {
     {0x8001C6E4u, "p"}, {0x8001C744u, "pi"}, {0x8001C7B0u, "p"}, {0x8001C810u, "pl"},
     {0x8001C8C4u, "p"}, {0x8001CA1Cu, "pi"}, {0x8001CA88u, "pi"}, {0x80028620u, "np"},
     {0x8002E5BCu, ""},
+};
+/* N-GTE family: inline-GTE functions whose native COP2 runs through the lane
+ * GTE helpers (pc_port/include/musashi_lane_gte.h). Same harness: seeded RAM
+ * and GTE bank, the interpreter leg executes the retail COP2 words through
+ * the owner, the native leg the helpers; both banks, v0, RAM and cycles
+ * must match. Guest-frame locals are compared where the function has any. */
+static const EscFn GTE_FAMILY[] = {
+    {0x800123F0u, "pi"}, {0x80012558u, "pi"}, {0x800126C4u, "pi"}, {0x8001D70Cu, "p"},
+    {0x8001D8C4u, "ppp"}, {0x8001E378u, "p"}, {0x8001E668u, "pppp"}, {0x80021174u, "ip"},
 };
 enum { ESC_CASES = 400u, ESC_LOCAL_MAX = 128u };
 enum { ENTRY_NONE = 0, ENTRY_SAME = 1, ENTRY_DIFFERENT = 2, ENTRY_SKIPPED = 3 };
@@ -472,8 +487,8 @@ static int in_band(uint32_t a) {
     return a >= STACK_TOP - FRAME_GUARD && a < STACK_TOP + 0x30u;
 }
 
-static void esc_args(MusashiBootMemory *m, unsigned k, unsigned idx, uint32_t *args, unsigned *argc) {
-    const char *kinds = ESC[k].kinds;
+static void esc_args(MusashiBootMemory *m, const EscFn *fn, unsigned idx, uint32_t *args, unsigned *argc) {
+    const char *kinds = fn->kinds;
     unsigned i;
     for (i = 0; kinds[i]; ++i) {
         uint32_t base = FILL_BASE + 0x200u * ((idx * 7u + i * 3u) % 64u) + 0x40u * i;
@@ -489,9 +504,9 @@ static void esc_args(MusashiBootMemory *m, unsigned k, unsigned idx, uint32_t *a
     *argc = i;
 }
 
-static int run_escape_case(MusashiBootMemory *m, const uint8_t *image, unsigned k, unsigned idx,
+static int run_escape_case(MusashiBootMemory *m, const uint8_t *image, const EscFn *fn, unsigned idx,
                            uint8_t *reference, int returns, int ledger) {
-    const uint32_t pc = ESC[k].pc, salt = 0x85ebca6bu * (idx + 1u) ^ pc;
+    const uint32_t pc = fn->pc, salt = 0x85ebca6bu * (idx + 1u) ^ pc;
     uint32_t args[4] = {0}, regs[32], ref_v0, a;
     unsigned argc = 0;
     uint64_t ref_total;
@@ -514,7 +529,7 @@ static int run_escape_case(MusashiBootMemory *m, const uint8_t *image, unsigned 
     } else {
         seed_ram(m, salt);
     }
-    esc_args(m, k, idx, args, &argc);
+    esc_args(m, fn, idx, args, &argc);
     memcpy(start, m->bytes, MUSASHI_RAM_SIZE);
     g_esc_mem = m;
     g_esc_pc = pc;
@@ -655,29 +670,34 @@ static int run_escape_case(MusashiBootMemory *m, const uint8_t *image, unsigned 
     return SAME | (cyc << 4) | (entry << 6);
 }
 
-static int run_escape_family(MusashiBootMemory *memory, const uint8_t *image, uint8_t *reference) {
-    unsigned k, bad = 0;
+/* need_locals: the escape family exists for guest-frame locals, so a member
+ * without them in the table is a failure; the GTE family compares them only
+ * where present. */
+static int run_escape_family(MusashiBootMemory *memory, const uint8_t *image, uint8_t *reference,
+                             const EscFn *fns, size_t nfns, int need_locals, const char *label) {
+    unsigned bad = 0;
+    size_t k;
     const char *only = getenv("TARGETED_ESCAPE_PC");
-    g_sh = mmap(NULL, sizeof *g_sh, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+    if (!g_sh) g_sh = mmap(NULL, sizeof *g_sh, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
     if (g_sh == MAP_FAILED) return 1;
     musashi_formatter_set_entry_hook(esc_hook, NULL);
-    for (k = 0; k < sizeof ESC / sizeof ESC[0]; ++k) {
+    for (k = 0; k < nfns; ++k) {
         unsigned counts[7] = {0}, cyc[3] = {0}, ent[4] = {0}, idx;
         int returns = 0, ledger = 0, found = 0;
         size_t e;
-        if (only && strtoul(only, NULL, 16) != ESC[k].pc) continue;
+        if (only && strtoul(only, NULL, 16) != fns[k].pc) continue;
         for (e = 0; e < musashi_native_lane_generated_count; ++e)
-            if (musashi_native_lane_generated[e].guest_pc == ESC[k].pc) {
+            if (musashi_native_lane_generated[e].guest_pc == fns[k].pc) {
                 found = 1;
                 returns = musashi_native_lane_generated[e].returns;
                 ledger = musashi_native_lane_generated[e].ledger;
             }
         if (!found) {
-            printf("targeted_escape: %08x has no lane entry (skipped)\n", ESC[k].pc);
+            printf("%s: %08x has no lane entry (skipped)\n", label, fns[k].pc);
             continue;
         }
-        if (!esc_frame(ESC[k].pc)) {
-            fprintf(stderr, "targeted_escape: %08x has no guest-frame locals in the table\n", ESC[k].pc);
+        if (need_locals && !esc_frame(fns[k].pc)) {
+            fprintf(stderr, "%s: %08x has no guest-frame locals in the table\n", label, fns[k].pc);
             bad++;
             continue;
         }
@@ -692,7 +712,7 @@ static int run_escape_family(MusashiBootMemory *memory, const uint8_t *image, ui
                 a.sa_sigaction = on_fault; a.sa_flags = SA_SIGINFO;
                 sigaction(SIGSEGV, &a, NULL); sigaction(SIGBUS, &a, NULL);
                 signal(SIGALRM, SIG_DFL);
-                _exit(run_escape_case(memory, image, k, idx, reference, returns, ledger));
+                _exit(run_escape_case(memory, image, &fns[k], idx, reference, returns, ledger));
             }
             if (child < 0 || waitpid(child, &status, 0) != child) return 1;
             outcome = WIFEXITED(status) ? WEXITSTATUS(status) : NATIVE_FAILED;
@@ -702,10 +722,10 @@ static int run_escape_family(MusashiBootMemory *memory, const uint8_t *image, ui
             if (outcome > NOT_COMPARABLE_CALLED) outcome = NATIVE_FAILED;
             counts[outcome]++;
         }
-        printf("targeted_escape: %08x cases=%u same=%u different=%u native_failed=%u not_comparable=%u "
+        printf("%s: %08x cases=%u same=%u different=%u native_failed=%u not_comparable=%u "
                "harness_bad=%u entry_same=%u entry_different=%u entry_skipped=%u entry_none=%u "
                "cycles_same=%u cycles_different=%u cycles_not_comparable=%u\n",
-               ESC[k].pc, ESC_CASES, counts[SAME], counts[DIFFERENT], counts[NATIVE_FAILED],
+               label, fns[k].pc, ESC_CASES, counts[SAME], counts[DIFFERENT], counts[NATIVE_FAILED],
                counts[NOT_COMPARABLE], counts[HARNESS_BAD], ent[ENTRY_SAME], ent[ENTRY_DIFFERENT],
                ent[ENTRY_SKIPPED], ent[ENTRY_NONE], cyc[CYC_SAME], cyc[CYC_DIFFERENT],
                cyc[CYC_NOT_COMPARABLE]);
@@ -810,7 +830,17 @@ int main(int argc, char **argv) {
     g_gte_ok = musashi_cpu_status_open(&g_status, thread_token, NULL) &&
                musashi_gte_owner_init(&g_owner, g_status, thread_token, NULL, &g_identity);
     if (!g_gte_ok) fprintf(stderr, "targeted_escape: no gte owner; GTE callees refuse on both sides\n");
+    /* N-GTE: the native leg's lane_gte_* helpers use the same owner. */
+    musashi_native_lane_gte_bind(g_gte_ok ? &g_owner : NULL);
 #endif
-    total_bad += (unsigned)run_escape_family(memory, image, reference);
+    total_bad += (unsigned)run_escape_family(memory, image, reference, ESC, sizeof ESC / sizeof ESC[0], 1,
+                                             "targeted_escape");
+#ifdef MUSASHI_WITH_PSYCROSS
+    if (g_gte_ok)
+        total_bad += (unsigned)run_escape_family(memory, image, reference, GTE_FAMILY,
+                                                 sizeof GTE_FAMILY / sizeof GTE_FAMILY[0], 0, "targeted_gte");
+    else
+        total_bad++;   /* the GTE family cannot compare without an owner */
+#endif
     return total_bad ? 1 : 0;
 }
