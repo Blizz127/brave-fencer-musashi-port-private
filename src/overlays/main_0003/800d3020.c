@@ -1,26 +1,24 @@
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_800D3020 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Waits until bit 24 of the DMA control word behind D_800DB650 clears, counting a 0x100000 timeout down in the frame;
+ * on timeout reports through func_800D30D0 and returns -1, otherwise returns 0. The timeout counter is volatile:
+ * retail stores it and reloads it for every test. D_800DB650 holds a guest register address (u32). */
 #include "psx_types.h"
-extern const char D_800CEE48[];  /* string at its retail address */
-typedef float f32;
-typedef unsigned long long u64;
-typedef long long s64;
-typedef double f64;
-#ifndef NULL
-#define NULL ((void *)0)
-#endif
 
-extern s32 *D_800DB650;
-extern void func_800D30D0(char *a0);
+extern u32 D_800DB650;
+extern u8 D_800CEE48[];
+extern void func_800D30D0(u8 *msg);
 
-u32 func_800D3020(void)
+s32 func_800D3020(void)
 {
-    volatile int count = 0x100000;
-    while (*(*(u32 * *)&D_800DB650) & 0x1000000) {
-        if (--count == -1) {
-            func_800D30D0(D_800CEE48);
-            return -1;
-        }
+    volatile s32 timeout = 0x100000;
+
+    if ((*(u32 *)D_800DB650 & 0x01000000) != 0) {
+        do {
+            if (--timeout == -1) {
+                func_800D30D0(D_800CEE48);
+                return -1;
+            }
+        } while ((*(u32 *)D_800DB650 & 0x01000000) != 0);
     }
     return 0;
 }

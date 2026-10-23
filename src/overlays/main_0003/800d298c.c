@@ -1,45 +1,37 @@
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_800D298C - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Waits for the word at +0x34 to become nonzero, counting a 0x8000 timeout down in the frame; when the timeout runs
+ * out forces the word to 1, flips the buffer index at +0x28 and copies the first two half-words of that buffer's
+ * 8-byte record (record table at +0x18) to +0x2C/+0x2E. Clears the word at +0x34 on exit. The timeout counter is
+ * volatile: retail stores it and reloads it for each test. */
 #include "psx_types.h"
-typedef float f32;
-typedef unsigned long long u64;
-typedef long long s64;
-typedef double f64;
-#ifndef NULL
-#define NULL ((void *)0)
-#endif
 
 typedef struct {
-    s8 pad00[0x18];
-    u16 u18[2];
-    s8 pad1C[0xC];
-    s32 f28;
-    u16 u2C;
-    u16 u2E;
-    s32 pad30;
-    s32 f34;
-} St;
+    u16 a, b, c, d;
+} Rec;
 
-void func_800D298C(St *a0) {
-    volatile s32 cnt;
-    s32 flag;
-    s32 cond;
-    s32 t;
+typedef struct {
+    u8 pad0[0x18];
+    Rec rec[2];
+    s32 w28;
+    u16 h2C;
+    u16 h2E;
+    u8 pad30[4];
+    s32 w34;
+} Dev;
 
-    cond = a0->f34;
-    cnt = 0x8000;
-    if (cond == 0) {
-        flag = 1;
+void func_800D298C(Dev *o)
+{
+    volatile s32 timeout = 0x8000;
+
+    if (o->w34 == 0) {
         do {
-            cnt = cnt - 1;
-            if (cnt == 0) {
-                t = a0->f28;
-                a0->f34 = flag;
-                a0->f28 = (t == 0);
-                a0->u2C = *(u16 *)((s8 *)a0 + (a0->f28 << 3) + 0x18);
-                a0->u2E = *(u16 *)((s8 *)a0 + (a0->f28 << 3) + 0x1A);
+            if (--timeout == 0) {
+                o->w34 = 1;
+                o->w28 = (o->w28 == 0);
+                o->h2C = o->rec[o->w28].a;
+                o->h2E = o->rec[o->w28].b;
             }
-        } while (a0->f34 == 0);
+        } while (o->w34 == 0);
     }
-    a0->f34 = 0;
+    o->w34 = 0;
 }

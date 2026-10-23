@@ -1,96 +1,107 @@
-/* Main-exec range [8001D8C4,8001DA34) from the SLUS executable.
- * SHA256(span)=ae7895e7417620cde0800f4bd491de57a44101a826025ecddb45a3765f7cc71c.
- * Word export for the native seam; the body below is kept
- * byte-identical (wrap only, no rewrite). */
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_8001D8C4 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly (clean room, clean input set). */
+/* Builds the four corners of a sprite part's rectangle (object position + part offset, part width/height),
+ * transforms each corner with the GTE rotation matrix and translation (MVMVA, RTV0TR) and stores the
+ * resulting screen x/y into the four vertex slots of the part's textured quad (POLY_FT4). */
 #include "psx_types.h"
-typedef float f32;
-typedef unsigned long long u64;
-typedef long long s64;
-typedef double f64;
-#ifndef NULL
-#define NULL ((void *)0)
-#endif
-/* GTE instruction macros (vendor/bfm-decomp/include/gte_macros.inc) for GNU as. */
-__asm__(
-    ".macro cop2op fake_op, op, gbg = 0, sf = 1, mx = 0, v = 0, cv = 0, lm = 0\n"
-    "    cop2 \\fake_op << 20 | \\gbg << 20 | \\sf << 19 | \\mx << 17 | \\v << 15 | \\cv << 13 | \\lm << 10 | \\op\n"
-    ".endm\n"
-    ".macro mvmva sf, mx, v, cv, lm\n"
-    "    cop2op 0x04, 0x12, sf = \\sf, mx = \\mx, v = \\v, cv = \\cv, lm = \\lm\n"
-    ".endm\n"
-    ".macro op sf\n"
-    "    cop2op 0x17, 0x0C, sf = \\sf\n"
-    ".endm\n"
-);
+#include "gte_ops.h"
 
-#define LDV0_8001D8C4(r0) __asm__ volatile (             \
-    "lwc2 $0, 0( %0 );"                                  \
-    "lwc2 $1, 4( %0 )"                                   \
-    :                                                    \
-    : "r"( r0 )                                          \
-    : "memory" )
-#define MVMVA_8001D8C4() __asm__ volatile (              \
-    "nop;"                                               \
-    "nop;"                                               \
-    "mvmva 1, 0, 0, 0, 0"                                \
-    : : : "memory" )
-#define STMAC123_8001D8C4(r0) __asm__ volatile (         \
-    "swc2 $25, 0( %0 );"                                 \
-    "swc2 $26, 4( %0 );"                                 \
-    "swc2 $27, 8( %0 )"                                  \
-    :                                                    \
-    : "r"( r0 )                                          \
-    : "memory" )
+typedef struct {
+    s16 vx;
+    s16 vy;
+    s16 vz;
+    s16 pad;
+} SVec;
 
-void func_8001D8C4(s32 a0, u8 * a1_p, u8 * a2_p) {
-    s32 a1 = (s32)a1_p;
-    s32 a2 = (s32)a2_p;
-    s16 sv[4][4];   /* 4 SVECTORs: sp+0x00..0x1F */
-    s32 out[4];     /* MAC1/2/3 scratch: sp+0x20..0x2F */
-    s32 cx, cy, dx, dy, z;
+typedef struct {
+    u8 pad0[0x2E];
+    u16 x;
+    u16 y;
+    u16 z;
+} Obj;
 
-    cx = *(u16 *)(a0 + 0x2E) + *(u16 *)(a1 + 0x08);
-    cy = *(u16 *)(a0 + 0x30) + *(u16 *)(a1 + 0x0A);
-    sv[0][0] = sv[2][0] = cx;
-    sv[0][1] = sv[1][1] = cy;
+typedef struct {
+    u16 flags;
+    u8 w;
+    u8 h;
+    s16 u;
+    u16 v;
+    u16 ox;
+    u16 oy;
+} Part;
 
-    dx = *(u8 *)(a1 + 0x02) + cx;
-    sv[3][0] = dx;
-    sv[1][0] = dx;
+typedef struct {
+    u32 tag;
+    u8 r0, g0, b0, code;
+    s16 x0, y0;
+    u8 u0, v0;
+    u16 clut;
+    s16 x1, y1;
+    u8 u1, v1;
+    u16 tpage;
+    s16 x2, y2;
+    u8 u2, v2;
+    u16 pad2;
+    s16 x3, y3;
+    u8 u3, v3;
+    u16 pad3;
+} PolyFT4;
 
-    dy = *(u8 *)(a1 + 0x03) + cy;
-    sv[3][1] = dy;
-    sv[2][1] = dy;
+void func_8001D8C4(Obj *o, Part *p, PolyFT4 *q)
+{
+    SVec v[4];
+    s32 m[3];
+    s32 x;
+    s32 y;
 
-    z = *(u16 *)(a0 + 0x32);
-    sv[3][2] = z;
-    sv[2][2] = z;
-    sv[1][2] = z;
-    sv[0][2] = z;
+    x = o->x + p->ox;
+    y = o->y + p->oy;
+    v[0].vx = v[2].vx = x;
+    v[0].vy = v[1].vy = y;
+    v[1].vx = v[3].vx = x + p->w;
+    v[2].vy = v[3].vy = y + p->h;
+    v[0].vz = v[1].vz = v[2].vz = v[3].vz = o->z;
 
-    LDV0_8001D8C4(sv[0]);
-    MVMVA_8001D8C4();
-    STMAC123_8001D8C4(out);
-    *(s16 *)(a2 + 0x08) = out[0];
-    *(s16 *)(a2 + 0x0A) = out[1];
+    gte_lwc2(0, 0, &v[0]);
+    gte_lwc2(1, 4, &v[0]);
+    gte_nop();
+    gte_nop();
+    gte_mvmva(1, 0, 0, 0, 0);
+    gte_swc2(25, 0, &m[0]);
+    gte_swc2(26, 4, &m[0]);
+    gte_swc2(27, 8, &m[0]);
+    q->x0 = m[0];
+    q->y0 = m[1];
 
-    LDV0_8001D8C4(sv[1]);
-    MVMVA_8001D8C4();
-    STMAC123_8001D8C4(out);
-    *(s16 *)(a2 + 0x10) = out[0];
-    *(s16 *)(a2 + 0x12) = out[1];
+    gte_lwc2(0, 0, &v[1]);
+    gte_lwc2(1, 4, &v[1]);
+    gte_nop();
+    gte_nop();
+    gte_mvmva(1, 0, 0, 0, 0);
+    gte_swc2(25, 0, &m[0]);
+    gte_swc2(26, 4, &m[0]);
+    gte_swc2(27, 8, &m[0]);
+    q->x1 = m[0];
+    q->y1 = m[1];
 
-    LDV0_8001D8C4(sv[2]);
-    MVMVA_8001D8C4();
-    STMAC123_8001D8C4(out);
-    *(s16 *)(a2 + 0x18) = out[0];
-    *(s16 *)(a2 + 0x1A) = out[1];
+    gte_lwc2(0, 0, &v[2]);
+    gte_lwc2(1, 4, &v[2]);
+    gte_nop();
+    gte_nop();
+    gte_mvmva(1, 0, 0, 0, 0);
+    gte_swc2(25, 0, &m[0]);
+    gte_swc2(26, 4, &m[0]);
+    gte_swc2(27, 8, &m[0]);
+    q->x2 = m[0];
+    q->y2 = m[1];
 
-    LDV0_8001D8C4(sv[3]);
-    MVMVA_8001D8C4();
-    STMAC123_8001D8C4(out);
-    *(s16 *)(a2 + 0x20) = out[0];
-    *(s16 *)(a2 + 0x22) = out[1];
+    gte_lwc2(0, 0, &v[3]);
+    gte_lwc2(1, 4, &v[3]);
+    gte_nop();
+    gte_nop();
+    gte_mvmva(1, 0, 0, 0, 0);
+    gte_swc2(25, 0, &m[0]);
+    gte_swc2(26, 4, &m[0]);
+    gte_swc2(27, 8, &m[0]);
+    q->x3 = m[0];
+    q->y3 = m[1];
 }
