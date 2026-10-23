@@ -3,7 +3,10 @@
  * succeeds. Otherwise flags the frame's counter word (+8) against the header's limit (+0xC) in D_800EC9F4/D_800EC9F8
  * and, when the frame size (+0x10/+0x12) differs from the remembered D_800D9484/D_800D9488, clears a rectangle of the
  * display (black when the header flag +4 is set, grey otherwise) and remembers the new size. Stores the (possibly
- * 3/2-scaled) width and the height into the output record (+0x1C/+0x24 and +0x1E/+0x26/+0x32) and returns the handle. */
+ * 3/2-scaled) width and the height into the output record (+0x1C/+0x24 and +0x1E/+0x26/+0x32) and returns the handle.
+ * The clear is ONE call site (retail has a single jal for it): both arms of the black/grey choice set the rectangle
+ * pointer and the three colour values, and the call follows the join. The pointer is deliberately set in both arms:
+ * with &rect evaluated at the call instead, gcc puts the address setup in the jal delay slot (one word short). */
 #include "psx_types.h"
 
 typedef struct {
@@ -71,6 +74,10 @@ got:
     }
     if ((u32)D_800D9484 != ((Frame *)p1)->h10 || (u32)D_800D9488 != ((Frame *)p1)->h12) {
         Rect rect;
+        Rect *area;
+        s32 red;
+        s32 green;
+        s32 blue;
         u16 w;
 
         rect.x = 0;
@@ -83,10 +90,17 @@ got:
         rect.w = w;
         rect.h = h->w1C << 1;
         if (h->w04 != 0) {
-            func_80059888(&rect, 0, 0, 0);
+            area = &rect;
+            red = 0;
+            green = 0;
+            blue = 0;
         } else {
-            func_80059888(&rect, 0x40, 0x40, 0x40);
+            area = &rect;
+            red = 0x40;
+            green = 0x40;
+            blue = 0x40;
         }
+        func_80059888(area, red, green, blue);
         D_800D9484 = ((Frame *)p1)->h10;
         D_800D9488 = ((Frame *)p1)->h12;
     }
