@@ -13664,6 +13664,8 @@ uint32_t musashi_native_lane_arg(const MusashiNativeLaneCall *call, unsigned n) 
 uint64_t musashi_lane_ledger;
 uint32_t musashi_lane_ledger_lost;
 uint32_t musashi_lane_fixed;
+uint64_t musashi_lane_native_done;
+uint32_t musashi_lane_native_last_pc;
 
 /* Charge the ledger to the CPU's clock (none: dropped, as the interpreter
  * charges nothing without one). 0 when the clock refuses. */
@@ -13988,6 +13990,8 @@ static int lane_try(MusashiBootMemory *memory, FormatterCpu *cpu) {
         return -1;
     }
     if (!outcome) return 0;
+    ++musashi_lane_native_done;
+    musashi_lane_native_last_pc = entry->guest_pc;
     cpu->r[0] = 0;
     cpu->r[29] = sp;
     cpu->r[31] = ra;

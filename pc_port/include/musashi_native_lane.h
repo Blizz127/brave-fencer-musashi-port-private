@@ -57,6 +57,11 @@ typedef struct MusashiNativeLaneEntry {
 extern uint64_t musashi_lane_ledger;
 extern uint32_t musashi_lane_ledger_lost;
 extern uint32_t musashi_lane_fixed;
+/* Lane calls whose native body ran to its return (a wrapper refusal or an
+ * abort does not count) and the guest pc of the last one; the outermost call
+ * completes last, so the differentials use them to prove the native leg ran. */
+extern uint64_t musashi_lane_native_done;
+extern uint32_t musashi_lane_native_last_pc;
 
 /* D-011 deadline guard. musashi_lane_budget is the ledger value at which the
  * next device deadline falls due (UINT64_MAX: none known). A mapped body

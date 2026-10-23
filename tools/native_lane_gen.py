@@ -1775,6 +1775,11 @@ def ir_cop2(ir, fname):
     if not m:
         raise Reject("gte", f"{fname} not in the module")
     body = m.group(0)
+    # Only fname's retail words are audited, so a helper call in any other
+    # function of the module (a static helper, a second definition) has no
+    # retail COP2 words to stand for.
+    if GTE_CALL_RE.search(ir[:m.start()] + ir[m.end():]):
+        raise Reject("gte", "COP2 helper calls outside the audited function")
     ops = []
     for cm in GTE_CALL_RE.finditer(body):
         kind = cm.group(1)

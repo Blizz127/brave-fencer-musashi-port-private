@@ -347,11 +347,27 @@ static const EscFn ESC[] = {
  * GTE helpers (pc_port/include/musashi_lane_gte.h). Same harness: seeded RAM
  * and GTE bank, the interpreter leg executes the retail COP2 words through
  * the owner, the native leg the helpers; both banks, v0, RAM and cycles
- * must match. Guest-frame locals are compared where the function has any. */
+ * must match. Guest-frame locals are compared where the function has any.
+ * Three cases in four are a plausible scene (gte_scene: rotation and
+ * translation that keep projections unsaturated, screen offset, projection
+ * distance, small object coordinates, the guest matrices in GTE_WORLD), the
+ * fourth keeps the random bank. The frame band starts with the same stale
+ * words on both legs, so reads of never-written stack bytes are compared
+ * too. Each case must show that its own native body ran (the lane's
+ * musashi_lane_native_done/_last_pc), and a member must produce at least two
+ * return values (when it returns one) and varied outcomes. VZ0..VZ2 (data
+ * 1, 3, 5) are 16-bit registers: PsyCross keeps the stored word, but every
+ * reader (MFC2, the commands) uses the low half, so the bank comparison masks
+ * their upper halves and counts raw differences there separately (a native
+ * LWC2 of a never-written pad halfword reads the host local, not the guest
+ * stack's leftovers). */
 static const EscFn GTE_FAMILY[] = {
     {0x800123F0u, "pi"}, {0x80012558u, "pi"}, {0x800126C4u, "pi"}, {0x8001D70Cu, "p"},
-    {0x8001D8C4u, "ppp"}, {0x8001E378u, "p"}, {0x8001E668u, "pppp"}, {0x80021174u, "ip"},
+    {0x8001D8C4u, "ppp"}, {0x8001E378u, "p"}, {0x8001E668u, "pppp"}, {0x80021174u, "bv"},
 };
+/* Guest matrices the GTE family reads (GS_WSMATRIX, the view matrix): never
+ * set in the probe's RAM image, so scene cases write plausible ones. */
+static const uint32_t GTE_WORLD[] = {0x800AE688u, 0x800AF648u};
 enum { ESC_CASES = 400u, ESC_LOCAL_MAX = 128u };
 enum { ENTRY_NONE = 0, ENTRY_SAME = 1, ENTRY_DIFFERENT = 2, ENTRY_SKIPPED = 3 };
 
@@ -468,6 +484,60 @@ static int gte_seed(uint32_t salt) {
 static int gte_same(const MusashiGteSnapshot *a, const MusashiGteSnapshot *b) {
     return !memcmp(a->data, b->data, sizeof a->data) && !memcmp(a->control, b->control, sizeof a->control);
 }
+/* gte_same over the architectural state: VZ0..VZ2 (data 1, 3, 5) by their
+ * low halves (see the GTE family note). *vzhi: their upper halves differ. */
+static int gte_same_arch(const MusashiGteSnapshot *a, const MusashiGteSnapshot *b, int *vzhi) {
+    unsigned r;
+    *vzhi = 0;
+    for (r = 0; r < MUSASHI_GTE_DATA_COUNT; ++r) {
+        uint32_t x = a->data[r], y = b->data[r];
+        if (r == 1u || r == 3u || r == 5u) {
+            if ((x ^ y) & 0xFFFF0000u) *vzhi = 1;
+            x &= 0xFFFFu; y &= 0xFFFFu;
+        }
+        if (x != y) return 0;
+    }
+    return !memcmp(a->control, b->control, sizeof a->control);
+}
+static uint32_t s16pair(int32_t lo, int32_t hi) { return ((uint32_t)hi << 16) | ((uint32_t)lo & 0xFFFFu); }
+static int32_t sm(uint32_t span) { return (int32_t)(rng() % (2u * span)) - (int32_t)span; }
+/* A plausible 4.12 rotation-scale matrix (entries -4096..4095) and a
+ * translation in front of the viewer, as the 8 words of a Mat. */
+static void scene_matrix(uint32_t w[8]) {
+    int32_t e[9];
+    unsigned k;
+    for (k = 0; k < 9u; ++k) e[k] = sm(4096u);
+    w[0] = s16pair(e[0], e[1]); w[1] = s16pair(e[2], e[3]); w[2] = s16pair(e[4], e[5]);
+    w[3] = s16pair(e[6], e[7]); w[4] = s16pair(e[8], 0);
+    w[5] = (uint32_t)sm(300u); w[6] = (uint32_t)sm(300u); w[7] = 1500u + rng() % 4500u;
+}
+/* The scene bank: the matrix in control 0..7, small background/light/far
+ * colour terms, screen offset (160/120 + 0..63, 16.16), projection distance
+ * 200..499, depth-cue and Z-average scales near the libgs defaults, small V0
+ * and IR. */
+static int gte_scene(uint32_t salt) {
+    MusashiCpuContext c = lease_ctx();
+    uint32_t w[8], k;
+    rng_state = salt | 1u;
+    scene_matrix(w);
+    for (k = 0; k <= 7u; ++k)
+        if (!musashi_gte_owner_write_control(&g_owner, &c, k, w[k])) return 0;
+    for (k = 13; k <= 23u; ++k)
+        if (!musashi_gte_owner_write_control(&g_owner, &c, k, k <= 15u ? (uint32_t)sm(256u) :
+                                             s16pair(sm(4096u), sm(4096u)))) return 0;
+    if (!musashi_gte_owner_write_control(&g_owner, &c, 24, (160u + rng() % 64u) << 16) ||
+        !musashi_gte_owner_write_control(&g_owner, &c, 25, (120u + rng() % 64u) << 16) ||
+        !musashi_gte_owner_write_control(&g_owner, &c, 26, 200u + rng() % 300u) ||
+        !musashi_gte_owner_write_control(&g_owner, &c, 27, (uint32_t)-(int32_t)(rng() % 512u)) ||
+        !musashi_gte_owner_write_control(&g_owner, &c, 28, 0x01400000u + rng() % 0x10000u) ||
+        !musashi_gte_owner_write_control(&g_owner, &c, 29, 0x155u + rng() % 16u) ||
+        !musashi_gte_owner_write_control(&g_owner, &c, 30, 0x100u + rng() % 16u)) return 0;
+    if (!musashi_gte_owner_write_data(&g_owner, &c, 0, s16pair(sm(400u), sm(400u))) ||
+        !musashi_gte_owner_write_data(&g_owner, &c, 1, (uint32_t)sm(400u))) return 0;
+    for (k = 9; k <= 11u; ++k)
+        if (!musashi_gte_owner_write_data(&g_owner, &c, k, (uint32_t)sm(4096u))) return 0;
+    return 1;
+}
 #endif
 
 /* The interpreter leg's results, written by its forked grandchild. */
@@ -482,11 +552,18 @@ typedef struct {
     uint8_t ram[MUSASHI_RAM_SIZE];
 } EscShared;
 static EscShared *g_sh;
+/* GTE family: per-case results the parent aggregates (written by the case's
+ * child; outcome 0 = the case was not SAME). */
+typedef struct { uint32_t v0; uint64_t outcome; int vzhi; } GteCase;
+static GteCase *g_gcase;
 
 static int in_band(uint32_t a) {
     return a >= STACK_TOP - FRAME_GUARD && a < STACK_TOP + 0x30u;
 }
 
+/* b = packed screen bounds (hy << 16 | hx, 32..399 each) or, one case in 16,
+ * the 0x7FFF7FFF "always visible" sentinel; v = pointer to a 3-word vector
+ * of small coordinates (-400..399) */
 static void esc_args(MusashiBootMemory *m, const EscFn *fn, unsigned idx, uint32_t *args, unsigned *argc) {
     const char *kinds = fn->kinds;
     unsigned i;
@@ -494,6 +571,13 @@ static void esc_args(MusashiBootMemory *m, const EscFn *fn, unsigned idx, uint32
         uint32_t base = FILL_BASE + 0x200u * ((idx * 7u + i * 3u) % 64u) + 0x40u * i;
         switch (kinds[i]) {
         case 'p': args[i] = base; break;
+        case 'b': args[i] = idx % 16u == 5u ? 0x7FFF7FFFu : ((32u + rng() % 368u) << 16) | (32u + rng() % 368u); break;
+        case 'v': {
+            unsigned c;
+            for (c = 0; c < 3u; ++c) w32(m, base + 4u * c, (rng() % 800u) - 400u);
+            args[i] = base;
+            break;
+        }
         case 'h': args[i] = base + ((idx >> 2) & 1u) * 2u; break;
         case 'n': args[i] = rng() % 4u; break;
         /* a zero-terminated list: empty, or absent (NULL) */
@@ -505,8 +589,11 @@ static void esc_args(MusashiBootMemory *m, const EscFn *fn, unsigned idx, uint32
 }
 
 static int run_escape_case(MusashiBootMemory *m, const uint8_t *image, const EscFn *fn, unsigned idx,
-                           uint8_t *reference, int returns, int ledger) {
+                           uint8_t *reference, int returns, int ledger, int gte_family) {
     const uint32_t pc = fn->pc, salt = 0x85ebca6bu * (idx + 1u) ^ pc;
+    const int scene = gte_family && idx % 4u != 3u;
+    uint64_t done0;
+    int vzhi = 0;
     uint32_t args[4] = {0}, regs[32], ref_v0, a;
     unsigned argc = 0;
     uint64_t ref_total;
@@ -522,13 +609,25 @@ static int run_escape_case(MusashiBootMemory *m, const uint8_t *image, const Esc
     if (!start) return HARNESS_BAD;
     memcpy(m->bytes, image, MUSASHI_RAM_SIZE);
     rng_state = salt | 1u;
-    if (idx % 3u == 2u) {
+    if (idx % 3u == 2u || scene) {
         /* small signed values: vectors and counts rather than pointers */
         for (a = FILL_BASE; a < FILL_BASE + FILL_SIZE; a += 4u)
             w32(m, a, (rng() % 0x2000u) - 0x1000u);
     } else {
         seed_ram(m, salt);
     }
+#ifdef MUSASHI_WITH_PSYCROSS
+    if (gte_family) {
+        unsigned g, k;
+        /* stale stack: the same leftovers on both legs */
+        for (a = STACK_TOP - FRAME_GUARD; a < STACK_TOP + 0x30u; a += 4u) w32(m, a, rng());
+        for (g = 0; scene && g < sizeof GTE_WORLD / sizeof GTE_WORLD[0]; ++g) {
+            uint32_t w[8];
+            scene_matrix(w);
+            for (k = 0; k < 8u; ++k) w32(m, GTE_WORLD[g] + 4u * k, w[k]);
+        }
+    }
+#endif
     esc_args(m, fn, idx, args, &argc);
     memcpy(start, m->bytes, MUSASHI_RAM_SIZE);
     g_esc_mem = m;
@@ -537,7 +636,10 @@ static int run_escape_case(MusashiBootMemory *m, const uint8_t *image, const Esc
     /* Seeded once: both legs inherit this bank (the interpreter leg runs in
      * a forked grandchild, the native leg here), so registers the owner
      * cannot write (the colour FIFO, MAC0, ...) start equal too. */
-    if (transfer && !gte_seed(salt ^ 0x5bd1e995u)) { free(start); return HARNESS_BAD; }
+    if (transfer && !(scene ? gte_scene(salt ^ 0x5bd1e995u) : gte_seed(salt ^ 0x5bd1e995u))) {
+        free(start);
+        return HARNESS_BAD;
+    }
 #endif
     {
         pid_t leg;
@@ -582,11 +684,20 @@ static int run_escape_case(MusashiBootMemory *m, const uint8_t *image, const Esc
     g_cycles = 0;
     fixed0 = musashi_lane_fixed;
     g_ref_refused = !ok;
+    done0 = musashi_lane_native_done;
+    musashi_lane_native_last_pc = 0;
     {
         int ok2;
         alarm(5);
         ok2 = musashi_native_lane_reference_call_transfer(m, pc, args, argc, STACK_TOP, 1, regs, &g_clock, transfer);
         alarm(0);
+        /* the GTE family's native leg must have run this function's own lane
+         * body (a wrapper refusal would leave both legs interpreted) */
+        if (gte_family && ok2 && (musashi_lane_native_done == done0 || musashi_lane_native_last_pc != pc)) {
+            fprintf(stderr, "targeted_gte: %08x case %u native leg did not run the lane body (last %08x)\n",
+                    pc, idx, musashi_lane_native_last_pc);
+            return NATIVE_FAILED;
+        }
         /* (a) the first guest callee entry: sp, every argument register or
          * outgoing stack word that points into the frame band (on either
          * side), and the guest-frame locals' bytes. Other argument registers
@@ -627,7 +738,8 @@ static int run_escape_case(MusashiBootMemory *m, const uint8_t *image, const Esc
         return DIFFERENT | (entry << 6);
     }
 #ifdef MUSASHI_WITH_PSYCROSS
-    if (transfer && (!musashi_gte_owner_snapshot(&g_owner, &gte_lane) || !gte_same(&gte_ref, &gte_lane))) {
+    if (transfer && (!musashi_gte_owner_snapshot(&g_owner, &gte_lane) ||
+                     !(gte_family ? gte_same_arch(&gte_ref, &gte_lane, &vzhi) : gte_same(&gte_ref, &gte_lane)))) {
         unsigned r;
         for (r = 0; r < MUSASHI_GTE_DATA_COUNT; ++r)
             if (gte_ref.data[r] != gte_lane.data[r])
@@ -667,19 +779,49 @@ static int run_escape_case(MusashiBootMemory *m, const uint8_t *image, const Esc
         }
         if (differ) return DIFFERENT | (entry << 6);
     }
+    if (gte_family && g_gcase) {
+        /* FNV-1a over v0, the architectural GTE bank and the seeded window */
+        uint64_t h = 0xcbf29ce484222325ull;
+        uint32_t i;
+#define MIX(b) (h = (h ^ (uint8_t)(b)) * 0x100000001b3ull)
+        for (i = 0; i < 4u; ++i) MIX(regs[2] >> (8u * i));
+#ifdef MUSASHI_WITH_PSYCROSS
+        for (i = 0; i < MUSASHI_GTE_DATA_COUNT; ++i) {
+            uint32_t d = gte_lane.data[i];
+            unsigned b;
+            if (i == 1u || i == 3u || i == 5u) d &= 0xFFFFu;
+            for (b = 0; b < 4u; ++b) MIX(d >> (8u * b));
+        }
+        for (i = 0; i < MUSASHI_GTE_CONTROL_COUNT; ++i) {
+            unsigned b;
+            for (b = 0; b < 4u; ++b) MIX(gte_lane.control[i] >> (8u * b));
+        }
+#endif
+        for (i = FILL_BASE - 0x80000000u; i < FILL_BASE + FILL_SIZE - 0x80000000u; ++i) MIX(m->bytes[i]);
+#undef MIX
+        g_gcase[idx].v0 = regs[2];
+        g_gcase[idx].outcome = h ? h : 1u;
+        g_gcase[idx].vzhi = vzhi;
+    }
     return SAME | (cyc << 4) | (entry << 6);
 }
 
 /* need_locals: the escape family exists for guest-frame locals, so a member
  * without them in the table is a failure; the GTE family compares them only
- * where present. */
+ * where present. gte_family: see the GTE family note (a member without a
+ * lane entry fails too: it must run natively). */
 static int run_escape_family(MusashiBootMemory *memory, const uint8_t *image, uint8_t *reference,
-                             const EscFn *fns, size_t nfns, int need_locals, const char *label) {
+                             const EscFn *fns, size_t nfns, int need_locals, int gte_family,
+                             const char *label) {
     unsigned bad = 0;
     size_t k;
     const char *only = getenv("TARGETED_ESCAPE_PC");
     if (!g_sh) g_sh = mmap(NULL, sizeof *g_sh, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
     if (g_sh == MAP_FAILED) return 1;
+    if (gte_family && !g_gcase) {
+        g_gcase = mmap(NULL, ESC_CASES * sizeof *g_gcase, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+        if (g_gcase == MAP_FAILED) { g_gcase = NULL; return 1; }
+    }
     musashi_formatter_set_entry_hook(esc_hook, NULL);
     for (k = 0; k < nfns; ++k) {
         unsigned counts[7] = {0}, cyc[3] = {0}, ent[4] = {0}, idx;
@@ -694,6 +836,7 @@ static int run_escape_family(MusashiBootMemory *memory, const uint8_t *image, ui
             }
         if (!found) {
             printf("%s: %08x has no lane entry (skipped)\n", label, fns[k].pc);
+            if (gte_family) bad++;
             continue;
         }
         if (need_locals && !esc_frame(fns[k].pc)) {
@@ -701,6 +844,7 @@ static int run_escape_family(MusashiBootMemory *memory, const uint8_t *image, ui
             bad++;
             continue;
         }
+        if (gte_family) memset(g_gcase, 0, ESC_CASES * sizeof *g_gcase);
         for (idx = 0; idx < ESC_CASES; ++idx) {
             int status, outcome;
             pid_t child;
@@ -712,7 +856,7 @@ static int run_escape_family(MusashiBootMemory *memory, const uint8_t *image, ui
                 a.sa_sigaction = on_fault; a.sa_flags = SA_SIGINFO;
                 sigaction(SIGSEGV, &a, NULL); sigaction(SIGBUS, &a, NULL);
                 signal(SIGALRM, SIG_DFL);
-                _exit(run_escape_case(memory, image, &fns[k], idx, reference, returns, ledger));
+                _exit(run_escape_case(memory, image, &fns[k], idx, reference, returns, ledger, gte_family));
             }
             if (child < 0 || waitpid(child, &status, 0) != child) return 1;
             outcome = WIFEXITED(status) ? WEXITSTATUS(status) : NATIVE_FAILED;
@@ -733,6 +877,28 @@ static int run_escape_family(MusashiBootMemory *memory, const uint8_t *image, ui
                cyc[CYC_DIFFERENT];
         /* a function that compares nothing proves nothing */
         if (!counts[SAME] && !ent[ENTRY_SAME]) bad++;
+        if (gte_family) {
+            unsigned i, j, v0s = 0, outcomes = 0, vzhi = 0, ones = 0;
+            for (i = 0; i < ESC_CASES; ++i) {
+                int nv = 1, no = 1;
+                if (!g_gcase[i].outcome) continue;   /* not SAME */
+                vzhi += (unsigned)g_gcase[i].vzhi;
+                ones += g_gcase[i].v0 == 1u;
+                for (j = 0; j < i; ++j) {
+                    if (!g_gcase[j].outcome) continue;
+                    if (g_gcase[j].v0 == g_gcase[i].v0) nv = 0;
+                    if (g_gcase[j].outcome == g_gcase[i].outcome) no = 0;
+                }
+                v0s += (unsigned)nv;
+                outcomes += (unsigned)no;
+            }
+            printf("%s: %08x distinct_v0=%u v0_one=%u distinct_outcomes=%u vz_high_raw_differ=%u\n",
+                   label, fns[k].pc, v0s, ones, outcomes, vzhi);
+            /* the GTE code must be compared, on varied inputs, in most cases */
+            if (counts[SAME] < ESC_CASES / 2u) bad++;
+            if (returns && v0s < 2u) bad++;
+            if (outcomes < ESC_CASES / 4u) bad++;
+        }
     }
     musashi_formatter_set_entry_hook(entry_hook, NULL);
     return (int)bad;
@@ -833,12 +999,12 @@ int main(int argc, char **argv) {
     /* N-GTE: the native leg's lane_gte_* helpers use the same owner. */
     musashi_native_lane_gte_bind(g_gte_ok ? &g_owner : NULL);
 #endif
-    total_bad += (unsigned)run_escape_family(memory, image, reference, ESC, sizeof ESC / sizeof ESC[0], 1,
+    total_bad += (unsigned)run_escape_family(memory, image, reference, ESC, sizeof ESC / sizeof ESC[0], 1, 0,
                                              "targeted_escape");
 #ifdef MUSASHI_WITH_PSYCROSS
     if (g_gte_ok)
         total_bad += (unsigned)run_escape_family(memory, image, reference, GTE_FAMILY,
-                                                 sizeof GTE_FAMILY / sizeof GTE_FAMILY[0], 0, "targeted_gte");
+                                                 sizeof GTE_FAMILY / sizeof GTE_FAMILY[0], 0, 1, "targeted_gte");
     else
         total_bad++;   /* the GTE family cannot compare without an owner */
 #endif
