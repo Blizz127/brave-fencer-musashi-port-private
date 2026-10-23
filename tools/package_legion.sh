@@ -233,7 +233,9 @@ TXT
 
 # Launcher launch modes: the Banshee launcher (0.9.230 and later) reads build-info.json from the install root and
 # offers PLAY ORIGINAL / PLAY ENHANCED, passing the chosen flag to launch.sh. The flag picks the renderer only.
-printf '%s\n' '{"launchModes": {"original": ["--original"], "enhanced": ["--enhanced"]}, "defaultLaunchMode": "original"}' \
+# The owner-channel publisher refuses a package whose build-info.json does not declare contains_game_data:false;
+# the launcher reads only launchModes/defaultLaunchMode and ignores the other key.
+printf '%s\n' '{"launchModes": {"original": ["--original"], "enhanced": ["--enhanced"]}, "defaultLaunchMode": "original", "contains_game_data": false}' \
     > "$stage/build-info.json"
 
 python3 - "$stage" "$name" "$commit" "$branch" "$status" "$issues" <<'PY'
