@@ -553,8 +553,16 @@ typedef struct {
 } EscShared;
 static EscShared *g_sh;
 /* GTE family: per-case results the parent aggregates (written by the case's
- * child; outcome 0 = the case was not SAME). */
-typedef struct { uint32_t v0; uint64_t outcome; int vzhi; } GteCase;
+ * child; outcome 0 = the case was not SAME). outcome hashes only what the
+ * native call changed (v0 when the function returns one, GTE registers that
+ * differ from the bank it started with, bytes of the seeded window and of
+ * the frame band that differ from the case's start), so the variety guards
+ * see the computed results rather than the per-case seeds. sentinel: a 'b'
+ * argument was 0x7FFF7FFF (80021174 returns before any COP2 word then), so
+ * the case does not count toward the variety guards. ram: the same hash over
+ * the changed RAM bytes alone (nram of them): a function that writes RAM must
+ * write varied RAM, whatever its GTE registers do. */
+typedef struct { uint32_t v0; uint64_t outcome, ram; uint32_t nram; int vzhi, sentinel; } GteCase;
 static GteCase *g_gcase;
 
 static int in_band(uint32_t a) {
@@ -603,7 +611,8 @@ static int run_escape_case(MusashiBootMemory *m, const uint8_t *image, const Esc
     const MusashiCpuTransferDevice *transfer = NULL;
     uint8_t *start = malloc(MUSASHI_RAM_SIZE);
 #ifdef MUSASHI_WITH_PSYCROSS
-    MusashiGteSnapshot gte_ref, gte_lane;
+    MusashiGteSnapshot gte_ref, gte_lane, gte_pre;
+    memset(&gte_pre, 0, sizeof gte_pre);
     if (g_gte_ok) transfer = &g_transfer;
 #endif
     if (!start) return HARNESS_BAD;
@@ -679,11 +688,16 @@ static int run_escape_case(MusashiBootMemory *m, const uint8_t *image, const Esc
 #endif
     memcpy(reference, g_sh->ram, MUSASHI_RAM_SIZE);
     memcpy(m->bytes, start, MUSASHI_RAM_SIZE);
-    free(start);
+    /* the GTE family keeps the start image for its change-only outcome hash;
+     * the case's forked child exits right after */
+    if (!gte_family) free(start);
     memset(&g_esc, 0, sizeof g_esc);
     g_cycles = 0;
     fixed0 = musashi_lane_fixed;
     g_ref_refused = !ok;
+#ifdef MUSASHI_WITH_PSYCROSS
+    if (gte_family && transfer && !musashi_gte_owner_snapshot(&g_owner, &gte_pre)) return HARNESS_BAD;
+#endif
     done0 = musashi_lane_native_done;
     musashi_lane_native_last_pc = 0;
     {
@@ -780,28 +794,42 @@ static int run_escape_case(MusashiBootMemory *m, const uint8_t *image, const Esc
         if (differ) return DIFFERENT | (entry << 6);
     }
     if (gte_family && g_gcase) {
-        /* FNV-1a over v0, the architectural GTE bank and the seeded window */
+        /* FNV-1a over what the native call changed (see GteCase) */
         uint64_t h = 0xcbf29ce484222325ull;
-        uint32_t i;
+        uint32_t i, k;
+        int sentinel = 0;
 #define MIX(b) (h = (h ^ (uint8_t)(b)) * 0x100000001b3ull)
-        for (i = 0; i < 4u; ++i) MIX(regs[2] >> (8u * i));
+#define MIX32(w) do { uint32_t w_ = (w); MIX(w_); MIX(w_ >> 8); MIX(w_ >> 16); MIX(w_ >> 24); } while (0)
+        if (returns) MIX32(regs[2]);
 #ifdef MUSASHI_WITH_PSYCROSS
         for (i = 0; i < MUSASHI_GTE_DATA_COUNT; ++i) {
-            uint32_t d = gte_lane.data[i];
-            unsigned b;
-            if (i == 1u || i == 3u || i == 5u) d &= 0xFFFFu;
-            for (b = 0; b < 4u; ++b) MIX(d >> (8u * b));
+            uint32_t d = gte_lane.data[i], d0 = gte_pre.data[i];
+            if (i == 1u || i == 3u || i == 5u) { d &= 0xFFFFu; d0 &= 0xFFFFu; }
+            if (d != d0) { MIX32(i); MIX32(d); }
         }
-        for (i = 0; i < MUSASHI_GTE_CONTROL_COUNT; ++i) {
-            unsigned b;
-            for (b = 0; b < 4u; ++b) MIX(gte_lane.control[i] >> (8u * b));
-        }
+        for (i = 0; i < MUSASHI_GTE_CONTROL_COUNT; ++i)
+            if (gte_lane.control[i] != gte_pre.control[i]) { MIX32(0x100u + i); MIX32(gte_lane.control[i]); }
 #endif
-        for (i = FILL_BASE - 0x80000000u; i < FILL_BASE + FILL_SIZE - 0x80000000u; ++i) MIX(m->bytes[i]);
+        {
+            uint64_t h_all = h;
+            uint32_t nram = 0;
+            h = 0xcbf29ce484222325ull;
+            for (i = FILL_BASE - 0x80000000u; i < FILL_BASE + FILL_SIZE - 0x80000000u; ++i)
+                if (m->bytes[i] != start[i]) { MIX32(i); MIX(m->bytes[i]); nram++; }
+            for (i = STACK_TOP - FRAME_GUARD - 0x80000000u; i < STACK_TOP + 0x30u - 0x80000000u; ++i)
+                if (m->bytes[i] != start[i]) { MIX32(i); MIX(m->bytes[i]); nram++; }
+            g_gcase[idx].ram = h;
+            g_gcase[idx].nram = nram;
+            h = (h_all ^ h) * 0x100000001b3ull;
+        }
+#undef MIX32
 #undef MIX
+        for (k = 0; fn->kinds[k] && k < argc; ++k)
+            if (fn->kinds[k] == 'b' && args[k] == 0x7FFF7FFFu) sentinel = 1;
         g_gcase[idx].v0 = regs[2];
         g_gcase[idx].outcome = h ? h : 1u;
         g_gcase[idx].vzhi = vzhi;
+        g_gcase[idx].sentinel = sentinel;
     }
     return SAME | (cyc << 4) | (entry << 6);
 }
@@ -878,26 +906,36 @@ static int run_escape_family(MusashiBootMemory *memory, const uint8_t *image, ui
         /* a function that compares nothing proves nothing */
         if (!counts[SAME] && !ent[ENTRY_SAME]) bad++;
         if (gte_family) {
-            unsigned i, j, v0s = 0, outcomes = 0, vzhi = 0, ones = 0;
+            unsigned i, j, v0s = 0, outcomes = 0, vzhi = 0, ones = 0, sentinels = 0, cases = 0;
+            unsigned ram_cases = 0, rams = 0;
             for (i = 0; i < ESC_CASES; ++i) {
-                int nv = 1, no = 1;
+                int nv = 1, no = 1, nr = 1;
                 if (!g_gcase[i].outcome) continue;   /* not SAME */
                 vzhi += (unsigned)g_gcase[i].vzhi;
+                if (g_gcase[i].sentinel) { sentinels++; continue; }
+                cases++;
                 ones += g_gcase[i].v0 == 1u;
+                ram_cases += g_gcase[i].nram != 0u;
                 for (j = 0; j < i; ++j) {
-                    if (!g_gcase[j].outcome) continue;
+                    if (!g_gcase[j].outcome || g_gcase[j].sentinel) continue;
                     if (g_gcase[j].v0 == g_gcase[i].v0) nv = 0;
                     if (g_gcase[j].outcome == g_gcase[i].outcome) no = 0;
+                    if (g_gcase[j].nram && g_gcase[j].ram == g_gcase[i].ram) nr = 0;
                 }
                 v0s += (unsigned)nv;
                 outcomes += (unsigned)no;
+                if (g_gcase[i].nram) rams += (unsigned)nr;
             }
-            printf("%s: %08x distinct_v0=%u v0_one=%u distinct_outcomes=%u vz_high_raw_differ=%u\n",
-                   label, fns[k].pc, v0s, ones, outcomes, vzhi);
+            printf("%s: %08x distinct_v0=%u v0_one=%u distinct_outcomes=%u ram_writing_cases=%u "
+                   "distinct_ram_outcomes=%u vz_high_raw_differ=%u sentinel_cases=%u "
+                   "(variety counts exclude them)\n",
+                   label, fns[k].pc, v0s, ones, outcomes, ram_cases, rams, vzhi, sentinels);
             /* the GTE code must be compared, on varied inputs, in most cases */
             if (counts[SAME] < ESC_CASES / 2u) bad++;
             if (returns && v0s < 2u) bad++;
             if (outcomes < ESC_CASES / 4u) bad++;
+            /* a member that writes RAM in most cases must write varied RAM */
+            if (ram_cases >= cases / 2u && rams < ESC_CASES / 4u) bad++;
         }
     }
     musashi_formatter_set_entry_hook(entry_hook, NULL);
