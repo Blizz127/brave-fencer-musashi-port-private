@@ -1700,6 +1700,10 @@ def place_guest_locals(ir, fname, words, vram, frame):
                       r"i64 \d+, i1 false\)(?:.*), !annotation (![\w.]+)\s*$", line)
         if im and im.group(1) in moved and im.group(2) in auto_init:
             continue  # -ftrivial-auto-var-init: retail leaves the slot as it was
+        zm = re.match(r"\s*store \S+ (?:0|null|zeroinitializer), ptr (%[\w.\"$]+), align \d+, "
+                      r"!annotation (![\w.]+)\s*$", line)
+        if zm and zm.group(1) in moved and zm.group(2) in auto_init:
+            continue  # the same host-only zero init, as a scalar store
         lm = re.match(r"\s*call void @llvm\.lifetime\.\w+\.p0\((?:i64 \d+, )?ptr (%[\w.\"$]+)\)", line)
         if lm and lm.group(1) in moved:
             continue

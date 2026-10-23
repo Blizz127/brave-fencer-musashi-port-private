@@ -182,6 +182,17 @@ class GuestLocalSlotTest(unittest.TestCase):
         _, (_, placed) = self.place(self.ir("%r", "%r").replace("  %t = icmp", "  store ptr null, ptr %p, align 8\n  %t = icmp"))
         self.assertEqual(placed, [])
 
+    def test_moved_scalar_keeps_retail_bytes(self):
+        # A guest-placed scalar's host-only auto-init zero store is dropped (retail leaves the slot as it was);
+        # an ordinary zero store stays.
+        ir = ("define void @lane_func_80100000(i32 %c) {\n  %v = alloca i32, align 4\n"
+              "  store i32 0, ptr %v, align 4, !annotation !5\n  call void @lane_func_80059888(ptr %v)\n"
+              "  store i32 0, ptr %v, align 4\n  ret void\n}\n!5 = !{!\"auto-init\"}\n")
+        _, (out, placed) = self.place(ir)
+        self.assertEqual(placed, [("%v", 16, 4)])
+        self.assertNotIn("!annotation !5", out.split("!5 = ")[0])
+        self.assertIn("store i32 0, ptr %v, align 4\n", out)
+
     def test_different_values_are_not_placed(self):
         # Nothing moves into the guest frame; the later host-address check refuses the call.
         sys.path.insert(0, str(ROOT / "tools"))
