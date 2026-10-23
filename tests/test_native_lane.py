@@ -148,6 +148,50 @@ class PollingLoopTest(unittest.TestCase):
                      "side:\n  call void @g()\n  br label %x\nh2:\n  br label %h\nx:\n  ret void\n}\n")
 
 
+class GuestLocalSlotTest(unittest.TestCase):
+    """escape: a C pointer variable that holds the same local's address on every path (MB-0003 800D27A0)."""
+    VRAM = 0x80100000
+    # addiu sp,-32; sw ra,24(sp); addiu a0,sp,16; jal 80059888; nop; lw ra,24(sp); jr ra; addiu sp,32
+    WORDS = [0x27BDFFE0, 0xAFBF0018, 0x27A40010, 0x0C016622, 0x00000000, 0x8FBF0018, 0x03E00008, 0x27BD0020]
+
+    def ir(self, a_store, b_store, extra=""):
+        return ("define void @lane_func_80100000(i32 %c, ptr %q) {\n"
+                "  %r = alloca [8 x i8], align 2\n  %s = alloca [8 x i8], align 2\n  %p = alloca ptr, align 8\n"
+                "  %t = icmp ne i32 %c, 0\n  br i1 %t, label %a, label %b\n"
+                f"a:\n  store ptr {a_store}, ptr %p, align 8\n  br label %j\n"
+                f"b:\n  store ptr {b_store}, ptr %p, align 8\n  br label %j\n"
+                f"j:\n{extra}  %x = load ptr, ptr %p, align 8\n  call void @lane_func_80059888(ptr %x)\n  ret void\n}}\n")
+
+    def place(self, ir):
+        sys.path.insert(0, str(ROOT / "tools"))
+        import native_lane_gen as g
+        return g, g.place_guest_locals(ir, "lane_func_80100000", self.WORDS, self.VRAM, 32)
+
+    def test_same_local_on_every_path_is_placed(self):
+        _, (out, placed) = self.place(self.ir("%r", "%r"))
+        self.assertEqual(placed, [("%r", 16, 8)])
+        self.assertIn("%r = inttoptr i64", out)
+
+    def test_different_values_are_not_placed(self):
+        # Nothing moves into the guest frame; the later host-address check refuses the call.
+        sys.path.insert(0, str(ROOT / "tools"))
+        import native_lane_gen as g
+        for a, b in (("%r", "%s"), ("%r", "%q")):
+            try:
+                _, placed = g.place_guest_locals(self.ir(a, b), "lane_func_80100000", self.WORDS, self.VRAM, 32)
+            except g.Reject as e:
+                self.assertIn("escape", str(e.args))
+            else:
+                self.assertEqual(placed, [])
+
+    def test_slot_with_another_use_stays_refused(self):
+        sys.path.insert(0, str(ROOT / "tools"))
+        import native_lane_gen as g
+        with self.assertRaises(g.Reject):
+            g.place_guest_locals(self.ir("%r", "%r", "  call void @lane_func_80059000(ptr %p)\n"),
+                                 "lane_func_80100000", self.WORDS, self.VRAM, 32)
+
+
 class NativeLaneSourceTest(unittest.TestCase):
     def test_formatter_consults_lane_before_fetch(self):
         source = (ROOT / "pc_port/mips_formatter.c").read_text()

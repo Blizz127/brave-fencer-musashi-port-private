@@ -1563,6 +1563,29 @@ def place_guest_locals(ir, fname, words, vram, frame):
     types = named_types(ir)
     lines = m.group(1).splitlines()
     allocas, derived, calls = {}, {}, []
+    # -O0 keeps a C pointer variable in its own `alloca ptr` slot. A slot whose only uses are plain stores into it and
+    # loads from it, and whose every store is the same local's address, yields that address when loaded (a matching C
+    # may need `p = &local` in each arm and one call through p).
+    slot_stores, slot_loads, slot_other = {}, {}, set()
+    for line in lines:
+        dm = DEF_RE.match(line)
+        if dm and re.fullmatch(r"alloca ptr, align \d+", dm.group(2).strip()):
+            slot_stores[dm.group(1)], slot_loads[dm.group(1)] = [], []
+    for line in lines:
+        dm = DEF_RE.match(line)
+        if dm and dm.group(1) in slot_stores:
+            continue
+        sm = re.fullmatch(r"\s*store ptr (%[\w.\"$]+), ptr (%[\w.\"$]+)(?:, align \d+)?", line)
+        lm = re.fullmatch(r"\s*(%[\w.\"$]+) = load ptr, ptr (%[\w.\"$]+)(?:, align \d+)?", line)
+        if sm and sm.group(2) in slot_stores and sm.group(1) not in slot_stores:
+            slot_stores[sm.group(2)].append(sm.group(1))
+        elif lm and lm.group(2) in slot_stores:
+            slot_loads[lm.group(2)].append(lm.group(1))
+        else:
+            for slot in slot_stores:
+                if re.search(re.escape(slot) + r"(?![\w.\"$])", line):
+                    slot_other.add(slot)
+    load_slot = {ld: s for s, lds in slot_loads.items() if s not in slot_other for ld in lds}
     for k, line in enumerate(lines):
         dm = DEF_RE.match(line)
         if dm:
@@ -1571,6 +1594,11 @@ def place_guest_locals(ir, fname, words, vram, frame):
             if am:
                 allocas[name] = (am.group(1).strip(), k)
                 derived[name] = (name, 0)
+                continue
+            if name in load_slot:
+                stores = slot_stores[load_slot[name]]
+                if stores and all(s in derived for s in stores) and len({derived[s] for s in stores}) == 1:
+                    derived[name] = derived[stores[0]]
                 continue
             gm = GEP_RE.match(rhs)
             if gm and rhs.startswith("getelementptr"):
