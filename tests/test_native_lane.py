@@ -172,6 +172,16 @@ class GuestLocalSlotTest(unittest.TestCase):
         self.assertEqual(placed, [("%r", 16, 8)])
         self.assertIn("%r = inttoptr i64", out)
 
+    def test_auto_init_null_store_is_ignored(self):
+        # -ftrivial-auto-var-init's annotated null store (host-only) does not count as a stored value.
+        ir = self.ir("%r", "%r").replace("  %t = icmp", "  store ptr null, ptr %p, align 8, !annotation !5\n  %t = icmp")
+        ir += '!5 = !{!"auto-init"}\n'
+        _, (_, placed) = self.place(ir)
+        self.assertEqual(placed, [("%r", 16, 8)])
+        # an unannotated null store is a real value: nothing is placed
+        _, (_, placed) = self.place(self.ir("%r", "%r").replace("  %t = icmp", "  store ptr null, ptr %p, align 8\n  %t = icmp"))
+        self.assertEqual(placed, [])
+
     def test_different_values_are_not_placed(self):
         # Nothing moves into the guest frame; the later host-address check refuses the call.
         sys.path.insert(0, str(ROOT / "tools"))

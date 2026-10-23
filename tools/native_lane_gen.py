@@ -1566,7 +1566,9 @@ def place_guest_locals(ir, fname, words, vram, frame):
     # -O0 keeps a C pointer variable in its own `alloca ptr` slot. A slot whose only uses are plain stores into it and
     # loads from it, and whose every store is the same local's address, yields that address when loaded (a matching C
     # may need `p = &local` in each arm and one call through p).
+    # The host-only -ftrivial-auto-var-init null store a slot starts with is not program behaviour (retail has none).
     slot_stores, slot_loads, slot_other = {}, {}, set()
+    auto_init_ids = set(re.findall(r'^(![\w.]+) = !\{!"auto-init"\}', ir, flags=re.M))
     for line in lines:
         dm = DEF_RE.match(line)
         if dm and re.fullmatch(r"alloca ptr, align \d+", dm.group(2).strip()):
@@ -1574,6 +1576,9 @@ def place_guest_locals(ir, fname, words, vram, frame):
     for line in lines:
         dm = DEF_RE.match(line)
         if dm and dm.group(1) in slot_stores:
+            continue
+        am = re.fullmatch(r"\s*store ptr null, ptr (%[\w.\"$]+), align \d+, !annotation (![\w.]+)", line)
+        if am and am.group(1) in slot_stores and am.group(2) in auto_init_ids:
             continue
         sm = re.fullmatch(r"\s*store ptr (%[\w.\"$]+), ptr (%[\w.\"$]+)(?:, align \d+)?", line)
         lm = re.fullmatch(r"\s*(%[\w.\"$]+) = load ptr, ptr (%[\w.\"$]+)(?:, align \d+)?", line)
