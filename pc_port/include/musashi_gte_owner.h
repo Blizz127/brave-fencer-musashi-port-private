@@ -112,6 +112,19 @@ void musashi_gte_owner_native_end(MusashiGteOwner *owner, uint32_t commands);
 /* Inside a native lease: MTC2 LZCS=value then MFC2 LZCR, with the counter
  * credits of those two interpreter transfers. 0 = refused, nothing changed. */
 int musashi_gte_owner_native_lzc(MusashiGteOwner *owner, uint32_t value, uint32_t *lzcr);
+/* N-GTE, inside a native lease: one MTC2/LWC2, MFC2/SWC2, CTC2, CFC2 or
+ * COP2 command with the selector profile, bank effect and counter credit of
+ * the interpreter's transfer (shared implementations). 0 = refused, nothing
+ * changed. */
+int musashi_gte_owner_native_write_data(MusashiGteOwner *owner, uint32_t selector,
+                                        uint32_t value);
+int musashi_gte_owner_native_read_data(MusashiGteOwner *owner, uint32_t selector,
+                                       uint32_t *value);
+int musashi_gte_owner_native_write_control(MusashiGteOwner *owner, uint32_t selector,
+                                           uint32_t value);
+int musashi_gte_owner_native_read_control(MusashiGteOwner *owner, uint32_t selector,
+                                          uint32_t *value);
+int musashi_gte_owner_native_command(MusashiGteOwner *owner, uint32_t word);
 
 int musashi_gte_owner_snapshot(MusashiGteOwner *owner,
                                MusashiGteSnapshot *snapshot);

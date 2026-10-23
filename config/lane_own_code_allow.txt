@@ -522,3 +522,13 @@
 8001d388
 8001fb8c
 80020da4
+# Clean-room wave 1 (CR2, CR3; lead decisions D2/D2a grouped GTE macros) merged back 2026-10-23
+# (bfm-rederive a03a7dc6, port 91e6bf758a), main region; native COP2 through the lane GTE helpers (N-GTE).
+800123f0
+80012558
+800126c4
+8001d70c
+8001d8c4
+8001e378
+8001e668
+80021174

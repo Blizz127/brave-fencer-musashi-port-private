@@ -454,6 +454,12 @@ BR = re.compile(r"^\s*br label %([\w.$-]+)")
 DEF = re.compile(r"^\s*(%[\w.$-]+) = (.*)$")
 GUEST_CALL = re.compile(r"^lane_(?:call_)?(?:[a-z]+\d*_\d{4}__)?func_([0-9A-Fa-f]{8})$")
 DIV_HELPERS = ("lane_sdiv32", "lane_srem32", "lane_udiv32", "lane_urem32")
+# N-GTE COP2 helpers (pc_port/mips_formatter.c lane_gte_*): each call stands
+# for one retail COP2 move, command, LWC2 or SWC2, whose interpreter cost the
+# retail segments already include (insn_cost), so a call is no event: no
+# anchor, no charge of its own and no change to the CFG.
+GTE_HELPERS = ("lane_gte_mtc2", "lane_gte_lwc2", "lane_gte_mfc2", "lane_gte_swc2",
+               "lane_gte_ctc2", "lane_gte_cfc2", "lane_gte_cmd")
 
 
 class Clang:
@@ -540,6 +546,8 @@ class Clang:
                         raise Refuse(f"intrinsic {callee}")
                 elif callee in DIV_HELPERS:
                     events.append(("div", callee, li))
+                elif callee in GTE_HELPERS:
+                    pass
                 else:
                     g = GUEST_CALL.match(callee)
                     if not g:

@@ -64,6 +64,7 @@ does not fit the member is a build error, never a silent 0. Under
 --own-code-only each pair must also carry a clean-room or owner origin.
 """
 import argparse
+import collections
 import concurrent.futures
 import json
 import os
@@ -174,6 +175,11 @@ def strip_empty_asm(text):
 # here without it, i.e. the matched body).
 INTRINSIC_PCS = {0x80016714, 0x8001903C, 0x80029044, 0x8002906C, 0x80029094, 0x80029218}
 
+# N-GTE: host forms of include/gte_ops.h (the lane_gte_* helper calls; see the
+# header). Injected into every lane compile, it defines GTE_OPS_H, so no
+# gte_ops.h inline asm reaches the host; a TU without GTE macros is unchanged.
+LANE_GTE_HEADER = ROOT / "pc_port" / "include" / "musashi_lane_gte.h"
+
 CFLAGS = [
     f"--target={HOST_TARGET}", "-std=gnu89", "-fPIE", "-fwrapv",
     "-fno-strict-aliasing", "-fno-builtin", "-ffreestanding",
@@ -181,6 +187,7 @@ CFLAGS = [
     "-w", "-Werror=implicit-function-declaration", "-Werror=implicit-int",
     "-Wno-error=int-conversion", "-Wno-int-conversion",
     "-Wno-error=incompatible-pointer-types",
+    "-include", str(LANE_GTE_HEADER),
 ]
 SYM_RE = re.compile(r'@(?:"([^"]+)"|([A-Za-z_.$][\w.$]*))')
 GLOBAL_DECL_RE = re.compile(r'^@(?:"([^"]+)"|([\w.$]+)) = (.*)$', re.M)
@@ -644,6 +651,10 @@ def parse_signature(header_or_decl, name):
 MEMORY_FNS = ("memset", "memcpy", "memmove")
 # Guarded division helpers (mips_formatter.c) that lower_arith() calls.
 LANE_HELPERS = ("lane_sdiv32", "lane_srem32", "lane_udiv32", "lane_urem32")
+# N-GTE COP2 helpers (mips_formatter.c) that LANE_GTE_HEADER's macros call:
+# integer arguments only, no guest call, no ledger event (gte_audit checks
+# them against the retail COP2 words).
+GTE_HELPERS = lane_cycles.GTE_HELPERS
 # D-011 ledger (pc_port/mips_formatter.c): the cycles a mapped native body
 # has charged, a lost-state flag, the deadline budget and the guard's tick.
 LEDGER_SYMBOLS = ("musashi_lane_ledger", "musashi_lane_ledger_lost", "musashi_lane_budget",
@@ -677,7 +688,7 @@ def rewrite_symbols(ir, symbols, member=None, member_code=()):
     declared = set(re.findall(r"^declare [^@]*@([\w.$]+)\(", ir, flags=re.M))
     guest = set()
     for fname in defined | declared:
-        if fname.startswith("llvm.") or fname in MEMORY_FNS:
+        if fname.startswith("llvm.") or fname in MEMORY_FNS or fname in GTE_HELPERS:
             continue
         addr = guest_address(fname, symbols)
         if addr is None:
@@ -901,6 +912,10 @@ def check_optimized(ir, module_internal):
                     continue
                 if name in ("memset", "memcpy", "memmove") or name in LANE_HELPERS or name in LEDGER_SYMBOLS:
                     continue
+                if name in GTE_HELPERS:
+                    if re.search(r"\bptr\b", args):
+                        raise Reject("escape", f"pointer passed to {name}")
+                    continue
                 if name in module_internal:
                     continue
                 if not (re.fullmatch(r"lane_(?:call_)?" + QFUNC + r"(?:__\w+)?", name) or
@@ -1073,8 +1088,11 @@ def check_polling_loops(ir):
             else:
                 loop = closure(head, succ) & closure(src, pred)
             body = [l for n, b in blocks if n in loop for l in b]
+            # A COP2 helper call delivers no IRQ (nor does a guest-visible
+            # step happen in it), so it does not make a polling loop safe.
             if not any(re.search(r"\bstore\b", l) or
-                       (re.search(r"\bcall\b", l) and "@llvm." not in l) for l in body) \
+                       (re.search(r"\bcall\b", l) and "@llvm." not in l and
+                        not re.search(r"@(?:" + "|".join(GTE_HELPERS) + r")\(", l)) for l in body) \
                     and not loop_walks_memory(body):
                 raise Reject("irq", "loop with no store or call (polling)")
 
@@ -1714,6 +1732,93 @@ def place_guest_locals(ir, fname, words, vram, frame):
     return out, placed
 
 
+# ---- N-GTE: COP2 audit -----------------------------------------------------
+# The interpreter executes a retail COP2 instruction only at an audited site
+# (mips_formatter.c); a native function bypasses those gates, so its lane_gte_*
+# calls (LANE_GTE_HEADER) must stand for exactly its retail COP2 words, and
+# every register must be in the gte_owner profile the transfer accepts
+# (gte_owner.c data_write_selector_ok, data_read_selector_ok,
+# gte_control_in_write_profile, control_read_selector_ok; the runtime checks
+# them again and aborts the call). Rule "gte".
+GTE_DATA_WRITE = frozenset({0, 1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 19, 20, 21, 22, 28, 30, 31})
+GTE_DATA_READ = frozenset({0, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 18, 19, 20, 21, 22,
+                           24, 25, 26, 27, 29, 30, 31})
+GTE_CONTROL_WRITE = frozenset(set(range(0, 8)) | set(range(13, 31)))
+GTE_CONTROL_READ = GTE_CONTROL_WRITE | {11, 31}
+GTE_PROFILE = {"mtc2": GTE_DATA_WRITE, "lwc2": GTE_DATA_WRITE, "mfc2": GTE_DATA_READ,
+               "swc2": GTE_DATA_READ, "ctc2": GTE_CONTROL_WRITE, "cfc2": GTE_CONTROL_READ}
+GTE_CALL_RE = re.compile(r"\bcall \w+ @lane_gte_(\w+)\(([^)]*)\)")
+GTE_CONST_RE = re.compile(r"i32 (?:noundef |signext |zeroext )*(-?\d+)")
+
+
+def retail_cop2(words):
+    """The retail COP2 operations in address order: (kind, register) for the
+    register moves, LWC2 and SWC2; ("cmd", word) for a command."""
+    ops = []
+    for w in words:
+        op = w >> 26
+        if op == 0x12 and w & (1 << 25):
+            ops.append(("cmd", w))
+        elif op == 0x12:
+            kind = {0: "mfc2", 2: "cfc2", 4: "mtc2", 6: "ctc2"}.get((w >> 21) & 31, f"cop2:{w:08x}")
+            ops.append((kind, (w >> 11) & 31))
+        elif op in (50, 58):
+            ops.append(("lwc2" if op == 50 else "swc2", (w >> 16) & 31))
+    return ops
+
+
+def ir_cop2(ir, fname):
+    """(ops, straight) for fname in a clang -O0 module: its lane_gte_* calls
+    in IR order (= source order) as retail_cop2 tuples, and whether its body
+    has no conditional branch or switch."""
+    m = re.search(r"^define [^@]*@" + re.escape(fname) + r"\(.*?^\}", ir, flags=re.M | re.S)
+    if not m:
+        raise Reject("gte", f"{fname} not in the module")
+    body = m.group(0)
+    ops = []
+    for cm in GTE_CALL_RE.finditer(body):
+        kind = cm.group(1)
+        if kind not in ("cmd", *GTE_PROFILE):
+            raise Reject("gte", f"unknown helper lane_gte_{kind}")
+        last = GTE_CONST_RE.fullmatch(cm.group(2).split(",")[-1].strip())
+        if not last:
+            raise Reject("gte", f"lane_gte_{kind} with a non-constant register or command")
+        ops.append((kind, int(last.group(1)) & 0xFFFFFFFF))
+    straight = not re.search(r"^\s*(?:br i1 |switch )", body, flags=re.M)
+    return ops, straight
+
+
+def gte_audit(ir, fname, words):
+    """Rule "gte". Returns True when fname uses COP2 (its wrapper then needs
+    the native GTE lease), False when neither it nor its retail words do."""
+    ops, straight = ir_cop2(ir, fname)
+    if words is None:
+        if ops:
+            raise Reject("gte", "COP2 helper calls but no retail words to audit them")
+        return False
+    retail = retail_cop2(words)
+    if not ops and not retail:
+        return False
+    for kind, reg in retail:
+        if kind.startswith("cop2:"):
+            raise Reject("gte", f"retail COP2 word {kind[5:]} has no helper")
+    for kind, reg in ops:
+        if kind != "cmd" and reg not in GTE_PROFILE[kind]:
+            raise Reject("gte", f"{kind} ${reg} is outside the gte_owner profile")
+
+    def show(c):
+        return " ".join(f"{k}:{v:08x}" if k == "cmd" else f"{k}${v}" for k, v in sorted(c.elements()))
+    have, want = collections.Counter(ops), collections.Counter(retail)
+    if have != want:
+        raise Reject("gte", f"COP2 calls differ from retail: missing [{show(want - have)}] "
+                            f"extra [{show(have - want)}]")
+    retail_straight = all(k in ("op", "jal") or (k == "jr" and i == 31)
+                          for k, i in (lane_cycles.decode(w, 0) for w in words))
+    if straight and retail_straight and ops != retail:
+        raise Reject("gte", "COP2 calls are in a different order from retail")
+    return True
+
+
 def cycle_analysis(ir, entry, vram, size, info):
     """D-011 phase 2a: the retail cycle model and the clang/retail mapping
     for one function. Report only: it changes no admission and no charge."""
@@ -1785,6 +1890,7 @@ def build_one(entry, out, symbols, hooks, clang, info=None):
         ir = o0.read_text()
         check_layout(ir)
         words = retail_words(vram, size, info)
+        gte = gte_audit(ir, name, words)
         frame = retail_frame(words) if words is not None else 0
         # Locals whose address reaches a callee move into the retail frame
         # before narrow_pointer_cells, which then treats them as guest memory.
@@ -1872,6 +1978,7 @@ def build_one(entry, out, symbols, hooks, clang, info=None):
             if u != "U" and not re.fullmatch(r"lane_(?:call_)?" + QFUNC + r"(?:__\w+)?", u) \
                     and not u.startswith("lane_icall__") \
                     and u not in MEMORY_FNS and u not in LANE_HELPERS and u not in LEDGER_SYMBOLS \
+                    and not (gte and u in GTE_HELPERS) \
                     and not LEDGER_SEGS.fullmatch(u):
                 raise Reject("symbols", f"object still references {u}")
         digest = member_digest(info, vram, size) if info else None
@@ -1881,7 +1988,8 @@ def build_one(entry, out, symbols, hooks, clang, info=None):
                     source=entry["source"], admitted=True, obj=str(obj), defs=sigs, stubs=stubs,
                     icalls=icalls, digest=digest, cycles=cycles, ledger=ledger,
                     ledger_rows=ledger_rows, frame=frame,
-                    guest_locals=[dict(off=o, size=n) for _, o, n in guest_locals])
+                    guest_locals=[dict(off=o, size=n) for _, o, n in guest_locals],
+                    **({"gte": True} if gte else {}))
     except Reject as e:
         return dict(name=name, qname=qualify(member, name), member=member, vram=vram, size=size,
                     source=entry["source"], admitted=False, rule=e.rule, detail=e.detail,
@@ -2727,6 +2835,9 @@ def emit_table(admitted, out, entry_sites=frozenset(), passthrough=frozenset()):
         lines.append(f"static int {wrap}(MusashiNativeLaneCall *call) {{")
         if not params and ret == "void":
             lines.append("    (void)call;")
+        if a.get("gte"):
+            # N-GTE: without a native GTE lease the interpreter runs the call.
+            lines.append("    if (!musashi_native_lane_gte_ready()) return 0;")
         if ret == "void":
             lines.append(f"    {d}({args});")
         else:
@@ -3022,7 +3133,7 @@ def main():
             rules[r["rule"]] = rules.get(r["rule"], 0) + 1
     cycles = cycle_summary(results)
     report = dict(candidates=len(results), admitted=len(admitted), rejected_by_rule=rules,
-                  cycles=cycles,
+                  cycles=cycles, gte_admitted=sum(1 for a in admitted if a.get("gte")),
                   psyq_excluded=len(psyq_excluded),
                   psyq_hooked=[f"{pc:08x}" for pc in blocked],
                   call_stubs=dict(direct=direct, interpreter_thunk=thunk,
@@ -3050,7 +3161,8 @@ def main():
     print(f"native lane: {len(admitted)}/{len(results)} game functions admitted "
           f"({len(psyq_excluded)} PsyQ-range candidates excluded); rejected {rules}; "
           f"call stubs direct={direct} thunk={thunk} (hook-site thunks {hook_thunk}, "
-          f"pass-through thunks {pass_thunk}; {len(flags)} admitted functions pass arguments through)")
+          f"pass-through thunks {pass_thunk}; {len(flags)} admitted functions pass arguments through; "
+          f"{report['gte_admitted']} admitted use native COP2)")
     print("native lane cycles (D-011): mapped " + ", ".join(
         f"{k} {v['mapped']}/{v['mapped'] + v['refused']}" for k, v in cycles["by_class"].items())
           + f"; ledger {sum(1 for a in admitted if a.get('ledger'))} of {len(admitted)} admitted, "

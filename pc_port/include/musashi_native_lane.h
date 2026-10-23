@@ -16,6 +16,7 @@
 #include <stdint.h>
 
 #include "musashi_boot_memory.h"
+#include "musashi_gte_owner.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -204,6 +205,21 @@ int32_t lane_sdiv32(int32_t a, int32_t b);
 int32_t lane_srem32(int32_t a, int32_t b);
 uint32_t lane_udiv32(uint32_t a, uint32_t b);
 uint32_t lane_urem32(uint32_t a, uint32_t b);
+
+/* N-GTE COP2 helpers for natively compiled code (mips_formatter.c; lane C
+ * reaches them through pc_port/include/musashi_lane_gte.h). bind: the owner
+ * the interpreter's COP2 transfers use (NULL unbinds). ready: a native lease
+ * would be granted now; a COP2 function's generated wrapper refuses without
+ * it, so the interpreter runs the call. */
+void musashi_native_lane_gte_bind(MusashiGteOwner *owner);
+int musashi_native_lane_gte_ready(void);
+void lane_gte_mtc2(uint32_t value, int32_t reg);
+void lane_gte_lwc2(uint32_t value, int32_t reg);
+uint32_t lane_gte_mfc2(int32_t reg);
+uint32_t lane_gte_swc2(int32_t reg);
+void lane_gte_ctc2(uint32_t value, int32_t reg);
+uint32_t lane_gte_cfc2(int32_t reg);
+void lane_gte_cmd(uint32_t word);
 
 /* Reference execution for differential checks: run guest function target
  * with argc argument words on a fresh device-less CPU (gp=0x80074750,

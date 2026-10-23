@@ -13273,6 +13273,79 @@ uint32_t lane_urem32(uint32_t a, uint32_t b) {
     return a % b;
 }
 
+/* N-GTE: COP2 for natively compiled code. tools/native_lane_gen.py compiles
+ * lane C with pc_port/include/musashi_lane_gte.h, which maps each
+ * include/gte_ops.h macro onto these helpers. Each runs one register move or
+ * command on the bound gte_owner inside a native lease, with the selector
+ * profile, bank effect and counter credit of the interpreter's transfer
+ * (gte_owner.c shares the implementations). LWC2/SWC2 are the lane's own word
+ * load/store plus the data-register move, as formatter_step composes
+ * cpu_read32 + write_data and read_data + cpu_write32. The generator admits a
+ * function only when its helper calls equal its retail COP2 words, and the
+ * function's wrapper refuses (the interpreter runs the call) unless
+ * musashi_native_lane_gte_ready(), so a refusal here is a port fault: the
+ * native call aborts rather than skip the operation. */
+#ifdef MUSASHI_WITH_PSYCROSS
+static MusashiGteOwner *g_lane_gte;
+
+void musashi_native_lane_gte_bind(MusashiGteOwner *owner) { g_lane_gte = owner; }
+
+int musashi_native_lane_gte_ready(void) {
+    if (!g_lane_gte || !musashi_gte_owner_native_begin(g_lane_gte)) return 0;
+    musashi_gte_owner_native_end(g_lane_gte, 0u);
+    return 1;
+}
+
+static MusashiGteOwner *lane_gte_lease(void) {
+    if (!g_lane_gte || !musashi_gte_owner_native_begin(g_lane_gte)) musashi_native_lane_abort();
+    return g_lane_gte;
+}
+
+/* Ends the lease, then aborts the native call if the operation refused. */
+static void lane_gte_release(MusashiGteOwner *owner, int ok) {
+    musashi_gte_owner_native_end(owner, 0u);
+    if (!ok) musashi_native_lane_abort();
+}
+
+void lane_gte_mtc2(uint32_t value, int32_t reg) {
+    MusashiGteOwner *owner = lane_gte_lease();
+    lane_gte_release(owner, musashi_gte_owner_native_write_data(owner, (uint32_t)reg, value));
+}
+void lane_gte_lwc2(uint32_t value, int32_t reg) { lane_gte_mtc2(value, reg); }
+uint32_t lane_gte_mfc2(int32_t reg) {
+    uint32_t value = 0;
+    MusashiGteOwner *owner = lane_gte_lease();
+    lane_gte_release(owner, musashi_gte_owner_native_read_data(owner, (uint32_t)reg, &value));
+    return value;
+}
+uint32_t lane_gte_swc2(int32_t reg) { return lane_gte_mfc2(reg); }
+void lane_gte_ctc2(uint32_t value, int32_t reg) {
+    MusashiGteOwner *owner = lane_gte_lease();
+    lane_gte_release(owner, musashi_gte_owner_native_write_control(owner, (uint32_t)reg, value));
+}
+uint32_t lane_gte_cfc2(int32_t reg) {
+    uint32_t value = 0;
+    MusashiGteOwner *owner = lane_gte_lease();
+    lane_gte_release(owner, musashi_gte_owner_native_read_control(owner, (uint32_t)reg, &value));
+    return value;
+}
+void lane_gte_cmd(uint32_t word) {
+    MusashiGteOwner *owner = lane_gte_lease();
+    lane_gte_release(owner, musashi_gte_owner_native_command(owner, word));
+}
+#else
+/* No GTE in this build: no wrapper admits a COP2 function at run time. */
+void musashi_native_lane_gte_bind(MusashiGteOwner *owner) { (void)owner; }
+int musashi_native_lane_gte_ready(void) { return 0; }
+void lane_gte_mtc2(uint32_t value, int32_t reg) { (void)value; (void)reg; musashi_native_lane_abort(); }
+void lane_gte_lwc2(uint32_t value, int32_t reg) { (void)value; (void)reg; musashi_native_lane_abort(); }
+uint32_t lane_gte_mfc2(int32_t reg) { (void)reg; musashi_native_lane_abort(); return 0; }
+uint32_t lane_gte_swc2(int32_t reg) { (void)reg; musashi_native_lane_abort(); return 0; }
+void lane_gte_ctc2(uint32_t value, int32_t reg) { (void)value; (void)reg; musashi_native_lane_abort(); }
+uint32_t lane_gte_cfc2(int32_t reg) { (void)reg; musashi_native_lane_abort(); return 0; }
+void lane_gte_cmd(uint32_t word) { (void)word; musashi_native_lane_abort(); }
+#endif
+
 static MusashiResetGraphPrefixStatus run_startup_cpu(
     MusashiBootMemory *memory, FormatterCpu *cpu,
     MusashiConsoleSink sink, void *userdata, int32_t *result,

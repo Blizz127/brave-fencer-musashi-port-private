@@ -5379,6 +5379,8 @@ static NativeBoot *native_boot_owner(NativeBoot *fallback) {
             if (ovl > 0) atexit(lane_overlay_report);
         }
         musashi_native_lane_psyq_bind(&((NativeBoot *)window)->memory, &((NativeBoot *)window)->gte);
+        /* N-GTE: native COP2 (lane_gte_*) uses the interpreter's owner. */
+        musashi_native_lane_gte_bind(&((NativeBoot *)window)->gte);
         /* S3a: the libpad leaves run natively inside the input callback frame
          * (not lane entries); class "pad" only. */
         musashi_input_pad_leaves_set((classes & MUSASHI_PSYQ_LANE_PAD) ? &bfm_psyq_pad_leaf_api : NULL);

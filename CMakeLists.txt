@@ -705,6 +705,7 @@ if(MUSASHI_BUILD_PC_PORT)
                     ${MUSASHI_LANE_OWN_CODE_FLAG}
             DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/tools/native_lane_gen.py
                     ${CMAKE_CURRENT_SOURCE_DIR}/tools/lane_cycles.py
+                    ${CMAKE_CURRENT_SOURCE_DIR}/pc_port/include/musashi_lane_gte.h
                     ${CMAKE_CURRENT_SOURCE_DIR}/provenance/matches.json
                     ${MUSASHI_LANE_SOURCES}
                     ${MUSASHI_LANE_HOOK_SOURCES}
