@@ -1,63 +1,45 @@
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_800CFB3C - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Walks the 16-byte records until the type 0xFF terminator. Each type-9 record fills w half-words at (data + 2*w)
+ * with 0x7FFF and submits the rectangle (x, y, w, h) with that buffer through func_800599B8. D_800EC69C is cleared first. */
 #include "psx_types.h"
-typedef float f32;
-typedef unsigned long long u64;
-typedef long long s64;
-typedef double f64;
-#ifndef NULL
-#define NULL ((void *)0)
-#endif
+
+typedef struct {
+    u16 type;
+    u8 pad2[2];
+    u16 x;
+    u16 y;
+    s16 w;
+    u16 h;
+    u32 data;
+} Rec;
+
+typedef struct {
+    s16 x, y, w, h;
+} Rect;
 
 extern s32 D_800EC69C;
-extern void func_800599B8();
+extern void func_800599B8(Rect *r, u32 p);
 
-void func_800CFB3C(u16 *arg0)
+void func_800CFB3C(Rec *rec)
 {
-    register u16 *s1 __asm__("$17");
-    register u16 *s0 __asm__("$16");
-    register s32 fill __asm__("$18");
-    register s32 i __asm__("$5");
-    u16 sVar1;
-    u16 buf[4];
-    s32 pad[2];
+    Rect r;
+    s32 i;
+    u16 *q;
+    u32 buf;
 
-    __asm__("" : "=r"(s1) : "0"(arg0));
-    __asm__ volatile("" : : "r"(s1));
-    sVar1 = *s1;
     D_800EC69C = 0;
-    if (sVar1 != 0xFF) {
-        fill = 0x7FFF;
-        s0 = arg0 + 5;
-        do {
-            if (sVar1 == 9) {
-                u16 *p = (u16 *)(*(s32 *)(s0 + 1) + *(s16 *)(s0 - 1) * 2);
-                i = 0;
-                if (*(s16 *)(s0 - 1) > 0) {
-                    do {
-                        *p = fill;
-                        p++;
-                        i++;
-                    } while (i < *(s16 *)(s0 - 1));
-                }
-                {
-                    s32 n;
-                    s32 base;
-                    s32 arg2;
-                    n = *(s16 *)(s0 - 1);
-                    base = *(s32 *)(s0 + 1);
-                    buf[0] = s0[-3];
-                    buf[1] = s0[-2];
-                    buf[2] = s0[-1];
-                    arg2 = base + n * 2;
-                    buf[3] = s0[0];
-                    func_800599B8(buf, arg2);
-                }
+    for (; rec->type != 0xFF; rec++) {
+        if (rec->type == 9) {
+            q = (u16 *)(rec->data + rec->w * 2);
+            for (i = 0; i < rec->w; i++) {
+                *q++ = 0x7FFF;
             }
-            s1 += 8;
-            sVar1 = *s1;
-            s0 += 8;
-        } while (sVar1 != 0xFF);
+            buf = rec->data + rec->w * 2;
+            r.x = rec->x;
+            r.y = rec->y;
+            r.w = rec->w;
+            r.h = rec->h;
+            func_800599B8(&r, buf);
+        }
     }
-    (void)&pad;
 }

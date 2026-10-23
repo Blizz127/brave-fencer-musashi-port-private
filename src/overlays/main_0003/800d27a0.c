@@ -1,69 +1,105 @@
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_800D27A0 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Fetches the next decoded frame: polls func_80046C38(&handle, &frame) up to 0x8000 times and returns 0 if it never
+ * succeeds. Otherwise flags the frame's counter word (+8) against the header's limit (+0xC) in D_800EC9F4/D_800EC9F8
+ * and, when the frame size (+0x10/+0x12) differs from the remembered D_800D9484/D_800D9488, clears a rectangle of the
+ * display (black when the header flag +4 is set, grey otherwise) and remembers the new size. Stores the (possibly
+ * 3/2-scaled) width and the height into the output record (+0x1C/+0x24 and +0x1E/+0x26/+0x32) and returns the handle. */
 #include "psx_types.h"
-typedef float f32;
-typedef unsigned long long u64;
-typedef long long s64;
-typedef double f64;
-#ifndef NULL
-#define NULL ((void *)0)
-#endif
 
-extern void func_80059888(void *a0, s32 a1, s32 a2, s32 a3);
+typedef struct {
+    s16 x, y, w, h;
+} Rect;
+
+typedef struct {
+    u8 pad0[8];
+    u32 w8;
+    u8 padC[4];
+    u16 h10;
+    u16 h12;
+} Frame;
+
+typedef struct {
+    u8 pad0[4];
+    s32 w04;
+    u8 pad08[4];
+    u32 w0C;
+    u8 pad10[8];
+    s32 w18;
+    s32 w1C;
+} Hdr;
+
+typedef struct {
+    u8 pad0[0x1C];
+    u16 h1C;
+    u16 h1E;
+    u8 pad20[4];
+    u16 h24;
+    u16 h26;
+    u8 pad28[10];
+    u16 h32;
+} Out;
+
 extern s32 D_800EC9F4;
 extern s32 D_800EC9F8;
 extern s32 D_800D9484;
 extern s32 D_800D9488;
-struct UnkS1 { s32 pad0; s32 f4; s32 pad8; s32 fC; s32 pad10; s32 pad14; s32 f18; u32 f1C; };
+extern s32 func_80046C38(u32 *handle, u32 *frame);
+extern void func_80059888(Rect *r, s32 a, s32 b, s32 c);
 
-s32 func_800D27A0(void* arg0, struct UnkS1* arg1) {
-    s32 sp10[2];
-    u16 sp18[4];
-    s32 ret;
-    s32 i;
+u32 func_800D27A0(Out *o, Hdr *h)
+{
+    u32 p0;
+    u32 p1;
+    s32 n;
+    u16 x;
+    u16 y;
 
-    for (i = 0x8000; i != 0; i--) {
-        if (func_80046C38(&sp10[0], &sp10[1]) == 0) {
-            goto found;
+    for (n = 0x8000; n != 0; n--) {
+        if (func_80046C38(&p0, &p1) == 0) {
+            goto got;
         }
     }
     return 0;
-found:
-    if (*(u32*)(sp10[1] + 8) >= arg1->fC) {
+got:
+    if (((Frame *)p1)->w8 >= h->w0C) {
         D_800EC9F4 = 1;
     }
-    if (*(u32*)(sp10[1] + 8) >= arg1->fC - 15) {
+    if (((Frame *)p1)->w8 >= h->w0C - 15) {
         D_800EC9F8 = 1;
     } else {
         D_800EC9F8 = 0;
     }
-    if (D_800D9484 != *(u16*)(sp10[1] + 0x10) || D_800D9488 != *(u16*)(sp10[1] + 0x12)) {
-        u16 cur1;
-        u16 cur2;
-        sp18[0] = 0;
-        sp18[1] = 0;
-        sp18[2] = arg1->f4 != 0 ? (arg1->f18 * 3) / 2 : *(u16*)&arg1->f18;
-        sp18[3] = arg1->f1C * 2;
-        if (arg1->f4 != 0) {
-            func_80059888(sp18, 0, 0, 0);
+    if ((u32)D_800D9484 != ((Frame *)p1)->h10 || (u32)D_800D9488 != ((Frame *)p1)->h12) {
+        Rect rect;
+        u16 w;
+
+        rect.x = 0;
+        rect.y = 0;
+        if (h->w04 != 0) {
+            w = (h->w18 * 3) / 2;
         } else {
-            func_80059888(sp18, 0x40, 0x40, 0x40);
+            w = h->w18;
         }
-        cur1 = *(u16*)(sp10[1] + 0x10);
-        cur2 = *(u16*)(sp10[1] + 0x12);
-        D_800D9484 = cur1;
-        D_800D9488 = cur2;
+        rect.w = w;
+        rect.h = h->w1C << 1;
+        if (h->w04 != 0) {
+            func_80059888(&rect, 0, 0, 0);
+        } else {
+            func_80059888(&rect, 0x40, 0x40, 0x40);
+        }
+        D_800D9484 = ((Frame *)p1)->h10;
+        D_800D9488 = ((Frame *)p1)->h12;
     }
-    {
-        u16 t = arg1->f4 != 0 ? (D_800D9484 * 3) / 2 : *(u16*)&D_800D9484;
-        u16 g;
-        ret = sp10[0];
-        g = *(u16*)&D_800D9488;
-        *(u16*)(arg0 + 0x24) = t;
-        *(u16*)(arg0 + 0x1C) = t;
-        *(u16*)(arg0 + 0x26) = g;
-        *(u16*)(arg0 + 0x1E) = g;
-        *(u16*)(arg0 + 0x32) = g;
+    if (h->w04 != 0) {
+        x = (D_800D9484 * 3) / 2;
+    } else {
+        x = D_800D9484;
     }
-    return ret;
+    y = D_800D9488;
+    o->h24 = x;
+    o->h1C = x;
+    o->h26 = y;
+    o->h1E = y;
+    o->h32 = y;
+    return p0;
 }

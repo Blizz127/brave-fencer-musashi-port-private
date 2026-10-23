@@ -1,16 +1,10 @@
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_800D2C88 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Passes both arguments straight through to func_800D2EF8 (the retail words leave a0/a1 untouched before the call). */
 #include "psx_types.h"
-typedef float f32;
-typedef unsigned long long u64;
-typedef long long s64;
-typedef double f64;
-#ifndef NULL
-#define NULL ((void *)0)
-#endif
 
-extern void func_800D2EF8();
+extern void func_800D2EF8(u32 a0, u32 a1);
 
-void func_800D2C88(void) {
-    func_800D2EF8();
+void func_800D2C88(u32 a0, u32 a1)
+{
+    func_800D2EF8(a0, a1);
 }

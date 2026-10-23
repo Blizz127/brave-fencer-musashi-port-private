@@ -1,36 +1,31 @@
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_800D2704 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Double-buffer step: tries func_800D27A0(o, arg) up to 0x20 times; on the first nonzero handle flips the buffer
+ * index at +8, hands the handle and the newly selected buffer word to func_800D3234, calls func_80046B44 with the
+ * handle and returns 0; returns 1 if every try failed. */
 #include "psx_types.h"
-typedef float f32;
-typedef unsigned long long u64;
-typedef long long s64;
-typedef double f64;
-#ifndef NULL
-#define NULL ((void *)0)
-#endif
 
-extern s32 func_800D27A0();
-extern void func_800D3234(s32 a0, s32 a1);
-extern void func_80046B44(s32 a0);
+typedef struct {
+    u32 buf[2];
+    u32 cur;
+} DblBuf;
 
-s32 func_800D2704(s32 a0, s32 a1) {
-    s32 *ptr;
-    s32 cnt;
-    s32 ring;
-    s32 a1s;
-    ptr = (s32 *)a0;
-    a1s = a1;
-    cnt = 0x20;
-    do {
-        ring = func_800D27A0((s32)ptr, a1s);
-        if (ring == 0) {
-            cnt--;
-        } else {
-            ptr[2] = (ptr[2] == 0);
-            func_800D3234(ring, ptr[ptr[2]]);
-            func_80046B44(ring);
+extern u32 func_800D27A0(DblBuf *o, u32 arg);
+extern void func_800D3234(u32 h, u32 buf);
+extern void func_80046B44(u32 h);
+
+s32 func_800D2704(DblBuf *o, u32 arg)
+{
+    s32 n;
+    u32 h;
+
+    for (n = 0x20; n != 0; n--) {
+        h = func_800D27A0(o, arg);
+        if (h != 0) {
+            o->cur = (o->cur == 0);
+            func_800D3234(h, o->buf[o->cur]);
+            func_80046B44(h);
             return 0;
         }
-    } while (cnt != 0);
+    }
     return 1;
 }

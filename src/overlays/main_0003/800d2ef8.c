@@ -1,30 +1,21 @@
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_800D2EF8 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Starts a block DMA transfer: waits through func_800D3020, ORs 0x88 into the control word, then programs the
+ * address (a0), the block word ((a1 >> 5) blocks of 0x20 words) and starts the transfer. The D_800DB6xx globals hold
+ * guest register addresses (u32). */
 #include "psx_types.h"
-typedef float f32;
-typedef unsigned long long u64;
-typedef long long s64;
-typedef double f64;
-#ifndef NULL
-#define NULL ((void *)0)
-#endif
 
-extern s32 *D_800DB674;
-extern s32 *D_800DB650;
-extern s32 *D_800DB648;
-extern s32 *D_800DB64C;
-extern u32 func_800D3020();
+extern u32 D_800DB674;
+extern u32 D_800DB650;
+extern u32 D_800DB648;
+extern u32 D_800DB64C;
+extern void func_800D3020(void);
 
-void func_800D2EF8(s32 a0, s32 a1) {
-    s32 s1;
-    u32 s0;
-    s1 = a0;
-    s0 = (u32)a1;
+void func_800D2EF8(u32 a0, u32 a1)
+{
     func_800D3020();
-    s0 >>= 5;
-    *D_800DB674 |= 0x88;
-    *D_800DB650 = 0;
-    *D_800DB648 = s1;
-    *D_800DB64C = (s32)(s0 << 16) | 0x20;
-    *D_800DB650 = 0x1000200;
+    *(u32 *)D_800DB674 |= 0x88;
+    *(u32 *)D_800DB650 = 0;
+    *(u32 *)D_800DB648 = a0;
+    *(u32 *)D_800DB64C = ((a1 >> 5) << 16) | 0x20;
+    *(u32 *)D_800DB650 = 0x01000200;
 }

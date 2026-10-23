@@ -1,22 +1,17 @@
-/* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
-/* func_800CF3A4 - byte-exact against retail at -O2 (tools/register_match.py). */
+/* Owner re-derivation from retail assembly (clean input set). */
+/* Passes the table D_800D52BC to func_800183E0, sets the half-word D_800B99E6 to 1 and copies the word D_800EC680 into
+ * the half-word D_800B99E8. */
 #include "psx_types.h"
-typedef float f32;
-typedef unsigned long long u64;
-typedef long long s64;
-typedef double f64;
-#ifndef NULL
-#define NULL ((void *)0)
-#endif
 
-extern s8 D_800D52BC[];
+extern u8 D_800D52BC[];
 extern s32 D_800EC680;
 extern u16 D_800B99E6;
 extern u16 D_800B99E8;
-extern void func_800183E0(s32 a0);
+extern void func_800183E0(u32 a);
 
-void func_800CF3A4(void) {
-    func_800183E0((s32) &D_800D52BC);
+void func_800CF3A4(void)
+{
+    func_800183E0((u32)D_800D52BC);
     D_800B99E6 = 1;
-    D_800B99E8 = (u16) D_800EC680;
+    D_800B99E8 = D_800EC680;
 }
