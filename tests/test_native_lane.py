@@ -205,12 +205,18 @@ class GuestLocalSlotTest(unittest.TestCase):
             else:
                 self.assertEqual(placed, [])
 
-    def test_slot_with_another_use_stays_refused(self):
-        sys.path.insert(0, str(ROOT / "tools"))
-        import native_lane_gen as g
-        with self.assertRaises(g.Reject):
-            g.place_guest_locals(self.ir("%r", "%r", "  call void @lane_func_80059000(ptr %p)\n"),
-                                 "lane_func_80100000", self.WORDS, self.VRAM, 32)
+    def test_slot_with_another_use_is_not_placed(self):
+        # Any use of the slot besides plain stores and loads (here a lifetime marker) disables the rule.
+        _, (_, placed) = self.place(self.ir("%r", "%r", "  call void @llvm.lifetime.start.p0(i64 8, ptr %p)\n"))
+        self.assertEqual(placed, [])
+
+    def test_store_on_one_path_only_is_placed(self):
+        # Known limit (independent review 10-23): the rule is flow-insensitive. A load on a path with no program
+        # store reads the host auto-init null (C undefined behaviour); retail's own dataflow must still pass sp+X
+        # on every path or the retail comparison refuses the call. Pinned so a change is deliberate.
+        ir = self.ir("%r", "%r").replace("a:\n  store ptr %r, ptr %p, align 8\n", "a:\n")
+        _, (_, placed) = self.place(ir)
+        self.assertEqual(placed, [("%r", 16, 8)])
 
 
 class NativeLaneSourceTest(unittest.TestCase):

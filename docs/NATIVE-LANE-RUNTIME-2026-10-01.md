@@ -850,7 +850,14 @@ code uses. `place_guest_locals` (`tools/native_lane_gen.py`) runs on the -O0
 IR before `narrow_pointer_cells`:
 
 - An alloca is moved when its address reaches a `lane_call_*` argument
-  through constant GEPs. Other allocas stay on the host.
+  through constant GEPs, or through a C pointer variable whose -O0 slot is only
+  ever stored that same address and loaded (2026-10-23, 800D27A0; the host-only
+  auto-init null store of the slot is ignored; the rule is flow-insensitive, so
+  a read before any store would need C undefined behaviour plus a retail path
+  that still passes sp + k). Other allocas stay on the host.
+- A moved local keeps retail's bytes: the host-only -ftrivial-auto-var-init
+  memset AND its scalar `store 0` form are dropped (the scalar form since
+  2026-10-23; 80016B60 and 800D27A0 had zeroed their guest-frame scalars).
 - The offset comes from a forward dataflow over the retail words
   (`retail_call_args`). For each jal it gives the arguments proven to hold
   retail sp + k: a0-a3, callee-saved copies across calls, and stack argument

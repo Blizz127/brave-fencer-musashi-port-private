@@ -1552,7 +1552,8 @@ def _call_args(rhs):
 
 def place_guest_locals(ir, fname, words, vram, frame):
     """Move every alloca of fname whose address reaches a guest callee
-    (lane_call_* / lane_* call argument, through constant GEPs) into the
+    (lane_call_* / lane_* call argument, through constant GEPs or a pointer
+    variable's slot that only ever holds that address) into the
     retail frame. Returns (ir, [(alloca, sp offset, size)]); the IR is
     unchanged when no alloca reaches a call. Raises Reject("escape") when
     the offset cannot be proven from the retail words."""
@@ -1614,7 +1615,7 @@ def place_guest_locals(ir, fname, words, vram, frame):
                         idx = [p.split()[-1] for p in parts[2:]]
                         off = gep_const_offset(parts[0], idx, types)
                         if off is None:
-                            raise Reject("escape", f"non-constant offset into local {base}")
+                            raise Reject("escape", f"non-constant offset into local {derived[base][0]}")
                         derived[name] = (derived[base][0], derived[base][1] + off)
                 continue
         ca = _call_args(line)
