@@ -1388,7 +1388,8 @@ def retail_call_args(words, vram, frame):
     """Forward dataflow over the retail words. Returns (sites, saved) where
     sites = [(jal pc, target, {argument index: sp offset})] lists, for every
     jal, the arguments proven to be retail sp + offset (a0-a3, and stack
-    arguments 4-7 from the words at sp+0x10..), and saved = the sp offsets
+    arguments 4-15 from the words at sp+0x10..sp+0x4C; the caller keeps only
+    those below the C call's argument count), and saved = the sp offsets
     the function stores a callee-saved register or ra to. Raises Reject when
     the control flow cannot be followed."""
     n = len(words)
@@ -1445,7 +1446,9 @@ def retail_call_args(words, vram, frame):
             raise Reject("escape", f"sp changes at {pc + 4:08x}")
         if kind == "call":
             args = {k: regs[4 + k] for k in range(4) if 4 + k in regs}
-            for k in range(4, 8):
+            # O32 outgoing stack arguments: 80017778's RotTransPers4 call
+            # passes two locals as arguments 8 and 9 (sp+0x20, sp+0x24).
+            for k in range(4, 16):
                 if 0x10 + 4 * (k - 4) in slots:
                     args[k] = slots[0x10 + 4 * (k - 4)]
             sites[pc] = (target, args)
