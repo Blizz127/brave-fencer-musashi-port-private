@@ -5328,8 +5328,15 @@ static NativeBoot *native_boot_owner(NativeBoot *fallback) {
             fprintf(stderr, "native_boot: NATIVE_LANE window unavailable; interpreter only\n");
             return fallback;
         }
-        if (!aliased)
-            fprintf(stderr, "native_boot: NATIVE_LANE scratchpad alias at 1f800000 unavailable\n");
+        if (!aliased) {
+            /* Native code reaches the scratchpad only through this alias: the
+             * game runs native callers with sp on the scratchpad stack (retail
+             * 80010614 sets sp = 1F8003F8 before the 8001C00C chain), and
+             * native functions store to 1F80xxxx constants (80020248). Without
+             * it they would fault or write the wrong page: stay interpreted. */
+            fprintf(stderr, "native_boot: NATIVE_LANE scratchpad alias at 1f800000 unavailable; interpreter only\n");
+            return fallback;
+        }
         if (mprotect(((NativeBoot *)window)->ram_mirror_guard,
                      sizeof(((NativeBoot *)window)->ram_mirror_guard), PROT_NONE) != 0)
             fprintf(stderr, "native_boot: NATIVE_LANE mirror guard unavailable\n");
