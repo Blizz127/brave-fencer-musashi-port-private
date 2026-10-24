@@ -23,7 +23,7 @@ Rules (each rejection names the first rule that failed, in report.json):
   escape  : no host stack or host data address reaches guest memory, a
             guest callee, an integer, or the return value
   inttoptr: integer->pointer only from zero-extended 32-bit values or
-            constants inside game RAM
+            constants inside game RAM or the scratchpad
   calls   : only direct calls to prototyped guest functions (lane_func_*),
             module-internal functions and memory intrinsics; no inline asm
   arith   : no variable or trapping divisors (x86 traps where MIPS does not),
@@ -78,6 +78,16 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import lane_cycles  # noqa: E402  (D-011 retail cycle model, report only)
 RAM_LO, RAM_HI = 0x80010000, 0x80200000
+# The scratchpad (D-cache RAM): the lane window maps its page a second time at
+# 0x1F800000 (musashi_native_lane_map_guest), so a constant scratchpad
+# pointer is a guest address native code may pass on or dereference
+# (func_8001FC08 hands 0x1F800000/0x1F8000E0 matrix arrays to its callees).
+SCRATCH_LO, SCRATCH_HI = 0x1F800000, 0x1F800400
+
+
+def guest_constant(addr):
+    """A constant address native code may form: game RAM or the scratchpad."""
+    return RAM_LO <= addr < RAM_HI or SCRATCH_LO <= addr < SCRATCH_HI
 HOST_TARGET = "x86_64-unknown-linux-gnu"
 def host_long(text):
     """PS1 `long` is 32-bit: rewrite lone `long` / `long int` to `int` for the
@@ -503,8 +513,13 @@ def caller_pinned_entries():
         text = "\n".join(p.read_text(errors="replace") for p in (ROOT / "pc_port").glob("*.c"))
         consts = {m.group(1): int(m.group(2), 16) for m in re.finditer(
             r"\b(kGteEntry[0-9A-Fa-f]{8})\s*=\s*0x([0-9A-Fa-f]{8})u?", text)}
+        # gte_decode_lane admits every COP2 site in main-EXE game code
+        # (80010000-80074800 outside the Sony GTE range 80047000-80055000)
+        # whatever the caller, so a jal_caller_of pin on such an entry
+        # (80020F34's) is redundant there and does not stop a native caller.
         _PINNED_ENTRIES = {consts[n] for n in re.findall(r"jal_caller_of\([^,()]+,\s*(kGteEntry[0-9A-Fa-f]{8})\)",
-                                                         text) if n in consts}
+                                                         text) if n in consts and
+                           not (0x80010000 <= consts[n] < 0x80074800 and not 0x80047000 <= consts[n] < 0x80055000)}
     return _PINNED_ENTRIES
 
 
@@ -871,10 +886,10 @@ def check_optimized(ir, module_internal):
                     if not (d.startswith("zext i32") or d.startswith("zext nneg i32") or
                             re.match(r"and i64 .*, 4294967295$", d)):
                         raise Reject("inttoptr", f"integer->pointer from '{d[:40]}'")
-                elif re.fullmatch(r"-?\d+", val) and not RAM_LO <= int(val) < RAM_HI:
+                elif re.fullmatch(r"-?\d+", val) and not guest_constant(int(val)):
                     raise Reject("inttoptr", f"constant address {int(val):x}")
             for const in re.findall(r"inttoptr \(i64 (-?\d+) to ptr\)", rhs):
-                if not RAM_LO <= int(const) < RAM_HI:
+                if not guest_constant(int(const)):
                     raise Reject("inttoptr", f"constant address {int(const) & 0xffffffffffffffff:x}")
             dm = re.match(r"(sdiv|udiv|srem|urem)(?: exact)? (i\d+) (.*)$", rhs)
             if dm:
@@ -1384,13 +1399,37 @@ def _step(w, regs, slots):
     return True
 
 
+SAVE_REGS = (16, 17, 18, 19, 20, 21, 22, 23, 30, 31)
+
+
+def _prologue_saves(words, vram):
+    """sp offsets of the function's register saves: in the entry block (and
+    the delay slot of its first transfer), stores of a callee-saved register
+    or ra that still holds its incoming value. gcc 2.7.2 saves only in the
+    prologue; a later store of such a register to the frame is data (e.g.
+    func_8001FC08's sw $s7, 0x18($sp) into its DrawArg local)."""
+    saved, written = set(), set()
+    for i, w in enumerate(words):
+        transfer = _branch_info(w, vram + 4 * i) is not None
+        for x in ((w, words[i + 1]) if transfer and i + 1 < len(words) else (w,)):
+            if x >> 26 == 0x2B and (x >> 21) & 31 == 29 and (x >> 16) & 31 in SAVE_REGS \
+                    and (x >> 16) & 31 not in written:
+                saved.add((x & 0xFFFF) - 0x10000 if x & 0x8000 else x & 0xFFFF)
+            d = _gpr_dest(x)
+            if d:
+                written.add(d)
+        if transfer:
+            break
+    return saved
+
+
 def retail_call_args(words, vram, frame):
     """Forward dataflow over the retail words. Returns (sites, saved) where
     sites = [(jal pc, target, {argument index: sp offset})] lists, for every
     jal, the arguments proven to be retail sp + offset (a0-a3, and stack
     arguments 4-15 from the words at sp+0x10..sp+0x4C; the caller keeps only
     those below the C call's argument count), and saved = the sp offsets
-    the function stores a callee-saved register or ra to. Raises Reject when
+    of its register saves (_prologue_saves). Raises Reject when
     the control flow cannot be followed."""
     n = len(words)
     lo, hi = vram, vram + 4 * n
@@ -1398,7 +1437,7 @@ def retail_call_args(words, vram, frame):
     states[0] = ({29: frame}, {})
     work = [0]
     sites = {}
-    saved = set()
+    saved = _prologue_saves(words, vram)
 
     def merge(i, regs, slots):
         if not 0 <= i <= n:
@@ -1431,9 +1470,6 @@ def retail_call_args(words, vram, frame):
         if br is None:
             if not _step(w, regs, slots):
                 raise Reject("escape", f"sp changes at {pc:08x}")
-            if w >> 26 == 0x2B and (w >> 21) & 31 == 29 and ((w >> 16) & 31) in \
-                    (16, 17, 18, 19, 20, 21, 22, 23, 30, 31):
-                saved.add((w & 0xFFFF) - 0x10000 if w & 0x8000 else w & 0xFFFF)
             merge(i + 1, regs, slots)
             continue
         kind, target = br
