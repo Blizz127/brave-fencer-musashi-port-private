@@ -695,7 +695,9 @@ an instrumented -O0 module:
   the interpreter's checkpoint there: retail pc, delay-slot state, the same CPU
   identity, at most once per instruction.
 - An IRQ left deliverable by a guest call's return is delivered at the call's
-  retail resume pc (`musashi_lane_resume_pc`).
+  retail resume pc (`musashi_lane_resume_pc`). Exception (2026-10-24): inside an
+  unmapped direct callee, the callee's first guest call carries its caller's
+  resume pc instead, and its later ones carry none (KNOWN-DIVERGENCES D-011 (1)).
 - Guest calls from native code run the callee at the retail stack pointer
   (`musashi_lane_sp_adj`, the native frames' retail sizes).
 

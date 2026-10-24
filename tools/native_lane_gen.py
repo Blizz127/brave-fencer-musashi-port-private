@@ -2806,11 +2806,13 @@ def emit_table(admitted, out, entry_sites=frozenset(), passthrough=frozenset()):
                 lines.append("    ++musashi_lane_fixed;")
                 # The caller's resume pc stays set for an unmapped callee: its
                 # first guest call takes it, so an IRQ due by then is delivered
-                # right after that call returns (where retail takes it), under
-                # the caller's resume pc rather than the callee's own (D-011
-                # (1): no pc claim inside unmapped bodies). Clearing it here
-                # only deferred the delivery to the caller's next charge, under
-                # the same pc. The caller clears it after this call returns.
+                # right after that call returns, the position where the
+                # interpreter would take it. The checkpoint pc (EPC, COP2 hold)
+                # is the caller's resume pc, and the clock already includes this
+                # callee's fixed charge (D-011 (1)); the callee's later guest
+                # calls wait for the next checkpoint. Clearing it here deferred
+                # those deliveries further (r61 review). The caller clears it
+                # after this call returns.
             args = ", ".join(from_guest(regs[i] if i < len(regs) else "0u", t, e)
                              for i, (t, e) in enumerate(cparams))
             call = f"{target}({args})"
