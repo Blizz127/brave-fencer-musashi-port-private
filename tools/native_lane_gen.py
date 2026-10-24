@@ -2804,10 +2804,13 @@ def emit_table(admitted, out, entry_sites=frozenset(), passthrough=frozenset()):
                 # for an interpreted caller (2 * words), and counts it.
                 lines.append(f"    musashi_lane_ledger += {2 * (by_def[target]['size'] // 4)}u;")
                 lines.append("    ++musashi_lane_fixed;")
-                # IRQ-GAP-D011 3.2: the caller's resume pc names the retail
-                # pc after this call, not after the unmapped callee's own
-                # guest calls; they get no post-return checkpoint (D-011 (1))
-                lines.append("    musashi_lane_resume_pc = 0u;")
+                # The caller's resume pc stays set for an unmapped callee: its
+                # first guest call takes it, so an IRQ due by then is delivered
+                # right after that call returns (where retail takes it), under
+                # the caller's resume pc rather than the callee's own (D-011
+                # (1): no pc claim inside unmapped bodies). Clearing it here
+                # only deferred the delivery to the caller's next charge, under
+                # the same pc. The caller clears it after this call returns.
             args = ", ".join(from_guest(regs[i] if i < len(regs) else "0u", t, e)
                              for i, (t, e) in enumerate(cparams))
             call = f"{target}({args})"

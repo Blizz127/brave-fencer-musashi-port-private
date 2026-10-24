@@ -13936,8 +13936,8 @@ static int lane_try(MusashiBootMemory *memory, FormatterCpu *cpu) {
     if (!lane_pc_maybe(cpu->pc)) return 0;
     entry = g_lane_count ? lane_find(cpu->pc) : NULL;
     if (!entry && lane_ovl_first(cpu->pc) == g_lane_ovl_count) return 0;
-    /* Every boundary leaves the ledger empty; an aborted call may not. */
-    if (!g_lane_active) musashi_lane_ledger = musashi_lane_seg_extra = 0;
+    /* Every boundary leaves the ledger and resume pc empty; an aborted call may not. */
+    if (!g_lane_active) { musashi_lane_ledger = musashi_lane_seg_extra = 0; musashi_lane_resume_pc = 0; }
     if (cpu->merge_pending || cpu->gte_load_pending || cpu->delay_slot ||
         cpu->npc != cpu->pc + 4u || !musashi_native_lane_usable(memory))
         return 0;
@@ -13988,7 +13988,7 @@ static int lane_try(MusashiBootMemory *memory, FormatterCpu *cpu) {
     g_lane_ovl_depth = active.ovl_base;
     musashi_lane_sp_adj = saved_sp_adj;
     musashi_lane_entry_sp = saved_entry_sp;
-    if (outcome < 0) musashi_lane_ledger = musashi_lane_seg_extra = 0;
+    if (outcome < 0) { musashi_lane_ledger = musashi_lane_seg_extra = 0; musashi_lane_resume_pc = 0; }
     if (outcome < 0) {
         fprintf(stderr, "native_boot: NATIVE_LANE_ABORT pc=%08x fn=%s\n",
                 entry->guest_pc, entry->name ? entry->name : "?");
