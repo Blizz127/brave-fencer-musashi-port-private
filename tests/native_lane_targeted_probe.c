@@ -347,8 +347,12 @@ static void on_fault(int sig, siginfo_t *info, void *ctx);
 /* kinds per argument: p = pointer into the seeded scratch (4-aligned),
  * h = pointer that may be 2-aligned (s16 arrays), i = small integer,
  * n = index 0..3, l = zero-terminated word list (empty) or NULL; leaves
- * family: q = quad record, m = matrix or NULL, o = mode (see LEAF_FAMILY) */
+ * family: q = quad record, m = matrix or NULL, o = mode (see LEAF_FAMILY);
+ * c = a zero-terminated list of 0..12 nonzero words (a work-item count),
+ * x = a matrix (the 8 words of a Mat: rotation, translation), never NULL.
+ * Up to ESC_ARGS_MAX arguments: past a3 they are the caller's stack words. */
 typedef struct { uint32_t pc; const char *kinds; } EscFn;
+enum { ESC_ARGS_MAX = 8u };
 static const EscFn ESC[] = {
     {0x8001282Cu, "p"}, {0x800128B4u, "p"}, {0x800128ECu, "pp"}, {0x80012E0Cu, "iiii"},
     {0x80014168u, "pp"}, {0x80014774u, ""}, {0x80016D78u, "pi"},
@@ -580,6 +584,7 @@ static int gte_scene(uint32_t salt) {
 typedef struct {
     int done, ok, gte_ok, bad;
     uint32_t v0, fixed;
+    uint8_t scratch[MUSASHI_SCRATCHPAD_SIZE];
     uint64_t total;
     EscEntry entry;
 #ifdef MUSASHI_WITH_PSYCROSS
@@ -629,26 +634,30 @@ static uint32_t leaf_flag(const uint8_t *ram, uint32_t fn) {
 }
 
 #ifdef MUSASHI_WITH_PSYCROSS
-/* Leaves family seeding after esc_args: the ordering table (buffer index
- * D_800B9A02 = idx & 1, D_800A651C[index].ot = LEAF_OT) and, in scene cases,
- * plausible vertices behind 'q' and a plausible matrix behind a non-NULL 'm'
- * (QuadVert: xy word, s16 z, s16 pad). */
-static void leaf_seed(MusashiBootMemory *m, const EscFn *fn, unsigned idx, const uint32_t *args, int scene) {
+/* Leaves and GTE family seeding after esc_args, in scene cases: plausible
+ * vertices behind 'q' (QuadVert: xy word, s16 z, s16 pad) and a plausible
+ * matrix behind a non-NULL 'm' or an 'x'. */
+static void esc_seed(MusashiBootMemory *m, const EscFn *fn, const uint32_t *args, int scene) {
     unsigned k, j;
-    put16(m, 0x800B9A02u, idx & 1u);
-    w32(m, 0x800A651Cu + 0x14u * (idx & 1u), LEAF_OT);
     for (k = 0; scene && fn->kinds[k]; ++k) {
         if (fn->kinds[k] == 'q')
             for (j = 0; j < 4u; ++j) {
                 w32(m, args[k] + 8u * j, s16pair(sm(400u), sm(400u)));
                 put16(m, args[k] + 8u * j + 4u, (uint32_t)sm(400u));
             }
-        if (fn->kinds[k] == 'm' && args[k]) {
+        if ((fn->kinds[k] == 'm' || fn->kinds[k] == 'x') && args[k]) {
             uint32_t w[8];
             scene_matrix(w);
             for (j = 0; j < 8u; ++j) w32(m, args[k] + 4u * j, w[j]);
         }
     }
+}
+/* Leaves family: the ordering table (buffer index D_800B9A02 = idx & 1,
+ * D_800A651C[index].ot = LEAF_OT), then esc_seed. */
+static void leaf_seed(MusashiBootMemory *m, const EscFn *fn, unsigned idx, const uint32_t *args, int scene) {
+    put16(m, 0x800B9A02u, idx & 1u);
+    w32(m, 0x800A651Cu + 0x14u * (idx & 1u), LEAF_OT);
+    esc_seed(m, fn, args, scene);
 }
 #endif
 
@@ -662,7 +671,7 @@ static int in_band(uint32_t a) {
 static void esc_args(MusashiBootMemory *m, const EscFn *fn, unsigned idx, uint32_t *args, unsigned *argc) {
     const char *kinds = fn->kinds;
     unsigned i;
-    for (i = 0; kinds[i]; ++i) {
+    for (i = 0; kinds[i] && i < ESC_ARGS_MAX; ++i) {
         uint32_t base = FILL_BASE + 0x200u * ((idx * 7u + i * 3u) % 64u) + 0x40u * i;
         switch (kinds[i]) {
         case 'p': args[i] = base; break;
@@ -681,6 +690,14 @@ static void esc_args(MusashiBootMemory *m, const EscFn *fn, unsigned idx, uint32
         case 'q': args[i] = base; break;
         case 'm': args[i] = idx % 4u == 1u ? 0u : base; break;
         case 'o': args[i] = !((idx >> 2) & 1u) ? 0u : (idx >> 3) % 8u == 7u ? rng() | 0x100u : 1u; break;
+        case 'c': {
+            unsigned n = (idx * 5u + 3u) % 13u, j;
+            for (j = 0; j < n; ++j) w32(m, base + 4u * j, rng() | 1u);
+            w32(m, base + 4u * n, 0u);
+            args[i] = base;
+            break;
+        }
+        case 'x': args[i] = base; break;
         default: args[i] = idx % 3u ? rng() % 8u : rng(); break;
         }
     }
@@ -693,7 +710,7 @@ static int run_escape_case(MusashiBootMemory *m, const uint8_t *image, const Esc
     const int scene = (gte_family || leaves) && idx % 4u != 3u;
     uint64_t done0;
     int vzhi = 0;
-    uint32_t args[4] = {0}, regs[32], ref_v0, a;
+    uint32_t args[ESC_ARGS_MAX] = {0}, regs[32], ref_v0, a;
     unsigned argc = 0;
     uint64_t ref_total;
     uint32_t fixed0, ref_fixed;
@@ -701,6 +718,7 @@ static int run_escape_case(MusashiBootMemory *m, const uint8_t *image, const Esc
     EscEntry ref_entry;
     const MusashiCpuTransferDevice *transfer = NULL;
     uint8_t *start = malloc(MUSASHI_RAM_SIZE);
+    uint8_t sp_start[MUSASHI_SCRATCHPAD_SIZE];
 #ifdef MUSASHI_WITH_PSYCROSS
     MusashiGteSnapshot gte_ref, gte_lane, gte_pre;
     memset(&gte_pre, 0, sizeof gte_pre);
@@ -742,8 +760,17 @@ static int run_escape_case(MusashiBootMemory *m, const uint8_t *image, const Esc
     }
 #ifdef MUSASHI_WITH_PSYCROSS
     if (leaves) leaf_seed(m, fn, idx, args, scene);
+    if (gte_family) {
+        /* the scratchpad starts with the same seeded words on both legs */
+        esc_seed(m, fn, args, scene);
+        for (a = 0; a < MUSASHI_SCRATCHPAD_SIZE; a += 4u) {
+            uint32_t w = rng();
+            memcpy(m->scratchpad + a, &w, sizeof w);
+        }
+    }
 #endif
     memcpy(start, m->bytes, MUSASHI_RAM_SIZE);
+    memcpy(sp_start, m->scratchpad, MUSASHI_SCRATCHPAD_SIZE);
     g_esc_mem = m;
     g_esc_pc = pc;
 #ifdef MUSASHI_WITH_PSYCROSS
@@ -785,6 +812,7 @@ static int run_escape_case(MusashiBootMemory *m, const uint8_t *image, const Esc
             g_sh->gte_ok = 1;
 #endif
             memcpy(g_sh->ram, m->bytes, MUSASHI_RAM_SIZE);
+            memcpy(g_sh->scratch, m->scratchpad, MUSASHI_SCRATCHPAD_SIZE);
             g_sh->done = 1;
             _exit(0);
         }
@@ -918,6 +946,15 @@ static int run_escape_case(MusashiBootMemory *m, const uint8_t *image, const Esc
             }
         }
         if (differ) return DIFFERENT | (entry << 6);
+        /* the scratchpad (1F800000..), which functions use as fast scratch */
+        for (i = 0; i < MUSASHI_SCRATCHPAD_SIZE; ++i)
+            if (m->scratchpad[i] != g_sh->scratch[i]) {
+                if (shown++ < 4)
+                    fprintf(stderr, "targeted_escape: %08x case %u scratchpad %08x interp=%02x native=%02x\n",
+                            pc, idx, 0x1F800000u + i, g_sh->scratch[i], m->scratchpad[i]);
+                differ = 1;
+            }
+        if (differ) return DIFFERENT | (entry << 6);
     }
     if (gte_family && g_gcase) {
         /* FNV-1a over what the native call changed (see GteCase) */
@@ -944,6 +981,8 @@ static int run_escape_case(MusashiBootMemory *m, const uint8_t *image, const Esc
                 if (m->bytes[i] != start[i]) { MIX32(i); MIX(m->bytes[i]); nram++; }
             for (i = STACK_TOP - FRAME_GUARD - 0x80000000u; i < STACK_TOP + 0x30u - 0x80000000u; ++i)
                 if (m->bytes[i] != start[i]) { MIX32(i); MIX(m->bytes[i]); nram++; }
+            for (i = 0; i < MUSASHI_SCRATCHPAD_SIZE; ++i)
+                if (m->scratchpad[i] != sp_start[i]) { MIX32(0x1F800000u + i); MIX(m->scratchpad[i]); nram++; }
             g_gcase[idx].ram = h;
             g_gcase[idx].nram = nram;
             h = (h_all ^ h) * 0x100000001b3ull;
