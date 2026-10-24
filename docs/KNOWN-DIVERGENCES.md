@@ -158,24 +158,29 @@ These change retail behaviour only when a user asks for them:
 
 ## Closed
 
-- Stale native-lane resume pc (P1, IRQ-GAP-D011 F2 + 3.2): a mapped body stored `musashi_lane_resume_pc` before
-  every call, but only a guest call cleared it.
-  - Two classes left a stale value for a later guest call from a body that stores none:
-    - a direct native call into a callee without guest calls;
-    - an unmapped direct callee whose own guest call consumed the caller's value.
-  - Effect: a post-return IRQ checkpoint could then run under another call's pc, inside a body that makes no
-    exactness claim (D-011 (1)).
-  - Fixed 2026-10-24 (native-n8 585813deed). The value is cleared right after the call that stored it, and before
-    a direct call into a no-ledger callee.
-  - Evidence:
-    - A dev-only counter (never in a release build) checked each consumed resume pc against the retail jal at
-      resume-8, over the full s16 opening route (8,202,439 guest calls).
-    - Before the fix: 19,701 stale, over 40 (resume, target) pairs.
-    - After the fix: 0 stale. The 19,701 became zero (no checkpoint), and the 7,485,442 jal-matched and 659,444
-      jalr consumptions are unchanged.
-    - Unit tests: `tests/test_lane_cycles_resume.py`, `tests/test_native_lane_resume_stub.py`.
-    - Generator A/B: report.json identical; each pre-optimisation module with calls has as many clears as resume
-      stores (854 in 342 modules).
+- Stale native-lane resume pc (P1, IRQ-GAP-D011 F2): a mapped body stored `musashi_lane_resume_pc` before every
+  call, but only a guest call cleared it.
+  - Effect: after a direct native call whose callee made no guest call, the value outlived the call. A later guest
+    call from a body that stores none could then run a post-return IRQ checkpoint under that unrelated pc.
+  - Fixed 2026-10-24 (native-n8 585813deed + e1d41743ab):
+    - the value is cleared right after the call that stored it;
+    - `lane_try` clears it wherever it empties the ledger (outermost entry, aborted call).
+  - Evidence: a dev-only counter (never in a release build) checked each consumed resume pc against the retail jal
+    at resume-8, over the full s16 opening route (8,202,439 guest calls).
+    - Before the fix: 19,701 stale = 5,263 leaked (a value that outlived its call) + 14,438 in-call (below).
+    - After the fix: leaked 0, in-call 14,438.
+    - Guard ticks, every VSync-wait counter, fixed charges, IRQ deliveries (41,427) and the route marks are
+      identical. Twelve checkpoints are gone: leaked-value deliveries now land at the next existing checkpoint.
+  - Kept by design, the in-call case: a direct call into an unmapped callee (D-011 (1)) leaves the caller's value
+    for the callee's first guest call.
+    - An IRQ due by then is delivered right after that call returns, which is where retail takes it, under the
+      caller's resume pc rather than the callee's own.
+    - 585813deed also cleared the value before such calls. That only deferred those deliveries to the caller's
+      next charge, under the same pc (+1,109 guard ticks, -149,350 VSync-wait slots on the route), so e1d41743ab
+      dropped it.
+  - Tests: `tests/test_lane_cycles_resume.py`, `tests/test_native_lane_resume_stub.py`.
+  - Generator A/B: report.json identical; each pre-optimisation module with calls has as many clears as resume
+    stores (854 in 342 modules).
   - The counter cannot tell a stale jalr-site value from a fresh one.
 
 - Forest camera/object matrix corruption: interpreted SWC2 at `80048E98` and
