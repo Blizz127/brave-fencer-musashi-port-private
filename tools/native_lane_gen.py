@@ -1213,6 +1213,9 @@ DENY = {
     0x800128EC: "retail cycle mapping ambiguous: would keep the fixed charge (inexact timing)",
     0x80014168: "no comparable differential case yet (the interpreter refuses its own unaligned copy)",
     0x80016D78: "no comparable differential case yet (its allocator callee returns NULL on probe state)",
+    # 80016D78's sibling: its no-matrix arm compares (100/400 SAME), but with a
+    # matrix its SetRotMatrix leaf refuses the interpreter reference leg.
+    0x80017778: "no comparable differential case yet for its matrix arm (the SetRotMatrix leaf refuses the reference leg)",
 }
 
 
