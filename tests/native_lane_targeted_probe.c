@@ -47,7 +47,10 @@
  * gte_owner as native_boot.c binds them: the reference leg with every game
  * function on the interpreter, the native leg with the generated table, so
  * only the game code differs. The escape family keeps 80017778's fully
- * interpreted run (its no-matrix arm, retail SetPolyG4 included). */
+ * interpreted run (its no-matrix arm, retail SetPolyG4 included). No register
+ * is compared: 80017778 returns void, and whether a caller reads the v0/v1
+ * it leaves is the pass-up audit's question (the generator's DENY row holds
+ * it on that audit). */
 #define _GNU_SOURCE
 #include "musashi_boot_memory.h"
 #include "musashi_native_lane.h"
@@ -349,7 +352,8 @@ static void on_fault(int sig, siginfo_t *info, void *ctx);
  * n = index 0..3, l = zero-terminated word list (empty) or NULL; leaves
  * family: q = quad record, m = matrix or NULL, o = mode (see LEAF_FAMILY);
  * c = a zero-terminated list of 0..12 nonzero words (a work-item count),
- * x = a matrix (the 8 words of a Mat: rotation, translation), never NULL.
+ * x = a matrix (the 8 words of a Mat: rotation, translation), never NULL,
+ * r = 12 part records of 12 bytes (xy word, s16 z, three u16 angles).
  * Up to ESC_ARGS_MAX arguments: past a3 they are the caller's stack words. */
 typedef struct { uint32_t pc; const char *kinds; } EscFn;
 enum { ESC_ARGS_MAX = 8u };
@@ -394,8 +398,9 @@ static const EscFn GTE_FAMILY[] = {
     {0x8001D8C4u, "ppp"}, {0x8001E378u, "p"}, {0x8001E668u, "pppp"}, {0x80021174u, "bv"},
     /* 80020248 (clean-room CR5): a list of 0..12 parts (under 8 it writes the
      * scratchpad buffers and returns 1, else D_80074818/D_80075018 and 0),
-     * the 12-byte part records, two matrices, and skip (zero / nonzero) */
-    {0x80020248u, "cpxxo"},
+     * 12-byte part records with varied angles (r), two matrices, and skip
+     * (zero / nonzero) */
+    {0x80020248u, "crxxo"},
 };
 /* Guest matrices the GTE family reads (GS_WSMATRIX, the view matrix): never
  * set in the probe's RAM image, so scene cases write plausible ones. */
@@ -643,6 +648,18 @@ static uint32_t leaf_flag(const uint8_t *ram, uint32_t fn) {
  * matrix behind a non-NULL 'm' or an 'x'. */
 static void esc_seed(MusashiBootMemory *m, const EscFn *fn, const uint32_t *args, int scene) {
     unsigned k, j;
+    /* part records: three 12-bit angles in every case (16-bit ones in
+     * the fourth case), coordinates within +-400 in scene cases */
+    for (k = 0; fn->kinds[k]; ++k)
+        if (fn->kinds[k] == 'r')
+            for (j = 0; j < 12u; ++j) {
+                const uint32_t r0 = args[k] + 12u * j, am = scene ? 0xFFFu : 0xFFFFu;
+                w32(m, r0, scene ? s16pair(sm(400u), sm(400u)) : rng());
+                put16(m, r0 + 4u, scene ? (uint32_t)sm(400u) : rng());
+                put16(m, r0 + 6u, rng() & am);
+                put16(m, r0 + 8u, rng() & am);
+                put16(m, r0 + 10u, rng() & am);
+            }
     for (k = 0; scene && fn->kinds[k]; ++k) {
         if (fn->kinds[k] == 'q')
             for (j = 0; j < 4u; ++j) {
@@ -702,6 +719,7 @@ static void esc_args(MusashiBootMemory *m, const EscFn *fn, unsigned idx, uint32
             break;
         }
         case 'x': args[i] = base; break;
+        case 'r': args[i] = base; break;
         default: args[i] = idx % 3u ? rng() % 8u : rng(); break;
         }
     }
@@ -730,6 +748,11 @@ static int run_escape_case(MusashiBootMemory *m, const uint8_t *image, const Esc
 #endif
     if (!start) return HARNESS_BAD;
     memcpy(m->bytes, image, MUSASHI_RAM_SIZE);
+    /* The guest window (RAM and scratchpad) is a shared mapping: the forked
+     * legs and every earlier case write the same pages. RAM is reset from
+     * the image here; the scratchpad starts empty (the GTE family seeds it
+     * below), so no case sees an earlier case's writes. */
+    memset(m->scratchpad, 0, MUSASHI_SCRATCHPAD_SIZE);
     rng_state = salt | 1u;
     if (idx % 3u == 2u || scene) {
         /* small signed values: vectors and counts rather than pointers */
@@ -834,6 +857,9 @@ static int run_escape_case(MusashiBootMemory *m, const uint8_t *image, const Esc
 #endif
     memcpy(reference, g_sh->ram, MUSASHI_RAM_SIZE);
     memcpy(m->bytes, start, MUSASHI_RAM_SIZE);
+    /* the reference leg wrote the shared scratchpad too: the native leg
+     * starts from the case's own start image, so a store it omits shows */
+    memcpy(m->scratchpad, sp_start, MUSASHI_SCRATCHPAD_SIZE);
     /* the GTE family keeps the start image for its change-only outcome hash;
      * the case's forked child exits right after */
     if (!gte_family) free(start);
@@ -925,8 +951,11 @@ static int run_escape_case(MusashiBootMemory *m, const uint8_t *image, const Esc
     }
 #endif
     {
+        /* inside the band only the guest-frame locals are compared; it ends
+         * at the callee's argument area (the a0-a3 home words and its own
+         * stack arguments), above which the caller's frame is compared */
         const uint32_t lo = STACK_TOP - FRAME_GUARD - 0x80000000u;
-        const uint32_t hi = STACK_TOP + 0x10u + 4u * 8u - 0x80000000u;
+        const uint32_t hi = STACK_TOP + 4u * (argc > 4u ? argc : 4u) - 0x80000000u;
         const uint32_t frame = esc_frame(pc);
         uint32_t i, shown = 0;
         int differ = 0;
@@ -983,7 +1012,7 @@ static int run_escape_case(MusashiBootMemory *m, const uint8_t *image, const Esc
             h = 0xcbf29ce484222325ull;
             for (i = FILL_BASE - 0x80000000u; i < FILL_BASE + FILL_SIZE - 0x80000000u; ++i)
                 if (m->bytes[i] != start[i]) { MIX32(i); MIX(m->bytes[i]); nram++; }
-            for (i = STACK_TOP - FRAME_GUARD - 0x80000000u; i < STACK_TOP + 0x30u - 0x80000000u; ++i)
+            for (i = STACK_TOP - FRAME_GUARD - 0x80000000u; i < STACK_TOP - 0x80000000u; ++i)
                 if (m->bytes[i] != start[i]) { MIX32(i); MIX(m->bytes[i]); nram++; }
             for (i = 0; i < MUSASHI_SCRATCHPAD_SIZE; ++i)
                 if (m->scratchpad[i] != sp_start[i]) { MIX32(0x1F800000u + i); MIX(m->scratchpad[i]); nram++; }
@@ -1114,6 +1143,12 @@ static int run_escape_family(MusashiBootMemory *memory, const uint8_t *image, ui
                    label, fns[k].pc, v0s, ones, outcomes, ram_cases, rams, vzhi, sentinels);
             /* the GTE code must be compared, on varied inputs, in most cases */
             if (counts[SAME] < ESC_CASES / 2u) bad++;
+            /* every GTE member is ledger-mapped: a member that lost its
+             * mapping (a fixed charge), or a SAME case whose cycles could not
+             * be compared, fails; reference-leg refusals and timeouts (a
+             * loaded host) must stay rare */
+            if (!ledger || cyc[CYC_NOT_COMPARABLE]) bad++;
+            if (counts[NOT_COMPARABLE] > ESC_CASES / 50u) bad++;
             if (returns && v0s < 2u) bad++;
             if (outcomes < ESC_CASES / 4u) bad++;
             /* a member that writes RAM in most cases must write varied RAM */
