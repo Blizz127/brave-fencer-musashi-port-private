@@ -392,6 +392,10 @@ static const EscFn ESC[] = {
 static const EscFn GTE_FAMILY[] = {
     {0x800123F0u, "pi"}, {0x80012558u, "pi"}, {0x800126C4u, "pi"}, {0x8001D70Cu, "p"},
     {0x8001D8C4u, "ppp"}, {0x8001E378u, "p"}, {0x8001E668u, "pppp"}, {0x80021174u, "bv"},
+    /* 80020248 (clean-room CR5): a list of 0..12 parts (under 8 it writes the
+     * scratchpad buffers and returns 1, else D_80074818/D_80075018 and 0),
+     * the 12-byte part records, two matrices, and skip (zero / nonzero) */
+    {0x80020248u, "cpxxo"},
 };
 /* Guest matrices the GTE family reads (GS_WSMATRIX, the view matrix): never
  * set in the probe's RAM image, so scene cases write plausible ones. */
