@@ -34,7 +34,20 @@
  * N-GTE family (same harness, "targeted_gte" lines): the inline-GTE
  * functions the lane runs through its COP2 helpers. The interpreter leg runs
  * their retail COP2 words through the owner's transfer, the native leg the
- * lane_gte_* helpers on the same owner (musashi_native_lane_gte_bind). */
+ * lane_gte_* helpers on the same owner (musashi_native_lane_gte_bind).
+ *
+ * Production-leaves family ("targeted_leaves" lines): 80017778 builds a
+ * POLY_G4 and, given a matrix, projects it through CompMatrix, SetRotMatrix,
+ * SetTransMatrix and RotTransPers4. Release builds run those Sony leaves
+ * (and SetPolyG4 and the OT/draw-mode helpers) through the PsyQ lane entries
+ * (native_lane_psyq.c; none of them is held back, and no launch mode changes
+ * the classes), so the interpreter's audited COP2 path for SetRotMatrix,
+ * admitted only under a resident scene overlay the probe does not load, is
+ * never taken there. Here both legs install those entries, bound to the same
+ * gte_owner as native_boot.c binds them: the reference leg with every game
+ * function on the interpreter, the native leg with the generated table, so
+ * only the game code differs. The escape family keeps 80017778's fully
+ * interpreted run (its no-matrix arm, retail SetPolyG4 included). */
 #define _GNU_SOURCE
 #include "musashi_boot_memory.h"
 #include "musashi_native_lane.h"
@@ -52,6 +65,7 @@
 #ifdef MUSASHI_WITH_PSYCROSS
 #include "musashi_cpu_status.h"
 #include "musashi_gte_owner.h"
+#include "musashi_native_lane_psyq.h"
 #endif
 
 extern const MusashiNativeLaneEntry musashi_native_lane_generated[];
@@ -332,7 +346,8 @@ static void on_fault(int sig, siginfo_t *info, void *ctx);
 
 /* kinds per argument: p = pointer into the seeded scratch (4-aligned),
  * h = pointer that may be 2-aligned (s16 arrays), i = small integer,
- * n = index 0..3, l = zero-terminated word list (empty) or NULL */
+ * n = index 0..3, l = zero-terminated word list (empty) or NULL; leaves
+ * family: q = quad record, m = matrix or NULL, o = mode (see LEAF_FAMILY) */
 typedef struct { uint32_t pc; const char *kinds; } EscFn;
 static const EscFn ESC[] = {
     {0x8001282Cu, "p"}, {0x800128B4u, "p"}, {0x800128ECu, "pp"}, {0x80012E0Cu, "iiii"},
@@ -377,6 +392,16 @@ static const EscFn GTE_FAMILY[] = {
 /* Guest matrices the GTE family reads (GS_WSMATRIX, the view matrix): never
  * set in the probe's RAM image, so scene cases write plausible ones. */
 static const uint32_t GTE_WORLD[] = {0x800AE688u, 0x800AF648u};
+/* Production-leaves family (see the header). The buckets are filled by
+ * construction: the matrix ('m') is NULL one case in four (idx % 4 == 1);
+ * the mode ('o') is zero for four cases, nonzero for the next four (1, or
+ * one nonzero case in eight another nonzero value); three cases in four are
+ * a plausible scene (gte_scene, the view matrix in GTE_WORLD, vertices
+ * within +-400 for the quad record 'q', a plausible matrix), the fourth
+ * keeps a random bank and the fill's matrix words. The OT inserts get an
+ * ordering table in the window (LEAF_OT, buffer idx & 1). */
+static const EscFn LEAF_FAMILY[] = {{0x80017778u, "qmo"}};
+enum { LEAF_OT = 0x801C0000u };
 enum { ESC_CASES = 400u, ESC_LOCAL_MAX = 128u };
 enum { ENTRY_NONE = 0, ENTRY_SAME = 1, ENTRY_DIFFERENT = 2, ENTRY_SKIPPED = 3 };
 
@@ -549,10 +574,12 @@ static int gte_scene(uint32_t salt) {
 }
 #endif
 
-/* The interpreter leg's results, written by its forked grandchild. */
+/* The interpreter leg's results, written by its forked grandchild (fixed:
+ * its fixed lane charges, the leaves family's PsyQ entries; bad: it could
+ * not install the leaves family's reference table). */
 typedef struct {
-    int done, ok, gte_ok;
-    uint32_t v0;
+    int done, ok, gte_ok, bad;
+    uint32_t v0, fixed;
     uint64_t total;
     EscEntry entry;
 #ifdef MUSASHI_WITH_PSYCROSS
@@ -573,6 +600,57 @@ static EscShared *g_sh;
  * write varied RAM, whatever its GTE registers do. */
 typedef struct { uint32_t v0; uint64_t outcome, ram; uint32_t nram; int vzhi, sentinel; } GteCase;
 static GteCase *g_gcase;
+/* Leaves family: per-case classification and results the parent aggregates
+ * (written by the case's child). matrix/mode: the 'm' argument was non-NULL,
+ * the 'o' argument nonzero; same: the case was SAME, cyc its CYC_* verdict;
+ * flag: RotTransPers4's flag word (the second word of 80017778's guest-frame
+ * local res[2]) in the interpreter leg's RAM, 0 on the no-matrix arm (which
+ * never projects; it tests a constant 0); fixed: the reference leg's fixed
+ * lane charges (its PsyQ entries). */
+typedef struct { int matrix, mode, same, cyc; uint32_t flag, fixed; } LeafCase;
+static LeafCase *g_lcase;
+/* The release lane's PsyQ entries alone (reference leg) and merged with the
+ * generated table (native leg), as native_boot.c merges them. */
+static MusashiNativeLaneEntry *g_leaf_ref, *g_leaf_full;
+static size_t g_leaf_ref_count, g_leaf_full_count;
+
+/* The word at byte 4 of fn's 8-byte guest-frame local, from a RAM image. */
+static uint32_t leaf_flag(const uint8_t *ram, uint32_t fn) {
+    size_t k;
+    for (k = 0; k < musashi_native_lane_guest_locals_count; ++k) {
+        const MusashiNativeLaneGuestLocal *g = &musashi_native_lane_guest_locals[k];
+        if (g->guest_pc == fn && !g->member && g->size == 8u) {
+            uint32_t a = STACK_TOP - g->frame + g->off + 4u - 0x80000000u, v;
+            memcpy(&v, ram + a, sizeof v);
+            return v;
+        }
+    }
+    return UINT32_MAX;
+}
+
+#ifdef MUSASHI_WITH_PSYCROSS
+/* Leaves family seeding after esc_args: the ordering table (buffer index
+ * D_800B9A02 = idx & 1, D_800A651C[index].ot = LEAF_OT) and, in scene cases,
+ * plausible vertices behind 'q' and a plausible matrix behind a non-NULL 'm'
+ * (QuadVert: xy word, s16 z, s16 pad). */
+static void leaf_seed(MusashiBootMemory *m, const EscFn *fn, unsigned idx, const uint32_t *args, int scene) {
+    unsigned k, j;
+    put16(m, 0x800B9A02u, idx & 1u);
+    w32(m, 0x800A651Cu + 0x14u * (idx & 1u), LEAF_OT);
+    for (k = 0; scene && fn->kinds[k]; ++k) {
+        if (fn->kinds[k] == 'q')
+            for (j = 0; j < 4u; ++j) {
+                w32(m, args[k] + 8u * j, s16pair(sm(400u), sm(400u)));
+                put16(m, args[k] + 8u * j + 4u, (uint32_t)sm(400u));
+            }
+        if (fn->kinds[k] == 'm' && args[k]) {
+            uint32_t w[8];
+            scene_matrix(w);
+            for (j = 0; j < 8u; ++j) w32(m, args[k] + 4u * j, w[j]);
+        }
+    }
+}
+#endif
 
 static int in_band(uint32_t a) {
     return a >= STACK_TOP - FRAME_GUARD && a < STACK_TOP + 0x30u;
@@ -599,6 +677,10 @@ static void esc_args(MusashiBootMemory *m, const EscFn *fn, unsigned idx, uint32
         case 'n': args[i] = rng() % 4u; break;
         /* a zero-terminated list: empty, or absent (NULL) */
         case 'l': args[i] = idx % 4u == 3u ? 0u : base; w32(m, base, 0u); break;
+        /* leaves family: contents seeded by leaf_seed */
+        case 'q': args[i] = base; break;
+        case 'm': args[i] = idx % 4u == 1u ? 0u : base; break;
+        case 'o': args[i] = !((idx >> 2) & 1u) ? 0u : (idx >> 3) % 8u == 7u ? rng() | 0x100u : 1u; break;
         default: args[i] = idx % 3u ? rng() % 8u : rng(); break;
         }
     }
@@ -606,15 +688,15 @@ static void esc_args(MusashiBootMemory *m, const EscFn *fn, unsigned idx, uint32
 }
 
 static int run_escape_case(MusashiBootMemory *m, const uint8_t *image, const EscFn *fn, unsigned idx,
-                           uint8_t *reference, int returns, int ledger, int gte_family) {
+                           uint8_t *reference, int returns, int ledger, int gte_family, int leaves) {
     const uint32_t pc = fn->pc, salt = 0x85ebca6bu * (idx + 1u) ^ pc;
-    const int scene = gte_family && idx % 4u != 3u;
+    const int scene = (gte_family || leaves) && idx % 4u != 3u;
     uint64_t done0;
     int vzhi = 0;
     uint32_t args[4] = {0}, regs[32], ref_v0, a;
     unsigned argc = 0;
     uint64_t ref_total;
-    uint32_t fixed0;
+    uint32_t fixed0, ref_fixed;
     int ok, cyc, entry = ENTRY_NONE;
     EscEntry ref_entry;
     const MusashiCpuTransferDevice *transfer = NULL;
@@ -635,7 +717,7 @@ static int run_escape_case(MusashiBootMemory *m, const uint8_t *image, const Esc
         seed_ram(m, salt);
     }
 #ifdef MUSASHI_WITH_PSYCROSS
-    if (gte_family) {
+    if (gte_family || leaves) {
         unsigned g, k;
         /* stale stack: the same leftovers on both legs */
         for (a = STACK_TOP - FRAME_GUARD; a < STACK_TOP + 0x30u; a += 4u) w32(m, a, rng());
@@ -650,6 +732,17 @@ static int run_escape_case(MusashiBootMemory *m, const uint8_t *image, const Esc
      * (func_80010A08), zero in the probe image: point it into the window. */
     if (pc == 0x80017778u) w32(m, 0x800A5E60u, FILL_BASE + 0x38000u + 0x40u * (idx % 64u));
     esc_args(m, fn, idx, args, &argc);
+    if (leaves && g_lcase) {
+        unsigned k;
+        memset(&g_lcase[idx], 0, sizeof g_lcase[idx]);
+        for (k = 0; fn->kinds[k] && k < argc; ++k) {
+            if (fn->kinds[k] == 'm') g_lcase[idx].matrix = args[k] != 0u;
+            if (fn->kinds[k] == 'o') g_lcase[idx].mode = args[k] != 0u;
+        }
+    }
+#ifdef MUSASHI_WITH_PSYCROSS
+    if (leaves) leaf_seed(m, fn, idx, args, scene);
+#endif
     memcpy(start, m->bytes, MUSASHI_RAM_SIZE);
     g_esc_mem = m;
     g_esc_pc = pc;
@@ -669,12 +762,20 @@ static int run_escape_case(MusashiBootMemory *m, const uint8_t *image, const Esc
         fflush(stderr);
         leg = fork();
         if (leg == 0) {
+            uint32_t f0;
             memset(&g_esc, 0, sizeof g_esc);
             g_cycles = 0;
+            /* leaves family: the PsyQ entries alone, game code interpreted */
+            if (leaves && musashi_native_lane_install(g_leaf_ref, g_leaf_ref_count) < 0) {
+                g_sh->bad = 1;
+                _exit(0);
+            }
+            f0 = musashi_lane_fixed;
             alarm(5);
-            g_sh->ok = musashi_native_lane_reference_call_transfer(m, pc, args, argc, STACK_TOP, 0, regs,
+            g_sh->ok = musashi_native_lane_reference_call_transfer(m, pc, args, argc, STACK_TOP, leaves, regs,
                                                                    &g_clock, transfer);
             alarm(0);
+            g_sh->fixed = musashi_lane_fixed - f0;
             g_sh->v0 = regs[2];
             g_sh->total = g_cycles;
             g_sh->entry = g_esc;
@@ -687,13 +788,14 @@ static int run_escape_case(MusashiBootMemory *m, const uint8_t *image, const Esc
             g_sh->done = 1;
             _exit(0);
         }
-        if (leg < 0 || waitpid(leg, &st, 0) != leg) { free(start); return HARNESS_BAD; }
+        if (leg < 0 || waitpid(leg, &st, 0) != leg || g_sh->bad) { free(start); return HARNESS_BAD; }
         /* an interpreter leg that faulted or hung proves nothing */
         if (!g_sh->done || !g_sh->gte_ok) { free(start); return NOT_COMPARABLE; }
     }
     ok = g_sh->ok;
     ref_v0 = g_sh->v0;
     ref_total = g_sh->total;
+    ref_fixed = g_sh->fixed;
     ref_entry = g_sh->entry;
 #ifdef MUSASHI_WITH_PSYCROSS
     gte_ref = g_sh->gte;
@@ -710,6 +812,8 @@ static int run_escape_case(MusashiBootMemory *m, const uint8_t *image, const Esc
 #ifdef MUSASHI_WITH_PSYCROSS
     if (gte_family && transfer && !musashi_gte_owner_snapshot(&g_owner, &gte_pre)) return HARNESS_BAD;
 #endif
+    /* leaves family: the generated table plus the same PsyQ entries */
+    if (leaves && musashi_native_lane_install(g_leaf_full, g_leaf_full_count) < 0) return HARNESS_BAD;
     done0 = musashi_lane_native_done;
     musashi_lane_native_last_pc = 0;
     {
@@ -721,6 +825,13 @@ static int run_escape_case(MusashiBootMemory *m, const uint8_t *image, const Esc
          * body (a wrapper refusal would leave both legs interpreted) */
         if (gte_family && ok2 && (musashi_lane_native_done == done0 || musashi_lane_native_last_pc != pc)) {
             fprintf(stderr, "targeted_gte: %08x case %u native leg did not run the lane body (last %08x)\n",
+                    pc, idx, musashi_lane_native_last_pc);
+            return NATIVE_FAILED;
+        }
+        /* so must the leaves family's (a wrapper refusal would leave the
+         * function interpreted on both legs) */
+        if (leaves && ok2 && (musashi_lane_native_done == done0 || musashi_lane_native_last_pc != pc)) {
+            fprintf(stderr, "targeted_leaves: %08x case %u native leg did not run the lane body (last %08x)\n",
                     pc, idx, musashi_lane_native_last_pc);
             return NATIVE_FAILED;
         }
@@ -753,7 +864,10 @@ static int run_escape_case(MusashiBootMemory *m, const uint8_t *image, const Esc
         if (!ok) return NOT_COMPARABLE | (entry << 6);
         if (!ok2) return NATIVE_FAILED | (entry << 6);
     }
-    if (!ledger || musashi_lane_fixed != fixed0) cyc = CYC_NOT_COMPARABLE;
+    /* leaves family: both legs charge the same PsyQ entries (a fixed cost
+     * each), so the cycles compare when the native leg's fixed charges are
+     * exactly the reference leg's: the generated code charged none */
+    if (!ledger || musashi_lane_fixed - fixed0 != (leaves ? ref_fixed : 0u)) cyc = CYC_NOT_COMPARABLE;
     else if (g_cycles != ref_total) {
         fprintf(stderr, "targeted_escape: %08x case %u cycles interp %llu native %llu\n", pc, idx,
                 (unsigned long long)ref_total, (unsigned long long)g_cycles);
@@ -843,15 +957,23 @@ static int run_escape_case(MusashiBootMemory *m, const uint8_t *image, const Esc
         g_gcase[idx].vzhi = vzhi;
         g_gcase[idx].sentinel = sentinel;
     }
+    if (leaves && g_lcase) {
+        g_lcase[idx].same = 1;
+        g_lcase[idx].cyc = cyc;
+        g_lcase[idx].flag = g_lcase[idx].matrix ? leaf_flag(reference, pc) : 0u;
+        g_lcase[idx].fixed = ref_fixed;
+    }
     return SAME | (cyc << 4) | (entry << 6);
 }
 
 /* need_locals: the escape family exists for guest-frame locals, so a member
  * without them in the table is a failure; the GTE family compares them only
  * where present. gte_family: see the GTE family note (a member without a
- * lane entry fails too: it must run natively). */
+ * lane entry fails too: it must run natively). leaves: see the leaves family
+ * note (a member without a lane entry is skipped, as in the escape family:
+ * a DENY-held function has nothing native to compare). */
 static int run_escape_family(MusashiBootMemory *memory, const uint8_t *image, uint8_t *reference,
-                             const EscFn *fns, size_t nfns, int need_locals, int gte_family,
+                             const EscFn *fns, size_t nfns, int need_locals, int gte_family, int leaves,
                              const char *label) {
     unsigned bad = 0;
     size_t k;
@@ -861,6 +983,10 @@ static int run_escape_family(MusashiBootMemory *memory, const uint8_t *image, ui
     if (gte_family && !g_gcase) {
         g_gcase = mmap(NULL, ESC_CASES * sizeof *g_gcase, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
         if (g_gcase == MAP_FAILED) { g_gcase = NULL; return 1; }
+    }
+    if (leaves && !g_lcase) {
+        g_lcase = mmap(NULL, ESC_CASES * sizeof *g_lcase, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+        if (g_lcase == MAP_FAILED) { g_lcase = NULL; return 1; }
     }
     musashi_formatter_set_entry_hook(esc_hook, NULL);
     for (k = 0; k < nfns; ++k) {
@@ -885,6 +1011,7 @@ static int run_escape_family(MusashiBootMemory *memory, const uint8_t *image, ui
             continue;
         }
         if (gte_family) memset(g_gcase, 0, ESC_CASES * sizeof *g_gcase);
+        if (leaves) memset(g_lcase, 0, ESC_CASES * sizeof *g_lcase);
         for (idx = 0; idx < ESC_CASES; ++idx) {
             int status, outcome;
             pid_t child;
@@ -896,7 +1023,7 @@ static int run_escape_family(MusashiBootMemory *memory, const uint8_t *image, ui
                 a.sa_sigaction = on_fault; a.sa_flags = SA_SIGINFO;
                 sigaction(SIGSEGV, &a, NULL); sigaction(SIGBUS, &a, NULL);
                 signal(SIGALRM, SIG_DFL);
-                _exit(run_escape_case(memory, image, &fns[k], idx, reference, returns, ledger, gte_family));
+                _exit(run_escape_case(memory, image, &fns[k], idx, reference, returns, ledger, gte_family, leaves));
             }
             if (child < 0 || waitpid(child, &status, 0) != child) return 1;
             outcome = WIFEXITED(status) ? WEXITSTATUS(status) : NATIVE_FAILED;
@@ -948,6 +1075,50 @@ static int run_escape_family(MusashiBootMemory *memory, const uint8_t *image, ui
             if (outcomes < ESC_CASES / 4u) bad++;
             /* a member that writes RAM in most cases must write varied RAM */
             if (ram_cases >= cases / 2u && rams < ESC_CASES / 4u) bad++;
+        }
+        if (leaves) {
+            /* Buckets over the SAME cases (LeafCase). Matrix arm: inserted
+             * (flag & ~0x1000 == 0) with mode zero / nonzero, or rejected by
+             * the flag; flag exactly 0x1000 is the only case that separates
+             * the mask from a plain flag == 0 test (reported, not required).
+             * Thresholds, fixed before the first run: each arm SAME in at
+             * least half its cases, every bucket at least 10 cases, every
+             * SAME case cycle-comparable (and equal), and every SAME matrix
+             * case at least 5 PsyQ entries on the reference leg (SetPolyG4,
+             * CompMatrix, SetRotMatrix, SetTransMatrix, RotTransPers4: the
+             * leaves really ran there; the native leg's count is equal). */
+            unsigned i, mx = 0, nm = 0, mx_same = 0, nm_same = 0, ins0 = 0, ins1 = 0, rej = 0, f1000 = 0;
+            unsigned nm0 = 0, nm1 = 0, mx_cyc = 0, nm_cyc = 0;
+            uint32_t fmin = UINT32_MAX, fmax = 0;
+            for (i = 0; i < ESC_CASES; ++i) {
+                const LeafCase *c = &g_lcase[i];
+                if (c->matrix) mx++; else nm++;
+                if (!c->same) continue;
+                if (!c->matrix) {
+                    nm_same++;
+                    nm_cyc += c->cyc == CYC_SAME;
+                    if (c->mode) nm1++; else nm0++;
+                    continue;
+                }
+                mx_same++;
+                mx_cyc += c->cyc == CYC_SAME;
+                if (c->fixed < fmin) fmin = c->fixed;
+                if (c->fixed > fmax) fmax = c->fixed;
+                f1000 += c->flag == 0x1000u;
+                if (c->flag & ~0x1000u) rej++;
+                else if (c->mode) ins1++;
+                else ins0++;
+            }
+            if (!mx_same) fmin = 0;
+            printf("%s: %08x matrix_cases=%u same=%u inserted_mode0=%u inserted_mode_nonzero=%u flag_rejected=%u "
+                   "flag_exactly_0x1000=%u cycles_same=%u psyq_entries_min=%u max=%u | no_matrix_cases=%u same=%u "
+                   "mode0=%u mode_nonzero=%u cycles_same=%u\n",
+                   label, fns[k].pc, mx, mx_same, ins0, ins1, rej, f1000, mx_cyc, fmin, fmax, nm, nm_same, nm0, nm1,
+                   nm_cyc);
+            if (mx_same < mx / 2u || nm_same < nm / 2u) bad++;
+            if (ins0 < 10u || ins1 < 10u || rej < 10u || nm0 < 10u || nm1 < 10u) bad++;
+            if (mx_cyc != mx_same || nm_cyc != nm_same) bad++;
+            if (fmin < 5u) bad++;
         }
     }
     musashi_formatter_set_entry_hook(entry_hook, NULL);
@@ -1049,14 +1220,31 @@ int main(int argc, char **argv) {
     /* N-GTE: the native leg's lane_gte_* helpers use the same owner. */
     musashi_native_lane_gte_bind(g_gte_ok ? &g_owner : NULL);
 #endif
-    total_bad += (unsigned)run_escape_family(memory, image, reference, ESC, sizeof ESC / sizeof ESC[0], 1, 0,
+    total_bad += (unsigned)run_escape_family(memory, image, reference, ESC, sizeof ESC / sizeof ESC[0], 1, 0, 0,
                                              "targeted_escape");
 #ifdef MUSASHI_WITH_PSYCROSS
-    if (g_gte_ok)
+    if (g_gte_ok) {
+        unsigned classes = musashi_native_lane_psyq_classes();
         total_bad += (unsigned)run_escape_family(memory, image, reference, GTE_FAMILY,
-                                                 sizeof GTE_FAMILY / sizeof GTE_FAMILY[0], 0, 1, "targeted_gte");
-    else
-        total_bad++;   /* the GTE family cannot compare without an owner */
+                                                 sizeof GTE_FAMILY / sizeof GTE_FAMILY[0], 0, 1, 0, "targeted_gte");
+        /* the leaves family: the release classes (MUSASHI_PSYQ_LANE unset:
+         * the launch script never sets it), bound as native_boot.c binds them */
+        g_leaf_ref = musashi_native_lane_psyq_merge(NULL, 0, classes, &g_leaf_ref_count);
+        g_leaf_full = musashi_native_lane_psyq_merge(musashi_native_lane_generated,
+                                                     musashi_native_lane_generated_count, classes, &g_leaf_full_count);
+        if (!g_leaf_ref || !g_leaf_full || !g_leaf_ref_count) {
+            fprintf(stderr, "targeted_leaves: no PsyQ entries\n");
+            total_bad++;
+        } else {
+            musashi_native_lane_psyq_bind(memory, &g_owner);
+            total_bad += (unsigned)run_escape_family(memory, image, reference, LEAF_FAMILY,
+                                                     sizeof LEAF_FAMILY / sizeof LEAF_FAMILY[0], 1, 0, 1,
+                                                     "targeted_leaves");
+            musashi_native_lane_psyq_bind(NULL, NULL);
+        }
+    } else {
+        total_bad++;   /* the GTE and leaves families cannot compare without an owner */
+    }
 #endif
     return total_bad ? 1 : 0;
 }
