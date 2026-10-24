@@ -342,6 +342,11 @@ static const EscFn ESC[] = {
     {0x8001C6E4u, "p"}, {0x8001C744u, "pi"}, {0x8001C7B0u, "p"}, {0x8001C810u, "pl"},
     {0x8001C8C4u, "p"}, {0x8001CA1Cu, "pi"}, {0x8001CA88u, "pi"}, {0x80028620u, "np"},
     {0x8002E5BCu, ""},
+    /* clean-room main functions merged back to the port line (native-n4); their
+     * guest-frame locals: 8001D1C4's shared counter, 8001FC08's draw argument,
+     * matrices and coordinate. (80017778 is not here: its primitive allocator
+     * and OT callees refuse on probe state, on both legs.) */
+    {0x8001D1C4u, ""}, {0x8001FC08u, "p"},
 };
 /* N-GTE family: inline-GTE functions whose native COP2 runs through the lane
  * GTE helpers (pc_port/include/musashi_lane_gte.h). Same harness: seeded RAM
