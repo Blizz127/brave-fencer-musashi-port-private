@@ -122,7 +122,19 @@ void func_8001D3FC(Obj *obj)
                 p->v0 = p->v1 = lo;
                 p->v2 = p->v3 = hi;
             }
-            p->clut = ((obj->clutRow + 0x100) << 6) | ((obj->clutRow < 0xE0) ? 0x16 : 0x10);
+            {
+                /* CLUT y = 0x100 + clutRow; x = 0x160 when clutRow < 0xE0, else 0x100. Kept as if/else: a
+                 * conditional operator becomes a host select, and the lane's cycle map needs the branch
+                 * that retail has at 8001D654. */
+                s32 row = (obj->clutRow + 0x100) << 6;
+                s32 clut;
+                if (obj->clutRow < 0xE0) {
+                    clut = row | 0x16;
+                } else {
+                    clut = row | 0x10;
+                }
+                p->clut = clut;
+            }
             p->r0 = obj->r;
             p->g0 = obj->g;
             p->b0 = obj->b;
