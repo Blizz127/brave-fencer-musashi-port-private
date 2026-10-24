@@ -2804,6 +2804,10 @@ def emit_table(admitted, out, entry_sites=frozenset(), passthrough=frozenset()):
                 # for an interpreted caller (2 * words), and counts it.
                 lines.append(f"    musashi_lane_ledger += {2 * (by_def[target]['size'] // 4)}u;")
                 lines.append("    ++musashi_lane_fixed;")
+                # IRQ-GAP-D011 3.2: the caller's resume pc names the retail
+                # pc after this call, not after the unmapped callee's own
+                # guest calls; they get no post-return checkpoint (D-011 (1))
+                lines.append("    musashi_lane_resume_pc = 0u;")
             args = ", ".join(from_guest(regs[i] if i < len(regs) else "0u", t, e)
                              for i, (t, e) in enumerate(cparams))
             call = f"{target}({args})"

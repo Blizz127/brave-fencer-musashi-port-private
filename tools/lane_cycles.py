@@ -1018,7 +1018,9 @@ def instrument(clang, retail, mapping, guard=False, segs_symbol=None):
     power-of-two signed divisions add their data-dependent retail extra.
     A state with no expected successor sets @musashi_lane_ledger_lost.
     With `guard`, each charge that reaches @musashi_lane_budget calls
-    musashi_native_lane_tick(segment table, state) first (phase 2b step d).
+    musashi_native_lane_tick(segment table, state) first (phase 2b step d),
+    and each call stores its retail resume pc in @musashi_lane_resume_pc
+    before the call and clears it after the return (IRQ-GAP-D011 F2).
     Returns (new module text, per-state segment rows for the runtime table:
     [(state id, retail pc of the segment, [(pc, cost, delay_slot)...])])."""
     states, evat = mapping["graph"], mapping["events"]
@@ -1111,6 +1113,7 @@ def instrument(clang, retail, mapping, guard=False, segs_symbol=None):
         events, term = clang.blocks[b]
         lines = list(clang.lines[b])
         inserts = {}                     # line index -> lines inserted before
+        after = {}                       # line index -> lines inserted after
         for idx, ev in enumerate(events):
             li = ev[2]
             if ev[0] == "div":
@@ -1137,6 +1140,11 @@ def instrument(clang, retail, mapping, guard=False, segs_symbol=None):
                     rp = chain(out, st2, [(next_id(states[k][0]), states[k][0][2][2]) for k in keys],
                                "i32", "0")
                     out.append(f"  store i32 {rp}, ptr @{RESUME}, align 4")
+                    # the resume value lives from its own call's store to
+                    # that call's return: a guest call consumes (clears) it,
+                    # a direct native call must not leave it for a later
+                    # guest call from a non-storing body (IRQ-GAP-D011 F2)
+                    after.setdefault(li, []).append(f"  store i32 0, ptr @{RESUME}, align 4")
                 inserts.setdefault(li, []).extend(out)
         if p2_extra:
             for li, line in enumerate(lines):
@@ -1168,6 +1176,7 @@ def instrument(clang, retail, mapping, guard=False, segs_symbol=None):
         for li, line in enumerate(lines):
             body.extend(inserts.get(li, []))
             body.append(line)
+            body.extend(after.get(li, []))
         if b == clang.entry:
             body = ["  %lane.st = alloca i32, align 4",
                     f"  store i32 {ids[(clang.entry, 0, retail.vram)]}, ptr %lane.st, align 4"] + body
