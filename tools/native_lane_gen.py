@@ -1213,9 +1213,11 @@ DENY = {
     0x800128EC: "retail cycle mapping ambiguous: would keep the fixed charge (inexact timing)",
     0x80014168: "no comparable differential case yet (the interpreter refuses its own unaligned copy)",
     0x80016D78: "no comparable differential case yet (its allocator callee returns NULL on probe state)",
-    # 80016D78's sibling: its no-matrix arm compares (100/400 SAME), but with a
-    # matrix its SetRotMatrix leaf refuses the interpreter reference leg.
-    0x80017778: "no comparable differential case yet for its matrix arm (the SetRotMatrix leaf refuses the reference leg)",
+    # 80016D78's sibling. Both arms compare (the targeted probe's leaves
+    # family, 400/400 SAME), but its v0/v1 pass-up audit (v3.2) is UNKNOWN:
+    # its four wrappers' callers escape into scene code (800176F0, 80017738:
+    # no containing function; 80017714, 80017758: address-taken handlers).
+    0x80017778: "v0/v1 pass-up audit UNKNOWN (its wrappers' callers escape into scene code)",
 }
 
 
