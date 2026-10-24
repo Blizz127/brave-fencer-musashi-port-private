@@ -12517,9 +12517,14 @@ static int gte_20f34_site(uint32_t pc, uint32_t word, unsigned *slot) {
     return gte_site_lookup(sites, sizeof sites / sizeof sites[0], pc, word, slot);
 }
 
+/* The main-EXE return addresses that follow a jal 80020F34 (8001F9BC,
+ * 800207B0 and func_8001FC08's 8001FD80) are already jal_caller_of matches
+ * (g_fetch_memory is bound on every step that reaches a COP2 site), so a
+ * literal for them is redundant. 8001FD80's literal is gone: the native-lane
+ * hooks rule read it as a port hook inside func_8001FC08. */
 static int gte_20f34_caller(uint32_t ra) {
     if (jal_caller_of(ra, kGteEntry80020F34)) return 1;
-    return ra == 0x8001f9bcu || ra == 0x8001fd80u || ra == 0x800207b0u ||
+    return ra == 0x8001f9bcu || ra == 0x800207b0u ||
            (OVERLAY_SC_ACTIVE &&
             (ra == 0x80132928u || ra == 0x80165fdcu || ra == 0x8016c0b0u));
 }
