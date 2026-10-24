@@ -344,9 +344,13 @@ static const EscFn ESC[] = {
     {0x8002E5BCu, ""},
     /* clean-room main functions merged back to the port line (native-n4); their
      * guest-frame locals: 8001D1C4's shared counter, 8001FC08's draw argument,
-     * matrices and coordinate. (80017778 is not here: its primitive allocator
-     * and OT callees refuse on probe state, on both legs.) */
-    {0x8001D1C4u, ""}, {0x8001FC08u, "p"},
+     * matrices and coordinate, 80017778's RotTransPers4 results. 80017778's
+     * matrix argument is NULL one case in four ('l'): that arm (both OT
+     * insert variants, by mode) compares; with a matrix, its SetRotMatrix/
+     * SetTransMatrix leaf (8004914C) refuses on the interpreter reference leg
+     * for this caller (production runs that leaf through its PsyCross entry),
+     * so those cases are not comparable. */
+    {0x8001D1C4u, ""}, {0x8001FC08u, "p"}, {0x80017778u, "pli"},
 };
 /* N-GTE family: inline-GTE functions whose native COP2 runs through the lane
  * GTE helpers (pc_port/include/musashi_lane_gte.h). Same harness: seeded RAM
@@ -642,6 +646,9 @@ static int run_escape_case(MusashiBootMemory *m, const uint8_t *image, const Esc
         }
     }
 #endif
+    /* 80017778 allocates its POLY_G4 from the bump pointer D_800A5E60
+     * (func_80010A08), zero in the probe image: point it into the window. */
+    if (pc == 0x80017778u) w32(m, 0x800A5E60u, FILL_BASE + 0x38000u + 0x40u * (idx % 64u));
     esc_args(m, fn, idx, args, &argc);
     memcpy(start, m->bytes, MUSASHI_RAM_SIZE);
     g_esc_mem = m;
