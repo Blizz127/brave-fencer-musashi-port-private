@@ -660,7 +660,11 @@ def polarity(cp, rp):
 
 # --------------------------------------------------------- G2: product walk
 
-SEARCH_LIMIT = 200000
+# Total DFS steps over all backtracking trials of one function. 8001D1C4 (six
+# sequential pool loops around one call each) needs between 1M and 4M; no
+# release row stopped at the earlier 200000 (they all end their search well
+# below it), so raising it changes only rows that hit the limit.
+SEARCH_LIMIT = 4000000
 
 
 class _Fail(Exception):
