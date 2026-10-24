@@ -533,8 +533,12 @@
 8001e668
 80021174
 # Clean-room B20/B21/B30 merged back to the port line 2026-10-24 (main 07eec35458+5c4903d0a4, 7153b0e060,
-# 1179a761eb; port 698f8be03c + P3-S 6d7b566858), main region; v3.2 pass-up audit clean (80017778 by inspection).
+# 1179a761eb; port 698f8be03c + P3-S 6d7b566858), main region; v3.2 pass-up audit clean for 8001D1C4/8001D3FC/
+# 8001FC08. 80017778 is UNKNOWN on its wrapper chains, so the generator DENY holds it out (531de74455).
 80017778
 8001d1c4
 8001d3fc
 8001fc08
+# Clean-room CR5 (bfm-rederive ed51852bff, retail asm only) merged back 2026-10-24 (b3bf30af77), main region;
+# returns s32 (its one caller, 8001FC08, reads v0), so the void pass-up audit does not apply.
+80020248
