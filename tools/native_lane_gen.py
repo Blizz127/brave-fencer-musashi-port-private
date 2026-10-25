@@ -1793,6 +1793,7 @@ GTE_PROFILE = {"mtc2": GTE_DATA_WRITE, "lwc2": GTE_DATA_WRITE, "mfc2": GTE_DATA_
                "swc2": GTE_DATA_READ, "ctc2": GTE_CONTROL_WRITE, "cfc2": GTE_CONTROL_READ}
 GTE_CALL_RE = re.compile(r"\bcall \w+ @lane_gte_(\w+)\(([^)]*)\)")
 GTE_CONST_RE = re.compile(r"i32 (?:noundef |signext |zeroext )*(-?\d+)")
+IR_COND_RE = re.compile(r"^\s*(?:br i1 |switch )")
 
 
 def retail_cop2(words):
@@ -1811,10 +1812,31 @@ def retail_cop2(words):
     return ops
 
 
+def retail_cop2_runs(words, vram):
+    """retail_cop2 split at conditional branches, in address order: a run
+    ends after a conditional branch's delay slot. Jumps, calls and branch
+    targets do not split a run, so it compares with ir_cop2's runs, which an
+    -O0 body splits only at its conditional branches too (the lane macros'
+    do { } while (0) blocks and the layout's unconditional branches do not).
+    Returns the non-empty runs."""
+    runs, cur, cut = [], [], None
+    for i, w in enumerate(words):
+        cur.extend(retail_cop2([w]))
+        if lane_cycles.decode(w, vram + 4 * i)[0] == "cond":
+            cut = i + 1
+        if cut == i and cur:
+            runs.append(tuple(cur))
+            cur = []
+    if cur:
+        runs.append(tuple(cur))
+    return runs
+
+
 def ir_cop2(ir, fname):
-    """(ops, straight) for fname in a clang -O0 module: its lane_gte_* calls
-    in IR order (= source order) as retail_cop2 tuples, and whether its body
-    has no conditional branch or switch."""
+    """(ops, straight, runs) for fname in a clang -O0 module: its lane_gte_*
+    calls in IR order (= source order) as retail_cop2 tuples, whether its body
+    has no conditional branch or switch, and the same calls split at each
+    conditional branch or switch (the non-empty runs)."""
     m = re.search(r"^define [^@]*@" + re.escape(fname) + r"\(.*?^\}", ir, flags=re.M | re.S)
     if not m:
         raise Reject("gte", f"{fname} not in the module")
@@ -1824,8 +1846,14 @@ def ir_cop2(ir, fname):
     # retail COP2 words to stand for.
     if GTE_CALL_RE.search(ir[:m.start()] + ir[m.end():]):
         raise Reject("gte", "COP2 helper calls outside the audited function")
-    ops = []
-    for cm in GTE_CALL_RE.finditer(body):
+    ops, runs, cur = [], [], []
+    for line in body.splitlines()[1:]:
+        if IR_COND_RE.match(line) and cur:
+            runs.append(tuple(cur))
+            cur = []
+        cm = GTE_CALL_RE.search(line)
+        if not cm:
+            continue
         kind = cm.group(1)
         if kind not in ("cmd", *GTE_PROFILE):
             raise Reject("gte", f"unknown helper lane_gte_{kind}")
@@ -1833,14 +1861,17 @@ def ir_cop2(ir, fname):
         if not last:
             raise Reject("gte", f"lane_gte_{kind} with a non-constant register or command")
         ops.append((kind, int(last.group(1)) & 0xFFFFFFFF))
+        cur.append(ops[-1])
+    if cur:
+        runs.append(tuple(cur))
     straight = not re.search(r"^\s*(?:br i1 |switch )", body, flags=re.M)
-    return ops, straight
+    return ops, straight, runs
 
 
-def gte_audit(ir, fname, words):
+def gte_audit(ir, fname, words, vram):
     """Rule "gte". Returns True when fname uses COP2 (its wrapper then needs
     the native GTE lease), False when neither it nor its retail words do."""
-    ops, straight = ir_cop2(ir, fname)
+    ops, straight, runs = ir_cop2(ir, fname)
     if words is None:
         if ops:
             raise Reject("gte", "COP2 helper calls but no retail words to audit them")
@@ -1865,6 +1896,11 @@ def gte_audit(ir, fname, words):
                           for k, i in (lane_cycles.decode(w, 0) for w in words))
     if straight and retail_straight and ops != retail:
         raise Reject("gte", "COP2 calls are in a different order from retail")
+    # Order between conditional branches, for bodies with branches too: each
+    # run of calls, in order, must be a run of the retail COP2 words, in
+    # order (a command moved past the loads that feed it changes no multiset).
+    if collections.Counter(runs) != collections.Counter(retail_cop2_runs(words, vram)):
+        raise Reject("gte", "COP2 calls are grouped or ordered differently from retail between branches")
     return True
 
 
@@ -1939,7 +1975,7 @@ def build_one(entry, out, symbols, hooks, clang, info=None):
         ir = o0.read_text()
         check_layout(ir)
         words = retail_words(vram, size, info)
-        gte = gte_audit(ir, name, words)
+        gte = gte_audit(ir, name, words, vram)
         frame = retail_frame(words) if words is not None else 0
         # Locals whose address reaches a callee move into the retail frame
         # before narrow_pointer_cells, which then treats them as guest memory.
