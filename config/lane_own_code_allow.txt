@@ -542,3 +542,7 @@
 # Clean-room CR5 (bfm-rederive ed51852bff, retail asm only) merged back 2026-10-24 (b3bf30af77), main region;
 # returns s32 (its one caller, 8001FC08, reads v0), so the void pass-up audit does not apply.
 80020248
+# Clean-room CR6 (bfm-rederive 5932842af4, retail asm only; lead decision D4 group gte_g_ld_bv0) merged back
+# 2026-10-25 (6b5d3fe45e), main region; returns s32 (its one caller, 8001FC08, reads v0), so the void pass-up audit
+# does not apply.
+80020a28
