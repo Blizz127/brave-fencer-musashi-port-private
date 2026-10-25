@@ -104,6 +104,14 @@ __asm__(".include \"gte_macros.inc\"\n");
     : : "r"(p) : "$12", "$13")
 /* ---- end gte_g_ld_lv0 ---- */
 
+/* ---- gte_g_ld_bv0 ---- */
+/* load byte vector 0: (u16)(s8)p[0] | (s8)p[1] << 16 into VXY0, (s8)p[2] into VZ0 */
+#define gte_g_ld_bv0(p) __asm__ volatile( \
+    "lb $13, 1(%0)\n\tlb $12, 0(%0)\n\tsll $13, $13, 16\n\tsll $12, $12, 16\n\tsrl $12, $12, 16\n\t" \
+    "or $12, $12, $13\n\tlb $13, 2(%0)\n\tmtc2 $12, $0\n\tmtc2 $13, $1" \
+    : : "r"(p) : "$12", "$13")
+/* ---- end gte_g_ld_bv0 ---- */
+
 /* ---- gte_g_st_sxy3 ---- */
 /* store screen XY FIFO: SXY0, SXY1, SXY2 to the words at a, b, c (no general register pinned) */
 #define gte_g_st_sxy3(a, b, c) __asm__ volatile( \

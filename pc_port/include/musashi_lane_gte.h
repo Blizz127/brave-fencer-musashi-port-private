@@ -41,6 +41,8 @@ void lane_gte_cmd(unsigned int word);
 #define LANE_GTE_SW(b, off) (*(unsigned int *)((b) + (off)))
 #define LANE_GTE_LHU(b, off) (*(const unsigned short *)((b) + (off)))
 #define LANE_GTE_SH(b, off) (*(unsigned short *)((b) + (off)))
+/* Signed byte load (lb) at byte offset off from b. */
+#define LANE_GTE_LB(b, off) (*(const signed char *)((b) + (off)))
 
 #define gte_lwc2(r, off, p) lane_gte_lwc2(LANE_GTE_LW((const unsigned char *)(p), off), r)
 #define gte_swc2(r, off, p) (LANE_GTE_SW((unsigned char *)(p), off) = lane_gte_swc2(r))
@@ -124,6 +126,16 @@ void lane_gte_cmd(unsigned int word);
     lane_gte_mtc2((unsigned int)LANE_GTE_LHU(lane_gte_p, 0) | \
                   ((unsigned int)LANE_GTE_LHU(lane_gte_p, 4) << 16), 0); \
     lane_gte_lwc2(LANE_GTE_LW(lane_gte_p, 8), 1); \
+} while (0)
+
+/* load byte vector 0: signed bytes at p+0/p+1 packed into VXY0 (the low half
+ * zero-extended, as retail's sll/srl pair does), the signed byte at p+2 into VZ0
+ * (sign-extended, as lb leaves it) */
+#define gte_g_ld_bv0(p) do { \
+    const unsigned char *lane_gte_p = (const unsigned char *)(p); \
+    lane_gte_mtc2(((unsigned int)(int)LANE_GTE_LB(lane_gte_p, 0) & 0xFFFFu) | \
+                  ((unsigned int)(int)LANE_GTE_LB(lane_gte_p, 1) << 16), 0); \
+    lane_gte_mtc2((unsigned int)(int)LANE_GTE_LB(lane_gte_p, 2), 1); \
 } while (0)
 
 /* store screen XY FIFO: SXY0, SXY1, SXY2 to the words at a, b, c */

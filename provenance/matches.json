@@ -33270,10 +33270,10 @@
       "size": 892,
       "region": "main",
       "source": "src/main/80020a28.c",
-      "recovery": "mixed",
+      "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
-      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+      "origin": "owner re-derivation, clean input set (asm+m2c+owner headers)"
     },
     {
       "name": "func_800391D4",
