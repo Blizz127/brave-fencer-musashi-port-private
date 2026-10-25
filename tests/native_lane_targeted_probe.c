@@ -353,7 +353,9 @@ static void on_fault(int sig, siginfo_t *info, void *ctx);
  * family: q = quad record, m = matrix or NULL, o = mode (see LEAF_FAMILY);
  * c = a zero-terminated list of 0..12 nonzero words (a work-item count),
  * x = a matrix (the 8 words of a Mat: rotation, translation), never NULL,
- * r = 12 part records of 12 bytes (xy word, s16 z, three u16 angles).
+ * r = 12 part records of 12 bytes (xy word, s16 z, three u16 angles),
+ * k = 12 packed part records of 8 bytes (two 12-bit angles in bytes 0-2,
+ * s8 x/y/z offsets in bytes 3-5, a u16 angle at +6).
  * Up to ESC_ARGS_MAX arguments: past a3 they are the caller's stack words. */
 typedef struct { uint32_t pc; const char *kinds; } EscFn;
 enum { ESC_ARGS_MAX = 8u };
@@ -401,6 +403,9 @@ static const EscFn GTE_FAMILY[] = {
      * 12-byte part records with varied angles (r), two matrices, and skip
      * (zero / nonzero) */
     {0x80020248u, "crxxo"},
+    /* 80020A28 (clean-room CR6): 80020248's sibling for 8-byte packed part
+     * records (k); the same list, buffers, return value and skip */
+    {0x80020A28u, "ckxxo"},
 };
 /* Guest matrices the GTE family reads (GS_WSMATRIX, the view matrix): never
  * set in the probe's RAM image, so scene cases write plausible ones. */
@@ -660,6 +665,17 @@ static void esc_seed(MusashiBootMemory *m, const EscFn *fn, const uint32_t *args
                 put16(m, r0 + 8u, rng() & am);
                 put16(m, r0 + 10u, rng() & am);
             }
+    /* packed part records: two 12-bit angles in bytes 0-2, a signed byte
+     * offset per axis in bytes 3-5, a third angle at +6 (12-bit in scene
+     * cases, 16-bit otherwise) */
+    for (k = 0; fn->kinds[k]; ++k)
+        if (fn->kinds[k] == 'k')
+            for (j = 0; j < 12u; ++j) {
+                const uint32_t r0 = args[k] + 8u * j;
+                w32(m, r0, rng());
+                put16(m, r0 + 4u, rng());
+                put16(m, r0 + 6u, rng() & (scene ? 0xFFFu : 0xFFFFu));
+            }
     for (k = 0; scene && fn->kinds[k]; ++k) {
         if (fn->kinds[k] == 'q')
             for (j = 0; j < 4u; ++j) {
@@ -720,6 +736,7 @@ static void esc_args(MusashiBootMemory *m, const EscFn *fn, unsigned idx, uint32
         }
         case 'x': args[i] = base; break;
         case 'r': args[i] = base; break;
+        case 'k': args[i] = base; break;
         default: args[i] = idx % 3u ? rng() % 8u : rng(); break;
         }
     }
