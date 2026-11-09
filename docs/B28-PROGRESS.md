@@ -2063,6 +2063,12 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 - Gates: build=0, TABLE_IDENTICAL, ctest 39/39, strict_build=0, m2c=0, regr LOST [], GAINED main 80020A28.
 - Village warp (BFM_DEV_MENU_WARP_TEST=1010:0): no strict stop; `[WARP] arrived 1010.0 entrance=0 progress=0`.
 
+### Inc 170 — strict route status after 8017C710 / 80020A28 (no code change)
+
+- Natural strict route (MUSASHI_BOOT_AUTO_START=2, no warp): 6000 frames and a 9000-frame walk-script run, no strict stop, no fault. The scene is in game with the HUD (HP 150/150, Day 1 Mon) at frame 3000; the walk script gets control at room 3008 (pos 35,-4935) and the game then idles there.
+- Village warp (BFM_DEV_MENU_WARP_TEST=1010:0): arrives and draws the village (frame /workspace/bfm-frames/inc169_warp_f4200.png).
+- Still wrong: the start-room (cave, 3005/3008) frame is a close-up of garbled green/purple texture (/workspace/bfm-frames/inc169_route_f6000.png), not the cave seen in hybrid. Next: compare against hybrid at the same moment (walkh), find the cave BG fault, then script a real walk 3008 -> village.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for
