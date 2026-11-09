@@ -9,18 +9,16 @@ extern void func_8012A568(void (*a0)(void));
 extern void func_8012A5F8(void (*a0)(void), s32 a1);
 void func_8012B23C(s32 a0);
 void func_8012B2CC(s32 a0);
-extern void func_8016AA50(int, int);
+extern void func_8016AA50(s32, s32);
 extern void func_8016B428(int);
 extern void func_80019064(void *);
 extern void func_8012B23C(s32 a0);
 extern void func_8012B23C(s32 a0);
 
-void func_80131B14() {
+void func_80131B14(u8 *p) {
     extern void func_8002A520(void *);
     extern void func_8002A790(void *);
     extern u8 D_8018D9CC;
-    u8 *a0v;
-    u8 *p = a0v;
     s32 e = *(u8 *)(p + 0x5E);
     if (*(s16 *)(p + 0x60) != 0) {
         if (e == 0x1D) {
@@ -37,8 +35,8 @@ void func_80131B14() {
                 if (dec <= 0) dec = 1;
             }
             *(u16 *)(p + 0x76) = *(u16 *)(p + 0x76) - dec;
+            func_8016AA50((s32)p, dec);
         }
-        ((void (*)(void *))func_8016AA50)(p);
         if (*(u16 *)(p + 0x82) & 1) {
             ((void (*)(void *))func_8016B428)(p);
             ((void(*)(void *))func_80019064)(&D_8018D9CC);

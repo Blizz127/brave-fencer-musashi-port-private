@@ -30,7 +30,7 @@ int func_8015B6F4(int param_1)
     int b4;
     register unsigned int f44 __asm__("$2");
     register unsigned int bc __asm__("$4");
-    if (((int (*)(void))func_80149AA8)() == 0) return 0;
+    if (func_80149AA8((s32 *)param_1) == 0) return 0;
     ((void (*)(int))func_80156648)(param_1);
     b4 = *(int *)(param_1 + 0xb4);
     *(unsigned char *)(param_1 + 0x1aa) = 6;

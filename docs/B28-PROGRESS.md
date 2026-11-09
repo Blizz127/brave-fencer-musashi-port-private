@@ -2049,6 +2049,14 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 - Leftover from Oct 11: sibling-form swaps that admitted 8016E95C (ub), 801312D0, 8017AE2C. Gates already verified by the Oct 12 detached full.sh (build=0, TABLE_IDENTICAL, ctest 39/39, strict_build=0, m2c=0, LOST []); warp stop moved to 8017c710.
 - 80182304 / 80182AEC / 80183778: each called func_80187A64 with a (void) cast while retail left a0 = arg0 live into the jal (hidden-a0). Pass arg0 explicitly; byte-exact. (Audit follow-up from Inc 166.)
 
+### Inc 168 — sc03_0001 8017C710 (GTE box/part draw) admitted
+
+- func_8017C710 (3808 bytes, ov_SC03_001 jr_8017AE2C): upstream carried the GTE accesses as raw `__asm__ volatile` statements, which the strict generator refused (`compile: unknown register name '$12' in asm`). The statements are now the PsyQ inline_c.h macro forms (`gte_ldv3c/ldv3/ldv0/rtps/rtpt/nclip/stsxy/stsxy3/stsxy3c/stsxy3_f4/stsxy3_g3/stsz3/stsz4/stszotz/stflg/stopz`, one-line `#define`s with the same asm text), so the lane host copy swaps them for the `musashi_lane_gte_*` helpers. Retail bytes unchanged: oracle MATCH (gcc-2.7.2 -O2, 3808 bytes).
+- Prototype edits (oracle MATCH, 3 files): 80131B14 takes `u8 *p` and passes `(p, dec)` to 8016AA50 (hidden-a0 form), 8015B6F4 passes `param_1` to 80149AA8, 8017A3D8 passes `D_801EE610` to 8001AAA0.
+- Registry: new row sc03_0001 func_8017C710 (vendor-derived).
+- Gates: build=0, TABLE_IDENTICAL, ctest 39/39, strict_build=0, m2c=0, regr LOST [] (baseline = Inc 167 report), GAINED sc03_0001 8017c710.
+- Box note (2026-11-09): the box lost its toolchain (build/ gone, no cmake/clang/g++/SDL2/OpenAL/mips binutils). Rebuilt in scratch (not in the repo): micromamba env `bfm` (clang 22.1.8 for the lane, conda gcc/g++ for PsyCross because `.C` files need `-fpermissive`, sdl2, openal-soft, libgl, openssl), binutils 2.42 built for `mips-linux-gnu` (as/ld/nm/objcopy/objdump). Recipe: `/workspace/scratch/wt3/env.sh`.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for
