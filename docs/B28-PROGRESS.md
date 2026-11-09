@@ -2067,7 +2067,13 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 
 - Natural strict route (MUSASHI_BOOT_AUTO_START=2, no warp): 6000 frames and a 9000-frame walk-script run, no strict stop, no fault. The scene is in game with the HUD (HP 150/150, Day 1 Mon) at frame 3000; the walk script gets control at room 3008 (pos 35,-4935) and the game then idles there.
 - Village warp (BFM_DEV_MENU_WARP_TEST=1010:0): arrives and draws the village (frame /workspace/bfm-frames/inc169_warp_f4200.png).
-- Still wrong: the start-room (cave, 3005/3008) frame is a close-up of garbled green/purple texture (/workspace/bfm-frames/inc169_route_f6000.png), not the cave seen in hybrid. Next: compare against hybrid at the same moment (walkh), find the cave BG fault, then script a real walk 3008 -> village.
+- Room 3008 is the forest (not a cave). Its strict frame (/workspace/bfm-frames/inc169_route_f6000.png) is a low-res grass/dirt close-up with the HUD, like the strict half of b28_hybrid_vs_strict_field.png; Musashi's sprite is still not drawn (Inc 149 open item).
+
+### Inc 171 — strict walk probe in forest 3008: Musashi does not move
+
+- Script /workspace/scratch/walk/walk2.txt (`room 3008 mash`, then hold U 500 / R 500 / D 1000 / L 800 / U 500) in the strict build, frames 2000-5000 (/workspace/bfm-frames/inc170_walk2_f3000.png, inc170_walk2_f5000.png). Control is reached at frame 671 (pos 47,-4929). Over 3300 frames of held directions the position only wanders within about +-50 units (pos 25..48, -4934..-4903) and `act=4` stays latched (idle reads act=0), so there is no walk to the village yet.
+- Hybrid slid 259 units in Z under the same kind of input (Inc 149), so the player movement/collision path is the next fault to chase in strict (candidates: the player update that sets act, the Musashi sprite/draw path that is also missing). No code change in this increment.
+- No stop, no fault: 8000+ frame runs. Route status: warp to village OK; natural start -> forest 3008 OK; forest -> village not walked.
 
 ## Next
 
