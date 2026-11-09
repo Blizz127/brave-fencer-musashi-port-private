@@ -52,7 +52,7 @@ typedef struct {
     /* 0x6 */ u16 unk6;
 } OBJ_80020A28; /* 0x8 */
 
-#define SRM_80020A28(r0) __asm__ volatile (              \
+#define gte_SetRotMatrix(r0) __asm__ volatile (              \
     "lw $12, 0( %0 );"                                   \
     "lw $13, 4( %0 );"                                   \
     "ctc2 $12, $0;"                                      \
@@ -67,7 +67,7 @@ typedef struct {
     : "r"( r0 )                                          \
     : "$12", "$13", "$14" )
 
-#define STM_80020A28(r0) __asm__ volatile (              \
+#define gte_SetTransMatrix(r0) __asm__ volatile (              \
     "lw $12, 20( %0 );"                                  \
     "lw $13, 24( %0 );"                                  \
     "ctc2 $12, $5;"                                      \
@@ -78,7 +78,7 @@ typedef struct {
     : "r"( r0 )                                          \
     : "$12", "$13", "$14" )
 
-#define LDCLMV_80020A28(r0) __asm__ volatile (           \
+#define gte_ldclmv(r0) __asm__ volatile (           \
     "lhu $12, 0( %0 );"                                  \
     "lhu $13, 6( %0 );"                                  \
     "lhu $14, 12( %0 );"                                 \
@@ -89,13 +89,13 @@ typedef struct {
     : "r"( r0 )                                          \
     : "$12", "$13", "$14" )
 
-#define RTIR_80020A28() __asm__ volatile (               \
+#define gte_rtir() __asm__ volatile (               \
     "nop;"                                               \
     "nop;"                                               \
     "mvmva 1, 0, 3, 3, 0"                                \
     : : : "memory" )
 
-#define STCLMV_80020A28(r0) __asm__ volatile (           \
+#define gte_stclmv(r0) __asm__ volatile (           \
     "mfc2 $12, $9;"                                      \
     "mfc2 $13, $10;"                                     \
     "mfc2 $14, $11;"                                     \
@@ -106,7 +106,7 @@ typedef struct {
     : "r"( r0 )                                          \
     : "$12", "$13", "$14", "memory" )
 
-#define LDLVL_80020A28(r0) __asm__ volatile (            \
+#define gte_ldlv0b(r0) __asm__ volatile (            \
     "lb $13, 1( %0 );"                                   \
     "lb $12, 0( %0 );"                                   \
     "sll $13, $13, 16;"                                  \
@@ -120,13 +120,13 @@ typedef struct {
     : "r"( r0 )                                          \
     : "$12", "$13" )
 
-#define RT_80020A28() __asm__ volatile (                 \
+#define gte_rt() __asm__ volatile (                 \
     "nop;"                                               \
     "nop;"                                               \
     "mvmva 1, 0, 0, 0, 0"                                \
     : : : "memory" )
 
-#define STLVNL_80020A28(r0) __asm__ volatile (           \
+#define gte_stlvnl(r0) __asm__ volatile (           \
     "swc2 $25, 0( %0 );"                                 \
     "swc2 $26, 4( %0 );"                                 \
     "swc2 $27, 8( %0 )"                                  \
@@ -168,35 +168,35 @@ s32 func_80020A28(s32 *a0, OBJ_80020A28 *a1, MTX_80020248 *a2, MTX_80020248 *a3,
         func_80020DA4((s32)src, (s32)&lm);
 
         if (a4 == 0) {
-            SRM_80020A28(a2);
-            LDCLMV_80020A28(&lm.m[0][0]);
-            RTIR_80020A28();
-            STCLMV_80020A28(&rm->m[0][0]);
-            LDCLMV_80020A28(&lm.m[0][1]);
-            RTIR_80020A28();
-            STCLMV_80020A28(&rm->m[0][1]);
-            LDCLMV_80020A28(&lm.m[0][2]);
-            RTIR_80020A28();
-            STCLMV_80020A28(&rm->m[0][2]);
+            gte_SetRotMatrix(a2);
+            gte_ldclmv(&lm.m[0][0]);
+            gte_rtir();
+            gte_stclmv(&rm->m[0][0]);
+            gte_ldclmv(&lm.m[0][1]);
+            gte_rtir();
+            gte_stclmv(&rm->m[0][1]);
+            gte_ldclmv(&lm.m[0][2]);
+            gte_rtir();
+            gte_stclmv(&rm->m[0][2]);
             rm++;
         }
 
-        SRM_80020A28(a3);
-        LDCLMV_80020A28(&lm.m[0][0]);
-        RTIR_80020A28();
-        STCLMV_80020A28(&om->m[0][0]);
-        LDCLMV_80020A28(&lm.m[0][1]);
-        RTIR_80020A28();
-        STCLMV_80020A28(&om->m[0][1]);
-        LDCLMV_80020A28(&lm.m[0][2]);
-        RTIR_80020A28();
-        STCLMV_80020A28(&om->m[0][2]);
+        gte_SetRotMatrix(a3);
+        gte_ldclmv(&lm.m[0][0]);
+        gte_rtir();
+        gte_stclmv(&om->m[0][0]);
+        gte_ldclmv(&lm.m[0][1]);
+        gte_rtir();
+        gte_stclmv(&om->m[0][1]);
+        gte_ldclmv(&lm.m[0][2]);
+        gte_rtir();
+        gte_stclmv(&om->m[0][2]);
 
-        STM_80020A28(a3);
+        gte_SetTransMatrix(a3);
         c = (u8 *)a1 + 3;
-        LDLVL_80020A28(c);
-        RT_80020A28();
-        STLVNL_80020A28(&om->t[0]);
+        gte_ldlv0b(c);
+        gte_rt();
+        gte_stlvnl(&om->t[0]);
 
         om++;
         a1++;

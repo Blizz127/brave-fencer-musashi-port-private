@@ -2057,6 +2057,12 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 - Gates: build=0, TABLE_IDENTICAL, ctest 39/39, strict_build=0, m2c=0, regr LOST [] (baseline = Inc 167 report), GAINED sc03_0001 8017c710.
 - Box note (2026-11-09): the box lost its toolchain (build/ gone, no cmake/clang/g++/SDL2/OpenAL/mips binutils). Rebuilt in scratch (not in the repo): micromamba env `bfm` (clang 22.1.8 for the lane, conda gcc/g++ for PsyCross because `.C` files need `-fpermissive`, sdl2, openal-soft, libgl, openssl), binutils 2.42 built for `mips-linux-gnu` (as/ld/nm/objcopy/objdump). Recipe: `/workspace/scratch/wt3/env.sh`.
 
+### Inc 169 — main 80020A28 GTE macros (new gte_ldlv0b helper); village warp arrives
+
+- func_80020A28 (MulMatrix-style rotate with a byte-vector load): its `__asm__` macros carried a `_80020A28` suffix, so the lane host copy never swapped them (`compile: unknown register name '$12'`). Renamed to the PsyQ forms `gte_SetRotMatrix/SetTransMatrix/ldclmv/rtir/stclmv/rt/stlvnl`; the `lb`-based vector load is a new `gte_ldlv0b` (`musashi_lane_gte_ldlv0b`: VXY0 = (u16)(s8)b0 | (s8)b1<<16, VZ0 = (s8)b2) added to musashi_lane_gte_inline.h, psyq_psycross.c and the generator's GTE lists. Bytes unchanged: oracle MATCH.
+- Gates: build=0, TABLE_IDENTICAL, ctest 39/39, strict_build=0, m2c=0, regr LOST [], GAINED main 80020A28.
+- Village warp (BFM_DEV_MENU_WARP_TEST=1010:0): no strict stop; `[WARP] arrived 1010.0 entrance=0 progress=0`.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for

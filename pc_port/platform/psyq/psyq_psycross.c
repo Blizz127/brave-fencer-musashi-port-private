@@ -392,6 +392,16 @@ void musashi_lane_gte_ldlv0(const void *r0) {
     MTC2(lane_gte_load32(b + 8), 1);
     bfm_psyq_gte_end(0);
 }
+/* gte_ldlv0b (80020A28's byte-vector load): VXY0 = (u16)(s8)b[0] | (s8)b[1] << 16
+ * (lb/lb/sll/srl/or), VZ0 = (s8)b[2] (lb, sign-extended). */
+void musashi_lane_gte_ldlv0b(const void *r0) {
+    const int8_t *b = (const int8_t *)r0;
+    uint32_t xy = (uint32_t)(uint16_t)(int16_t)b[0] | ((uint32_t)(int32_t)b[1] << 16);
+    if (!lane_gte_lease()) return;
+    MTC2(xy, 0);
+    MTC2((uint32_t)(int32_t)b[2], 1);
+    bfm_psyq_gte_end(0);
+}
 /* gte_ldclmv: IR1..IR3 = the u16 column at +0, +6, +12 of a MATRIX. */
 void musashi_lane_gte_ldclmv(const void *r0) {
     const uint8_t *b = (const uint8_t *)r0;

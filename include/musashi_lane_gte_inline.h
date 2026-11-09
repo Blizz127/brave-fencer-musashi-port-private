@@ -10,6 +10,7 @@ extern "C" {
 
 void musashi_lane_gte_ldv0(const void *r0);
 void musashi_lane_gte_ldlv0(const void *r0);
+void musashi_lane_gte_ldlv0b(const void *r0);
 void musashi_lane_gte_ldclmv(const void *r0);
 void musashi_lane_gte_rtir(void);
 void musashi_lane_gte_rtv0(void);
@@ -51,6 +52,7 @@ void musashi_lane_gte_strgb3(void *r0, void *r1, void *r2);
 
 #define gte_ldv0(r0) musashi_lane_gte_ldv0((const void *)(r0))
 #define gte_ldlv0(r0) musashi_lane_gte_ldlv0((const void *)(r0))
+#define gte_ldlv0b(r0) musashi_lane_gte_ldlv0b((const void *)(r0))
 #define gte_ldclmv(r0) musashi_lane_gte_ldclmv((const void *)(r0))
 #define gte_rtir() musashi_lane_gte_rtir()
 #define gte_rt() musashi_lane_gte_rtv0()
