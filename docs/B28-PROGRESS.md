@@ -2083,6 +2083,12 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 - Result (script /workspace/scratch/walk/w3.txt, `room 3008 mash` then U/R/D/L holds): act now flips 1/0 as in hybrid, pos moves hundreds of units (-5033 -> -4553 in Z in 200 frames of D), no strict stop. Musashi is drawn: /workspace/bfm-frames/inc173_walk_f2400.png (sprite visible, magenta texture artifacts remain in the room).
 - Next: script the walk to the village exit; the magenta/garbled forest textures.
 
+### Inc 175 — magenta fill in forest 3008: GPU polygon size rule
+
+- Frame trace (new `BFM_PRIM_LOG_FRAME=N` dumps the prims of present N): the magenta was four semi-transparent POLY_G4 (tpage 0x20) with vertices like (-13032,0), (0,17744), (-32760,-32750) and one vertex colour (128,0,128), i.e. a garbage projection from an effect. The real GPU takes 11-bit signed vertex coordinates and does not draw a polygon whose vertices are more than 1023 apart in x or 511 in y. `bfm_psyq_decode_packet` kept the 16-bit values and drew them. It now applies both rules to polygons (sext11, then drop on the size limit).
+- Frame: /workspace/bfm-frames/inc175_nomagenta_f2400.png (purple path, Musashi drawn, no magenta; before: inc173_walk_f2400.png).
+- Walk status: strict walk probe (D 1500 / R 900 / L 1800 / U 2000 holds) runs 14000 frames without a strict stop; Musashi covers z -4937..-3779 in room 3008, but the exit to the next room has not been found (needs a map of 3008's exits).
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for

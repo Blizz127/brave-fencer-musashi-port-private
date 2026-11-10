@@ -187,9 +187,25 @@ int bfm_plat_renderer_set_disp_env(const BfmPlatDispEnv *e) {
                                 : BFM_PLAT_UNSUPPORTED;
 }
 
+static unsigned g_dbg_present;
+static void dbg_prim_log(const BfmPlatPrim *p, size_t n) {
+    static long want = -2;
+    size_t i;
+    unsigned k;
+    if (want == -2) { const char *e = getenv("BFM_PRIM_LOG_FRAME"); want = e ? atol(e) : -1; }
+    if (want < 0 || (long)g_dbg_present != want) return;
+    for (i = 0; i < n; i++) {
+        fprintf(stderr, "PRIM k=%u fl=%02x tp=%04x cl=%04x wh=%u,%u d=%u", p[i].kind, p[i].flags, p[i].tpage, p[i].clut, p[i].w, p[i].h, p[i].depth);
+        for (k = 0; k < 4; k++)
+            fprintf(stderr, " (%d,%d %u,%u %u,%u,%u)", p[i].v[k].x, p[i].v[k].y, p[i].v[k].u, p[i].v[k].v, p[i].v[k].r, p[i].v[k].g, p[i].v[k].b);
+        fputc('\n', stderr);
+    }
+}
+
 int bfm_plat_renderer_submit(const BfmPlatPrim *p, size_t n) {
     size_t i;
     REQUIRE_ACTIVE();
+    dbg_prim_log(p, n);
     if (n && !p) return BFM_PLAT_INVALID;
     for (i = 0; i < n; i++)
         if (p[i].kind == 0 || p[i].kind >= BFM_PRIM_KIND_COUNT)
@@ -246,6 +262,7 @@ int bfm_plat_renderer_download_vram(const BfmPlatRect *r, uint16_t *px) {
 }
 
 int bfm_plat_renderer_present(void) {
+    ++g_dbg_present;
     int r;
     REQUIRE_ACTIVE();
     bfm_plat_mods_emit(BFM_EVENT_BEFORE_PRESENT, NULL);

@@ -523,6 +523,23 @@ size_t bfm_psyq_decode_packet(const uint32_t *w, size_t n, uint16_t *tpage,
                     *tpage = (uint16_t)((*tpage & 0xC000u) | (p->tpage & 0x09FFu) |
                                         (*tpage & 0x3600u));
             }
+            /* GPU: vertex coordinates are 11-bit signed, and a polygon whose
+             * vertices are more than 1023 apart in x or 511 in y is not drawn.
+             * (Garbage projections from unfinished effects reach here with
+             * 16-bit values; retail drops them.) */
+            {
+                int xs[4], ys[4], bad = 0;
+                unsigned a, b;
+                for (a = 0; a < nv; a++) {
+                    xs[a] = ((int)(p->v[a].x & 0x7ff) ^ 0x400) - 0x400;
+                    ys[a] = ((int)(p->v[a].y & 0x7ff) ^ 0x400) - 0x400;
+                }
+                for (a = 0; a < nv && !bad; a++)
+                    for (b = a + 1; b < nv; b++)
+                        if (abs(xs[a] - xs[b]) > 1023 || abs(ys[a] - ys[b]) > 511) { bad = 1; break; }
+                if (bad) continue;
+                for (a = 0; a < nv; a++) { p->v[a].x = (int16_t)xs[a]; p->v[a].y = (int16_t)ys[a]; }
+            }
             count++;
         } else if (code >= 0x40 && code < 0x60) {          /* lines */
             int gouraud = code & 0x10, poly = code & 0x08;
