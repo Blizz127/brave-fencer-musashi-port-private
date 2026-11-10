@@ -242,7 +242,7 @@ __asm__ __volatile__("" : "=r"(a0v) : "0"(a0));
   {
     goto fail;
   }
-  if (((s32 (*)(s32, s32, s32)) func_80135A4C)(ent->f20, ent->f58, (s32) a1) == 0)
+  if (((s32 (*)(s32, s32, s32, s32)) func_80135A4C)(ent->f20, ent->f58, (s32) a1, (s32) a2) == 0)
   {
     goto fail;
   }
