@@ -17,7 +17,7 @@ struct S_80149744 {
 };
 extern s32 D_8011F9C4;
 extern s32 D_801872A0;
-extern s32 func_80161B18(void);
+extern s32 func_80161B18();
 extern s32 func_801619A4(s32*);
 extern s32 func_80149AA8(s32*);
 extern void func_80149AD4(s32*);
@@ -60,7 +60,7 @@ void func_8015B950(s32 arg0)
     s32 doit;
     s32 lim = -0xB0000;
 
-    if (func_80161B18() != 0) {
+    if (func_80161B18(arg0) != 0) {
         return;
     }
     switch (((s32 (*)(s32))func_801619A4)(arg0)) {
