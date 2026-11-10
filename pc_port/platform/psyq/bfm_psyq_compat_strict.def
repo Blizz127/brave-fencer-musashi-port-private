@@ -67,3 +67,7 @@ BFM_PSYQ(0x80057FFC, func_80057FFC, BFM_PSYQ_PSYCROSS, 8, 1, bfm_psyq_grd_f4_l0)
 BFM_PSYQ(0x80058284, func_80058284, BFM_PSYQ_PSYCROSS, 8, 1, bfm_psyq_grd_f4_l2)
 BFM_PSYQ(0x8005845C, func_8005845C, BFM_PSYQ_PSYCROSS, 8, 1, bfm_psyq_grd_g4_l0)
 BFM_PSYQ(0x800586CC, func_800586CC, BFM_PSYQ_PSYCROSS, 8, 1, bfm_psyq_grd_g4_l2)
+
+/* Hand-assembly main-exe routines, host implementations in psyq_psycross.c
+ * (cannot be byte-exact C; see the comment there). 800249F0: TMD F3 emitter. */
+BFM_PSYQ(0x800249F0, func_800249F0, BFM_PSYQ_PSYCROSS, 7, 1, bfm_psyq_main_f3_nccs)

@@ -269,3 +269,30 @@ Increment 16 (strict only):
 - **Short calls:** a call with fewer arguments than the callee declares gets
   the caller's own parameters only when the retail words leave those
   a-registers intact up to every jal of that callee. Otherwise it is refused.
+
+## Hand-assembly host implementations (B28 inc 214)
+
+A few routines in the SLUS main executable are hand assembly (loop-carried
+state in `$t` registers, hand-placed latency nops). No C body is byte-exact for
+them, and the strict generator cannot lower a whole asm block, so they cannot
+be lane C. Each one is implemented as a **host implementation** in
+`pc_port/platform/psyq/psyq_psycross.c` (section "main-exe hand-assembly host
+implementations"), registered as a strict-only row in
+`pc_port/platform/psyq/bfm_psyq_compat_strict.def`, and reached through the
+lane's guest-call thunk from the byte-exact C callers. They follow the retail
+instruction stream step by step (same GTE command and register-load order,
+same packet words, same OT links, same return value) and are **not** byte-exact
+and have **no registry row**; the oracle MATCH rule does not apply to them.
+Instead each has a same-input behavior test.
+
+| entry | routine | host implementation | test |
+| --- | --- | --- | --- |
+| 800249F0 | TMD F3 emitter, NCCS lit, 16-byte prims | `bfm_psyq_main_f3_nccs` | `main_hostasm_differential` |
+
+`tests/main_hostasm_probe.c` (ctest `main_hostasm_differential`, skips when the
+EXE is missing) builds a seeded TMD scene and GTE bank, runs the retail words
+on the interpreter over a real `gte_owner`, restores RAM and the bank, runs
+the host implementation through the production GTE bridge, and compares v0,
+the whole GTE data/control banks and all guest RAM outside the callee's stack
+scratch. It fails itself if the scenes do not hit the empty, all-culled,
+linked and semi-transparent-packet paths.

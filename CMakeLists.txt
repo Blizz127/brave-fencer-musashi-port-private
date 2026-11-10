@@ -919,6 +919,20 @@ if(MUSASHI_BUILD_PC_PORT)
                 ${CMAKE_CURRENT_SOURCE_DIR}/extracted/disc/files/SLUS_007.26)
     set_tests_properties(psyq_lzc_differential PROPERTIES SKIP_RETURN_CODE 77)
 
+    # Host implementations of hand-assembly main routines (psyq_psycross.c)
+    # vs the retail words on the interpreter, over a real gte_owner.
+    if(TARGET musashi_native_lane)
+        add_executable(musashi_main_hostasm_probe tests/main_hostasm_probe.c)
+        target_compile_features(musashi_main_hostasm_probe PRIVATE c_std_99)
+        target_include_directories(musashi_main_hostasm_probe PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/pc_port/include ${CMAKE_CURRENT_SOURCE_DIR}/pc_port/platform)
+        target_link_libraries(musashi_main_hostasm_probe PRIVATE musashi_native_lane)
+        add_test(NAME main_hostasm_differential
+            COMMAND musashi_main_hostasm_probe
+                    ${CMAKE_CURRENT_SOURCE_DIR}/extracted/disc/files/SLUS_007.26)
+        set_tests_properties(main_hostasm_differential PROPERTIES SKIP_RETURN_CODE 77)
+    endif()
+
     # VSync(mode < 0) native path (bfm_psyq_VSync behind device_sync) vs the
     # interpreted retail func_8004239C: returns, the whole register file, all
     # RAM, lazy-epoch commit ordering, clean refusals of every other mode.

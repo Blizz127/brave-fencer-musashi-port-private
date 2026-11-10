@@ -1640,6 +1640,104 @@ int bfm_psyq_grd_g4_l0(uint32_t *r) { return grd_run(&kGrdG4l0, r); }
 int bfm_psyq_grd_g4_l2(uint32_t *r) { return grd_run(&kGrdG4l2, r); }
 
 
+/* ---- main-exe hand-assembly host implementations (B28, strict only) --------
+ *
+ * These routines of the SLUS main executable are hand assembly (no compiler
+ * output: loop-carried state in $t1/$t2/$t5/$t6/$t8/$t9 with hand-placed
+ * latency nops), so no C body can be byte-exact and the strict lane cannot
+ * lower the asm block. Each is implemented here in C over the shared GTE bank
+ * (same lease and command encodings as the libgs sorters above), following
+ * the retail instruction stream step by step: same GTE command and register
+ * load order, same packet words, same OT links, same return value. The
+ * scratch stores the asm makes to its own 8-byte stack frame are not
+ * reproduced (nothing reads them after return). Listed in
+ * bfm_psyq_compat_strict.def; reached through the lane's guest-call thunk
+ * from the byte-exact C emitters (src/main/80024448.c et al).
+ *
+ * 800249F0: TMD flat-shaded triangle (F3, 16-byte prims) emitter, lit with
+ * NCCS from the normal of each prim.
+ *   fn(prim, vert_top, normal_top, packet, n, shift, ot) -> next packet
+ * prim: +4 rgbc word, +8 normal index, +10/+12/+14 vertex indices (u16).
+ * Per prim: RTPT; skip when FLAG & ~0x1000; NCLIP; skip when MAC0 <= 0; store
+ * SXY0..2 at packet+8/12/16; AVSZ3; RGBC <- prim+4, V0 <- normal; NCCS; store
+ * RGB2 at packet+4; OT link of the 20-byte packet (tag length 4):
+ *   slot = ot + ((OTZ >> shift) << 2)
+ *   packet.tag = (slot_word & 0xFFFFFF) | 0x04000000; slot_word = packet & 0xFFFFFF
+ * (the old top byte of the slot word is dropped, as in the asm). When the
+ * guest flag D_800A2B78 is non-zero and the RGB word's code byte has bit 1
+ * (semi-transparent), a second packet (tag length 1, word 0xE100000A |
+ * (D_800A2B78 & 3) << 5) is linked to the same slot right behind it.
+ * Returns the advanced packet pointer (the packet pointer itself for n == 0). */
+#define MAIN_D_800A2B78 0x800A2B78u
+static uint32_t hx_u16(uint32_t a) { const uint8_t *p = (const uint8_t *)P(a, 2); return p ? (uint32_t)(p[0] | (p[1] << 8)) : 0u; }
+static uint32_t hx_u32(uint32_t a) {
+    const uint8_t *p = (const uint8_t *)P(a, 4);
+    return p ? ((uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24)) : 0u;
+}
+
+/* lwc2 $2k, 0(base+idx*8); lwc2 $2k+1, 4(...): the raw words, as the asm loads
+ * them (the bank keeps the full pad word; gs5_ldv sign-extends Z instead). */
+static int hx_ldv(int slot, uint32_t base, uint32_t idx) {
+    const uint8_t *p = (const uint8_t *)P(base + idx * 8u, 8);
+    if (!p) return 0;
+    MTC2((uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24), slot * 2);
+    MTC2((uint32_t)p[4] | ((uint32_t)p[5] << 8) | ((uint32_t)p[6] << 16) | ((uint32_t)p[7] << 24), slot * 2 + 1);
+    return 1;
+}
+
+int bfm_psyq_main_f3_nccs(uint32_t *r) {
+    uint32_t prim = A(0), vert = A(1), norm = A(2), pkt = A(3);
+    uint32_t n = A(4), shift = A(5), ot = A(6);
+    uint32_t cmds = 0;
+    if (n == 0) { r[2] = pkt; return 1; }
+    if (!P(prim, 16u * n)) return 0;
+    GTE_BEGIN();
+#define HX_FAIL() do { GTE_END(cmds); return 0; } while (0)
+    for (; n; --n, prim += 16u) {
+        uint32_t otz, slot, old, k, rgbc;
+        uint8_t *pp;
+        for (k = 0; k < 3u; ++k)
+            if (!hx_ldv((int)k, vert, hx_u16(prim + 10u + 2u * k))) HX_FAIL();
+        doCOP2(0x0280030); cmds++;                                   /* RTPT */
+        if ((CFC2(31) & 0xFFFFEFFFu) != 0) continue;
+        doCOP2(0x1400006); cmds++;                                   /* NCLIP */
+        if ((int32_t)MFC2(24) <= 0) continue;
+        if (!(pp = (uint8_t *)P(pkt, 28u))) HX_FAIL();
+        for (k = 0; k < 3u; ++k) lane_gte_store32(pp + 8 + 4 * k, MFC2(12 + k));
+        doCOP2(0x158002D); cmds++;                                   /* AVSZ3 */
+        otz = MFC2(7);
+        rgbc = hx_u32(prim + 4u);
+        MTC2(rgbc, 6);
+        if (!hx_ldv(0, norm, hx_u16(prim + 8u))) HX_FAIL();
+        doCOP2(0x108041B); cmds++;                                   /* NCCS */
+        lane_gte_store32(pp + 4, MFC2(22));
+        slot = ot + ((uint32_t)((int32_t)otz >> (shift & 31u)) << 2);
+        {
+            uint8_t *sp = (uint8_t *)P(slot, 4);
+            if (!sp) HX_FAIL();
+            old = (uint32_t)sp[0] | ((uint32_t)sp[1] << 8) | ((uint32_t)sp[2] << 16) | ((uint32_t)sp[3] << 24);
+            lane_gte_store32(pp, (old & 0x00FFFFFFu) | 0x04000000u);
+            lane_gte_store32(sp, pkt & 0x00FFFFFFu);
+        }
+        pkt += 20u;
+        if (hx_u32(MAIN_D_800A2B78) == 0) continue;
+        if (!(pp[7] & 2u)) continue;
+        {
+            uint8_t *sp, *q = (uint8_t *)P(pkt, 8u);
+            if (!q || !(sp = (uint8_t *)P(slot, 4))) HX_FAIL();
+            lane_gte_store32(q + 4, 0xE100000Au | ((hx_u32(MAIN_D_800A2B78) & 3u) << 5));
+            old = (uint32_t)sp[0] | ((uint32_t)sp[1] << 8) | ((uint32_t)sp[2] << 16) | ((uint32_t)sp[3] << 24);
+            lane_gte_store32(q, (old & 0x00FFFFFFu) | 0x01000000u);
+            lane_gte_store32(sp, pkt & 0x00FFFFFFu);
+        }
+        pkt += 8u;
+    }
+#undef HX_FAIL
+    GTE_END(cmds);
+    r[2] = pkt;
+    return 1;
+}
+
 /* MUSASHI_TRACE_DRAWOTAG helper: the GTE control state at the traced OT
  * (rotation, translation, OFX/OFY, H). Diagnostic only. */
 void bfm_psyq_gte_trace(void) {
