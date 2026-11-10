@@ -7,6 +7,6 @@
 s32 func_8014C568();
 typedef struct Inner { u8 pad[0x12]; s16 unk12; } Inner;
 typedef struct { u8 pad[0x20]; Inner *inner; } T;
-void func_80171B10(T *p) {
-    p->inner->unk12 = func_8014C568(p);
+void func_80171B10(T *p, s32 a1) {
+    p->inner->unk12 = func_8014C568(p, a1);
 }

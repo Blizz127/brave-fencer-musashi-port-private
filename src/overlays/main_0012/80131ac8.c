@@ -11,11 +11,11 @@
  * (Druthulu, same SLUS-00726 build), split to an address-named file.
  * Values and locals are the loosest that reproduce the bytes; they
  * are not evidence of the original declaration. */
-extern s32 func_80131CF4(s32 a0);
+extern s32 func_80131CF4(s32 a0, s32 a1);
 extern void func_8002D4C8(s32 a0, s32 a1);
 
-s32 func_80131AC8(void *a0) {
-    s32 s0 = func_80131CF4(*(s32 *)((u8 *)a0 + 0xBC)) & 0xFFFF;
+s32 func_80131AC8(void *a0, s32 a1) {
+    s32 s0 = func_80131CF4(*(s32 *)((u8 *)a0 + 0xBC), a1) & 0xFFFF;
     if (s0 != 0) {
         func_8002D4C8(s0, 0);
         return s0;

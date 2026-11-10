@@ -11,12 +11,12 @@ typedef struct { char _b[8]; } M8;
 
 s32 func_801312D0(s32 param_1, void *param_2)
 {
-    extern s32 func_80131CF4(s32);
+    extern s32 func_80131CF4(s32, s32);
     extern M8 D_8017E838;
 
     int iVar5;
 
-    iVar5 = ((int (*)(int, int))func_80131CF4)(*(int *)(((int)param_1) + 0xBC), 0x2E);
+    iVar5 = func_80131CF4(*(int *)(((int)param_1) + 0xBC), 0x2E);
     if (iVar5 != 0) {
         ((short *)param_2)[2] = 0;
         ((short *)param_2)[0] = 0;

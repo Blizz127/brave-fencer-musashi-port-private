@@ -6,6 +6,6 @@
 #include "psx_types.h"
 void func_8012F038();
 typedef struct { u8 pad[0x20]; u8 *inner; } T;
-void func_8014942C(T *p) {
-    func_8012F038(p->inner + 0x34);
+void func_8014942C(T *p, s32 a1, s32 a2) {
+    func_8012F038(p->inner + 0x34, a1, a2);
 }
