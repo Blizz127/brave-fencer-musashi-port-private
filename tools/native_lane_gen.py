@@ -2181,6 +2181,21 @@ def resolve_calls(optir):
             stubs[new] = (callee, None, argc, ret)
         else:
             sig = parse_signature(decl, sym)
+            if STRICT and sig[0] == "void":
+                # MATCH C that declares `extern void f(void)` and then calls
+                # `((s32 (*)(s32))f)(x)` makes Clang emit `call i32 @f`
+                # against `declare void @f`. The void-returning stub returns
+                # nothing, so the caller read an undefined eax (8014D738's
+                # result in the player walk state decided "start act 9" every
+                # frame). Give the stub the call site's return type; the
+                # emitter returns the callee's value (or 0 for a void callee).
+                site = {m2.group(1) for m2 in re.finditer(
+                    r"=\s*(?:(?:tail|musttail|notail)\s+)?call\s+(?:[\w()]+\s+)*?(i\d+|ptr)\s+@" + re.escape(sym) + r"\(",
+                    optir)}
+                if len(site) == 1:
+                    ty = site.pop()
+                    sig = (ty, (False, False), sig[2])
+                    optir = re.sub(r"^declare void (@" + re.escape(sym) + r"\()", "declare " + ty + r" \1", optir, flags=re.M)
             new = f"{sym}__{sig_code(sig)}"
             stubs[new] = (callee, sig, len(sig[2]), None)
         renames[sym] = new
