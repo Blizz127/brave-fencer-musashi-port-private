@@ -10,8 +10,6 @@ struct Quad { s32 a, b, c, d; };
 extern s32 func_80135888(s32 a0, s32 a1, s32 a2, s32 a3);
 extern s32 func_80135888();
 extern s32 func_80135888(s32, s32, s32, s32);
-s32 a2;
-s16 *a3;
 extern int func_80135888();
 
 s32 func_8014DCE0(s32 arg0, s32 arg1, s32 arg2) {

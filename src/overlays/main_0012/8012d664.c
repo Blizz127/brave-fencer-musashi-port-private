@@ -5,7 +5,6 @@
 /* Source: derived verbatim from Druthulu/BFM-decomp (vendor/bfm-decomp, same SLUS-00726 build). */
 #include "psx_types.h"
 /* func_8012D664 - byte-exact against retail at -O2 (tools/register_match.py). */
-u8 *arg2;
 extern u16 D_80126B5E;
 extern u16 D_80126B62;
 extern u16 D_80126B66;
