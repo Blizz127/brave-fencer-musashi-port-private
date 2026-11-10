@@ -6,8 +6,8 @@
 #include "psx_types.h"
 extern s32 D_801152BC;
 s32 func_801612B8();
-void func_80161374();
-void func_80161278(void *p) {
+s32 func_80161374();
+s32 func_80161278(void *p) {
     D_801152BC = 0;
-    func_80161374(p, func_801612B8(p, 1));
+    return func_80161374(p, func_801612B8(p, 1));
 }

@@ -4,9 +4,9 @@
  * original declaration. */
 
 #include "psx_types.h"
-void func_80146AFC();
+s32 func_80146AFC();
 typedef struct { s16 a, b, c, d; void *p; s32 x, y; } P;
-void func_80146A6C(s16 a0, void *a1, s16 a2, s16 a3, s16 a4, s32 a5, s32 a6) {
+s32 func_80146A6C(s16 a0, void *a1, s16 a2, s16 a3, s16 a4, s32 a5, s32 a6) {
     P s;
     s.a = a0;
     s.p = a1;
@@ -15,5 +15,5 @@ void func_80146A6C(s16 a0, void *a1, s16 a2, s16 a3, s16 a4, s32 a5, s32 a6) {
     s.d = a4;
     s.x = a5;
     s.y = a6;
-    func_80146AFC(&s);
+    return func_80146AFC(&s);
 }

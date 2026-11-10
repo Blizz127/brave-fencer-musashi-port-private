@@ -9,5 +9,5 @@
  * original declaration. */
 
 #include "psx_types.h"
-typedef struct { u8 pad[0xDC]; void (*fn)(); } T;
-void func_80144A04(T *p) { p->fn(p); }
+typedef struct { u8 pad[0xDC]; s32 (*fn)(); } T;
+s32 func_80144A04(T *p) { return p->fn(p); }
