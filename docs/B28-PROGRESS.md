@@ -2103,8 +2103,8 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
   bfm-frames/inc181_walk_f4200.png). The pure-mash start also no longer stops.
 - Blocker: `goto` has no map of forest 3008; the player stalls near
   (221,-3880) and never reaches the exits at (-4,3410)/(1545,5340). Still open
-  abi refusals in main_0012: 80154218 (1 of 3 args to 801549F8 is not an issue
-  now), 8014942C, 801542DC, 80171B10, 80131A34/AC8/CA8, 80131B14.
+  abi refusals in main_0012 (hidden args to 80131CF4, 8012F038, 8015430C, 8014C568):
+  8014942C, 801542DC, 80171B10, 80131A34/AC8/CA8, 80131B14.
 
 ## Next
 
