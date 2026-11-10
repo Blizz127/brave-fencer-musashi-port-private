@@ -1738,6 +1738,166 @@ int bfm_psyq_main_f3_nccs(uint32_t *r) {
     return 1;
 }
 
+/* 80026514 (GT3), 800268D0 (GT4): TMD textured, lit triangle / quad emitters.
+ *   fn(prim, vert_top, normal_top, packet, n, shift, ot, tex) -> next packet
+ * tex selects an 8-byte entry of the table at 0x8006388C (+0: u byte,
+ * +2: v base, +0/+2 half words also give the tpage bits) and a byte of the
+ * table at 0x8006389C (CLUT row: ((b + 0x100) << 6) | (b < 0xE0 ? 0x16 : 0x10)).
+ * The RGBC given to the lighting is, for tex == 0, the prim word at +4 with
+ * its code byte forced (0x34 GT3, 0x3C GT4); otherwise the word at 0x80063884
+ * (GT3) / 0x80063888 (GT4). The U/V of each corner is the screen x/y (halved
+ * toward zero, plus the byte at 0x800B99DA, masked to 0..31) added to the
+ * table base; it is stored as a byte. D_800A2B78 != 0 sets bit 1 of the
+ * packet's code byte. The packet is linked at ot + ((OTZ >> shift) << 2) with
+ * tag length 9 (GT3, 40 bytes) / 12 (GT4, 52 bytes); the old top byte of the
+ * slot word is dropped, as in the asm.
+ * GT3 prim (20 bytes): normal indices +8/+12/+16, vertex indices +10/+14/+18.
+ * GT4 prim (24 bytes): normal indices +8/+12/+16/+20, vertex +10/+14/+18/+22.
+ * Packet: +4/+16/+28(/+40) RGB, +8/+20/+32(/+44) SXY, +12/+13 UV0, +14 CLUT,
+ * +24/+25 UV1, +26 tpage, +36/+37 UV2, (+48/+49 UV3). */
+static uint32_t hx_u8(uint32_t a) { const uint8_t *p = (const uint8_t *)P(a, 1); return p ? *p : 0u; }
+static uint32_t hx_halfx(uint32_t sxy16) { int32_t c = (int16_t)sxy16; return (uint32_t)((c + (c < 0)) >> 1); }
+
+static int hx_textured(uint32_t *r, int quad) {
+    uint32_t prim = A(0), vert = A(1), norm = A(2), pkt = A(3);
+    uint32_t n = A(4), shift = A(5), ot = A(6), tex = A(7);
+    uint32_t tbl = 0x8006388Cu + tex * 8u, sel = hx_u8(0x8006389Cu + tex);
+    uint32_t clut = ((sel + 0x100u) << 6) | (sel < 0xE0u ? 0x16u : 0x10u);
+    uint32_t flag = hx_u32(MAIN_D_800A2B78), th0 = hx_u16(tbl), th1 = hx_u16(tbl + 2u);
+    uint32_t tpage = ((flag & 3u) << 5) | ((th1 >> 4) & 0x10u) | ((th0 & 0x3FFu) >> 6) | ((th1 & 0x200u) << 2);
+    uint32_t b = hx_u8(0x800B99DAu), ubase = (hx_u8(tbl) << 2) & 0xFFu;
+    uint32_t stride = quad ? 24u : 20u, psize = quad ? 52u : 40u, tag = quad ? 0x0C000000u : 0x09000000u;
+    uint32_t cmds = 0, rgbc, ncorner = quad ? 4u : 3u, k;
+    if (!P(prim, 8)) return 0;
+    if (tex == 0) rgbc = (hx_u32(prim + 4u) & 0x00FFFFFFu) | ((quad ? 0x3Cu : 0x34u) << 24);
+    else rgbc = hx_u32(quad ? 0x80063888u : 0x80063884u);
+    GTE_BEGIN();
+#define HX_FAIL() do { GTE_END(cmds); return 0; } while (0)
+    MTC2(rgbc, 6);
+    for (; n; --n, prim += stride) {
+        uint32_t otz, slot, old, sxy[4];
+        uint8_t *pp;
+        for (k = 0; k < 3u; ++k)
+            if (!hx_ldv((int)k, vert, hx_u16(prim + 10u + 4u * k))) HX_FAIL();
+        doCOP2(0x0280030); cmds++;                                   /* RTPT */
+        if ((CFC2(31) & 0xFFFFEFFFu) != 0) continue;
+        doCOP2(0x1400006); cmds++;                                   /* NCLIP */
+        if ((int32_t)MFC2(24) <= 0) continue;
+        if (!(pp = (uint8_t *)P(pkt, psize))) HX_FAIL();
+        for (k = 0; k < 3u; ++k) { sxy[k] = MFC2(12 + k); lane_gte_store32(pp + 8 + 12 * k, sxy[k]); }
+        if (quad) {
+            if (!hx_ldv(0, vert, hx_u16(prim + 22u))) HX_FAIL();
+            doCOP2(0x0180001); cmds++;                               /* RTPS */
+            if ((CFC2(31) & 0xFFFFEFFFu) != 0) continue;
+            sxy[3] = MFC2(14);
+            lane_gte_store32(pp + 44, sxy[3]);
+            doCOP2(0x168002E); cmds++;                               /* AVSZ4 */
+        } else {
+            doCOP2(0x158002D); cmds++;                               /* AVSZ3 */
+        }
+        otz = MFC2(7);
+        for (k = 0; k < 3u; ++k)
+            if (!hx_ldv((int)k, norm, hx_u16(prim + 8u + 4u * k))) HX_FAIL();
+        doCOP2(0x118043F); cmds++;                                   /* NCCT */
+        for (k = 0; k < 3u; ++k) lane_gte_store32(pp + 4 + 12 * k, MFC2(20 + k));
+        if (quad) {
+            if (!hx_ldv(0, norm, hx_u16(prim + 20u))) HX_FAIL();
+            doCOP2(0x108041B); cmds++;                               /* NCCS */
+            lane_gte_store32(pp + 40, MFC2(22));
+        }
+        {
+            uint32_t h1 = hx_u16(tbl + 2u);
+            for (k = 0; k < ncorner; ++k) {
+                const uint8_t *q = pp + (k == 3u ? 44u : 8u + 12u * k);
+                uint32_t x = (uint32_t)q[0] | ((uint32_t)q[1] << 8), y = (uint32_t)q[2] | ((uint32_t)q[3] << 8);
+                uint8_t *d = pp + 12u + 12u * k;
+                d[0] = (uint8_t)(((b + hx_halfx(x)) & 0x1Fu) + ubase);
+                d[1] = (uint8_t)(h1 + ((b + hx_halfx(y)) & 0x1Fu));
+            }
+        }
+        if (flag != 0) pp[7] |= 2u;
+        lane_gte_store16(pp + 14, clut);
+        lane_gte_store16(pp + 26, tpage);
+        slot = ot + ((uint32_t)((int32_t)otz >> (shift & 31u)) << 2);
+        {
+            uint8_t *sp = (uint8_t *)P(slot, 4);
+            if (!sp) HX_FAIL();
+            old = (uint32_t)sp[0] | ((uint32_t)sp[1] << 8) | ((uint32_t)sp[2] << 16) | ((uint32_t)sp[3] << 24);
+            lane_gte_store32(pp, (old & 0x00FFFFFFu) | tag);
+            lane_gte_store32(sp, pkt & 0x00FFFFFFu);
+        }
+        pkt += psize;
+    }
+#undef HX_FAIL
+    GTE_END(cmds);
+    r[2] = pkt;
+    return 1;
+}
+int bfm_psyq_main_gt3(uint32_t *r) { return hx_textured(r, 0); }
+int bfm_psyq_main_gt4(uint32_t *r) { return hx_textured(r, 1); }
+
+/* 80027200: TMD flat-shaded quad (F4, 20-byte prims, no lighting) emitter.
+ *   fn(prim, vert_top, -, packet, n, shift, ot) -> next packet
+ * prim: +4 rgbc word, +10/+12/+14/+16 vertex indices. Per prim: RTPT on the
+ * first three, skip when FLAG & ~0x1000; NCLIP, skip when MAC0 <= 0; SXY0..2
+ * go to packet+8/12/16 (kept even if the fourth vertex then fails); RTPS on
+ * the fourth (same flag test), SXY2 -> packet+20; AVSZ4; the prim's rgbc word
+ * is copied to packet+4; link with tag length 5 (24 bytes) at
+ * ot + ((OTZ >> shift) << 2). With D_800A2B78 != 0 and bit 1 of the code
+ * byte, a second packet (tag length 1, 0xE100000A | (D_800A2B78 & 3) << 5) is
+ * linked behind it. */
+int bfm_psyq_main_f4(uint32_t *r) {
+    uint32_t prim = A(0), vert = A(1), pkt = A(3);
+    uint32_t n = A(4), shift = A(5), ot = A(6), cmds = 0;
+    if (n == 0) { r[2] = pkt; return 1; }
+    if (!P(prim, 20u * n)) return 0;
+    GTE_BEGIN();
+#define HX_FAIL() do { GTE_END(cmds); return 0; } while (0)
+    for (; n; --n, prim += 20u) {
+        uint32_t otz, slot, old, k;
+        uint8_t *pp;
+        for (k = 0; k < 3u; ++k)
+            if (!hx_ldv((int)k, vert, hx_u16(prim + 10u + 2u * k))) HX_FAIL();
+        doCOP2(0x0280030); cmds++;                                   /* RTPT */
+        if ((CFC2(31) & 0xFFFFEFFFu) != 0) continue;
+        doCOP2(0x1400006); cmds++;                                   /* NCLIP */
+        if ((int32_t)MFC2(24) <= 0) continue;
+        if (!(pp = (uint8_t *)P(pkt, 32u))) HX_FAIL();
+        for (k = 0; k < 3u; ++k) lane_gte_store32(pp + 8 + 4 * k, MFC2(12 + k));
+        if (!hx_ldv(0, vert, hx_u16(prim + 16u))) HX_FAIL();
+        doCOP2(0x0180001); cmds++;                                   /* RTPS */
+        if ((CFC2(31) & 0xFFFFEFFFu) != 0) continue;
+        lane_gte_store32(pp + 20, MFC2(14));
+        doCOP2(0x168002E); cmds++;                                   /* AVSZ4 */
+        otz = MFC2(7);
+        lane_gte_store32(pp + 4, hx_u32(prim + 4u));
+        slot = ot + ((uint32_t)((int32_t)otz >> (shift & 31u)) << 2);
+        {
+            uint8_t *sp = (uint8_t *)P(slot, 4);
+            if (!sp) HX_FAIL();
+            old = (uint32_t)sp[0] | ((uint32_t)sp[1] << 8) | ((uint32_t)sp[2] << 16) | ((uint32_t)sp[3] << 24);
+            lane_gte_store32(pp, (old & 0x00FFFFFFu) | 0x05000000u);
+            lane_gte_store32(sp, pkt & 0x00FFFFFFu);
+        }
+        pkt += 24u;
+        if (hx_u32(MAIN_D_800A2B78) == 0) continue;
+        if (!(pp[7] & 2u)) continue;
+        {
+            uint8_t *sp, *q = (uint8_t *)P(pkt, 8u);
+            if (!q || !(sp = (uint8_t *)P(slot, 4))) HX_FAIL();
+            lane_gte_store32(q + 4, 0xE100000Au | ((hx_u32(MAIN_D_800A2B78) & 3u) << 5));
+            old = (uint32_t)sp[0] | ((uint32_t)sp[1] << 8) | ((uint32_t)sp[2] << 16) | ((uint32_t)sp[3] << 24);
+            lane_gte_store32(q, (old & 0x00FFFFFFu) | 0x01000000u);
+            lane_gte_store32(sp, pkt & 0x00FFFFFFu);
+        }
+        pkt += 8u;
+    }
+#undef HX_FAIL
+    GTE_END(cmds);
+    r[2] = pkt;
+    return 1;
+}
+
 /* MUSASHI_TRACE_DRAWOTAG helper: the GTE control state at the traced OT
  * (rotation, translation, OFX/OFY, H). Diagnostic only. */
 void bfm_psyq_gte_trace(void) {

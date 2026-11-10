@@ -31,10 +31,13 @@
 #include <string.h>
 
 int bfm_psyq_main_f3_nccs(uint32_t *r);
+int bfm_psyq_main_gt3(uint32_t *r);
+int bfm_psyq_main_gt4(uint32_t *r);
+int bfm_psyq_main_f4(uint32_t *r);
 /* PsyCross's GTE bank; the owner's write profile has no light matrix (8..12). */
 extern void CTC2(unsigned int value, int reg);
 
-enum { F3_PC = 0x800249F0u, STACK_TOP = 0x801fe000u, FRAME_GUARD = 0x10000u,
+enum { STACK_TOP = 0x801fe000u, FRAME_GUARD = 0x10000u,
        VERT = 0x80190000u, NORM = 0x80190400u, PRIM = 0x80190800u,
        PKT = 0x801A0000u, OT = 0x801A1000u, OT_WORDS = 1024u, NVERT = 48u, NNORM = 16u,
        FLAG_ADDR = 0x800A2B78u };
@@ -45,6 +48,18 @@ static MusashiCpuStatus *g_status;
 static MusashiGteOwner g_owner;
 static const int g_identity;
 static const uint32_t g_gpr[32];
+typedef struct {
+    const char *name; uint32_t pc; unsigned nargs; int (*fn)(uint32_t *r);
+    unsigned prim_stride, nnorm, semi_second; /* semi_second: second packet of 8 bytes behind the first */
+    uint32_t packet_size; int kind;           /* 0 F3, 1 F4, 2 GT3, 3 GT4 */
+} Routine;
+static const Routine g_routines[] = {
+    {"800249F0 F3", 0x800249F0u, 7, bfm_psyq_main_f3_nccs, 16, 1, 1, 20, 0},
+    {"80027200 F4", 0x80027200u, 7, bfm_psyq_main_f4, 20, 0, 1, 24, 1},
+    {"80026514 GT3", 0x80026514u, 8, bfm_psyq_main_gt3, 20, 3, 0, 40, 2},
+    {"800268D0 GT4", 0x800268D0u, 8, bfm_psyq_main_gt4, 24, 4, 0, 52, 3},
+};
+static uint32_t g_pc;
 static uint32_t rng_state = 1u;
 static unsigned g_bad, g_cases, g_linked, g_semi, g_culled, g_empty;
 
@@ -57,7 +72,7 @@ static MusashiCpuContext lease_ctx(void) {
     MusashiCpuContext c;
     memset(&c, 0, sizeof c);
     c.identity = &g_identity; c.gpr = g_gpr;
-    c.pc = F3_PC; c.npc = F3_PC + 4u; c.instruction = 0x4884F000u;
+    c.pc = g_pc; c.npc = g_pc + 4u; c.instruction = 0x4884F000u;
     c.instruction_valid = 1; c.provenance = MUSASHI_CPU_CONTEXT_SOURCE;
     return c;
 }
@@ -116,7 +131,7 @@ static int seed_gte(uint32_t salt) {
 
 typedef struct { uint32_t n, shift, flag; } Params;
 
-static Params build_scene(uint32_t salt, unsigned idx) {
+static Params build_scene(uint32_t salt, unsigned idx, const Routine *rt) {
     static const uint32_t counts[] = {0, 1, 2, 5, 8, 16, 24, 32};
     Params p;
     uint32_t a, i;
@@ -139,12 +154,20 @@ static Params build_scene(uint32_t salt, unsigned idx) {
         w16(NORM + 8u * i + 4u, (rng() % 0x2000u) - 0x1000u); w16(NORM + 8u * i + 6u, 0);
     }
     for (i = 0; i < 32u; ++i) {
-        uint32_t o = PRIM + 16u * i;
+        uint32_t o = PRIM + 24u * i, k;
         w32(o, 0x24000403u | (rng() & 0xFF00u));
         w32(o + 4u, (rng() & 0x00FFFFFFu) | ((rng() & 1u ? 0x20u : 0x24u) | (rng() & 2u)) << 24);
-        w16(o + 8u, rng() % NNORM);
-        w16(o + 10u, rng() % NVERT); w16(o + 12u, rng() % NVERT); w16(o + 14u, rng() % NVERT);
+        switch (rt->kind) {
+        case 0: w16(o + 8u, rng() % NNORM); for (k = 0; k < 3u; ++k) w16(o + 10u + 2u * k, rng() % NVERT); break;
+        case 1: for (k = 0; k < 4u; ++k) w16(o + 10u + 2u * k, rng() % NVERT); break;
+        default:
+            for (k = 0; k < rt->nnorm; ++k) { w16(o + 8u + 4u * k, rng() % NNORM); w16(o + 10u + 4u * k, rng() % NVERT); }
+            break;
+        }
     }
+    /* texture tables (0x80063884.. / 0x8006389C..) and the U/V bias byte */
+    for (a = 0x80063884u; a < 0x800638B0u; a += 4u) w32(a, rng());
+    musashi_boot_write32(g_mem, 0x800B99D8u, rng());
     for (a = 0; a < OT_WORDS; ++a) w32(OT + 4u * a, rng());
     for (a = 0; a < 0x800u; a += 4u) w32(PKT + a, rng());
     return p;
@@ -159,19 +182,20 @@ static int same_bank(const MusashiGteSnapshot *a, const MusashiGteSnapshot *b, c
     return !bad;
 }
 
-static void run_f3_case(unsigned idx) {
+static void run_case(const Routine *rt, unsigned idx) {
     const uint32_t salt = 0x9E3779B9u * (idx + 1u);
     Params p;
-    uint32_t args[7], regs[32], r[32], retail_v0, host_v0, a;
+    uint32_t args[8], regs[32], r[32], retail_v0, host_v0, a;
     MusashiGteSnapshot s_ret, s_host;
     const uint32_t lo = STACK_TOP - FRAME_GUARD - 0x80000000u, hi = STACK_TOP + 0x30u - 0x80000000u;
     int ok, differ = 0;
     g_cases++;
-    p = build_scene(salt, idx);
+    g_pc = rt->pc;
+    p = build_scene(salt, idx, rt);
     memcpy(g_start, g_mem->bytes, MUSASHI_RAM_SIZE);
     if (!seed_gte(salt)) { fprintf(stderr, "main_hostasm: case %u seed refused\n", idx); g_bad++; return; }
-    args[0] = PRIM; args[1] = VERT; args[2] = NORM; args[3] = PKT; args[4] = p.n; args[5] = p.shift; args[6] = OT;
-    ok = musashi_native_lane_reference_call_transfer(g_mem, F3_PC, args, 7, STACK_TOP, 0, regs, NULL, &g_transfer);
+    args[0] = PRIM; args[1] = VERT; args[2] = NORM; args[3] = PKT; args[4] = p.n; args[5] = p.shift; args[6] = OT; args[7] = (idx % 5u) ? (idx % 4u) : 0u;
+    ok = musashi_native_lane_reference_call_transfer(g_mem, rt->pc, args, rt->nargs, STACK_TOP, 0, regs, NULL, &g_transfer);
     if (!ok || !musashi_gte_owner_snapshot(&g_owner, &s_ret)) {
         fprintf(stderr, "main_hostasm: case %u retail run refused\n", idx); g_bad++; return;
     }
@@ -182,13 +206,13 @@ static void run_f3_case(unsigned idx) {
     memset(r, 0, sizeof r);
     r[4] = args[0]; r[5] = args[1]; r[6] = args[2]; r[7] = args[3];
     r[29] = STACK_TOP;
-    w32(STACK_TOP + 16u, args[4]); w32(STACK_TOP + 20u, args[5]); w32(STACK_TOP + 24u, args[6]);
-    if (!bfm_psyq_main_f3_nccs(r) || !musashi_gte_owner_snapshot(&g_owner, &s_host)) {
+    w32(STACK_TOP + 16u, args[4]); w32(STACK_TOP + 20u, args[5]); w32(STACK_TOP + 24u, args[6]); w32(STACK_TOP + 28u, args[7]);
+    if (!rt->fn(r) || !musashi_gte_owner_snapshot(&g_owner, &s_host)) {
         fprintf(stderr, "main_hostasm: case %u host implementation refused\n", idx); g_bad++; return;
     }
     host_v0 = r[2];
-    if (host_v0 != retail_v0) { fprintf(stderr, "main_hostasm: case %u v0 host=%08x retail=%08x\n", idx, host_v0, retail_v0); differ = 1; }
-    if (!same_bank(&s_host, &s_ret, "f3")) differ = 1;
+    if (host_v0 != retail_v0) { fprintf(stderr, "main_hostasm: %s case %u v0 host=%08x retail=%08x\n", rt->name, idx, host_v0, retail_v0); differ = 1; }
+    if (!same_bank(&s_host, &s_ret, rt->name)) differ = 1;
     for (a = 0; a < MUSASHI_RAM_SIZE; ++a) {
         if (a >= lo && a < hi) continue;
         if (g_mem->bytes[a] != g_ram_interp[a]) {
@@ -200,7 +224,7 @@ static void run_f3_case(unsigned idx) {
     if (differ) { g_bad++; return; }
     if (p.n == 0) g_empty++;
     if (host_v0 > PKT) g_linked++;
-    if ((host_v0 - PKT) % 20u) g_semi++;
+    if ((host_v0 - PKT) % rt->packet_size) g_semi++;
     if (p.n && host_v0 == PKT) g_culled++;
 }
 
@@ -208,7 +232,7 @@ int main(int argc, char **argv) {
     FILE *file;
     uint8_t *exe;
     size_t exe_size;
-    unsigned i, cases = 96;
+    unsigned i, r, cases = 96;
     if (argc != 2) { fprintf(stderr, "usage: %s SLUS_007.26\n", argv[0]); return 2; }
     file = fopen(argv[1], "rb");
     if (!file) { fprintf(stderr, "main_hostasm: EXE unavailable; NOT_RUN\n"); return 77; }
@@ -227,12 +251,16 @@ int main(int argc, char **argv) {
         return 77;
     }
     musashi_native_lane_psyq_bind(g_mem, &g_owner);
-    for (i = 0; i < cases; ++i) run_f3_case(i);
-    printf("main_hostasm: 800249F0 cases=%u bad=%u (n=0: %u, all culled: %u, linked: %u, with semi-transparent packets: %u)\n",
-           g_cases, g_bad, g_empty, g_culled, g_linked, g_semi);
-    if (!g_empty || !g_culled || !g_linked || !g_semi) {
-        fprintf(stderr, "main_hostasm: the scenes did not exercise the empty/cull/link/semi-transparent paths; probe proves nothing\n");
-        return 1;
+    for (r = 0; r < sizeof g_routines / sizeof g_routines[0]; ++r) {
+        unsigned bad0 = g_bad;
+        g_cases = g_linked = g_semi = g_culled = g_empty = 0;
+        for (i = 0; i < cases; ++i) run_case(&g_routines[r], i);
+        printf("main_hostasm: %s cases=%u bad=%u (n=0: %u, all culled: %u, linked: %u, with semi-transparent packets: %u)\n",
+               g_routines[r].name, g_cases, g_bad - bad0, g_empty, g_culled, g_linked, g_semi);
+        if (!g_empty || !g_culled || !g_linked || (g_routines[r].semi_second && !g_semi)) {
+            fprintf(stderr, "main_hostasm: %s scenes did not exercise the empty/cull/link/semi-transparent paths; probe proves nothing\n", g_routines[r].name);
+            return 1;
+        }
     }
     return g_bad ? 1 : 0;
 }

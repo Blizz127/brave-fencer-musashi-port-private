@@ -288,6 +288,9 @@ Instead each has a same-input behavior test.
 | entry | routine | host implementation | test |
 | --- | --- | --- | --- |
 | 800249F0 | TMD F3 emitter, NCCS lit, 16-byte prims | `bfm_psyq_main_f3_nccs` | `main_hostasm_differential` |
+| 80027200 | TMD F4 flat quad emitter, 20-byte prims | `bfm_psyq_main_f4` | `main_hostasm_differential` |
+| 80026514 | TMD GT3 textured, lit triangle emitter (8 args) | `bfm_psyq_main_gt3` | `main_hostasm_differential` |
+| 800268D0 | TMD GT4 textured, lit quad emitter (8 args) | `bfm_psyq_main_gt4` | `main_hostasm_differential` |
 
 `tests/main_hostasm_probe.c` (ctest `main_hostasm_differential`, skips when the
 EXE is missing) builds a seeded TMD scene and GTE bank, runs the retail words
