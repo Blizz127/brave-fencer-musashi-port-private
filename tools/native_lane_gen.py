@@ -762,13 +762,46 @@ def switch_table_targets(words, vram, info=None):
             addiu = words[lw - 2]
             lui = words[lw - 3] if lw >= 3 else 0
             rb = (addiu >> 16) & 31
-            if not (lo == 0 and addiu >> 26 == 0x09 and (addiu >> 21) & 31 == rb and
-                    rb in ((addu >> 21) & 31, (addu >> 16) & 31) and
-                    lui >> 26 == 0x0F and (lui >> 16) & 31 == rb):
-                return None
-            alo = addiu & 0xFFFF
-            alo = alo - 0x10000 if alo & 0x8000 else alo
-            table = (((lui & 0xFFFF) << 16) + alo) & 0xFFFFFFFF
+            adj = lo == 0 and addiu >> 26 == 0x09 and (addiu >> 21) & 31 == rb and \
+                rb in ((addu >> 21) & 31, (addu >> 16) & 31) and \
+                lui >> 26 == 0x0F and (lui >> 16) & 31 == rb
+            if not adj:
+                # Hoisted base (801549F8): `lui rB, hi; addiu rB, rB, lo` far
+                # above the switch, rB untouched since (strict only).
+                if not (STRICT and lo == 0):
+                    return None
+                cand = [r for r in ((addu >> 21) & 31, (addu >> 16) & 31) if r]
+                found_base = None
+                for rb in cand:
+                    for j in range(lw - 2, -1, -1):
+                        wj = words[j]
+                        wr = (wj >> 16) & 31 if wj >> 26 in (0x09, 0x0F, 0x23, 0x0D, 0x08, 0x0C) else \
+                            ((wj >> 11) & 31 if wj >> 26 == 0 else None)
+                        if wj >> 26 == 0x09 and (wj >> 16) & 31 == rb and (wj >> 21) & 31 == rb:
+                            lu = next((q for q in range(j - 1, -1, -1)
+                                       if words[q] >> 26 == 0x0F and (words[q] >> 16) & 31 == rb), None)
+                            if lu is not None and not any(
+                                    ((words[q] >> 16) & 31 == rb and words[q] >> 26 in (0x09, 0x0F, 0x23, 0x0D, 0x0C)) or
+                                    (words[q] >> 26 == 0 and (words[q] >> 11) & 31 == rb)
+                                    for q in range(lu + 1, j)) and not any(
+                                    ((words[q] >> 16) & 31 == rb and words[q] >> 26 in (0x09, 0x0F, 0x23, 0x0D, 0x0C)) or
+                                    (words[q] >> 26 == 0 and (words[q] >> 11) & 31 == rb)
+                                    for q in range(j + 1, lw)):
+                                alo = wj & 0xFFFF
+                                alo = alo - 0x10000 if alo & 0x8000 else alo
+                                found_base = (((words[lu] & 0xFFFF) << 16) + alo) & 0xFFFFFFFF
+                            break
+                        if wr == rb:
+                            break
+                    if found_base is not None:
+                        break
+                if found_base is None:
+                    return None
+                table = found_base
+            else:
+                alo = addiu & 0xFFFF
+                alo = alo - 0x10000 if alo & 0x8000 else alo
+                table = (((lui & 0xFFFF) << 16) + alo) & 0xFFFFFFFF
         bound = None
         for j in range(lw - 3, max(lw - 12, -1), -1):
             if words[j] >> 26 == 0x0B:  # sltiu

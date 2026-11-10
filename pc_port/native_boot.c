@@ -1364,6 +1364,8 @@ static uint16_t script_input(NativeBoot *boot) {
     static unsigned prev_frame;
     static uint16_t goto_room;
     static double best;
+    static unsigned esc_rng = 12345u;
+    static int esc_off = 2;
     unsigned frame = boot->in_game_frames, t;
     uint16_t location = 0, mode = 0, keys = 0;
     int16_t x = 0, z = 0;
@@ -1465,11 +1467,16 @@ static uint16_t script_input(NativeBoot *boot) {
             escape = frame;   /* blocked: sidestep with a jump, then retry */
             fprintf(stderr, "native_boot: SCRIPT step=%d goto blocked frame=%u pos=(%d,%d)\n", cur, frame, x, z);
         }
-        if (escape && frame > escape + 40u) { escape = 0; stuck_frame = frame; best = dist; }
+        if (escape && frame > escape + 110u) {
+            escape = 0; stuck_frame = frame; best = dist;
+            esc_rng = esc_rng * 1664525u + 1013904223u;
+            esc_off = (int)((esc_rng >> 24) % 7u) - 3;   /* random sidestep -3..3 (45 degree steps) */
+            if (esc_off == 0) esc_off = 3;
+        }
         {
             double a = atan2(dz, dx) - phi;
             int k = (int)lround(a / (M_PI / 4.0));
-            if (escape) k += ((escape / 40u) & 1u) ? 2 : -2;
+            if (escape) k += esc_off ? esc_off : 2;
             dir = ((k % 8) + 8) % 8;
         }
         keys = dir_bits[dir];
