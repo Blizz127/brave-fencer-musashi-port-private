@@ -328994,6 +328994,26 @@
       "rodata_base": 2149335384
     },
     {
+      "name": "func_80181CFC",
+      "vram": 2149063932,
+      "size": 208,
+      "region": "sc03_0098",
+      "source": "src/overlays/sc03_0098/80181cfc.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2"
+    },
+    {
+      "name": "func_80181DCC",
+      "vram": 2149064140,
+      "size": 360,
+      "region": "sc03_0098",
+      "source": "src/overlays/sc03_0098/80181dcc.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2"
+    },
+    {
       "name": "func_8012A094",
       "vram": 2148704404,
       "size": 76,
