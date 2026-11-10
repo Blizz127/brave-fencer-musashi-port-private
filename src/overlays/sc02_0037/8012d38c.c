@@ -1,0 +1,11 @@
+/* sc02_0037: func_8012D38C from Druthulu/BFM-decomp
+ * src/ov_SC02_037/ov_SC02_037.c (preprocessed; only the declarations it uses),
+ * byte-identical to the sc02_0037 retail words (gcc-2.7.2 -O2). */
+typedef unsigned short u16;
+typedef unsigned int u32;
+void func_8012D098(u16 *param_1, u32 param_2);
+extern void func_8012D098();
+
+void func_8012D38C(int a0) {
+    func_8012D098(a0, 0);
+}

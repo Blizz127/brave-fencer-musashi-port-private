@@ -1,0 +1,172 @@
+/* sc02_0037: func_8017ED90 from Druthulu/BFM-decomp
+ * src/ov_SC02_037/ov_SC02_037_jr_8017AE2C.c (preprocessed; only the declarations it uses),
+ * byte-identical to the sc02_0037 retail words (gcc-2.7.2 -O2). */
+typedef unsigned char u8;
+typedef unsigned short u16;
+typedef unsigned int u32;
+typedef signed char s8;
+typedef short s16;
+typedef int s32;
+typedef float f32;
+struct S8;
+struct UnalignedPair;
+struct packed_word;
+union word_bytes;
+struct S8 { u32 a; u32 b; } __attribute__((packed, aligned(1)));
+struct UnalignedPair {
+    int a;
+    int b;
+} __attribute__((packed, aligned(1)));
+struct packed_word { int w; } __attribute__((packed, aligned(1)));
+union word_bytes {
+    struct packed_word pw;
+    u8 b[4];
+};
+typedef struct { s16 a; s16 b; s16 c; s16 d; } S8;
+typedef struct { u32 attr; s16 x0, y0, x1, y1; u8 r, g, b, code; } Gline_801372B0;
+struct PW8017E6D8 { int w; } __attribute__((packed, aligned(1)));
+struct W4 { u32 w; } __attribute__((packed, aligned(1)));
+typedef struct { u8 d[4]; } __attribute__((packed, aligned(1))) B4;
+typedef struct { u8 d[4]; } __attribute__((packed, aligned(1))) B4_80165140;
+typedef struct { u8 d[8]; } __attribute__((packed, aligned(1))) B8_80165140;
+typedef struct {
+    s32 op;
+    union {
+        s32 w;
+        void *p;
+        s16 h[2];
+        u16 uh[2];
+    } a;
+} Cmd_80178D40;
+typedef struct { s32 a, b; s8 c; } __attribute__((packed, aligned(1))) Rec9;
+typedef struct { s16 x, y, z, pad; } SVEC_80167AE0;
+typedef struct { s16 x, y, z, pad; } SVEC_8016A290;
+typedef void (*code)(unsigned short *);
+struct Fr {
+    u8 matrix[0x20];
+    SVEC_80167AE0 v[4];
+    struct { u8 r, g, b, pad; } col[4];
+    u32 code;
+};
+struct Fr_80167AE0 {
+    u8 matrix[0x20];
+    SVEC_80167AE0 v[4];
+    struct { u8 r, g, b, pad; } col[4];
+    u32 code;
+};
+struct Fr_8016A290 {
+    SVEC_8016A290 center;
+    SVEC_8016A290 diff;
+    s32 pos[3];
+    s32 _pad1c;
+    s16 mtx[32];
+    SVEC_8016A290 v[4];
+    struct { u8 r, g, b, pad; } col[4];
+    u32 code;
+};
+typedef struct { s16 x, y, z, pad; } SVec_801670E4;
+typedef struct {
+               u16 cx, cy, cz;
+               u16 _p06;
+               u16 a8[4];
+               s32 pos[3];
+               s32 _p1C;
+               SVec_801670E4 v[4];
+               struct { u8 r, g, b, cd; } col[4];
+               u32 code;
+               s32 _p54;
+               u8 m1[0x20];
+               u8 m2[0x20];
+} Fr_801670E4;
+struct PW8017C290 { int w; } __attribute__((packed, aligned(1)));
+struct PW8017E72C { int w; } __attribute__((packed, aligned(1)));
+typedef struct { u8 d[4]; } __attribute__((packed, aligned(1))) B4_8018EDB0;
+typedef struct { u8 d[4]; } __attribute__((packed, aligned(1))) B4_8018F060;
+typedef struct { u8 d[8]; } __attribute__((packed, aligned(1))) B8_8018EDB0;
+typedef struct { u8 d[8]; } __attribute__((packed, aligned(1))) B8_8018F060;
+typedef struct { u8 b[4]; } __attribute__((packed, aligned(1))) Blk4_E960;
+typedef struct { u8 b[4]; } __attribute__((packed, aligned(1))) Block4;
+typedef struct { u32 a; u32 b; } __attribute__((packed, aligned(1))) Unaligned8;
+extern s16 D_80126940;
+extern void *memcpy(void *, const void *, unsigned int);
+extern void func_8012A568(void (*a0)(void));
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern s16 D_800B9A02;
+extern void func_8012E5CC(s32 param_1, u16 param_2, u16 param_3);
+extern void *memcpy(void *, const void *, u32);
+extern void func_8005C324(int dst, int src, int n) __asm__("memcpy");
+extern short D_800B9A02;
+extern void func_80051DC8(void *a0, void *a1, s32 a2);
+extern void func_80137030(s16 a0, s16 a1);
+extern void aGsSortLine(Gline_801372B0 *p, void *ot, s32 z) __asm__("func_80051DC8");
+extern void aF80137030(s32 x, s32 y) __asm__("func_80137030");
+extern u16 aD800B9A02 __asm__("D_800B9A02");
+extern void *memcpy(void *dst, const void *src, u32 n);
+extern s32 D_80127098;
+extern s32 D_80127094;
+extern s32 D_80127090;
+extern void func_801466F0(s32 a0, s32 a1, s32 a2, s32 a3, s32 sp5, s32 sp6, s32 sp7, s32 sp8);
+extern void aF801466F0(u16 a0, s32 a1, u16 a2, u16 a3, u16 sp5, s32 sp6, s32 sp7, s32 sp8) __asm__("func_801466F0");
+extern void aF801466F0(u16 a0, s32 a1, u16 a2, u16 a3, u16 sp5, s32 sp6, s32 sp7, s32 sp8);
+extern s32 aF8012E5CC(s32, s32, s32) __asm__("func_8012E5CC");
+extern s32 func_80012C6C(s32 a0, s32 a1, s32 a2);
+extern s32 D_80127090;
+extern s32 D_80127094;
+extern s32 D_80127098;
+extern void func_801466F0(s32, s32, s32, s32, s32, s32, s32, s32);
+extern s32 aD_80127090 __asm__("D_80127090");
+extern s32 aD_80127094 __asm__("D_80127094");
+extern s32 aD_80127098 __asm__("D_80127098");
+extern void *memcpy(void *dst, const void *src, unsigned int n);
+extern s32 func_80012DBC(s32 a0, s32 a1, s32 a2, s32 a3);
+extern s32 func_80012C6C(s32 a0, s32 a1, s32 a2);
+extern short D_800B9A02;
+extern s16 D_80126940;
+extern s32 func_8017EEC4(s32 arg0, void *arg1);
+extern s32 func_8017EEC4(s32 arg0, void *arg1);
+extern s16 D_80126940;
+typedef struct {
+    s16 pad00[4];
+    s32 f08;
+    s32 f0C;
+    s32 f10;
+    s32 f14;
+    s16 f18;
+    s16 f1A;
+    s16 f1C;
+    s16 pad1E;
+    s16 f20;
+    s16 f22;
+    s16 f24;
+    s16 pad26;
+    s16 f28;
+    s16 f2A;
+    s16 f2C;
+    s16 f2E;
+    s16 f30;
+    s16 f32;
+} St_8017ED90;
+extern s32 func_8017EEC4(s32 arg0, void *arg1);
+extern s32 func_800130D0(s32 arg0, s32 arg1, s32 arg2);
+s32 func_8017EEC4(s32 arg0, void *arg1);
+
+void func_8017ED90(St_8017ED90 *arg0)
+{
+    Unaligned8 sp10;
+    s16 var_s0;
+    s16 var_s1;
+    s16 var_s2;
+    sp10 = *(Unaligned8 *)&D_80126940;
+    var_s0 = func_80012C6C(((s16 *)arg0)[4], 500, 32);
+    arg0->f08 = arg0->f0C = var_s0;
+    var_s1 = func_80012C6C(((s16 *)arg0)[8], 1200, 32);
+    arg0->f10 = arg0->f14 = var_s1;
+    var_s2 = func_80012DBC(arg0->f18, 568, 16, 1);
+    arg0->f18 = arg0->f20 = var_s2;
+    arg0->f1A = arg0->f22 = func_80012DBC(arg0->f1A, 2048, 16, 1);
+    arg0->f1C = arg0->f24 = func_80012DBC(arg0->f1C, 0, 16, 1);
+    arg0->f28 = arg0->f2E = func_800130D0(arg0->f28, 0, 32);
+    arg0->f2A = arg0->f30 = func_800130D0(arg0->f2A, 0, 32);
+    arg0->f2C = arg0->f32 = func_800130D0(arg0->f2C, 0, 32);
+    func_8017EEC4(arg0, &sp10);
+}

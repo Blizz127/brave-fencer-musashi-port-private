@@ -1,0 +1,14 @@
+/* sc02_0037: func_80128EA8 from Druthulu/BFM-decomp
+ * src/ov_SC02_037/ov_SC02_037.c (preprocessed; only the declarations it uses),
+ * byte-identical to the sc02_0037 retail words (gcc-2.7.2 -O2). */
+typedef unsigned short u16;
+typedef short s16;
+typedef int s32;
+
+void func_80128EA8(s32 a0, s32 a1, s32 a2) {
+    *(s32 *)(a1 + 0x0) = a2;
+    *(s16 *)(a1 + 0x4) = 0;
+    *(s16 *)(a1 + 0x6) = (*(s32 *)(a2 + 0x4)) & 0x3F;
+    *(s16 *)(a0 + 0x28) = *(u16 *)(a2 + 0x0);
+    *(s16 *)(a0 + 0x2A) = *(u16 *)(a2 + 0x2);
+}

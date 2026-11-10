@@ -1,0 +1,134 @@
+/* sc02_0037: func_80176D94 from Druthulu/BFM-decomp
+ * src/ov_SC02_037/ov_SC02_037_jr_80171B4C.c (preprocessed; only the declarations it uses),
+ * byte-identical to the sc02_0037 retail words (gcc-2.7.2 -O2). */
+typedef unsigned char u8;
+typedef unsigned short u16;
+typedef unsigned int u32;
+typedef short s16;
+typedef int s32;
+typedef struct { u32 attr; s16 x0, y0, x1, y1; u8 r, g, b, code; } Gline_801372B0;
+typedef struct { s16 x, y, z, pad; } SVEC_80167AE0;
+typedef struct { s16 x, y, z, pad; } SVEC_8016A290;
+typedef void (*code)(unsigned short *);
+struct Fr {
+    u8 matrix[0x20];
+    SVEC_80167AE0 v[4];
+    struct { u8 r, g, b, pad; } col[4];
+    u32 code;
+};
+struct Fr_80167AE0 {
+    u8 matrix[0x20];
+    SVEC_80167AE0 v[4];
+    struct { u8 r, g, b, pad; } col[4];
+    u32 code;
+};
+struct Fr_8016A290 {
+    SVEC_8016A290 center;
+    SVEC_8016A290 diff;
+    s32 pos[3];
+    s32 _pad1c;
+    s16 mtx[32];
+    SVEC_8016A290 v[4];
+    struct { u8 r, g, b, pad; } col[4];
+    u32 code;
+};
+typedef struct { s16 x, y, z, pad; } SVec_801670E4;
+typedef struct {
+               u16 cx, cy, cz;
+               u16 _p06;
+               u16 a8[4];
+               s32 pos[3];
+               s32 _p1C;
+               SVec_801670E4 v[4];
+               struct { u8 r, g, b, cd; } col[4];
+               u32 code;
+               s32 _p54;
+               u8 m1[0x20];
+               u8 m2[0x20];
+} Fr_801670E4;
+extern void *memcpy(void *, const void *, unsigned int);
+extern void func_8012A568(void (*a0)(void));
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern s16 D_800B9A02;
+extern void func_8012E5CC(s32 param_1, u16 param_2, u16 param_3);
+extern void *memcpy(void *, const void *, u32);
+extern void func_8005C324(int dst, int src, int n) __asm__("memcpy");
+extern short D_800B9A02;
+extern void func_80051DC8(void *a0, void *a1, s32 a2);
+extern void func_80137030(s16 a0, s16 a1);
+extern void aGsSortLine(Gline_801372B0 *p, void *ot, s32 z) __asm__("func_80051DC8");
+extern void aF80137030(s32 x, s32 y) __asm__("func_80137030");
+extern u16 aD800B9A02 __asm__("D_800B9A02");
+extern void *memcpy(void *dst, const void *src, u32 n);
+extern s32 D_80127098;
+extern s32 D_80127094;
+extern s32 D_80127090;
+extern void func_801466F0(s32 a0, s32 a1, s32 a2, s32 a3, s32 sp5, s32 sp6, s32 sp7, s32 sp8);
+extern void aF801466F0(u16 a0, s32 a1, u16 a2, u16 a3, u16 sp5, s32 sp6, s32 sp7, s32 sp8) __asm__("func_801466F0");
+extern void aF801466F0(u16 a0, s32 a1, u16 a2, u16 a3, u16 sp5, s32 sp6, s32 sp7, s32 sp8);
+extern s32 aF8012E5CC(s32, s32, s32) __asm__("func_8012E5CC");
+extern s32 D_80127090;
+extern s32 D_80127094;
+extern s32 D_80127098;
+extern void func_801466F0(s32, s32, s32, s32, s32, s32, s32, s32);
+extern s32 aD_80127090 __asm__("D_80127090");
+extern s32 aD_80127094 __asm__("D_80127094");
+extern s32 aD_80127098 __asm__("D_80127098");
+extern void *memcpy(void *dst, const void *src, unsigned int n);
+extern s16 D_800B9A02;
+extern short D_800B9A02;
+extern s16 D_800B9A02;
+extern short D_800B9A02;
+extern short D_800B9A02;
+extern u32 func_801783D0(s32, s32);
+extern void *func_80177784(void *a0, s32 a1, s32 a2, s32 a3);
+extern u32 func_801783D0(s32 a0, s32 a1);
+extern void *func_801777BC();
+extern u16 D_8011F82C;
+extern u16 D_8011F82A;
+void *func_80177784(void *a0, s32 a1, s32 a2, s32 a3);
+void *func_801777BC(void *a0, s32 a1, s32 a2, s32 a3, s32 a4, s32 a5, s32 a6);
+u32 func_801783D0(s32 a0, s32 a1);
+
+u32 *func_80176D94(void *param_1, u32 param_2, s16 param_3_)
+{
+    s32 c3 = 3;
+    s32 cad = 0xad;
+    s32 cff = 0xff;
+    s32 iVar6 = (s16)param_3_;
+    u32 uVar5 = iVar6 << 16;
+    void *uVar2;
+    void *u4, *u5;
+    u32 *puVar3;
+    s16 sVar1;
+    u32 uVar4;
+    u32 dl;
+    s32 t;
+    uVar2 = ((void * (*)(void *, s32, s32))func_80177784)(param_1, uVar5 | (u16)param_2, 0x6b565040);
+    uVar2 = ((void * (*)(void *, s32, s32))func_80177784)(uVar2, uVar5 | ((param_2 + 8) & 0xffff), 0x6b565808);
+    uVar2 = ((void * (*)(void *, s32, s32))func_80177784)(uVar2, uVar5 | ((param_2 + 0x10) & 0xffff), 0x6b564060);
+    u4 = ((void * (*)(void *, s32, s32))func_80177784)(uVar2, uVar5 | ((param_2 + 0x30) & 0xffff), 0x6b563858);
+    sVar1 = (s16)func_801783D0(D_8011F82C, 4);
+    u5 = func_801777BC(u4, sVar1, (s32)((param_2 + 0x18) << 16) >> 16, iVar6, c3, cad, cff);
+    sVar1 = (s16)func_801783D0(D_8011F82A, 4);
+    puVar3 = (u32 *)func_801777BC(u5, sVar1, (s32)((param_2 + 0x38) << 16) >> 16, iVar6, c3, cad, cff);
+    dl = ((struct { u16 h; } *)&D_8011F82C)->h;
+    { u32 v0m = ((u32)(puVar3 - 5) & 0xffffff) | 0x3000000;
+      register u32 c6000 __asm__("$6") = 0x6000dcff;
+      puVar3[1] = c6000;
+      *puVar3 = v0m; }
+    uVar4 = ((iVar6 + 10) << 16) | ((param_2 + 1) & 0xffff);
+    puVar3[2] = uVar4;
+    puVar3[3] = ((s32)(dl * 0x50e6) >> 16) | 0x20000;
+    dl = ((struct { u16 h; } *)&D_8011F82A)->h;
+    puVar3[5] = ((u32)puVar3 & 0xffffff) | 0x3000000;
+    puVar3[10] = ((u32)(puVar3 + 5) & 0xffffff) | 0x3000000;
+    puVar3[6] = 0x600000ff;
+    puVar3[7] = uVar4;
+    puVar3[0xb] = 0x60000000;
+    puVar3[0xc] = ((iVar6 + 9) << 16) | (param_2 & 0xffff);
+    t = (s32)(dl * 0x50e6) >> 16;
+    puVar3[8] = t | 0x20000;
+    puVar3[0xd] = (t + 2) | 0x40000;
+    return puVar3 + 0xf;
+}

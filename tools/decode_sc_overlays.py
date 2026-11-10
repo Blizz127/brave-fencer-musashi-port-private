@@ -58,8 +58,31 @@ def decode(src: bytes, start: int, end: int) -> tuple[bytes, int]:
     raise ValueError("missing terminator")
 
 
+RAW_CODE_CHUNK_TYPE = 1
+
+
 def decode_member(path: Path) -> dict:
     data = path.read_bytes()
+    try:
+        return _decode_lzss_member(path, data)
+    except ValueError:
+        pass
+    # A member whose code chunk is stored raw (PAC type 1 at offset 0, payload
+    # 0x800 past the header, e.g. sc02_0037) has no LZSS stream: the image is
+    # the payload itself. It must open like code (`addiu sp,sp,-N`).
+    header = struct.unpack_from("<8I", data, 0) if len(data) >= 32 else (0,) * 8
+    if data[:4] == b"PAC\0" and header[1] == RAW_CODE_CHUNK_TYPE:
+        image = data[0x800:0x800 + header[3]]
+        if len(image) == header[3] and image[2:4] == b"\xbd\x27":
+            target = path.with_suffix(".pac0.bin")
+            target.write_bytes(image)
+            return {"image": str(target.relative_to(REPO)), "src": str(path.relative_to(REPO)),
+                    "chunk": 0, "length": len(image),
+                    "sha256": hashlib.sha256(image).hexdigest(), "stored": "raw"}
+    raise ValueError("no code chunk")
+
+
+def _decode_lzss_member(path: Path, data: bytes) -> dict:
     offset = 0
     while offset + 16 <= len(data) and data[offset:offset + 4] == b"PAC\0":
         header = struct.unpack_from("<8I", data, offset)

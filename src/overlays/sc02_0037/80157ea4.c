@@ -1,0 +1,122 @@
+/* sc02_0037: func_80157EA4 from Druthulu/BFM-decomp
+ * src/ov_SC02_037/ov_SC02_037_jr_801555F4.c (preprocessed; only the declarations it uses),
+ * byte-identical to the sc02_0037 retail words (gcc-2.7.2 -O2). */
+typedef unsigned char u8;
+typedef unsigned short u16;
+typedef unsigned int u32;
+typedef short s16;
+typedef int s32;
+typedef struct { u32 attr; s16 x0, y0, x1, y1; u8 r, g, b, code; } Gline_801372B0;
+typedef struct { s16 x, y, z, pad; } SVEC_80167AE0;
+typedef struct { s16 x, y, z, pad; } SVEC_8016A290;
+typedef void (*code)(unsigned short *);
+struct Fr {
+    u8 matrix[0x20];
+    SVEC_80167AE0 v[4];
+    struct { u8 r, g, b, pad; } col[4];
+    u32 code;
+};
+struct Fr_80167AE0 {
+    u8 matrix[0x20];
+    SVEC_80167AE0 v[4];
+    struct { u8 r, g, b, pad; } col[4];
+    u32 code;
+};
+struct Fr_8016A290 {
+    SVEC_8016A290 center;
+    SVEC_8016A290 diff;
+    s32 pos[3];
+    s32 _pad1c;
+    s16 mtx[32];
+    SVEC_8016A290 v[4];
+    struct { u8 r, g, b, pad; } col[4];
+    u32 code;
+};
+typedef struct { s16 x, y, z, pad; } SVec_801670E4;
+typedef struct {
+               u16 cx, cy, cz;
+               u16 _p06;
+               u16 a8[4];
+               s32 pos[3];
+               s32 _p1C;
+               SVec_801670E4 v[4];
+               struct { u8 r, g, b, cd; } col[4];
+               u32 code;
+               s32 _p54;
+               u8 m1[0x20];
+               u8 m2[0x20];
+} Fr_801670E4;
+extern void *memcpy(void *, const void *, unsigned int);
+extern void func_8012A568(void (*a0)(void));
+extern void func_8012A5F8(void (*a0)(void), s32 a1);
+extern s16 D_800B9A02;
+extern void func_8012E5CC(s32 param_1, u16 param_2, u16 param_3);
+extern void *memcpy(void *, const void *, u32);
+extern s32 func_80146A6C(s32 a0, void *a1, s32 a2, s32 a3, s32 a4, s32 a5, s32 a6);
+extern void func_8005C324(int dst, int src, int n) __asm__("memcpy");
+extern short D_800B9A02;
+extern void func_80051DC8(void *a0, void *a1, s32 a2);
+extern void func_80137030(s16 a0, s16 a1);
+extern void aGsSortLine(Gline_801372B0 *p, void *ot, s32 z) __asm__("func_80051DC8");
+extern void aF80137030(s32 x, s32 y) __asm__("func_80137030");
+extern u16 aD800B9A02 __asm__("D_800B9A02");
+extern void *memcpy(void *dst, const void *src, u32 n);
+extern void func_801466F0(s32 a0, s32 a1, s32 a2, s32 a3, s32 sp5, s32 sp6, s32 sp7, s32 sp8);
+extern void aF801466F0(u16 a0, s32 a1, u16 a2, u16 a3, u16 sp5, s32 sp6, s32 sp7, s32 sp8) __asm__("func_801466F0");
+extern void aF801466F0(u16 a0, s32 a1, u16 a2, u16 a3, u16 sp5, s32 sp6, s32 sp7, s32 sp8);
+extern s32 aF8012E5CC(s32, s32, s32) __asm__("func_8012E5CC");
+extern void func_801599A4(void *a0);
+extern void func_80159B3C(void *a0);
+extern void func_801599A4(void *a0);
+extern void func_80159B3C(void *a0);
+extern void func_801599A4(void *a0);
+extern void func_80159B3C(void *a0);
+extern int func_80155FF8(int arg, int a1);
+extern void func_801599A4(void *a0);
+extern void func_80159B3C(void *a0);
+extern int func_80155FF8(int arg, int a1);
+extern void func_801599A4(void *a0);
+extern void func_80159B3C(void *a0);
+extern int func_80155FF8(int arg, int a1);
+extern int func_80155FF8(int arg, int a1);
+int func_80155FF8(int arg, int a1);
+s32 func_80156600(void* _arg0);
+extern int func_80155FF8(int arg, int a1);
+extern void func_801599A4(void *a0);
+extern void func_80159B3C(void *a0);
+extern int func_80155FF8(int arg, int a1);
+extern int func_80155FF8(int arg, int a1);
+extern void func_801599A4(void *a0);
+extern void func_80159B3C(void *a0);
+extern void func_801599A4(void *a0);
+extern void func_80159B3C(void *a0);
+extern void func_801599A4(void *a0);
+extern void func_80159B3C(void *a0);
+extern s32 func_80157F64(s32 *a0);
+extern int func_80155FF8(int arg, int a1);
+extern s32 func_80156600(void *a0);
+extern s32 func_80146A6C(s32 a0, void *a1, s32 a2, s32 a3, s32 a4, s32 a5, s32 a6);
+s32 func_80157F64(s32 *a0);
+
+void func_80157EA4(void *a0) {
+    s32 *v1;
+    *(s32 *)((u8 *)a0 + 0x44) = *(s32 *)((u8 *)a0 + 0x44) | 2;
+    if (*(u16 *)((u8 *)a0 + 0xB8) == 0x8000) {
+        func_801599A4(a0);
+        func_80159B3C(a0);
+        return;
+    }
+    if (func_80157F64((s32 *)a0) != 0) {
+        return;
+    }
+    func_80155FF8((int)a0, *(u8 *)((u8 *)a0 + 0x1AA));
+    v1 = (s32 *)func_80156600(a0);
+    if (v1 == 0) {
+        return;
+    }
+    if (*(s16 *)((u8 *)a0 + 0x244) != 0) {
+        return;
+    }
+    *(s16 *)((u8 *)a0 + 0x244) = 1;
+    func_80146A6C(0x54, a0, *(s16 *)v1, *(s16 *)((u8 *)v1 + 2), *(s16 *)((u8 *)v1 + 4), 0, 0);
+}
