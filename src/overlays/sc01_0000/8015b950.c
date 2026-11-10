@@ -154,7 +154,7 @@ void func_8015B950(s32 arg0)
     s32 doit;
     s32 lim = -0xB0000;
 
-    if (((s32(*)())func_80161B18)() != 0) {
+    if (((s32 (*)(s32))func_80161B18)(arg0) != 0) {
         return;
     }
     switch (((s32 (*)(s32))func_801619A4)(arg0)) {

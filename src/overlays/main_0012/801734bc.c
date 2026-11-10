@@ -8,7 +8,7 @@ extern void func_80174684(void *);
 extern s16 D_80126B32;
 extern s16 D_80126B3E;
 
-void func_801734BC(s32 arg0, s32 _unused1) {
+void func_801734BC(s32 arg0) {
     extern void func_80173544(void);
     extern s16 D_80126B40;
 

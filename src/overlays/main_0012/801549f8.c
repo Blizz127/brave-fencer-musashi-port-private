@@ -6,7 +6,7 @@
 /* func_801549F8 - byte-exact against retail at -O2 (tools/register_match.py). */
 
 
-s32 func_801549F8(s32 param_1, s32 _arg1, s32 _arg2)
+s32 func_801549F8(s32 param_1)
 {
     s32 i, j;
     u8 n;

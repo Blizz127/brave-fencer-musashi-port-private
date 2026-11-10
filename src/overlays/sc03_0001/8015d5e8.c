@@ -43,7 +43,7 @@ void func_8015D5E8(int param_1)
 {
     int iVar1;
     int iVar2;
-    if (((int (*)(void))func_80161B18)() != 0)
+    if (((int (*)(int))func_80161B18)(param_1) != 0)
         return;
     if (((int (*)(int))func_80161B84)(param_1) != 0)
         return;
