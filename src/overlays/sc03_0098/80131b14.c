@@ -14,11 +14,11 @@ extern void func_80019064(void *);
 extern void func_8012B23C(s32 a0);
 extern void func_8012B23C(s32 a0);
 
-void func_80131B14() {
+void func_80131B14(u8 *a0v) {
     extern void func_8002A520(void *);
     extern void func_8002A790(void *);
     extern u8 D_801857E0;
-    u8 *a0v;
+    s32 dec;
     u8 *p = a0v;
     s32 e = *(u8 *)(p + 0x5E);
     if (*(s16 *)(p + 0x60) != 0) {
@@ -29,7 +29,6 @@ void func_80131B14() {
             *(s16 *)(p + 0x80) = *(u16 *)(p + 0x0E);
         }
         {
-            s32 dec;
             s32 q = *(s32 *)(p + 0x78);
             if (q != 0) {
                 dec = ((s32)*(s16 *)(p + 0x60) * (s32)*(s16 *)(q + 0x30)) >> 12;
