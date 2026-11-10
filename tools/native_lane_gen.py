@@ -2180,7 +2180,7 @@ def resolve_calls(optir):
                     if ty not in ("i32", "ptr", "i8", "i16"):
                         raise Reject("abi", f"unprototyped {callee} gets {ty}")
                 argc = max(argc, len(args))
-            if argc > 6:
+            if argc > (16 if STRICT else 6):
                 raise Reject("abi", f"unprototyped {callee} with {argc} arguments")
             new = f"{sym}__va{argc}_{ret[0]}{'s' if ret[1][0] else ''}"
             stubs[new] = (callee, None, argc, ret)

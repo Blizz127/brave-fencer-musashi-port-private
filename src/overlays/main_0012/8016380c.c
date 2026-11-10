@@ -22,7 +22,6 @@ extern void func_80015978(int a0, int *a1);
 extern int func_80133784(int a0, void *a1, int a2);
 extern s32 func_80133784(s32 a0, void *src, s32 dst);
 extern void func_80015954(s32, s32);
-u16 a1;
 u16 a2;
 
 s32 func_8016380C(struct S8016380C *a0, s32 a1) {

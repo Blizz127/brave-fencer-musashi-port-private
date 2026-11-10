@@ -14,7 +14,6 @@ extern u8 D_800AF648;
 extern void func_8004914C(void *a0);
 extern void func_800491AC(void *a0);
 extern s32 RotTransPers(s32 a0, s32 a1, s32 *a2, s32 *a3);
-void *param_2;
 extern void RotTransSV(s32 a0, s32 a1, void *a2);
 extern void func_8004914C();
 extern void func_800491AC();

@@ -7,7 +7,6 @@
 /* func_801654A8 - byte-exact against retail at -O2 (tools/register_match.py). */
 extern u8 D_80078EC1;
 extern u8 func_80165658(s32 a0, s32 a1);
-u16 a1;
 extern void func_800CAE0C(s32 a0);
 
 void func_801654A8(s32 arg0)

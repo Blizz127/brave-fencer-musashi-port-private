@@ -8,7 +8,6 @@
 struct copy00;
 struct copy00 { s32 w[41]; };
 extern s32 D_800AE6B0;
-s32 a1;
 extern u8 D_800AE6C0;
 extern s16 D_800AE6C8;
 extern s16 D_800AE6CA;

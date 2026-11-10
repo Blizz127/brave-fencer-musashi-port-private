@@ -15,7 +15,6 @@ typedef struct {
 extern s32 func_80133784(s32 a0, void *a1, s32 a2);
 extern s32 func_80133784(s32 arg0, void *arg1, s32 arg2);
 extern int func_80133784(int a0, void *a1, int a2);
-s32 a1;
 s32 a2;
 extern s32 func_80133784(s32 a0, void *src, s32 dst);
 extern s32 func_801539F8(s32 a0, void *a1);

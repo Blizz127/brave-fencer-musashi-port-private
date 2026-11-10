@@ -14,7 +14,6 @@ extern void func_80146D90(int);
 extern s32 func_80012DBC(s32 a0, s32 a1, s32 a2, s32 a3);
 extern void func_80146D90(s32);
 extern s32 ratan2(s32, s32);
-u8 arg1;
 extern s32 func_8017248C(s32 a0, s32 a1);
 extern s32 func_8017248C(s32, s32);
 extern void func_80172170(s32, s32);

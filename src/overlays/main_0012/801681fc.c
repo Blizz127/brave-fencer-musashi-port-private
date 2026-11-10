@@ -8,7 +8,6 @@
 extern s32 func_80029178(s32);
 extern s32 func_80029178(s32 arg);
 extern s32 func_80029178(s32 a0);
-s32 a3;
 void func_80166F58(s32 param_1, s32 param_2, s32 param_3, s32 param_4);
 extern void func_80166F58(s32 arg0, s32 arg1, s32 arg2, s32 arg3);
 

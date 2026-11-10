@@ -8,7 +8,6 @@
 struct M8;
 struct M8 { u8 b[8]; };
 typedef struct { char _b[8]; } M8;
-void *param_2;
 
 s32 func_801312D0(s32 param_1, void *param_2)
 {
