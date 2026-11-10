@@ -328896,6 +328896,83 @@
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
+      "name": "func_8013CB84",
+      "vram": 2148780932,
+      "size": 996,
+      "region": "sc03_0098",
+      "source": "src/overlays/sc03_0098/8013cb84.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8013D3D4",
+      "vram": 2148783060,
+      "size": 360,
+      "region": "sc03_0098",
+      "source": "src/overlays/sc03_0098/8013d3d4.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8013D53C",
+      "vram": 2148783420,
+      "size": 960,
+      "region": "sc03_0098",
+      "source": "src/overlays/sc03_0098/8013d53c.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_80142A80",
+      "vram": 2148805248,
+      "size": 172,
+      "region": "sc03_0098",
+      "source": "src/overlays/sc03_0098/80142a80.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_801431E8",
+      "vram": 2148807144,
+      "size": 276,
+      "region": "sc03_0098",
+      "source": "src/overlays/sc03_0098/801431e8.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8017B238",
+      "vram": 2149036600,
+      "size": 304,
+      "region": "sc03_0098",
+      "source": "src/overlays/sc03_0098/8017b238.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
+      "name": "func_8017B614",
+      "vram": 2149037588,
+      "size": 404,
+      "region": "sc03_0098",
+      "source": "src/overlays/sc03_0098/8017b614.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
       "name": "func_8012A094",
       "vram": 2148704404,
       "size": 76,
