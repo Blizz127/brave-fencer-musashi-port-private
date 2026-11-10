@@ -324534,6 +324534,17 @@
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
+      "name": "func_80145CEC",
+      "vram": 2148818156,
+      "size": 508,
+      "region": "sc03_0098",
+      "source": "src/overlays/sc03_0098/80145cec.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
+    },
+    {
       "name": "func_8012A094",
       "vram": 2148704404,
       "size": 76,
