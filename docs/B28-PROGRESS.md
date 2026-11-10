@@ -2075,6 +2075,14 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 - Hybrid slid 259 units in Z under the same kind of input (Inc 149), so the player movement/collision path is the next fault to chase in strict (candidates: the player update that sets act, the Musashi sprite/draw path that is also missing). No code change in this increment.
 - No stop, no fault: 8000+ frame runs. Route status: warp to village OK; natural start -> forest 3008 OK; forest -> village not walked.
 
+### Inc 172 — Musashi walks and is drawn in strict forest 3008
+
+- Root cause (found with a gdb watch on the player act word at 0x80126B58 and a `finish` breakpoint on the callee): the walk state function 8015A3C8 (sc01_0077) calls `((s32 (*)(s32))func_8014D738)(p)` but the file declares `extern void func_8014D738(void)`. Clang emitted `call i32 @lane_call_..__rvoid_i32`, the void-returning stub returned nothing, and the caller read an undefined eax (nonzero) every frame, so the state fell to act 9 (func_8015C6E0) at once. The player never gathered velocity and the sprite path never ran.
+- Fix (strict only): `resolve_calls` in tools/native_lane_gen.py gives a void-declared stub the return type of the call sites that use a value (`..__ri32_i32`); the emitter returns the callee's value, or 0 for a truly void callee. Hybrid table untouched.
+- 80161278 / 80144A04 / 80146A6C (main_0012; only strict rejections of rule `abi: void callee, caller reads v0`) now return the callee value in C; oracle MATCH 38/38 over all members.
+- Result (script /workspace/scratch/walk/w3.txt, `room 3008 mash` then U/R/D/L holds): act now flips 1/0 as in hybrid, pos moves hundreds of units (-5033 -> -4553 in Z in 200 frames of D), no strict stop. Musashi is drawn: /workspace/bfm-frames/inc173_walk_f2400.png (sprite visible, magenta texture artifacts remain in the room).
+- Next: script the walk to the village exit; the magenta/garbled forest textures.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for
