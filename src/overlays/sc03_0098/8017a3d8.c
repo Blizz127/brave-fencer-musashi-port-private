@@ -16,7 +16,7 @@ typedef struct {
 extern short D_801C545C;
 extern short D_801C5458;
 extern int func_800D0CA0(int);
-extern int func_8001AAA0(void);
+extern int func_8001AAA0(int);
 extern int func_800D0CE0(void);
 
 int func_8017A3D8(void)
@@ -31,7 +31,7 @@ int func_8017A3D8(void)
         register int a __asm__("$4");
         a = D_801C5458;
         if (a != -1) {
-            return func_8001AAA0() != 0;
+            return func_8001AAA0(a) != 0;
         }
         return func_800D0CE0() == 1;
     }

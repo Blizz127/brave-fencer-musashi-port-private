@@ -15,5 +15,5 @@ s32 func_80175218(void * param_1)
 {
     s32 i = D_80078EC0 - 1;
     D_801889B0[i](param_1);
-    ((void (*)(s32))func_80146CA0)(param_1);
+    return ((s32 (*)(s32))func_80146CA0)(param_1);
 }

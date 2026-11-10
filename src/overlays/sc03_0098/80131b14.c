@@ -37,7 +37,7 @@ void func_80131B14() {
             }
             *(u16 *)(p + 0x76) = *(u16 *)(p + 0x76) - dec;
         }
-        ((void (*)(void *))func_8016AA50)(p);
+        ((void (*)(void *, s32))func_8016AA50)(p, dec);
         if (*(u16 *)(p + 0x82) & 1) {
             ((void (*)(void *))func_8016B428)(p);
             ((void(*)(void *))func_80019064)(&D_801857E0);

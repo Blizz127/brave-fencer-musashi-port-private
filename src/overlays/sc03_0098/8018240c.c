@@ -27,7 +27,7 @@ extern void func_801292C8(u8 *a0);
 extern void func_801292C8(u8 *a0);
 extern void func_801292C8(u8 *a0);
 
-s32 func_8018240C(s32 arg0) {
+void func_8018240C(s32 arg0) {
         *(s32 *)(arg0 + 0x1c) -= 1;
         if (*(s32 *)(arg0 + 0x1c) == 0) {
             ((void (*)(void))func_801292C8)();
