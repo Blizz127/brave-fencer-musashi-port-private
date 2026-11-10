@@ -2118,3 +2118,12 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
   350/500; attract/mesh path has not yet lit draw=1.
 - Keep walking toward attract mode and the village; main_0034 still waits on
   the game's CD/overlay path (want=41267).
+
+## Inc 182-203 (Nov 9-10): strict walk, 303b scene functions
+
+- Inc 182: hidden-argument fixes (a1/a2 passed explicitly) in main_0012 801542DC, 80131A34, 80131AC8, 80131CA8, 801312D0, 8014942C, 80171B10. All oracle MATCH. Two attempts (80154218, 8014D820/8014E048 a3) failed MATCH and were reverted.
+- Inc 183-185: sc03_0098 80145CEC and 402 twin ports (tools/twin_port.py plus a per-symbol address map for windows with a non-uniform shift, e.g. D_8017Fxxx -> D_80185xxx).
+- Inc 186-187: remove bare `extern void memcpy();` next to a prototyped memcpy (20 files); sc03_0098 80159A20/80159C84 pass their arguments through typed casts.
+- Inc 188-203: sc03_0098 scene-specific code at 0x80181CFC-0x80184E70 has no upstream C. Hand-recovered in gcc-2.7.2 -O2, byte-exact, registry recovery "c": 80183A28, 80182A68 (switch, rodata_base 0x801C4158), 80181CFC, 80181DCC, 801821C8, 801822AC, 80182300, 801826C8, 80182864, 801828E4, 80183040, 801838DC, 80183C34, 80183CE0, 80183D90, 801841F0, 80183E78, 80184478, 80184550, 801845E4, 80184824, 80184884, 80184924, 80184978, 80184AC8, 80184C38.
+- Still uncovered in that range: 80181F88 (516 B), 80183690 (588 B), 80183AE0 (340 B); WIP only, not yet byte-exact (register allocation / scheduling diffs).
+- gcc 2.7.2 tricks: variable multiplier forces `mult reg,reg`; unused padding arrays fix frame size; a store placed in a jal delay slot means the source store precedes the call; `p = f(...)` reusing one pointer variable saves a register; u16-16 narrowing creates an unwanted li.
