@@ -328973,6 +328973,16 @@
       "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
+      "name": "func_80183A28",
+      "vram": 2149071400,
+      "size": 184,
+      "region": "sc03_0098",
+      "source": "src/overlays/sc03_0098/80183a28.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2"
+    },
+    {
       "name": "func_8012A094",
       "vram": 2148704404,
       "size": 76,
