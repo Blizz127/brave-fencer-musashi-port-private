@@ -329242,7 +329242,8 @@
       "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
-      "rodata_base": 2149335328
+      "rodata_base": 2149335328,
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_80178D40",
@@ -329253,7 +329254,8 @@
       "recovery": "c",
       "extent": "function",
       "optimization": "-O2",
-      "rodata_base": 2149334644
+      "rodata_base": 2149334644,
+      "origin": "vendor-derived (Druthulu/BFM-decomp)"
     },
     {
       "name": "func_8012A094",
