@@ -329245,6 +329245,17 @@
       "rodata_base": 2149335328
     },
     {
+      "name": "func_80178D40",
+      "vram": 2149027136,
+      "size": 3560,
+      "region": "sc03_0098",
+      "source": "src/overlays/sc03_0098/80178d40.c",
+      "recovery": "c",
+      "extent": "function",
+      "optimization": "-O2",
+      "rodata_base": 2149334644
+    },
+    {
       "name": "func_8012A094",
       "vram": 2148704404,
       "size": 76,
