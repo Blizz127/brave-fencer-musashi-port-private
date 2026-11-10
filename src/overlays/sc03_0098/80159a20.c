@@ -19,7 +19,7 @@ void func_80159A20(unsigned char *param_1)
     typedef unsigned int u32;
     typedef int s32;
     typedef unsigned char u8;
-    ((s32 (*)(void))func_80150B28)();
+    ((s32 (*)(int))func_80150B28)((int)param_1);
     func_80158638(param_1);
     ((void (*)(u8 *))func_8015126C)(param_1);
     ((void (*)(u8 *))func_8014900C)(param_1);
