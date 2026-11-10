@@ -64,7 +64,7 @@ s32 func_80135A4C(s32 a0, s32 a1, s32 *a2, s32 a3) {
     s32 ret;
     s32 frame_pad[8];
     (void)&frame_pad;
-    switch (((s32 (*)(void))func_80135480)()) {
+    switch (((s32 (*)(void *, s32, s16 *, s16 *))func_80135480)((void *)a0, a1, (s16 *)a2, (s16 *)a3)) {
     case 0:
         return 0;
     case 1:
