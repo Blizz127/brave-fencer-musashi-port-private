@@ -11,7 +11,7 @@ extern void func_80146C3C(u8 *a0);
 extern void func_80146C3C();
 extern void func_80146C3C(u8*);
 
-s32 func_8016BBE0(s32 param_1) {
+void func_8016BBE0(s32 param_1) {
     extern void func_8016BF34(void *a0);
     extern void func_8016BF50(s32);
     extern void func_8001CF00(s32);

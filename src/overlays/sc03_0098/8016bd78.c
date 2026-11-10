@@ -11,7 +11,7 @@ extern M2C_UNK D_801C48D0;
 extern void func_8016BFA8(s32 a0, s32 a1, s32 a2, s32 a3);
 extern s32 func_8016BF50(s32);
 
-s32 func_8016BD78(s32 param_1)
+void func_8016BD78(s32 param_1)
 {
 
     extern M2C_UNK D_801C48CC;

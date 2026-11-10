@@ -198,7 +198,7 @@ extern s32 func_80017758(void *a0, void *a1);
 extern s32 func_80017DC4(void *a0, void *a1);
 extern void func_80048EAC(void *a0, void *a1);
 
-s32 func_801670E4(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
+void func_801670E4(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
     extern u8 D_80188224[];
     extern u8 D_80188210[];
     extern u8 D_80188238[];

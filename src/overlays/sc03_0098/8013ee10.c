@@ -110,7 +110,7 @@ extern void func_801376E8(int a0, int a1);
 extern void func_8013FAF8(s16 a0, s16 a1);
 extern unsigned char *func_80141CA4(void);
 
-s32 func_8013EE10() {
+void func_8013EE10() {
     extern E4 aD80115188[] __asm__("D_80115188");
     extern E4 D_80115168[];
     extern unsigned short D_80115118;
