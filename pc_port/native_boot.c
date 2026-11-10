@@ -1377,6 +1377,17 @@ static uint16_t script_input(NativeBoot *boot) {
     (void)musashi_boot_read16(&boot->memory, 0x80126B58u + 0x06u, (uint16_t *)&x);
     (void)musashi_boot_read16(&boot->memory, 0x80126B58u + 0x0Eu, (uint16_t *)&z);
     in_field = boot->scene1_reached && mode == 9u && p4d && *p4d == 1u;
+    if (frame != last_frame && getenv("MUSASHI_SCRIPT_TRACE_EVERY")) {
+        unsigned w[24], k;
+        for (k = 0; k < 24; ++k) {
+            uint32_t v = 0;
+            (void)musashi_boot_read32(&boot->memory, 0x80126B58u + 4u * k, &v);
+            w[k] = v;
+        }
+        fprintf(stderr, "native_boot: PLAYER frame=%u step=%d keys=%04x", frame, cur, (unsigned)(cur < nsteps ? steps[cur].keys : 0));
+        for (k = 0; k < 24; ++k) fprintf(stderr, " %08x", w[k]);
+        fputc('\n', stderr);
+    }
     if (frame != last_frame && frame >= trace_frame + 30u) {
         trace_frame = frame;
         uint16_t act = 0, busy = 0;
