@@ -57,7 +57,7 @@ void func_8017AE2C(s32 param_1) {
                 func_8012AD80(pv);
                 *(u16 *)(pv + 0xA) -= 8;
                 func_8012B030((u8 *)pv);
-                if (func_8012BE98(pv, (u16 *)((s32)&D_801C5810 + 0xC)) < 0x101) {
+                if (func_8012BE98(pv, (u16 *)((u8 *)&D_801C5810 + 0xC)) < 0x101) {
                     D_801C5810 = 0;
                     D_801C5812 = 0;
                 }
@@ -81,7 +81,7 @@ void func_8017AE2C(s32 param_1) {
         func_8012AD80(pv);
         *(u16 *)(pv + 0xA) -= 8;
         func_8012B030((u8 *)pv);
-        if (func_8012BE98(pv, (u16 *)((s32)&D_801C5810 + 0xC)) < 0x101) {
+        if (func_8012BE98(pv, (u16 *)((u8 *)&D_801C5810 + 0xC)) < 0x101) {
             D_801C5810 = 0;
             D_801C5812 = 0;
         }
