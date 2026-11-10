@@ -52,7 +52,6 @@ extern u8 D_80126720[];
 extern u8 D_801152A8[];
 extern void *memcpy(void *, const void *, u32);
 extern void func_8005C324(int dst, int src, int n) __asm__("memcpy");
-extern void memcpy();
 extern s32 func_80047E98(void *a0, void *a1);
 extern u8 D_801858B4;
 extern u8 D_801858B0;
