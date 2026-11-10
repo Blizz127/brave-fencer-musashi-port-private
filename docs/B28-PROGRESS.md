@@ -2089,6 +2089,23 @@ Gates: build=0, TABLE_IDENTICAL, ctest 37/37, m2c=0, regr LOST []; 3000 frames r
 - Frame: /workspace/bfm-frames/inc175_nomagenta_f2400.png (purple path, Musashi drawn, no magenta; before: inc173_walk_f2400.png).
 - Walk status: strict walk probe (D 1500 / R 900 / L 1800 / U 2000 holds) runs 14000 frames without a strict stop; Musashi covers z -4937..-3779 in room 3008, but the exit to the next room has not been found (needs a map of 3008's exits).
 
+## Inc 176-181 (Nov 9): strict walk in forest 3008
+
+- Fixes: GPU polygon rules (sext11, drop dx>1023/dy>511) cleared the magenta
+  fill (inc 175); volatile memset of host locals admitted; stray `s32 a1;`
+  globals removed from 14 main_0012 files; jump-table hoisted-base fallback
+  and `goto` sidestep (inc 179).
+- Inc 180/181: hidden-a0 `func_80161B18` call in 8015B950/8015D5E8 now passes
+  its argument (all members); 801549F8 and 801734BC drop unused params so the
+  abi rule admits their callers. Every edit oracle MATCH.
+- Strict result: with the new build `room 3008 mash` runs 4200 frames with no
+  STRICT_INTERPRETER_ENTRY; Musashi walks and is drawn (frame
+  bfm-frames/inc181_walk_f4200.png). The pure-mash start also no longer stops.
+- Blocker: `goto` has no map of forest 3008; the player stalls near
+  (221,-3880) and never reaches the exits at (-4,3410)/(1545,5340). Still open
+  abi refusals in main_0012: 80154218 (1 of 3 args to 801549F8 is not an issue
+  now), 8014942C, 801542DC, 80171B10, 80131A34/AC8/CA8, 80131B14.
+
 ## Next
 
 - Blizz rule for later launcher builds (design the BFM platform layer for
