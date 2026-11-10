@@ -1893,6 +1893,11 @@ def check_optimized(ir, module_internal):
                             # exact address at run time, so MMIO still aborts
                             CHECKED_PTRS_TLS.vhits.add(s)
                             vol_ok = True
+                if not vol_ok and STRICT and "llvm.mem" in rhs and "i1 true)" in rhs:
+                    # Clang's zero-init of an unused `volatile s32 pad[4]` frame
+                    # reserve (80152254) is a volatile memset of a host local.
+                    mm = re.search(r"@llvm\.mem\w+\.[\w.]+\(ptr(?: [^%,]*)? (%[\w.\"$]+)", rhs)
+                    vol_ok = bool(mm) and refs_host(mm.group(1))
                 if not vol_ok:
                     raise Reject("memory", "volatile access (device register)")
             if re.match(r"load (volatile )?", rhs):
